@@ -705,7 +705,7 @@ class StatisticsRepository:
         """
         stmt = (
             select(Project.status, func.count(Project.id))
-            .where(Project.tenant_key == tenant_key)
+            .where(Project.tenant_key == tenant_key, Project.deleted_at.is_(None))
             .group_by(Project.status)
         )
         if product_id:
@@ -743,6 +743,7 @@ class StatisticsRepository:
             .where(
                 Project.tenant_key == tenant_key,
                 Project.project_type_id.is_not(None),
+                Project.deleted_at.is_(None),
             )
             .group_by(ProjectType.label, ProjectType.color)
         )
@@ -755,6 +756,7 @@ class StatisticsRepository:
         untyped_stmt = select(func.count(Project.id)).where(
             Project.tenant_key == tenant_key,
             Project.project_type_id.is_(None),
+            Project.deleted_at.is_(None),
         )
         if product_id:
             untyped_stmt = untyped_stmt.where(Project.product_id == product_id)
@@ -925,7 +927,12 @@ class StatisticsRepository:
             )
             .outerjoin(ProjectType, Project.project_type_id == ProjectType.id)
             .outerjoin(Product, Project.product_id == Product.id)
-            .where(Project.tenant_key == tenant_key, Project.status == "completed", Project.completed_at.isnot(None))
+            .where(
+                Project.tenant_key == tenant_key,
+                Project.status == "completed",
+                Project.completed_at.isnot(None),
+                Project.deleted_at.is_(None),
+            )
             .order_by(Project.completed_at.desc())
             .limit(limit)
         )
