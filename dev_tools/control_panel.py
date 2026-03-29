@@ -569,6 +569,20 @@ class GiljoDevControlPanel:
             foreground="red",
         ).grid(row=2, column=2, sticky="w", padx=5)
 
+        # Row 3: Remote workstation cert cleanup
+        ttk.Button(
+            section,
+            text="Remote WS Cert Cleanup",
+            command=self.cleanup_remote_workstation_certs,
+            width=25,
+        ).grid(row=3, column=0, pady=5, padx=5)
+
+        ttk.Label(
+            section,
+            text="Clear Node.js cert env vars (this machine)",
+            font=("Arial", 8),
+        ).grid(row=4, column=0, sticky="w", padx=5)
+
         return row + 1
 
     def build_cache_section(self, parent: ttk.Frame, row: int) -> int:
@@ -2935,6 +2949,20 @@ pg_restore -l {backup_file.name} | head -20
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
                     errors.append(f"mkcert CA uninstall: {e}")
 
+            # Clear Node.js cert trust env vars (current process + persistent)
+            for var_name in ("NODE_OPTIONS", "NODE_EXTRA_CA_CERTS"):
+                os.environ.pop(var_name, None)
+                if platform.system() == "Windows":
+                    try:
+                        subprocess.run(
+                            ["powershell", "-Command",
+                             f"[System.Environment]::SetEnvironmentVariable('{var_name}', $null, 'User')"],
+                            capture_output=True, text=True, timeout=10,
+                        )
+                    except Exception:
+                        pass
+            deleted.append("Node.js cert trust env vars (NODE_OPTIONS, NODE_EXTRA_CA_CERTS)")
+
         except Exception as e:
             errors.append(f"Certificate cleanup: {e}")
 
@@ -3000,6 +3028,58 @@ pg_restore -l {backup_file.name} | head -20
         self.display_fresh_state_report()
 
         self.update_status_message("Pristine reset complete")
+
+    def cleanup_remote_workstation_certs(self):
+        """
+        Clean up Node.js certificate trust env vars on this machine.
+
+        Use this on a remote workstation (laptop, desktop) that was configured
+        to connect to a GiljoAI MCP server over HTTPS. Removes NODE_OPTIONS
+        and NODE_EXTRA_CA_CERTS from both the current session and persistent
+        user environment variables.
+
+        Does NOT remove the mkcert root CA from the Windows cert store
+        (that's for browser trust, not Node.js).
+        """
+        confirm = messagebox.askyesno(
+            "Remote Workstation Cert Cleanup",
+            "This will remove Node.js certificate trust settings:\n\n"
+            "• NODE_OPTIONS (current + persistent)\n"
+            "• NODE_EXTRA_CA_CERTS (current + persistent)\n\n"
+            "This does NOT remove the browser certificate trust.\n"
+            "After cleanup, AI tools (Claude Code, Codex, Gemini)\n"
+            "will need the cert trust command re-applied to connect.\n\n"
+            "Continue?",
+        )
+
+        if not confirm:
+            self.update_status_message("Cert cleanup cancelled")
+            return
+
+        cleared = []
+        for var_name in ("NODE_OPTIONS", "NODE_EXTRA_CA_CERTS"):
+            had_value = var_name in os.environ
+            os.environ.pop(var_name, None)
+
+            if platform.system() == "Windows":
+                try:
+                    subprocess.run(
+                        ["powershell", "-Command",
+                         f"[System.Environment]::SetEnvironmentVariable('{var_name}', $null, 'User')"],
+                        capture_output=True, text=True, timeout=10,
+                    )
+                except Exception:
+                    pass
+
+            cleared.append(f"{var_name} {'(was set)' if had_value else '(not set)'}")
+
+        messagebox.showinfo(
+            "Cert Cleanup Complete",
+            "Node.js cert trust env vars cleared:\n\n"
+            + "\n".join(f"✓ {c}" for c in cleared)
+            + "\n\nRestart your terminal for changes to take effect.",
+        )
+        self.update_status_message("Remote workstation cert cleanup complete")
 
     def _aggressive_delete_venv(self, venv_path: Path) -> bool:
         """
