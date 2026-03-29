@@ -200,8 +200,10 @@ async def generate_ai_tool_config(
 
     # Build server URL from configuration
     # Use external_host if configured, otherwise use api.host
-    host = getattr(config.services, "external_host", None) or config.services.api.host
-    port = config.services.api.port
+    host = config.get_nested("services.external_host") or config.get_nested(
+        "services.api.host", default=config.server.api_host
+    )
+    port = config.get_nested("services.api.port", default=config.server.api_port)
 
     protocol = "https" if config.get_nested("features.ssl_enabled", default=False) else "http"
     server_url = f"{protocol}://{host}:{port}"

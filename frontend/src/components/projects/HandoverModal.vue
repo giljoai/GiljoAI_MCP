@@ -107,8 +107,10 @@
 import { ref, computed, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
 
 const { copy: clipboardCopy } = useClipboard()
+const { showToast } = useToast()
 
 const props = defineProps({
   show: {
@@ -143,18 +145,24 @@ watch(() => props.show, (val) => {
   }
 })
 
-async function copyToClipboard(text) {
-  await clipboardCopy(text)
-}
-
 async function copyRetirementPrompt() {
-  await copyToClipboard(props.retirementPrompt)
-  step1Done.value = true
+  const success = await clipboardCopy(props.retirementPrompt)
+  if (success) {
+    step1Done.value = true
+    showToast({ message: 'Retirement prompt copied!', type: 'success' })
+  } else {
+    showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
+  }
 }
 
 async function copyContinuationPrompt() {
-  await copyToClipboard(props.continuationPrompt)
-  step2Done.value = true
+  const success = await clipboardCopy(props.continuationPrompt)
+  if (success) {
+    step2Done.value = true
+    showToast({ message: 'Continuation prompt copied!', type: 'success' })
+  } else {
+    showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
+  }
 }
 
 function handleClose() {
