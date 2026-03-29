@@ -43,8 +43,10 @@
 <script setup>
 import { ref } from 'vue'
 import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
 
 const { copy: clipboardCopy } = useClipboard()
+const { showToast } = useToast()
 
 // Props
 const props = defineProps({
@@ -70,6 +72,9 @@ async function copyToClipboard() {
     setTimeout(() => {
       copySuccess.value = false
     }, 2000)
+    showToast({ message: 'Configuration copied to clipboard!', type: 'success' })
+  } else {
+    showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
   }
 }
 </script>
