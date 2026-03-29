@@ -2,17 +2,18 @@
 
 **Purpose:** Forward-looking planning document for post-launch work, including the CE/SaaS branch split and feature development.
 **Replaces:** PRIORITY_ORDER.md served as the launch checklist (now complete). This document is the active planning reference.
-**Last Updated:** 2026-03-15
+**Last Updated:** 2026-03-28
 
 ---
 
 ## Current State
 
-- All launch-blocking handovers: **COMPLETE** (322+ archived)
+- All launch-blocking handovers: **COMPLETE** (330+ archived)
 - All actionable tech debt: **RESOLVED** (techdebt_march_2026-C.md archived)
 - Test suite: **0 failures** across 91 frontend files, 1390+ backend tests
 - Code quality: **8.35/10** (Perfect Score Sprint 0765a-s)
-- Active handovers: **0** (2 deferred: 1014, TODO_vision)
+- Active feature branch: **feature/0842-vision-doc-analysis** (45+ commits, merge-ready after remaining items)
+- Active handovers: **7** (2 on 0842, 7 on 0855, plus pre-launch items below)
 - Branch: **master** only (no `main` or `saas` branch yet)
 - SaaS scaffold: frontend `.gitkeep` placeholders only, no backend dirs
 
@@ -165,7 +166,43 @@ Once branches exist, this is the ongoing development model.
 
 ---
 
-## Deferred Handovers (3 remaining)
+## Active Implementation Work
+
+### 0842 Series — Vision Document Analysis (remaining)
+
+| ID | Title | Effort | Priority | Handover |
+|----|-------|--------|----------|----------|
+| 0842g | Per-Document AI Summary Badges | 2-3 hrs | Low | `handovers/0842g_AI_SUMMARY_BADGES_PER_DOCUMENT.md` |
+| 0842h | Vitest Frontend Tests for Tuning/Vision | 2-3 hrs | Medium | `handovers/0842h_FRONTEND_TESTS_TUNING_VISION.md` |
+
+### 0855 Series — Setup Wizard Learning Overlay (7 handovers, not started)
+
+| ID | Title | Handover |
+|----|-------|----------|
+| 0855a | Backend Schema | `handovers/0855a_SETUP_WIZARD_BACKEND_SCHEMA.md` |
+| 0855b | WebSocket Events | `handovers/0855b_SETUP_WIZARD_WEBSOCKET_EVENTS.md` |
+| 0855c | Overlay Step 1 | `handovers/0855c_SETUP_WIZARD_OVERLAY_STEP1.md` |
+| 0855d | Step 2 Connect | `handovers/0855d_SETUP_WIZARD_STEP2_CONNECT.md` |
+| 0855e | Step 3 Commands | `handovers/0855e_SETUP_WIZARD_STEP3_COMMANDS.md` |
+| 0855f | Step 4 Wiring | `handovers/0855f_SETUP_WIZARD_STEP4_WIRING.md` |
+| 0855g | Learning Overlay Cleanup | `handovers/0855g_SETUP_WIZARD_LEARNING_OVERLAY_CLEANUP.md` |
+
+### 0841 — Slash Command Optimization (standalone)
+
+| ID | Title | Effort | Priority | Handover |
+|----|-------|--------|----------|----------|
+| 0841 | `/gil_add` Slash Command Token Bloat Rewrite | 1-2 hrs | Low | `handovers/0841_slash_command_optimization.md` |
+
+### Pre-Launch Items (unnumbered)
+
+| Item | Priority | Description | Source Doc |
+|------|----------|-------------|------------|
+| Setup Wizard Redesign | **High** (CE launch blocker) | Remove product explainer from setup flow, replace with action-oriented checklist | `handovers/SETUP_WIZARD_REDESIGN.md` |
+| Credential Scrub | **High** (pre-release) | Remove all hardcoded credentials, passwords, API keys before publishing CE on `main` | `handovers/CE_LAUNCH_CREDENTIAL_SCRUB.md` |
+| Demo Server Prep | Medium | Security hardening for public demo/trial server (Ubuntu, 5-day sessions) | `handovers/Demo_server_prepp.md` |
+| Production Frontend Serving | Medium | CE production needs single-port serving (FastAPI StaticFiles mount) or proper static server — current `serve_frontend.py` is not production-grade | Discovered 2026-03-28 session |
+
+### Deferred Handovers
 
 | ID | Title | Effort | Priority | Notes |
 |----|-------|--------|----------|-------|
@@ -205,7 +242,8 @@ From `completed/techdebt_march_2026-C.md`. None are blocking. Prioritize based o
 
 ## Housekeeping (Minor, Do Anytime)
 
-- [ ] Move reference docs to `Reference_docs/`: `LOG_ANALYSIS_GUIDE.md`, `Agent instructions and where they live.md`, `Code_quality_prompt.md`
+- [ ] Move reference docs to `Reference_docs/`: `LOG_ANALYSIS_GUIDE.md`, `Agent instructions and where they live.md`, `Code_quality_prompt.md`, `codex_menu_option.md`, `GILJOAI_MCP_PPT_REFERENCE_BRIEF.md`
+- [ ] Archive `PRIORITY_ORDER.md` (replaced by this roadmap, all items complete)
 - [ ] Update `handovers/README.md` priority table (stale)
 - [ ] Clean up 30 stale local git branches (part of Phase 0.1)
 

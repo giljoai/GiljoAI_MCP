@@ -6,55 +6,6 @@
         <span>{{ isEdit ? 'Edit Product' : 'Create New Product' }}</span>
         <v-spacer />
 
-        <!-- Auto-save Status Indicator -->
-        <v-chip
-          v-if="autoSaveState && autoSaveState.status === 'saving'"
-          color="info"
-          size="small"
-          variant="flat"
-          class="mr-2"
-          aria-live="polite"
-        >
-          <v-icon start size="small" class="mdi-spin">mdi-loading</v-icon>
-          Saving...
-        </v-chip>
-
-        <v-chip
-          v-else-if="autoSaveState && autoSaveState.status === 'unsaved'"
-          color="warning"
-          size="small"
-          variant="flat"
-          class="mr-2"
-          aria-live="polite"
-        >
-          <v-icon start size="small">mdi-content-save-alert</v-icon>
-          Unsaved changes
-        </v-chip>
-
-        <v-chip
-          v-else-if="autoSaveState && autoSaveState.status === 'saved'"
-          color="success"
-          size="small"
-          variant="flat"
-          class="mr-2"
-          aria-live="polite"
-        >
-          <v-icon start size="small">mdi-check</v-icon>
-          Saved
-        </v-chip>
-
-        <v-chip
-          v-else-if="autoSaveState && autoSaveState.status === 'error'"
-          color="error"
-          size="small"
-          variant="flat"
-          class="mr-2"
-          aria-live="assertive"
-        >
-          <v-icon start size="small">mdi-alert-circle</v-icon>
-          Error
-        </v-chip>
-
         <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="closeDialog" />
       </v-card-title>
 
@@ -71,34 +22,44 @@
           color="primary"
           class="mb-0"
         >
-          <v-btn value="basic">
+          <v-btn value="setup">
+            <v-icon start size="small">mdi-cog-outline</v-icon>
+            Product Setup
+          </v-btn>
+          <v-btn value="info" :disabled="analysisInProgress">
             <v-icon start size="small">mdi-information-outline</v-icon>
             Product Info
           </v-btn>
-          <v-btn value="vision">
-            <v-icon start size="small">mdi-file-document-outline</v-icon>
-            Vision Docs
-          </v-btn>
-          <v-btn value="tech">
+          <v-btn value="tech" :disabled="analysisInProgress">
             <v-icon start size="small">mdi-code-braces</v-icon>
             Tech Stack
           </v-btn>
-          <v-btn value="arch">
+          <v-btn value="arch" :disabled="analysisInProgress">
             <v-icon start size="small">mdi-sitemap</v-icon>
             Architecture
           </v-btn>
-          <v-btn value="features">
+          <v-btn value="features" :disabled="analysisInProgress">
             <v-icon start size="small">mdi-test-tube</v-icon>
             Testing
           </v-btn>
         </v-btn-toggle>
 
+        <v-alert v-if="analysisInProgress" type="info" variant="tonal" density="compact" class="mb-0 mt-2">
+          <div class="d-flex align-center">
+            <v-progress-circular indeterminate size="16" width="2" class="mr-2" />
+            <span class="text-body-2">Waiting for AI analysis... Paste the prompt in your coding tool.</span>
+          </div>
+          <div v-if="analysisHintVisible" class="text-caption text-medium-emphasis mt-2">
+            Taking too long? Switch to "Manually define product" to continue.
+          </div>
+        </v-alert>
+
         <div class="bordered-tabs-content">
           <v-form ref="formRef" v-model="formValid">
             <v-window v-model="dialogTab" class="global-tabs-window">
-            <!-- Product Info Tab -->
-            <v-window-item value="basic">
-              <div class="text-subtitle-1 mb-1">Product Information</div>
+            <!-- Product Setup Tab -->
+            <v-window-item value="setup">
+              <div class="text-subtitle-1 mb-1">Product Setup</div>
               <div class="text-caption text-warning mb-4">Always used as context source by orchestrator.</div>
 
               <!-- Product Name -->
@@ -111,6 +72,196 @@
                 required
                 class="mb-4 mt-2"
               ></v-text-field>
+
+              <!-- Vision Documents Section -->
+              <div class="text-subtitle-2 mt-2 mb-1">Vision Documents</div>
+              <div class="text-caption text-medium-emphasis mb-4">
+                Optionally included as context source by orchestrator.
+                <v-chip size="x-small" color="success" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
+              </div>
+
+
+              <!-- Upload error alert -->
+              <v-alert
+                v-if="visionUploadError"
+                type="error"
+                variant="tonal"
+                density="compact"
+                dismissible
+                class="mb-4"
+                @click:close="emit('clear-upload-error')"
+              >
+                {{ visionUploadError }}
+              </v-alert>
+
+              <!-- Upload progress indicator -->
+              <v-alert
+                v-if="uploadingVision"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-4"
+              >
+                <div class="d-flex align-center mb-2">
+                  <v-progress-circular indeterminate size="20" width="2" class="mr-2" />
+                  <span>Uploading and processing documents...</span>
+                </div>
+                <v-progress-linear
+                  :model-value="uploadProgress"
+                  color="primary"
+                  height="6"
+                  class="mt-2"
+                />
+              </v-alert>
+
+              <!-- Existing Documents (shown after upload) -->
+              <div v-if="existingVisionDocuments.length > 0" class="mb-4">
+                <div class="text-subtitle-2 mb-2">
+                  Existing Documents ({{ existingVisionDocuments.length }})
+                </div>
+
+                <v-list density="compact" class="mb-3">
+                  <v-list-item
+                    v-for="doc in existingVisionDocuments"
+                    :key="doc.id"
+                    class="border rounded mb-2"
+                  >
+                    <template v-slot:prepend>
+                      <v-icon :color="(doc.is_summarized || doc.chunked) ? 'success' : 'warning'">
+                        {{ (doc.is_summarized || doc.chunked) ? 'mdi-check-circle' : 'mdi-clock-outline' }}
+                      </v-icon>
+                    </template>
+
+                    <v-list-item-title>{{ doc.filename || doc.document_name }}</v-list-item-title>
+                    <v-list-item-subtitle>
+                      {{ doc.is_summarized ? 'Summarized' : 'Processing' }}
+                      <span v-if="doc.chunked"> • {{ doc.chunk_count }} chunks</span>
+                      • {{ formatDate(doc.created_at) }}
+                    </v-list-item-subtitle>
+
+                    <template v-slot:append>
+                      <v-btn
+                        icon
+                        size="small"
+                        variant="text"
+                        color="error"
+                        @click="deleteVisionDocument(doc)"
+                      >
+                        <v-icon size="20">mdi-delete</v-icon>
+                      </v-btn>
+                    </template>
+                  </v-list-item>
+                </v-list>
+              </div>
+
+              <!-- File Upload Component -->
+              <v-file-input
+                v-model="visionFiles"
+                accept=".txt,.md,.markdown"
+                label="Choose files"
+                variant="outlined"
+                density="comfortable"
+                multiple
+                show-size
+                clearable
+                prepend-icon="mdi-folder-open"
+                hint="Upload product file(s), requirements, proposals, specifications (.md, .txt files)"
+                persistent-hint
+                :disabled="!productForm.name?.trim()"
+                class="mb-3"
+                @update:model-value="onFilesAttached"
+              ></v-file-input>
+
+              <!-- Mode Selection (appears after vision docs are uploaded) -->
+              <template v-if="existingVisionDocuments.length > 0">
+                <div class="text-subtitle-2 mt-6 mb-2">How would you like to set up this product?</div>
+                <v-radio-group v-model="setupMode" hide-details class="mb-2">
+                  <v-radio label="Manually define product" value="manual" />
+                  <div class="d-flex align-center">
+                    <v-radio label="Use AI coding agent" value="ai" />
+                    <v-btn
+                      v-if="setupMode === 'ai'"
+                      color="primary"
+                      variant="flat"
+                      size="small"
+                      class="ml-2"
+                      :prepend-icon="analysisPromptCopied ? 'mdi-check' : 'mdi-content-copy'"
+                      @click.stop="stageAnalysis"
+                    >
+                      {{ analysisPromptCopied ? 'Prompt Copied!' : 'Stage Analysis' }}
+                    </v-btn>
+                  </div>
+                </v-radio-group>
+
+                <!-- Clipboard fallback — shown when browser blocks clipboard API -->
+                <v-alert
+                  v-if="promptFallbackText"
+                  type="warning"
+                  variant="tonal"
+                  density="compact"
+                  class="mt-2"
+                >
+                  <div class="text-body-2 mb-1">Clipboard unavailable — copy this prompt manually:</div>
+                  <v-textarea
+                    :model-value="promptFallbackText"
+                    variant="outlined"
+                    density="compact"
+                    rows="3"
+                    readonly
+                    hide-details
+                    @focus="$event.target.select()"
+                  />
+                </v-alert>
+              </template>
+
+              <!-- Vision Analysis Info (below radio) -->
+              <v-alert
+                v-if="setupMode === 'ai' && existingVisionDocuments.length > 0 && !analysisBannerDismissed"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mt-2 mb-2"
+                :icon="false"
+              >
+                <div class="d-flex align-center mb-1">
+                  <img src="/Giljo_gray_Face.svg" alt="GiljoAI" class="mr-2" style="width: 30px; height: 30px; filter: brightness(0) invert(1); opacity: 0.5;" />
+                  <span class="text-subtitle-2">Want AI to analyze this document?</span>
+                </div>
+                <div class="text-body-2">
+                  Your AI coding agent will read the document and populate your product configuration fields
+                  (tech stack, architecture, testing, etc.) plus generate improved summaries.
+                </div>
+                <div class="text-caption text-medium-emphasis mt-1 text-center">
+                  Uses your AI coding agent (Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool).
+                </div>
+              </v-alert>
+
+              <!-- Custom Extraction Instructions (expandable) -->
+              <v-expansion-panels v-if="setupMode === 'ai' && existingVisionDocuments.length > 0" variant="accordion" class="mt-2">
+                <v-expansion-panel>
+                  <v-expansion-panel-title class="text-body-2 py-2" style="min-height: 40px;">
+                    Custom extraction instructions (optional)
+                  </v-expansion-panel-title>
+                  <v-expansion-panel-text>
+                    <v-textarea
+                      v-model="productForm.extractionCustomInstructions"
+                      placeholder="Add domain-specific instructions for AI document analysis (e.g., 'This is a mobile-first app targeting iOS 17+')"
+                      variant="outlined"
+                      density="compact"
+                      rows="2"
+                      auto-grow
+                      hide-details
+                      persistent-placeholder
+                    ></v-textarea>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+            </v-window-item>
+
+            <!-- Product Info Tab -->
+            <v-window-item value="info">
+              <div class="text-subtitle-1 mb-1">Product Information</div>
+              <div class="text-caption text-warning mb-4">Always used as context source by orchestrator.</div>
 
               <!-- Codebase Folder -->
               <v-text-field
@@ -153,145 +304,6 @@
                   <span>Core Product Features</span>
                 </template>
               </v-textarea>
-            </v-window-item>
-
-            <!-- Vision Documents Tab -->
-            <v-window-item value="vision">
-              <div class="text-subtitle-1 mb-1">Vision Documents</div>
-              <div class="text-caption text-warning mb-4">
-                Optionally included as context source by orchestrator.
-                <v-chip size="x-small" color="success" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
-              </div>
-
-              <!-- Project path display -->
-              <div v-if="productForm.projectPath" class="project-path-hint mb-4">
-                Your configured project path: <code class="text-warning">{{ productForm.projectPath }}</code>
-              </div>
-
-              <!-- Upload error alert -->
-              <v-alert
-                v-if="visionUploadError"
-                type="error"
-                variant="tonal"
-                density="compact"
-                dismissible
-                class="mb-4"
-                @click:close="emit('clear-upload-error')"
-              >
-                {{ visionUploadError }}
-              </v-alert>
-
-              <!-- Upload progress indicator -->
-              <v-alert
-                v-if="uploadingVision"
-                type="info"
-                variant="tonal"
-                density="compact"
-                class="mb-4"
-              >
-                <div class="d-flex align-center mb-2">
-                  <v-progress-circular indeterminate size="20" width="2" class="mr-2" />
-                  <span>Uploading vision documents...</span>
-                </div>
-                <v-progress-linear
-                  :model-value="uploadProgress"
-                  color="primary"
-                  height="6"
-                  class="mt-2"
-                />
-              </v-alert>
-
-              <!-- Existing Documents (Edit Mode Only) -->
-              <div v-if="isEdit && existingVisionDocuments.length > 0" class="mb-4">
-                <div class="text-subtitle-2 mb-2">
-                  Existing Documents ({{ existingVisionDocuments.length }})
-                </div>
-
-                <v-list density="compact" class="mb-3">
-                  <v-list-item
-                    v-for="doc in existingVisionDocuments"
-                    :key="doc.id"
-                    class="border rounded mb-2"
-                  >
-                    <template v-slot:prepend>
-                      <v-icon :color="(doc.is_summarized || doc.chunked) ? 'success' : 'warning'">
-                        {{ (doc.is_summarized || doc.chunked) ? 'mdi-check-circle' : 'mdi-clock-outline' }}
-                      </v-icon>
-                    </template>
-
-                    <v-list-item-title>{{ doc.filename || doc.document_name }}</v-list-item-title>
-                    <v-list-item-subtitle>
-                      {{ doc.is_summarized ? 'Summarized' : 'Processing' }}
-                      <span v-if="doc.chunked"> • {{ doc.chunk_count }} chunks</span>
-                      • {{ formatDate(doc.created_at) }}
-                    </v-list-item-subtitle>
-
-                    <template v-slot:append>
-                      <v-btn
-                        icon
-                        size="small"
-                        variant="text"
-                        color="error"
-                        @click="deleteVisionDocument(doc)"
-                      >
-                        <v-icon size="20">mdi-delete</v-icon>
-                      </v-btn>
-                    </template>
-                  </v-list-item>
-                </v-list>
-              </div>
-
-              <!-- File Upload Component -->
-              <div class="text-caption text-medium-emphasis mb-3">
-                Upload product requirements, proposals, specifications (.md, .txt files)
-              </div>
-
-              <v-file-input
-                v-model="visionFiles"
-                accept=".txt,.md,.markdown"
-                label="Choose files"
-                variant="outlined"
-                density="comfortable"
-                multiple
-                show-size
-                clearable
-                prepend-icon="mdi-folder-open"
-                hint="Select multiple files (Ctrl/Cmd + Click)"
-                persistent-hint
-                class="mb-3"
-              ></v-file-input>
-
-              <!-- File List -->
-              <div v-if="visionFiles && visionFiles.length > 0">
-                <div class="text-subtitle-2 mb-2">Files to Upload ({{ visionFiles.length }})</div>
-
-                <v-list density="compact" class="mb-3">
-                  <v-list-item
-                    v-for="(file, index) in visionFiles"
-                    :key="index"
-                    class="border rounded mb-2"
-                  >
-                    <template v-slot:prepend>
-                      <v-icon color="primary">mdi-file-document</v-icon>
-                    </template>
-
-                    <v-list-item-title>{{ file.name }}</v-list-item-title>
-                    <v-list-item-subtitle>
-                      {{ formatFileSize(file.size) }}
-                    </v-list-item-subtitle>
-
-                    <template v-slot:append>
-                      <v-btn icon size="small" variant="text" @click="removeVisionFile(index)">
-                        <v-icon size="20">mdi-close</v-icon>
-                      </v-btn>
-                    </template>
-                  </v-list-item>
-                </v-list>
-
-                <v-alert type="info" variant="tonal" density="compact">
-                  Files will be auto-chunked for context (25K token limit)
-                </v-alert>
-              </div>
             </v-window-item>
 
             <!-- Tech Stack Tab -->
@@ -630,7 +642,7 @@
         <v-btn
           color="primary"
           variant="flat"
-          :disabled="isEdit ? !formValid || saving : isLastTab ? !formValid || saving : saving"
+          :disabled="isEdit ? !formValid || saving : isLastTab ? !formValid || saving : saving || analysisInProgress"
           :loading="isEdit ? saving : isLastTab ? saving : false"
           @click="isEdit ? saveProduct() : isLastTab ? saveProduct() : goNextTab()"
         >
@@ -642,7 +654,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
+import { useProductStore } from '@/stores/products'
 
 const props = defineProps({
   modelValue: {
@@ -661,10 +676,6 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  autoSaveState: {
-    type: Object,
-    default: () => ({ status: 'saved', enabled: true }),
-  },
   uploadingVision: {
     type: Boolean,
     default: false,
@@ -679,43 +690,61 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'remove-vision', 'clear-upload-error'])
+const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'remove-vision', 'clear-upload-error', 'upload-vision-files'])
+
+const { copy: copyToClipboard } = useClipboard()
+const { showToast } = useToast()
 
 // State
 const saving = ref(false)
 const formValid = ref(false)
 const formRef = ref(null)
-const dialogTab = ref('basic')
+const dialogTab = ref('setup')
 const visionFiles = ref([])
 
-// Product form data
-const productForm = ref({
-  name: '',
-  description: '',
-  projectPath: '',
-  targetPlatforms: ['all'],
-  techStack: {
-    programming_languages: '',
-    frontend_frameworks: '',
-    backend_frameworks: '',
-    databases_storage: '',
-    infrastructure: '',
-    dev_tools: '',
-  },
-  architecture: {
-    primary_pattern: '',
-    design_patterns: '',
-    api_style: '',
-    architecture_notes: '',
-  },
-  coreFeatures: '',
-  testConfig: {
-    quality_standards: '',
-    test_strategy: 'TDD',
-    coverage_target: 80,
-    testing_frameworks: '',
-  },
-})
+// Vision analysis prompt state (Handover 0842d)
+const analysisBannerDismissed = ref(false)
+const analysisPromptCopied = ref(false)
+const promptFallbackText = ref(null) // Shown when clipboard copy fails
+
+// Setup mode and analysis state (Handover 0842i)
+const setupMode = ref('manual')
+const analysisInProgress = ref(false)
+const analysisHintVisible = ref(false)
+let analysisHintTimer = null
+
+// Product form data — single source of truth for the default shape
+function getDefaultFormState() {
+  return {
+    name: '',
+    description: '',
+    projectPath: '',
+    targetPlatforms: ['all'],
+    techStack: {
+      programming_languages: '',
+      frontend_frameworks: '',
+      backend_frameworks: '',
+      databases_storage: '',
+      infrastructure: '',
+    },
+    architecture: {
+      primary_pattern: '',
+      design_patterns: '',
+      api_style: '',
+      architecture_notes: '',
+    },
+    coreFeatures: '',
+    testConfig: {
+      quality_standards: '',
+      test_strategy: 'TDD',
+      coverage_target: 80,
+      testing_frameworks: '',
+    },
+    extractionCustomInstructions: '',
+  }
+}
+
+const productForm = ref(getDefaultFormState())
 
 // Testing strategies
 const testingStrategies = [
@@ -758,7 +787,7 @@ const testingStrategies = [
 ]
 
 // Tab navigation
-const tabOrder = ['basic', 'vision', 'tech', 'arch', 'features']
+const tabOrder = ['setup', 'info', 'tech', 'arch', 'features']
 const isFirstTab = computed(() => tabOrder.indexOf(dialogTab.value) === 0)
 const isLastTab = computed(() => tabOrder.indexOf(dialogTab.value) === tabOrder.length - 1)
 
@@ -811,10 +840,11 @@ function saveProduct() {
     architecture: productForm.value.architecture,
     test_config: productForm.value.testConfig,
     core_features: productForm.value.coreFeatures,
+    extraction_custom_instructions: productForm.value.extractionCustomInstructions,
   }
 
-  // Include visionFiles in save payload for parent to handle uploads
-  emit('save', { productData, visionFiles: visionFiles.value })
+  // Vision files are uploaded on attach, not on save
+  emit('save', { productData })
 
   // Note: Parent component should set saving = false after async operation completes
 }
@@ -823,28 +853,50 @@ function deleteVisionDocument(doc) {
   emit('remove-vision', doc)
 }
 
-function removeVisionFile(index) {
-  visionFiles.value = visionFiles.value.filter((_, i) => i !== index)
-}
-
-function formatFileSize(bytes) {
-  if (!bytes) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB']
-  let unitIndex = 0
-  let size = bytes
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024
-    unitIndex++
-  }
-  return `${size.toFixed(1)} ${units[unitIndex]}`
-}
-
 function formatDate(dateString) {
   if (!dateString) return 'N/A'
   return new Date(dateString).toLocaleDateString()
 }
 
+// Vision analysis prompt — product must already be saved (UUID exists via upload-on-attach)
+async function stageAnalysis() {
+  const productId = props.product?.id
+  if (!productId) {
+    console.warn('[ProductForm] stageAnalysis called but no product ID available. product:', props.product)
+    return
+  }
 
+  const productName = productForm.value.name || 'this product'
+  const prompt = `Analyze the vision document for product "${productName}" and populate its configuration.\nUse the gil_get_vision_doc tool with product_id "${productId}" to read the document and extraction instructions, then call gil_write_product with the extracted fields.`
+
+  promptFallbackText.value = null
+  const didCopy = await copyToClipboard(prompt)
+
+  if (didCopy) {
+    analysisPromptCopied.value = true
+    showToast({ message: 'Analysis prompt copied — paste into your AI coding agent', type: 'success', duration: 4000 })
+    setTimeout(() => { analysisPromptCopied.value = false }, 3000)
+  } else {
+    promptFallbackText.value = prompt
+    showToast({ message: 'Clipboard unavailable — copy the prompt manually below', type: 'warning', duration: 5000 })
+  }
+
+  analysisInProgress.value = true
+
+  // Start the "taking too long?" hint timer (60 seconds)
+  analysisHintVisible.value = false
+  clearTimeout(analysisHintTimer)
+  analysisHintTimer = setTimeout(() => { analysisHintVisible.value = true }, 60000)
+}
+
+// Upload files immediately on attachment
+function onFilesAttached(files) {
+  if (!files || files.length === 0) return
+  if (!productForm.value.name?.trim()) return
+
+  emit('upload-vision-files', { productName: productForm.value.name, files: [...files] })
+  visionFiles.value = [] // Clear local files — parent handles upload
+}
 
 // Handover 0425: Platform selection handlers
 function handleAllPlatformChange(value) {
@@ -878,70 +930,43 @@ function validatePlatforms() {
   return true
 }
 
-// Load product data when editing
+// Load product data when editing, or reset to defaults
 function loadProductData() {
   if (props.isEdit && props.product) {
-    productForm.value.name = props.product.name || ''
-    productForm.value.description = props.product.description || ''
-    productForm.value.projectPath = props.product.project_path || ''
+    const p = props.product
+    const ts = p.tech_stack || {}
+    const arch = p.architecture || {}
+    const tc = p.test_config || {}
 
-    productForm.value.targetPlatforms = props.product.target_platforms || ['all']
-
-    const ts = props.product.tech_stack || {}
-    productForm.value.techStack = {
-      programming_languages: ts.programming_languages || '',
-      frontend_frameworks: ts.frontend_frameworks || '',
-      backend_frameworks: ts.backend_frameworks || '',
-      databases_storage: ts.databases_storage || '',
-      infrastructure: ts.infrastructure || '',
-      dev_tools: ts.dev_tools || '',
-    }
-
-    const arch = props.product.architecture || {}
-    productForm.value.architecture = {
-      primary_pattern: arch.primary_pattern || '',
-      design_patterns: arch.design_patterns || '',
-      api_style: arch.api_style || '',
-      architecture_notes: arch.architecture_notes || '',
-    }
-
-    productForm.value.coreFeatures = props.product.core_features || ''
-
-    const tc = props.product.test_config || {}
-    productForm.value.testConfig = {
-      quality_standards: tc.quality_standards || '',
-      test_strategy: tc.test_strategy || 'TDD',
-      coverage_target: tc.coverage_target || 80,
-      testing_frameworks: tc.testing_frameworks || '',
-    }
-  } else {
     productForm.value = {
-      name: '',
-      description: '',
-      projectPath: '',
-      targetPlatforms: ['all'],
+      name: p.name || '',
+      description: p.description || '',
+      projectPath: p.project_path || '',
+      targetPlatforms: p.target_platforms || ['all'],
       techStack: {
-        programming_languages: '',
-        frontend_frameworks: '',
-        backend_frameworks: '',
-        databases_storage: '',
-        infrastructure: '',
-        dev_tools: '',
+        programming_languages: ts.programming_languages || '',
+        frontend_frameworks: ts.frontend_frameworks || '',
+        backend_frameworks: ts.backend_frameworks || '',
+        databases_storage: ts.databases_storage || '',
+        infrastructure: ts.infrastructure || '',
       },
       architecture: {
-        primary_pattern: '',
-        design_patterns: '',
-        api_style: '',
-        architecture_notes: '',
+        primary_pattern: arch.primary_pattern || '',
+        design_patterns: arch.design_patterns || '',
+        api_style: arch.api_style || '',
+        architecture_notes: arch.architecture_notes || '',
       },
-      coreFeatures: '',
+      coreFeatures: p.core_features || '',
       testConfig: {
-        quality_standards: '',
-        test_strategy: 'TDD',
-        coverage_target: 80,
-        testing_frameworks: '',
+        quality_standards: tc.quality_standards || '',
+        test_strategy: tc.test_strategy || 'TDD',
+        coverage_target: tc.coverage_target || 80,
+        testing_frameworks: tc.testing_frameworks || '',
       },
+      extractionCustomInstructions: p.extraction_custom_instructions || '',
     }
+  } else {
+    productForm.value = getDefaultFormState()
   }
 }
 
@@ -951,32 +976,100 @@ watch(
   (newVal) => {
     if (newVal) {
       // Dialog opening — reset local state only (upload progress is owned by parent)
-      dialogTab.value = 'basic'
+      dialogTab.value = 'setup'
       visionFiles.value = []
       saving.value = false
+      analysisBannerDismissed.value = false
+      setupMode.value = 'manual'
+      analysisInProgress.value = false
+      analysisHintVisible.value = false
+      clearTimeout(analysisHintTimer)
       loadProductData()
     }
   },
 )
 
-// Also watch for product changes
+// Also watch for product changes (only reload in edit mode — during create, the
+// product prop is set by silent-save and we must not overwrite the user's form)
 watch(
   () => props.product,
   () => {
-    if (props.modelValue) {
+    if (props.modelValue && props.isEdit) {
       loadProductData()
     }
   },
   { deep: true },
 )
+
+// Reset analysis lock when switching back to manual mode (Handover 0842i)
+watch(setupMode, (newMode) => {
+  if (newMode === 'manual') {
+    analysisInProgress.value = false
+    analysisHintVisible.value = false
+    clearTimeout(analysisHintTimer)
+  }
+})
+
+// Listen for vision:analysis_complete WebSocket event to unlock the UI
+const productStore = useProductStore()
+
+async function onVisionAnalysisComplete(event) {
+  const productId = event.detail?.product_id
+  if (productId && productId === props.product?.id) {
+    analysisHintVisible.value = false
+    clearTimeout(analysisHintTimer)
+
+    // Fetch updated product with AI-populated fields from the API
+    const updated = await productStore.fetchProductById(productId)
+    if (updated) {
+      const ts = updated.tech_stack || {}
+      const arch = updated.architecture || {}
+      const tc = updated.test_config || {}
+
+      productForm.value = {
+        name: updated.name || productForm.value.name,
+        description: updated.description || '',
+        projectPath: updated.project_path || '',
+        targetPlatforms: updated.target_platforms || ['all'],
+        techStack: {
+          programming_languages: ts.programming_languages || '',
+          frontend_frameworks: ts.frontend_frameworks || '',
+          backend_frameworks: ts.backend_frameworks || '',
+          databases_storage: ts.databases_storage || '',
+          infrastructure: ts.infrastructure || '',
+        },
+        architecture: {
+          primary_pattern: arch.primary_pattern || '',
+          design_patterns: arch.design_patterns || '',
+          api_style: arch.api_style || '',
+          architecture_notes: arch.architecture_notes || '',
+        },
+        coreFeatures: updated.core_features || '',
+        testConfig: {
+          quality_standards: tc.quality_standards || '',
+          test_strategy: tc.test_strategy || 'TDD',
+          coverage_target: tc.coverage_target || 80,
+          testing_frameworks: tc.testing_frameworks || '',
+        },
+        extractionCustomInstructions: updated.extraction_custom_instructions || '',
+      }
+    }
+
+    // Unlock the UI
+    analysisInProgress.value = false
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('vision-analysis-complete', onVisionAnalysisComplete)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('vision-analysis-complete', onVisionAnalysisComplete)
+})
 </script>
 
 <style scoped>
-.project-path-hint {
-  font-size: 1.125rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-}
-
 /* Card uses darker background color for layered effect */
 /* Header and footer inherit this dark background, content area is lighter */
 .product-form-card {

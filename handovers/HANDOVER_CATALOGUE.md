@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-27 (0842a-e Vision Document Analysis series added)
+**Last Updated:** 2026-03-28 (0855a-g Setup Wizard Redesign series added, all NOT STARTED)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0828+0829+0830+0831+0832+0833+0834+0835+0836(a-e)+0837(a-d)+0838+0839+0840(a-j) ALL COMPLETE. 0841 NOT STARTED. **0842a-e Vision Document Analysis NOT STARTED.** 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0855a-g NOT STARTED.** |
 
 ---
 
@@ -30,11 +30,16 @@
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0841 | Slash Command Optimization (/gil_add) | Not Started | Low | Rewrite /gil_add from 343 lines (~3,500 tokens) to ~40 lines (~500 tokens). Keep local, remove verbose templates. |
-| 0842a | Vision Doc Analysis — DB Migration & Sumy Wiring | Not Started | High | New `vision_document_summaries` table + `extraction_custom_instructions` column. Wire Sumy output to new table. |
-| 0842b | Vision Doc Analysis — Context Manager Summary Reads | Not Started | High | Context Manager reads from new summaries table, AI preferred over Sumy. Depends on 0842a. |
-| 0842c | Vision Doc Analysis — MCP Tools & Extraction Prompt | Not Started | High | `gil_get_vision_doc` + `gil_write_product` MCP tools + baked extraction prompt. Depends on 0842a. |
-| 0842d | Vision Doc Analysis — Frontend UI | Not Started | High | Analysis banner, Stage Analysis button, WebSocket notification, custom instructions textarea. Depends on 0842a+c. |
-| 0842e | Vision Doc Analysis — E2E Integration Test | Not Started | High | Full flow validation: upload → Sumy → MCP tools → Context Manager. Depends on 0842a-d. |
+| 0842g | Per-Document AI Summary Badges | Not Started | Medium | Add AI summary badge row to vision doc cards (wireframe fidelity). Needs API extension. Follow-up to 0842d deviation. |
+| 0842h | Frontend Tests — Tuning Icon & Vision Analysis Banner | Not Started | Medium | 11 Vitest component tests for 0842d features. Follow-up to 0842d deviation (agent missed existing test framework). |
+| 0842L | Post-Implementation Audit & Cleanup | Not Started | High | Quality audit of entire 0842 branch (50 files, 6860 insertions). Dead code, orphaned tests, secure-context audit, lint, WebSocket chain verification. Tests may be rewritten/deleted. Must pass before merge to master. |
+| 0855a | Setup Wizard — Backend Schema + API Endpoints | Not Started | High | User setup state columns (setup_complete, setup_selected_tools, setup_step_completed), PATCH endpoint, active API key lookup. Series: 0855a-g. |
+| 0855b | Setup Wizard — WebSocket Setup Events | Not Started | High | 3 new event types: setup:tool_connected, setup:commands_installed, setup:agents_downloaded. Parallel with 0855a. |
+| 0855c | Setup Wizard — Overlay Shell + Step 1 (Tool Selection) | Not Started | High | Full-screen overlay component, 4-step stepper, tool selection cards (Claude/Codex/Gemini). Depends on 0855a. |
+| 0855d | Setup Wizard — Step 2 (Connect to GiljoAI) | Not Started | High | Inline MCP config per tool, API key reuse, live WebSocket connection status. Heaviest frontend step. Depends on 0855a+b+c. |
+| 0855e | Setup Wizard — Step 3 (Install Commands & Agents) | Not Started | High | Bootstrap prompt display, auto-updating checklist via WebSocket. Depends on 0855b+c+d. |
+| 0855f | Setup Wizard — Step 4 (Completion Launchpad) + Wiring | Not Started | High | Completion cards, full lifecycle wiring, delete StartupQuickStart.vue. Depends on 0855a+c-e. |
+| 0855g | Setup Wizard — Learning Overlay + Cleanup | Not Started | Medium | "How to Use" read-only overlay mode, dead-code sweep, catalogue update. Depends on 0855f. |
 
 ### Deferred (Still in Root Folder)
 
@@ -47,6 +52,11 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0842a-e | Vision Document Analysis (5 sessions) | 2026-03-27 | COMPLETE — DB migration + Sumy wiring, Context Manager AI-preferred reads, MCP tools (gil_get_vision_doc + gil_write_product), frontend UI (tuning icon + analysis banner + custom instructions), E2E tests. 6 commits, 33 tests. Branch: feature/0842-vision-doc-analysis. |
+| 0842f | Agent Lab — Chain Strategy Template Download | 2026-03-27 | COMPLETE (`a5a4c8e7`) — Chapter 3 in Agent Lab dialog, downloadable 220-line tool-agnostic chain strategy template. |
+| 0842i | Product Setup Wizard — Vision-First Flow Redesign | 2026-03-27 | COMPLETE (`d07a968c`) — Vision doc upload merged into Tab 1, manual/AI mode radio, tab locking during analysis, progress indicator. Single-file change. |
+| 0842j | Clipboard Copy Fix — All Origins + Dialog Compat | 2026-03-28 | COMPLETE — Fixed useClipboard composable: execCommand fallback appended textarea to document.body but Vuetify retain-focus stole focus. Fix: append inside active overlay. Works on localhost, LAN IP, WAN IP, HTTPS. Also fixed isEdit wizard flip and 404 ghost product deletes. |
+| 0842k | Paginated Vision Doc Chunk Delivery | 2026-03-28 | COMPLETE — gil_get_vision_doc now serves pre-chunked content from mcp_context_index one chunk at a time (pagination via `chunk` param). Dropped response from 289K→metadata-only. Also: testing_strategy enum, crypto.randomUUID fallback, WebSocket UI unlock, green toast. |
 | 0837 | Project Creation Taxonomy Fix (a-d) | 2026-03-25 | COMPLETE — Auto-assign series_number, type resolution by label, slash command updates, constraint audit. All 4 sub-handovers done. |
 | 0839 | Dashboard Analytics Redesign | 2026-03-25 | COMPLETE (`6ce7ece4`) — Product-aware dashboard with product selector, donut charts (status/taxonomy/agent roles), categorized stat rows. chart.js + vue-chartjs. |
 | 0838 | Multi-Platform Subagent Mode (Codex + Gemini) | 2026-03-25 | COMPLETE (`a0b320d6`) — Codex CLI and Gemini CLI subagent modes in staging page, platform-specific spawning syntax, project list UX polish. |
