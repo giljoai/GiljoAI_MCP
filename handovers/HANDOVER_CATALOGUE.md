@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c NOT STARTED.** **0855a-g NOT STARTED.** |
+| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c NOT STARTED.** **0847 NOT STARTED.** **0855a-g NOT STARTED.** |
 
 ---
 
@@ -41,6 +41,7 @@
 | 0846a | FastMCP SDK Transport Replacement | Not Started | High | Create FastMCP server, register 30 tools, mount at /mcp/v2 alongside old endpoint. 1.5-2h. |
 | 0846b | Security Re-integration & Old Code Removal | Not Started | High | Wire Bearer auth + tenant isolation into SDK server, promote to /mcp, delete old mcp_http.py transport. 1.5-2h. Depends on 0846a. |
 | 0846c | Documentation, Frontend & Test Updates | Not Started | High | Update MCP docs, frontend config commands, orphan sweep, test cleanup. 1-1.5h. Depends on 0846b. |
+| 0847 | Tool-Aware Orchestrator Protocol | Not Started | High | Make orchestrator protocol (CH1-CH5 + identity) fully tool-aware. Codex/Gemini get native-only language, no Claude refs. Multi-terminal → "Any Coding Agent". 2-3h. |
 | 0855a | Setup Wizard — Backend Schema + API Endpoints | Not Started | High | User setup state columns (setup_complete, setup_selected_tools, setup_step_completed), PATCH endpoint, active API key lookup. Series: 0855a-g. |
 | 0855b | Setup Wizard — WebSocket Setup Events | Not Started | High | 3 new event types: setup:tool_connected, setup:commands_installed, setup:agents_downloaded. Parallel with 0855a. |
 | 0855c | Setup Wizard — Overlay Shell + Step 1 (Tool Selection) | Not Started | High | Full-screen overlay component, 4-step stepper, tool selection cards (Claude/Codex/Gemini). Depends on 0855a. |
