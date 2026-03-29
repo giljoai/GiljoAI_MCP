@@ -38,6 +38,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1241,6 +1242,17 @@ async def handle_tools_call(
 
         # Return error in MCP format (agent still receives the message)
         return {"content": [{"type": "text", "text": f"Error executing {tool_name}: {e!s}"}], "isError": True}
+
+
+@router.get("/mcp", tags=["MCP"])
+async def mcp_sse_not_supported():
+    """GET /mcp is used by MCP clients probing for SSE stream support.
+    This server uses POST-only Streamable HTTP -- return 405 per spec."""
+    return JSONResponse(
+        status_code=405,
+        content={"error": "SSE streaming not supported. Use POST for JSON-RPC."},
+        headers={"Allow": "POST"},
+    )
 
 
 @router.post("/mcp", tags=["MCP"])
