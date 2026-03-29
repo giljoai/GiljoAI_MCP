@@ -109,26 +109,35 @@
               <v-radio label="PowerShell" value="windows" density="compact" />
               <v-radio label="Linux / macOS / Git Bash" value="unix" density="compact" />
             </v-radio-group>
-            <v-alert
-              type="info"
-              variant="tonal"
-              density="compact"
-              class="mb-3"
-            >
+            <v-alert type="info" variant="tonal" density="compact" class="mb-3">
               <strong>HTTPS with self-signed certificates:</strong> Node.js-based AI coding agents require a one-time setup step.
-              <template v-if="certPlatform === 'windows'">
-                <v-sheet color="blue-darken-4" rounded="lg" class="pa-3 mt-2">
-                  <code class="d-block text-white text-body-2" style="white-space: pre-wrap; word-break: break-all;">[System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', (mkcert -CAROOT) + '\rootCA.pem', 'User')</code>
-                </v-sheet>
-                <span class="text-caption mt-1 d-block">Then restart your terminal. This is a one-time setup.</span>
-              </template>
-              <template v-else>
-                <v-sheet color="blue-darken-4" rounded="lg" class="pa-3 mt-2">
-                  <code class="d-block text-white text-body-2">export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"</code>
-                </v-sheet>
-                <span class="text-caption mt-1 d-block">Add to your <code>~/.bashrc</code> or <code>~/.zshrc</code> to make it permanent.</span>
-              </template>
             </v-alert>
+            <v-textarea
+              v-if="certPlatform === 'windows'"
+              :model-value="certTrustCommandWindows"
+              label="Certificate Trust (one-time setup)"
+              readonly
+              rows="2"
+              auto-grow
+              variant="outlined"
+              class="font-monospace no-resize mb-3"
+              append-inner-icon="mdi-content-copy"
+              :messages="copiedCert ? 'Copied!' : ''"
+              @click:append-inner="copyCertCommand"
+            />
+            <v-textarea
+              v-else
+              :model-value="certTrustCommandUnix"
+              label="Certificate Trust (one-time setup)"
+              readonly
+              rows="1"
+              auto-grow
+              variant="outlined"
+              class="font-monospace no-resize mb-3"
+              append-inner-icon="mdi-content-copy"
+              :messages="copiedCert ? 'Copied! Add to ~/.bashrc or ~/.zshrc to make permanent.' : 'Add to ~/.bashrc or ~/.zshrc to make permanent.'"
+              @click:append-inner="copyCertCommand"
+            />
           </template>
 
           <!-- C+D) Codex: Platform selector + Environment Variable command -->
@@ -184,6 +193,7 @@ const editingServer = ref(false)
 const busy = ref(false)
 const copied = ref(false)
 const copiedEnv = ref(false)
+const copiedCert = ref(false)
 const errorMsg = ref('')
 const selectedPlatform = ref('windows')
 const certPlatform = ref('windows')
@@ -221,6 +231,9 @@ const selectedToolName = computed(
 )
 
 const isHttps = computed(() => window.location.protocol === 'https:')
+
+const certTrustCommandWindows = "[System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', (mkcert -CAROOT) + '\\rootCA.pem', 'User')"
+const certTrustCommandUnix = 'export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"'
 
 const envVarCommand = computed(() => {
   const key = generatedKey.value || 'YOUR_API_KEY'
@@ -340,6 +353,18 @@ async function copyEnvVar() {
     copiedEnv.value = true
     setTimeout(() => (copiedEnv.value = false), 3000)
     showToast({ message: 'Environment variable copied to clipboard!', type: 'success' })
+  } else {
+    showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
+  }
+}
+
+async function copyCertCommand() {
+  const text = certPlatform.value === 'windows' ? certTrustCommandWindows : certTrustCommandUnix
+  const success = await clipboardCopy(text)
+  if (success) {
+    copiedCert.value = true
+    setTimeout(() => (copiedCert.value = false), 3000)
+    showToast({ message: 'Certificate trust command copied!', type: 'success' })
   } else {
     showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
   }
