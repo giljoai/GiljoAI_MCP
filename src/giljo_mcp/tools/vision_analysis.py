@@ -72,6 +72,8 @@ FIELD_MAP = {
     "design_patterns": ("architecture", "design_patterns"),
     "api_style": ("architecture", "api_style"),
     "architecture_notes": ("architecture", "architecture_notes"),
+    "coding_conventions": ("architecture", "coding_conventions"),
+    "brand_guidelines": ("products", "brand_guidelines"),
     "quality_standards": ("test_config", "quality_standards"),
     "testing_strategy": ("test_config", "test_strategy"),
     "testing_frameworks": ("test_config", "testing_frameworks"),

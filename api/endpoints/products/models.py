@@ -28,6 +28,7 @@ class ArchitectureSchema(BaseModel):
     design_patterns: Optional[str] = None
     api_style: Optional[str] = None
     architecture_notes: Optional[str] = None
+    coding_conventions: Optional[str] = None
 
 
 class TestConfigSchema(BaseModel):
@@ -51,6 +52,7 @@ class ProductCreate(BaseModel):
     architecture: Optional[ArchitectureSchema] = Field(None, description="Architecture configuration - Handover 0840i")
     test_config: Optional[TestConfigSchema] = Field(None, description="Test configuration - Handover 0840i")
     core_features: Optional[str] = Field(None, description="Core product features - Handover 0840i")
+    brand_guidelines: Optional[str] = Field(None, description="Brand & design guidelines for frontend agents")
     product_memory: Optional[dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
@@ -69,6 +71,7 @@ class ProductUpdate(BaseModel):
     architecture: Optional[ArchitectureSchema] = Field(None, description="Architecture configuration - Handover 0840i")
     test_config: Optional[TestConfigSchema] = Field(None, description="Test configuration - Handover 0840i")
     core_features: Optional[str] = Field(None, description="Core product features - Handover 0840i")
+    brand_guidelines: Optional[str] = Field(None, description="Brand & design guidelines for frontend agents")
     product_memory: Optional[dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
@@ -96,6 +99,7 @@ class ProductResponse(BaseModel):
     architecture: Optional[ArchitectureSchema] = Field(None, description="Architecture configuration - Handover 0840i")
     test_config: Optional[TestConfigSchema] = Field(None, description="Test configuration - Handover 0840i")
     core_features: Optional[str] = Field(None, description="Core product features - Handover 0840i")
+    brand_guidelines: Optional[str] = Field(None, description="Brand & design guidelines for frontend agents")
     is_active: bool = Field(default=False, description="Whether this product is currently active")
     project_path: Optional[str] = Field(
         None, description="File system path to product folder (required for agent export)"

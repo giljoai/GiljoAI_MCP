@@ -304,6 +304,21 @@
                   <span>Core Product Features</span>
                 </template>
               </v-textarea>
+
+              <v-textarea
+                v-model="productForm.brandGuidelines"
+                hint="Describe your visual style, colors, and fonts, or provide a path/URL to your brand guide. Agents use this when creating frontend components."
+                persistent-hint
+                variant="outlined"
+                density="comfortable"
+                rows="4"
+                auto-grow
+                class="mb-4"
+              >
+                <template #label>
+                  <span>Brand & Design Guidelines</span>
+                </template>
+              </v-textarea>
             </v-window-item>
 
             <!-- Tech Stack Tab -->
@@ -534,6 +549,21 @@
                   <span>Architecture Notes</span>
                 </template>
               </v-textarea>
+
+              <v-textarea
+                v-model="productForm.architecture.coding_conventions"
+                hint="Define naming conventions, error handling patterns, code style rules, and other standards agents should follow when writing code"
+                persistent-hint
+                variant="outlined"
+                density="comfortable"
+                rows="6"
+                auto-grow
+                class="mb-4"
+              >
+                <template #label>
+                  <span>Coding Conventions & Standards</span>
+                </template>
+              </v-textarea>
             </v-window-item>
 
             <!-- Testing Tab -->
@@ -732,8 +762,10 @@ function getDefaultFormState() {
       design_patterns: '',
       api_style: '',
       architecture_notes: '',
+      coding_conventions: '- Keep code simple and readable. Prefer fewer files over many small ones.\n- Use consistent naming: snake_case for Python, camelCase for JavaScript.\n- No commented-out code. Delete what you don\'t need.\n- Handle errors explicitly. Don\'t silently swallow exceptions.\n- Write functions that do one thing. Keep them short enough to read without scrolling.\n- If unsure about a design decision, choose the simpler option.',
     },
     coreFeatures: '',
+    brandGuidelines: '',
     testConfig: {
       quality_standards: '',
       test_strategy: 'TDD',
@@ -840,6 +872,7 @@ function saveProduct() {
     architecture: productForm.value.architecture,
     test_config: productForm.value.testConfig,
     core_features: productForm.value.coreFeatures,
+    brand_guidelines: productForm.value.brandGuidelines,
     extraction_custom_instructions: productForm.value.extractionCustomInstructions,
   }
 
@@ -955,8 +988,10 @@ function loadProductData() {
         design_patterns: arch.design_patterns || '',
         api_style: arch.api_style || '',
         architecture_notes: arch.architecture_notes || '',
+        coding_conventions: arch.coding_conventions || '',
       },
       coreFeatures: p.core_features || '',
+      brandGuidelines: p.brand_guidelines || '',
       testConfig: {
         quality_standards: tc.quality_standards || '',
         test_strategy: tc.test_strategy || 'TDD',
@@ -1043,8 +1078,10 @@ async function onVisionAnalysisComplete(event) {
           design_patterns: arch.design_patterns || '',
           api_style: arch.api_style || '',
           architecture_notes: arch.architecture_notes || '',
+          coding_conventions: arch.coding_conventions || '',
         },
         coreFeatures: updated.core_features || '',
+        brandGuidelines: updated.brand_guidelines || '',
         testConfig: {
           quality_standards: tc.quality_standards || '',
           test_strategy: tc.test_strategy || 'TDD',
