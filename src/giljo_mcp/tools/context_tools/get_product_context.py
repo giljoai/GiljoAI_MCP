@@ -75,6 +75,7 @@ async def get_product_context(
             "product_description": product.description or "",
             "project_path": product.project_path or "",
             "core_features": core_features,
+            "brand_guidelines": product.brand_guidelines or "",
             "is_active": product.is_active,
             "created_at": product.created_at.isoformat() if product.created_at else None,
         }
