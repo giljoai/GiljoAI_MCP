@@ -38,7 +38,7 @@ Step 4 is the reward — "You're set up!" All 4 steps show green checkmarks. Thr
 This handover also handles the critical cleanup: removing `StartupQuickStart.vue` (639 lines) and all `giljo_startup_checklist_v1` localStorage references across the codebase.
 
 **What previous handovers provide:**
-- 0855a: `PATCH /api/v1/auth/me/setup-state` with `{setup_complete: true, setup_step_completed: 4}`. User store `updateSetupState()` action.
+- 0855a: `PATCH /api/auth/me/setup-state` with `{setup_complete: true, setup_step_completed: 4}`. User store `updateSetupState()` action.
 - 0855c: `SetupWizardOverlay.vue` shell with stepper, `mode` prop, dismiss handling
 - 0855d: Step 2 component (`SetupStep2Connect.vue`)
 - 0855e: Step 3 component (`SetupStep3Commands.vue`)
