@@ -191,3 +191,30 @@ Delete `SetupStep2Connect.vue` and `useMcpConfig.js`. Revert `AiToolConfigWizard
 | `frontend/src/stores/websocket.js` | Subscribe to setup events |
 | `frontend/src/components/setup/SetupWizardOverlay.vue` | Wire Step 2 into stepper |
 | `frontend/tests/` | New spec files |
+
+---
+
+## Chain Execution Instructions (Orchestrator-Gated v3)
+
+You are session 4 of 7 in the 0855 chain. You are on branch `feature/0855-setup-wizard`.
+
+### Step 1: Read Chain Log
+Read `prompts/0855_chain/chain_log.json`
+- Check `orchestrator_directives` — if STOP, halt immediately
+- Review previous session's `notes_for_next` for any deviations from this handover's assumptions
+
+### Step 2: Mark Session Started
+Update your session in chain_log.json: `"status": "in_progress", "started_at": "<timestamp>"`
+
+### Step 3: Execute Handover Tasks
+Follow the Implementation Plan above. Use ux-designer and tdd-implementor subagents.
+
+### Step 4: Update Chain Log
+Update your session in `prompts/0855_chain/chain_log.json` with:
+- `tasks_completed`, `deviations`, `blockers_encountered`
+- `notes_for_next`: Include composable function signatures, how connected tools list is exposed, WebSocket subscription pattern used. 0855e needs to know which tools showed Connected.
+- `cascading_impacts`: Any changes that affect downstream handovers
+- `summary`, `status`: "complete", `completed_at`
+
+### Step 5: STOP
+**Do NOT spawn the next terminal.** Commit your chain log update and exit.

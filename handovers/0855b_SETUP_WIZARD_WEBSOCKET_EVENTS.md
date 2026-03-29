@@ -192,3 +192,30 @@ Remove the 3 event models and the emission calls. No schema changes to revert.
 | `api/endpoints/downloads.py` (`get_bootstrap_prompt`, line ~440) | Emit `setup:commands_installed` |
 | `api/endpoints/downloads.py` (`download_agent_templates`, line ~167) | Emit `setup:agents_downloaded` |
 | `tests/` | New test file for setup events |
+
+---
+
+## Chain Execution Instructions (Orchestrator-Gated v3)
+
+You are session 2 of 7 in the 0855 chain. You are on branch `feature/0855-setup-wizard`. You may be running in PARALLEL with 0855a — do not depend on 0855a's schema changes.
+
+### Step 1: Read Chain Log
+Read `prompts/0855_chain/chain_log.json`
+- Check `orchestrator_directives` — if STOP, halt immediately
+- Check 0855a's `notes_for_next` if it completed before you
+
+### Step 2: Mark Session Started
+Update your session in chain_log.json: `"status": "in_progress", "started_at": "<timestamp>"`
+
+### Step 3: Execute Handover Tasks
+Follow the Implementation Plan above. Use tdd-implementor subagent. NOTE: If `api/endpoints/mcp_http.py` has been significantly modified by 0846 work, emit `setup:tool_connected` from the health_check endpoint in `api/app.py` instead.
+
+### Step 4: Update Chain Log
+Update your session in `prompts/0855_chain/chain_log.json` with:
+- `tasks_completed`, `deviations`, `blockers_encountered`
+- `notes_for_next`: Critical info for 0855d/0855e. Include exact event type strings, data model class names, EventFactory method signatures. If emission points changed from the handover spec, document the actual locations.
+- `cascading_impacts`: Any changes that affect downstream handovers
+- `summary`, `status`: "complete", `completed_at`
+
+### Step 5: STOP
+**Do NOT spawn the next terminal.** Commit your chain log update and exit.
