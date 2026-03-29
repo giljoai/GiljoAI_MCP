@@ -176,3 +176,30 @@ Delete `SetupStep3Commands.vue` and revert stepper wiring in overlay.
 | `frontend/src/components/setup/SetupStep3Commands.vue` | **New** — Step 3 UI |
 | `frontend/src/components/setup/SetupWizardOverlay.vue` | Wire Step 3 into stepper |
 | `frontend/tests/` | New spec file |
+
+---
+
+## Chain Execution Instructions (Orchestrator-Gated v3)
+
+You are session 5 of 7 in the 0855 chain. You are on branch `feature/0855-setup-wizard`.
+
+### Step 1: Read Chain Log
+Read `prompts/0855_chain/chain_log.json`
+- Check `orchestrator_directives` — if STOP, halt immediately
+- Review previous session's `notes_for_next` for any deviations from this handover's assumptions
+
+### Step 2: Mark Session Started
+Update your session in chain_log.json: `"status": "in_progress", "started_at": "<timestamp>"`
+
+### Step 3: Execute Handover Tasks
+Follow the Implementation Plan above. Use ux-designer and tdd-implementor subagents.
+
+### Step 4: Update Chain Log
+Update your session in `prompts/0855_chain/chain_log.json` with:
+- `tasks_completed`, `deviations`, `blockers_encountered`
+- `notes_for_next`: Include how the checklist state is exposed, what events the component emits on completion. 0855f wires all 4 steps together end-to-end.
+- `cascading_impacts`: Any changes that affect downstream handovers
+- `summary`, `status`: "complete", `completed_at`
+
+### Step 5: STOP
+**Do NOT spawn the next terminal.** Commit your chain log update and exit.
