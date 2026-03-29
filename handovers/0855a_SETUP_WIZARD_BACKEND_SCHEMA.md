@@ -214,3 +214,30 @@ Drop the 3 columns via `downgrade()` in the Alembic migration. No data loss — 
 | `migrations/versions/xxxx_0855a_user_setup_state.py` | New migration |
 | `api/endpoints/auth.py` | Add PATCH + GET endpoints, update response schema |
 | `tests/` | New test file for setup state endpoints |
+
+---
+
+## Chain Execution Instructions (Orchestrator-Gated v3)
+
+You are session 1 of 7 in the 0855 chain. You are on branch `feature/0855-setup-wizard`.
+
+### Step 1: Read Chain Log
+Read `prompts/0855_chain/chain_log.json`
+- Check `orchestrator_directives` — if STOP, halt immediately
+- This is the first session, no previous `notes_for_next` to review
+
+### Step 2: Mark Session Started
+Update your session in chain_log.json: `"status": "in_progress", "started_at": "<timestamp>"`
+
+### Step 3: Execute Handover Tasks
+Follow the Implementation Plan above. Use database-expert and tdd-implementor subagents.
+
+### Step 4: Update Chain Log
+Update your session in `prompts/0855_chain/chain_log.json` with:
+- `tasks_completed`, `deviations`, `blockers_encountered`
+- `notes_for_next`: Critical info for 0855c (overlay depends on your schema). Include exact column names, endpoint paths, Pydantic model names, response field names.
+- `cascading_impacts`: Any changes that affect downstream handovers
+- `summary`, `status`: "complete", `completed_at`
+
+### Step 5: STOP
+**Do NOT spawn the next terminal.** The orchestrator will review your results, adjust downstream handovers if needed, and spawn the next session. Commit your chain log update and exit.
