@@ -199,7 +199,6 @@ Once branches exist, this is the ongoing development model.
 |------|----------|-------------|------------|
 | Setup Wizard Redesign | **High** (CE launch blocker) | Remove product explainer from setup flow, replace with action-oriented checklist | `handovers/SETUP_WIZARD_REDESIGN.md` |
 | Credential Scrub | **High** (pre-release) | Remove all hardcoded credentials, passwords, API keys before publishing CE on `main` | `handovers/CE_LAUNCH_CREDENTIAL_SCRUB.md` |
-| Product Name Standardization | **High** (pre-launch) | Standardize "GiljoAI MCP" naming across website, frontend, docs | `handovers/HANDOFF_PRODUCT_NAME_STANDARDIZATION.md` |
 | Demo Server Prep | Medium | Security hardening for public demo/trial server (Ubuntu, 5-day sessions) | `handovers/Demo_server_prepp.md` |
 | Production Frontend Serving | Medium | CE production needs single-port serving (FastAPI StaticFiles mount) or proper static server — current `serve_frontend.py` is not production-grade | Discovered 2026-03-28 session |
 
