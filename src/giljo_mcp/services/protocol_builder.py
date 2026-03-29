@@ -856,23 +856,32 @@ If failed: Abort and notify user
 DO NOT report progress yet. Steps 0-3 are internal startup — do not track them.
 
 After Step 4 (Create Mission), you will have a real plan with work items.
-THAT is when you initialize progress tracking — report the plan's work items
-as your todo list, NOT the protocol steps you are following.
+THAT is when you initialize progress tracking.
+
+IMPLEMENTATION TODO LIST
+During staging, write yourself a todo list for the implementation phase.
+This is your execution plan — the deliverables you will hold yourself
+accountable to when implementation begins (which may be a different
+session with fresh context).
+
+Each item should describe a PROJECT OUTCOME, not an orchestrator action.
+You already know how to spawn agents, fetch context, and broadcast signals.
+Don't write down your operating procedures. Write down what the project
+needs to deliver.
+
+Good: "Build authentication API", "Validate inter-agent messaging", "Generate test summary report"
+Bad:  "Spawn api-implementer agent", "Fetch context", "Broadcast STAGING_COMPLETE"
+
+Aim for 3-7 items. Too few = no visibility. Too many = you're tracking mechanics again.
+
+Test: If you lost all memory of staging and only had this list, could you
+understand what the project needs to accomplish?
 
 Call: report_progress(
           job_id='{orchestrator_id}',
-          todo_items=[{{"content": "<work item from your plan>", "status": "pending"}}]
+          todo_items=[{{"content": "<project outcome>", "status": "pending"}}]
       )
 Note: tenant_key auto-injected by server from API key session
-
-WHAT TO TRACK: The actual deliverables from your mission plan.
-  Good: "Build authentication API", "Create user dashboard", "Write integration tests"
-  Bad:  "Verify MCP health", "Fetch context", "Discover agent templates"
-
-The dashboard shows these items to the user. They want to see what the
-PROJECT is doing, not what the orchestrator's boot sequence looks like.
-
-Update as each work item gets assigned to an agent (spawned → in_progress).
 
 {step2_body}
 
