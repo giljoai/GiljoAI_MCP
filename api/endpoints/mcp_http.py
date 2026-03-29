@@ -1354,6 +1354,28 @@ async def mcp_endpoint(
     try:
         if method == "initialize":
             result = await handle_initialize(params, session_manager, session.session_id, session.tenant_key)
+            try:
+                ws_manager = request.app.state.websocket_manager
+                if ws_manager and session.tenant_key:
+                    client_info = (rpc_request.params or {}).get("client_info", {})
+                    client_name = client_info.get("name", "unknown").lower().replace(" ", "_")
+                    tool_name_map = {
+                        "claude_code": "claude_code",
+                        "claude": "claude_code",
+                        "codex": "codex_cli",
+                        "gemini": "gemini_cli",
+                    }
+                    tool_name = tool_name_map.get(client_name, client_name)
+                    from api.events.schemas import EventFactory
+
+                    event = EventFactory.setup_tool_connected(
+                        tenant_key=session.tenant_key,
+                        user_id=str(session.api_key_id) if session.api_key_id else "unknown",
+                        tool_name=tool_name,
+                    )
+                    await ws_manager.broadcast_event_to_tenant(tenant_key=session.tenant_key, event=event)
+            except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as e:
+                logger.debug(f"Setup tool_connected event emission failed (non-blocking): {e}")
         elif method == "tools/list":
             result = await handle_tools_list(params, session_manager, session.session_id, session.tenant_key)
         elif method == "tools/call":
