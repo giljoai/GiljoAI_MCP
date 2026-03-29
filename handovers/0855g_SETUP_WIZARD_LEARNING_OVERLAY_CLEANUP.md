@@ -174,3 +174,30 @@ Remove learning mode from overlay, revert WelcomeView button behavior.
 | `handovers/handover_catalogue.md` | Add 0855a-g entries |
 | Various (dead-code sweep) | Remove orphaned references |
 | `frontend/tests/` | Add learning mode tests |
+
+---
+
+## Chain Execution Instructions (Orchestrator-Gated v3)
+
+You are session 7 of 7 in the 0855 chain. You are on branch `feature/0855-setup-wizard`.
+
+### Step 1: Read Chain Log
+Read `prompts/0855_chain/chain_log.json`
+- Check `orchestrator_directives` — if STOP, halt immediately
+- Review previous session's `notes_for_next` for any deviations from this handover's assumptions
+
+### Step 2: Mark Session Started
+Update your session in chain_log.json: `"status": "in_progress", "started_at": "<timestamp>"`
+
+### Step 3: Execute Handover Tasks
+Follow the Implementation Plan above. Use ux-designer and documentation-manager subagents.
+
+### Step 4: Update Chain Log
+Update your session in `prompts/0855_chain/chain_log.json` with:
+- `tasks_completed`, `deviations`, `blockers_encountered`
+- `notes_for_next`: This is the final session. Write chain_summary in chain_log.json and set final_status to complete.
+- `cascading_impacts`: Any changes that affect downstream handovers
+- `summary`, `status`: "complete", `completed_at`
+
+### Step 5: STOP
+**Do NOT spawn the next terminal.** Commit your chain log update and exit.

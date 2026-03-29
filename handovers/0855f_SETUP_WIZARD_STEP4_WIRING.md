@@ -185,3 +185,30 @@ Restore `StartupQuickStart.vue` from git, revert WelcomeView and UserSettings ch
 | `frontend/src/views/UserSettings.vue` | Remove StartupQuickStart import, update tab |
 | `frontend/src/components/settings/StartupQuickStart.vue` | **Delete** |
 | `frontend/tests/` | New spec files, remove old StartupQuickStart tests if any |
+
+---
+
+## Chain Execution Instructions (Orchestrator-Gated v3)
+
+You are session 6 of 7 in the 0855 chain. You are on branch `feature/0855-setup-wizard`.
+
+### Step 1: Read Chain Log
+Read `prompts/0855_chain/chain_log.json`
+- Check `orchestrator_directives` — if STOP, halt immediately
+- Review previous session's `notes_for_next` for any deviations from this handover's assumptions
+
+### Step 2: Mark Session Started
+Update your session in chain_log.json: `"status": "in_progress", "started_at": "<timestamp>"`
+
+### Step 3: Execute Handover Tasks
+Follow the Implementation Plan above. Use ux-designer and tdd-implementor subagents.
+
+### Step 4: Update Chain Log
+Update your session in `prompts/0855_chain/chain_log.json` with:
+- `tasks_completed`, `deviations`, `blockers_encountered`
+- `notes_for_next`: Document what was deleted (StartupQuickStart.vue, localStorage keys), what replaced it in UserSettings, and the overlay mode prop interface. 0855g adds learning mode.
+- `cascading_impacts`: Any changes that affect downstream handovers
+- `summary`, `status`: "complete", `completed_at`
+
+### Step 5: STOP
+**Do NOT spawn the next terminal.** Commit your chain log update and exit.
