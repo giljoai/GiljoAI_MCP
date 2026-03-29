@@ -84,10 +84,10 @@
       "session_id": "0855c",
       "title": "Overlay Shell + Step 1 (Tool Selection)",
       "handover": "handovers/0855c_SETUP_WIZARD_OVERLAY_STEP1.md",
-      "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "complete",
+      "started_at": "2026-03-29T14:00:00Z",
+      "completed_at": "2026-03-29T14:45:00Z",
       "agent_types": ["ux-designer", "tdd-implementor"],
       "planned_tasks": [
         "Create SetupWizardOverlay.vue with full-screen overlay shell",
@@ -97,12 +97,27 @@
         "Add updateSetupState action to user store",
         "Vitest component tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Created SetupWizardOverlay.vue (575 lines) with full-screen overlay, Teleport to body, fade transition",
+        "Built 4-step progress bar with active/completed/future states, brand gradient connector fill",
+        "Built Step 1 with 3 tool selection cards (claude_code, codex_cli, gemini_cli) — multi-select toggle, smooth-border styling",
+        "Placeholder content for Steps 2-4 referencing 0855d/e/f",
+        "Added updateSetupState endpoint to api.js (PATCH /api/auth/me/setup-state)",
+        "Added updateSetupState action to user store — syncs response fields back to currentUser",
+        "Rewrote WelcomeView.vue — removed old localStorage checklist, added overlay with auto-launch and CTA label logic",
+        "38 Vitest component tests passing (rendering, progress bar, tool selection, next/back buttons, dismiss, placeholders, accessibility)"
+      ],
+      "deviations": [
+        "Removed old tutorial CTA logic (tutorialKey/tutorialLaunched/handleTutorialCta) and localStorage checklist from WelcomeView — replaced entirely by setup wizard overlay",
+        "Removed startup-cta gradient CSS from WelcomeView (no longer needed)"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "**For 0855d (Step 2 Connect):** Component: `SetupWizardOverlay.vue` at `frontend/src/components/setup/SetupWizardOverlay.vue`. Props: `modelValue` (Boolean), `currentStep` (Number 0-3), `selectedTools` (Array of tool IDs), `mode` ('setup'|'learning'). Emits: `update:modelValue`, `update:currentStep`, `dismiss`, `step-complete` (payload: `{ step: Number, data: Object }`). Tool IDs: 'claude_code', 'codex_cli', 'gemini_cli'. Steps are 0-indexed: 0=Choose Tools, 1=Connect, 2=Install, 3=Launch. Step 2 content renders when `currentStep === 1` — replace the `<div v-else-if=\"currentStep === 1\">` placeholder block. The overlay parent (WelcomeView) calls `userStore.updateSetupState()` on `step-complete` — 0855d should emit `step-complete` with `{ step: 1, data: { ... } }` and the parent will persist. Store action: `userStore.updateSetupState(payload)` calls `PATCH /api/auth/me/setup-state` and syncs response to `currentUser`. API endpoint in `api.js`: `api.auth.updateSetupState(payload)`. `canProceed` computed in overlay currently returns `true` for all steps > 0 — 0855d should add connection validation logic.",
+      "cascading_impacts": [
+        "WelcomeView no longer uses localStorage checklist (giljo_startup_checklist_v1) or tutorial CTA — 0855f should remove StartupQuickStart.vue which also references this key",
+        "User store now exposes updateSetupState action — available for 0855d/e/f to use directly"
+      ],
+      "summary": "All 6 planned tasks completed. Created SetupWizardOverlay.vue with full-screen overlay shell, 4-step progress bar with brand gradient, Step 1 tool selection (3 cards with multi-select), placeholder steps 2-4. Integrated into WelcomeView with auto-launch on first login, resume support, and CTA label logic. Added updateSetupState to API service and user store. 38 Vitest tests passing. Brand-compliant: smooth-border, design tokens, 250ms transitions, accessible (ARIA roles, keyboard support)."
     },
     {
       "session_id": "0855d",
