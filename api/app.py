@@ -79,7 +79,6 @@ try:
         database_setup,
         downloads,
         git,
-        mcp_http,
         mcp_installer,
         messages,
         network,
@@ -440,8 +439,10 @@ def _register_routers(app: FastAPI) -> None:
     # MCP Installer endpoints for downloadable script generation (Phase 2.1)
     app.include_router(mcp_installer.router, prefix="/api/mcp-installer", tags=["MCP Integration"])
 
-    # Pure MCP JSON-RPC 2.0 over HTTP endpoint (Handover 0032)
-    app.include_router(mcp_http.router, tags=["mcp"])
+    # MCP SDK Streamable HTTP endpoint (Handover 0846 — replaces custom JSON-RPC 0032)
+    from api.endpoints.mcp_sdk_server import build_mcp_app
+
+    app.mount("/mcp", build_mcp_app())
 
     # Slash command endpoints (Handover 0080a)
     app.include_router(slash_commands.router, prefix="/api", tags=["slash-commands"])
