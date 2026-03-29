@@ -36,7 +36,7 @@ The current setup flow navigates to My Settings > Startup Tab, showing a product
 
 Step 1 asks users which AI coding tools they use (Claude Code, Codex CLI, Gemini CLI — no OpenClaw). Multi-select cards with brand-compliant styling.
 
-**Depends on:** 0855a — which adds to the User model: `setup_complete` (Boolean, default false), `setup_selected_tools` (JSONB array), `setup_step_completed` (Integer, 0-4). API: `PATCH /api/v1/auth/me/setup-state` to update these fields. `GET /api/v1/auth/me` returns them in the user response.
+**Depends on:** 0855a — which adds to the User model: `setup_complete` (Boolean, default false), `setup_selected_tools` (JSONB array), `setup_step_completed` (Integer, 0-4). API: `PATCH /api/auth/me/setup-state` to update these fields. `GET /api/auth/me` returns them in the user response.
 
 **Existing code you'll touch:**
 - `frontend/src/views/WelcomeView.vue` (~296 lines): Has `isChecklistComplete` computed using `localStorage.getItem('giljo_startup_checklist_v1')` (line ~108), `showTutorialCta` computed (line ~227), `handleTutorialCta` function (line ~235). Replace all of this with overlay-based logic.
@@ -75,7 +75,7 @@ Step 1 asks users which AI coding tools they use (Claude Code, Codex CLI, Gemini
 - Multi-select toggle (click to select/deselect)
 - Below cards: "Don't have one yet? Learn more" link (muted text, opens external links)
 - "Next" button: disabled until >= 1 tool selected. Brand yellow primary CTA.
-- On Next: call `PATCH /api/v1/auth/me/setup-state` with `setup_selected_tools` and `setup_step_completed: 1`
+- On Next: call `PATCH /api/auth/me/setup-state` with `setup_selected_tools` and `setup_step_completed: 1`
 
 **Props for future use:**
 - `mode` prop: `"setup"` (default, interactive) or `"learning"` (read-only, for 0855g)
