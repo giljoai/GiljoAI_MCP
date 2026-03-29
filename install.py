@@ -1034,7 +1034,13 @@ class UnifiedInstaller:
             print(f"{Fore.YELLOW}  A Windows Security dialog will appear asking you to{Style.RESET_ALL}")
             print(f"{Fore.YELLOW}  install a certificate. Click 'Yes' to trust it.{Style.RESET_ALL}")
             print(f"{Fore.YELLOW}  This is the mkcert root CA — it's safe and local-only.{Style.RESET_ALL}")
-            print(f"{Fore.YELLOW}{'=' * 60}{Style.RESET_ALL}\n")
+            print(f"{Fore.YELLOW}{'=' * 60}{Style.RESET_ALL}")
+            print(
+                f"\n{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}",
+                end="",
+                flush=True,
+            )
+            input()
 
         self._print_info("Installing local Certificate Authority into trust stores...")
         try:
@@ -1045,6 +1051,13 @@ class UnifiedInstaller:
                 text=True,
                 timeout=120 if is_windows else 30,
             )
+            if is_windows:
+                print(
+                    f"\n{Fore.GREEN}Certificate accepted. Press Enter to continue...{Style.RESET_ALL}",
+                    end="",
+                    flush=True,
+                )
+                input()
             self._print_success("Local CA installed — browsers will trust certificates from this machine")
         except subprocess.CalledProcessError as e:
             stderr_msg = e.stderr if e.stderr else "User may have declined the certificate trust dialog"
@@ -1157,8 +1170,8 @@ class UnifiedInstaller:
                     print(f"  {Fore.CYAN}echo 'export NODE_EXTRA_CA_CERTS=\"{ca_cert}\"' >> ~/.bashrc && source ~/.bashrc{Style.RESET_ALL}")
                     print(f"\n  {Fore.WHITE}(Use ~/.zshrc if you use zsh, or ~/.config/fish/config.fish for fish){Style.RESET_ALL}")
 
-                print(f"\n  This is a one-time setup. New terminal windows will")
-                print(f"  inherit the setting automatically.")
+                print(f"\n  This is a one-time setup on THIS machine.")
+                print(f"  New terminal windows will inherit the setting automatically.")
                 print(f"\n{Fore.YELLOW}{'=' * 60}{Style.RESET_ALL}")
 
                 print(
@@ -1167,6 +1180,48 @@ class UnifiedInstaller:
                     flush=True,
                 )
                 input()
+
+                # Instructions for connecting from OTHER machines on the LAN
+                external_host = self.settings.get("external_host", "this server")
+                print(f"\n{Fore.CYAN}{'=' * 60}{Style.RESET_ALL}")
+                print(f"{Fore.CYAN}  Connect from Other Machines (Laptop, Workstation){Style.RESET_ALL}")
+                print(f"{Fore.CYAN}{'=' * 60}{Style.RESET_ALL}")
+                print(f"\n  This machine already trusts the certificate.")
+                print(f"  To connect from OTHER machines without browser warnings,")
+                print(f"  copy the root CA to each client and install it:\n")
+                print(f"  {Fore.WHITE}Root CA file:{Style.RESET_ALL}")
+                print(f"  {Fore.CYAN}{ca_cert}{Style.RESET_ALL}\n")
+
+                if current_os == "Windows":
+                    print(f"  {Fore.GREEN}On the client machine (Windows):{Style.RESET_ALL}")
+                    print(f"  {Fore.CYAN}certutil -addstore -f \"ROOT\" rootCA.pem{Style.RESET_ALL}")
+                    print(f"\n  {Fore.GREEN}On the client machine (macOS):{Style.RESET_ALL}")
+                    print(f"  {Fore.CYAN}sudo security add-trusted-cert -d -r trustRoot \\")
+                    print(f"    -k /Library/Keychains/System.keychain rootCA.pem{Style.RESET_ALL}")
+                    print(f"\n  {Fore.GREEN}On the client machine (Linux):{Style.RESET_ALL}")
+                    print(f"  {Fore.CYAN}sudo cp rootCA.pem /usr/local/share/ca-certificates/giljoai.crt \\")
+                    print(f"    && sudo update-ca-certificates{Style.RESET_ALL}")
+                else:
+                    print(f"  {Fore.GREEN}Transfer the file to the client, then:{Style.RESET_ALL}")
+                    print(f"  {Fore.WHITE}Windows:{Style.RESET_ALL}  certutil -addstore -f \"ROOT\" rootCA.pem")
+                    print(f"  {Fore.WHITE}macOS:{Style.RESET_ALL}    sudo security add-trusted-cert -d -r trustRoot \\")
+                    print(f"              -k /Library/Keychains/System.keychain rootCA.pem")
+                    print(f"  {Fore.WHITE}Linux:{Style.RESET_ALL}    sudo cp rootCA.pem /usr/local/share/ca-certificates/giljoai.crt \\")
+                    print(f"              && sudo update-ca-certificates")
+
+                print(f"\n  {Fore.WHITE}Transfer methods: file share, USB, email, or scp.{Style.RESET_ALL}")
+                print(f"  The rootCA.pem is a public key — it's safe to transfer openly.")
+                print(f"  This is a one-time step per client machine.")
+                print(f"\n  You can also download it later from Admin Settings > Network.")
+                print(f"\n{Fore.CYAN}{'=' * 60}{Style.RESET_ALL}")
+
+                print(
+                    f"\n{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}",
+                    end="",
+                    flush=True,
+                )
+                input()
+
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError, OSError):
             pass
 
