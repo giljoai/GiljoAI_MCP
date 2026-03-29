@@ -15,6 +15,7 @@ Summaries (light/medium) generated via VisionDocumentSummarizer for large docume
 """
 
 import logging
+from decimal import Decimal
 from pathlib import Path
 
 import aiofiles
@@ -73,6 +74,39 @@ async def trigger_consolidation(product_id: str, tenant_key: str, db_session: As
     except (SQLAlchemyError, ValueError, KeyError, ResourceNotFoundError):
         # Don't fail the main operation if consolidation fails
         logger.exception(f"consolidation_failed: product_id={product_id}")
+
+
+async def _persist_sumy_summaries(
+    vision_repo: VisionDocumentRepository,
+    session: AsyncSession,
+    tenant_key: str,
+    document_id: str,
+    product_id: str,
+    summaries,  # SummarizeMultiLevelResult from VisionDocumentSummarizer
+) -> None:
+    """Persist Sumy summaries to vision_document_summaries table (upsert)."""
+    await vision_repo.create_summary(
+        session=session,
+        tenant_key=tenant_key,
+        document_id=document_id,
+        product_id=product_id,
+        source="sumy",
+        ratio=Decimal("0.33"),
+        summary=summaries.light.summary,
+        tokens_original=summaries.original_tokens,
+        tokens_summary=summaries.light.tokens,
+    )
+    await vision_repo.create_summary(
+        session=session,
+        tenant_key=tenant_key,
+        document_id=document_id,
+        product_id=product_id,
+        source="sumy",
+        ratio=Decimal("0.66"),
+        summary=summaries.medium.summary,
+        tokens_original=summaries.original_tokens,
+        tokens_summary=summaries.medium.tokens,
+    )
 
 
 async def get_db():
@@ -241,6 +275,9 @@ async def create_vision_document(
                 doc.summary_medium_tokens = summaries.medium.tokens
                 doc.is_summarized = True
                 doc.original_token_count = summaries.original_tokens
+
+                # 0842a: Persist to vision_document_summaries table
+                await _persist_sumy_summaries(vision_repo, db, tenant_key, str(doc.id), str(doc.product_id), summaries)
 
                 await db.commit()
 
@@ -438,6 +475,9 @@ async def update_vision_document(
                 doc.summary_medium_tokens = summaries.medium.tokens
                 doc.is_summarized = True
                 doc.original_token_count = summaries.original_tokens
+
+                # 0842a: Persist to vision_document_summaries table
+                await _persist_sumy_summaries(vision_repo, db, tenant_key, str(doc.id), str(doc.product_id), summaries)
 
                 await db.commit()
 
@@ -661,7 +701,13 @@ async def regenerate_summaries(
         doc.is_summarized = True
         doc.original_token_count = summaries.original_tokens
 
+        # 0842a: Persist to vision_document_summaries table
+        await _persist_sumy_summaries(vision_repo, db, tenant_key, str(doc.id), str(doc.product_id), summaries)
+
         await db.commit()
+
+        # 0842a: Fix pre-existing gap — trigger consolidation after regenerating summaries
+        await trigger_consolidation(doc.product_id, tenant_key, db)
 
         logger.info(
             f"Vision document {document_id} summaries regenerated: "

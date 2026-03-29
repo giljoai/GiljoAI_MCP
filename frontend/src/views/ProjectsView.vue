@@ -3,11 +3,31 @@
     <!-- Header -->
     <v-row align="center" class="mb-4">
       <v-col>
-        <h1 class="text-h4">Project Management</h1>
-        <p class="text-subtitle-1 text-medium-emphasis">
-          Manage orchestration projects for:
-          <strong class="text-primary">{{ activeProduct?.name || 'No Active Product' }}</strong>
-        </p>
+        <div class="d-flex align-center">
+          <h1 class="text-h4">Project Management</h1>
+          <v-tooltip location="bottom start" max-width="600">
+            <template #activator="{ props }">
+              <v-icon v-bind="props" size="18" color="medium-emphasis" class="ml-2">mdi-information-outline</v-icon>
+            </template>
+            <div>
+              <div class="font-weight-bold mb-1">Project Field Reference</div>
+              <div class="text-caption text-medium-emphasis mb-2">Instructions for /gil_add</div>
+              <div><span class="font-weight-medium">name (required):</span> Free text</div>
+              <div class="mt-1"><span class="font-weight-medium">description (recommended):</span> Free text</div>
+              <div class="mt-1"><span class="font-weight-medium">status (optional):</span></div>
+              <div class="ml-2 text-caption">inactive · active · completed · cancelled · deleted</div>
+              <div class="mt-2"><span class="font-weight-medium">project_type (optional):</span></div>
+              <div class="text-caption text-center">Taxonomy category abbreviation (e.g. BE, FE, API)</div>
+              <div class="mt-1"><span class="font-weight-medium">series_number (optional):</span></div>
+              <div class="text-caption text-center">Sequential number within a type (e.g. 1 → BE-0001)</div>
+              <div class="mt-1"><span class="font-weight-medium">subseries (optional):</span></div>
+              <div class="text-caption text-center">Single-letter suffix (e.g. a → BE-0001a)</div>
+              <div class="mt-2"><span class="font-weight-medium">Example:</span></div>
+              <div class="ml-2 text-caption">/gil_add add project ... description ...</div>
+            </div>
+          </v-tooltip>
+        </div>
+        <p class="text-body-2 text-medium-emphasis mt-1">Use MCP tool /gil_add to have the AI coding agent add new projects to the Project dashboard.</p>
       </v-col>
     </v-row>
 
@@ -94,7 +114,7 @@
     <v-card v-if="activeProduct">
       <!-- Project List Header Bar -->
       <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
-        <span class="text-h6">Project List</span>
+        <span class="text-h6">Project List for {{ activeProduct?.name || 'No Active Product' }}</span>
 
         <div class="d-flex align-center ga-2">
           <!-- New Project Button -->
