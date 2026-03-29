@@ -104,7 +104,7 @@
           </v-alert>
 
           <!-- HTTPS: Node.js cert trust warning (Claude Code + Gemini are Node.js-based) -->
-          <template v-if="(selectedTool === 'gemini' || selectedTool === 'claude') && isHttps">
+          <template v-if="(selectedTool === 'gemini' || selectedTool === 'claude' || selectedTool === 'codex') && isHttps">
             <v-radio-group v-model="certPlatform" inline hide-details class="platform-radios mb-2">
               <v-radio label="PowerShell" value="windows" density="compact" />
               <v-radio label="Linux / macOS / Git Bash" value="unix" density="compact" />
