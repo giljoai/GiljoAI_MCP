@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="showWizard" max-width="720">
+  <v-dialog v-model="showWizard" max-width="720" persistent>
     <template #activator="{ props }">
       <v-btn v-bind="props" color="primary" variant="flat">
         Configurator
@@ -170,8 +170,10 @@
 import { ref, computed } from 'vue'
 import api from '@/services/api'
 import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
 
 const { copy: clipboardCopy } = useClipboard()
+const { showToast } = useToast()
 
 const showWizard = ref(false)
 const editingServer = ref(false)
@@ -320,6 +322,9 @@ async function copyPrompt() {
   if (success) {
     copied.value = true
     setTimeout(() => (copied.value = false), 3000)
+    showToast({ message: 'Configuration copied to clipboard!', type: 'success' })
+  } else {
+    showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
   }
 }
 
@@ -330,6 +335,9 @@ async function copyEnvVar() {
   if (success) {
     copiedEnv.value = true
     setTimeout(() => (copiedEnv.value = false), 3000)
+    showToast({ message: 'Environment variable copied to clipboard!', type: 'success' })
+  } else {
+    showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
   }
 }
 

@@ -1738,6 +1738,9 @@ class UnifiedInstaller:
                 "install_dir": str(self.install_dir),
                 "bind": "0.0.0.0",
                 "external_host": self.settings.get("external_host", "localhost"),
+                "network_mode": self.settings.get("network_mode", "localhost"),
+                "selected_adapter": self.settings.get("selected_adapter"),
+                "initial_ip": self.settings.get("initial_ip"),
             }
 
             config_manager = ConfigManager(settings=config_settings)

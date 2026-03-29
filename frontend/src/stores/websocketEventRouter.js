@@ -412,6 +412,32 @@ export const EVENT_MAP = {
   },
 
   // =========================
+  // Vision Document Analysis (Handover 0842c)
+  // =========================
+  'vision:analysis_complete': {
+    handler: async (payload) => {
+      const productStore = useProductStore()
+      const notificationStore = useNotificationStore()
+
+      // Refresh product data to reflect AI-populated fields
+      if (payload?.product_id) {
+        await productStore.fetchProducts()
+      }
+
+      // Add notification
+      notificationStore.addNotification({
+        type: 'vision_analysis',
+        title: 'Vision Analysis Complete',
+        message: `AI populated ${payload?.fields_written || 0} product fields. Review in Product Info.`,
+        metadata: { product_id: payload?.product_id, fields: payload?.fields },
+      })
+
+      // Dispatch window event for any listening components
+      dispatchWindowEvent('vision-analysis-complete', payload)
+    },
+  },
+
+  // =========================
   // Tasks (MCP tool creates — frontend needs refresh)
   // =========================
   'task:created': {

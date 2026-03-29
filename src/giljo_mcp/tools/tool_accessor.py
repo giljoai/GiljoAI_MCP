@@ -764,4 +764,39 @@ class ToolAccessor:
             websocket_manager=self._websocket_manager,
         )
 
+    # Vision Document Analysis (Handover 0842c)
+
+    async def get_vision_doc(
+        self,
+        product_id: str,
+        tenant_key: str,
+        chunk: int | None = None,
+    ) -> dict[str, Any]:
+        """Retrieve vision document with extraction instructions (Handover 0842c)."""
+        from giljo_mcp.tools.vision_analysis import gil_get_vision_doc as tool_func
+
+        return await tool_func(
+            product_id=product_id,
+            tenant_key=tenant_key,
+            chunk=chunk,
+            db_manager=self.db_manager,
+        )
+
+    async def write_product_from_analysis(
+        self,
+        product_id: str,
+        tenant_key: str,
+        **fields: Any,
+    ) -> dict[str, Any]:
+        """Write product fields from vision document analysis (Handover 0842c)."""
+        from giljo_mcp.tools.vision_analysis import gil_write_product as tool_func
+
+        return await tool_func(
+            product_id=product_id,
+            tenant_key=tenant_key,
+            db_manager=self.db_manager,
+            websocket_manager=self._websocket_manager,
+            **fields,
+        )
+
     # Agent Discovery Tools (Handover 0422)

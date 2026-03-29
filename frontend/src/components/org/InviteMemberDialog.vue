@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="dialogModel" max-width="500">
+  <v-dialog v-model="dialogModel" max-width="500" persistent>
     <v-card v-draggable>
       <v-card-title>Invite Member</v-card-title>
       <v-card-text>

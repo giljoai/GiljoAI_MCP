@@ -69,11 +69,11 @@
             </template>
 
             <!-- Content -->
-            <v-list-item-title class="text-body-2 font-weight-medium mb-1">
+            <v-list-item-title class="text-body-1 font-weight-medium mb-1">
               {{ notification.title }}
             </v-list-item-title>
             <v-list-item-subtitle
-              :class="['text-caption', { 'message-truncated': !notification._expanded, 'text-wrap': notification._expanded }]"
+              :class="['text-body-2', { 'message-truncated': !notification._expanded, 'text-wrap': notification._expanded }]"
               @click.stop="toggleExpand(notification)"
             >
               {{ notification.message }}
@@ -166,6 +166,7 @@ const getNotificationIcon = (type) => {
     connection_lost: 'mdi-wifi-off',
     connection_restored: 'mdi-wifi-check',
     context_tuning: 'mdi-tune',
+    vision_analysis: 'mdi-file-document-check',
     success: 'mdi-check-circle',
     error: 'mdi-alert-circle',
     info: 'mdi-information',
@@ -185,6 +186,7 @@ const getNotificationColor = (type) => {
     connection_lost: 'error',
     connection_restored: 'success',
     context_tuning: 'info',
+    vision_analysis: 'success',
     success: 'success',
     error: 'error',
     info: 'info',
@@ -247,7 +249,8 @@ const handleNotificationClick = async (notification) => {
   }
 
   // Handover 0831: context_tuning notifications stay on current page (no project navigation)
-  if (notification.type === 'context_tuning') {
+  // Handover 0842d: vision_analysis notifications stay on current page
+  if (notification.type === 'context_tuning' || notification.type === 'vision_analysis') {
     return
   }
 

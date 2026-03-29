@@ -656,7 +656,7 @@ async function handleStageProject() {
       }
       showToast({ message: _pasteLabels[currentMode] || _pasteLabels.multi_terminal, type: 'success' })
     } else {
-      alert(`Please manually copy this prompt:\n\n${prompt}`)
+      showToast({ message: 'Copy failed — select the prompt text and press Ctrl+C', type: 'warning', timeout: 6000 })
     }
   } catch (error) {
     console.error('Stage project failed:', error)

@@ -235,7 +235,7 @@ def _get_default_templates_v103() -> list[dict[str, Any]]:
             "cli_tool": "claude",
             "background_color": "#D4A574",
             "description": "Project orchestrator responsible for coordinating agent workflows",
-            "user_instructions": """# GiljoAI MCP Orchestrator Agent
+            "user_instructions": """# GiljoAI MCP Agent
 
 ## Identity & Environment
 
