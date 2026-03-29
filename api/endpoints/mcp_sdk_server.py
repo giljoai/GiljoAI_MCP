@@ -844,28 +844,18 @@ def build_mcp_app():
     start_mcp_session_manager() / stop_mcp_session_manager() in the
     FastAPI lifespan (see app.py).
     """
-    from starlette.applications import Starlette
-    from starlette.routing import Route
-
     # Ensure session manager is created
     if mcp._session_manager is None:
         mcp.streamable_http_app()
 
-    # Build a minimal Starlette app with the SDK's ASGI handler
-    # Use redirect_slashes=False to prevent 307 redirect from /mcp to /mcp/
+    # Build the SDK's ASGI handler directly
     from mcp.server.fastmcp.server import StreamableHTTPASGIApp
 
     asgi_handler = StreamableHTTPASGIApp(mcp._session_manager)
 
-    starlette_app = Starlette(
-        debug=False,
-        routes=[
-            Route("/", endpoint=asgi_handler),
-            Route("/{path:path}", endpoint=asgi_handler),
-        ],
-    )
-    starlette_app.add_middleware(MCPAuthMiddleware)
-    return starlette_app
+    # Wrap with auth middleware — pure ASGI chain, no Starlette Router
+    # (avoids the 307 trailing-slash redirect that Starlette adds)
+    return MCPAuthMiddleware(asgi_handler)
 
 
 # ---------------------------------------------------------------------------
