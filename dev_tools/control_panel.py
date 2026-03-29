@@ -32,6 +32,40 @@ from tkinter import BooleanVar, Tk, messagebox, ttk
 from typing import Any, List, Optional
 
 
+THEMES = {
+    "dark": {
+        "bg": "#1e1e1e",
+        "fg": "#e0e0e0",
+        "frame_bg": "#2b2b2b",
+        "button_bg": "#3c3c3c",
+        "button_fg": "#e0e0e0",
+        "button_active_bg": "#505050",
+        "entry_bg": "#3c3c3c",
+        "select_bg": "#264f78",
+        "labelframe_fg": "#9cdcfe",
+        "status_bg": "#252526",
+        "tab_bg": "#2d2d2d",
+        "tab_selected_bg": "#2b2b2b",
+        "toggle_text": "☀  Light",
+    },
+    "light": {
+        "bg": "#f0f0f0",
+        "fg": "#1a1a1a",
+        "frame_bg": "#ffffff",
+        "button_bg": "#e1e1e1",
+        "button_fg": "#1a1a1a",
+        "button_active_bg": "#c8c8c8",
+        "entry_bg": "#ffffff",
+        "select_bg": "#0078d4",
+        "labelframe_fg": "#0078d4",
+        "status_bg": "#e0e0e0",
+        "tab_bg": "#d0d0d0",
+        "tab_selected_bg": "#ffffff",
+        "toggle_text": "🌙  Dark",
+    },
+}
+
+
 try:
     import psutil
 except ImportError:
@@ -108,11 +142,78 @@ class GiljoDevControlPanel:
         # Check admin privileges (informational only - most features work without admin)
         self.is_admin = self.check_admin()
 
+        # Theme (dark by default)
+        self.is_dark_mode = BooleanVar(value=True)
+        self.apply_theme()
+
         # Build UI
         self.build_ui()
 
         # Initial status check
         self.update_status()
+
+    def apply_theme(self):
+        """Apply the current dark/light theme to all ttk widgets."""
+        key = "dark" if self.is_dark_mode.get() else "light"
+        t = THEMES[key]
+
+        style = ttk.Style(self.root)
+        style.theme_use("clam")
+
+        self.root.configure(bg=t["bg"])
+
+        style.configure(".", background=t["frame_bg"], foreground=t["fg"], fieldbackground=t["entry_bg"])
+        style.configure("TFrame", background=t["frame_bg"])
+        style.configure("TLabel", background=t["frame_bg"], foreground=t["fg"])
+        style.configure(
+            "TButton",
+            background=t["button_bg"],
+            foreground=t["button_fg"],
+            bordercolor=t["button_bg"],
+            focuscolor=t["select_bg"],
+            lightcolor=t["button_bg"],
+            darkcolor=t["button_bg"],
+        )
+        style.map(
+            "TButton",
+            background=[("active", t["button_active_bg"]), ("pressed", t["button_active_bg"])],
+            foreground=[("active", t["button_fg"])],
+        )
+        style.configure("TNotebook", background=t["bg"], bordercolor=t["bg"], tabmargins=[2, 5, 2, 0])
+        style.configure(
+            "TNotebook.Tab",
+            background=t["tab_bg"],
+            foreground=t["fg"],
+            padding=[10, 4],
+        )
+        style.map(
+            "TNotebook.Tab",
+            background=[("selected", t["tab_selected_bg"])],
+            foreground=[("selected", t["fg"])],
+        )
+        style.configure("TLabelframe", background=t["frame_bg"], bordercolor=t["button_bg"])
+        style.configure("TLabelframe.Label", background=t["frame_bg"], foreground=t["labelframe_fg"])
+        style.configure("TSeparator", background=t["button_bg"])
+        style.configure(
+            "TScrollbar",
+            background=t["button_bg"],
+            troughcolor=t["bg"],
+            arrowcolor=t["fg"],
+        )
+        style.configure("TEntry", fieldbackground=t["entry_bg"], foreground=t["fg"], insertcolor=t["fg"])
+        style.configure(
+            "Sunken.TLabel",
+            background=t["status_bg"],
+            foreground=t["fg"],
+            relief="sunken",
+        )
+
+    def toggle_theme(self):
+        """Toggle between dark and light mode."""
+        self.is_dark_mode.set(not self.is_dark_mode.get())
+        self.apply_theme()
+        key = "dark" if self.is_dark_mode.get() else "light"
+        self.theme_toggle_btn.config(text=THEMES[key]["toggle_text"])
 
     def check_admin(self) -> bool:
         """
@@ -151,13 +252,22 @@ class GiljoDevControlPanel:
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky="nsew")
 
-        # Title
+        # Title row: title on left, theme toggle on right
         title_label = ttk.Label(
             main_frame,
             text="GiljoAI MCP Developer Control Panel",
             font=("Arial", 16, "bold"),
         )
-        title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
+        title_label.grid(row=0, column=0, sticky="w", pady=(0, 20))
+
+        theme_key = "dark" if self.is_dark_mode.get() else "light"
+        self.theme_toggle_btn = ttk.Button(
+            main_frame,
+            text=THEMES[theme_key]["toggle_text"],
+            command=self.toggle_theme,
+            width=12,
+        )
+        self.theme_toggle_btn.grid(row=0, column=1, sticky="e", pady=(0, 20))
 
         # Create tabbed notebook
         self.notebook = ttk.Notebook(main_frame)
@@ -175,7 +285,7 @@ class GiljoDevControlPanel:
 
         # Status bar at bottom (5 rows high)
         self.status_label = ttk.Label(
-            main_frame, text="Ready", relief="sunken", anchor="nw", justify="left", padding=(5, 5)
+            main_frame, text="Ready", style="Sunken.TLabel", anchor="nw", justify="left", padding=(5, 5)
         )
         self.status_label.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0), ipady=40)
 
