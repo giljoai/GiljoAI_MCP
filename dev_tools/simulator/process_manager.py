@@ -77,7 +77,7 @@ class ProcessManager:
         if self._frontend_proc and self._frontend_proc.poll() is None:
             return self._frontend_info  # type: ignore[return-value]
 
-        # serve_frontend.py binds to 0.0.0.0:7274 internally; we respect that default
+        # serve_frontend.py bind address derived from install-time network choice; we respect that default
         cmd = [sys.executable, "serve_frontend.py"]
         env = os.environ.copy()
         env["PORT"] = str(port)

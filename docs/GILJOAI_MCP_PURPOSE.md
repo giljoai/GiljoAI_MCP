@@ -340,7 +340,7 @@ context:
 
 **GiljoAI MCP's power comes from the integration of all components**:
 
-1. **Installation (Handover 0035)**: Single unified installer sets up PostgreSQL, creates database with pg_trgm extension, configures v3.0 architecture (0.0.0.0 binding), launches setup wizard
+1. **Installation (Handover 0035)**: Single unified installer sets up PostgreSQL, creates database with pg_trgm extension, configures network binding (localhost: 127.0.0.1, LAN/WAN: 0.0.0.0 + HTTPS), launches setup wizard
 
 2. **First Admin Setup (Handover 0035 + 0023)**: Setup wizard creates first admin with custom credentials, sets SetupState.first_admin_created flag, admin creates recovery PIN on first login
 
@@ -567,7 +567,7 @@ context:
 **Installation Features**:
 - **PostgreSQL auto-discovery**: Finds installed PostgreSQL across all platforms with intelligent path detection
 - **Database setup**: Creates giljo_mcp database with pg_trgm extension (required for full-text search)
-- **Network configuration**: v3.0 unified binding (0.0.0.0) with firewall control and external IP selection
+- **Network configuration**: Conditional binding (localhost: 127.0.0.1, LAN/WAN: 0.0.0.0 + HTTPS) with external IP selection
 - **First admin creation**: Secure setup wizard (no default credentials) with first_admin_created flag
 - **Config generation**: Platform-appropriate paths and settings (venv, PostgreSQL, npm)
 - **Security enhancement**: SetupState.first_admin_created field prevents duplicate admin creation attacks
@@ -580,9 +580,9 @@ context:
 ### Admin Settings v3.0 (Handovers 0025-0029 - COMPLETE)
 
 **SystemSettings.vue - 4 Professional Tabs**:
-1. **Network Tab** (Handover 0025): v3.0 unified architecture (0.0.0.0 binding), firewall configuration, removed all deployment mode concepts
-   - Shows Internal Binding (0.0.0.0) and External Access IP
-   - v3.0 architecture info alert explaining unified binding
+1. **Network Tab** (Handover 0025): Conditional binding (localhost: 127.0.0.1, LAN/WAN: 0.0.0.0 + HTTPS)
+   - Shows Internal Binding address and External Access IP
+   - Architecture info alert explaining conditional binding
    - Port chips displaying API:7272 and Frontend:7274
    - Enhanced CORS section with proper labeling
    - Copy button for external host

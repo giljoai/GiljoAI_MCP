@@ -29,29 +29,29 @@ logger = logging.getLogger(__name__)
 
 
 # DeploymentMode enum removed in v3.0
-# v3.0 uses fixed network binding (0.0.0.0) with authentication always enabled
-# and IP-based auto-login for localhost users
+# Localhost installs bind 127.0.0.1 (HTTP). LAN/WAN installs bind 0.0.0.0 with HTTPS (mkcert).
+# Bind address derived from install-time network choice. Authentication always enabled.
 
 
 @dataclass
 class ServerConfig:
     """Server configuration settings.
 
-    v3.0: All servers bind to 0.0.0.0 (all interfaces).
+    Localhost installs bind 127.0.0.1 (HTTP). LAN/WAN installs bind 0.0.0.0
+    with HTTPS (mkcert). Bind address derived from install-time network choice.
     Access control is handled via:
-    - Firewall rules (recommended)
     - IP-based auto-login for localhost
     - API key for network clients
     """
 
     debug: bool = False
 
-    # MCP Server - always bind all interfaces
+    # MCP Server - bind address set by installer (127.0.0.1 or 0.0.0.0)
     mcp_host: str = "0.0.0.0"
     mcp_port: int = 6001
     mcp_transport: str = "http"
 
-    # REST API - always bind all interfaces
+    # REST API - bind address set by installer (127.0.0.1 or 0.0.0.0)
     api_host: str = "0.0.0.0"
     api_port: int = 7272  # Production default (PortManager managed)
     api_cors_enabled: bool = True
@@ -61,7 +61,7 @@ class ServerConfig:
     websocket_enabled: bool = True
     websocket_port: int = 6003
 
-    # Dashboard - always bind all interfaces
+    # Dashboard - bind address set by installer (127.0.0.1 or 0.0.0.0)
     dashboard_enabled: bool = True
     dashboard_host: str = "0.0.0.0"
     dashboard_port: int = 7274
@@ -323,7 +323,7 @@ class ConfigManager:
         data["features"]["auto_login_localhost"] = True
         data["features"]["firewall_configured"] = False
 
-        # Ensure all hosts bind to 0.0.0.0
+        # Ensure host bind address matches install-time network choice
         if "server" not in data:
             data["server"] = {}
 
@@ -548,7 +548,7 @@ class ConfigManager:
     # No longer needed as mode detection is removed
 
     # _apply_mode_settings() method removed in v3.0
-    # Network binding is now always 0.0.0.0 (all interfaces)
+    # Bind address derived from install-time network choice (127.0.0.1 for localhost, 0.0.0.0 for LAN/WAN)
 
     def validate(self):
         """Validate configuration for correctness and consistency."""
