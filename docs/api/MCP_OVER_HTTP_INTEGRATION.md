@@ -74,50 +74,15 @@ MCP-over-HTTP is an implementation of the Model Context Protocol (MCP) using HTT
 
 ### HTTP Endpoint Design
 
-GiljoAI MCP exposes a single HTTP endpoint that implements the JSON-RPC 2.0 protocol:
+GiljoAI MCP exposes a Streamable HTTP endpoint powered by the official Anthropic **FastMCP SDK**:
 
 ```
-POST http://server:7272/mcp
-Content-Type: application/json
-X-API-Key: gk_YOUR_API_KEY_HERE
+Endpoint: http://server:7272/mcp
+Transport: Streamable HTTP (MCP SDK)
+Auth: X-API-Key: gk_YOUR_API_KEY_HERE
 ```
 
-**Request Format (JSON-RPC 2.0):**
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "initialize",
-  "params": {
-    "protocolVersion": "2024-11-05",
-    "capabilities": {},
-    "clientInfo": {
-      "name": "claude-code",
-      "version": "1.0.0"
-    }
-  },
-  "id": 1
-}
-```
-
-**Response Format:**
-```json
-{
-  "jsonrpc": "2.0",
-  "result": {
-    "protocolVersion": "2024-11-05",
-    "serverInfo": {
-      "name": "giljo-mcp",
-      "version": "3.0.0"
-    },
-    "capabilities": {
-      "tools": {
-        "listChanged": false
-      }
-    }
-  },
-  "id": 1
-}
-```
+The FastMCP SDK handles protocol framing, session management, and method dispatch internally. Clients (Claude Code, Codex CLI, Gemini CLI) connect using their native `--transport http` flag -- no manual JSON construction required.
 
 ### Session Management Architecture
 
@@ -172,7 +137,7 @@ X-API-Key → APIKey (database lookup)
 
 **Code Reference:**
 - `api/endpoints/mcp_session.py:43-70` - Authentication flow
-- `api/endpoints/mcp_http.py:225-226` - Tenant context setting
+- `api/endpoints/mcp_sdk_server.py` - FastMCP SDK endpoint
 - `src/giljo_mcp/models.py:1330-1357` - MCPSession model
 
 ---
@@ -184,10 +149,10 @@ X-API-Key → APIKey (database lookup)
 ```
 api/
 ├── endpoints/
-│   ├── mcp_http.py         # Pure JSON-RPC 2.0 MCP endpoint (398 lines)
+│   ├── mcp_sdk_server.py   # FastMCP SDK Streamable HTTP endpoint
 │   └── mcp_session.py      # PostgreSQL session management (186 lines)
 ├── middleware.py           # Authentication middleware (line 111: /mcp public)
-└── app.py                  # FastAPI app (registers /mcp endpoint)
+└── app.py                  # FastAPI app (mounts MCP SDK endpoint)
 
 src/giljo_mcp/
 └── models.py               # MCPSession model (lines 1295-1357)
@@ -201,13 +166,10 @@ frontend/src/
 
 ### Key Code Locations
 
-**MCP HTTP Endpoint:**
-- File: `api/endpoints/mcp_http.py`
-- Endpoint: `POST /mcp`
-- Handlers:
-  - `handle_initialize()` - Handshake and capability negotiation
-  - `handle_tools_list()` - List available tools
-  - `handle_tools_call()` - Execute tool with arguments
+**MCP SDK Endpoint:**
+- File: `api/endpoints/mcp_sdk_server.py`
+- Endpoint: Streamable HTTP at `/mcp`
+- The FastMCP SDK handles initialization, tool listing, and tool dispatch internally
 
 **Session Management:**
 - File: `api/endpoints/mcp_session.py`
@@ -225,70 +187,15 @@ frontend/src/
 
 ### Supported MCP Methods
 
-**1. initialize** - Connection handshake
-```json
-{
-  "method": "initialize",
-  "params": {
-    "protocolVersion": "2024-11-05",
-    "capabilities": {},
-    "clientInfo": {"name": "claude-code", "version": "1.0.0"}
-  }
-}
-```
+The FastMCP SDK handles all MCP protocol methods automatically:
 
-**2. tools/list** - List available tools
-```json
-{
-  "method": "tools/list",
-  "params": {}
-}
-```
+**1. initialize** - Connection handshake (protocol version negotiation, capability exchange)
 
-**Response:**
-```json
-{
-  "result": {
-    "tools": [
-      {
-        "name": "get_orchestrator_instructions",
-        "description": "Fetch context for orchestrator to create mission plan",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "job_id": {"type": "string", "description": "Orchestrator job UUID"},
-            "tenant_key": {"type": "string", "description": "Tenant isolation key"}
-          },
-          "required": ["job_id", "tenant_key"]
-        }
-      }
-    ]
-  }
-}
-```
+**2. tools/list** - Returns all registered MCP tools with schemas and descriptions
 
-**3. tools/call** - Execute tool
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "list_projects",
-    "arguments": {"status": "active"}
-  }
-}
-```
+**3. tools/call** - Executes a tool by name with provided arguments, returns structured results
 
-**Response:**
-```json
-{
-  "result": {
-    "content": [
-      {"type": "text", "text": "[{\"id\": \"proj_123\", \"name\": \"My Project\"}]"}
-    ],
-    "isError": false
-  }
-}
-```
+Clients interact with these methods transparently through their native MCP transport -- no manual JSON-RPC construction is needed.
 
 ---
 
@@ -410,7 +317,7 @@ Authorization: Bearer gk_YOUR_API_KEY_HERE
 
 **Code Reference:**
 - `api/endpoints/mcp_session.py` - `authenticate_api_key()`
-- `api/endpoints/mcp_http.py` - API key resolution (X-API-Key or Bearer)
+- `api/endpoints/mcp_sdk_server.py` - API key resolution (X-API-Key or Bearer)
 
 ### Tenant Isolation Guarantees
 
@@ -425,8 +332,7 @@ Authorization: Bearer gk_YOUR_API_KEY_HERE
 - Project switching limited to tenant's projects
 
 **Code References:**
-- `api/endpoints/mcp_http.py:225-226` - Tenant context setting
-- `api/endpoints/mcp_http.py:131-133` - Session tenant validation
+- `api/endpoints/mcp_sdk_server.py` - Tenant context setting and session validation
 
 ### Session Expiration
 
@@ -460,7 +366,7 @@ Authorization: Bearer gk_YOUR_API_KEY_HERE
 
 **Code Reference:**
 - `api/middleware.py:97-113` - Public endpoint list
-- `api/endpoints/mcp_http.py:329-338` - X-API-Key validation
+- `api/endpoints/mcp_sdk_server.py` - X-API-Key validation
 
 ---
 
@@ -511,10 +417,10 @@ curl http://localhost:7272/health
 
 **Test MCP Endpoint:**
 ```bash
-curl -X POST http://localhost:7272/mcp \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: gk_YOUR_KEY" \
-  -d '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":1}'
+# Use Claude Code's built-in MCP connection test
+claude mcp add --transport http giljo-mcp http://localhost:7272/mcp \
+  --header "X-API-Key: gk_YOUR_KEY"
+# Then run /mcp in Claude Code to verify connection
 ```
 
 ### How to Check Logs
@@ -570,9 +476,9 @@ python -c "from src.giljo_mcp.models import MCPSession; print('OK')"
 
 ### How to Add New MCP Tools
 
-**Step 1: Define Tool in tools/list Handler**
+**Step 1: Register Tool with FastMCP SDK**
 
-Edit `api/endpoints/mcp_http.py`, add to `handle_tools_list()`:
+Define your tool function decorated with `@mcp.tool()` in `api/endpoints/mcp_sdk_server.py`, or add the method to the appropriate tools module and register it during server setup:
 
 ---
 
@@ -611,18 +517,7 @@ See also: `frontend/AGENT_FLOW_VISUALIZATION_INTEGRATION.md` for component wirin
 }
 ```
 
-**Step 2: Map Tool in tools/call Handler**
-
-Edit `api/endpoints/mcp_http.py`, add to `tool_map` in `handle_tools_call()`:
-
-```python
-tool_map = {
-    # ... existing tools ...
-    "my_new_tool": state.tool_accessor.my_new_tool,
-}
-```
-
-**Step 3: Implement Tool Method**
+**Step 2: Implement Tool Method**
 
 Add method to `src/giljo_mcp/tools/` or appropriate module:
 
@@ -633,7 +528,7 @@ async def my_new_tool(self, param1: str) -> dict:
     return {"result": "success"}
 ```
 
-**Step 4: Test Tool**
+**Step 3: Test Tool**
 
 ```bash
 # From Claude Code
@@ -680,69 +575,7 @@ if session.is_expired:
 
 ### Testing MCP Endpoints
 
-**Unit Test Example:**
-
-```python
-import pytest
-from httpx import AsyncClient
-
-@pytest.mark.asyncio
-async def test_mcp_initialize(async_client: AsyncClient, test_api_key: str):
-    response = await async_client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "test-client", "version": "1.0.0"}
-            },
-            "id": 1
-        },
-        headers={"X-API-Key": test_api_key}
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["jsonrpc"] == "2.0"
-    assert data["result"]["serverInfo"]["name"] == "giljo-mcp"
-```
-
-**Integration Test Example:**
-
-```python
-@pytest.mark.asyncio
-async def test_mcp_full_flow(async_client: AsyncClient, test_api_key: str):
-    # 1. Initialize
-    init_response = await async_client.post("/mcp", json={
-        "jsonrpc": "2.0",
-        "method": "initialize",
-        "params": {"protocolVersion": "2024-11-05"},
-        "id": 1
-    }, headers={"X-API-Key": test_api_key})
-    assert init_response.status_code == 200
-
-    # 2. List tools
-    list_response = await async_client.post("/mcp", json={
-        "jsonrpc": "2.0",
-        "method": "tools/list",
-        "params": {},
-        "id": 2
-    }, headers={"X-API-Key": test_api_key})
-    assert list_response.status_code == 200
-    tools = list_response.json()["result"]["tools"]
-    assert len(tools) > 0
-
-    # 3. Call tool
-    call_response = await async_client.post("/mcp", json={
-        "jsonrpc": "2.0",
-        "method": "tools/call",
-        "params": {"name": "list_projects", "arguments": {}},
-        "id": 3
-    }, headers={"X-API-Key": test_api_key})
-    assert call_response.status_code == 200
-```
+MCP tool testing is done through the FastMCP SDK's built-in test utilities or by connecting a real MCP client (Claude Code) and exercising tools interactively.
 
 ### Debugging Tips
 
@@ -750,7 +583,7 @@ async def test_mcp_full_flow(async_client: AsyncClient, test_api_key: str):
 ```python
 import logging
 
-# In api/endpoints/mcp_http.py
+# In api/endpoints/mcp_sdk_server.py
 logger.setLevel(logging.DEBUG)
 
 # Will log:
