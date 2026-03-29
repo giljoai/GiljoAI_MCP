@@ -420,6 +420,7 @@ class UnifiedInstaller:
         network_adapters = get_network_adapters()
 
         # Build options list — localhost first (the fork), then LAN/WAN options
+        print(f"  {Fore.CYAN}Localhost access:{Style.RESET_ALL}")
         print(f"  1. {Fore.WHITE}Localhost only{Style.RESET_ALL} (HTTP, this machine only)")
 
         print(f"\n  {Fore.CYAN}LAN / WAN access (HTTPS via mkcert):{Style.RESET_ALL}")
