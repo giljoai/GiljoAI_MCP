@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-28 (0855a-g Setup Wizard Redesign series added, all NOT STARTED)
+**Last Updated:** 2026-03-29 (0844 Tenant Data Export/Import added, NOT STARTED)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0855a-g NOT STARTED.** |
+| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0855a-g NOT STARTED.** |
 
 ---
 
@@ -33,6 +33,10 @@
 | 0842g | Per-Document AI Summary Badges | Not Started | Medium | Add AI summary badge row to vision doc cards (wireframe fidelity). Needs API extension. Follow-up to 0842d deviation. |
 | 0842h | Frontend Tests — Tuning Icon & Vision Analysis Banner | Not Started | Medium | 11 Vitest component tests for 0842d features. Follow-up to 0842d deviation (agent missed existing test framework). |
 | 0842L | Post-Implementation Audit & Cleanup | Not Started | High | Quality audit of entire 0842 branch (50 files, 6860 insertions). Dead code, orphaned tests, secure-context audit, lint, WebSocket chain verification. Tests may be rewritten/deleted. Must pass before merge to master. |
+| 0844 | Tenant Data Export/Import (Series Coordinator) | Not Started | Medium | Series of 3 sub-handovers. Sequential: 0844a → manual gate → 0844b → manual gate → 0844c. |
+| 0844a | Tenant Export Service | Not Started | Medium | Backend export engine: 31 models, field stripping, vision file bundling, ZIP creation, REPEATABLE READ, SHA-256 checksums. 1-2 sessions. |
+| 0844b | Tenant Import Service + Schema Diff | Not Started | Medium | Backend import: schema compatibility analysis, UPSERT pipeline, topological sort, vision file extraction, TSVECTOR regen. Heaviest phase, 2-3 sessions. Depends on 0844a. |
+| 0844c | Tenant Data Frontend | Not Started | Medium | Vue component in Database tab: export/import UI, compatibility report dialog, stale backup warning, WebSocket progress. 1 session. Depends on 0844a+b. |
 | 0855a | Setup Wizard — Backend Schema + API Endpoints | Not Started | High | User setup state columns (setup_complete, setup_selected_tools, setup_step_completed), PATCH endpoint, active API key lookup. Series: 0855a-g. |
 | 0855b | Setup Wizard — WebSocket Setup Events | Not Started | High | 3 new event types: setup:tool_connected, setup:commands_installed, setup:agents_downloaded. Parallel with 0855a. |
 | 0855c | Setup Wizard — Overlay Shell + Step 1 (Tool Selection) | Not Started | High | Full-screen overlay component, 4-step stepper, tool selection cards (Claude/Codex/Gemini). Depends on 0855a. |
@@ -573,6 +577,7 @@ completed/reference/
 **0826** (Enhancement & Feature Series): 0826 Staging Completion Hardening (COMPLETE, `e972e2f9`+`ddfda73d`)
 **0827** (Enhancement & Feature Series): 0827 Agent Reactivation & Continuation (COMPLETE, 7 commits, 4 phases: display names + auto-block + tools + todo_append)
 **0828** (Enhancement & Feature Series): 0828 OAuth 2.1 PKCE Flow for MCP Client Authorization (ACTIVE)
+**0844a-c** (Enhancement & Feature Series): 0844 Tenant Data Export/Import series (ALL NOT STARTED). 0844a export service, 0844b import+schema diff, 0844c frontend. Sequential with manual gates between phases.
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
