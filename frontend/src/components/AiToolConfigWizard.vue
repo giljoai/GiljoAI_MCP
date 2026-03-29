@@ -232,7 +232,7 @@ const selectedToolName = computed(
 
 const isHttps = computed(() => window.location.protocol === 'https:')
 
-const certTrustCommandWindows = "[System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', (mkcert -CAROOT) + '\\rootCA.pem', 'User')"
+const certTrustCommandWindows = "$env:NODE_EXTRA_CA_CERTS = (mkcert -CAROOT) + '\\rootCA.pem'; [System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', (mkcert -CAROOT) + '\\rootCA.pem', 'User')"
 const certTrustCommandUnix = 'export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"'
 
 const envVarCommand = computed(() => {
