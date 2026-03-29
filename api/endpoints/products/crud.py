@@ -75,6 +75,7 @@ def _build_product_response(product, stats=None, override_active=None) -> Produc
             design_patterns=arch.design_patterns,
             api_style=arch.api_style,
             architecture_notes=arch.architecture_notes,
+            coding_conventions=arch.coding_conventions,
         )
         if arch
         else None
@@ -117,6 +118,7 @@ def _build_product_response(product, stats=None, override_active=None) -> Produc
         architecture=architecture,
         test_config=test_config,
         core_features=product.core_features,
+        brand_guidelines=product.brand_guidelines,
         is_active=is_active,
         product_memory=pm,
         target_platforms=product.target_platforms or ["all"],
@@ -142,6 +144,7 @@ async def create_product(
         architecture=request.architecture.model_dump() if request.architecture else None,
         test_config=request.test_config.model_dump() if request.test_config else None,
         core_features=request.core_features,
+        brand_guidelines=request.brand_guidelines,
         target_platforms=request.target_platforms,  # Handover 0425 Phase 2
     )
 

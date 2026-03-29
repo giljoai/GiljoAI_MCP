@@ -163,6 +163,7 @@ class ProductService:
                 design_patterns=architecture.get("design_patterns", ""),
                 api_style=architecture.get("api_style", ""),
                 architecture_notes=architecture.get("architecture_notes", ""),
+                coding_conventions=architecture.get("coding_conventions", ""),
             )
             session.add(arch)
 
@@ -205,6 +206,7 @@ class ProductService:
             arch.design_patterns = architecture.get("design_patterns", "")
             arch.api_style = architecture.get("api_style", "")
             arch.architecture_notes = architecture.get("architecture_notes", "")
+            arch.coding_conventions = architecture.get("coding_conventions", "")
 
         test_config = config_data.get("test_config")
         if test_config and isinstance(test_config, dict):
@@ -231,6 +233,7 @@ class ProductService:
         architecture: dict[str, Any] | None = None,
         test_config: dict[str, Any] | None = None,
         core_features: str | None = None,
+        brand_guidelines: str | None = None,
         product_memory: dict[str, Any] | None = None,  # Handover 0135
         target_platforms: list[str] | None = None,  # Handover 0425
     ) -> Product:
@@ -303,6 +306,7 @@ class ProductService:
                     description=description,
                     project_path=project_path,
                     core_features=core_features,
+                    brand_guidelines=brand_guidelines,
                     product_memory=validated_memory,  # Handover 0135
                     target_platforms=target_platforms or ["all"],  # Handover 0425
                     is_active=False,  # Products start inactive
