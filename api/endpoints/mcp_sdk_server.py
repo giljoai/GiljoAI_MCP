@@ -833,9 +833,39 @@ def build_mcp_app():
     Returns a Starlette application ready to be mounted in FastAPI via:
         app.mount("/mcp", build_mcp_app())
 
-    The MCP endpoint will be available at /mcp/mcp (mount path + streamable_http_path).
-    To serve at exactly /mcp, mount at "/" -- but note this catches unmatched routes.
+    Lifecycle: The SDK's StreamableHTTPSessionManager requires its run()
+    context to be active before handling requests. Since FastAPI does not
+    propagate lifespan events to mounted sub-apps, call
+    start_mcp_session_manager() / stop_mcp_session_manager() in the
+    FastAPI lifespan (see app.py).
     """
     starlette_app = mcp.streamable_http_app()
     starlette_app.add_middleware(MCPAuthMiddleware)
     return starlette_app
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle management — called from FastAPI lifespan in app.py
+# ---------------------------------------------------------------------------
+
+_session_manager_cm = None
+
+
+async def start_mcp_session_manager():
+    """Start the SDK's session manager task group. Call during FastAPI startup."""
+    global _session_manager_cm  # noqa: PLW0603
+    if not hasattr(mcp, "_session_manager") or mcp._session_manager is None:
+        # Force creation by building the app (idempotent if already built)
+        mcp.streamable_http_app()
+    _session_manager_cm = mcp._session_manager.run()
+    await _session_manager_cm.__aenter__()
+    logger.info("MCP SDK session manager started")
+
+
+async def stop_mcp_session_manager():
+    """Stop the SDK's session manager task group. Call during FastAPI shutdown."""
+    global _session_manager_cm  # noqa: PLW0603
+    if _session_manager_cm:
+        await _session_manager_cm.__aexit__(None, None, None)
+        _session_manager_cm = None
+        logger.info("MCP SDK session manager stopped")
