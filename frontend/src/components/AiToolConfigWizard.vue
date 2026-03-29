@@ -110,19 +110,23 @@
               <v-radio label="Linux / macOS / Git Bash" value="unix" density="compact" />
             </v-radio-group>
             <v-alert
-              type="warning"
+              type="info"
               variant="tonal"
               density="compact"
               class="mb-3"
             >
               <strong>HTTPS with self-signed certificates:</strong> Node.js-based AI coding agents require a one-time setup step.
               <template v-if="certPlatform === 'windows'">
-                <code class="d-block mt-1 text-body-2">[System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', (mkcert -CAROOT) + '\rootCA.pem', 'User')</code>
-                <span class="text-caption">Then restart your terminal. This is a one-time setup.</span>
+                <v-sheet color="blue-darken-4" rounded="lg" class="pa-3 mt-2">
+                  <code class="d-block text-white text-body-2" style="white-space: pre-wrap; word-break: break-all;">[System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', (mkcert -CAROOT) + '\rootCA.pem', 'User')</code>
+                </v-sheet>
+                <span class="text-caption mt-1 d-block">Then restart your terminal. This is a one-time setup.</span>
               </template>
               <template v-else>
-                <code class="d-block mt-1 text-body-2">export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"</code>
-                <span class="text-caption">Add to your <code>~/.bashrc</code> or <code>~/.zshrc</code> to make it permanent.</span>
+                <v-sheet color="blue-darken-4" rounded="lg" class="pa-3 mt-2">
+                  <code class="d-block text-white text-body-2">export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"</code>
+                </v-sheet>
+                <span class="text-caption mt-1 d-block">Add to your <code>~/.bashrc</code> or <code>~/.zshrc</code> to make it permanent.</span>
               </template>
             </v-alert>
           </template>
