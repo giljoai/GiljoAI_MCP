@@ -184,7 +184,6 @@ const handleCopyPrompt = async () => {
   loadingStates.value.copyPrompt = true
   try {
     emit('copy-prompt', props.job)
-    showToast({ message: 'Prompt copied to clipboard!', type: 'success' })
   } finally {
     loadingStates.value.copyPrompt = false
   }

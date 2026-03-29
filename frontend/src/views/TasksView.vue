@@ -3,63 +3,29 @@
     <!-- Header -->
     <v-row align="center" class="mb-4">
       <v-col>
-        <h1 class="text-h4">Tasks</h1>
-      </v-col>
-    </v-row>
-
-    <!-- Task Statistics -->
-    <v-row class="mb-4">
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="stats-card">
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon color="info" size="large">mdi-clipboard-list</v-icon>
-              <div class="ml-4">
-                <div class="text-h5">{{ totalTasks }}</div>
-                <div class="text-caption">Total Tasks</div>
-              </div>
+        <div class="d-flex align-center">
+          <h1 class="text-h4">Tasks</h1>
+          <v-tooltip location="bottom start" max-width="600">
+            <template #activator="{ props }">
+              <v-icon v-bind="props" size="18" color="medium-emphasis" class="ml-2">mdi-information-outline</v-icon>
+            </template>
+            <div>
+              <div class="font-weight-bold mb-1">Task Field Reference</div>
+              <div class="text-caption text-medium-emphasis mb-2">Instructions for /gil_add</div>
+              <div><span class="font-weight-medium">title (required):</span> Free text</div>
+              <div class="mt-1"><span class="font-weight-medium">description (recommended):</span> Free text</div>
+              <div class="mt-1"><span class="font-weight-medium">status (optional):</span></div>
+              <div class="ml-2 text-caption">pending · in_progress · completed · blocked · cancelled · converted</div>
+              <div class="mt-1"><span class="font-weight-medium">priority (optional):</span></div>
+              <div class="ml-2 text-caption">low · medium · high · critical</div>
+              <div class="mt-1"><span class="font-weight-medium">category (optional):</span></div>
+              <div class="ml-2 text-caption">general · feature · bug · improvement · docs · testing</div>
+              <div class="mt-2"><span class="font-weight-medium">Example:</span></div>
+              <div class="ml-2 text-caption">/gil_add add task ... description ...</div>
             </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="stats-card">
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon color="warning" size="large">mdi-clock-outline</v-icon>
-              <div class="ml-4">
-                <div class="text-h5">{{ pendingTasks }}</div>
-                <div class="text-caption">Pending</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="stats-card">
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon color="info" size="large">mdi-progress-clock</v-icon>
-              <div class="ml-4">
-                <div class="text-h5">{{ inProgressTasks }}</div>
-                <div class="text-caption">In Progress</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="stats-card">
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon color="success" size="large">mdi-check-circle</v-icon>
-              <div class="ml-4">
-                <div class="text-h5">{{ completedTasks }}</div>
-                <div class="text-caption">Completed</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
+          </v-tooltip>
+        </div>
+        <p class="text-body-2 text-medium-emphasis mt-1">Use MCP tool /gil_add to have the AI coding agent add ideas and thoughts to Task dashboard.</p>
       </v-col>
     </v-row>
 
@@ -367,7 +333,7 @@
     </v-card>
 
     <!-- Create/Edit Task Dialog -->
-    <v-dialog v-model="showTaskDialog" max-width="600">
+    <v-dialog v-model="showTaskDialog" max-width="600" persistent>
       <v-card v-draggable>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
@@ -626,11 +592,6 @@ const filteredTasks = computed(() => {
 const hierarchicalTasks = computed(() => {
   return filteredTasks.value
 })
-
-const totalTasks = computed(() => tasks.value.length)
-const pendingTasks = computed(() => tasks.value.filter((t) => t.status === 'pending').length)
-const inProgressTasks = computed(() => tasks.value.filter((t) => t.status === 'in_progress').length)
-const completedTasks = computed(() => tasks.value.filter((t) => t.status === 'completed').length)
 
 // Methods
 function getStatusColor(status) {

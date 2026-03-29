@@ -121,6 +121,7 @@ from .products import (
     ProductTechStack,
     ProductTestConfig,
     VisionDocument,
+    VisionDocumentSummary,
 )
 
 # Project models
@@ -202,6 +203,7 @@ __all__ = [
     "User",
     "UserFieldPriority",
     "VisionDocument",
+    "VisionDocumentSummary",
     "generate_project_alias",
     "generate_uuid",
 ]
