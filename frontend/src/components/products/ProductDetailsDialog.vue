@@ -244,7 +244,7 @@
         </div>
 
         <!-- Configuration Data Display -->
-        <div v-if="product.tech_stack || product.architecture || product.test_config || product.core_features" class="mt-4">
+        <div v-if="product.tech_stack || product.architecture || product.test_config || product.core_features || product.brand_guidelines" class="mt-4">
           <v-divider class="mb-3"></v-divider>
           <div class="text-subtitle-2 mb-2">Configuration Data</div>
 
@@ -294,12 +294,28 @@
                   <div class="text-caption font-weight-bold">API Style:</div>
                   <div class="text-body-2">{{ product.architecture.api_style }}</div>
                 </div>
-                <div v-if="product.architecture.design_patterns">
+                <div v-if="product.architecture.design_patterns" class="mb-2">
                   <div class="text-caption font-weight-bold">Design Patterns:</div>
                   <div class="text-body-2">
                     {{ product.architecture.design_patterns }}
                   </div>
                 </div>
+                <div v-if="product.architecture.coding_conventions">
+                  <div class="text-caption font-weight-bold">Coding Conventions:</div>
+                  <div class="text-body-2" style="white-space: pre-line">{{ product.architecture.coding_conventions }}</div>
+                </div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+
+            <!-- Features & Testing -->
+            <!-- Brand Guidelines -->
+            <v-expansion-panel v-if="product.brand_guidelines">
+              <v-expansion-panel-title>
+                <v-icon start>mdi-palette-outline</v-icon>
+                Brand & Design Guidelines
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <div class="text-body-2" style="white-space: pre-line">{{ product.brand_guidelines }}</div>
               </v-expansion-panel-text>
             </v-expansion-panel>
 

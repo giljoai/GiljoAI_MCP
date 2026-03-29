@@ -73,7 +73,13 @@ async def get_architecture(
         if not arch:
             return {
                 "source": "architecture",
-                "data": {"primary_pattern": "", "design_patterns": "", "api_style": "", "architecture_notes": ""},
+                "data": {
+                    "primary_pattern": "",
+                    "design_patterns": "",
+                    "api_style": "",
+                    "architecture_notes": "",
+                    "coding_conventions": "",
+                },
                 "metadata": {"product_id": product_id, "tenant_key": tenant_key},
             }
 
@@ -82,6 +88,7 @@ async def get_architecture(
             "design_patterns": arch.design_patterns or "",
             "api_style": arch.api_style or "",
             "architecture_notes": arch.architecture_notes or "",
+            "coding_conventions": arch.coding_conventions or "",
         }
 
         total_tokens = estimate_tokens(data)
