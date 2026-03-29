@@ -189,13 +189,16 @@ class Project(Base):
     memory_entries = relationship("ProductMemoryEntry", back_populates="project")  # Handover 0390a
 
     __table_args__ = (
-        UniqueConstraint(
+        # Partial unique index: only enforces uniqueness on active (non-deleted) rows.
+        # Allows re-use of taxonomy combinations after soft-deleting a project.
+        Index(
+            "uq_project_taxonomy_active",
             "tenant_key",
             "project_type_id",
             "series_number",
             "subseries",
-            name="uq_project_taxonomy",
-            postgresql_nulls_not_distinct=True,
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         Index("idx_project_tenant", "tenant_key"),
         Index("idx_project_status", "status"),
