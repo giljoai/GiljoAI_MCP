@@ -863,7 +863,8 @@ async function handleStopProject(_agent) {
     const response = await api.prompts.termination(projectId.value)
 
     if (response.data.prompt) {
-      await clipboardCopy(response.data.prompt)
+      const copyOk = await clipboardCopy(response.data.prompt)
+      if (!copyOk) throw new Error('Clipboard copy failed')
 
       showToast({
         message: `Termination prompt copied! Paste into orchestrator terminal. (${response.data.agent_count} agents)`,
@@ -947,7 +948,10 @@ async function sendMessage() {
  * Copy helper using shared composable
  */
 async function copyToClipboard(text) {
-  await clipboardCopy(text)
+  const success = await clipboardCopy(text)
+  if (!success) {
+    throw new Error('Clipboard copy failed')
+  }
 }
 
 // WebSocket updates for jobs/messages flow through the centralized router (0379a)
