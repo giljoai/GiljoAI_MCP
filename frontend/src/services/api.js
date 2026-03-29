@@ -449,6 +449,7 @@ export const api = {
       apiClient.post('/api/auth/verify-pin-and-reset-password', data),
     setRecoveryPin: (data) => apiClient.post('/api/auth/set-recovery-pin', data),
     resetUserPassword: (userId) => apiClient.post(`/api/v1/users/${userId}/reset-password`),
+    updateSetupState: (payload) => apiClient.patch('/api/auth/me/setup-state', payload),
   },
 
   // API Key Management
