@@ -1156,12 +1156,8 @@ class UnifiedInstaller:
                 print(f"{Fore.RED}{Style.BRIGHT}  one extra step to trust your HTTPS certificate.{Style.RESET_ALL}\n")
 
                 if current_os == "Windows":
-                    print(f"  {Fore.GREEN}Run in PowerShell (as Administrator):{Style.RESET_ALL}")
-                    print(f"  {Fore.CYAN}[System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', '{ca_cert}', 'User'){Style.RESET_ALL}")
-                    print(f"\n  {Fore.GREEN}Or set manually:{Style.RESET_ALL}")
-                    print(f"  {Fore.WHITE}Settings > System > Environment Variables > User variables")
-                    print(f"  Name:  NODE_EXTRA_CA_CERTS")
-                    print(f"  Value: {ca_cert}{Style.RESET_ALL}")
+                    print(f"  {Fore.GREEN}Run in PowerShell (sets current + future sessions):{Style.RESET_ALL}")
+                    print(f"  {Fore.CYAN}$env:NODE_EXTRA_CA_CERTS = '{ca_cert}'; [System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', '{ca_cert}', 'User'){Style.RESET_ALL}")
                 elif current_os == "Darwin":
                     print(f"  {Fore.GREEN}Run in your terminal:{Style.RESET_ALL}")
                     print(f"  {Fore.CYAN}echo 'export NODE_EXTRA_CA_CERTS=\"{ca_cert}\"' >> ~/.zshrc && source ~/.zshrc{Style.RESET_ALL}")
