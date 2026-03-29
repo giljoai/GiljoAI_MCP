@@ -853,18 +853,26 @@ Expected: {{"status": "healthy", "database": "connected"}}
 If failed: Abort and notify user
 
 ── STEP 1b: Initialize Progress Tracking ───────────────────────────────────
-Create a TodoWrite task list for your staging work, then sync with dashboard:
+DO NOT report progress yet. Steps 0-3 are internal startup — do not track them.
+
+After Step 4 (Create Mission), you will have a real plan with work items.
+THAT is when you initialize progress tracking — report the plan's work items
+as your todo list, NOT the protocol steps you are following.
 
 Call: report_progress(
           job_id='{orchestrator_id}',
-          todo_items=[{{"content": "<step description>", "status": "pending"}}]
+          todo_items=[{{"content": "<work item from your plan>", "status": "pending"}}]
       )
 Note: tenant_key auto-injected by server from API key session
 
-Scope: Orchestration tasks ONLY — verifying, fetching context, discovering
-       agents, planning, spawning. NEVER include implementation tasks.
+WHAT TO TRACK: The actual deliverables from your mission plan.
+  Good: "Build authentication API", "Create user dashboard", "Write integration tests"
+  Bad:  "Verify MCP health", "Fetch context", "Discover agent templates"
 
-Update TodoWrite AND call report_progress() as each staging step completes.
+The dashboard shows these items to the user. They want to see what the
+PROJECT is doing, not what the orchestrator's boot sequence looks like.
+
+Update as each work item gets assigned to an agent (spawned → in_progress).
 
 {step2_body}
 
