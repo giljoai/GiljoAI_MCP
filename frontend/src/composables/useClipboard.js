@@ -46,18 +46,18 @@ export function useClipboard() {
       const textarea = document.createElement('textarea')
       textarea.value = text
       textarea.setAttribute('readonly', '')
-      textarea.style.position = 'fixed'
-      textarea.style.left = '-9999px'
-      textarea.style.top = '-9999px'
-      textarea.style.opacity = '0'
+      textarea.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;'
 
-      // Append inside the active Vuetify dialog/overlay if one exists,
+      // Append inside the topmost active Vuetify overlay if one exists,
       // otherwise document.body. Vuetify dialogs with retain-focus steal
       // focus from elements outside the dialog, breaking execCommand('copy').
-      const container = document.querySelector('.v-overlay--active .v-overlay__content') || document.body
+      // Use querySelectorAll and pick the LAST match (topmost z-order).
+      const overlays = document.querySelectorAll('.v-overlay--active .v-overlay__content')
+      const container = overlays.length > 0 ? overlays[overlays.length - 1] : document.body
       container.appendChild(textarea)
-      textarea.focus()
+      textarea.focus({ preventScroll: true })
       textarea.select()
+      textarea.setSelectionRange(0, textarea.value.length)
 
       const successful = document.execCommand('copy')
       container.removeChild(textarea)
