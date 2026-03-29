@@ -14,6 +14,7 @@ from typing import Any
 
 from fastapi import HTTPException
 from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -34,6 +35,10 @@ mcp = FastMCP(
     stateless_http=True,
     json_response=True,
     streamable_http_path="/",
+    # Disable SDK's built-in DNS rebinding protection — our MCPAuthMiddleware
+    # handles auth (Bearer token + tenant isolation). The server binds to
+    # 127.0.0.1 (localhost HTTP) or LAN IP (HTTPS only), configured at install.
+    transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
 )
 
 
@@ -828,9 +833,9 @@ class MCPAuthMiddleware:
 
 def build_mcp_app():
     """
-    Build the MCP Starlette app with auth middleware applied.
+    Build the MCP ASGI app with auth middleware applied.
 
-    Returns a Starlette application ready to be mounted in FastAPI via:
+    Returns an ASGI application ready to be mounted in FastAPI via:
         app.mount("/mcp", build_mcp_app())
 
     Lifecycle: The SDK's StreamableHTTPSessionManager requires its run()
@@ -839,7 +844,26 @@ def build_mcp_app():
     start_mcp_session_manager() / stop_mcp_session_manager() in the
     FastAPI lifespan (see app.py).
     """
-    starlette_app = mcp.streamable_http_app()
+    from starlette.applications import Starlette
+    from starlette.routing import Route
+
+    # Ensure session manager is created
+    if mcp._session_manager is None:
+        mcp.streamable_http_app()
+
+    # Build a minimal Starlette app with the SDK's ASGI handler
+    # Use redirect_slashes=False to prevent 307 redirect from /mcp to /mcp/
+    from mcp.server.fastmcp.server import StreamableHTTPASGIApp
+
+    asgi_handler = StreamableHTTPASGIApp(mcp._session_manager)
+
+    starlette_app = Starlette(
+        debug=False,
+        routes=[
+            Route("/", endpoint=asgi_handler),
+            Route("/{path:path}", endpoint=asgi_handler),
+        ],
+    )
     starlette_app.add_middleware(MCPAuthMiddleware)
     return starlette_app
 
