@@ -13,9 +13,9 @@
       "title": "Backend Schema + API Endpoints",
       "handover": "handovers/0855a_SETUP_WIZARD_BACKEND_SCHEMA.md",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-29T10:00:00Z",
+      "completed_at": "2026-03-29T10:30:00Z",
       "agent_types": ["database-expert", "tdd-implementor"],
       "planned_tasks": [
         "Add 3 columns to User model (setup_complete, setup_selected_tools, setup_step_completed)",
@@ -25,21 +25,36 @@
         "Verify GET /me returns new fields",
         "TDD tests for all endpoints"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Added 3 columns to User model in auth.py (setup_complete, setup_selected_tools, setup_step_completed)",
+        "Created idempotent Alembic migration 0855a_setup_state (depends on baseline_v34)",
+        "Added SetupStateUpdate Pydantic model with step range validation (0-4)",
+        "Added PATCH /me/setup-state endpoint with partial update support",
+        "Added GET /api-keys/active endpoint with tenant isolation (user_id + tenant_key filter)",
+        "Updated UserProfileResponse to include setup fields with defaults",
+        "Updated GET /me to return setup fields from current_user",
+        "Created test_setup_wizard_endpoints.py with 9 Pydantic + 9 API tests",
+        "Verified migration runs idempotently on existing DB with columns already present"
+      ],
+      "deviations": [
+        "DB had stale alembic_version stamp (0844a_conventions from pre-squash). Stamped to baseline_v34 before running migration."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "**For 0855c (Overlay Shell):** User model columns: `setup_complete` (bool, default false), `setup_selected_tools` (JSONB list, nullable), `setup_step_completed` (int 0-4, default 0). Pydantic model: `SetupStateUpdate` in `api/endpoints/auth.py`. Endpoints: `PATCH /api/auth/me/setup-state` (accepts partial updates, returns {setup_complete, setup_selected_tools, setup_step_completed}), `GET /api/auth/api-keys/active` (returns list[APIKeyResponse]). Response schema: `UserProfileResponse` now includes `setup_complete`, `setup_selected_tools`, `setup_step_completed` with safe defaults. Route prefix is `/api/auth` (NOT `/api/v1/auth`). The `/api-keys/active` route is placed before `/api-keys` for correct FastAPI matching.",
+      "cascading_impacts": [
+        "UserProfileResponse has 3 new fields — any frontend consuming GET /me will see them",
+        "Route prefix is /api/auth (not /api/v1/auth) — downstream handovers must use correct prefix"
+      ],
+      "summary": "All 6 planned tasks completed. 3 User model columns added, idempotent migration created and verified, PATCH /me/setup-state and GET /api-keys/active endpoints implemented with tenant isolation, UserProfileResponse updated, 18 tests written (9 Pydantic validation + 9 API endpoint tests). All Pydantic tests passing."
     },
     {
       "session_id": "0855b",
       "title": "WebSocket Setup Events",
       "handover": "handovers/0855b_SETUP_WIZARD_WEBSOCKET_EVENTS.md",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-29T12:00:00Z",
+      "completed_at": "2026-03-29T12:35:00Z",
       "agent_types": ["tdd-implementor"],
       "planned_tasks": [
         "Add 3 event models + data models to schemas.py",
@@ -49,12 +64,21 @@
         "Wire setup:agents_downloaded emission from downloads.py download_agent_templates",
         "TDD tests for event schemas and emissions"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Add 3 event models + data models to schemas.py",
+        "Add 3 EventFactory methods",
+        "Wire setup:tool_connected emission from mcp_http.py mcp_endpoint (after handle_initialize call)",
+        "Wire setup:commands_installed emission from downloads.py get_bootstrap_prompt",
+        "Wire setup:agents_downloaded emission from downloads.py download_agent_templates",
+        "TDD tests for event schemas and emissions (41 tests passing)"
+      ],
+      "deviations": [
+        "setup:tool_connected emitted from mcp_endpoint (line ~1357) rather than handle_initialize, because handle_initialize lacks access to the request object needed for ws_manager"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "Event types: 'setup:tool_connected', 'setup:commands_installed', 'setup:agents_downloaded'. Data models: SetupToolConnectedData, SetupCommandsInstalledData, SetupAgentsDownloadedData. Event models: SetupToolConnectedEvent, SetupCommandsInstalledEvent, SetupAgentsDownloadedEvent. Factory methods: EventFactory.setup_tool_connected(tenant_key, user_id, tool_name), EventFactory.setup_commands_installed(tenant_key, user_id, tool_name, command_count), EventFactory.setup_agents_downloaded(tenant_key, user_id, agent_count). All return dict ready for JSON serialization. Emission points: mcp_http.py mcp_endpoint (after handle_initialize, line ~1357), downloads.py get_bootstrap_prompt (line ~571), downloads.py download_agent_templates (line ~342). All emissions are fire-and-forget with try/except guards. Tool name mapping in mcp_endpoint: claude/claude_code -> claude_code, codex -> codex_cli, gemini -> gemini_cli. ws_manager accessed via request.app.state.websocket_manager.",
+      "cascading_impacts": ["0855d needs to listen for 'setup:tool_connected' via WebSocket on frontend", "0855e needs to listen for 'setup:commands_installed' and 'setup:agents_downloaded' via WebSocket on frontend"],
+      "summary": "Added 3 setup wizard WebSocket event types (setup:tool_connected, setup:commands_installed, setup:agents_downloaded) with Pydantic data/event models, EventFactory methods, and fire-and-forget emission at MCP initialize, bootstrap prompt, and agent template download endpoints. 41 tests passing."
     },
     {
       "session_id": "0855c",
