@@ -570,6 +570,55 @@
       </v-alert>
     </BaseDialog>
 
+    <!-- Clear Mission Confirmation Dialog -->
+    <BaseDialog
+      v-model="showClearMissionDialog"
+      type="warning"
+      title="Clear Mission?"
+      confirm-label="Clear"
+      size="sm"
+      @confirm="projectData.mission = ''; showClearMissionDialog = false"
+      @cancel="showClearMissionDialog = false"
+    >
+      <p>Clear the mission? It will be regenerated on next staging.</p>
+    </BaseDialog>
+
+    <!-- Purge Single Project Confirmation Dialog -->
+    <BaseDialog
+      v-model="showPurgeSingleDialog"
+      type="danger"
+      title="Permanently Delete Project?"
+      confirm-label="Delete Forever"
+      size="sm"
+      @confirm="purgeDeletedProject(projectToPurge); showPurgeSingleDialog = false"
+      @cancel="showPurgeSingleDialog = false"
+    >
+      <p class="mb-3">
+        Permanently delete <strong>"{{ projectToPurge?.name }}"</strong>?
+      </p>
+      <v-alert type="error" variant="tonal" density="compact">
+        This will remove all associated data and <strong>cannot be undone</strong>.
+      </v-alert>
+    </BaseDialog>
+
+    <!-- Purge All Deleted Projects Confirmation Dialog -->
+    <BaseDialog
+      v-model="showPurgeAllDialog"
+      type="danger"
+      title="Permanently Delete All?"
+      confirm-label="Delete All Forever"
+      size="sm"
+      @confirm="executePurgeAll"
+      @cancel="showPurgeAllDialog = false"
+    >
+      <p class="mb-3">
+        Permanently delete <strong>all {{ deletedProjects.length }}</strong> projects in the Deleted Projects list?
+      </p>
+      <v-alert type="error" variant="tonal" density="compact">
+        This will remove all associated data and <strong>cannot be undone</strong>.
+      </v-alert>
+    </BaseDialog>
+
     <!-- Deleted Projects Modal -->
     <v-dialog v-model="showDeletedDialog" max-width="800" persistent retain-focus>
       <v-card v-draggable>
@@ -767,6 +816,10 @@ const currentPage = ref(1)
 const itemsPerPage = ref(10)
 const purgingProjectId = ref(null)
 const purgingAllDeleted = ref(false)
+const showClearMissionDialog = ref(false)
+const showPurgeSingleDialog = ref(false)
+const projectToPurge = ref(null)
+const showPurgeAllDialog = ref(false)
 
 // Sort configuration
 const sortConfig = ref([{ key: 'created_at', order: 'desc' }])
@@ -1192,9 +1245,7 @@ function viewFullMission() {
 }
 
 function clearMission() {
-  if (confirm('Clear the mission? It will be regenerated on next staging.')) {
-    projectData.value.mission = ''
-  }
+  showClearMissionDialog.value = true
 }
 
 async function editProject(project) {
@@ -1264,11 +1315,8 @@ async function restoreFromDelete(project) {
 
 function confirmPurgeDeleted(project) {
   if (!project) return
-  const confirmed = window.confirm(
-    `Permanently delete "${project.name}"? This will remove associated data and cannot be undone.`,
-  )
-  if (!confirmed) return
-  purgeDeletedProject(project)
+  projectToPurge.value = project
+  showPurgeSingleDialog.value = true
 }
 
 async function purgeDeletedProject(project) {
@@ -1288,21 +1336,19 @@ async function purgeDeletedProject(project) {
   }
 }
 
-async function confirmPurgeAllDeleted() {
+function confirmPurgeAllDeleted() {
   if (deletedProjects.value.length === 0 || purgingAllDeleted.value) return
+  showPurgeAllDialog.value = true
+}
 
-  const confirmed = window.confirm(
-    'Permanently delete all projects in the Deleted Projects list? This cannot be undone.',
-  )
-  if (!confirmed) return
-
+async function executePurgeAll() {
+  showPurgeAllDialog.value = false
   purgingAllDeleted.value = true
   try {
     await projectStore.purgeAllDeletedProjects()
     showDeletedDialog.value = false
   } catch (error) {
     console.error('Failed to purge all deleted projects:', error)
-    alert('Failed to permanently delete deleted projects. Please try again.')
   } finally {
     purgingAllDeleted.value = false
     purgingProjectId.value = null
