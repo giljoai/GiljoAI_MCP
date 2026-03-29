@@ -780,24 +780,16 @@ class MCPAuthMiddleware:
         # Path 2: API key (via MCPSessionManager for DB lookup)
         if not tenant_key and api_key_value:
             try:
+                from api.app import state
                 from api.endpoints.mcp_session import MCPSessionManager
 
-                # Get db_manager from app state (same path as get_db_session dependency)
-                app = scope.get("app")
-                db_manager = getattr(getattr(app, "state", None), "api_state", None)
-                if db_manager is None:
-                    # Mounted sub-app: walk parent apps
-                    db_manager = getattr(getattr(getattr(app, "state", None), "api_state", None), "db_manager", None)
-                else:
-                    db_manager = db_manager.db_manager
-
-                if db_manager is None:
-                    logger.error("db_manager not available in app state for MCP auth")
+                if not state.db_manager:
+                    logger.error("db_manager not available for MCP auth")
                     resp = JSONResponse({"error": "Database not initialized"}, status_code=503)
                     await resp(scope, receive, send)
                     return
 
-                async with db_manager.get_session_async() as db:
+                async with state.db_manager.get_session_async() as db:
                     session_mgr = MCPSessionManager(db)
                     session = await session_mgr.get_or_create_session(api_key_value)
                     if session:
