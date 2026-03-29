@@ -101,6 +101,7 @@ class Product(Base):
 
     # Core features (extracted from config_data in 0840c)
     core_features = Column(Text, nullable=True, comment="Core product features (was config_data->'features'->>'core')")
+    brand_guidelines = Column(Text, nullable=True, comment="Brand & design guidelines for frontend-facing agents")
 
     # 360 Memory Management storage (Handover 0135, updated 0700c)
     # Note: sequential_history removed in 0700c - use product_memory_entries table
@@ -388,6 +389,7 @@ class ProductArchitecture(Base):
     design_patterns = Column(Text, nullable=True)
     api_style = Column(Text, nullable=True)
     architecture_notes = Column(Text, nullable=True)
+    coding_conventions = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
