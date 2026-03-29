@@ -177,21 +177,31 @@
           <template v-slot:item.name="{ item }">
             <div class="py-2">
               <div class="d-flex align-center">
-                <v-chip
-                  v-if="item.project_type_id || item.series_number"
-                  :color="item.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR"
-                  size="x-small"
-                  variant="flat"
-                  class="mr-2"
-                  :title="item.project_type?.label || 'Untyped'"
-                >
-                  {{ item.taxonomy_alias }}
-                </v-chip>
+                <v-tooltip v-if="item.project_type_id || item.series_number" :text="(item.project_type?.label || 'Untyped') + ' — ' + item.taxonomy_alias">
+                  <template #activator="{ props: ttProps }">
+                    <!-- Full pill badge: desktop -->
+                    <v-chip
+                      v-bind="ttProps"
+                      :color="item.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR"
+                      size="x-small"
+                      variant="flat"
+                      class="mr-2 taxonomy-chip-full"
+                    >
+                      {{ item.taxonomy_alias }}
+                    </v-chip>
+                    <!-- Colored dot: compact viewports -->
+                    <span
+                      v-bind="ttProps"
+                      class="taxonomy-dot mr-2"
+                      :style="{ backgroundColor: item.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR }"
+                    ></span>
+                  </template>
+                </v-tooltip>
                 <span class="font-weight-bold text-body-2" style="color: rgb(var(--v-theme-primary))">
                   {{ item.name }}
                 </span>
               </div>
-              <div class="text-caption text-medium-emphasis" style="font-family: monospace">
+              <div class="text-caption text-medium-emphasis project-id-text" style="font-family: monospace">
                 Project ID: {{ item.id }}
               </div>
             </div>
@@ -216,38 +226,57 @@
 
           <!-- Staged Column -->
           <template v-slot:item.staging_status="{ item }">
+            <!-- Full pill: desktop -->
             <v-chip
               :color="isProjectStaged(item) ? 'success' : 'grey'"
               :style="isProjectStaged(item) ? {} : { color: '#1a237e' }"
               size="small"
               variant="flat"
+              class="staged-full"
             >
               {{ isProjectStaged(item) ? 'Yes' : 'No' }}
             </v-chip>
+            <!-- Compact dot: small viewports -->
+            <span
+              class="staged-dot"
+              :style="{ backgroundColor: isProjectStaged(item) ? '#4caf50' : '#9e9e9e' }"
+            >{{ isProjectStaged(item) ? 'Y' : 'N' }}</span>
           </template>
 
           <!-- Created Date Column -->
           <template v-slot:item.created_at="{ item }">
-            {{ formatDate(item.created_at) }}
+            <span class="date-full">{{ formatDate(item.created_at) }}</span>
+            <span class="date-compact">{{ formatDateCompact(item.created_at) }}</span>
           </template>
 
           <!-- Completed Date Column -->
           <template v-slot:item.completed_at="{ item }">
             <div class="text-center">
-              {{
-                item.status === 'completed' || item.status === 'cancelled' || item.status === 'terminated'
-                  ? formatDate(item.completed_at || item.updated_at)
-                  : '—'
-              }}
+              <template v-if="item.status === 'completed' || item.status === 'cancelled' || item.status === 'terminated'">
+                <span class="date-full">{{ formatDate(item.completed_at || item.updated_at) }}</span>
+                <span class="date-compact">{{ formatDateCompact(item.completed_at || item.updated_at) }}</span>
+              </template>
+              <template v-else>—</template>
             </div>
           </template>
 
           <!-- Status Column (display-only badge; actions moved to ... menu) -->
           <template v-slot:item.status="{ item }">
             <div class="d-flex align-center justify-center">
-              <StatusBadge
-                :status="normalizeStatus(item.status)"
-              />
+              <!-- Full pill: desktop -->
+              <span class="status-full">
+                <StatusBadge :status="normalizeStatus(item.status)" />
+              </span>
+              <!-- Compact dot with initial: small viewports -->
+              <v-tooltip :text="normalizeStatus(item.status)">
+                <template #activator="{ props: ttProps }">
+                  <span
+                    v-bind="ttProps"
+                    class="status-dot"
+                    :style="{ backgroundColor: statusDotColor(normalizeStatus(item.status)) }"
+                  >{{ normalizeStatus(item.status).charAt(0).toUpperCase() }}</span>
+                </template>
+              </v-tooltip>
             </div>
           </template>
 
@@ -755,6 +784,29 @@ function formatDate(dateStr, includeTime = false) {
   const hh = String(d.getHours()).padStart(2, '0')
   const min = String(d.getMinutes()).padStart(2, '0')
   return `${dd}-${mmm}-${yyyy} ${hh}:${min}`
+}
+
+// Compact date for small viewports: DD/MM/YY
+function formatDateCompact(dateStr) {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yy = String(d.getFullYear()).slice(-2)
+  return `${dd}/${mm}/${yy}`
+}
+
+// Status dot color mapping for compact view
+function statusDotColor(status) {
+  const colors = {
+    active: '#ffffff',
+    inactive: '#9e9e9e',
+    completed: '#4caf50',
+    cancelled: '#fb8c00',
+    terminated: '#f44336',
+    deleted: '#f44336',
+  }
+  return colors[status] || '#9e9e9e'
 }
 
 // Form data
@@ -1502,5 +1554,75 @@ onBeforeUnmount(() => {
 .play-circle-btn:hover {
   background: rgba(255, 215, 0, 0.15);
   border-color: rgb(255, 215, 0);
+}
+
+/* ── Responsive compact elements (hidden by default, shown via media queries) ── */
+.taxonomy-dot,
+.status-dot,
+.staged-dot,
+.date-compact {
+  display: none;
+}
+
+/* Taxonomy colored dot */
+.taxonomy-dot {
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Status compact dot with initial letter */
+.status-dot {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a1a2e;
+  line-height: 22px;
+  text-align: center;
+}
+
+/* Staged compact dot with Y/N */
+.staged-dot {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a1a2e;
+  line-height: 22px;
+  text-align: center;
+}
+
+/* ── Compact breakpoint (≤1280px): collapse badges to dots, dates to DD/MM/YY ── */
+/* At 1200px with sidebar open (~160px), content area is ~1040px and badges overflow */
+@media (max-width: 1280px) {
+  .taxonomy-chip-full,
+  .status-full,
+  .staged-full,
+  .date-full {
+    display: none !important;
+  }
+  .taxonomy-dot,
+  .status-dot,
+  .staged-dot,
+  .date-compact {
+    display: inline-block;
+  }
+  .project-id-text {
+    display: none;
+  }
+}
+
+/* ── Mobile breakpoint (≤600px): further tighten ── */
+@media (max-width: 600px) {
+  .project-id-text {
+    display: none;
+  }
 }
 </style>
