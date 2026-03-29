@@ -6,18 +6,17 @@
         <v-icon class="mr-2" :color="agentColor">mdi-pencil</v-icon>
         Edit {{ agent?.agent_display_name || 'Agent' }} Mission
         <v-spacer />
-        <div class="d-flex flex-column align-end mr-2">
-          <v-chip size="small" variant="outlined">
-            Job: <code data-testid="mission-job-id">{{ agent?.job_id?.slice(0, 8) }}...</code>
-          </v-chip>
-          <v-chip size="x-small" class="mt-1">
-            {{ characterCount.toLocaleString() }} chars
-          </v-chip>
-        </div>
-        <v-btn icon size="small" aria-label="Close" @click="handleClose">
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
+        <v-btn icon="mdi-close" variant="text" size="small" aria-label="Close" @click="handleClose" />
       </v-card-title>
+
+      <div class="d-flex align-center ga-2 px-4 pb-2">
+        <v-chip size="small" variant="outlined">
+          Job: <code data-testid="mission-job-id">{{ agent?.job_id?.slice(0, 8) }}...</code>
+        </v-chip>
+        <v-chip size="x-small">
+          {{ characterCount.toLocaleString() }} chars
+        </v-chip>
+      </div>
 
       <v-divider></v-divider>
 

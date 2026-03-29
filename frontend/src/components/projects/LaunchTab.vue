@@ -152,6 +152,7 @@
                 <span class="agent-type" data-testid="agent-display-name" style="display: none;">{{ agent.agent_display_name || '' }}</span>
                 <span class="status-chip" data-testid="status-chip" style="display: none;">{{ agent.status || 'pending' }}</span>
                 <v-icon
+                  v-if="agent.agent_display_name !== 'orchestrator'"
                   size="small"
                   class="edit-icon"
                   role="button"
@@ -547,14 +548,14 @@ watch(missionText, (next, previous) => {
     display: flex;
     align-items: center;
     gap: 12px;
-    border: 2px solid rgb(var(--v-theme-primary));
+    border: 2px solid rgb(var(--v-theme-success));
     border-radius: $border-radius-pill;
     padding: 10px 16px;
     background: transparent;
 
-    /* Orchestrator gets green border */
+    /* Orchestrator gets yellow border (read-only, not editable) */
     &.orchestrator-card {
-      border-color: rgb(var(--v-theme-success));
+      border-color: rgb(var(--v-theme-warning));
     }
 
     .agent-avatar {
