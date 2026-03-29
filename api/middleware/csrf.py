@@ -183,7 +183,8 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
                 value=token,
                 httponly=False,  # Must be False: JS reads cookie for double-submit pattern
                 secure=request.url.scheme == "https",  # Adapt to connection scheme
-                samesite="strict",  # Strict same-site policy
+                samesite="lax",  # Lax required for cross-origin LAN access (strict blocks cookie on IP-based origins)
+                path="/",  # Must be root so cookie is sent on all API paths
                 max_age=3600,  # 1 hour expiry
             )
             logger.debug(f"Generated new CSRF token for IP: {request.client.host if request.client else 'unknown'}")
