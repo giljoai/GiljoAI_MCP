@@ -396,7 +396,7 @@ class UnifiedInstaller:
         print(f"{Fore.CYAN}This installer will set up your coding orchestrator.{Style.RESET_ALL}\n")
 
         print(f"{Fore.WHITE}What will be installed:{Style.RESET_ALL}")
-        print("  • PostgreSQL database (giljo_mcp)")
+        print("  • PostgreSQL database setup (giljo_mcp)")
         print("  • Python dependencies (FastAPI, SQLAlchemy, etc.)")
         print("  • Configuration files (.env, config.yaml)")
         print("  • API server + Frontend dashboard")
@@ -411,18 +411,20 @@ class UnifiedInstaller:
         """Gather user preferences for installation"""
         # Network Configuration
         print(f"\n{Fore.CYAN}[Network Configuration]{Style.RESET_ALL}")
-        print("Configuring external access for frontend connections...")
+        print("The server can run in localhost-only mode or over LAN/WAN via HTTPS.")
+        print("Choose your installation:\n")
 
         # Detect network adapters (with names for tracking)
         from installer.shared.network import get_network_adapters
 
         network_adapters = get_network_adapters()
 
-        # Build options list
-        print("\nNetwork access options:")
-        print(f"  1. {Fore.GREEN}Auto-detect (recommended for development){Style.RESET_ALL}")
+        # Build options list — localhost first (the fork), then LAN/WAN options
+        print(f"  1. {Fore.WHITE}Localhost only{Style.RESET_ALL} (HTTP, this machine only)")
+
+        print(f"\n  {Fore.CYAN}LAN / WAN access (HTTPS via mkcert):{Style.RESET_ALL}")
+        print(f"  2. {Fore.GREEN}Auto-detect (recommended){Style.RESET_ALL}")
         print("     → Dynamically detects IP on each startup")
-        print("  2. localhost (local access only)")
 
         # Add detected adapters with their IPs
         for i, adapter in enumerate(network_adapters, 3):
@@ -435,35 +437,34 @@ class UnifiedInstaller:
 
         # Get user choice
         while True:
-            choice = input(f"\n{Fore.YELLOW}Select network option [1]: {Style.RESET_ALL}").strip()
+            choice = input(f"\n{Fore.YELLOW}Select installation type [1]: {Style.RESET_ALL}").strip()
 
             if not choice or choice == "1":
-                # Auto-detect mode (development default)
-                if network_adapters:
-                    # Use first physical adapter for initial config
-                    best_adapter = network_adapters[0]
-                    self.settings["external_host"] = best_adapter["ip"]
-                    self.settings["network_mode"] = "auto"
-                    self.settings["selected_adapter"] = best_adapter["name"]
-                    self.settings["initial_ip"] = best_adapter["ip"]
-                    self._print_success(f"Auto-detect mode: Using {best_adapter['name']} ({best_adapter['ip']})")
-                    self._print_info("IP will be re-detected on each server startup")
-                else:
-                    # Fallback if no adapters detected
-                    self.settings["external_host"] = "localhost"
-                    self.settings["network_mode"] = "localhost"
-                    self.settings["bind"] = "127.0.0.1"
-                    self._print_warning("No network adapters detected, using localhost")
+                # Localhost mode — bind 127.0.0.1 (HTTP only, no HTTPS needed)
+                self.settings["external_host"] = "localhost"
+                self.settings["network_mode"] = "localhost"
+                self.settings["bind"] = "127.0.0.1"
+                self._print_info("Localhost only — HTTP, bind 127.0.0.1")
                 break
 
             try:
                 choice_num = int(choice)
                 if choice_num == 2:
-                    # Localhost mode — bind 127.0.0.1 (HTTP only, no HTTPS needed)
-                    self.settings["external_host"] = "localhost"
-                    self.settings["network_mode"] = "localhost"
-                    self.settings["bind"] = "127.0.0.1"
-                    self._print_info("Using localhost for frontend connections (HTTP, bind 127.0.0.1)")
+                    # Auto-detect mode (LAN/WAN with HTTPS)
+                    if network_adapters:
+                        best_adapter = network_adapters[0]
+                        self.settings["external_host"] = best_adapter["ip"]
+                        self.settings["network_mode"] = "auto"
+                        self.settings["selected_adapter"] = best_adapter["name"]
+                        self.settings["initial_ip"] = best_adapter["ip"]
+                        self._print_success(f"Auto-detect mode: Using {best_adapter['name']} ({best_adapter['ip']})")
+                        self._print_info("IP will be re-detected on each server startup")
+                        self._print_info("HTTPS will be configured automatically")
+                    else:
+                        self.settings["external_host"] = "localhost"
+                        self.settings["network_mode"] = "localhost"
+                        self.settings["bind"] = "127.0.0.1"
+                        self._print_warning("No network adapters detected, falling back to localhost")
                     break
                 if 3 <= choice_num < custom_option:
                     # Specific adapter selected
@@ -472,14 +473,16 @@ class UnifiedInstaller:
                     self.settings["network_mode"] = "static"
                     self.settings["selected_adapter"] = selected["name"]
                     self.settings["initial_ip"] = selected["ip"]
-                    self._print_success(f"Using {selected['ip']} [{selected['name']}] for frontend connections")
+                    self._print_success(f"Using {selected['ip']} [{selected['name']}]")
+                    self._print_info("HTTPS will be configured automatically")
                     break
                 if choice_num == custom_option:
                     custom_addr = input(f"{Fore.YELLOW}Enter custom address (IP or domain): {Style.RESET_ALL}").strip()
                     if custom_addr:
                         self.settings["external_host"] = custom_addr
                         self.settings["network_mode"] = "custom"
-                        self._print_success(f"Using {custom_addr} for frontend connections")
+                        self._print_success(f"Using {custom_addr}")
+                        self._print_info("HTTPS will be configured automatically")
                         break
                     self._print_warning("Empty address provided")
                 else:
