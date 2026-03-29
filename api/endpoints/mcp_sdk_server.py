@@ -1,7 +1,7 @@
 """
 MCP SDK Server -- Streamable HTTP transport using official Anthropic MCP Python SDK.
 
-Replaces custom JSON-RPC 2.0 implementation (mcp_http.py) with standard MCP protocol
+Standard MCP protocol transport using official Anthropic MCP Python SDK (FastMCP).
 transport. All tools delegate to the existing ToolAccessor methods. Auth and tenant
 isolation are handled by ASGI middleware applied to the Starlette sub-app.
 
@@ -86,7 +86,7 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
     accessor = _get_tool_accessor()
     tool_func = getattr(accessor, method_name)
 
-    # Signature-based tenant_key injection (same logic as mcp_http.py)
+    # Signature-based tenant_key injection
     sig = inspect.signature(tool_func)
     if "tenant_key" in sig.parameters:
         kwargs["tenant_key"] = tenant_key
