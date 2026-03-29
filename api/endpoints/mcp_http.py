@@ -303,6 +303,35 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
         "proposals",
         "overall_summary",
     },
+    # Vision Document Analysis (Handover 0842c)
+    "gil_get_vision_doc": {
+        "product_id",
+        "chunk",
+        "tenant_key",
+    },
+    "gil_write_product": {
+        "product_id",
+        "tenant_key",
+        "product_name",
+        "product_description",
+        "core_features",
+        "programming_languages",
+        "frontend_frameworks",
+        "backend_frameworks",
+        "databases",
+        "infrastructure",
+        "target_platforms",
+        "architecture_pattern",
+        "design_patterns",
+        "api_style",
+        "architecture_notes",
+        "quality_standards",
+        "testing_strategy",
+        "testing_frameworks",
+        "test_coverage_target",
+        "summary_33",
+        "summary_66",
+    },
 }
 
 
@@ -918,6 +947,70 @@ def _build_context_and_closeout_tools() -> list[dict[str, Any]]:
     ]
 
 
+def _build_vision_analysis_tools() -> list[dict[str, Any]]:
+    """Build tool definitions for vision document analysis (Handover 0842c)."""
+    return [
+        {
+            "name": "gil_get_vision_doc",
+            "description": "Retrieve a product's vision document with extraction instructions. Call WITHOUT chunk to get metadata (total_chunks, extraction_instructions). Then call WITH chunk=1, chunk=2, etc. to retrieve each chunk's content one at a time. Read ALL chunks before calling gil_write_product.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "product_id": {"type": "string", "description": "Product UUID to retrieve vision documents for"},
+                    "chunk": {
+                        "type": "integer",
+                        "description": "1-based chunk number to retrieve. Omit to get metadata and total_chunks count.",
+                    },
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
+                },
+                "required": ["product_id"],
+            },
+        },
+        {
+            "name": "gil_write_product",
+            "description": "Write structured product fields extracted from vision document analysis. Performs merge-write: only updates fields that are provided. Creates child table rows (tech_stack, architecture, test_config) on first write. Include summary_33 and summary_66 for AI-generated summaries.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "product_id": {"type": "string", "description": "Product UUID to write fields to"},
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
+                    "product_name": {"type": "string", "description": "Product name"},
+                    "product_description": {"type": "string", "description": "Product description (2-3 sentences)"},
+                    "core_features": {"type": "string", "description": "Core product features"},
+                    "programming_languages": {"type": "string", "description": "Programming languages used"},
+                    "frontend_frameworks": {"type": "string", "description": "Frontend frameworks"},
+                    "backend_frameworks": {"type": "string", "description": "Backend frameworks"},
+                    "databases": {"type": "string", "description": "Databases and storage systems"},
+                    "infrastructure": {"type": "string", "description": "Infrastructure and deployment"},
+                    "target_platforms": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["windows", "linux", "macos", "android", "ios", "all"]},
+                        "description": "Target deployment platforms",
+                    },
+                    "architecture_pattern": {"type": "string", "description": "Primary architecture pattern"},
+                    "design_patterns": {"type": "string", "description": "Design patterns used"},
+                    "api_style": {"type": "string", "description": "API style (REST, GraphQL, gRPC, etc.)"},
+                    "architecture_notes": {"type": "string", "description": "Additional architecture notes"},
+                    "quality_standards": {"type": "string", "description": "Quality standards and expectations"},
+                    "testing_strategy": {
+                        "type": "string",
+                        "enum": ["TDD", "BDD", "Integration-First", "E2E-First", "Manual", "Hybrid"],
+                        "description": "Testing strategy — must be one of the enum values",
+                    },
+                    "testing_frameworks": {"type": "string", "description": "Testing frameworks used"},
+                    "test_coverage_target": {"type": "integer", "description": "Test coverage target percentage"},
+                    "summary_33": {"type": "string", "description": "Concise ~33% executive summary for developers"},
+                    "summary_66": {
+                        "type": "string",
+                        "description": "Thorough ~66% technical summary preserving decisions",
+                    },
+                },
+                "required": ["product_id"],
+            },
+        },
+    ]
+
+
 async def handle_tools_list(
     params: dict[str, Any], session_manager: MCPSessionManager, session_id: str, tenant_key: str | None = None
 ) -> dict[str, Any]:
@@ -940,6 +1033,7 @@ async def handle_tools_list(
         *_build_task_and_utility_tools(),
         *_build_agent_coordination_tools(),
         *_build_context_and_closeout_tools(),
+        *_build_vision_analysis_tools(),
     ]
 
     # Filter out hidden tools (still callable, just not advertised)
@@ -1024,6 +1118,9 @@ async def handle_tools_call(
         "get_agent_templates_for_export": state.tool_accessor.get_agent_templates_for_export,
         # Product Context Tuning (Handover 0831)
         "submit_tuning_review": state.tool_accessor.submit_tuning_review,
+        # Vision Document Analysis (Handover 0842c)
+        "gil_get_vision_doc": state.tool_accessor.get_vision_doc,
+        "gil_write_product": state.tool_accessor.write_product_from_analysis,
     }
 
     if tool_name not in tool_map:

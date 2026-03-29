@@ -191,6 +191,29 @@
                       </v-tooltip>
                       <v-tooltip location="top" content-class="branded-tooltip">
                         <template v-slot:activator="{ props }">
+                          <v-badge
+                            :model-value="getTuningState(product) !== 'normal'"
+                            dot
+                            :color="getTuningState(product) === 'proposals' ? 'warning' : 'info'"
+                            offset-x="-2"
+                            offset-y="-2"
+                          >
+                            <v-btn
+                              icon
+                              size="small"
+                              variant="text"
+                              v-bind="props"
+                              aria-label="Tune context"
+                              @click="showProductTuning(product)"
+                            >
+                              <v-icon>mdi-tune</v-icon>
+                            </v-btn>
+                          </v-badge>
+                        </template>
+                        <span>{{ getTuningState(product) === 'proposals' ? 'Tuning proposals ready for review' : getTuningState(product) === 'stale' ? 'Context tuning recommended' : 'Tune Context' }}</span>
+                      </v-tooltip>
+                      <v-tooltip location="top" content-class="branded-tooltip">
+                        <template v-slot:activator="{ props }">
                           <v-btn
                             icon
                             size="small"
@@ -260,13 +283,13 @@
     <ProductForm
       v-model="showDialog"
       :product="editingProduct"
-      :is-edit="!!editingProduct"
+      :is-edit="!!editingProduct && !autoSavedForAnalysis"
       :existing-vision-documents="existingVisionDocuments"
-      :auto-save-state="autoSave"
       :uploading-vision="uploadingVision"
       :upload-progress="uploadProgress"
       :vision-upload-error="visionUploadError"
       @save="saveProduct"
+      @upload-vision-files="uploadVisionFilesOnAttach"
       @cancel="closeDialog"
       @remove-vision="removeVisionDocument"
       @clear-upload-error="visionUploadError = null"
@@ -278,6 +301,7 @@
       :product="selectedProduct"
       :vision-documents="detailsVisionDocuments"
       :stats="productStats"
+      :auto-expand-tuning="autoExpandTuning"
     />
 
     <!-- Delete Confirmation Dialog -->
@@ -315,11 +339,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '@/stores/products'
 import { useSettingsStore } from '@/stores/settings'
+import { useNotificationStore } from '@/stores/notifications'
 import { useToast } from '@/composables/useToast'
-import { useAutoSave } from '@/composables/useAutoSave'
 import api from '@/services/api'
 import ActivationWarningDialog from '@/components/products/ActivationWarningDialog.vue'
 import ProductDeleteDialog from '@/components/products/ProductDeleteDialog.vue'
@@ -329,6 +353,7 @@ import ProductForm from '@/components/products/ProductForm.vue'
 
 const productStore = useProductStore()
 const settingsStore = useSettingsStore()
+const notificationStore = useNotificationStore()
 const { showToast } = useToast()
 // State
 const loading = ref(false)
@@ -343,13 +368,14 @@ const selectedProduct = ref(null)
 const deleting = ref(false)
 const visionFiles = ref([])
 const existingVisionDocuments = ref([])
+const autoSavedForAnalysis = ref(null) // Holds product ID if auto-saved for stage-analysis, null otherwise
 const uploadingVision = ref(false)
 const uploadProgress = ref(0)
 const visionUploadError = ref(null)
 const detailsVisionDocuments = ref([])
+const autoExpandTuning = ref(false)
 const cascadeImpact = ref(null)
 const loadingCascadeImpact = ref(false)
-const autoSave = ref(null) // Handover 0051: Auto-save composable instance
 
 // Handover 0050: Activation warning dialog state
 const showActivationWarning = ref(false)
@@ -363,23 +389,12 @@ const restoringProductId = ref(null)
 const purgingProductId = ref(null)
 const purgingAllProducts = ref(false)
 
-const productForm = ref({
-  name: '',
-  description: '',
-  projectPath: '',
-})
-
 // Sort options
 const sortOptions = [
   { label: 'Name (A-Z)', value: 'name' },
   { label: 'Date Created (Newest)', value: 'date-newest' },
   { label: 'Date Created (Oldest)', value: 'date-oldest' },
 ]
-
-// Handover 0051: Unsaved changes computed
-const hasUnsavedChanges = computed(() => {
-  return autoSave.value?.hasUnsavedChanges.value || false
-})
 
 // Computed
 const filteredProducts = computed(() => {
@@ -631,8 +646,18 @@ function validateVisionFiles() {
   return true
 }
 
+function getTuningState(product) {
+  if (product.tuning_state?.pending_proposals) return 'proposals'
+  const hasUnread = notificationStore.notifications.some(
+    (n) => !n.read && n.type === 'context_tuning' && n.metadata?.product_id === product.id,
+  )
+  if (hasUnread) return 'stale'
+  return 'normal'
+}
+
 async function showProductDetails(product) {
   selectedProduct.value = product
+  autoExpandTuning.value = false
 
   // Fetch vision documents
   try {
@@ -646,14 +671,23 @@ async function showProductDetails(product) {
   showDetailsDialog.value = true
 }
 
+async function showProductTuning(product) {
+  selectedProduct.value = product
+  autoExpandTuning.value = true
+
+  try {
+    const response = await api.visionDocuments.listByProduct(product.id)
+    detailsVisionDocuments.value = response.data || []
+  } catch (error) {
+    console.error('Failed to load vision documents:', error)
+    detailsVisionDocuments.value = []
+  }
+
+  showDetailsDialog.value = true
+}
+
 async function editProduct(product) {
   editingProduct.value = product
-
-  productForm.value = {
-    name: product.name,
-    description: product.description || '',
-    projectPath: product.project_path || '',
-  }
 
   // Fetch existing vision documents
   await loadExistingVisionDocuments(product.id)
@@ -681,142 +715,42 @@ async function confirmDelete(product) {
     const response = await api.products.getCascadeImpact(product.id)
     cascadeImpact.value = response.data
   } catch (error) {
-    console.error('Failed to get cascade impact:', error)
-    showToast({
-      message: 'Failed to load deletion impact',
-      type: 'error',
-      duration: 5000,
-    })
+    if (error?.response?.status === 404) {
+      // Product already gone from DB — let user confirm removal of ghost card
+      cascadeImpact.value = null
+    } else {
+      console.error('Failed to get cascade impact:', error)
+      showToast({
+        message: 'Failed to load deletion impact',
+        type: 'error',
+        duration: 5000,
+      })
+    }
   } finally {
     loadingCascadeImpact.value = false
   }
 }
 
 async function saveProduct(payload) {
-  // Receive data from ProductForm component
-  const { productData, visionFiles: uploadFiles } = payload
-
-  // Handover 0508: Validate vision files before saving
-  if (uploadFiles && uploadFiles.length > 0) {
-    // Update local ref for validation function
-    visionFiles.value = uploadFiles
-    if (!validateVisionFiles()) {
-      return // Validation failed - error already shown via toast
-    }
-  }
+  const { productData } = payload
 
   try {
-    // Step 1: Create/Update product
-    let product
+    // Create or update — vision files already uploaded on attach
     if (editingProduct.value) {
-      product = await productStore.updateProduct(editingProduct.value.id, productData)
+      await productStore.updateProduct(editingProduct.value.id, productData)
     } else {
-      product = await productStore.createProduct(productData)
+      await productStore.createProduct(productData)
     }
 
-    // Step 2: Upload vision files (if any) - Handover 0508: Enhanced error handling
-    if (visionFiles.value && visionFiles.value.length > 0) {
-      const productId = product?.id || editingProduct.value.id
+    // Product is now permanent — clear auto-save cleanup flag
+    autoSavedForAnalysis.value = null
 
-      let successCount = 0
-      let totalChunks = 0
-
-      // Handover 0816: Drive upload progress UI
-      uploadingVision.value = true
-      uploadProgress.value = 0
-      visionUploadError.value = null
-
-      for (let i = 0; i < visionFiles.value.length; i++) {
-        const file = visionFiles.value[i]
-
-        try {
-          const formData = new FormData()
-          formData.append('product_id', productId)
-          formData.append('document_name', file.name.replace(/\.[^/.]+$/, ''))
-          formData.append('document_type', 'vision')
-          formData.append('vision_file', file)
-          formData.append('auto_chunk', 'true')
-
-          const response = await api.visionDocuments.upload(formData)
-
-          successCount++
-          uploadProgress.value = ((i + 1) / visionFiles.value.length) * 100
-          const chunkCount = response.data?.chunk_count || 0
-          totalChunks += chunkCount
-
-          // Handover 0347: Show chunk count and summarization status
-          const isSummarized = response.data?.is_summarized || false
-          const isChunked = response.data?.chunked || chunkCount > 0
-          const statusParts = []
-          if (isSummarized) statusParts.push('summarized')
-          if (isChunked) statusParts.push(`${chunkCount} chunks`)
-
-          showToast({
-            message: `${file.name} uploaded${statusParts.length ? ` (${  statusParts.join(', ')  })` : ''}`,
-            type: 'success',
-            duration: 3000,
-          })
-        } catch (uploadError) {
-          console.error(`Failed to upload ${file.name}:`, uploadError)
-
-          // Handover 0508: Show specific error messages based on status code
-          let errorMessage = `Failed to upload ${file.name}`
-
-          if (uploadError.response) {
-            switch (uploadError.response.status) {
-              case 413:
-                errorMessage = `${file.name}: File too large (max 10MB)`
-                break
-              case 400:
-                errorMessage = `${file.name}: ${uploadError.response.data.detail || 'Invalid file'}`
-                break
-              case 409:
-                errorMessage = `${file.name}: Document already exists. Please rename and try again.`
-                break
-              default:
-                errorMessage = `${file.name}: ${uploadError.response.data.detail || 'Upload failed'}`
-            }
-          } else if (uploadError.request) {
-            errorMessage = `${file.name}: Network error. Check connection and try again.`
-          }
-
-          visionUploadError.value = errorMessage
-          uploadProgress.value = ((i + 1) / visionFiles.value.length) * 100
-
-          showToast({
-            message: errorMessage,
-            type: 'error',
-            duration: 7000,
-          })
-
-          // Continue uploading other files
-        }
-      }
-
-      uploadingVision.value = false
-
-      // Handover 0347: Show summary toast with chunk count if multiple files uploaded
-      if (successCount > 1) {
-        showToast({
-          message: `Successfully uploaded ${successCount}/${visionFiles.value.length} vision documents${totalChunks > 0 ? ` (${totalChunks} total chunks)` : ''}`,
-          type: 'success',
-          duration: 5000,
-        })
-      }
-    }
-
-    // Step 3: Clear auto-save cache (Handover 0051)
-    if (autoSave.value) {
-      autoSave.value.clearCache()
-    }
-
-    // Step 4: Refresh products
+    // Refresh products
     await loadProducts()
 
-    // Step 5: Close dialog
-    closeDialog()
+    // Close dialog
+    showDialog.value = false
 
-    // Step 6: Show success message
     showToast({
       message: editingProduct.value
         ? 'Product updated successfully'
@@ -824,6 +758,14 @@ async function saveProduct(payload) {
       type: 'success',
       duration: 3000,
     })
+
+    // Reset state
+    editingProduct.value = null
+    visionFiles.value = []
+    existingVisionDocuments.value = []
+    uploadingVision.value = false
+    uploadProgress.value = 0
+    visionUploadError.value = null
   } catch (error) {
     console.error('Failed to save product:', error)
     showToast({
@@ -832,6 +774,102 @@ async function saveProduct(payload) {
       duration: 5000,
     })
     // Handover 0051: Do NOT close dialog on error - keep form data visible
+  }
+}
+
+// Upload vision files immediately on attachment
+// In create mode: silently creates the product first to get a UUID
+async function uploadVisionFilesOnAttach(payload) {
+  const { productName, files } = payload
+
+  if (!files || files.length === 0) return
+
+  // Validate files
+  visionFiles.value = files
+  if (!validateVisionFiles()) {
+    visionFiles.value = []
+    return
+  }
+
+  try {
+    // In create mode, silently create the product to get a UUID
+    let productId
+    if (editingProduct.value) {
+      productId = editingProduct.value.id
+    } else {
+      const product = await productStore.createProduct({ name: productName })
+      editingProduct.value = product
+      autoSavedForAnalysis.value = product.id
+      productId = product.id
+    }
+
+    // Upload files with progress UI
+    uploadingVision.value = true
+    uploadProgress.value = 0
+    visionUploadError.value = null
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      try {
+        const formData = new FormData()
+        formData.append('product_id', productId)
+        formData.append('document_name', file.name.replace(/\.[^/.]+$/, ''))
+        formData.append('document_type', 'vision')
+        formData.append('vision_file', file)
+        formData.append('auto_chunk', 'true')
+
+        const response = await api.visionDocuments.upload(formData)
+        uploadProgress.value = ((i + 1) / files.length) * 100
+
+        const chunkCount = response.data?.chunk_count || 0
+        const isSummarized = response.data?.is_summarized || false
+        const statusParts = []
+        if (isSummarized) statusParts.push('summarized')
+        if (chunkCount > 0) statusParts.push(`${chunkCount} chunks`)
+
+        showToast({
+          message: `${file.name} uploaded${statusParts.length ? ` (${statusParts.join(', ')})` : ''}`,
+          type: 'success',
+          duration: 3000,
+        })
+      } catch (uploadError) {
+        console.error(`Failed to upload ${file.name}:`, uploadError)
+
+        let errorMessage = `Failed to upload ${file.name}`
+        if (uploadError.response) {
+          switch (uploadError.response.status) {
+            case 413:
+              errorMessage = `${file.name}: File too large (max 10MB)`
+              break
+            case 400:
+              errorMessage = `${file.name}: ${uploadError.response.data.detail || 'Invalid file'}`
+              break
+            case 409:
+              errorMessage = `${file.name}: Document already exists. Please rename and try again.`
+              break
+            default:
+              errorMessage = `${file.name}: ${uploadError.response.data.detail || 'Upload failed'}`
+          }
+        }
+
+        visionUploadError.value = errorMessage
+        showToast({ message: errorMessage, type: 'error', duration: 7000 })
+      }
+    }
+
+    uploadingVision.value = false
+    visionFiles.value = []
+
+    // Refresh existing docs list so the form shows them
+    await loadExistingVisionDocuments(productId)
+  } catch (error) {
+    console.error('Failed to upload vision files:', error)
+    uploadingVision.value = false
+    showToast({
+      message: 'Failed to upload files',
+      type: 'error',
+      duration: 5000,
+    })
   }
 }
 
@@ -862,12 +900,21 @@ async function confirmDeleteProduct() {
       duration: 4000,
     })
   } catch (error) {
-    console.error('Failed to delete product:', error)
-    showToast({
-      message: 'Failed to move product to trash',
-      type: 'error',
-      duration: 5000,
-    })
+    if (error?.response?.status === 404) {
+      // Product already gone from DB (orphan card) — clean up UI
+      showDeleteDialog.value = false
+      const productName = deletingProduct.value?.name || 'Product'
+      deletingProduct.value = null
+      await loadProducts()
+      showToast({ message: `${productName} was already removed.`, type: 'info', duration: 3000 })
+    } else {
+      console.error('Failed to delete product:', error)
+      showToast({
+        message: 'Failed to move product to trash',
+        type: 'error',
+        duration: 5000,
+      })
+    }
   } finally {
     deleting.value = false
   }
@@ -879,18 +926,15 @@ function cancelDelete() {
   cascadeImpact.value = null
 }
 
-function closeDialog() {
-  // Handover 0051: Check for unsaved changes before closing
-  if (hasUnsavedChanges.value) {
-    const confirmed = confirm('You have unsaved changes. Close anyway?')
-    if (!confirmed) {
-      return // User cancelled - keep dialog open
+async function closeDialog() {
+  // Clean up auto-saved product if user never did a real save (404 = already gone, ignore)
+  if (autoSavedForAnalysis.value) {
+    try {
+      await productStore.deleteProduct(autoSavedForAnalysis.value)
+    } catch {
+      // Silently ignore — product may already be deleted
     }
-  }
-
-  // Handover 0051: Clear auto-save cache
-  if (autoSave.value) {
-    autoSave.value.clearCache()
+    autoSavedForAnalysis.value = null
   }
 
   showDialog.value = false
@@ -900,11 +944,9 @@ function closeDialog() {
   uploadingVision.value = false
   uploadProgress.value = 0
   visionUploadError.value = null
-  productForm.value = {
-    name: '',
-    description: '',
-    projectPath: '',
-  }
+
+  // Refresh product list on close
+  loadProducts()
 }
 
 async function loadProducts() {
@@ -1029,48 +1071,6 @@ async function purgeAllDeletedProducts() {
   }
 }
 
-// Handover 0051: Watch for dialog open/close to initialize auto-save
-watch(showDialog, (isOpen) => {
-  if (isOpen) {
-    // Generate unique cache key based on edit mode
-    const cacheKey = editingProduct.value
-      ? `product_form_draft_${editingProduct.value.id}`
-      : 'product_form_draft_new'
-
-    // Initialize auto-save composable
-    autoSave.value = useAutoSave({
-      key: cacheKey,
-      data: productForm,
-      debounceMs: 500,
-      enableBackgroundSave: false, // LocalStorage only (no API saves during typing)
-    })
-
-    // Check for existing cache
-    const cached = autoSave.value.restoreFromCache()
-    if (cached) {
-      // Updated policy:
-      // - Editing existing product: DO NOT restore cached drafts at all. Always
-      //   trust the latest values loaded from the backend to avoid wiping valid
-      //   product fields when only one section was edited previously.
-      // - New product: still do not auto-restore (clean slate).
-      autoSave.value.clearCache()
-    }
-  } else {
-    // Dialog closed - cleanup auto-save
-    if (autoSave.value) {
-      autoSave.value = null
-    }
-  }
-})
-
-// Handover 0051: Browser beforeunload handler (warn on refresh/close with unsaved changes)
-function handleBeforeUnload(event) {
-  if (showDialog.value && hasUnsavedChanges.value) {
-    event.preventDefault()
-    event.returnValue = '' // Required for Chrome
-  }
-}
-
 onMounted(async () => {
   await loadProducts()
   // Load field toggle configuration (Handover 0049, 0820)
@@ -1079,14 +1079,6 @@ onMounted(async () => {
   } catch {
     // Field toggle config not available
   }
-  // Handover 0051: Add beforeunload listener
-  window.addEventListener('beforeunload', handleBeforeUnload)
-  // Product metrics updates via WebSocket (product:updated events)
-})
-
-onUnmounted(() => {
-  // Handover 0051: Remove beforeunload listener
-  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 </script>
 

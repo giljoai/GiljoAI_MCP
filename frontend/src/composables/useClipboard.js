@@ -1,14 +1,16 @@
 /**
  * Clipboard Composable
- * Provides clipboard operations with fallback for unsupported browsers
+ * Provides clipboard operations with fallback for unsupported browsers.
+ *
+ * Works on all access modes: localhost, LAN IP, WAN IP, DNS, HTTP, HTTPS.
+ * Uses navigator.clipboard.writeText on secure contexts, falls back to
+ * synchronous document.execCommand('copy') on non-secure contexts.
  */
 
 import { ref } from 'vue'
 
 export function useClipboard() {
-  const isSupported = ref(!!navigator.clipboard)
   const copied = ref(false)
-  const error = ref(null)
 
   /**
    * Copy text to clipboard using Clipboard API with textarea fallback
@@ -16,10 +18,8 @@ export function useClipboard() {
    * @returns {Promise<boolean>} - Success status
    */
   const copy = async (text) => {
-    error.value = null
-
     try {
-      // Primary method: Clipboard API
+      // Primary method: Clipboard API (secure contexts)
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text)
         copied.value = true
@@ -27,7 +27,7 @@ export function useClipboard() {
         return true
       }
 
-      // Fallback method: Textarea copy
+      // Fallback method: Textarea copy (non-secure contexts)
       return fallbackCopy(text)
     } catch (err) {
       console.warn('[Clipboard] Primary method failed, using fallback:', err)
@@ -36,7 +36,8 @@ export function useClipboard() {
   }
 
   /**
-   * Fallback copy method using textarea element
+   * Fallback copy method using textarea element and execCommand.
+   * Works on all origins when called within a user gesture.
    * @param {string} text - Text to copy
    * @returns {boolean} - Success status
    */
@@ -44,15 +45,22 @@ export function useClipboard() {
     try {
       const textarea = document.createElement('textarea')
       textarea.value = text
-      textarea.style.position = 'fixed'
-      textarea.style.left = '-999999px'
-      textarea.style.top = '-999999px'
-      document.body.appendChild(textarea)
-      textarea.focus()
+      textarea.setAttribute('readonly', '')
+      textarea.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;'
+
+      // Append inside the topmost active Vuetify overlay if one exists,
+      // otherwise document.body. Vuetify dialogs with retain-focus steal
+      // focus from elements outside the dialog, breaking execCommand('copy').
+      // Use querySelectorAll and pick the LAST match (topmost z-order).
+      const overlays = document.querySelectorAll('.v-overlay--active .v-overlay__content')
+      const container = overlays.length > 0 ? overlays[overlays.length - 1] : document.body
+      container.appendChild(textarea)
+      textarea.focus({ preventScroll: true })
       textarea.select()
+      textarea.setSelectionRange(0, textarea.value.length)
 
       const successful = document.execCommand('copy')
-      document.body.removeChild(textarea)
+      container.removeChild(textarea)
 
       if (successful) {
         copied.value = true
@@ -60,28 +68,15 @@ export function useClipboard() {
         return true
       }
 
-      error.value = 'Failed to copy to clipboard'
       return false
     } catch (err) {
       console.error('[Clipboard] Fallback method failed:', err)
-      error.value = err.message
       return false
     }
   }
 
-  /**
-   * Reset copied state
-   */
-  const reset = () => {
-    copied.value = false
-    error.value = null
-  }
-
   return {
-    isSupported,
     copied,
-    error,
     copy,
-    reset,
   }
 }
