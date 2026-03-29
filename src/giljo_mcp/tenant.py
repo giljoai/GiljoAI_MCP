@@ -1,5 +1,5 @@
 """
-Tenant Management System for GiljoAI MCP Orchestrator.
+Tenant Management System for GiljoAI MCP.
 
 Provides tenant key generation, validation, and context management
 for complete project isolation in multi-tenant environments.

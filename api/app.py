@@ -469,7 +469,7 @@ def _register_event_handlers(app: FastAPI) -> None:
         if hasattr(app.state, "config") and app.state.config:
             edition = getattr(app.state.config, "edition", None) or "community"
         return {
-            "name": "GiljoAI MCP Orchestrator",
+            "name": "GiljoAI MCP",
             "version": "1.0.0",
             "edition": edition,
             "status": "operational",
@@ -684,11 +684,11 @@ def create_app() -> FastAPI:
     """Create and configure FastAPI application"""
 
     app = FastAPI(
-        title="GiljoAI MCP Orchestrator API Beta 1.0.0 - Community Edition",
+        title="GiljoAI MCP API Beta 1.0.0 - Community Edition",
         description="""
         ## Multi-Agent Orchestration System REST API
 
-        The GiljoAI MCP Orchestrator provides a comprehensive REST API for managing AI agent orchestration,
+        GiljoAI MCP provides a comprehensive REST API for managing AI agent orchestration,
         enabling coordinated development teams that can tackle projects of unlimited complexity.
 
         ### Key Features:
