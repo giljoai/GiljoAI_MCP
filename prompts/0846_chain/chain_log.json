@@ -1,0 +1,87 @@
+{
+  "chain_id": "0846",
+  "chain_name": "MCP SDK Standardization",
+  "created_at": "2026-03-29",
+  "spec_document": "handovers/0846_MCP_SDK_STANDARDIZATION.md",
+  "branch": "feature/0846-mcp-sdk-standardization",
+  "total_sessions": 3,
+  "orchestrator_notes": "Agents: read this file BEFORE starting. If orchestrator_directives contains STOP, halt immediately. This chain replaces the custom JSON-RPC MCP transport with the official Anthropic MCP Python SDK (FastMCP + Streamable HTTP). The ToolAccessor business logic is UNCHANGED — only the transport layer is being replaced. Auth stays as Bearer token. Tenant isolation stays.",
+  "orchestrator_directives": [],
+  "sessions": [
+    {
+      "session_id": "0846a",
+      "title": "FastMCP SDK Transport Replacement",
+      "handover": "handovers/0846a_MCP_SDK_TRANSPORT_REPLACEMENT.md",
+      "color": "#4CAF50",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["tdd-implementor"],
+      "planned_tasks": [
+        "Research FastMCP + FastAPI mount pattern",
+        "Create mcp_sdk_server.py with all 30 tools registered",
+        "Mount at /mcp/v2 alongside old endpoint",
+        "Write transport discovery tests",
+        "Verify Codex CLI /mcp lists tools"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0846b",
+      "title": "Security Re-integration & Old Code Removal",
+      "handover": "handovers/0846b_MCP_SDK_SECURITY_INTEGRATION.md",
+      "color": "#2196F3",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["tdd-implementor", "backend-integration-tester"],
+      "planned_tasks": [
+        "Wire Bearer token auth middleware into FastMCP pipeline",
+        "Integrate tenant key validation/override into tool wrappers",
+        "Verify SDK schema validation replaces _TOOL_SCHEMA_PARAMS",
+        "Promote SDK endpoint from /mcp/v2 to /mcp",
+        "Delete old mcp_http.py custom transport code",
+        "Write security integration tests"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0846c",
+      "title": "Documentation, Frontend & Test Updates",
+      "handover": "handovers/0846c_MCP_SDK_DOCS_AND_CLEANUP.md",
+      "color": "#9C27B0",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["documentation-manager"],
+      "planned_tasks": [
+        "Update docs/api/MCP_OVER_HTTP_INTEGRATION.md",
+        "Update docs/guides/mcp_protocol_quick_reference.md",
+        "Update docs/SERVER_ARCHITECTURE_TECH_STACK.md",
+        "Update handovers/Reference_docs/AGENT_FLOW_SUMMARY.md",
+        "Verify and update frontend CLI config commands",
+        "Run orphan/zombie sweep for deleted constructs",
+        "Update or delete manual test scripts",
+        "Final ruff check + test run"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    }
+  ],
+  "chain_summary": null,
+  "final_status": "pending"
+}
