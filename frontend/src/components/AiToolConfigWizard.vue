@@ -110,7 +110,7 @@
               <v-radio label="Linux / macOS / Git Bash" value="unix" density="compact" />
             </v-radio-group>
             <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-              <strong>HTTPS with self-signed certificates:</strong> Node.js-based AI coding agents require a one-time setup step.
+              <strong>HTTPS with self-signed certificates:</strong> Node.js-based AI coding agents need to trust the system CA store (one-time setup, requires Node.js 20.12+).
             </v-alert>
             <v-textarea
               v-if="certPlatform === 'windows'"
@@ -135,7 +135,7 @@
               variant="outlined"
               class="font-monospace no-resize mb-3"
               append-inner-icon="mdi-content-copy"
-              :messages="copiedCert ? 'Copied! Add to ~/.bashrc or ~/.zshrc to make permanent.' : 'Add to ~/.bashrc or ~/.zshrc to make permanent.'"
+              :messages="copiedCert ? 'Copied! Add to ~/.bashrc or ~/.zshrc to persist across sessions.' : 'Add to ~/.bashrc or ~/.zshrc to persist across sessions.'"
               @click:append-inner="copyCertCommand"
             />
           </template>
@@ -232,8 +232,8 @@ const selectedToolName = computed(
 
 const isHttps = computed(() => window.location.protocol === 'https:')
 
-const certTrustCommandWindows = "$env:NODE_EXTRA_CA_CERTS = (mkcert -CAROOT) + '\\rootCA.pem'; [System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', (mkcert -CAROOT) + '\\rootCA.pem', 'User')"
-const certTrustCommandUnix = 'export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"'
+const certTrustCommandWindows = '$env:NODE_OPTIONS = "--use-system-ca"; [System.Environment]::SetEnvironmentVariable(\'NODE_OPTIONS\', \'--use-system-ca\', \'User\')'
+const certTrustCommandUnix = 'export NODE_OPTIONS="--use-system-ca"'
 
 const envVarCommand = computed(() => {
   const key = generatedKey.value || 'YOUR_API_KEY'
