@@ -137,6 +137,9 @@ class UserProfileResponse(BaseModel):
     org_id: str | None = None  # Handover 0424h: User's organization ID
     org_name: str | None = None  # Handover 0424h: User's organization name
     org_role: str | None = None  # Handover 0424h: User's role in organization
+    setup_complete: bool = False  # Handover 0855a: Setup wizard completed
+    setup_selected_tools: list[str] | None = None  # Handover 0855a: Selected AI coding agents
+    setup_step_completed: int = 0  # Handover 0855a: Last completed wizard step
 
 
 # 0371: Removed UserListResponse - was only used by duplicate /users endpoint
@@ -161,6 +164,14 @@ class APIKeyCreateRequest(BaseModel):
 
     name: str = Field(..., min_length=3, max_length=255, description="Description of API key purpose")
     permissions: list[str] = Field(default=["*"], description="List of permissions (default: all)")
+
+
+class SetupStateUpdate(BaseModel):
+    """Request model for updating setup wizard state (Handover 0855a)"""
+
+    setup_selected_tools: list[str] | None = None
+    setup_step_completed: int | None = Field(None, ge=0, le=4)
+    setup_complete: bool | None = None
 
 
 class APIKeyCreateResponse(BaseModel):
@@ -494,7 +505,63 @@ async def get_me(
         org_id=str(current_user.org_id) if current_user.org_id else None,
         org_name=org_name,
         org_role=org_role,
+        setup_complete=current_user.setup_complete,
+        setup_selected_tools=current_user.setup_selected_tools,
+        setup_step_completed=current_user.setup_step_completed,
     )
+
+
+@router.patch("/me/setup-state", tags=["auth"])
+async def update_setup_state(
+    payload: SetupStateUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Update current user's setup wizard state (Handover 0855a)."""
+    if payload.setup_selected_tools is not None:
+        current_user.setup_selected_tools = payload.setup_selected_tools
+    if payload.setup_step_completed is not None:
+        current_user.setup_step_completed = payload.setup_step_completed
+    if payload.setup_complete is not None:
+        current_user.setup_complete = payload.setup_complete
+    await db.commit()
+    await db.refresh(current_user)
+    return {
+        "setup_complete": current_user.setup_complete,
+        "setup_selected_tools": current_user.setup_selected_tools,
+        "setup_step_completed": current_user.setup_step_completed,
+    }
+
+
+@router.get("/api-keys/active", response_model=list[APIKeyResponse], tags=["auth"])
+async def get_active_api_keys(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Return active API keys for current user (no plaintext). Used by setup wizard (Handover 0855a)."""
+    from src.giljo_mcp.models.auth import APIKey
+
+    stmt = select(APIKey).where(
+        APIKey.user_id == str(current_user.id),
+        APIKey.tenant_key == current_user.tenant_key,
+        APIKey.is_active.is_(True),
+    )
+    result = await db.execute(stmt)
+    keys = result.scalars().all()
+    return [
+        APIKeyResponse(
+            id=str(k.id),
+            name=k.name,
+            key_prefix=k.key_prefix,
+            permissions=k.permissions or [],
+            is_active=k.is_active,
+            created_at=k.created_at.isoformat(),
+            last_used=k.last_used.isoformat() if k.last_used else None,
+            revoked_at=k.revoked_at.isoformat() if k.revoked_at else None,
+            expires_at=k.expires_at.isoformat() if k.expires_at else None,
+        )
+        for k in keys
+    ]
 
 
 @router.get("/api-keys", response_model=list[APIKeyResponse], tags=["auth"])
