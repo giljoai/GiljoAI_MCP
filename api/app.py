@@ -214,6 +214,11 @@ async def lifespan(app: FastAPI):
 
         loop.set_exception_handler(_suppress_connection_reset)
 
+    # Phase 8: MCP SDK session manager (Handover 0846)
+    from api.endpoints.mcp_sdk_server import start_mcp_session_manager, stop_mcp_session_manager
+
+    await start_mcp_session_manager()
+
     logger.info("=" * 70)
     logger.info("API startup complete - All systems initialized")
     logger.info("=" * 70)
@@ -221,6 +226,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
+    await stop_mcp_session_manager()
     await shutdown(state)
 
     logger.info("API shutdown complete")
