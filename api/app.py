@@ -146,6 +146,8 @@ class APIState:
         self.api_call_count: dict[str, int] = {}
         self.mcp_call_count: dict[str, int] = {}
         self.system_prompt_service: Optional[SystemPromptService] = None
+        self.startup_complete: bool = False
+        self.degraded_services: list[str] = []
 
 
 state = APIState()
@@ -175,19 +177,21 @@ async def lifespan(app: FastAPI):
     # Phase 2: Core services
     await init_core_services(state)
 
-    # Phase 3: Event bus and WebSocket listener
+    # Phase 3: Event bus and WebSocket listener (optional — REST API works without it)
     await init_event_bus(state)
+    if state.event_bus is None:
+        state.degraded_services.append("event_bus")
 
-    # Phase 4: Background tasks
+    # Phase 4: Background tasks (optional — individual tasks handle their own failures)
     await init_background_tasks(state)
 
-    # Phase 5: Health monitoring
+    # Phase 5: Health monitoring (optional — already degrades gracefully)
     await init_health_monitor(state)
 
-    # Phase 6: Silence detection (Handover 0491)
+    # Phase 6: Silence detection (optional — already degrades gracefully)
     await init_silence_detector(state)
 
-    # Phase 7: Validation
+    # Phase 7: Validation (optional — already degrades gracefully)
     await init_validation(state)
 
     # Expose db_manager and websocket_manager directly on app.state
@@ -217,11 +221,21 @@ async def lifespan(app: FastAPI):
 
         loop.set_exception_handler(_suppress_connection_reset)
 
-    # Phase 8: MCP SDK session manager (Handover 0846)
+    # Phase 8: MCP SDK session manager (optional — REST/dashboard work without it)
     from api.endpoints.mcp_sdk_server import start_mcp_session_manager, stop_mcp_session_manager
 
-    await start_mcp_session_manager()
+    try:
+        await start_mcp_session_manager()
+    except Exception as e:  # Broad catch: startup resilience, non-fatal initialization
+        logger.warning("Optional startup phase [mcp_session_manager] failed: %s — running in degraded mode", e)
+        state.degraded_services.append("mcp_session_manager")
 
+    # Mark startup complete
+    state.startup_complete = True
+    app.state.startup_complete = True
+
+    if state.degraded_services:
+        logger.warning("Startup complete with degraded services: %s", ", ".join(state.degraded_services))
     logger.info("=" * 70)
     logger.info("API startup complete - All systems initialized")
     logger.info("=" * 70)
@@ -229,7 +243,8 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    await stop_mcp_session_manager()
+    if "mcp_session_manager" not in state.degraded_services:
+        await stop_mcp_session_manager()
     await shutdown(state)
 
     logger.info("API shutdown complete")
@@ -728,10 +743,9 @@ def _register_event_handlers(app: FastAPI) -> None:
 def _build_openapi_servers() -> list[dict[str, str]]:
     """Build OpenAPI servers list respecting ssl_enabled config."""
     try:
-        from src.giljo_mcp._config_io import read_config
+        from src.giljo_mcp.config_manager import get_config
 
-        config_data = read_config()
-        ssl_enabled = config_data.get("features", {}).get("ssl_enabled", False)
+        ssl_enabled = get_config().get_nested("features.ssl_enabled", default=False)
     except (OSError, ImportError, ValueError):
         ssl_enabled = False
     proto = "https" if ssl_enabled else "http"
