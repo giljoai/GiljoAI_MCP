@@ -15,7 +15,7 @@ import socket
 from dataclasses import dataclass
 from pathlib import Path
 
-import yaml
+from giljo_mcp._config_io import read_config
 
 
 logger = logging.getLogger(__name__)
@@ -139,8 +139,7 @@ class PortManager:
             return False
 
         try:
-            with open(self.config_path, encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
+            data = read_config(self.config_path)
 
             # Support both old 'server' structure and new 'services' structure
             if "services" in data:
@@ -349,19 +348,6 @@ class PortManager:
                     seen[port] = name
 
         return errors
-
-    def check_all_ports_available(self) -> dict[str, bool]:
-        """
-        Check availability of all configured ports.
-
-        Returns:
-            Dictionary mapping service name to availability status
-        """
-        return {
-            "API": self.check_port_available(self.config.api_port),
-            "Frontend": self.check_port_available(self.config.frontend_port),
-            "PostgreSQL": self.check_port_available(self.config.postgres_port),
-        }
 
     def get_environment_variables(self) -> dict[str, str]:
         """
