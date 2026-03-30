@@ -162,13 +162,93 @@ This project has {num_agents} agent(s) working together:
     return identity_section + "\n" + team_section + "\n" + dependencies_section + "\n" + coordination_section
 
 
-def _generate_orchestrator_protocol(job_id: str, tenant_key: str, executor_id: str) -> str:
+def _generate_orchestrator_protocol(
+    job_id: str,
+    tenant_key: str,
+    executor_id: str,
+    execution_mode: str = "multi_terminal",
+) -> str:
     """
-    Generate 3-phase orchestrator coordination protocol (Handover 0830).
+    Generate 3-phase orchestrator coordination protocol (Handover 0830, 0851).
 
-    Unlike the worker 5-phase lifecycle, the orchestrator is reactive and user-mediated.
+    Handover 0851: Rewrote Phase 2 from passive/reactive menu to active TODO-driven
+    coordination loop. Orchestrator now actively works its TODO list on every wake-up
+    regardless of trigger source. Added constellation-specific coordination patterns.
+
+    Unlike the worker 5-phase lifecycle, the orchestrator coordinates rather than implements.
     It reads pre-planned TODOs from staging — never replaces them with todo_items.
     """
+    # --- Constellation-specific coordination patterns ---
+    if execution_mode == "codex":
+        wake_pattern = """**CONSTELLATION: CODEX CLI**
+Your subagents are Codex spawn_agent() processes. They run autonomously.
+
+**How to check on agents:**
+  → `mcp__giljo_mcp__get_workflow_status(project_id="...")` — poll agent statuses
+  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — read agent messages
+
+**Sleep-and-check pattern (when waiting for agents):**
+  1. Tell the user what you are waiting for
+  2. Use shell sleep to pause (detect shell first — see environment detection below)
+  3. After waking: check messages, check workflow status, update your TODOs
+  4. Repeat until the TODO item you are waiting on can be resolved
+
+**Environment detection for sleep:**
+  Call: `python -c "import os; print(os.environ.get('SHELL', os.environ.get('COMSPEC', 'unknown')))"`
+  - bash/zsh: `sleep 20`
+  - powershell/pwsh: `Start-Sleep -Seconds 20`
+  - cmd: `timeout /t 20 /nobreak >nul`"""
+
+    elif execution_mode == "claude-code":
+        wake_pattern = """**CONSTELLATION: CLAUDE CODE CLI**
+Your subagents are Claude Code Task() processes. They run autonomously.
+
+**How to check on agents:**
+  → `mcp__giljo_mcp__get_workflow_status(project_id="...")` — poll agent statuses
+  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — read agent messages
+
+**Sleep-and-check pattern (when waiting for agents):**
+  1. Tell the user what you are waiting for and which TODO item depends on it
+  2. Use shell sleep to pause (15-20 seconds between checks)
+  3. After waking: run the coordination loop below — check messages, status, advance TODOs
+  4. Repeat until the TODO item you are waiting on can be resolved
+
+**User-triggered wake:** The user may also tell you to check on things.
+  Regardless of trigger source, always run the full coordination loop."""
+
+    elif execution_mode == "gemini":
+        wake_pattern = """**CONSTELLATION: GEMINI CLI**
+Your subagents are Gemini @agent processes. They run autonomously.
+
+**How to check on agents:**
+  → `mcp__giljo_mcp__get_workflow_status(project_id="...")` — poll agent statuses
+  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — read agent messages
+
+**Sleep-and-check pattern (when waiting for agents):**
+  1. Tell the user what you are waiting for and which TODO item depends on it
+  2. Use shell sleep to pause (15-20 seconds between checks)
+  3. After waking: run the coordination loop below — check messages, status, advance TODOs
+  4. Repeat until the TODO item you are waiting on can be resolved
+
+**User-triggered wake:** The user may also tell you to check on things.
+  Regardless of trigger source, always run the full coordination loop."""
+
+    else:
+        # multi_terminal or generic
+        wake_pattern = """**CONSTELLATION: MULTI-TERMINAL**
+Your subagents run in separate terminals. The user mediates between terminals.
+
+**How you get woken up:**
+  - User switches to your terminal and tells you something happened
+  - User says "check messages" or "check status"
+  - User reports an agent is blocked or finished
+
+**On every wake-up**, regardless of what the user said, run the active coordination
+loop below. The user's message is a trigger — your TODO list is your authority."""
+
+    # Substitute executor_id and tenant_key into the wake pattern
+    wake_pattern = wake_pattern.replace("{executor_id}", executor_id).replace("{tenant_key}", tenant_key)
+
     return f"""These are your coordination operating procedures. Follow them from startup through closeout.
 
 ## Orchestrator Coordination Protocol (3 Phases)
@@ -181,45 +261,89 @@ def _generate_orchestrator_protocol(job_id: str, tenant_key: str, executor_id: s
    If additional tasks are needed mid-implementation, use `todo_append` — **NEVER** `todo_items`.
 3. Report to user:
    - Agent names, statuses, and phase order (from `current_team_state`)
+   - Your TODO list with current status of each item
    - "Copy agent prompts from the dashboard to start them."
-   - "I will coordinate when you need me."
+   - "I will actively coordinate. Wake me when agents need attention or on status changes."
+4. Begin Phase 2 immediately — do not wait for user input.
 
-### PHASE 2 — REACTIVE COORDINATION (user-triggered only — no polling, no loops)
+### PHASE 2 — ACTIVE COORDINATION (TODO-driven — work your list on every wake-up)
 
-**"check messages":**
-  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
-  → Summarize content for user
+{wake_pattern}
 
-**"agent X is blocked":**
-  → Read the message content
+**THE COORDINATION LOOP (execute on EVERY wake-up or trigger):**
+
+Every time you are activated — whether by user interaction, a sleep timer, a subagent
+completing, an unblock event, or any other trigger — execute this loop:
+
+```
+1. RECEIVE   → receive_messages() — drain your message queue
+2. ASSESS    → get_workflow_status() — get live agent statuses
+3. PROCESS   → Handle any messages (blockers, completions, requests)
+4. ADVANCE   → Look at your TODO list. Find the next actionable item.
+               Can you advance it? Do so. Is it blocked? Note why.
+5. REPORT    → report_progress() with your updated todo_items
+               (use todo_append for NEW items only, never todo_items)
+6. DECIDE    → Are there still incomplete TODOs?
+               YES with actionable work → continue loop from step 1
+               YES but waiting on agents → tell user what you're waiting for
+               NO → proceed to Phase 3 (CLOSEOUT)
+```
+
+**TODO ITEM LIFECYCLE:**
+- Mark items `in_progress` when you start working them
+- Mark items `completed` when the coordination action is done AND verified
+- A "spawn agents" TODO is completed when agents are spawned and confirmed working
+- An "unblock agent X" TODO is completed when you sent guidance AND agent resumed
+- A "verify deliverables" TODO is completed when you confirmed artifacts exist
+
+**COORDINATION ACTIONS (use as needed within the loop):**
+
+**Unblock an agent:**
+  → Read blocker message content
   → Consult your `mission` field for relevant context
-  → Reply: `mcp__giljo_mcp__send_message(to_agents=["<agent_id>"], content="...", from_agent="{executor_id}", project_id="...", message_type="direct")`
+  → `mcp__giljo_mcp__send_message(to_agents=["<agent_id>"], content="...", from_agent="{executor_id}", project_id="...", message_type="direct")`
   → Tell user: "Go to that agent's terminal and say: the orchestrator responded"
+  → Update the relevant TODO item
 
-**"spawn a replacement agent":**
+**Spawn a replacement agent:**
   → `mcp__giljo_mcp__spawn_agent_job(...)`
   → Tell user to paste the new prompt in a NEW terminal
   → New agent reads predecessor context via `get_agent_mission`
+  → Update the relevant TODO item
 
-**"check status":**
-  → `mcp__giljo_mcp__get_workflow_status(project_id="...")`
-  → Report agent statuses to user
+**Broadcast to team:**
+  → `mcp__giljo_mcp__send_message(to_agents=['all'], content="...", from_agent="{executor_id}", project_id="...", message_type="broadcast")`
 
-**Adding new tasks mid-implementation:**
+**PROGRESS REPORTING (MANDATORY after every coordination action):**
   → `mcp__giljo_mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_append=[...])`
+  → Only use `todo_append` for genuinely NEW tasks discovered mid-implementation
   → **NEVER** use `todo_items` — it will wipe your pre-planned coordination TODOs
+  → The dashboard displays your TODO list — keep it current
 
 ### PHASE 3 — CLOSEOUT (all agents complete or decommissioned)
 
-1. `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — process final reports
+**Pre-closeout verification:**
+1. `mcp__giljo_mcp__get_workflow_status(project_id="...")` — confirm all agents are complete
+2. `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — drain final messages
+3. Review your TODO list — ALL items must be `completed`
+   If any are not, either complete them or explain why they were dropped
+
+**Closeout steps:**
+1. Mark any remaining TODO items as `completed` via `report_progress()`
 2. `mcp__giljo_mcp__write_360_memory()` — preserve project knowledge for future projects
 3. `mcp__giljo_mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})` — mark orchestrator complete
 4. Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
+
+**If `complete_job()` is rejected:** Read the error. Common causes:
+- Unread messages remain → run receive_messages() and process them
+- TODO items incomplete → review and update your TODO list, then retry
 
 ## ORCHESTRATOR CONSTRAINTS
 - **Git commit requirement does NOT apply.** You coordinate, you do not commit.
 - **Handover-on-context-exhaustion does NOT apply.** If context is exhausted, tell the user.
 - **If uncertain what to do, ask the user.** You are user-mediated by design.
+- **Your TODO list is your authority.** The mission describes what needs to happen.
+  Your TODOs are the structured breakdown. Work them systematically.
 
 ---
 **Your Identifiers:**
@@ -228,7 +352,7 @@ def _generate_orchestrator_protocol(job_id: str, tenant_key: str, executor_id: s
 
 **MESSAGING RULE: UUID-ONLY ADDRESSING**
 - ALWAYS use agent_id UUIDs in `to_agents` (from current_team_state)
-- NEVER use display names like "implementer" in `to_agents`
+- NEVER use display names like "orchestrator" or "implementer" in `to_agents`
 - Your `from_agent` is always: `{executor_id}`
 
 **CRITICAL: MCP tools are NATIVE tool calls. Use them like Read/Write/Bash.**
@@ -284,9 +408,9 @@ def _generate_agent_protocol(
     # Use agent_id if provided, otherwise fall back to job_id (backwards compat)
     executor_id = agent_id or job_id
 
-    # Handover 0830: Orchestrator protocol fork — 3-phase coordination lifecycle
+    # Handover 0830/0851: Orchestrator protocol fork — 3-phase coordination lifecycle
     if job_type == "orchestrator":
-        return _generate_orchestrator_protocol(job_id, tenant_key, executor_id)
+        return _generate_orchestrator_protocol(job_id, tenant_key, executor_id, execution_mode)
 
     # 0497d: Conditional Phase 4 blocks
     git_commit_block = ""
