@@ -14,127 +14,84 @@
       >
         <img :src="tool.logo" :alt="tool.name" class="tool-tab-logo" />
         <span>{{ tool.name }}</span>
-        <span
-          :class="[
-            'tab-status-dot',
-            isToolComplete(tool.id) ? 'tab-status-dot--complete' : '',
-          ]"
-        />
       </button>
     </div>
 
     <!-- Active tool panel -->
     <div class="tool-panel" role="tabpanel">
-      <!-- 1. Bootstrap Prompt Block -->
+
+      <!-- 1. Copy Prompt Button -->
       <div class="panel-section">
-        <label class="section-label">
+        <p class="instruction-text">
           Paste this into your {{ activeTool.name }} terminal and press Enter
-        </label>
+        </p>
 
         <!-- Loading state -->
         <div v-if="promptLoading[activeToolId]" class="prompt-loading">
           <v-progress-circular size="20" width="2" indeterminate color="#8f97b7" />
-          <span class="prompt-loading-text">Fetching bootstrap prompt...</span>
+          <span class="prompt-loading-text">Preparing prompt...</span>
         </div>
 
         <!-- Error state -->
         <div v-else-if="promptErrors[activeToolId]" class="prompt-error">
           <v-icon size="16" color="#e57373">mdi-alert-circle-outline</v-icon>
           <span class="prompt-error-text">{{ promptErrors[activeToolId] }}</span>
-          <v-btn
-            size="small"
-            variant="outlined"
-            class="retry-btn"
-            @click="fetchPrompt(activeToolId)"
-          >
+          <v-btn size="small" variant="outlined" class="retry-btn" @click="fetchPrompt(activeToolId)">
             Retry
           </v-btn>
         </div>
 
-        <!-- Prompt code block -->
-        <div v-else class="code-block smooth-border">
-          <div class="code-block-header">
-            <span class="code-block-label">Bootstrap Prompt</span>
-            <v-btn
-              size="small"
-              variant="outlined"
-              class="copy-btn"
-              aria-label="Copy bootstrap prompt to clipboard"
-              @click="copyPrompt(activeToolId)"
-            >
-              <v-icon size="14" start>mdi-content-copy</v-icon>
-              Copy to Clipboard
-            </v-btn>
-          </div>
-          <pre class="code-content">{{ prompts[activeToolId] || '' }}</pre>
+        <!-- Copy button (no visible prompt text) -->
+        <div v-else class="copy-prompt-row">
+          <v-btn
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-content-copy"
+            :disabled="!prompts[activeToolId]"
+            @click="handleCopyPrompt(activeToolId)"
+          >
+            Copy Prompt
+          </v-btn>
         </div>
       </div>
 
-      <!-- 2. Mini-Checklist -->
-      <div class="panel-section">
-        <label class="section-label">Installation Status</label>
-        <div class="checklist">
-          <div class="checklist-item">
-            <v-icon
-              size="20"
-              :color="toolStatus[activeToolId]?.commands ? '#6bcf7f' : '#8f97b7'"
-              class="checklist-icon"
-            >
-              {{ toolStatus[activeToolId]?.commands ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
-            </v-icon>
-            <span
-              :class="[
-                'checklist-text',
-                { 'checklist-text--done': toolStatus[activeToolId]?.commands },
-              ]"
-            >
-              Slash commands installed
-            </span>
-          </div>
-          <div class="checklist-item">
-            <v-icon
-              size="20"
-              :color="toolStatus[activeToolId]?.agents ? '#6bcf7f' : '#8f97b7'"
-              class="checklist-icon"
-            >
-              {{ toolStatus[activeToolId]?.agents ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
-            </v-icon>
-            <span
-              :class="[
-                'checklist-text',
-                { 'checklist-text--done': toolStatus[activeToolId]?.agents },
-              ]"
-            >
-              Agents downloaded
-            </span>
-          </div>
-        </div>
+      <!-- 2. Slash commands status -->
+      <div class="checklist-item">
+        <v-icon
+          size="20"
+          :color="toolStatus[activeToolId]?.commands ? '#6bcf7f' : '#8f97b7'"
+        >
+          {{ toolStatus[activeToolId]?.commands ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
+        </v-icon>
+        <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.commands }]">
+          Slash commands installed
+        </span>
       </div>
 
-      <!-- 3. Post-Install Command (appears after commands installed) -->
-      <Transition name="fade-slide">
-        <div v-if="toolStatus[activeToolId]?.commands" class="panel-section">
-          <label class="section-label">
-            Now run this command to install agent templates
-          </label>
-          <div class="code-block code-block--secondary smooth-border">
-            <div class="code-block-header">
-              <span class="code-block-label">Agent Import Command</span>
-              <v-btn
-                icon="mdi-content-copy"
-                size="x-small"
-                variant="text"
-                aria-label="Copy agent import command"
-                @click="copyAgentCommand(activeToolId)"
-              />
-            </div>
-            <pre class="code-content">{{ getAgentCommand(activeToolId) }}</pre>
-          </div>
-          <p class="tip-text">
-            Tip: Select "Use default model for all" on first import for fastest setup
+      <!-- 3. Agent command instruction -->
+      <div class="panel-section agent-section">
+        <p class="instruction-text">
+          Run <code class="inline-code">{{ getAgentCommand(activeToolId) }}</code> in your {{ activeTool.name }} terminal session
+        </p>
+      </div>
+
+      <!-- 4. Agents downloaded status -->
+      <div class="checklist-item">
+        <v-icon
+          size="20"
+          :color="toolStatus[activeToolId]?.agents ? '#6bcf7f' : '#8f97b7'"
+        >
+          {{ toolStatus[activeToolId]?.agents ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
+        </v-icon>
+        <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.agents }]">
+          Agents downloaded
+        </span>
+        <Transition name="fade-slide">
+          <p v-if="toolStatus[activeToolId]?.agents" class="agent-refresh-tip">
+            You can run this command again when you update your agent templates to refresh agents from your tool.
           </p>
-        </div>
-      </Transition>
+        </Transition>
+      </div>
     </div>
 
     <!-- Skip link -->
@@ -246,23 +203,20 @@ function fetchAllPrompts() {
   }
 }
 
-// Clipboard helpers
-async function copyPrompt(toolId) {
+// Copy prompt — resets both checkboxes until server detects real downloads
+async function handleCopyPrompt(toolId) {
   const text = prompts[toolId]
   if (!text) return
+
+  // Reset status — user is re-running the flow
+  if (toolStatus[toolId]) {
+    toolStatus[toolId].commands = false
+    toolStatus[toolId].agents = false
+  }
+
   const success = await clipboardCopy(text)
   if (success) {
     showToast({ message: 'Bootstrap prompt copied to clipboard!', type: 'success' })
-  } else {
-    showToast({ message: 'Copy failed -- select the text and press Ctrl+C', type: 'warning' })
-  }
-}
-
-async function copyAgentCommand(toolId) {
-  const text = getAgentCommand(toolId)
-  const success = await clipboardCopy(text)
-  if (success) {
-    showToast({ message: 'Command copied to clipboard!', type: 'success' })
   } else {
     showToast({ message: 'Copy failed -- select the text and press Ctrl+C', type: 'warning' })
   }
@@ -420,14 +374,37 @@ onUnmounted(() => {
   margin-bottom: 10px;
 }
 
+/* Instruction text */
+.instruction-text {
+  font-size: 0.875rem;
+  color: #e1e1e1;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.inline-code {
+  font-family: "Roboto Mono", "Courier New", monospace;
+  font-size: 0.8125rem;
+  background: rgba(255, 195, 0, 0.1);
+  color: #ffc300;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Copy prompt row */
+.copy-prompt-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
 /* Loading state */
 .prompt-loading {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 24px;
-  background: #0e1c2d;
-  border-radius: 8px;
+  padding: 16px;
 }
 
 .prompt-loading-text {
@@ -458,78 +435,32 @@ onUnmounted(() => {
   font-size: 0.75rem;
 }
 
-/* Code blocks */
-.code-block {
-  position: relative;
-  background: #0e1c2d;
-  border-radius: 8px;
-  padding: 0;
-  overflow: hidden;
+/* Agent section */
+.agent-section {
+  margin-top: 20px;
 }
 
-.code-block--secondary {
-  background: #0e1c2d;
-}
-
-.code-block-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
-  background: rgba(49, 80, 116, 0.3);
-}
-
-.code-block-label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: #8f97b7;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.copy-btn {
-  color: #ffc300 !important;
-  border-color: #ffc300 !important;
-  text-transform: none;
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0;
-}
-
-.code-content {
-  padding: 12px;
-  margin: 0;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: #e1e1e1;
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-/* Checklist */
-.checklist {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
+/* Checklist items */
 .checklist-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-}
-
-.checklist-icon {
-  transition: color 250ms ease-out;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
 .checklist-text {
   font-size: 0.875rem;
   color: #8f97b7;
   transition: color 250ms ease-out;
+}
+
+.agent-refresh-tip {
+  width: 100%;
+  margin-top: 6px;
+  margin-left: 30px;
+  font-size: 0.8125rem;
+  color: #ffc300;
 }
 
 .checklist-text--done {
