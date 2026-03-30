@@ -33,17 +33,49 @@ Run these directly (do NOT delegate to subagents):
 # Backend linting (baseline: 0 issues)
 ruff check src/ api/
 
-# Frontend linting (baseline: 8 warnings max)
+# Frontend linting (baseline: 6 warnings, budget: 8 max)
 cd frontend && npx eslint src/ --max-warnings 8
 
-# Frontend build (baseline: clean build, 0 warnings)
+# Frontend build (baseline: clean build, main chunk ~736KB)
 cd frontend && npm run build
 
 # CE/SaaS import boundary (baseline: 0 violations)
 python scripts/check_saas_import_boundary.py src/ api/ frontend/src/
 
-# Test suite (baseline: 1,390+ pass, 0 skip, 0 fail)
+# Frontend test suite (baseline: 1,893 pass, 0 skip, 0 fail)
+cd frontend && npx vitest run
+
+# Backend test suite (run from project root with correct PYTHONPATH)
 python -m pytest tests/ -q --timeout=60
+```
+
+### Step 2b: Runtime & Type Verification
+
+These checks catch issues that linting and unit tests miss (circular imports, broken migrations, type mismatches after refactors):
+
+```bash
+# Startup verification — catches circular imports and broken service wiring
+# Must succeed without a running database (import-only check)
+python -c "from api.app import create_app; print('Startup import OK')"
+
+# Type checking (baseline: informational, track regression count)
+python -m mypy src/ api/ --ignore-missing-imports 2>&1 | tail -5
+
+# Migration chain validity
+alembic check
+
+# Frontend coverage (baseline: 80% lines/functions/statements, 75% branches)
+cd frontend && npx vitest run --coverage 2>&1 | grep -A5 "Coverage summary"
+```
+
+### Step 2c: Dependency Security
+
+```bash
+# Python dependency vulnerabilities
+pip-audit 2>&1 | tail -10
+
+# Frontend dependency vulnerabilities
+cd frontend && npm audit --audit-level=moderate 2>&1 | tail -10
 ```
 
 Record all results. Any regression from baseline is a finding.
