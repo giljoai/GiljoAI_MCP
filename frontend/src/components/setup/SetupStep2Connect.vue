@@ -475,6 +475,16 @@ onUnmounted(() => {
 
 
 
+/* Platform toggle overrides for dark overlay background */
+.step-connect :deep(.v-btn-toggle > .v-btn.v-btn--active) {
+  background: #1e3147 !important;
+  color: white !important;
+}
+
+.step-connect :deep(.v-btn-toggle > .v-btn:not(.v-btn--active)) {
+  opacity: 0.5;
+}
+
 /* Config blocks */
 .config-block {
   position: relative;
