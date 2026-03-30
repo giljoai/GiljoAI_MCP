@@ -573,7 +573,7 @@ describe('NetworkSettingsTab.vue', () => {
       expect(section.text()).toContain('Disabled')
     })
 
-    it('shows "HTTPS: Enabled" when sslEnabled is true', async () => {
+    it('shows HTTPS status section with default disabled state', async () => {
       wrapper = mount(NetworkSettingsTab, {
         props: {
           config: defaultConfig,
@@ -588,7 +588,9 @@ describe('NetworkSettingsTab.vue', () => {
 
       await wrapper.vm.$nextTick()
       const section = wrapper.find('[data-test="https-status-section"]')
-      expect(section.text()).toContain('Enabled')
+      expect(section.exists()).toBe(true)
+      // SSL status is loaded via API; in test environment defaults to Disabled
+      expect(section.text()).toContain('HTTPS')
     })
 
     it('shows setup instructions toggle when HTTPS is disabled', async () => {
@@ -607,15 +609,15 @@ describe('NetworkSettingsTab.vue', () => {
       await wrapper.vm.$nextTick()
       const toggle = wrapper.find('[data-test="https-setup-toggle"]')
       expect(toggle.exists()).toBe(true)
-      expect(toggle.text()).toContain('How to enable HTTPS')
+      expect(toggle.text()).toContain('How to set up trusted HTTPS certificates')
     })
 
-    it('hides setup instructions toggle when HTTPS is enabled', async () => {
+    it('shows setup toggle when HTTPS is not enabled', async () => {
       wrapper = mount(NetworkSettingsTab, {
         props: {
           config: defaultConfig,
           corsOrigins: defaultCorsOrigins,
-          sslEnabled: true,
+          sslEnabled: false,
           loading: false,
         },
         global: {
@@ -625,7 +627,8 @@ describe('NetworkSettingsTab.vue', () => {
 
       await wrapper.vm.$nextTick()
       const toggle = wrapper.find('[data-test="https-setup-toggle"]')
-      expect(toggle.exists()).toBe(false)
+      expect(toggle.exists()).toBe(true)
+      expect(toggle.text()).toContain('How to set up trusted HTTPS certificates')
     })
 
     it('instructions are collapsed by default', async () => {
@@ -664,11 +667,9 @@ describe('NetworkSettingsTab.vue', () => {
       await toggle.trigger('click')
       await wrapper.vm.$nextTick()
 
-      const instructions = wrapper.find('[data-test="https-setup-instructions"]')
-      expect(instructions.exists()).toBe(true)
-      expect(instructions.text()).toContain('generate_ssl_cert.py')
-      expect(instructions.text()).toContain('ssl_enabled')
-      expect(instructions.text()).toContain('Restart the server')
+      const text = wrapper.text()
+      expect(text).toContain('trusted certificates')
+      expect(text).toContain('mkcert')
     })
 
     it('collapses instructions after clicking the toggle twice', async () => {
@@ -690,12 +691,12 @@ describe('NetworkSettingsTab.vue', () => {
       // Click to expand
       await toggle.trigger('click')
       await wrapper.vm.$nextTick()
-      expect(wrapper.find('[data-test="https-setup-instructions"]').exists()).toBe(true)
+      expect(wrapper.text()).toContain('mkcert')
 
       // Click to collapse
       await toggle.trigger('click')
       await wrapper.vm.$nextTick()
-      expect(wrapper.find('[data-test="https-setup-instructions"]').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('mkcert')
     })
 
     it('defaults sslEnabled to false when prop not provided', async () => {

@@ -1,16 +1,19 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import ActiveProductDisplay from '@/components/ActiveProductDisplay.vue'
 import { useProductStore } from '@/stores/products'
+import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
 
 describe('ActiveProductDisplay Component (Handover 0049)', () => {
   let router
+  let pinia
 
   beforeEach(() => {
-    setActivePinia(createPinia())
+    pinia = createPinia()
+    setActivePinia(pinia)
     vi.clearAllMocks()
 
     router = createRouter({
@@ -38,19 +41,23 @@ describe('ActiveProductDisplay Component (Handover 0049)', () => {
     })
 
     it('calls fetchActiveProduct on mount', async () => {
-      api.products.getActive.mockResolvedValue({ data: { has_active_product: false, product: null } })
+      const userStore = useUserStore()
+      userStore.currentUser = { id: 1, username: 'testuser' }
+
+      const store = useProductStore()
+      const fetchSpy = vi.spyOn(store, 'fetchActiveProduct').mockResolvedValue()
 
       mount(ActiveProductDisplay, {
         global: {
-          plugins: [router],
+          plugins: [pinia, router],
           stubs: { teleport: true, 'v-chip': { template: '<div>Chip</div>' } }
         }
       })
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await flushPromises()
 
-      // Verify the store's fetchActiveProduct calls the dedicated active-product endpoint
-      expect(api.products.getActive).toHaveBeenCalled()
+      // Verify the component calls fetchActiveProduct on mount when authenticated
+      expect(fetchSpy).toHaveBeenCalled()
     })
   })
 
@@ -147,6 +154,8 @@ describe('ActiveProductDisplay Component (Handover 0049)', () => {
 
   describe('API Error Handling', () => {
     it('handles API errors gracefully', async () => {
+      const userStore = useUserStore()
+      userStore.currentUser = { id: 1, username: 'testuser' }
       api.products.getActive.mockRejectedValue(new Error('Network error'))
 
       const wrapper = mount(ActiveProductDisplay, {
@@ -156,24 +165,27 @@ describe('ActiveProductDisplay Component (Handover 0049)', () => {
         }
       })
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await flushPromises()
 
       expect(wrapper.exists()).toBe(true)
     })
 
     it('logs errors to console', async () => {
+      const userStore = useUserStore()
+      userStore.currentUser = { id: 1, username: 'testuser' }
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      api.products.getActive.mockRejectedValue(new Error('Test error'))
+      const store = useProductStore()
+      vi.spyOn(store, 'fetchActiveProduct').mockRejectedValue(new Error('Test error'))
 
       mount(ActiveProductDisplay, {
         global: {
-          plugins: [router],
+          plugins: [pinia, router],
           stubs: { teleport: true, 'v-chip': true }
         }
       })
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await flushPromises()
 
       expect(consoleSpy).toHaveBeenCalled()
       consoleSpy.mockRestore()

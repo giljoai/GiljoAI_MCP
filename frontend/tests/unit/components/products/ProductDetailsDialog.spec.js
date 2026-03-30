@@ -268,19 +268,16 @@ describe('ProductDetailsDialog Component', () => {
   })
 
   describe('Config Data Section', () => {
-    it('conditionally renders config_data section when has_config_data is true', () => {
+    it('conditionally renders config_data section when tech_stack is present', () => {
       const wrapper = createWrapper({
         product: {
           id: 'prod-1',
           name: 'Product',
-          has_config_data: true,
-          config_data: {
-            tech_stack: {
-              languages: 'Python, JavaScript',
-              frontend: 'Vue 3',
-              backend: 'FastAPI',
-              database: 'PostgreSQL',
-            },
+          tech_stack: {
+            programming_languages: 'Python, JavaScript',
+            frontend_frameworks: 'Vue 3',
+            backend_frameworks: 'FastAPI',
+            databases_storage: 'PostgreSQL',
           },
         },
       })
@@ -289,12 +286,11 @@ describe('ProductDetailsDialog Component', () => {
       expect(wrapper.text()).toContain('Tech Stack')
     })
 
-    it('does not render config_data section when has_config_data is false', () => {
+    it('does not render config_data section when no config fields present', () => {
       const wrapper = createWrapper({
         product: {
           id: 'prod-1',
           name: 'Product',
-          has_config_data: false,
         },
       })
 
@@ -306,14 +302,11 @@ describe('ProductDetailsDialog Component', () => {
         product: {
           id: 'prod-1',
           name: 'Product',
-          has_config_data: true,
-          config_data: {
-            tech_stack: {
-              languages: 'TypeScript, Rust',
-              frontend: 'React',
-              backend: 'Axum',
-              database: 'MongoDB',
-            },
+          tech_stack: {
+            programming_languages: 'TypeScript, Rust',
+            frontend_frameworks: 'React',
+            backend_frameworks: 'Axum',
+            databases_storage: 'MongoDB',
           },
         },
       })
@@ -326,13 +319,10 @@ describe('ProductDetailsDialog Component', () => {
         product: {
           id: 'prod-1',
           name: 'Product',
-          has_config_data: true,
-          config_data: {
-            architecture: {
-              pattern: 'Microservices',
-              api_style: 'REST',
-              design_patterns: 'Repository, Factory',
-            },
+          architecture: {
+            primary_pattern: 'Microservices',
+            api_style: 'REST',
+            design_patterns: 'Repository, Factory',
           },
         },
       })
@@ -345,15 +335,10 @@ describe('ProductDetailsDialog Component', () => {
         product: {
           id: 'prod-1',
           name: 'Product',
-          has_config_data: true,
-          config_data: {
-            features: {
-              core: 'User management, Authentication',
-            },
-            test_config: {
-              strategy: 'TDD',
-              coverage_target: 80,
-            },
+          core_features: 'User management, Authentication',
+          test_config: {
+            test_strategy: 'TDD',
+            coverage_target: 80,
           },
         },
       })

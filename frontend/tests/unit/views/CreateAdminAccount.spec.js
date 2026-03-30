@@ -21,6 +21,13 @@ vi.mock('@/services/api', () => ({
   setTenantKey: vi.fn(),
 }))
 
+// Mock setupService
+vi.mock('@/services/setupService', () => ({
+  default: {
+    invalidateStatusCache: vi.fn(),
+  },
+}))
+
 // Mock useRouter
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual('vue-router')
@@ -31,6 +38,9 @@ vi.mock('vue-router', async () => {
     }),
   }
 })
+
+// Configurable validate result for form stubs (override per test as needed)
+let formValidateResult = { valid: true }
 
 const createWrapper = (options = {}) => {
   const vuetify = createVuetify()
@@ -53,8 +63,14 @@ const createWrapper = (options = {}) => {
         'v-card-title': { template: '<div><slot /></div>' },
         'v-card-subtitle': { template: '<div><slot /></div>' },
         'v-card-text': { template: '<div><slot /></div>' },
-        'v-form': { template: '<form @submit.prevent="$emit(\'submit\')"><slot /></form>' },
-        'v-text-field': true,
+        'v-form': {
+          template: '<form @submit.prevent="$emit(\'submit\')"><slot /></form>',
+          methods: { validate: () => Promise.resolve(formValidateResult) },
+        },
+        'v-text-field': {
+          template: '<div />',
+          methods: { validate: () => Promise.resolve({ valid: true }) },
+        },
         'v-btn': true,
         'v-icon': true,
         'v-divider': true,
@@ -69,6 +85,7 @@ const createWrapper = (options = {}) => {
 describe('CreateAdminAccount Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    formValidateResult = { valid: true }
   })
 
   describe('Component Rendering', () => {
@@ -86,9 +103,9 @@ describe('CreateAdminAccount Component', () => {
 
     it('should have form validation state', () => {
       const wrapper = createWrapper()
-      // Component should have form validation state
-      expect(wrapper.vm.formValid).toBeDefined()
-      expect(typeof wrapper.vm.formValid).toBe('boolean')
+      // Component should have form validation state (step1Valid for step 1)
+      expect(wrapper.vm.step1Valid).toBeDefined()
+      expect(typeof wrapper.vm.step1Valid).toBe('boolean')
     })
   })
 
@@ -166,7 +183,7 @@ describe('CreateAdminAccount Component', () => {
   describe('Form Validation', () => {
     it('should initialize with form invalid (all fields required)', () => {
       const wrapper = createWrapper()
-      expect(wrapper.vm.formValid).toBe(false)
+      expect(wrapper.vm.step1Valid).toBe(false)
     })
 
     it('should have all required field validation rules', () => {
@@ -174,7 +191,7 @@ describe('CreateAdminAccount Component', () => {
 
       // With script setup, validation rules are not directly accessible on vm
       // Instead, check that the main validation properties are defined
-      expect(wrapper.vm.formValid).toBeDefined()
+      expect(wrapper.vm.step1Valid).toBeDefined()
       expect(wrapper.vm.errorMessage).toBeDefined()
       expect(wrapper.vm.loading).toBeDefined()
 
@@ -195,7 +212,11 @@ describe('CreateAdminAccount Component', () => {
       wrapper.vm.confirmPassword = 'ValidPassword123!'
       wrapper.vm.recoveryPin = '1234'
       wrapper.vm.confirmPin = '1234'
-      wrapper.vm.formValid = true
+      wrapper.vm.step2Valid = true
+
+      // Navigate to step 2 so step2Form ref is available
+      wrapper.vm.step = 2
+      await wrapper.vm.$nextTick()
 
       // Mock API response
       api.auth.createFirstAdmin.mockResolvedValue({ data: { success: true } })
@@ -217,10 +238,13 @@ describe('CreateAdminAccount Component', () => {
     })
 
     it('should not submit if form is invalid', async () => {
+      // Make form validation return invalid
+      formValidateResult = { valid: false }
       const wrapper = createWrapper()
 
-      // Keep form invalid
-      wrapper.vm.formValid = false
+      // Navigate to step 2 so step2Form ref is available
+      wrapper.vm.step = 2
+      await wrapper.vm.$nextTick()
 
       // Try to call createAdmin
       await wrapper.vm.createAdmin()
@@ -232,13 +256,17 @@ describe('CreateAdminAccount Component', () => {
     it('should set loading state during submission', async () => {
       const wrapper = createWrapper()
 
-      wrapper.vm.formValid = true
+      wrapper.vm.step2Valid = true
       wrapper.vm.workspaceName = 'Test Org'
       wrapper.vm.username = 'admin'
       wrapper.vm.password = 'ValidPassword123!'
       wrapper.vm.confirmPassword = 'ValidPassword123!'
       wrapper.vm.recoveryPin = '1234'
       wrapper.vm.confirmPin = '1234'
+
+      // Navigate to step 2 so step2Form ref is available
+      wrapper.vm.step = 2
+      await wrapper.vm.$nextTick()
 
       // Mock slow API response
       api.auth.createFirstAdmin.mockImplementationOnce(
@@ -247,6 +275,9 @@ describe('CreateAdminAccount Component', () => {
       )
 
       const submitPromise = wrapper.vm.createAdmin()
+
+      // Flush microtask queue so validate() promise resolves and loading is set
+      await wrapper.vm.$nextTick()
 
       // Loading should be true during submission
       expect(wrapper.vm.loading).toBe(true)
@@ -260,13 +291,17 @@ describe('CreateAdminAccount Component', () => {
     it('should display error message on API failure', async () => {
       const wrapper = createWrapper()
 
-      wrapper.vm.formValid = true
+      wrapper.vm.step2Valid = true
       wrapper.vm.workspaceName = 'Test Org'
       wrapper.vm.username = 'admin'
       wrapper.vm.password = 'ValidPassword123!'
       wrapper.vm.confirmPassword = 'ValidPassword123!'
       wrapper.vm.recoveryPin = '1234'
       wrapper.vm.confirmPin = '1234'
+
+      // Navigate to step 2 so step2Form ref is available
+      wrapper.vm.step = 2
+      await wrapper.vm.$nextTick()
 
       const errorMessage = 'Admin account already exists'
       api.auth.createFirstAdmin.mockRejectedValueOnce(
@@ -297,13 +332,17 @@ describe('CreateAdminAccount Component', () => {
     it('should handle API response with structured error', async () => {
       const wrapper = createWrapper()
 
-      wrapper.vm.formValid = true
+      wrapper.vm.step2Valid = true
       wrapper.vm.workspaceName = 'Test Org'
       wrapper.vm.username = 'admin'
       wrapper.vm.password = 'ValidPassword123!'
       wrapper.vm.confirmPassword = 'ValidPassword123!'
       wrapper.vm.recoveryPin = '1234'
       wrapper.vm.confirmPin = '1234'
+
+      // Navigate to step 2 so step2Form ref is available
+      wrapper.vm.step = 2
+      await wrapper.vm.$nextTick()
 
       const error = new Error('Failed')
       error.response = {
@@ -592,7 +631,7 @@ describe('CreateAdminAccount Component', () => {
       const wrapper = createWrapper()
 
       // Initially invalid
-      expect(wrapper.vm.formValid).toBe(false)
+      expect(wrapper.vm.step1Valid).toBe(false)
 
       // Set all required fields
       wrapper.vm.workspaceName = 'Test Org'
@@ -603,9 +642,9 @@ describe('CreateAdminAccount Component', () => {
       wrapper.vm.confirmPin = '1234'
 
       // Manually set form valid (in real scenario, v-form would update this)
-      wrapper.vm.formValid = true
+      wrapper.vm.step1Valid = true
 
-      expect(wrapper.vm.formValid).toBe(true)
+      expect(wrapper.vm.step1Valid).toBe(true)
     })
   })
 

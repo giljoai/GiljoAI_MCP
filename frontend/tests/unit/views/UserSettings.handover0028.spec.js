@@ -88,7 +88,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
   let pinia
   let wrapper
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Setup Vuetify
     vuetify = createVuetify({
       components,
@@ -103,9 +103,12 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
     router = createRouter({
       history: createMemoryHistory(),
       routes: [
+        { path: '/', redirect: '/settings' },
         { path: '/settings', name: 'UserSettings', component: UserSettings }
       ]
     })
+    await router.push('/settings')
+    await router.isReady()
   })
 
   afterEach(() => {
@@ -288,7 +291,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
 
   describe('Query Parameter Support', () => {
     it('opens integrations tab if tab=integrations in query string', async () => {
-      router.push('/settings?tab=integrations')
+      await router.push('/settings?tab=integrations')
       await router.isReady()
 
       wrapper = mount(UserSettings, {
@@ -297,6 +300,8 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
         }
       })
 
+      // Wait for onMounted to process route.query.tab
+      await wrapper.vm.$nextTick()
       await wrapper.vm.$nextTick()
 
       expect(wrapper.vm.activeTab).toBe('integrations')
