@@ -148,8 +148,8 @@ This project has {num_agents} agent(s) working together:
     # Build COORDINATION section
     coordination_section = f"""## COORDINATION
 - **UUID-ONLY MESSAGING**: Always use agent_id UUIDs from the team table above when addressing agents
-- Use `mcp__giljo-mcp__send_message(to_agents=["{agent_id}"], from_agent="{agent_id}", ...)` with UUID values
-- Use `mcp__giljo-mcp__receive_messages` to check for instructions or updates
+- Use `mcp__giljo_mcp__send_message(to_agents=["{agent_id}"], from_agent="{agent_id}", ...)` with UUID values
+- Use `mcp__giljo_mcp__receive_messages` to check for instructions or updates
 - When you complete a deliverable, send a brief status message to downstream agents using their agent_id UUIDs
 - Use `to_agents=['all']` for broadcast messages to the entire team
 - NEVER use display names (e.g., "orchestrator", "implementer") in to_agents - use the UUID from the team table
@@ -187,33 +187,33 @@ def _generate_orchestrator_protocol(job_id: str, tenant_key: str, executor_id: s
 ### PHASE 2 — REACTIVE COORDINATION (user-triggered only — no polling, no loops)
 
 **"check messages":**
-  → `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
+  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
   → Summarize content for user
 
 **"agent X is blocked":**
   → Read the message content
   → Consult your `mission` field for relevant context
-  → Reply: `mcp__giljo-mcp__send_message(to_agents=["<agent_id>"], content="...", from_agent="{executor_id}", project_id="...", message_type="direct")`
+  → Reply: `mcp__giljo_mcp__send_message(to_agents=["<agent_id>"], content="...", from_agent="{executor_id}", project_id="...", message_type="direct")`
   → Tell user: "Go to that agent's terminal and say: the orchestrator responded"
 
 **"spawn a replacement agent":**
-  → `mcp__giljo-mcp__spawn_agent_job(...)`
+  → `mcp__giljo_mcp__spawn_agent_job(...)`
   → Tell user to paste the new prompt in a NEW terminal
   → New agent reads predecessor context via `get_agent_mission`
 
 **"check status":**
-  → `mcp__giljo-mcp__get_workflow_status(project_id="...")`
+  → `mcp__giljo_mcp__get_workflow_status(project_id="...")`
   → Report agent statuses to user
 
 **Adding new tasks mid-implementation:**
-  → `mcp__giljo-mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_append=[...])`
+  → `mcp__giljo_mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_append=[...])`
   → **NEVER** use `todo_items` — it will wipe your pre-planned coordination TODOs
 
 ### PHASE 3 — CLOSEOUT (all agents complete or decommissioned)
 
-1. `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — process final reports
-2. `mcp__giljo-mcp__write_360_memory()` — preserve project knowledge for future projects
-3. `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})` — mark orchestrator complete
+1. `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — process final reports
+2. `mcp__giljo_mcp__write_360_memory()` — preserve project knowledge for future projects
+3. `mcp__giljo_mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})` — mark orchestrator complete
 4. Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
 
 ## ORCHESTRATOR CONSTRAINTS
@@ -350,8 +350,8 @@ tell me and I'll use /gil_add to save it to your dashboard."
    When creating files or referencing directories, use context-provided paths.
    Do NOT hardcode paths observed in your terminal environment.
 
-1. Call `mcp__giljo-mcp__get_agent_mission(job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission (auto-transitions to WORKING)
-2. Call `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` - Check for instructions
+1. Call `mcp__giljo_mcp__get_agent_mission(job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission (auto-transitions to WORKING)
+2. Call `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` - Check for instructions
 3. Review any messages and incorporate feedback BEFORE starting work
 
 {phase1_step4}
@@ -361,17 +361,17 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 - Maintain focus on mission objectives
 - Update todos as you progress
 - **MESSAGE CHECK**: Call `receive_messages()` after completing each TodoWrite task
-  - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
+  - Full call: `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
   - If queue not empty: Process messages BEFORE continuing
   - If queue empty: Safe to proceed
 
 ### Phase 3: PROGRESS REPORTING (After each milestone)
 1. Call `receive_messages()` - MANDATORY before reporting
-   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
+   - Full call: `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 2. Process ALL pending messages
 3. Call `report_progress()` with your todo_items:
 
-   mcp__giljo-mcp__report_progress(
+   mcp__giljo_mcp__report_progress(
        job_id="{job_id}",
        tenant_key="{tenant_key}",
        todo_items=[
@@ -410,10 +410,10 @@ Before calling `complete_job()`, you MUST verify:
 
 Final steps:
 1. Call `receive_messages()` - Final message check
-   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
+   - Full call: `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 2. Process any pending messages - ensure queue is empty
 3. Call `complete_job()` - ONLY after TODOs are complete and queue is empty
-   - Full call: `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})`
+   - Full call: `mcp__giljo_mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})`
 
 If you call `complete_job()` without meeting these requirements:
 - System will REJECT your completion
@@ -422,17 +422,17 @@ If you call `complete_job()` without meeting these requirements:
 ### Phase 5: ERROR HANDLING & BLOCKED STATUS
 
 **To mark yourself BLOCKED** (unclear requirements, waiting for clarification):
-1. Call `mcp__giljo-mcp__report_error(job_id="{job_id}", error="BLOCKED: <reason>")`
+1. Call `mcp__giljo_mcp__report_error(job_id="{job_id}", error="BLOCKED: <reason>")`
    - Sets status to "blocked" and stores block_reason
 2. Send message to orchestrator explaining what you need (use orchestrator's agent_id UUID from YOUR TEAM table):
-   - `mcp__giljo-mcp__send_message(to_agents=["<orchestrator-agent-id-uuid>"], content="BLOCKER: <details>", from_agent="{executor_id}", project_id="...", message_type="direct")`
+   - `mcp__giljo_mcp__send_message(to_agents=["<orchestrator-agent-id-uuid>"], content="BLOCKER: <details>", from_agent="{executor_id}", project_id="...", message_type="direct")`
    - ALWAYS use the orchestrator's agent_id UUID, NEVER the display name "orchestrator"
 3. STOP work and poll for response (use longer intervals while blocked — 15-20 seconds between polls, up to 5 attempts):
-   - `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
+   - `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 
 **To resume from BLOCKED**:
 1. After receiving guidance, call `report_progress()` with your updated TODO list:
-   - `mcp__giljo-mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_items=[...])`
+   - `mcp__giljo_mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_items=[...])`
    - This automatically transitions your status from "blocked" back to "working"
 2. Continue execution with Phase 2
 

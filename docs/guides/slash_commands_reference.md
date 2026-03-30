@@ -61,7 +61,7 @@ User types /gil-smart-task → Claude Code reads gil-smart-task.md
                            ↓
               Claude analyzes conversation history
                            ↓
-              Claude calls mcp__giljo-mcp__create_task
+              Claude calls mcp__giljo_mcp__create_task
                            ↓
               Task created with rich context
                            ↓
@@ -148,7 +148,7 @@ Create a simple task with the provided description using the GiljoAI MCP system.
 {{prompt}}
 
 ## Instructions
-Use the `mcp__giljo-mcp__create_task` tool to create a task with:
+Use the `mcp__giljo_mcp__create_task` tool to create a task with:
 - **title**: Extract a concise title from the description (max 10 words)
 - **description**: The full description provided above
 - **priority**: "medium" (default)
@@ -167,7 +167,7 @@ Task Description: Refactor authentication logic
 ...instructions..."
 
 // Claude executes:
-mcp__giljo-mcp__create_task({
+mcp__giljo_mcp__create_task({
   title: "Refactor authentication logic",
   description: "Refactor authentication logic",
   priority: "medium",
@@ -210,7 +210,7 @@ Create a detailed, context-aware task by analyzing the recent conversation.
 
 1. **Analyze the conversation**: Review the last 20-30 messages
 2. **Extract context**: Identify what, why, when, and specific details
-3. **Create detailed task**: Use `mcp__giljo-mcp__create_task` with:
+3. **Create detailed task**: Use `mcp__giljo_mcp__create_task` with:
    - **title**: Clear, action-oriented (max 80 chars)
    - **description**: Comprehensive with:
      - Summary of what needs to be done
@@ -235,7 +235,7 @@ Be thorough but concise.
 // User types: /gil-smart-task the connection pooling refactor
 
 // Claude analyzes conversation and creates:
-mcp__giljo-mcp__create_task({
+mcp__giljo_mcp__create_task({
   title: "Refactor database connection pooling in db_manager.py",
   description: `Implement custom connection pooling to improve database performance.
 
@@ -307,10 +307,10 @@ Send a message to a specific agent using fuzzy name matching.
 ## Instructions
 
 1. **Parse input**: Extract agent name (first word/phrase) and message content
-2. **Find agent**: Use `mcp__giljo-mcp__list_agents` and fuzzy match
+2. **Find agent**: Use `mcp__giljo_mcp__list_agents` and fuzzy match
    - "db" matches "database-expert"
    - "doc" matches "documentation-agent"
-3. **Send message**: Use `mcp__giljo-mcp__send_message`:
+3. **Send message**: Use `mcp__giljo_mcp__send_message`:
    - **from_agent**: "user"
    - **to_agent**: Matched agent ID
    - **content**: Parsed message content
@@ -327,7 +327,7 @@ const agentName = "database"
 const messageContent = "add indexes to user table"
 
 // Claude calls:
-const agents = mcp__giljo-mcp__list_agents({ status: "" })
+const agents = mcp__giljo_mcp__list_agents({ status: "" })
 
 // Fuzzy match: "database" → finds "database-expert-agent"
 const matched = agents.find(a =>
@@ -336,7 +336,7 @@ const matched = agents.find(a =>
 )
 
 // Send message:
-mcp__giljo-mcp__send_message({
+mcp__giljo_mcp__send_message({
   from_agent: "user",
   to_agent: matched.id,
   content: "add indexes to user table",
@@ -409,9 +409,9 @@ Activate a project and start multi-agent orchestration directly in CLI.
 
 ## Instructions
 
-1. **Find project**: Use `mcp__giljo-mcp__list_projects`, fuzzy match name/ID
+1. **Find project**: Use `mcp__giljo_mcp__list_projects`, fuzzy match name/ID
 2. **Activate project**: ⚠️ Project activation is done via web UI (Handover 0388 removed CLI activation)
-3. **Get agents**: Use `mcp__giljo-mcp__list_agents`
+3. **Get agents**: Use `mcp__giljo_mcp__list_agents`
 4. **Start orchestration**: Present summary and enter orchestrator mode
 
 Present:
@@ -430,7 +430,7 @@ Ready to coordinate work.
 // User types: /gil-run Authentication System
 
 // Claude searches projects:
-const projects = mcp__giljo-mcp__list_projects({ status: "active" })
+const projects = mcp__giljo_mcp__list_projects({ status: "active" })
 const project = projects.find(p =>
   p.name.toLowerCase().includes("authentication")
 )
@@ -439,7 +439,7 @@ const project = projects.find(p =>
 // Projects must be activated in the dashboard before CLI orchestration
 
 // Get agents:
-const agents = mcp__giljo-mcp__list_agents({ status: "active" })
+const agents = mcp__giljo_mcp__list_agents({ status: "active" })
 
 // Display orchestration summary:
 console.log(`
@@ -481,11 +481,11 @@ Display current project status, agents, and tasks.
 
 ## Instructions
 
-1. **Get project**: `mcp__giljo-mcp__list_projects` (active)
-2. **Get agents**: `mcp__giljo-mcp__list_agents` (all statuses)
+1. **Get project**: `mcp__giljo_mcp__list_projects` (active)
+2. **Get agents**: `mcp__giljo_mcp__list_agents` (all statuses)
 3. **Get tasks**:
-   - `mcp__giljo-mcp__list_tasks` (status="pending")
-   - `mcp__giljo-mcp__list_tasks` (status="in_progress")
+   - `mcp__giljo_mcp__list_tasks` (status="pending")
+   - `mcp__giljo_mcp__list_tasks` (status="in_progress")
    - Count completed tasks if available
 4. **Present summary** with project, agents, tasks, recent activity
 ```
