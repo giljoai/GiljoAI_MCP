@@ -113,6 +113,16 @@ The canonical location is `frontend/tests/`. Verify with `npx vitest run` that r
 
 ---
 
+## Agent Protocols (MANDATORY)
+
+### Rejection Authority
+You have freedom to reject any audit proposal if you find the application already has valid reasoning or a sound current implementation. Do NOT blindly fix things. If a test was intentionally skipped, if a component API change makes old tests irrelevant, or if the audit's understanding was wrong — document your reasoning in the chain log `deviations` field and move on.
+
+### Flow Investigation
+Before changing ANY test, investigate the component it tests — upstream and downstream. Understand WHY the component changed and what the current behavior is. Do not just pattern-match old assertions to new HTML — understand the intent. If you discover a test failure reveals an actual component BUG (not just a test-component mismatch), STOP and set your status to `blocked` in the chain log so the orchestrator can decide whether to fix the component or update the test.
+
+---
+
 ## What NOT To Do
 
 - Do NOT refactor or modify any production component code — only test files
