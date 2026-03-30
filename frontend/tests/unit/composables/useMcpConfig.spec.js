@@ -94,7 +94,7 @@ describe('useMcpConfig', () => {
     it('returns the correct claude mcp add command', () => {
       const result = generateClaudeConfig('https://localhost:8372', 'giljo_abc123')
       expect(result).toBe(
-        'claude mcp add --transport http giljo-mcp https://localhost:8372/mcp --header "Authorization: Bearer giljo_abc123"',
+        'claude mcp add --transport http giljo_mcp https://localhost:8372/mcp --header "Authorization: Bearer giljo_abc123"',
       )
     })
   })
@@ -105,7 +105,7 @@ describe('useMcpConfig', () => {
     it('returns the correct codex mcp add command', () => {
       const result = generateCodexConfig('https://localhost:8372')
       expect(result).toBe(
-        'codex mcp add giljo-mcp --url https://localhost:8372/mcp --bearer-token-env-var GILJO_API_KEY',
+        'codex mcp add giljo_mcp --url https://localhost:8372/mcp --bearer-token-env-var GILJO_API_KEY',
       )
     })
   })
@@ -116,7 +116,7 @@ describe('useMcpConfig', () => {
     it('returns the correct gemini mcp add command', () => {
       const result = generateGeminiConfig('https://localhost:8372', 'giljo_xyz789')
       expect(result).toBe(
-        'gemini mcp add -t http -H "Authorization: Bearer giljo_xyz789" giljo-mcp https://localhost:8372/mcp',
+        'gemini mcp add -t http -H "Authorization: Bearer giljo_xyz789" giljo_mcp https://localhost:8372/mcp',
       )
     })
   })
@@ -127,7 +127,7 @@ describe('useMcpConfig', () => {
     it('returns valid JSON with transport, url, and headers', () => {
       const result = generateOpenclawConfig('https://localhost:8372', 'giljo_key456')
       const parsed = JSON.parse(result)
-      const server = parsed['giljo-mcp']
+      const server = parsed['giljo_mcp']
       expect(server).toBeDefined()
       expect(server).toHaveProperty('transport')
       expect(server).toHaveProperty('url', 'https://localhost:8372/mcp')
@@ -169,7 +169,7 @@ describe('useMcpConfig', () => {
     it('dispatches to openclaw generator for openclaw', () => {
       const result = generateConfigForTool('openclaw', serverUrl, apiKey)
       const parsed = JSON.parse(result)
-      expect(parsed['giljo-mcp']).toHaveProperty('url', `${serverUrl}/mcp`)
+      expect(parsed['giljo_mcp']).toHaveProperty('url', `${serverUrl}/mcp`)
     })
   })
 

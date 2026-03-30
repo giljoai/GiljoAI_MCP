@@ -81,7 +81,7 @@ describe('McpIntegrationCard.vue', () => {
 
     it('displays configuration tool description', () => {
       const text = wrapper.text()
-      expect(text).toContain('Creates MCP integration CLI command')
+      expect(text).toContain('Creates an MCP integration CLI command')
     })
 
     it('includes AiToolConfigWizard component', () => {
@@ -145,7 +145,7 @@ describe('McpIntegrationCard.vue', () => {
     it('description uses text-body-2 class', () => {
       const paragraphs = wrapper.findAll('p')
       const descriptionP = paragraphs.find(p =>
-        p.text().includes('Connect your AI coding agent')
+        p.text().includes('Attach GiljoAI MCP to your AI coding agents')
       )
       expect(descriptionP).toBeDefined()
       if (descriptionP) {
@@ -156,7 +156,7 @@ describe('McpIntegrationCard.vue', () => {
     it('description uses text-medium-emphasis class', () => {
       const paragraphs = wrapper.findAll('p')
       const descriptionP = paragraphs.find(p =>
-        p.text().includes('Connect your AI coding agent')
+        p.text().includes('Attach GiljoAI MCP to your AI coding agents')
       )
       if (descriptionP) {
         expect(descriptionP.classes()).toContain('text-medium-emphasis')
@@ -172,7 +172,7 @@ describe('McpIntegrationCard.vue', () => {
     it('config tool description uses text-body-2 class', () => {
       const configTexts = wrapper.findAll('.text-body-2')
       const configDesc = configTexts.find(el =>
-        el.text().includes('Creates MCP integration CLI command')
+        el.text().includes('Attach GiljoAI MCP to your AI coding agents')
       )
       expect(configDesc).toBeDefined()
     })
@@ -241,7 +241,7 @@ describe('McpIntegrationCard.vue', () => {
 
       // Configuration tool section
       expect(text).toContain('MCP Configuration Tool')
-      expect(text).toContain('Creates MCP integration CLI command')
+      expect(text).toContain('Creates an MCP integration CLI command')
     })
 
     it('has correct class structure for layout', () => {
@@ -256,7 +256,7 @@ describe('McpIntegrationCard.vue', () => {
     it('description has correct bottom margin (mb-4)', () => {
       const paragraphs = wrapper.findAll('p')
       const descriptionP = paragraphs.find(p =>
-        p.text().includes('Connect your AI coding agent')
+        p.text().includes('Attach GiljoAI MCP to your AI coding agents')
       )
       if (descriptionP) {
         expect(descriptionP.classes()).toContain('mb-4')

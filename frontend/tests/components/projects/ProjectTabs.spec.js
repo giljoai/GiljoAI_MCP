@@ -515,13 +515,13 @@ describe('ProjectTabs - Action Buttons', () => {
       const wrapper = createWrapper()
       await flushPromises()
 
-      // Call the handler directly since radio stubs do not support v-model
-      await wrapper.vm.handleExecutionModeChange(false)
+      // Call the handler directly with a valid execution mode value
+      await wrapper.vm.handleExecutionModeChange('claude_code_cli')
       await flushPromises()
 
       expect(api.projects.update).toHaveBeenCalledWith(
         'project-123',
-        { execution_mode: 'multi_terminal' },
+        { execution_mode: 'claude_code_cli' },
       )
     })
 
@@ -529,12 +529,12 @@ describe('ProjectTabs - Action Buttons', () => {
       const wrapper = createWrapper()
       await flushPromises()
 
-      await wrapper.vm.handleExecutionModeChange(true)
+      await wrapper.vm.handleExecutionModeChange('claude_code_cli')
       await flushPromises()
 
       expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({
         type: 'info',
-        message: expect.stringContaining('Claude Code CLI mode enabled'),
+        message: expect.stringContaining('Claude Code CLI'),
       }))
     })
   })
