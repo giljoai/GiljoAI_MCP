@@ -438,6 +438,64 @@ class MessageAcknowledgedEvent(BaseModel):
 
 
 # ============================================================================
+# Setup Wizard Events
+# ============================================================================
+
+
+class SetupToolConnectedData(BaseModel):
+    """Data payload for setup:tool_connected event."""
+
+    tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
+    user_id: str = Field(..., min_length=1, description="User identifier")
+    tool_name: str = Field(..., min_length=1, description="AI tool name (claude_code, codex_cli, gemini_cli)")
+    connected_at: str = Field(..., description="ISO 8601 timestamp of connection")
+
+
+class SetupToolConnectedEvent(BaseModel):
+    """Complete event structure for setup:tool_connected."""
+
+    type: Literal["setup:tool_connected"] = "setup:tool_connected"
+    timestamp: str = Field(..., description="ISO 8601 timestamp")
+    schema_version: str = Field(default="1.0", description="Event schema version")
+    data: SetupToolConnectedData
+
+
+class SetupCommandsInstalledData(BaseModel):
+    """Data payload for setup:commands_installed event."""
+
+    tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
+    user_id: str = Field(..., min_length=1, description="User identifier")
+    tool_name: str = Field(..., min_length=1, description="AI tool name")
+    command_count: int = Field(..., ge=0, description="Number of commands installed")
+
+
+class SetupCommandsInstalledEvent(BaseModel):
+    """Complete event structure for setup:commands_installed."""
+
+    type: Literal["setup:commands_installed"] = "setup:commands_installed"
+    timestamp: str = Field(..., description="ISO 8601 timestamp")
+    schema_version: str = Field(default="1.0", description="Event schema version")
+    data: SetupCommandsInstalledData
+
+
+class SetupAgentsDownloadedData(BaseModel):
+    """Data payload for setup:agents_downloaded event."""
+
+    tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
+    user_id: str = Field(..., min_length=1, description="User identifier")
+    agent_count: int = Field(..., ge=0, description="Number of agent templates downloaded")
+
+
+class SetupAgentsDownloadedEvent(BaseModel):
+    """Complete event structure for setup:agents_downloaded."""
+
+    type: Literal["setup:agents_downloaded"] = "setup:agents_downloaded"
+    timestamp: str = Field(..., description="ISO 8601 timestamp")
+    schema_version: str = Field(default="1.0", description="Event schema version")
+    data: SetupAgentsDownloadedData
+
+
+# ============================================================================
 # Event Type Union
 # ============================================================================
 
@@ -449,6 +507,9 @@ WebSocketEvent = (
     | MessageSentEvent
     | MessageReceivedEvent
     | MessageAcknowledgedEvent
+    | SetupToolConnectedEvent
+    | SetupCommandsInstalledEvent
+    | SetupAgentsDownloadedEvent
 )
 # Union type of all WebSocket events for validation.
 #
@@ -821,6 +882,47 @@ class EventFactory:
         )
         return event.model_dump(mode="json")
 
+    @staticmethod
+    def setup_tool_connected(tenant_key: str, user_id: str, tool_name: str) -> dict:
+        """Create setup:tool_connected event."""
+        event = SetupToolConnectedEvent(
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            data=SetupToolConnectedData(
+                tenant_key=tenant_key,
+                user_id=user_id,
+                tool_name=tool_name,
+                connected_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            ),
+        )
+        return event.model_dump(mode="json")
+
+    @staticmethod
+    def setup_commands_installed(tenant_key: str, user_id: str, tool_name: str, command_count: int) -> dict:
+        """Create setup:commands_installed event."""
+        event = SetupCommandsInstalledEvent(
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            data=SetupCommandsInstalledData(
+                tenant_key=tenant_key,
+                user_id=user_id,
+                tool_name=tool_name,
+                command_count=command_count,
+            ),
+        )
+        return event.model_dump(mode="json")
+
+    @staticmethod
+    def setup_agents_downloaded(tenant_key: str, user_id: str, agent_count: int) -> dict:
+        """Create setup:agents_downloaded event."""
+        event = SetupAgentsDownloadedEvent(
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            data=SetupAgentsDownloadedData(
+                tenant_key=tenant_key,
+                user_id=user_id,
+                agent_count=agent_count,
+            ),
+        )
+        return event.model_dump(mode="json")
+
 
 # ============================================================================
 # Public API
@@ -843,5 +945,11 @@ __all__ = [
     "MessageSentEvent",
     "ProjectMissionUpdatedData",
     "ProjectMissionUpdatedEvent",
+    "SetupAgentsDownloadedData",
+    "SetupAgentsDownloadedEvent",
+    "SetupCommandsInstalledData",
+    "SetupCommandsInstalledEvent",
+    "SetupToolConnectedData",
+    "SetupToolConnectedEvent",
     "WebSocketEvent",
 ]

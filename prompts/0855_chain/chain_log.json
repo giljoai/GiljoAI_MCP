@@ -6,16 +6,18 @@
   "branch": "feature/0855-setup-wizard",
   "total_sessions": 7,
   "orchestrator_notes": "Agents: read this file BEFORE starting. If orchestrator_directives contains STOP, halt immediately. 0855a and 0855b are independent and can run in parallel. 0855c depends on 0855a. 0855d depends on 0855a+b+c. 0855e depends on 0855b+c+d. 0855f depends on 0855a+c+d+e. 0855g depends on 0855f. NOTE: 0855b emission point in mcp_http.py may be deleted by 0846 (running on separate workstation). Wire schemas and EventFactory, but if mcp_http.py changes significantly, emit from the new SDK server location instead.",
-  "orchestrator_directives": [],
+  "orchestrator_directives": [
+    "0855c used 0-indexed steps (0=Choose Tools, 1=Connect, 2=Install, 3=Launch). Step 2 Connect content renders at currentStep===1. Emit step-complete with {step:1, data:{...}}. Tool IDs: claude_code, codex_cli, gemini_cli."
+  ],
   "sessions": [
     {
       "session_id": "0855a",
       "title": "Backend Schema + API Endpoints",
       "handover": "handovers/0855a_SETUP_WIZARD_BACKEND_SCHEMA.md",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-29T10:00:00Z",
+      "completed_at": "2026-03-29T10:30:00Z",
       "agent_types": ["database-expert", "tdd-implementor"],
       "planned_tasks": [
         "Add 3 columns to User model (setup_complete, setup_selected_tools, setup_step_completed)",
@@ -25,21 +27,36 @@
         "Verify GET /me returns new fields",
         "TDD tests for all endpoints"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Added 3 columns to User model in auth.py (setup_complete, setup_selected_tools, setup_step_completed)",
+        "Created idempotent Alembic migration 0855a_setup_state (depends on baseline_v34)",
+        "Added SetupStateUpdate Pydantic model with step range validation (0-4)",
+        "Added PATCH /me/setup-state endpoint with partial update support",
+        "Added GET /api-keys/active endpoint with tenant isolation (user_id + tenant_key filter)",
+        "Updated UserProfileResponse to include setup fields with defaults",
+        "Updated GET /me to return setup fields from current_user",
+        "Created test_setup_wizard_endpoints.py with 9 Pydantic + 9 API tests",
+        "Verified migration runs idempotently on existing DB with columns already present"
+      ],
+      "deviations": [
+        "DB had stale alembic_version stamp (0844a_conventions from pre-squash). Stamped to baseline_v34 before running migration."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "**For 0855c (Overlay Shell):** User model columns: `setup_complete` (bool, default false), `setup_selected_tools` (JSONB list, nullable), `setup_step_completed` (int 0-4, default 0). Pydantic model: `SetupStateUpdate` in `api/endpoints/auth.py`. Endpoints: `PATCH /api/auth/me/setup-state` (accepts partial updates, returns {setup_complete, setup_selected_tools, setup_step_completed}), `GET /api/auth/api-keys/active` (returns list[APIKeyResponse]). Response schema: `UserProfileResponse` now includes `setup_complete`, `setup_selected_tools`, `setup_step_completed` with safe defaults. Route prefix is `/api/auth` (NOT `/api/v1/auth`). The `/api-keys/active` route is placed before `/api-keys` for correct FastAPI matching.",
+      "cascading_impacts": [
+        "UserProfileResponse has 3 new fields — any frontend consuming GET /me will see them",
+        "Route prefix is /api/auth (not /api/v1/auth) — downstream handovers must use correct prefix"
+      ],
+      "summary": "All 6 planned tasks completed. 3 User model columns added, idempotent migration created and verified, PATCH /me/setup-state and GET /api-keys/active endpoints implemented with tenant isolation, UserProfileResponse updated, 18 tests written (9 Pydantic validation + 9 API endpoint tests). All Pydantic tests passing."
     },
     {
       "session_id": "0855b",
       "title": "WebSocket Setup Events",
       "handover": "handovers/0855b_SETUP_WIZARD_WEBSOCKET_EVENTS.md",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-29T12:00:00Z",
+      "completed_at": "2026-03-29T12:35:00Z",
       "agent_types": ["tdd-implementor"],
       "planned_tasks": [
         "Add 3 event models + data models to schemas.py",
@@ -49,21 +66,30 @@
         "Wire setup:agents_downloaded emission from downloads.py download_agent_templates",
         "TDD tests for event schemas and emissions"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Add 3 event models + data models to schemas.py",
+        "Add 3 EventFactory methods",
+        "Wire setup:tool_connected emission from mcp_http.py mcp_endpoint (after handle_initialize call)",
+        "Wire setup:commands_installed emission from downloads.py get_bootstrap_prompt",
+        "Wire setup:agents_downloaded emission from downloads.py download_agent_templates",
+        "TDD tests for event schemas and emissions (41 tests passing)"
+      ],
+      "deviations": [
+        "setup:tool_connected emitted from mcp_endpoint (line ~1357) rather than handle_initialize, because handle_initialize lacks access to the request object needed for ws_manager"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "Event types: 'setup:tool_connected', 'setup:commands_installed', 'setup:agents_downloaded'. Data models: SetupToolConnectedData, SetupCommandsInstalledData, SetupAgentsDownloadedData. Event models: SetupToolConnectedEvent, SetupCommandsInstalledEvent, SetupAgentsDownloadedEvent. Factory methods: EventFactory.setup_tool_connected(tenant_key, user_id, tool_name), EventFactory.setup_commands_installed(tenant_key, user_id, tool_name, command_count), EventFactory.setup_agents_downloaded(tenant_key, user_id, agent_count). All return dict ready for JSON serialization. Emission points: mcp_http.py mcp_endpoint (after handle_initialize, line ~1357), downloads.py get_bootstrap_prompt (line ~571), downloads.py download_agent_templates (line ~342). All emissions are fire-and-forget with try/except guards. Tool name mapping in mcp_endpoint: claude/claude_code -> claude_code, codex -> codex_cli, gemini -> gemini_cli. ws_manager accessed via request.app.state.websocket_manager.",
+      "cascading_impacts": ["0855d needs to listen for 'setup:tool_connected' via WebSocket on frontend", "0855e needs to listen for 'setup:commands_installed' and 'setup:agents_downloaded' via WebSocket on frontend"],
+      "summary": "Added 3 setup wizard WebSocket event types (setup:tool_connected, setup:commands_installed, setup:agents_downloaded) with Pydantic data/event models, EventFactory methods, and fire-and-forget emission at MCP initialize, bootstrap prompt, and agent template download endpoints. 41 tests passing."
     },
     {
       "session_id": "0855c",
       "title": "Overlay Shell + Step 1 (Tool Selection)",
       "handover": "handovers/0855c_SETUP_WIZARD_OVERLAY_STEP1.md",
-      "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "complete",
+      "started_at": "2026-03-29T14:00:00Z",
+      "completed_at": "2026-03-29T14:45:00Z",
       "agent_types": ["ux-designer", "tdd-implementor"],
       "planned_tasks": [
         "Create SetupWizardOverlay.vue with full-screen overlay shell",
@@ -73,21 +99,36 @@
         "Add updateSetupState action to user store",
         "Vitest component tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Created SetupWizardOverlay.vue (575 lines) with full-screen overlay, Teleport to body, fade transition",
+        "Built 4-step progress bar with active/completed/future states, brand gradient connector fill",
+        "Built Step 1 with 3 tool selection cards (claude_code, codex_cli, gemini_cli) — multi-select toggle, smooth-border styling",
+        "Placeholder content for Steps 2-4 referencing 0855d/e/f",
+        "Added updateSetupState endpoint to api.js (PATCH /api/auth/me/setup-state)",
+        "Added updateSetupState action to user store — syncs response fields back to currentUser",
+        "Rewrote WelcomeView.vue — removed old localStorage checklist, added overlay with auto-launch and CTA label logic",
+        "38 Vitest component tests passing (rendering, progress bar, tool selection, next/back buttons, dismiss, placeholders, accessibility)"
+      ],
+      "deviations": [
+        "Removed old tutorial CTA logic (tutorialKey/tutorialLaunched/handleTutorialCta) and localStorage checklist from WelcomeView — replaced entirely by setup wizard overlay",
+        "Removed startup-cta gradient CSS from WelcomeView (no longer needed)"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "**For 0855d (Step 2 Connect):** Component: `SetupWizardOverlay.vue` at `frontend/src/components/setup/SetupWizardOverlay.vue`. Props: `modelValue` (Boolean), `currentStep` (Number 0-3), `selectedTools` (Array of tool IDs), `mode` ('setup'|'learning'). Emits: `update:modelValue`, `update:currentStep`, `dismiss`, `step-complete` (payload: `{ step: Number, data: Object }`). Tool IDs: 'claude_code', 'codex_cli', 'gemini_cli'. Steps are 0-indexed: 0=Choose Tools, 1=Connect, 2=Install, 3=Launch. Step 2 content renders when `currentStep === 1` — replace the `<div v-else-if=\"currentStep === 1\">` placeholder block. The overlay parent (WelcomeView) calls `userStore.updateSetupState()` on `step-complete` — 0855d should emit `step-complete` with `{ step: 1, data: { ... } }` and the parent will persist. Store action: `userStore.updateSetupState(payload)` calls `PATCH /api/auth/me/setup-state` and syncs response to `currentUser`. API endpoint in `api.js`: `api.auth.updateSetupState(payload)`. `canProceed` computed in overlay currently returns `true` for all steps > 0 — 0855d should add connection validation logic.",
+      "cascading_impacts": [
+        "WelcomeView no longer uses localStorage checklist (giljo_startup_checklist_v1) or tutorial CTA — 0855f should remove StartupQuickStart.vue which also references this key",
+        "User store now exposes updateSetupState action — available for 0855d/e/f to use directly"
+      ],
+      "summary": "All 6 planned tasks completed. Created SetupWizardOverlay.vue with full-screen overlay shell, 4-step progress bar with brand gradient, Step 1 tool selection (3 cards with multi-select), placeholder steps 2-4. Integrated into WelcomeView with auto-launch on first login, resume support, and CTA label logic. Added updateSetupState to API service and user store. 38 Vitest tests passing. Brand-compliant: smooth-border, design tokens, 250ms transitions, accessible (ARIA roles, keyboard support)."
     },
     {
       "session_id": "0855d",
       "title": "Step 2 (Connect to GiljoAI)",
       "handover": "handovers/0855d_SETUP_WIZARD_STEP2_CONNECT.md",
       "color": "#9C27B0",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-29T16:00:00Z",
+      "completed_at": "2026-03-29T16:45:00Z",
       "agent_types": ["ux-designer", "tdd-implementor"],
       "planned_tasks": [
         "Extract config generation to useMcpConfig.js composable",
@@ -97,44 +138,85 @@
         "Wire WebSocket setup:tool_connected for connection status",
         "Vitest component tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Created useMcpConfig.js composable with: normalizeToolId, detectPlatform, buildServerUrl, isHttps, generateClaudeConfig, generateCodexConfig, generateGeminiConfig, generateOpenclawConfig, generateConfigForTool, generateCodexEnvVar, getCertTrustCommand, makeKeyName",
+        "Refactored AiToolConfigWizard.vue to import from composable — removed inline config generation, cert trust constants, makeKeyName, env var generation",
+        "Added api.apiKeys.getActive() endpoint to api.js (GET /api/auth/api-keys/active)",
+        "Updated test mock in setup.js to include apiKeys.getActive",
+        "Created SetupStep2Connect.vue (~270 lines) with: per-tool tabs, server URL display with inline edit, API key check/generate flow, per-tool config display with copy buttons, platform toggle (PowerShell/Linux), HTTPS cert trust section, real-time WebSocket connection status indicators",
+        "Wired SetupStep2Connect into SetupWizardOverlay.vue at currentStep===1 with canProceed and step-data bindings",
+        "Updated canProceed computed: step 1 requires >= 1 tool connected via WebSocket",
+        "handleNext emits step-complete with {step:1, data:{connectedTools:[...]}}",
+        "30 Vitest composable tests passing (useMcpConfig.spec.js)",
+        "15 Vitest component tests passing (SetupStep2Connect.spec.js)",
+        "Updated 2 tests in SetupWizardOverlay.spec.js to reflect 0855d changes (placeholder replaced, canProceed logic updated)"
+      ],
+      "deviations": [
+        "OpenClaw config generation kept in composable (generateOpenclawConfig) for AiToolConfigWizard modal compatibility, but NOT exposed in wizard step 2 — wizard only shows claude_code, codex_cli, gemini_cli per spec",
+        "When only a key_prefix is available (existing key, no plaintext), config commands show YOUR_API_KEY placeholder — user must re-generate or use existing config"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "**For 0855e (Step 3 Install):** Component: `SetupStep2Connect.vue` at `frontend/src/components/setup/SetupStep2Connect.vue`. It emits `can-proceed` (Boolean) and `step-data` ({ connectedTools: string[] }). The overlay parent receives step-complete with `{ step: 1, data: { connectedTools: [...] } }`. Composable `useMcpConfig.js` at `frontend/src/composables/useMcpConfig.js` exports: `normalizeToolId(wizardId)` → legacy ID, `generateConfigForTool(toolId, serverUrl, apiKey)`, `generateCodexEnvVar(apiKey, platform)`, `getCertTrustCommand(platform)`, `buildServerUrl(hostname, port)`, `detectPlatform()`, `makeKeyName(toolId)`, `isHttps()`. WebSocket subscription pattern: `wsStore.on('setup:tool_connected', handler)` — handler receives `{ tool_name }` where tool_name matches normalizeToolId output (claude_code, codex_cli, gemini_cli). Connection status is reactive per-tool in component: `connectionStatus[toolId]` = 'waiting' | 'connected'. The overlay's `canProceed` for step 1 checks `step2CanProceed` ref which is set by the `can-proceed` emit from SetupStep2Connect. Tool IDs remain: claude_code, codex_cli, gemini_cli.",
+      "cascading_impacts": [
+        "useMcpConfig.js composable is now shared — any changes to config format affect both AiToolConfigWizard.vue (standalone modal) and SetupStep2Connect.vue (wizard)",
+        "api.apiKeys.getActive added to api.js and test mock setup.js — available for any component",
+        "SetupWizardOverlay.spec.js updated: step 1 placeholder test replaced with stub check, canProceed test adjusted to step 2+"
+      ],
+      "summary": "All 6 planned tasks completed. Extracted config generation into useMcpConfig.js composable (12 exported functions). Refactored AiToolConfigWizard.vue to use composable. Built SetupStep2Connect.vue with per-tool tabs, API key check/generation, platform-specific config display with copy buttons, and real-time WebSocket connection status. Wired into SetupWizardOverlay.vue at currentStep===1 with canProceed gating. 83 total tests passing (38 overlay + 30 composable + 15 component)."
     },
     {
       "session_id": "0855e",
       "title": "Step 3 (Install Commands & Agents)",
       "handover": "handovers/0855e_SETUP_WIZARD_STEP3_COMMANDS.md",
       "color": "#9C27B0",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-29T18:00:00Z",
+      "completed_at": "2026-03-29T18:30:00Z",
       "agent_types": ["ux-designer", "tdd-implementor"],
       "planned_tasks": [
         "Build SetupStep3Commands.vue with bootstrap prompt display",
         "Wire WebSocket setup:commands_installed and setup:agents_downloaded",
         "Build auto-updating mini-checklist",
         "Handle Codex two-step flow",
+        "Wire Step 3 into SetupWizardOverlay.vue",
         "Vitest component tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Created SetupStep3Commands.vue (~330 lines script+template, ~280 lines style) with per-tool bootstrap prompt display, copy-to-clipboard, mini-checklist, post-install command, skip link",
+        "Bootstrap prompt fetched from /api/download/bootstrap-prompt?platform={toolId} using same pattern as AgentExport.vue (raw fetch with JWT auth)",
+        "Mini-checklist subscribes to setup:commands_installed (per-tool match) and setup:agents_downloaded (user-level, marks all tools)",
+        "Post-install command shows /gil_get_agents for claude_code/gemini_cli and $gil-get-agents for codex_cli with fade-slide transition",
+        "Skip link emits 'skip' event, handled by overlay parent which advances to step 3 with {skipped: true}",
+        "Wired SetupStep3Commands into SetupWizardOverlay.vue at currentStep===2 with can-proceed and step-data bindings",
+        "Updated canProceed computed: step 2 requires step3CanProceed (>= 1 tool with both checkmarks green)",
+        "Added handleStep3Skip to overlay: emits step-complete with {installedTools:[], skipped:true} and advances",
+        "Added step2ConnectedTools computed (derived from step2Data.connectedTools) to pass as prop to Step 3",
+        "30 Vitest component tests passing (SetupStep3Commands.spec.js)",
+        "Updated 2 tests in SetupWizardOverlay.spec.js (placeholder replaced with stub check, canProceed test adjusted to step 3+)",
+        "All 83 setup wizard tests passing (30 step3 + 38 overlay + 15 step2)"
+      ],
+      "deviations": [
+        "Bootstrap prompt uses raw fetch() instead of api service — consistent with existing AgentExport.vue pattern (the api service has no download namespace method for this endpoint)",
+        "Reactive state (prompts, promptLoading, promptErrors, toolStatus) initialized eagerly in script setup rather than in onMounted, so template sees correct initial state (loading=true) on first render",
+        "setup:agents_downloaded marks ALL connected tools (user-level event has no tool_name), matching the backend emission pattern"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "**For 0855f (Step 4 + E2E Wiring):** Component: `SetupStep3Commands.vue` at `frontend/src/components/setup/SetupStep3Commands.vue`. Props: `selectedTools` (Array), `connectedTools` (Array). Emits: `can-proceed` (Boolean), `step-data` ({ installedTools: string[] }), `skip`. The overlay parent receives step-complete with `{ step: 2, data: { installedTools: [...] } }` or `{ step: 2, data: { installedTools: [], skipped: true } }` for skip. The overlay's `canProceed` for step 2 checks `step3CanProceed` ref set by the `can-proceed` emit. `step2ConnectedTools` computed derives connected tool IDs from `step2Data.connectedTools` and is passed to Step 3 as the `connected-tools` prop. WebSocket subscriptions: `setup:commands_installed` (per-tool, matches tool_name to toolStatus keys), `setup:agents_downloaded` (user-level, marks all tools). Tool agent commands: claude_code/gemini_cli use `/gil_get_agents`, codex_cli uses `$gil-get-agents`. The skip handler in overlay emits step-complete with skipped flag and advances step. All 83 tests pass. Overlay stubs: SetupStep2Connect and SetupStep3Commands are both stubbed in overlay tests.",
+      "cascading_impacts": [
+        "SetupWizardOverlay.vue now imports SetupStep3Commands — any changes to Step 3 props/emits affect the overlay wiring",
+        "SetupWizardOverlay.spec.js updated: step 2 placeholder test replaced with stub check, canProceed test adjusted from step 2+ to step 3+",
+        "step2ConnectedTools computed added to overlay — 0855f can use this pattern for passing data between steps"
+      ],
+      "summary": "All 6 planned tasks completed. Created SetupStep3Commands.vue with per-tool bootstrap prompt fetching, copy-to-clipboard, auto-updating mini-checklist via WebSocket (setup:commands_installed + setup:agents_downloaded), post-install /gil_get_agents command display, Codex $gil-get-agents variant, and skip link. Wired into SetupWizardOverlay.vue at currentStep===2 with canProceed gating. 30 new Vitest tests + 2 updated overlay tests. All 83 setup wizard tests passing."
     },
     {
       "session_id": "0855f",
       "title": "Step 4 (Completion) + E2E Wiring + Cleanup",
       "handover": "handovers/0855f_SETUP_WIZARD_STEP4_WIRING.md",
-      "color": "#FF9800",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "complete",
+      "started_at": "2026-03-29T20:30:00Z",
+      "completed_at": "2026-03-29T21:00:00Z",
       "agent_types": ["ux-designer", "tdd-implementor"],
       "planned_tasks": [
         "Build SetupStep4Complete.vue with 3 launchpad cards",
@@ -144,21 +226,42 @@
         "Update UserSettings startup tab",
         "Vitest component tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Created SetupStep4Complete.vue (~235 lines) with 3 launchpad cards (Products, Projects, Tasks), dashboard link, responsive grid, smooth-border styling",
+        "Wired SetupStep4Complete into SetupWizardOverlay.vue at currentStep===3 with handleStep4Complete handler",
+        "Hidden footer on step 3 (Step 4 has card-based navigation, no Next/Back needed)",
+        "Updated WelcomeView.vue handleStepComplete to handle all 4 steps: step 0 saves tools, step 1-2 advances step_completed, step 3 sets setup_complete:true + navigates to card route",
+        "Added useRouter to WelcomeView for post-completion navigation",
+        "Deleted StartupQuickStart.vue (639 lines) and its test file StartupQuickStart.spec.js",
+        "Removed all giljo_startup_checklist_v1 localStorage references from UserSettings.vue (isChecklistComplete function deleted)",
+        "Replaced UserSettings startup tab content: removed StartupQuickStart component, added 'Open Setup Wizard' button linking to WelcomeView",
+        "Removed StartupQuickStart stubs from 4 test files (UserSettings.spec.js x2, UserSettings.handover0028.spec.js, global-tab-styles.spec.js)",
+        "Created SetupStep4Complete.spec.js with 10 tests (rendering + emission)",
+        "Updated SetupWizardOverlay.spec.js: added Step4 stub, updated placeholder/footer tests",
+        "All 93 setup wizard tests passing (10 Step4 + 38 overlay + 30 Step3 + 15 Step2)"
+      ],
+      "deviations": [
+        "Footer hidden entirely on step 3 (v-if='currentStep < 3') rather than showing a 'Finish' button — Step 4 cards and dashboard link serve as the completion actions, making a separate Finish button redundant",
+        "Remaining StartupQuickStart reference in frontend/public/design-system-sample.html is a static HTML sample — not a code import, left as-is"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "**For 0855g (Learning Mode + Final Cleanup):** Component: `SetupStep4Complete.vue` at `frontend/src/components/setup/SetupStep4Complete.vue`. Emits: `complete` ({ action: string, route: string }). The overlay handles Step 4 completion via `handleStep4Complete` which emits `step-complete` with `{ step: 3, data: { action, route, setup_complete: true } }` and closes the overlay. WelcomeView receives this and calls `updateSetupState({ setup_complete: true, setup_step_completed: 4 })` then navigates to the card's route. The overlay footer is hidden on step 3 (`v-if=\"currentStep < 3\"`). **Deleted files:** `StartupQuickStart.vue` (639 lines), `StartupQuickStart.spec.js`. **Deleted localStorage key:** `giljo_startup_checklist_v1` — no longer referenced anywhere in frontend code. **UserSettings startup tab** now shows a simple 'Open Setup Wizard' button that navigates to `/` (WelcomeView). The `mode` prop on SetupWizardOverlay is already wired: `mode=\"setup\"` when `!setupComplete`, `mode=\"learning\"` when `setupComplete` — 0855g just needs to add learning mode content. All 93 setup wizard tests passing. Overlay test stubs: SetupStep2Connect, SetupStep3Commands, SetupStep4Complete all stubbed.",
+      "cascading_impacts": [
+        "SetupWizardOverlay.vue now imports SetupStep4Complete — any changes to Step 4 emits affect the overlay wiring",
+        "WelcomeView.vue now handles step-complete for all 4 steps and navigates on completion — 0855g learning mode should not conflict since mode='learning' uses a different path",
+        "UserSettings startup tab no longer has StartupQuickStart — it links back to WelcomeView for wizard access",
+        "Footer is conditionally hidden on step 3 — if 0855g needs footer on learning mode step 3, add mode check to the v-if"
+      ],
+      "summary": "All 6 planned tasks completed. Created SetupStep4Complete.vue with 3 launchpad cards (Products, Projects, Tasks) and dashboard link. Wired into overlay at currentStep===3 with hidden footer (card-based navigation). Updated WelcomeView to handle all 4 step completions with PATCH + navigation. Deleted StartupQuickStart.vue (639 lines) and all giljo_startup_checklist_v1 localStorage references. Updated UserSettings startup tab with wizard link. 10 new tests + updated overlay tests. All 93 setup wizard tests passing."
     },
     {
       "session_id": "0855g",
       "title": "Learning Overlay + Final Cleanup",
       "handover": "handovers/0855g_SETUP_WIZARD_LEARNING_OVERLAY_CLEANUP.md",
-      "color": "#F44336",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "complete",
+      "started_at": "2026-03-29T22:50:00Z",
+      "completed_at": "2026-03-29T23:05:00Z",
       "agent_types": ["ux-designer", "documentation-manager"],
       "planned_tasks": [
         "Implement mode=learning in SetupWizardOverlay.vue",
@@ -168,14 +271,26 @@
         "Update handover_catalogue.md",
         "Vitest tests for learning mode"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Implemented mode='learning' in SetupWizardOverlay.vue: conditional title, hidden progress bar, hidden step content, 5 collapsible learning sections with expand/collapse transitions",
+        "Wrote 5 learning content sections: Product Hierarchy, AI Coding Tools, Slash Commands, Agent Templates, Dashboard — each with 4 concise reference lines",
+        "WelcomeView 'How to Use' button already wired by 0855c/f (mode='learning' when setupComplete) — verified working",
+        "Dead-code sweep: found and fixed ProductIntroTour.vue stale 'Go to Startup' reference (changed to 'Open Setup Wizard' with route navigation). design-system-sample.html static reference left as-is per 0855f decision. Zero hits for giljo_startup_checklist, startup-cta.",
+        "Updated handover_catalogue.md: 0855a-g moved from Active to Recently Closed with summary, Quick Reference row updated to COMPLETE",
+        "Added 13 Vitest tests for learning mode: title, no progress bar, no step content, 5 sections render, section titles, first expanded by default, toggle behavior, Got it button, no Next/Back, dismiss emits, no step-complete on dismiss, setup mode regression, close X button"
+      ],
+      "deviations": [
+        "WelcomeView button wiring was already complete from 0855c (mode prop) and 0855f (label + conditional) — no additional wiring needed",
+        "ProductIntroTour.vue had stale 'Go to Startup' reference pointing to old startup tab — updated to route to WelcomeView instead of userSettingsTab navigation"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "This is the final session in the 0855 chain. All 7 sessions complete. The feature/0855-setup-wizard branch is ready for review and merge to master.",
+      "cascading_impacts": [
+        "ProductIntroTour.vue last slide now routes to '/' (WelcomeView) instead of UserSettings startup tab — changes the intro tour's final action destination"
+      ],
+      "summary": "All 6 planned tasks completed. Implemented learning mode with 5 collapsible reference sections, 'Got it' dismiss button, hidden stepper/navigation. Fixed stale ProductIntroTour reference. Dead-code sweep clean. 13 new tests (106 total setup wizard tests passing). Catalogue updated. Clean build verified."
     }
   ],
-  "chain_summary": null,
-  "final_status": "pending"
+  "chain_summary": "The 0855 Setup Wizard Redesign chain is complete. 7 sessions (0855a-g) delivered a full-screen setup wizard overlay replacing the old StartupQuickStart checklist. Key deliverables: (1) Backend: 3 User model columns, idempotent migration, PATCH /me/setup-state and GET /api-keys/active endpoints. (2) WebSocket: 3 event types (tool_connected, commands_installed, agents_downloaded) with EventFactory methods and fire-and-forget emissions. (3) Frontend: SetupWizardOverlay.vue with 4-step progress bar, Step 1 tool selection (3 cards), Step 2 MCP config + live connection status (SetupStep2Connect.vue + useMcpConfig.js composable), Step 3 bootstrap prompt + WebSocket checklist (SetupStep3Commands.vue), Step 4 launchpad cards (SetupStep4Complete.vue), and learning mode ('How to Use GiljoAI MCP') with 5 collapsible reference sections. (4) Cleanup: StartupQuickStart.vue deleted (639 lines), all giljo_startup_checklist localStorage refs removed, ProductIntroTour updated. (5) Tests: 106 Vitest component tests across 4 test files. Branch: feature/0855-setup-wizard.",
+  "final_status": "complete"
 }
