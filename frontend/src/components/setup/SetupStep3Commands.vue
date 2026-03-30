@@ -28,13 +28,13 @@
 
         <!-- Loading state -->
         <div v-if="promptLoading[activeToolId]" class="prompt-loading">
-          <v-progress-circular size="20" width="2" indeterminate color="#8f97b7" />
+          <v-progress-circular size="20" width="2" indeterminate :color="COLOR_MUTED" />
           <span class="prompt-loading-text">Preparing prompt...</span>
         </div>
 
         <!-- Error state -->
         <div v-else-if="promptErrors[activeToolId]" class="prompt-error">
-          <v-icon size="16" color="#e57373">mdi-alert-circle-outline</v-icon>
+          <v-icon size="16" :color="COLOR_ERROR_LIGHT">mdi-alert-circle-outline</v-icon>
           <span class="prompt-error-text">{{ promptErrors[activeToolId] }}</span>
           <v-btn size="small" variant="outlined" class="retry-btn" @click="fetchPrompt(activeToolId)">
             Retry
@@ -59,7 +59,7 @@
       <div class="checklist-item">
         <v-icon
           size="20"
-          :color="toolStatus[activeToolId]?.commands ? '#6bcf7f' : '#8f97b7'"
+          :color="toolStatus[activeToolId]?.commands ? COLOR_SUCCESS : COLOR_MUTED"
         >
           {{ toolStatus[activeToolId]?.commands ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
         </v-icon>
@@ -79,7 +79,7 @@
       <div class="checklist-item">
         <v-icon
           size="20"
-          :color="toolStatus[activeToolId]?.agents ? '#6bcf7f' : '#8f97b7'"
+          :color="toolStatus[activeToolId]?.agents ? COLOR_SUCCESS : COLOR_MUTED"
         >
           {{ toolStatus[activeToolId]?.agents ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
         </v-icon>
@@ -114,6 +114,11 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useWebSocketStore } from '@/stores/websocket'
+
+/* design-token-exempt: Vuetify color props require raw values, not SCSS vars or CSS custom properties */
+const COLOR_MUTED = '#8f97b7' // $lightest-blue
+const COLOR_SUCCESS = '#6bcf7f' // $gradient-brand-end
+const COLOR_ERROR_LIGHT = '#e57373' // lightened $color-status-error
 
 const TOOL_META = {
   claude_code: { name: 'Claude Code', logo: '/claude_pix.svg' },
@@ -292,7 +297,9 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../../styles/variables' as *;
+@use '../../styles/design-tokens' as *;
 .step-commands {
   max-width: 680px;
   margin: 0 auto;
@@ -301,7 +308,7 @@ onUnmounted(() => {
 .step-heading {
   font-size: 1rem;
   font-weight: 500;
-  color: #e1e1e1;
+  color: $color-text-primary;
   margin-bottom: 20px;
   text-align: center;
 }
@@ -319,10 +326,10 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #1e3147;
+  background: $elevation-elevated;
   border: none;
   border-radius: 8px;
-  color: #8f97b7;
+  color: $lightest-blue;
   cursor: pointer;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -330,16 +337,16 @@ onUnmounted(() => {
 }
 
 .tool-tab--active {
-  color: #ffc300;
-  --smooth-border-color: #ffc300;
+  color: $color-brand-yellow;
+  --smooth-border-color: #{$color-brand-yellow};
 }
 
 .tool-tab:hover:not(.tool-tab--active) {
-  color: #e1e1e1;
+  color: $color-text-primary;
 }
 
 .tool-tab:focus-visible {
-  outline: 2px solid #ffc300;
+  outline: 2px solid $color-brand-yellow;
   outline-offset: 2px;
 }
 
@@ -353,12 +360,12 @@ onUnmounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #8f97b7;
+  background: $lightest-blue;
   transition: background 250ms ease-out;
 }
 
 .tab-status-dot--complete {
-  background: #6bcf7f;
+  background: $gradient-brand-end;
 }
 
 /* Panel sections */
@@ -370,14 +377,14 @@ onUnmounted(() => {
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #e1e1e1;
+  color: $color-text-primary;
   margin-bottom: 10px;
 }
 
 /* Instruction text */
 .instruction-text {
   font-size: 0.875rem;
-  color: #e1e1e1;
+  color: $color-text-primary;
   margin-bottom: 12px;
   text-align: center;
 }
@@ -385,8 +392,8 @@ onUnmounted(() => {
 .inline-code {
   font-family: "Roboto Mono", "Courier New", monospace;
   font-size: 0.8125rem;
-  background: rgba(255, 195, 0, 0.1);
-  color: #ffc300;
+  background: rgba($color-brand-yellow, 0.1);
+  color: $color-brand-yellow;
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -409,7 +416,7 @@ onUnmounted(() => {
 
 .prompt-loading-text {
   font-size: 0.875rem;
-  color: #8f97b7;
+  color: $lightest-blue;
 }
 
 /* Error state */
@@ -418,19 +425,19 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: rgba(229, 115, 115, 0.08);
+  background: rgba(229, 115, 115, 0.08); /* design-token-exempt: error background tint, no exact token */
   border-radius: 8px;
 }
 
 .prompt-error-text {
   flex: 1;
   font-size: 0.875rem;
-  color: #e57373;
+  color: #e57373; /* design-token-exempt: lightened error variant, no exact token */
 }
 
 .retry-btn {
-  color: #ffc300 !important;
-  border-color: #ffc300 !important;
+  color: $color-brand-yellow !important;
+  border-color: $color-brand-yellow !important;
   text-transform: none;
   font-size: 0.75rem;
 }
@@ -451,7 +458,7 @@ onUnmounted(() => {
 
 .checklist-text {
   font-size: 0.875rem;
-  color: #8f97b7;
+  color: $lightest-blue;
   transition: color 250ms ease-out;
 }
 
@@ -460,17 +467,17 @@ onUnmounted(() => {
   margin-top: 6px;
   margin-left: 30px;
   font-size: 0.8125rem;
-  color: #ffc300;
+  color: $color-brand-yellow;
 }
 
 .checklist-text--done {
-  color: #6bcf7f;
+  color: $gradient-brand-end;
 }
 
 /* Tip text */
 .tip-text {
   font-size: 0.8125rem;
-  color: #8f97b7;
+  color: $lightest-blue;
   margin-top: 8px;
   line-height: 1.5;
   font-style: italic;
@@ -485,7 +492,7 @@ onUnmounted(() => {
 
 .skip-link {
   font-size: 0.8125rem;
-  color: #8f97b7;
+  color: $lightest-blue;
   cursor: pointer;
   text-decoration: none;
   transition: color 250ms ease-out, text-decoration 250ms ease-out;
@@ -493,13 +500,13 @@ onUnmounted(() => {
 
 .skip-link:hover,
 .skip-link:focus-visible {
-  color: #ffc300;
+  color: $color-brand-yellow;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .skip-link:focus-visible {
-  outline: 2px solid #ffc300;
+  outline: 2px solid $color-brand-yellow;
   outline-offset: 2px;
   border-radius: 2px;
 }

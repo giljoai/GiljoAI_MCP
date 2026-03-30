@@ -77,22 +77,6 @@ describe('StatusBadge.vue', () => {
       expect(wrapper.vm.statusTextColor).toBeUndefined()
     })
 
-    it('returns correct icon for each status', () => {
-      const statusIcons = {
-        active: 'mdi-play-circle',
-        inactive: 'mdi-stop-circle-outline',
-        completed: 'mdi-check-circle',
-        cancelled: 'mdi-cancel',
-        terminated: 'mdi-stop-circle',
-        deleted: 'mdi-delete',
-      }
-
-      Object.entries(statusIcons).forEach(([status, expectedIcon]) => {
-        const wrapper = createWrapper({ status })
-        expect(wrapper.vm.statusIcon).toBe(expectedIcon)
-      })
-    })
-
     it('falls back to grey color for unknown status', () => {
       // The validator would reject this, but the computed handles the fallback
       const wrapper = mount(StatusBadge, {

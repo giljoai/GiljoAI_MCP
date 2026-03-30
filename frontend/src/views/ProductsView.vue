@@ -344,6 +344,7 @@ import { useProductStore } from '@/stores/products'
 import { useSettingsStore } from '@/stores/settings'
 import { useNotificationStore } from '@/stores/notifications'
 import { useToast } from '@/composables/useToast'
+import { useFormatDate } from '@/composables/useFormatDate'
 import api from '@/services/api'
 import ActivationWarningDialog from '@/components/products/ActivationWarningDialog.vue'
 import ProductDeleteDialog from '@/components/products/ProductDeleteDialog.vue'
@@ -355,6 +356,7 @@ const productStore = useProductStore()
 const settingsStore = useSettingsStore()
 const notificationStore = useNotificationStore()
 const { showToast } = useToast()
+const { formatDate } = useFormatDate()
 // State
 const loading = ref(false)
 const search = ref('')
@@ -570,15 +572,6 @@ function cancelActivation() {
   currentActiveProduct.value = null
 }
 
-function formatDate(dateString) {
-  if (!dateString) return 'N/A'
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
 
 // Handover 0320: Handler for ProductForm remove-vision event (delete existing document)
 async function removeVisionDocument(doc) {
@@ -1109,7 +1102,8 @@ onMounted(async () => {
 
 .product-card {
   transition: all 0.3s ease;
-  border: 2px solid white;
+  border: none !important;
+  box-shadow: inset 0 0 0 2px white;
   border-radius: 12px;
 }
 
