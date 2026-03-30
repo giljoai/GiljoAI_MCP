@@ -630,9 +630,21 @@ async def _get_user_config(
         return {"field_toggles": normalized_defaults, "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
 
 
-def _build_ch1_mission() -> str:
-    """Build CH1: YOUR MISSION section (~180 tokens)."""
-    return """════════════════════════════════════════════════════════════════════════════
+def _build_ch1_mission(tool: str = "claude-code") -> str:
+    """Build CH1: YOUR MISSION section (~180 tokens).
+
+    Args:
+        tool: Platform identifier — 'claude-code', 'codex', 'gemini', or 'multi_terminal'.
+    """
+    # Platform-specific "do not spawn" warning
+    spawn_warning_map = {
+        "codex": "You do NOT call spawn_agent() (that's for implementation phase)",
+        "gemini": "You do NOT invoke @agent commands (that's for implementation phase)",
+        "claude-code": "You do NOT call Task() tool (that's for implementation phase)",
+    }
+    spawn_warning = spawn_warning_map.get(tool, "You do NOT execute implementation work directly")
+
+    return f"""════════════════════════════════════════════════════════════════════════════
                            CH1: YOUR MISSION
 ════════════════════════════════════════════════════════════════════════════
 
@@ -645,7 +657,7 @@ You are STAGING the project. Your job:
 
 WHAT YOU ARE NOT:
 - You do NOT execute implementation work
-- You do NOT call Task() tool (that's for implementation phase)
+- {spawn_warning}
 - You do NOT call complete_job() (staging never completes, it transitions)
 
 CRITICAL DISTINCTION:
@@ -957,35 +969,58 @@ When you receive this directive, your session is DONE. Stop immediately.
 
 
 def _build_ch3_spawning_rules(tool: str = "claude-code") -> str:
-    """Build CH3: AGENT SPAWNING RULES section (~200 tokens).
+    """Build CH3: AGENT SPAWNING RULES section — fully tool-aware (Handover 0847).
+
+    Each platform gets its own native spawning language as the PRIMARY instruction.
+    No cross-platform references (Codex never sees Task(), Claude never sees spawn_agent()).
 
     Args:
-        tool: Platform identifier — 'claude-code', 'codex', or 'gemini'.
+        tool: Platform identifier — 'claude-code', 'codex', 'gemini', or 'multi_terminal'.
               Defaults to 'claude-code' for backward compatibility.
     """
-    cli_mode = tool in ("claude-code", "codex", "gemini")
-
+    # --- Platform-specific file mapping and spawning syntax ---
     if tool == "codex":
-        cli_mode_block = """── CODEX CLI MODE ───────────────────────────────────────────────────────────
-spawn_agent tool syntax (IMPLEMENTATION PHASE ONLY - not during staging):
+        file_mapping = "agent_name → ~/.codex/agents/gil-{agent_name}.toml"
+        platform_note = """Codex CLI Note:
+  - spawn_agent(agent='gil-X') where X = agent_name (NOT display_name)
+  - agent_name binds the MCP DB record and the installed Codex agent template
+  - The server returns agent_name WITHOUT 'gil-' prefix — you MUST prepend it"""
+        execution_mode_block = """── YOUR PLATFORM: CODEX CLI ────────────────────────────────────────────────
+spawn_agent syntax (IMPLEMENTATION PHASE ONLY - not during staging):
   spawn_agent(agent='gil-{agent_name}', instructions='...')
 
 CRITICAL: ALL GiljoAI agents use the 'gil-' prefix in Codex CLI.
 The server returns agent_name WITHOUT the prefix. You MUST prepend 'gil-'.
+
+WHAT agent= DOES: Loads the INSTALLED agent template file at
+~/.codex/agents/gil-{agent_name}.toml which contains developer_instructions,
+model config, and sandbox settings. The agent ALREADY KNOWS its role from
+the template — you do NOT need to re-explain it in the instructions= parameter.
 
 Example:
   spawn_agent_job(agent_name='tdd-implementor',
                   agent_display_name='implementer', ...)
 
   Later in implementation:
-  spawn_agent(agent='gil-tdd-implementor', ...)  # note: gil- prefix!
+  spawn_agent(agent='gil-tdd-implementor', instructions='...')  # gil- prefix!
 
 Built-in Codex roles shadow unprefixed names — always use gil- prefix.
+
+DO NOT spawn a generic/default worker and instruct it to "act as" a GiljoAI agent.
+The instructions= parameter should contain ONLY:
+  - The job_id
+  - The MCP call: mcp__giljo-mcp__get_agent_mission(job_id="...")
+The template handles everything else.
+
 DO NOT invoke spawn_agent() during staging - this is planning reference only
 """
-        multi_terminal_mode_block = ""
     elif tool == "gemini":
-        cli_mode_block = """── GEMINI CLI MODE ───────────────────────────────────────────────────────────
+        file_mapping = "agent_name → ~/.gemini/agents/{agent_name}.md"
+        platform_note = """Gemini CLI Note:
+  - @{agent_name} where agent_name matches the installed agent file
+  - agent_name is used as-is (no prefix required)
+  - agent_name binds the MCP DB record and the installed Gemini agent template"""
+        execution_mode_block = """── YOUR PLATFORM: GEMINI CLI ───────────────────────────────────────────────
 Subagent invocation syntax (IMPLEMENTATION PHASE ONLY - not during staging):
   @{agent_name} followed by instructions
 
@@ -995,18 +1030,27 @@ Or use the /agent command:
 
 CRITICAL: agent_name is used as-is (no prefix required).
 
+WHAT @agent DOES: Loads the INSTALLED agent template file at
+~/.gemini/agents/{agent_name}.md which contains the agent's role, behavioral
+instructions, and capabilities. The agent ALREADY KNOWS its role from
+the template — keep your instructions focused on the specific mission.
+
 Example:
   spawn_agent_job(agent_name='tdd-implementor',
                   agent_display_name='implementer', ...)
 
   Later in implementation:
-  @tdd-implementor <your instructions here>
+  @tdd-implementor <mission-specific instructions only>
 
 DO NOT invoke subagents during staging - this is planning reference only
 """
-        multi_terminal_mode_block = ""
-    elif cli_mode:
-        cli_mode_block = """── CLAUDE CODE CLI MODE ────────────────────────────────────────────────────
+    elif tool == "claude-code":
+        file_mapping = "agent_name → .claude/agents/{agent_name}.md"
+        platform_note = """Claude Code CLI Note:
+  - Task(subagent_type=X) where X = agent_name (NOT display_name)
+  - agent_name binds DB record, Task tool, and template filename
+  - Example: spawn with agent_name='tdd-implementor', Task uses 'tdd-implementor'"""
+        execution_mode_block = """── YOUR PLATFORM: CLAUDE CODE CLI ─────────────────────────────────────────
 Task tool syntax (IMPLEMENTATION PHASE ONLY - not during staging):
   Task(subagent_type='{agent_name}', instructions='...')
 
@@ -1021,22 +1065,28 @@ Example:
 
 DO NOT invoke Task() during staging - this is planning reference only
 """
-        multi_terminal_mode_block = ""
     else:
-        cli_mode_block = ""
-        multi_terminal_mode_block = """── MULTI-TERMINAL MODE (CCW) ───────────────────────────────────────────────
-User manually launches agents via [Copy Prompt] button in Claude Code Web
-Agents spawned via spawn_agent_job() during staging phase
-Each spawned agent gets a thin prompt (~10 lines)
-Agent calls get_agent_mission() to fetch full instructions
-Coordination happens via MCP messaging tools (send_message, receive_messages)
-MESSAGING: Always use agent_id UUIDs in to_agents (from spawn_agent_job response)
-Orchestrator has NO active role after STAGING_COMPLETE broadcast
+        # Generic MCP mode — any MCP-connected coding agent
+        file_mapping = "agent_name → fetched from MCP server via get_orchestrator_instructions()"
+        platform_note = """Generic MCP Note:
+  - Agent templates are served by the MCP server, not local files
+  - Any MCP-connected coding tool can consume these templates
+  - agent_name is the key used across DB records and template lookups"""
+        execution_mode_block = """── YOUR PLATFORM: ANY MCP-CONNECTED AGENT ─────────────────────────────────
+Agent templates are served by the MCP server via get_orchestrator_instructions().
+Any MCP-connected coding agent can consume these templates.
+Each spawned agent gets a thin prompt (~10 lines).
+Agent calls get_agent_mission() to fetch full instructions.
+Coordination happens via MCP messaging tools (send_message, receive_messages).
+MESSAGING: Always use agent_id UUIDs in to_agents (from spawn_agent_job response).
+Orchestrator has NO active role after STAGING_COMPLETE broadcast.
 """
 
     return f"""════════════════════════════════════════════════════════════════════════════
                     CH3: AGENT SPAWNING RULES
 ════════════════════════════════════════════════════════════════════════════
+
+{execution_mode_block}
 
 PARAMETER REQUIREMENTS:
 
@@ -1045,17 +1095,14 @@ MUST exactly match template name from agent_templates (returned by get_orchestra
 This is the SINGLE SOURCE OF TRUTH for agent identity
 Example: 'tdd-implementor' (not 'TDD Implementor' or 'implementer')
 
-File mapping: agent_name → .claude/agents/{{agent_name}}.md
+File mapping: {file_mapping}
 
 Common mistakes:
   ✗ Using agent_display_name value for agent_name parameter
   ✗ Inventing names not in agent_templates
   ✗ Case mismatch ('TDD-Implementor' vs 'tdd-implementor')
 
-Claude Code CLI Mode Note:
-  - Task(subagent_type=X) where X = agent_name (NOT display_name)
-  - agent_name binds DB record, Task tool, and template filename
-  - Example: spawn with agent_name='tdd-implementor', Task uses 'tdd-implementor'
+{platform_note}
 
 ── agent_display_name ──────────────────────────────────────────────────────
 Display category for UI (user-facing label)
@@ -1073,10 +1120,6 @@ SPAWNING LIMITS:
 - Max agent_display_names: 8 total
 - Max instances per type: Unlimited (can spawn multiple 'implementer' agents)
 - Budget awareness: Each agent costs ~1,253 tokens for thin prompt
-
-EXECUTION MODE AWARENESS:
-
-{cli_mode_block}{multi_terminal_mode_block}
 
 VALIDATION BEFORE SPAWNING:
 
@@ -1152,8 +1195,14 @@ ERROR SEVERITY LEVELS:
 """
 
 
-def _build_ch5_reference(project_id: str, orchestrator_id: str) -> str:
-    """Build CH5: REFERENCE section for implementation phase (~380 tokens)."""
+def _build_ch5_reference(project_id: str, orchestrator_id: str, tool: str = "claude-code") -> str:
+    """Build CH5: REFERENCE section for implementation phase (~380 tokens).
+
+    Args:
+        project_id: Project UUID for parameter substitution.
+        orchestrator_id: Job ID for parameter substitution.
+        tool: Platform identifier for platform-native spawn syntax.
+    """
     return f"""════════════════════════════════════════════════════════════════════════════
                 CH5: REFERENCE (Implementation Phase Only)
 ════════════════════════════════════════════════════════════════════════════
@@ -1273,7 +1322,8 @@ def _build_orchestrator_protocol(
     Returns:
         Dict with chapter keys and navigation_hint
     """
-    ch1 = _build_ch1_mission()
+    effective_tool = tool if cli_mode else "multi_terminal"
+    ch1 = _build_ch1_mission(effective_tool)
     ch2 = _build_ch2_startup(
         orchestrator_id,
         project_id,
@@ -1282,9 +1332,9 @@ def _build_orchestrator_protocol(
         product_id=product_id,
         tenant_key=tenant_key,
     )
-    ch3 = _build_ch3_spawning_rules(tool if cli_mode else "multi_terminal")
+    ch3 = _build_ch3_spawning_rules(effective_tool)
     ch4 = _build_ch4_error_handling()
-    ch5 = _build_ch5_reference(project_id, orchestrator_id) if include_implementation_reference else ""
+    ch5 = _build_ch5_reference(project_id, orchestrator_id, effective_tool) if include_implementation_reference else ""
 
     return {
         "ch1_your_mission": ch1,
