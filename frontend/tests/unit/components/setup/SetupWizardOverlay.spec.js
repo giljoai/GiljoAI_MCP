@@ -181,7 +181,7 @@ describe('SetupWizardOverlay', () => {
 
       await toolCards[0].trigger('click')
 
-      expect(toolCards[0].attributes('style')).toContain('--smooth-border-color: #ffc300')
+      expect(toolCards[0].attributes('style')).toContain('--smooth-border-color: var(--color-accent-primary)')
     })
 
     it('does not apply --smooth-border-color to unselected cards', () => {

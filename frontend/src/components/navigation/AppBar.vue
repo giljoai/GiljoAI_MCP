@@ -245,11 +245,13 @@ const handleLogout = async () => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../../styles/design-tokens' as *;
+
 /* AppBar styling */
 
 .about-link {
-  color: #ffc300;
+  color: $color-brand-yellow;
 }
 
 /* Logo toggle: full logo on wide, mascot icon on narrow */

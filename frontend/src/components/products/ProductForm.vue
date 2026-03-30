@@ -687,7 +687,10 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
+import { useFormatDate } from '@/composables/useFormatDate'
 import { useProductStore } from '@/stores/products'
+
+const { formatDate } = useFormatDate()
 
 const props = defineProps({
   modelValue: {
@@ -886,10 +889,6 @@ function deleteVisionDocument(doc) {
   emit('remove-vision', doc)
 }
 
-function formatDate(dateString) {
-  if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleDateString()
-}
 
 // Vision analysis prompt — product must already be saved (UUID exists via upload-on-attach)
 async function stageAnalysis() {

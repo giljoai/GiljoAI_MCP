@@ -842,7 +842,8 @@ async function handleContinueWorking() {
   flex: 1;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.2);
+  border: none !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.2);
   border-radius: 0 8px 8px 8px; /* No top-left radius where tabs connect */
   background: rgb(var(--v-theme-surface));
   overflow: hidden;

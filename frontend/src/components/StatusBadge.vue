@@ -27,14 +27,14 @@ const props = defineProps({
 const statusConfig = {
   active: {
     label: 'Active',
-    color: '#fff',
-    textColor: '#333',
+    color: '#fff', // exempt: Vuetify color prop requires hex ($color-surface)
+    textColor: '#333', // exempt: dynamic inline style ($color-text-dark)
     icon: 'mdi-play-circle',
   },
   inactive: {
     label: 'Inactive',
     color: 'grey',
-    textColor: '#1a237e',
+    textColor: '#1a237e', // exempt: indigo, no token
     icon: 'mdi-stop-circle-outline',
   },
   completed: {
@@ -63,7 +63,7 @@ const statusConfig = {
 const statusLabel = computed(() => statusConfig[props.status]?.label || props.status)
 const statusColor = computed(() => statusConfig[props.status]?.color || 'grey')
 const statusTextColor = computed(() => statusConfig[props.status]?.textColor || undefined)
-const statusIcon = computed(() => statusConfig[props.status]?.icon || 'mdi-circle')
+
 </script>
 
 <style scoped>

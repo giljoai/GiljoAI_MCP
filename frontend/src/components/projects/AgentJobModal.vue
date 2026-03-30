@@ -209,7 +209,8 @@ function getAgentAbbr(agentName) {
 
 <style scoped>
 .agent-avatar {
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: none !important;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2);
 }
 
 .avatar-text {
