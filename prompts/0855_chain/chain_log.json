@@ -6,7 +6,9 @@
   "branch": "feature/0855-setup-wizard",
   "total_sessions": 7,
   "orchestrator_notes": "Agents: read this file BEFORE starting. If orchestrator_directives contains STOP, halt immediately. 0855a and 0855b are independent and can run in parallel. 0855c depends on 0855a. 0855d depends on 0855a+b+c. 0855e depends on 0855b+c+d. 0855f depends on 0855a+c+d+e. 0855g depends on 0855f. NOTE: 0855b emission point in mcp_http.py may be deleted by 0846 (running on separate workstation). Wire schemas and EventFactory, but if mcp_http.py changes significantly, emit from the new SDK server location instead.",
-  "orchestrator_directives": [],
+  "orchestrator_directives": [
+    "0855c used 0-indexed steps (0=Choose Tools, 1=Connect, 2=Install, 3=Launch). Step 2 Connect content renders at currentStep===1. Emit step-complete with {step:1, data:{...}}. Tool IDs: claude_code, codex_cli, gemini_cli."
+  ],
   "sessions": [
     {
       "session_id": "0855a",
@@ -124,9 +126,9 @@
       "title": "Step 2 (Connect to GiljoAI)",
       "handover": "handovers/0855d_SETUP_WIZARD_STEP2_CONNECT.md",
       "color": "#9C27B0",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-29T16:00:00Z",
+      "completed_at": "2026-03-29T16:45:00Z",
       "agent_types": ["ux-designer", "tdd-implementor"],
       "planned_tasks": [
         "Extract config generation to useMcpConfig.js composable",
@@ -136,12 +138,31 @@
         "Wire WebSocket setup:tool_connected for connection status",
         "Vitest component tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Created useMcpConfig.js composable with: normalizeToolId, detectPlatform, buildServerUrl, isHttps, generateClaudeConfig, generateCodexConfig, generateGeminiConfig, generateOpenclawConfig, generateConfigForTool, generateCodexEnvVar, getCertTrustCommand, makeKeyName",
+        "Refactored AiToolConfigWizard.vue to import from composable — removed inline config generation, cert trust constants, makeKeyName, env var generation",
+        "Added api.apiKeys.getActive() endpoint to api.js (GET /api/auth/api-keys/active)",
+        "Updated test mock in setup.js to include apiKeys.getActive",
+        "Created SetupStep2Connect.vue (~270 lines) with: per-tool tabs, server URL display with inline edit, API key check/generate flow, per-tool config display with copy buttons, platform toggle (PowerShell/Linux), HTTPS cert trust section, real-time WebSocket connection status indicators",
+        "Wired SetupStep2Connect into SetupWizardOverlay.vue at currentStep===1 with canProceed and step-data bindings",
+        "Updated canProceed computed: step 1 requires >= 1 tool connected via WebSocket",
+        "handleNext emits step-complete with {step:1, data:{connectedTools:[...]}}",
+        "30 Vitest composable tests passing (useMcpConfig.spec.js)",
+        "15 Vitest component tests passing (SetupStep2Connect.spec.js)",
+        "Updated 2 tests in SetupWizardOverlay.spec.js to reflect 0855d changes (placeholder replaced, canProceed logic updated)"
+      ],
+      "deviations": [
+        "OpenClaw config generation kept in composable (generateOpenclawConfig) for AiToolConfigWizard modal compatibility, but NOT exposed in wizard step 2 — wizard only shows claude_code, codex_cli, gemini_cli per spec",
+        "When only a key_prefix is available (existing key, no plaintext), config commands show YOUR_API_KEY placeholder — user must re-generate or use existing config"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "**For 0855e (Step 3 Install):** Component: `SetupStep2Connect.vue` at `frontend/src/components/setup/SetupStep2Connect.vue`. It emits `can-proceed` (Boolean) and `step-data` ({ connectedTools: string[] }). The overlay parent receives step-complete with `{ step: 1, data: { connectedTools: [...] } }`. Composable `useMcpConfig.js` at `frontend/src/composables/useMcpConfig.js` exports: `normalizeToolId(wizardId)` → legacy ID, `generateConfigForTool(toolId, serverUrl, apiKey)`, `generateCodexEnvVar(apiKey, platform)`, `getCertTrustCommand(platform)`, `buildServerUrl(hostname, port)`, `detectPlatform()`, `makeKeyName(toolId)`, `isHttps()`. WebSocket subscription pattern: `wsStore.on('setup:tool_connected', handler)` — handler receives `{ tool_name }` where tool_name matches normalizeToolId output (claude_code, codex_cli, gemini_cli). Connection status is reactive per-tool in component: `connectionStatus[toolId]` = 'waiting' | 'connected'. The overlay's `canProceed` for step 1 checks `step2CanProceed` ref which is set by the `can-proceed` emit from SetupStep2Connect. Tool IDs remain: claude_code, codex_cli, gemini_cli.",
+      "cascading_impacts": [
+        "useMcpConfig.js composable is now shared — any changes to config format affect both AiToolConfigWizard.vue (standalone modal) and SetupStep2Connect.vue (wizard)",
+        "api.apiKeys.getActive added to api.js and test mock setup.js — available for any component",
+        "SetupWizardOverlay.spec.js updated: step 1 placeholder test replaced with stub check, canProceed test adjusted to step 2+"
+      ],
+      "summary": "All 6 planned tasks completed. Extracted config generation into useMcpConfig.js composable (12 exported functions). Refactored AiToolConfigWizard.vue to use composable. Built SetupStep2Connect.vue with per-tool tabs, API key check/generation, platform-specific config display with copy buttons, and real-time WebSocket connection status. Wired into SetupWizardOverlay.vue at currentStep===1 with canProceed gating. 83 total tests passing (38 overlay + 30 composable + 15 component)."
     },
     {
       "session_id": "0855e",

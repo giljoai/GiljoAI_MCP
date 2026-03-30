@@ -184,6 +184,14 @@ import { ref, computed } from 'vue'
 import api from '@/services/api'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
+import {
+  buildServerUrl as buildUrl,
+  generateConfigForTool,
+  generateCodexEnvVar,
+  makeKeyName,
+  CERT_TRUST_WINDOWS,
+  CERT_TRUST_UNIX,
+} from '@/composables/useMcpConfig'
 
 const { copy: clipboardCopy } = useClipboard()
 const { showToast } = useToast()
@@ -232,31 +240,14 @@ const selectedToolName = computed(
 
 const isHttps = computed(() => window.location.protocol === 'https:')
 
-const certTrustCommandWindows = '$env:NODE_OPTIONS = "--use-system-ca"; [System.Environment]::SetEnvironmentVariable(\'NODE_OPTIONS\', \'--use-system-ca\', \'User\')'
-const certTrustCommandUnix = 'export NODE_OPTIONS="--use-system-ca"'
+const certTrustCommandWindows = CERT_TRUST_WINDOWS
+const certTrustCommandUnix = CERT_TRUST_UNIX
 
-const envVarCommand = computed(() => {
-  const key = generatedKey.value || 'YOUR_API_KEY'
-  if (selectedPlatform.value === 'windows') {
-    // setx persists for future sessions, $env: applies to current session
-    return `setx GILJO_API_KEY "${key}"\n$env:GILJO_API_KEY="${key}"`
-  }
-  return `export GILJO_API_KEY="${key}"`
-})
+const envVarCommand = computed(() => generateCodexEnvVar(generatedKey.value, selectedPlatform.value))
 
 function onToolChange() {
   generatedPrompt.value = ''
   errorMsg.value = ''
-}
-
-function makeKeyName(tool) {
-  const map = {
-    claude: 'Claude Code',
-    codex: 'Codex CLI',
-    gemini: 'Gemini',
-    openclaw: 'OpenClaw',
-  }
-  return `${map[tool] || 'AI Agent'} prompt key`
 }
 
 async function generateApiKey() {
@@ -271,48 +262,7 @@ async function generateApiKey() {
 }
 
 function buildServerUrl() {
-  const protocol = window.location.protocol === 'https:' ? 'https' : 'http'
-  return `${protocol}://${serverIp.value}:${serverPort.value}`
-}
-
-function claudePrompt(serverUrl, apiKey) {
-  return `claude mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "Authorization: Bearer ${apiKey}"`
-}
-
-function codexPrompt(serverUrl) {
-  // Codex CLI reads bearer token from env var at runtime.
-  // Env var value shown separately in the UI alert above.
-  return `codex mcp add giljo-mcp --url ${serverUrl}/mcp --bearer-token-env-var GILJO_API_KEY`
-}
-
-function geminiPrompt(serverUrl, apiKey) {
-  return `gemini mcp add -t http -H "Authorization: Bearer ${apiKey}" giljo-mcp ${serverUrl}/mcp`
-}
-
-function openclawPrompt(serverUrl, apiKey) {
-  // JSON snippet for ~/.openclaw/openclaw.json mcpServers block
-  return JSON.stringify({
-    'giljo-mcp': {
-      transport: 'streamable-http',
-      url: `${serverUrl}/mcp`,
-      headers: { Authorization: `Bearer ${apiKey}` },
-    },
-  }, null, 2)
-}
-
-function buildPromptFor(tool, serverUrl, apiKey) {
-  switch (tool) {
-    case 'claude':
-      return claudePrompt(serverUrl, apiKey)
-    case 'codex':
-      return codexPrompt(serverUrl)
-    case 'gemini':
-      return geminiPrompt(serverUrl, apiKey)
-    case 'openclaw':
-      return openclawPrompt(serverUrl, apiKey)
-    default:
-      return `Use these values with your tool:\n- Base URL: ${serverUrl}\n- Header: Authorization: Bearer ${apiKey}`
-  }
+  return buildUrl(serverIp.value, serverPort.value)
 }
 
 async function generatePrompt() {
@@ -322,7 +272,7 @@ async function generatePrompt() {
     generatedPrompt.value = ''
     await generateApiKey()
     const serverUrl = buildServerUrl()
-    generatedPrompt.value = buildPromptFor(selectedTool.value, serverUrl, generatedKey.value)
+    generatedPrompt.value = generateConfigForTool(selectedTool.value, serverUrl, generatedKey.value)
   } catch (e) {
     const msg = e?.response?.data?.message || e?.message || 'Failed to generate API key'
     errorMsg.value = msg
