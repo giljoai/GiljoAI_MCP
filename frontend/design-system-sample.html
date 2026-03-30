@@ -92,18 +92,20 @@
      ======================================== */
   .card {
     background: #182739;
-    border: 1px solid #315074;
+    border: none;
     border-radius: 12px;
     padding: 24px;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.85), 0 4px 6px -1px rgba(0,0,0,0.1);
+    /* 2px bright white anti-aliased border via box-shadow inset (smooth-border-2 pattern).
+       NEVER use CSS border on rounded elements — see CLAUDE.md smooth-border rule. */
   }
 
   .card-elevated {
     background: #1e3147;
-    border: 1px solid #315074;
+    border: none;
     border-radius: 8px;
     padding: 16px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.85), 0 4px 8px rgba(0,0,0,0.15);
   }
 
   .card h4 {
@@ -854,6 +856,25 @@
     <h1>GiljoAI MCP Design System</h1>
     <p>Dark Theme Visual Reference</p>
   </header>
+
+  <!-- ============================================
+       PAGE TABS
+       ============================================ -->
+  <div style="display: flex; gap: 0; margin-bottom: 32px;">
+    <button class="page-tab page-tab--active" onclick="switchPageTab(this, 'tab-design-tokens')"
+      style="background: #182739; color: #fff; border: none; border-bottom: 3px solid #ffc300; padding: 14px 32px; font-size: 1rem; font-family: inherit; cursor: pointer; font-weight: 500;">
+      Design Tokens
+    </button>
+    <button class="page-tab" onclick="switchPageTab(this, 'tab-icons-logos')"
+      style="background: transparent; color: #8f97b7; border: none; border-bottom: 3px solid transparent; padding: 14px 32px; font-size: 1rem; font-family: inherit; cursor: pointer; font-weight: 500;">
+      Icons &amp; Logos
+    </button>
+  </div>
+
+  <!-- ============================================
+       TAB 1: DESIGN TOKENS (existing content)
+       ============================================ -->
+  <div id="tab-design-tokens">
 
   <!-- ============================================
        0. NAMING & TERMINOLOGY
@@ -1872,9 +1893,331 @@
     </div>
   </section>
 
+  </div> <!-- /tab-design-tokens -->
+
+  <!-- ============================================
+       TAB 2: ICONS & LOGOS
+       ============================================ -->
+  <div id="tab-icons-logos" style="display: none;">
+
+    <!-- ICON LIBRARY -->
+    <section class="section">
+      <h2 class="section-title">Icon Library</h2>
+      <p class="section-subtitle">Material Design Icons (MDI) v7.3 via @mdi/font — configured as Vuetify default icon set</p>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <h4>Configuration</h4>
+        <div style="background: #0e1c2d; border-radius: 8px; padding: 16px; font-family: 'Roboto Mono', monospace; font-size: 0.8rem; color: #8f97b7; margin-bottom: 16px;">
+          <span style="color: #8f97b7;">// frontend/src/main.js</span><br>
+          <span style="color: #e1e1e1;">import</span> <span style="color: #ffc300;">'@mdi/font/css/materialdesignicons.css'</span><br>
+          <span style="color: #e1e1e1;">icons:</span> { <span style="color: #6bcf7f;">defaultSet</span>: <span style="color: #ffc300;">'mdi'</span> }
+        </div>
+        <p style="font-size: 0.8rem; color: #8f97b7;">Usage: <code style="color: #ffc300;">&lt;v-icon&gt;mdi-icon-name&lt;/v-icon&gt;</code> or <code style="color: #ffc300;">icon="mdi-icon-name"</code> prop. Full reference: <span style="color: #6bcf7f;">https://pictogrammers.com/library/mdi/</span></p>
+      </div>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <h4>Most Used MDI Icons (Top 30 by frequency)</h4>
+        <div class="grid-6" style="gap: 12px;">
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #6bcf7f;">&#x2714;</span><br><span class="token-label">mdi-check-circle</span><span class="token-value">35 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x2715;</span><br><span class="token-label">mdi-close</span><span class="token-value">33 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x2398;</span><br><span class="token-label">mdi-content-copy</span><span class="token-value">23 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #ff9800;">&#x26A0;</span><br><span class="token-label">mdi-alert</span><span class="token-value">23 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x1F441;</span><br><span class="token-label">mdi-eye</span><span class="token-value">20 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #2196f3;">&#x21BB;</span><br><span class="token-label">mdi-refresh</span><span class="token-value">16 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #2196f3;">&#x2139;</span><br><span class="token-label">mdi-information-outline</span><span class="token-value">15 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x270E;</span><br><span class="token-label">mdi-pencil</span><span class="token-value">14 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #ff9800;">&#x1F512;</span><br><span class="token-label">mdi-lock</span><span class="token-value">14 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #f44336;">&#x26A0;</span><br><span class="token-label">mdi-alert-circle</span><span class="token-value">12 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #6bcf7f;">&#x2713;</span><br><span class="token-label">mdi-check</span><span class="token-value">11 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x1F464;</span><br><span class="token-label">mdi-account</span><span class="token-value">11 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #f44336;">&#x1F5D1;</span><br><span class="token-label">mdi-delete</span><span class="token-value">10 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #8f97b7;">&#x2753;</span><br><span class="token-label">mdi-help-circle</span><span class="token-value">9 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #6bcf7f;">&#x2795;</span><br><span class="token-label">mdi-plus</span><span class="token-value">8 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #ffc300;">&#x1F680;</span><br><span class="token-label">mdi-rocket-launch</span><span class="token-value">7 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x22EE;</span><br><span class="token-label">mdi-dots-vertical</span><span class="token-value">7 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x1F4E6;</span><br><span class="token-label">mdi-package-variant</span><span class="token-value">5 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #2196f3;">&#x1F4BE;</span><br><span class="token-label">mdi-database</span><span class="token-value">5 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #8f97b7;">&#x1F552;</span><br><span class="token-label">mdi-clock-outline</span><span class="token-value">5 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x1F4C1;</span><br><span class="token-label">mdi-folder-outline</span><span class="token-value">4 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x1F5A5;</span><br><span class="token-label">mdi-monitor-multiple</span><span class="token-value">4 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #6bcf7f;">&#x25B6;</span><br><span class="token-label">mdi-play</span><span class="token-value">4 uses</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x2699;</span><br><span class="token-label">mdi-cog</span><span class="token-value">6 uses</span></div>
+        </div>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-top: 16px;">217 unique MDI icons used across the application. Full list: <code>grep -roh "mdi-[a-z-]*" frontend/src/ | sort -u</code></p>
+      </div>
+    </section>
+
+    <!-- BRAND LOGOS -->
+    <section class="section">
+      <h2 class="section-title">Brand Logos</h2>
+      <p class="section-subtitle">Located in /frontend/public/ — primary brand assets and mascot variants</p>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <h4>Primary Logos</h4>
+        <div class="grid-3" style="gap: 24px; align-items: center;">
+          <div class="card-elevated" style="text-align: center; padding: 24px;">
+            <img src="./public/Giljo_YW.svg" alt="GiljoAI Yellow/White" style="height: 64px; margin-bottom: 12px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div style="display: none; color: #f44336; font-size: 0.75rem;">[image not found]</div>
+            <span class="token-label">Giljo_YW.svg</span>
+            <span class="token-value">Primary — yellow + white</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 24px;">
+            <img src="./public/giljologo_full.png" alt="GiljoAI Full Logo" style="height: 64px; margin-bottom: 12px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div style="display: none; color: #f44336; font-size: 0.75rem;">[image not found]</div>
+            <span class="token-label">giljologo_full.png</span>
+            <span class="token-value">Full logo with text</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 24px;">
+            <img src="./public/giljo_logo.png" alt="GiljoAI Logo" style="height: 64px; margin-bottom: 12px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div style="display: none; color: #f44336; font-size: 0.75rem;">[image not found]</div>
+            <span class="token-label">giljo_logo.png</span>
+            <span class="token-value">Compact logo</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <h4>Mascot Face Variants</h4>
+        <p style="font-size: 0.8rem; color: #8f97b7; margin-bottom: 16px;">Used for status indicators, loading states, and branding. Custom component: <code>GiljoFaceIcon.vue</code> and <code>GilMascot.vue</code> (animated SVG with blinking eyes).</p>
+        <div class="grid-6" style="gap: 16px;">
+          <div class="card-elevated" style="text-align: center; padding: 16px;">
+            <img src="./public/icons/Giljo_YW_Face.svg" alt="YW Face" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Giljo_YW_Face.svg</span>
+            <span class="token-value">Active state</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 16px;">
+            <img src="./public/icons/Giljo_YW_Face_closed.svg" alt="YW Face Closed" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Giljo_YW_Face_closed.svg</span>
+            <span class="token-value">Blinking / closed</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 16px;">
+            <img src="./public/icons/Giljo_gray_Face.svg" alt="Gray Face" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Giljo_gray_Face.svg</span>
+            <span class="token-value">Inactive / idle</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 16px;">
+            <img src="./public/icons/Giljo_gray_Face_happy.svg" alt="Gray Happy" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Giljo_gray_Face_happy.svg</span>
+            <span class="token-value">Happy expression</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 16px;">
+            <img src="./public/icons/Giljo_gray_Face_sleeping.svg" alt="Gray Sleeping" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Giljo_gray_Face_sleeping.svg</span>
+            <span class="token-value">Sleeping / offline</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 16px;">
+            <img src="./public/icons/Giljo_Inactive_Dark.svg" alt="Inactive Dark" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Giljo_Inactive_Dark.svg</span>
+            <span class="token-value">Disabled / dark</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <h4>Color Scheme Variants (full body)</h4>
+        <p style="font-size: 0.8rem; color: #8f97b7; margin-bottom: 16px;">Two-letter code: first = body, second = face. Y=Yellow, W=White, B=Black/Blue.</p>
+        <div class="grid-6" style="gap: 16px;">
+          <div class="card-elevated" style="text-align: center; padding: 16px;">
+            <img src="./public/icons/Giljo_YW.svg" alt="YW" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Giljo_YW.svg</span>
+            <span class="token-value">Yellow body, White face</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 16px;">
+            <img src="./public/icons/Giljo_BY.svg" alt="BY" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Giljo_BY.svg</span>
+            <span class="token-value">Blue body, Yellow face</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 16px;">
+            <img src="./public/icons/Giljo_BB.svg" alt="BB" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Giljo_BB.svg</span>
+            <span class="token-value">Blue body, Blue face</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 16px;">
+            <img src="./public/icons/Giljo_WB.svg" alt="WB" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Giljo_WB.svg</span>
+            <span class="token-value">White body, Blue face</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 16px;">
+            <img src="./public/icons/Giljo_YY.svg" alt="YY" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Giljo_YY.svg</span>
+            <span class="token-value">Yellow body, Yellow face</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 16px;">
+            <img src="./public/icons/Giljo_W.svg" alt="W" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Giljo_W.svg</span>
+            <span class="token-value">White mono</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI PROVIDER LOGOS -->
+    <section class="section">
+      <h2 class="section-title">AI Provider Logos</h2>
+      <p class="section-subtitle">Used in execution mode selectors, agent templates, and integration cards</p>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="grid-3" style="gap: 24px; align-items: center;">
+          <div class="card-elevated" style="text-align: center; padding: 24px;">
+            <img src="./public/Claude_AI_symbol.svg" alt="Claude" style="height: 48px; margin-bottom: 12px;" onerror="this.alt='[missing]'">
+            <span class="token-label">Claude_AI_symbol.svg</span>
+            <span class="token-value">Anthropic Claude</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 24px;">
+            <img src="./public/codex_logo.svg" alt="Codex" style="height: 48px; margin-bottom: 12px;" onerror="this.alt='[missing]'">
+            <span class="token-label">codex_logo.svg</span>
+            <span class="token-value">OpenAI Codex</span>
+          </div>
+          <div class="card-elevated" style="text-align: center; padding: 24px;">
+            <img src="./public/gemini-icon.svg" alt="Gemini" style="height: 48px; margin-bottom: 12px;" onerror="this.alt='[missing]'">
+            <span class="token-label">gemini-icon.svg</span>
+            <span class="token-value">Google Gemini</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CUSTOM SVG ICONS -->
+    <section class="section">
+      <h2 class="section-title">Custom SVG Icons</h2>
+      <p class="section-subtitle">86 custom icons in /frontend/public/icons/ — used alongside MDI for app-specific actions</p>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <h4>UI Action Icons</h4>
+        <div class="grid-6" style="gap: 12px;">
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/add.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">add.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/close.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">close.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/edit.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">edit.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/delete.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">delete.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/copy.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">copy.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/save.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">save.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/search.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">search.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/refresh.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">refresh.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/download.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">download.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/settings.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">settings.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/view.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">view.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/lock.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">lock.svg</span></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <h4>Domain Icons</h4>
+        <div class="grid-6" style="gap: 12px;">
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/Home.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">Home.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/chart.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">chart.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/chat.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">chat.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/code.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">code.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/context.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">context.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/document.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">document.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/data.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">data.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/rocket.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">rocket.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/bell.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">bell.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/user.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">user.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/research.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">research.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/model.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">model.svg</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>User Management Icons</h4>
+        <div class="grid-6" style="gap: 12px;">
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/user.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">user.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/users.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">users.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/useradd.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">useradd.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/useredit.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">useredit.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/userdelete.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">userdelete.svg</span></div>
+          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/userinvite.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">userinvite.svg</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CARD FRAMING STANDARD -->
+    <section class="section">
+      <h2 class="section-title">Card Framing Standard</h2>
+      <p class="section-subtitle">All rounded cards use box-shadow: inset (smooth-border) — NEVER CSS border. See CLAUDE.md.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>Standard Card (smooth-border-2 white)</h4>
+          <p style="font-size: 0.8rem; color: #8f97b7; margin-bottom: 12px;">2px bright white, anti-aliased via box-shadow inset.</p>
+          <div style="background: #0e1c2d; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.75rem; color: #8f97b7;">
+            border: none;<br>
+            border-radius: 12px;<br>
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.85);
+          </div>
+        </div>
+        <div style="background: #182739; border: none; border-radius: 12px; padding: 24px; box-shadow: inset 0 0 0 2px #ffc300, 0 4px 6px -1px rgba(0,0,0,0.1);">
+          <h4 style="font-size: 1.125rem; font-weight: 700; color: #e1e1e1; margin-bottom: 16px;">Accent Card (smooth-border-accent)</h4>
+          <p style="font-size: 0.8rem; color: #8f97b7; margin-bottom: 12px;">2px brand yellow for emphasis.</p>
+          <div style="background: #0e1c2d; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.75rem; color: #8f97b7;">
+            border: none;<br>
+            border-radius: 12px;<br>
+            box-shadow: inset 0 0 0 2px var(--smooth-border-color, #ffc300);
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 24px;">
+        <h4>Smooth Border Classes (main.scss)</h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+          <thead>
+            <tr style="border-bottom: 1px solid #315074;">
+              <th style="text-align: left; padding: 8px; color: #ffc300;">Class</th>
+              <th style="text-align: left; padding: 8px; color: #ffc300;">Width</th>
+              <th style="text-align: left; padding: 8px; color: #ffc300;">Default Color</th>
+              <th style="text-align: left; padding: 8px; color: #ffc300;">Usage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid rgba(49,80,116,0.5);">
+              <td style="padding: 8px;"><code>.smooth-border</code></td>
+              <td style="padding: 8px;">1px</td>
+              <td style="padding: 8px;">$med-blue (#315074)</td>
+              <td style="padding: 8px;">Subtle card outlines</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(49,80,116,0.5);">
+              <td style="padding: 8px;"><code>.smooth-border-2</code></td>
+              <td style="padding: 8px;">2px</td>
+              <td style="padding: 8px;">$med-blue (#315074)</td>
+              <td style="padding: 8px;">Primary card framing</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px;"><code>.smooth-border-accent</code></td>
+              <td style="padding: 8px;">2px</td>
+              <td style="padding: 8px;">$yellow (#ffc300)</td>
+              <td style="padding: 8px;">Featured / active cards</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-top: 12px;">Custom color: <code>style="--smooth-border-color: #hex"</code></p>
+      </div>
+    </section>
+
+  </div> <!-- /tab-icons-logos -->
+
 </div>
 
 <script>
+function switchPageTab(btn, tabId) {
+  // Deactivate all page tabs
+  document.querySelectorAll('.page-tab').forEach(function(b) {
+    b.style.background = 'transparent';
+    b.style.color = '#8f97b7';
+    b.style.borderBottomColor = 'transparent';
+    b.classList.remove('page-tab--active');
+  });
+  // Activate clicked
+  btn.style.background = '#182739';
+  btn.style.color = '#fff';
+  btn.style.borderBottomColor = '#ffc300';
+  btn.classList.add('page-tab--active');
+  // Hide all tab content
+  document.getElementById('tab-design-tokens').style.display = 'none';
+  document.getElementById('tab-icons-logos').style.display = 'none';
+  // Show target
+  document.getElementById(tabId).style.display = 'block';
+}
+
 function switchDemoTab(btn, panelId) {
   // Deactivate all tabs
   btn.parentElement.querySelectorAll('.tab-btn').forEach(function(b) {
