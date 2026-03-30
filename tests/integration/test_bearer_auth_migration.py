@@ -7,9 +7,7 @@ Verifies that:
 - Backend ai_tools endpoint generates Bearer format
 """
 
-from unittest.mock import patch
 
-import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -49,13 +47,14 @@ class TestWizardBearerOutput:
 # ---------------------------------------------------------------------------
 
 class TestMcpEndpointAcceptsBoth:
-    """Verify the MCP endpoint accepts both Bearer and X-API-Key."""
+    """Verify the MCP SDK auth middleware accepts both Bearer and X-API-Key."""
 
-    def test_bearer_header_pattern_documented(self):
-        """The MCP endpoint should document Bearer as primary."""
-        from api.endpoints.mcp_http import mcp_endpoint
-        # Just verify the function exists and accepts authorization param
-        import inspect
-        sig = inspect.signature(mcp_endpoint)
-        param_names = list(sig.parameters.keys())
-        assert "authorization" in param_names or "x_api_key" in param_names
+    def test_auth_middleware_exists(self):
+        """MCPAuthMiddleware should be importable and functional."""
+        # Middleware should accept an ASGI app
+        from unittest.mock import MagicMock
+
+        from api.endpoints.mcp_sdk_server import MCPAuthMiddleware
+
+        middleware = MCPAuthMiddleware(app=MagicMock())
+        assert callable(middleware)

@@ -91,7 +91,7 @@ class MockAgentSimulator:
         Make MCP HTTP request to backend server.
 
         Args:
-            method: MCP tool method name (e.g., "mcp__giljo-mcp__get_agent_mission")
+            method: MCP tool method name (e.g., "mcp__giljo_mcp__get_agent_mission")
             arguments: Tool arguments
 
         Returns:
@@ -137,7 +137,7 @@ class MockAgentSimulator:
             self._logger.info(f"Fetching mission for job {job_id}")
 
             response = await self._make_mcp_request(
-                method="mcp__giljo-mcp__get_agent_mission",
+                method="mcp__giljo_mcp__get_agent_mission",
                 arguments={"job_id": job_id, "tenant_key": tenant_key},
             )
 
@@ -206,7 +206,7 @@ class MockAgentSimulator:
             self._logger.info(f"Sending message to {to_agent_id}")
 
             response = await self._make_mcp_request(
-                method="mcp__giljo-mcp__send_message",
+                method="mcp__giljo_mcp__send_message",
                 arguments={"to_agent": to_agent_id, "message": message, "priority": "medium"},
             )
 
@@ -236,7 +236,7 @@ class MockAgentSimulator:
             self._logger.debug("Checking for messages")
 
             response = await self._make_mcp_request(
-                method="mcp__giljo-mcp__receive_messages", arguments={"agent_id": self.job_id}
+                method="mcp__giljo_mcp__receive_messages", arguments={"agent_id": self.job_id}
             )
 
             # Parse MCP response
@@ -271,7 +271,7 @@ class MockAgentSimulator:
             )
 
             response = await self._make_mcp_request(
-                method="mcp__giljo-mcp__report_progress",
+                method="mcp__giljo_mcp__report_progress",
                 arguments={"job_id": self.job_id, "progress": progress},
             )
 
@@ -303,7 +303,7 @@ class MockAgentSimulator:
             self._logger.info(f"Completing job: {result.get('status', 'unknown')}")
 
             response = await self._make_mcp_request(
-                method="mcp__giljo-mcp__complete_job", arguments={"job_id": self.job_id, "result": result}
+                method="mcp__giljo_mcp__complete_job", arguments={"job_id": self.job_id, "result": result}
             )
 
             # Parse MCP response
