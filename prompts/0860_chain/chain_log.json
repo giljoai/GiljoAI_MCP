@@ -48,9 +48,9 @@
       "title": "ScanCode Source Scanning",
       "handover": "handovers/0860b_SCANCODE_SOURCE_SCAN.md",
       "color": "#2196F3",
-      "status": "in_progress",
+      "status": "completed",
       "started_at": "2026-03-30T15:00:00Z",
-      "completed_at": null,
+      "completed_at": "2026-03-30T15:30:00Z",
       "agent_types": ["general-purpose"],
       "planned_tasks": [
         "ScanCode backend scan (src/giljo_mcp/, api/, migrations/, installers)",
@@ -58,12 +58,20 @@
         "Parse and triage results per license policy table",
         "Produce audit/SCANCODE_FINDINGS.md with all 7 required sections"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "ScanCode backend scan: 331 files (src/giljo_mcp/, api/, migrations/, install.py) -> audit/scancode_backend.json",
+        "ScanCode frontend scan: 2 manifest files + 161 source files -> audit/scancode_frontend.json (merged)",
+        "Parse and triage: 0 BLOCK, 3 REVIEW (all benign), 0 copyright anomalies across 494 files",
+        "audit/SCANCODE_FINDINGS.md produced with all 7 required sections"
+      ],
+      "deviations": [
+        "setup_gui.py and bootstrap.py do not exist in repo — omitted from backend scan",
+        "Initial frontend scan with --classify filtered all .vue/.js source files (ScanCode pre-scan ignore). Re-ran frontend/src/ without --classify, merged results into scancode_frontend.json"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
+      "notes_for_next": "ScanCode source scan complete. 494 files scanned (331 backend, 2 frontend manifests, 161 frontend source). Total scan time ~20 min. Results: 0 BLOCK (both editions), 0 BLOCK (CE only), 3 REVIEW items (all benign — dompurify dual-licensed MPL-2.0/Apache-2.0 elect Apache; 2x our own project 'SEE LICENSE IN LICENSE' declaration). ZERO AGPL. ZERO GPL. ZERO copyright anomalies. License clues in auth.py and LicensingDialog.vue are our own commercial license enforcement text — false positives. All npm package licenses in manifests are permissive (MIT 392, ISC 32, Apache-2.0 27, BSD 24, others 12). No source-level copyleft contamination. Combined with 0860a (zero AGPL deps, zero shipped GPL deps) and 0860c (zero BLOCK snippet matches), the codebase appears clean for CE launch. For 0860d consolidation: note the dompurify dual-license as a recurring item (appeared in both 0860a and 0860b) — single entry in final report is sufficient.",
       "cascading_impacts": [],
-      "summary": null
+      "summary": "ScanCode source scan complete. 494 source files scanned across backend and frontend. Zero AGPL, zero GPL, zero copyleft license headers in project source code. Three benign REVIEW items (dompurify dual-license, own project license declaration). No copyright anomalies. No blockers for CE or SaaS editions."
     },
     {
       "session_id": "0860c",
