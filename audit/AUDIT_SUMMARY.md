@@ -146,3 +146,23 @@ All three scanning layers were compared for contradictions:
 | 0860d | `audit/AUDIT_SUMMARY.md` | This document — consolidated findings and verdicts |
 
 Raw scan data (JSON) is in the `audit/` directory but excluded from git commits per audit protocol.
+
+---
+
+## Owner Review Resolution (2026-03-30)
+
+All 4 REVIEW items assessed by project owner (Patrik Pettersson). Resolution:
+
+| # | Item | Resolution | Rationale |
+|---|------|-----------|-----------|
+| 1 | useToast.js (79% SCANOSS match) | **CLEARED** | Common Vue notification pattern used by thousands of projects. Matched component has no license — no conflict exists. Independently authored boilerplate. |
+| 2 | psycopg2-binary (LGPL w/ exception) | **CLEARED** | LGPL exception clause explicitly permits linking without copyleft obligation. Industry-standard PostgreSQL driver used by virtually every Python+PostgreSQL application. |
+| 3 | pycountry (LGPL-2.1) | **CLEARED** | Transitive dependency via sumy. Standard dynamic linking — LGPL-2.1 does not trigger copyleft for the larger work under dynamic linking. |
+| 4 | PyGithub (LGPL) | **CLEARED** | Not in pyproject.toml. Not a shipped dependency. Present only as a transitive install from audit tooling (scancode-toolkit). Does not ship with CE or SaaS. |
+
+**Updated Verdicts:**
+
+### CE Edition: PASS
+### SaaS Edition: PASS
+
+No remaining REVIEW or BLOCK items. Audit gate cleared for CE public launch April 5, 2026.
