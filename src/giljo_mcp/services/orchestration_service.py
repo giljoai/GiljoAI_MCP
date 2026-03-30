@@ -2303,7 +2303,7 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
             )
         except (ValidationError, ResourceNotFoundError, ProjectStateError):
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps unexpected errors in OrchestrationError
             self._logger.exception("Failed to reactivate job")
             raise OrchestrationError(
                 message="Failed to reactivate job", context={"job_id": job_id, "error": str(e)}
@@ -2413,7 +2413,7 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
             )
         except (ValidationError, ResourceNotFoundError):
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps unexpected errors in OrchestrationError
             self._logger.exception("Failed to dismiss reactivation")
             raise OrchestrationError(
                 message="Failed to dismiss reactivation", context={"job_id": job_id, "error": str(e)}

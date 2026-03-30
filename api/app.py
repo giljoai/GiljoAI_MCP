@@ -663,6 +663,23 @@ def _register_event_handlers(app: FastAPI) -> None:
                             )
                             continue
 
+                        # Cross-tenant subscription blocked (Handover 0769a: security fix)
+                        if tenant_key != auth_context.get("tenant_key"):
+                            logger.warning(
+                                f"Cross-tenant subscription blocked: user tenant={auth_context.get('tenant_key')}, "
+                                f"entity tenant={tenant_key}"
+                            )
+                            await websocket.send_json(
+                                {
+                                    "type": "error",
+                                    "error": "subscription_denied",
+                                    "message": "Cross-tenant subscription not allowed",
+                                    "entity_type": entity_type,
+                                    "entity_id": entity_id,
+                                }
+                            )
+                            continue
+
                         await state.websocket_manager.subscribe(client_id, entity_type, entity_id, tenant_key)
                         await websocket.send_json(
                             {"type": "subscribed", "entity_type": entity_type, "entity_id": entity_id}
