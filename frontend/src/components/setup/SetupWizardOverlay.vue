@@ -111,10 +111,13 @@
               </p>
             </div>
 
-            <!-- Step 1: Connect (placeholder) -->
-            <div v-else-if="currentStep === 1" class="step-placeholder">
-              <p class="placeholder-text">Step 2 content will be added by handover 0855d</p>
-            </div>
+            <!-- Step 1: Connect (0855d) -->
+            <SetupStep2Connect
+              v-else-if="currentStep === 1"
+              :selected-tools="localSelectedTools"
+              @can-proceed="step2CanProceed = $event"
+              @step-data="step2Data = $event"
+            />
 
             <!-- Step 2: Install (placeholder) -->
             <div v-else-if="currentStep === 2" class="step-placeholder">
@@ -156,6 +159,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import SetupStep2Connect from './SetupStep2Connect.vue'
 
 const TOOLS = [
   { id: 'claude_code', name: 'Claude Code', provider: 'by Anthropic', icon: 'mdi-console' },
@@ -198,6 +202,8 @@ const emit = defineEmits([
 
 // Internal state
 const localSelectedTools = ref([...props.selectedTools])
+const step2CanProceed = ref(false)
+const step2Data = ref({})
 
 // Sync when prop changes externally
 watch(
@@ -229,6 +235,9 @@ const canProceed = computed(() => {
   if (props.currentStep === 0) {
     return localSelectedTools.value.length > 0
   }
+  if (props.currentStep === 1) {
+    return step2CanProceed.value
+  }
   // Placeholder steps: always allow proceeding
   return true
 })
@@ -238,6 +247,8 @@ function handleNext() {
 
   if (props.currentStep === 0) {
     emit('step-complete', { step: 0, data: { tools: [...localSelectedTools.value] } })
+  } else if (props.currentStep === 1) {
+    emit('step-complete', { step: 1, data: { ...step2Data.value } })
   } else {
     emit('step-complete', { step: props.currentStep, data: {} })
   }

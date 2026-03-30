@@ -361,6 +361,7 @@ vi.mock('@/services/api', () => {
     },
     apiKeys: {
       list: vi.fn(() => Promise.resolve({ data: [] })),
+      getActive: vi.fn(() => Promise.resolve({ data: [] })),
       create: vi.fn(() => Promise.resolve({ data: {} })),
       delete: vi.fn(() => Promise.resolve({ data: { success: true } })),
     },
