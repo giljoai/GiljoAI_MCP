@@ -271,7 +271,7 @@ class AIToolConfigGenerator:
         
         config = {
             "mcpServers": {
-                "giljo-mcp": {
+                "giljo_mcp": {
                     "command": "uvx",
                     "args": ["giljo-mcp-client"],
                     "env": {
@@ -300,7 +300,7 @@ class AIToolConfigGenerator:
 ```json
 {
   "mcpServers": {
-    "giljo-mcp": {
+    "giljo_mcp": {
       "command": "uvx",
       "args": ["giljo-mcp-client"],
       "env": {
@@ -333,12 +333,12 @@ class AIToolConfigGenerator:
 
 4. **Verify Setup**:
    - Restart Claude Code CLI
-   - Check that "giljo-mcp" server appears in available tools
+   - Check that "giljo_mcp" server appears in available tools
    - Test with: `/mcp list-servers`
 
 5. **Test Connection**:
    ```
-   /mcp giljo-mcp get_projects
+   /mcp giljo_mcp get_projects
    ```
 ```
 
@@ -348,7 +348,7 @@ class AIToolConfigGenerator:
 ```json
 {
   "mcp_servers": {
-    "giljo-mcp": {
+    "giljo_mcp": {
       "server_url": "http://localhost:7272",
       "tenant_key": "default",
       "api_endpoints": {
@@ -387,7 +387,7 @@ class AIToolConfigGenerator:
 
 4. **Test Integration**:
    ```bash
-   codex mcp test-connection giljo-mcp
+   codex mcp test-connection giljo_mcp
    ```
 ```
 
@@ -485,7 +485,7 @@ Dashboard → Quick Actions → [Setup AI Coding Agents]
 ├─────────────────────────────────────────┤
 │ {                                       │
 │   "mcpServers": {                       │
-│     "giljo-mcp": {                      │
+│     "giljo_mcp": {                      │
 │       "command": "uvx",                 │
 │       "args": ["giljo-mcp-client"],     │
 │       "env": {                          │
@@ -528,7 +528,7 @@ Each tenant receives **isolated configurations**:
 ```json
 {
   "mcpServers": {
-    "giljo-mcp": {
+    "giljo_mcp": {
       "command": "uvx",
       "args": ["giljo-mcp-client"],
       "env": {
@@ -766,7 +766,7 @@ async generateConfigWithApiKey() {
 
     // Step 3: Embed API key in configuration
     const config = JSON.parse(configResponse.data.config_content)
-    config.mcpServers['giljo-mcp'].env.GILJO_API_KEY = apiKeyResponse.data.key
+    config.mcpServers['giljo_mcp'].env.GILJO_API_KEY = apiKeyResponse.data.key
 
     // Step 4: Display configuration with security warnings
     this.generatedConfig = {
@@ -790,7 +790,7 @@ async generateConfigWithApiKey() {
 ```json
 {
   "mcpServers": {
-    "giljo-mcp": {
+    "giljo_mcp": {
       "command": "uvx",
       "args": ["giljo-mcp-client"],
       "env": {
@@ -955,7 +955,7 @@ PATCH /api/auth/api-keys/{key_id}
 ```json
 {
   "mcpServers": {
-    "giljo-mcp": {
+    "giljo_mcp": {
       "command": "uvx",
       "args": ["giljo-mcp-client"],
       "env": {
@@ -989,7 +989,7 @@ PATCH /api/auth/api-keys/{key_id}
 $ConfigPath = "$env:USERPROFILE\.claude.json"
 $Config = @{
     mcpServers = @{
-        "giljo-mcp" = @{
+        "giljo_mcp" = @{
             command = "uvx"
             args = @("giljo-mcp-client")
             env = @{
@@ -1016,7 +1016,7 @@ CONFIG_FILE="$HOME/.claude.json"
 CONFIG_CONTENT='
 {
   "mcpServers": {
-    "giljo-mcp": {
+    "giljo_mcp": {
       "command": "uvx",
       "args": ["giljo-mcp-client"],
       "env": {
@@ -1085,8 +1085,8 @@ class TestAIToolsConfigGenerator:
         config_a = json.loads(tenant_a_response.json()["config_content"])
         config_b = json.loads(tenant_b_response.json()["config_content"])
         
-        assert config_a["mcpServers"]["giljo-mcp"]["env"]["GILJO_TENANT_KEY"] == "tenant_a"
-        assert config_b["mcpServers"]["giljo-mcp"]["env"]["GILJO_TENANT_KEY"] == "tenant_b"
+        assert config_a["mcpServers"]["giljo_mcp"]["env"]["GILJO_TENANT_KEY"] == "tenant_a"
+        assert config_b["mcpServers"]["giljo_mcp"]["env"]["GILJO_TENANT_KEY"] == "tenant_b"
 ```
 
 ### Frontend Component Testing
@@ -1144,7 +1144,7 @@ describe('AIToolSetup Component', () => {
 4. Test connection:
    ```
    /mcp list-servers
-   /mcp test-connection giljo-mcp
+   /mcp test-connection giljo_mcp
    ```
 ```
 
@@ -1268,7 +1268,7 @@ describe('AIToolSetup Component', () => {
 ```json
 {
   "mcpServers": {
-    "giljo-mcp": {
+    "giljo_mcp": {
       "command": "uvx",
       "args": ["giljo-mcp-client"],
       "env": {
