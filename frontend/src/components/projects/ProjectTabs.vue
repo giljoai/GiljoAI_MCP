@@ -162,6 +162,22 @@
         </v-chip>
       </div>
 
+      <!-- Gemini subagent notice (shown on Jobs tab when Gemini mode active) -->
+      <div v-if="activeTab === 'jobs' && isGeminiMode" class="gemini-notice-row">
+        <v-chip
+          color="warning"
+          variant="tonal"
+          size="default"
+          prepend-icon="mdi-alert-circle-outline"
+          class="gemini-notice-chip"
+          data-testid="gemini-notice"
+          @click="showGeminiNotice = true"
+        >
+          Gemini subagent: no active orchestrator during execution
+          <v-icon end size="x-small">mdi-information-outline</v-icon>
+        </v-chip>
+      </div>
+
       <!-- Tab Content -->
       <v-window v-model="activeTab" class="tabs-content">
         <!-- Launch Tab -->
@@ -184,6 +200,36 @@
         </v-window-item>
       </v-window>
     </div>
+
+    <!-- Gemini Subagent Notice Dialog -->
+    <v-dialog v-model="showGeminiNotice" max-width="520">
+      <v-card class="smooth-border">
+        <v-card-title class="d-flex align-center ga-2">
+          <v-icon color="warning">mdi-alert-circle</v-icon>
+          Gemini Subagent Mode
+        </v-card-title>
+        <v-card-text class="gemini-dialog-body">
+          <p>
+            The Gemini CLI does not maintain an active orchestrator while subagents are executing.
+            The orchestrator goes idle during team activity, meaning agents work without supervision.
+          </p>
+          <p>
+            In rare cases, a subagent may enter a loop. When this happens, you must manually
+            intervene by pressing <kbd>ESC</kbd> in the CLI to stop the looping agent.
+            Carefully identify which agent is looping before stopping it — the remaining
+            team members will continue normally.
+          </p>
+          <p class="mb-0">
+            This is a limitation of Gemini's subagent architecture, not an MCP server issue.
+            Stay attentive during execution so you can act quickly if needed.
+          </p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showGeminiNotice = false">Got it</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Project Closeout Modal (Handover 0361) -->
     <CloseoutModal
@@ -316,6 +362,8 @@ watch(activeTab, (newTab) => {
  */
 const loadingStageProject = ref(false)
 const executionMode = ref(props.project?.execution_mode || 'multi_terminal')
+const showGeminiNotice = ref(false)
+const isGeminiMode = computed(() => executionMode.value === 'gemini_cli')
 
 /**
  * Computed: Project with updated execution_mode
@@ -829,6 +877,33 @@ async function handleContinueWorking() {
 
   &:hover {
     background: rgb(var(--v-theme-highlight-hover));
+  }
+}
+
+/* Gemini subagent notice */
+.gemini-notice-row {
+  display: flex;
+  justify-content: center;
+  padding: 6px 16px 2px 16px;
+}
+
+.gemini-notice-chip {
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.gemini-dialog-body {
+  p {
+    margin-bottom: 12px;
+    line-height: 1.6;
+  }
+
+  kbd {
+    background: rgba(var(--v-theme-on-surface), 0.08);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: monospace;
+    font-size: 13px;
   }
 }
 
