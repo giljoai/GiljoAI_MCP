@@ -24,6 +24,7 @@ function mountOverlay(props = {}) {
       plugins: [vuetify],
       stubs: {
         Teleport: true,
+        SetupStep2Connect: { template: '<div class="step-connect">Step2Connect stub</div>' },
       },
     },
   })
@@ -275,8 +276,8 @@ describe('SetupWizardOverlay', () => {
       expect(wrapper.emitted('update:currentStep')).toBeUndefined()
     })
 
-    it('is enabled on placeholder steps regardless of tool selection', () => {
-      const wrapper = mountOverlay({ currentStep: 1, selectedTools: [] })
+    it('is enabled on placeholder steps (2+) regardless of tool selection', () => {
+      const wrapper = mountOverlay({ currentStep: 2, selectedTools: [] })
       const nextBtn = wrapper.find('.footer-btn-next')
 
       expect(nextBtn.attributes('disabled')).toBeUndefined()
@@ -356,10 +357,10 @@ describe('SetupWizardOverlay', () => {
   // Placeholder steps
   // -------------------------------------------------------------------
   describe('Placeholder steps', () => {
-    it('step 1 shows placeholder text about 0855d', () => {
-      const wrapper = mountOverlay({ currentStep: 1 })
+    it('step 1 renders SetupStep2Connect component (0855d)', () => {
+      const wrapper = mountOverlay({ currentStep: 1, selectedTools: ['claude_code'] })
 
-      expect(wrapper.find('.placeholder-text').text()).toContain('0855d')
+      expect(wrapper.find('.step-connect').exists()).toBe(true)
     })
 
     it('step 2 shows placeholder text about 0855e', () => {
