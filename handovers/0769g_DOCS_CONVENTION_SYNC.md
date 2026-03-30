@@ -77,6 +77,16 @@ Update `handovers/HANDOVER_CATALOGUE.md`:
 
 ---
 
+## Agent Protocols (MANDATORY)
+
+### Rejection Authority
+You have freedom to reject any audit proposal if the documentation is actually correct. The audit flagged "active" and "pending" as stale — but these are valid for projects and messages, only stale for agent jobs. Read the surrounding context before replacing. If a doc reference is correct for its entity type, leave it alone and document in the chain log `deviations` field.
+
+### Flow Investigation
+Before changing ANY status value in docs, verify the current code actually uses the replacement value. Run a quick grep to confirm. If the code has diverged further since the audit, update to match reality, not the audit's recommendation.
+
+---
+
 ## What NOT To Do
 
 - Do NOT modify any source code (Python or JavaScript)
