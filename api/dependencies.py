@@ -43,7 +43,7 @@ async def get_tenant_key(request: Request) -> str:
     from fastapi import HTTPException
 
     from api.app import state
-    from src.giljo_mcp._config_io import read_config
+    from src.giljo_mcp.config_manager import get_config
 
     # Check if we're in setup mode first
     if hasattr(state, "api_state") and hasattr(state.api_state, "config"):
@@ -76,8 +76,7 @@ async def get_tenant_key(request: Request) -> str:
 
     # Check deployment mode to determine fallback behavior
     try:
-        config = read_config()
-        mode = config.get("installation", {}).get("mode", "localhost")
+        mode = get_config().get_nested("installation.mode", "localhost")
 
         # In server mode (LAN/WAN), missing tenant key is a security error
         if mode in ("server", "lan", "wan"):
