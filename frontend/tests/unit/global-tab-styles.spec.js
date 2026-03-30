@@ -96,7 +96,6 @@ const globalStubs = {
   SerenaIntegrationCard: true,
   GitIntegrationCard: true,
   GitAdvancedSettingsDialog: true,
-  StartupQuickStart: true,
   ProductIntroTour: true,
   NetworkSettingsTab: true,
   DatabaseConnection: true,
