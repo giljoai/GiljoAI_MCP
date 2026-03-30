@@ -86,7 +86,7 @@ def get_server_url() -> str:
         return "http://localhost:7272"
 
 
-def generate_secure_token(user_id: str, expires_in: int) -> str:
+def generate_secure_token(user_id: str, expires_in: int, tenant_key: str = "default") -> str:
     """
     Generate JWT token for script download.
 
@@ -99,7 +99,12 @@ def generate_secure_token(user_id: str, expires_in: int) -> str:
     """
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
 
-    payload = {"user_id": user_id, "expires_at": expires_at.isoformat() + "Z", "type": "mcp_installer_download"}
+    payload = {
+        "user_id": user_id,
+        "tenant_key": tenant_key,
+        "expires_at": expires_at.isoformat() + "Z",
+        "type": "mcp_installer_download",
+    }
 
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return token
@@ -169,7 +174,7 @@ def render_template(
     return script
 
 
-async def get_user_by_id(session: AsyncSession, user_id: str) -> Optional[User]:
+async def get_user_by_id(session: AsyncSession, user_id: str, tenant_key: str = "default") -> Optional[User]:
     """
     Query user from database by ID.
 
@@ -184,8 +189,8 @@ async def get_user_by_id(session: AsyncSession, user_id: str) -> Optional[User]:
     Returns:
         User object or None if not found
     """
-    # Simple query: Get user by ID (active users only)
-    stmt = select(User).where(User.id == user_id, User.is_active)
+    # Defense-in-depth: scope by tenant_key (Handover 0769a)
+    stmt = select(User).where(User.id == user_id, User.is_active, User.tenant_key == tenant_key)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
     return user
@@ -359,6 +364,7 @@ async def generate_share_link(current_user: Optional[User] = Depends(get_current
     token = generate_secure_token(
         user_id=current_user.id,
         expires_in=7 * 24 * 3600,  # 7 days in seconds
+        tenant_key=current_user.tenant_key,
     )
 
     # Get server URL
@@ -406,7 +412,8 @@ async def download_via_token(token: str, platform: str, session: AsyncSession = 
 
     # Get user from database
     user_id = user_info["user_id"]
-    user = await get_user_by_id(session, user_id)
+    tenant_key = user_info.get("tenant_key", "default")
+    user = await get_user_by_id(session, user_id, tenant_key=tenant_key)
 
     if not user:
         logger.warning(f"User not found for token: {user_id}")
