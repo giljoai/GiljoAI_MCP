@@ -85,7 +85,7 @@ Agents should not paste large template content into chat. Instead:
 
 ## Notes on Schema / Exposure
 
-The public MCP tool surface is defined in `api/endpoints/mcp_http.py` (`tool_map`).
+The public MCP tool surface is defined in `api/endpoints/mcp_sdk_server.py` (`tool_map`).
 
 Legacy download-flow tools were removed (Jan 2026):
 - `gil_fetch`
@@ -98,5 +98,5 @@ Legacy download-flow tools were removed (Jan 2026):
 
 - Public slash commands ZIP content: `tests/test_downloads.py`
 - End-to-end downloads flow (ZIP integrity, auth, multi-tenant): `tests/integration/test_downloads_integration.py`
-- MCP tools/list consistency: `tests/integration/test_mcp_http_tool_catalog.py`
+- MCP tool registration: verified by SDK at startup (27 tools via @mcp.tool() decorators)
 
