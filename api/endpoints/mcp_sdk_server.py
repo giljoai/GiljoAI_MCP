@@ -832,17 +832,20 @@ class MCPAuthMiddleware:
 
 
 def build_mcp_app():
+    """Legacy entry point — use get_mcp_asgi_app() instead."""
+    return get_mcp_asgi_app()
+
+
+def get_mcp_asgi_app():
     """
     Build the MCP ASGI app with auth middleware applied.
 
-    Returns an ASGI application ready to be mounted in FastAPI via:
-        app.mount("/mcp", build_mcp_app())
+    Returns a pure ASGI callable: MCPAuthMiddleware → StreamableHTTPASGIApp.
+    Called from app.py via a direct FastAPI route (not app.mount, to avoid
+    the 307 trailing-slash redirect).
 
-    Lifecycle: The SDK's StreamableHTTPSessionManager requires its run()
-    context to be active before handling requests. Since FastAPI does not
-    propagate lifespan events to mounted sub-apps, call
-    start_mcp_session_manager() / stop_mcp_session_manager() in the
-    FastAPI lifespan (see app.py).
+    Lifecycle: Call start_mcp_session_manager() / stop_mcp_session_manager()
+    in the FastAPI lifespan (see app.py).
     """
     # Ensure session manager is created
     if mcp._session_manager is None:
@@ -853,8 +856,7 @@ def build_mcp_app():
 
     asgi_handler = StreamableHTTPASGIApp(mcp._session_manager)
 
-    # Wrap with auth middleware — pure ASGI chain, no Starlette Router
-    # (avoids the 307 trailing-slash redirect that Starlette adds)
+    # Wrap with auth middleware — pure ASGI chain
     return MCPAuthMiddleware(asgi_handler)
 
 
