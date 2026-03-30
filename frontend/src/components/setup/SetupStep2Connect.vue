@@ -81,11 +81,19 @@
 
         <!-- HTTPS cert trust (Node.js tools) -->
         <template v-if="needsCertTrust">
-          <div class="platform-toggle">
-            <v-btn-toggle v-model="platform" mandatory density="compact" class="platform-toggle-group">
-              <v-btn value="windows" size="small">PowerShell</v-btn>
-              <v-btn value="unix" size="small">Linux / macOS</v-btn>
-            </v-btn-toggle>
+          <div class="platform-tabs">
+            <button
+              :class="['platform-tab', { 'platform-tab--active': platform === 'windows' }]"
+              @click="platform = 'windows'"
+            >
+              PowerShell
+            </button>
+            <button
+              :class="['platform-tab', { 'platform-tab--active': platform === 'unix' }]"
+              @click="platform = 'unix'"
+            >
+              Linux / macOS
+            </button>
           </div>
           <v-alert type="info" variant="tonal" density="compact" class="mb-3">
             <strong>HTTPS with self-signed certificates:</strong> Node.js-based AI coding agents need to trust the system CA store (one-time setup, requires Node.js 20.12+).
@@ -107,11 +115,19 @@
         </template>
 
         <!-- Platform toggle for Codex env var (if not already shown for HTTPS) -->
-        <div v-if="!needsCertTrust && activeNormalizedId === 'codex'" class="platform-toggle">
-          <v-btn-toggle v-model="platform" mandatory density="compact" class="platform-toggle-group">
-            <v-btn value="windows" size="small">PowerShell</v-btn>
-            <v-btn value="unix" size="small">Linux / macOS</v-btn>
-          </v-btn-toggle>
+        <div v-if="!needsCertTrust && activeNormalizedId === 'codex'" class="platform-tabs">
+          <button
+            :class="['platform-tab', { 'platform-tab--active': platform === 'windows' }]"
+            @click="platform = 'windows'"
+          >
+            PowerShell
+          </button>
+          <button
+            :class="['platform-tab', { 'platform-tab--active': platform === 'unix' }]"
+            @click="platform = 'unix'"
+          >
+            Linux / macOS
+          </button>
         </div>
 
         <!-- Codex: Environment Variable -->
@@ -440,7 +456,7 @@ onUnmounted(() => {
 }
 
 .server-url-field :deep(input) {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: "Roboto Mono", "Courier New", monospace;
   font-size: 0.875rem;
 }
 
@@ -478,19 +494,43 @@ onUnmounted(() => {
 }
 
 
-/* Platform toggle */
-.platform-toggle {
+/* Platform tabs */
+.platform-tabs {
+  display: flex;
+  gap: 0;
   margin-bottom: 12px;
+  border-bottom: 1px solid #315074;
 }
 
-.platform-toggle-group {
-  background: #1e3147 !important;
-  border-radius: 8px !important;
+.platform-tab {
+  padding: 8px 16px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #8f97b7;
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: color 250ms ease-out;
 }
 
-.platform-toggle-group :deep(.v-btn) {
-  font-size: 0.75rem;
-  text-transform: none;
+.platform-tab:hover {
+  color: #e1e1e1;
+}
+
+.platform-tab--active {
+  color: #ffc300;
+}
+
+.platform-tab--active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(45deg, #ffd93d, #6bcf7f);
+  border-radius: 1px;
 }
 
 /* Config blocks */
@@ -522,7 +562,7 @@ onUnmounted(() => {
 .config-code {
   padding: 12px;
   margin: 0;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: "Roboto Mono", "Courier New", monospace;
   font-size: 0.8125rem;
   line-height: 1.5;
   color: #e1e1e1;
