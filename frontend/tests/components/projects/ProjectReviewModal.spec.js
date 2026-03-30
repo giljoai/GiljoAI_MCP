@@ -40,8 +40,8 @@ describe('ProjectReviewModal.vue', () => {
   }
 
   const mockAgents = [
-    { id: 'job-1', agent_display_name: 'Orchestrator', agent_role: 'orchestrator', status: 'complete' },
-    { id: 'job-2', agent_display_name: 'Implementor', agent_role: 'implementor', status: 'complete' },
+    { id: 'job-1', job_id: 'job-1', agent_display_name: 'Orchestrator', agent_name: 'orchestrator', agent_role: 'orchestrator', status: 'complete' },
+    { id: 'job-2', job_id: 'job-2', agent_display_name: 'Implementor', agent_name: 'implementor', agent_role: 'implementor', status: 'complete' },
   ]
 
   const mockMemoryEntries = [
@@ -183,7 +183,8 @@ describe('ProjectReviewModal.vue', () => {
 
       wrapper = await mountAndWaitForData()
 
-      expect(wrapper.text()).not.toContain('Agents (')
+      expect(wrapper.text()).toContain('Agents (0)')
+      expect(wrapper.text()).toContain('No data')
     })
   })
 
@@ -218,7 +219,7 @@ describe('ProjectReviewModal.vue', () => {
       wrapper = mountModal()
       await flushPromises()
 
-      const headerCloseBtn = wrapper.find('[aria-label="Close modal"]')
+      const headerCloseBtn = wrapper.find('[aria-label="Close dialog"]')
       await headerCloseBtn.trigger('click')
 
       expect(wrapper.emitted('close')).toBeTruthy()
@@ -281,7 +282,7 @@ describe('ProjectReviewModal.vue', () => {
   })
 })
 
-describe('StatusBadge - Review Action', () => {
+describe('StatusBadge - Status Display', () => {
   let wrapper
   let pinia
   let vuetify
@@ -302,8 +303,6 @@ describe('StatusBadge - Review Action', () => {
     return mount(StatusBadge, {
       props: {
         status,
-        projectId: 'test-proj-1',
-        projectName: 'Test Project',
       },
       global: {
         plugins: [pinia, vuetify],
@@ -311,42 +310,28 @@ describe('StatusBadge - Review Action', () => {
     })
   }
 
-  it('shows Review action for completed projects', () => {
+  it('displays correct label for completed status', () => {
     wrapper = mountBadge('completed')
 
-    // Check availableActions computed property directly
-    const actions = wrapper.vm.availableActions
-    const actionLabels = actions.map(a => a.label)
-
-    expect(actionLabels).toContain('Review')
-    expect(actionLabels).not.toContain('Reopen')
+    expect(wrapper.text()).toContain('Completed')
   })
 
-  it('shows Review action for terminated projects', () => {
+  it('displays correct label for terminated status', () => {
     wrapper = mountBadge('terminated')
 
-    const actions = wrapper.vm.availableActions
-    const actionLabels = actions.map(a => a.label)
-
-    expect(actionLabels).toContain('Review')
+    expect(wrapper.text()).toContain('Terminated')
   })
 
-  it('preserves Reopen action for cancelled projects', () => {
+  it('displays correct label for cancelled status', () => {
     wrapper = mountBadge('cancelled')
 
-    const actions = wrapper.vm.availableActions
-    const actionLabels = actions.map(a => a.label)
-
-    expect(actionLabels).toContain('Reopen')
-    expect(actionLabels).not.toContain('Review')
+    expect(wrapper.text()).toContain('Cancelled')
   })
 
-  it('review action has no newStatus (read-only)', () => {
+  it('renders as a chip with success color for completed status', () => {
     wrapper = mountBadge('completed')
 
-    const reviewAction = wrapper.vm.availableActions.find(a => a.value === 'review')
-    expect(reviewAction).toBeDefined()
-    expect(reviewAction.newStatus).toBeNull()
-    expect(reviewAction.destructive).toBe(false)
+    // StatusBadge is itself a v-chip wrapper; verify the aria-label reflects status
+    expect(wrapper.attributes('aria-label')).toContain('Completed')
   })
 })

@@ -92,7 +92,7 @@ describe('SerenaIntegrationCard.vue', () => {
     it('displays instruction text about enabling/disabling', () => {
       wrapper = mountComponent()
       const text = wrapper.text()
-      expect(text).toContain('Enabling adds Serena tool instructions')
+      expect(text).toContain('Add Serena MCP tool instructions to agent prompts')
     })
 
     it('displays "Enable Serena MCP" label', () => {
