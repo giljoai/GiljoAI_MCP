@@ -253,10 +253,6 @@ async function copyPrompt(toolId) {
   const success = await clipboardCopy(text)
   if (success) {
     showToast({ message: 'Bootstrap prompt copied to clipboard!', type: 'success' })
-    // Mark commands as installed once user copies the prompt
-    if (toolStatus[toolId]) {
-      toolStatus[toolId].commands = true
-    }
   } else {
     showToast({ message: 'Copy failed -- select the text and press Ctrl+C', type: 'warning' })
   }
@@ -308,6 +304,15 @@ let unsubAgents = null
 function handleCommandsInstalled(payload) {
   const toolName = payload?.tool_name
   if (!toolName) return
+
+  // "all" means the CLI downloaded slash commands (we can't tell which tool)
+  if (toolName === 'all') {
+    for (const id of props.connectedTools) {
+      if (toolStatus[id]) toolStatus[id].commands = true
+    }
+    return
+  }
+
   if (toolStatus[toolName]) {
     toolStatus[toolName].commands = true
   }
