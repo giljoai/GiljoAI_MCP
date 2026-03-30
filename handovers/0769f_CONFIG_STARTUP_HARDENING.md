@@ -79,6 +79,16 @@ Add a check in critical middleware that accesses app.state to gracefully handle 
 
 ---
 
+## Agent Protocols (MANDATORY)
+
+### Rejection Authority
+You have freedom to reject any audit proposal if the current implementation has valid reasoning. Some `read_config()` call sites may need the raw dict (e.g., for writing back modified config). Some startup phases may be correctly marked as required even if the audit suggests otherwise. If you find the current approach is sound, document your reasoning in the chain log `deviations` field.
+
+### Flow Investigation
+Before changing ANY config read pattern or startup phase, trace the full flow. For config: who reads it, when, what do they do with the result, and does `get_config()` actually provide the same data? For startup: what depends on what, and what would break in "degraded mode"? If a startup phase failure would leave the app in an inconsistent state (e.g., event bus down but WebSocket connections still accepted), degraded mode is worse than crashing. STOP and set your status to `blocked` if you find this.
+
+---
+
 ## What NOT To Do
 
 - Do NOT change config.yaml schema or format
