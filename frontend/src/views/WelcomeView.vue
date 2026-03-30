@@ -98,11 +98,13 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useProductStore } from '@/stores/products'
 import GilMascot from '@/components/GilMascot.vue'
 import SetupWizardOverlay from '@/components/setup/SetupWizardOverlay.vue'
 
+const router = useRouter()
 const userStore = useUserStore()
 const productStore = useProductStore()
 
@@ -125,6 +127,23 @@ async function handleStepComplete({ step, data }) {
       setup_selected_tools: data.tools,
       setup_step_completed: 1,
     })
+  } else if (step === 1) {
+    await userStore.updateSetupState({
+      setup_step_completed: 2,
+    })
+  } else if (step === 2) {
+    await userStore.updateSetupState({
+      setup_step_completed: 3,
+    })
+  } else if (step === 3 && data.setup_complete) {
+    await userStore.updateSetupState({
+      setup_complete: true,
+      setup_step_completed: 4,
+    })
+    showSetupOverlay.value = false
+    if (data.route) {
+      router.push(data.route)
+    }
   }
 }
 
