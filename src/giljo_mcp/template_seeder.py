@@ -242,7 +242,7 @@ def _get_default_templates_v103() -> list[dict[str, Any]]:
 You are the **Orchestrator Agent** for **GiljoAI MCP** - a multi-tenant system coordinating specialized AI agents for complex software development tasks.
 
 **Technical Environment:**
-- **MCP Tools**: Prefixed `mcp__giljo-mcp__` (available in your tool list)
+- **MCP Tools**: Prefixed `mcp__giljo_mcp__` (available in your tool list)
 - **Multi-tenant**: Operations isolated by `tenant_key` (auto-injected by server)
 - **Execution**: Spawn and coordinate specialist agents via MCP tools
 - **Subagent Spawning**: Platform-specific syntax (see CH3 in your protocol for exact commands)
@@ -563,7 +563,7 @@ MCP tools appear as **native tool calls** in your tool list (like Read, Write, B
 
 **CORRECT**: Call tools directly
 ```
-mcp__giljo-mcp__get_agent_mission(job_id="...")
+mcp__giljo_mcp__get_agent_mission(job_id="...")
 ```
 
 **WRONG**: Manual construction (curl, fetch, requests.post)
@@ -588,14 +588,14 @@ def _get_mcp_bootstrap_section() -> str:
     return """## GiljoAI MCP Agent
 
 You are part of a GiljoAI MCP orchestration system. MCP tools are available as native
-tool calls prefixed `mcp__giljo-mcp__*` in your tool list.
+tool calls prefixed `mcp__giljo_mcp__*` in your tool list.
 
 Your job credentials (`job_id`, `tenant_key`) are provided in your spawn prompt —
 either pasted by the user or injected by the orchestrator. Use them exactly as given.
 
 ### STARTUP (MANDATORY)
-1. Call `mcp__giljo-mcp__health_check()` to verify MCP connectivity
-2. Call `mcp__giljo-mcp__get_agent_mission(job_id="<your_job_id>", tenant_key="<your_tenant_key>")` to receive:
+1. Call `mcp__giljo_mcp__health_check()` to verify MCP connectivity
+2. Call `mcp__giljo_mcp__get_agent_mission(job_id="<your_job_id>", tenant_key="<your_tenant_key>")` to receive:
    - Your full operating protocols (`full_protocol`)
    - Your work order and team context (`mission`)
 3. Follow `full_protocol` for all lifecycle behavior
@@ -653,7 +653,7 @@ If your mission objectives are unclear or require broader project context:
 
 1. **Use MCP messaging tool**:
    ```
-   mcp__giljo-mcp__send_message(
+   mcp__giljo_mcp__send_message(
      to_agents=["orchestrator"],
      content="REQUEST_CONTEXT: [specific need]",
      project_id="{project_id}",
@@ -667,7 +667,7 @@ If your mission objectives are unclear or require broader project context:
    - ❌ Bad: "REQUEST_CONTEXT: Tell me everything about the project"
 
 3. **Wait for orchestrator response**:
-   - Check: `mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")`
+   - Check: `mcp__giljo_mcp__receive_messages(agent_id="{agent_id}")`
    - Orchestrator will provide filtered context excerpt
    - Continue work after receiving clarification
 
@@ -707,7 +707,7 @@ When agents request broader context via send_message():
 
 **Response Pattern**:
 ```
-mcp__giljo-mcp__send_message(
+mcp__giljo_mcp__send_message(
   to_agents=["{requesting_agent_id}"],
   content="CONTEXT_RESPONSE: [filtered excerpt]",
   project_id="{project_id}",
@@ -751,7 +751,7 @@ def _get_agent_guidelines_section() -> str:
     """
     return """## Technical Environment
 
-- **MCP Tools**: Prefixed `mcp__giljo-mcp__` (available in your tool list)
+- **MCP Tools**: Prefixed `mcp__giljo_mcp__` (available in your tool list)
 - **Multi-tenant**: Operations isolated by `tenant_key` (auto-injected by server)
 
 ## Agent Guidelines

@@ -371,7 +371,7 @@ const mcpHttpSnippet = computed(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:7274'
   return JSON.stringify(
     {
-      name: 'giljo-mcp',
+      name: 'giljo_mcp',
       transport: 'http',
       url: `${origin}/mcp`,
       headers: {
