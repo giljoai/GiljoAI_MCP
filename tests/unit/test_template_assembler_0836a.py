@@ -68,7 +68,7 @@ class TestRenderGeminiAgent:
         assert "write_file" in frontmatter["tools"]
         assert "glob" in frontmatter["tools"]
         assert "grep_search" in frontmatter["tools"]
-        assert "mcp_giljo-mcp_*" in frontmatter["tools"]
+        assert "mcp_giljo_mcp_*" in frontmatter["tools"]
         assert "shell" not in frontmatter["tools"]  # Must use run_shell_command
 
     def test_no_color_field(self):
