@@ -6,7 +6,7 @@
 
 **Frequency:** After every 15-30 commits, or before any release milestone.
 
-**Baseline:** 0765 sprint (March 2026) — 8.35/10, 1,390 tests / 0 skipped, zero ruff issues, ESLint budget 8 warnings.
+**Baseline:** 0769 sprint (March 2026) — 8.5/10, 1,893 tests / 0 skipped, zero ruff issues, ESLint 6 warnings (budget 8).
 
 ---
 
