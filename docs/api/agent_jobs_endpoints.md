@@ -78,7 +78,7 @@ Content-Type: application/json
   "agent_type": "orchestrator",
   "agent_name": "Backend Refactoring Orchestrator",
   "mission": "Refactor backend services to improve modularity and testability",
-  "status": "active",
+  "status": "working",
   "progress": 65,
   "spawned_by": "agent_parent123",
   "tool_type": "claude-code",
