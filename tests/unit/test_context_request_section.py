@@ -180,7 +180,7 @@ class TestContextRequestSection:
         section = _get_context_request_section()
 
         # Should show proper MCP tool call syntax
-        assert "mcp__giljo-mcp__send_message" in section or "send_message" in section, (
+        assert "mcp__giljo_mcp__send_message" in section or "send_message" in section, (
             "Should reference send_message tool"
         )
         assert "to_agents=" in section or "orchestrator" in section.lower(), "Should show targeting orchestrator"

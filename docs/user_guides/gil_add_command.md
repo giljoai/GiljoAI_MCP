@@ -228,7 +228,7 @@ After creating a project:
 ## Technical Details
 
 For developers:
-- Backend MCP tools: `mcp__giljo-mcp__create_task`, `mcp__giljo-mcp__create_project`
+- Backend MCP tools: `mcp__giljo_mcp__create_task`, `mcp__giljo_mcp__create_project`
 - Database models: `src.giljo_mcp.models.tasks.Task`, `src.giljo_mcp.models.projects.Project`
 - Service layers: `src.giljo_mcp.services.task_service.TaskService`, `src.giljo_mcp.services.project_service.ProjectService`
 - Command file: `.claude/commands/gil_add.md`
