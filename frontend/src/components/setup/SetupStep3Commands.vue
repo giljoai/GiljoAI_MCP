@@ -232,6 +232,12 @@ async function fetchPrompt(toolId) {
   try {
     const promptText = await fetchBootstrapPrompt(toolId)
     prompts[toolId] = promptText
+    // Mark commands as installed — the backend emitted setup:commands_installed
+    // during this fetch, but the WebSocket event may race with mount timing.
+    // Directly mark it here since we know the prompt was generated successfully.
+    if (toolStatus[toolId]) {
+      toolStatus[toolId].commands = true
+    }
   } catch (e) {
     promptErrors[toolId] = e.message || 'Failed to fetch bootstrap prompt'
   } finally {
@@ -272,9 +278,9 @@ function getAgentCommand(toolId) {
   return AGENT_COMMANDS[toolId] || '/gil_get_agents'
 }
 
-// Check if a tool has both checkmarks complete
+// Check if a tool has commands installed (agents are optional for proceeding)
 function isToolComplete(toolId) {
-  return !!(toolStatus[toolId]?.commands && toolStatus[toolId]?.agents)
+  return !!toolStatus[toolId]?.commands
 }
 
 // can-proceed: at least 1 tool with both checkmarks
