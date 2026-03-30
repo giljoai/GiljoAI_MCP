@@ -1,3 +1,5 @@
+> **ARCHIVED:** This document is retired and may contain outdated information.
+
 # GiljoAI MCP Server - Installation Page Content
 
 **Purpose**: Reference content for the marketing/download website landing page

@@ -111,7 +111,8 @@ const formattedLastActivity = computed(() => {
 }
 
 .status-chip--stale {
-  border: 1px solid rgba(255, 152, 0, 0.5);
+  border: none !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 152, 0, 0.5);
 }
 
 .health-indicator {
@@ -121,7 +122,8 @@ const formattedLastActivity = computed(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: none !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
 }
 
 .pulse-animation {

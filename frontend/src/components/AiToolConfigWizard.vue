@@ -256,7 +256,7 @@ async function generateApiKey() {
   generatedKey.value = resp.data.api_key
   try {
     window.dispatchEvent(new CustomEvent('api-key-created', { detail: { name: keyName } }))
-  } catch (_) {
+  } catch {
     /* no-op */
   }
 }

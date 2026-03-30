@@ -100,7 +100,7 @@ describe('JobsTab Phase Column (0829)', () => {
 
     // Verify phase badge content
     const badges = wrapper.findAll('[data-testid="phase-badge"]')
-    expect(badges[0].text()).toBe('—') // orchestrator shows dash
+    expect(badges[0].text()).toBe('Start') // orchestrator shows "Start"
     expect(badges[1].text()).toBe('P1')
     expect(badges[2].text()).toBe('P2')
     expect(badges[3].text()).toBe('—') // unphased shows dash

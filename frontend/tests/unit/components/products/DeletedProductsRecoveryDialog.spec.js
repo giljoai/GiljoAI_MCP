@@ -7,7 +7,8 @@ describe('DeletedProductsRecoveryDialog Component', () => {
     modelValue: true,
     deletedProducts: [],
     restoringProductId: null,
-    loading: false
+    purgingProductId: null,
+    purgingAll: false
   }
 
   const sampleDeletedProducts = [
@@ -16,27 +17,18 @@ describe('DeletedProductsRecoveryDialog Component', () => {
       name: 'Product A',
       description: 'First test product',
       deleted_at: '2025-11-10T12:00:00Z',
-      days_until_purge: 7,
-      project_count: 3,
-      vision_documents_count: 2
     },
     {
       id: 'prod-2',
       name: 'Product B',
       description: 'Second test product',
       deleted_at: '2025-11-15T08:30:00Z',
-      days_until_purge: 4,
-      project_count: 1,
-      vision_documents_count: 5
     },
     {
       id: 'prod-3',
       name: 'Product C',
       description: null,
       deleted_at: '2025-11-18T16:45:00Z',
-      days_until_purge: 1,
-      project_count: 0,
-      vision_documents_count: 0
     }
   ]
 
@@ -49,27 +41,10 @@ describe('DeletedProductsRecoveryDialog Component', () => {
             template: '<div class="v-dialog" v-if="modelValue"><slot /></div>',
             props: ['modelValue']
           },
-          'v-card': { template: '<div class="v-card"><slot /></div>' },
-          'v-card-title': { template: '<div class="v-card-title"><slot /></div>' },
-          'v-card-text': { template: '<div class="v-card-text"><slot /></div>' },
-          'v-card-actions': { template: '<div class="v-card-actions"><slot /></div>' },
-          'v-btn': {
-            template: '<button class="v-btn" :disabled="disabled" :class="{ loading: loading }" @click="$emit(\'click\')"><slot /></button>',
-            props: ['disabled', 'loading'],
-            emits: ['click']
+          'v-list-item': {
+            template: '<div class="v-list-item"><slot name="prepend" /><slot /><slot name="append" /></div>',
           },
-          'v-icon': { template: '<span class="v-icon"><slot /></span>' },
-          'v-divider': { template: '<hr class="v-divider" />' },
-          'v-alert': { template: '<div class="v-alert"><slot /></div>' },
-          'v-progress-circular': { template: '<div class="v-progress-circular">Loading...</div>' },
-          'v-list': { template: '<div class="v-list"><slot /></div>' },
-          'v-list-item': { template: '<div class="v-list-item"><slot /></div>' },
-          'v-chip': {
-            template: '<span class="v-chip" :class="color"><slot /></span>',
-            props: ['color']
-          },
-          'v-spacer': { template: '<div class="v-spacer"></div>' }
-        }
+        },
       }
     })
   }
@@ -90,10 +65,10 @@ describe('DeletedProductsRecoveryDialog Component', () => {
     it('emits update:modelValue when close button is clicked', async () => {
       const wrapper = createWrapper({ modelValue: true })
 
-      const closeButton = wrapper.findAll('.v-btn').find(btn => btn.html().includes('mdi-close'))
-      if (closeButton) {
-        await closeButton.trigger('click')
-      }
+      // The close button has aria-label="Close dialog"
+      const closeButton = wrapper.find('button[aria-label="Close dialog"]')
+      expect(closeButton.exists()).toBe(true)
+      await closeButton.trigger('click')
 
       expect(wrapper.emitted('update:modelValue')).toBeTruthy()
       expect(wrapper.emitted('update:modelValue')[0]).toEqual([false])
@@ -123,7 +98,7 @@ describe('DeletedProductsRecoveryDialog Component', () => {
       expect(html).toContain('Product C')
     })
 
-    it('shows product description or fallback text', () => {
+    it('shows product description or fallback to id', () => {
       const wrapper = createWrapper({
         modelValue: true,
         deletedProducts: sampleDeletedProducts
@@ -132,91 +107,30 @@ describe('DeletedProductsRecoveryDialog Component', () => {
       const html = wrapper.html()
       expect(html).toContain('First test product')
       expect(html).toContain('Second test product')
-      expect(html).toContain('No description')
+      // Product C has null description, falls back to product.id
+      expect(html).toContain('prod-3')
     })
   })
 
-  describe('Days Until Purge Display', () => {
-    it('displays days until purge for each product', () => {
+  describe('Product Count Display', () => {
+    it('displays count of deleted products in title', () => {
       const wrapper = createWrapper({
         modelValue: true,
         deletedProducts: sampleDeletedProducts
       })
 
       const html = wrapper.html()
-      expect(html).toContain('7 days left')
-      expect(html).toContain('4 days left')
-      expect(html).toContain('1 day')
+      expect(html).toContain('Deleted Products (3)')
     })
 
-    it('shows green color for products with more than 5 days', () => {
+    it('shows zero count when no products', () => {
       const wrapper = createWrapper({
         modelValue: true,
-        deletedProducts: [sampleDeletedProducts[0]] // 7 days
-      })
-
-      const chip = wrapper.find('.v-chip')
-      expect(chip.classes()).toContain('success')
-    })
-
-    it('shows yellow/warning color for products with 3-5 days', () => {
-      const wrapper = createWrapper({
-        modelValue: true,
-        deletedProducts: [sampleDeletedProducts[1]] // 4 days
-      })
-
-      const chip = wrapper.find('.v-chip')
-      expect(chip.classes()).toContain('warning')
-    })
-
-    it('shows red/error color for products with less than 3 days', () => {
-      const wrapper = createWrapper({
-        modelValue: true,
-        deletedProducts: [sampleDeletedProducts[2]] // 1 day
-      })
-
-      const chip = wrapper.find('.v-chip')
-      expect(chip.classes()).toContain('error')
-    })
-  })
-
-  describe('Product Statistics', () => {
-    it('shows project count per deleted product', () => {
-      const wrapper = createWrapper({
-        modelValue: true,
-        deletedProducts: sampleDeletedProducts
+        deletedProducts: []
       })
 
       const html = wrapper.html()
-      expect(html).toContain('3 projects')
-      expect(html).toContain('1 project')
-      expect(html).toContain('0 projects')
-    })
-
-    it('shows vision documents count per deleted product', () => {
-      const wrapper = createWrapper({
-        modelValue: true,
-        deletedProducts: sampleDeletedProducts
-      })
-
-      const html = wrapper.html()
-      expect(html).toContain('2 vision docs')
-      expect(html).toContain('5 vision docs')
-      expect(html).toContain('0 vision docs')
-    })
-  })
-
-  describe('Date Formatting', () => {
-    it('displays deletion date formatted correctly', () => {
-      const wrapper = createWrapper({
-        modelValue: true,
-        deletedProducts: sampleDeletedProducts
-      })
-
-      const html = wrapper.html()
-      // Check that dates are formatted (component should format them)
-      expect(html).toContain('Deleted')
-      // The exact format depends on implementation but should show date info
+      expect(html).toContain('Deleted Products (0)')
     })
   })
 
@@ -227,11 +141,8 @@ describe('DeletedProductsRecoveryDialog Component', () => {
         deletedProducts: [sampleDeletedProducts[0]]
       })
 
-      const restoreButton = wrapper.findAll('.v-btn').find(btn =>
-        btn.html().includes('Restore') || btn.html().includes('mdi-restore')
-      )
-
-      expect(restoreButton).toBeTruthy()
+      const restoreButton = wrapper.find('button[aria-label="Restore deleted product"]')
+      expect(restoreButton.exists()).toBe(true)
       await restoreButton.trigger('click')
 
       expect(wrapper.emitted('restore')).toBeTruthy()
@@ -245,29 +156,64 @@ describe('DeletedProductsRecoveryDialog Component', () => {
         restoringProductId: 'prod-1'
       })
 
-      const restoreButton = wrapper.findAll('.v-btn').find(btn =>
-        btn.html().includes('Restore') || btn.html().includes('mdi-restore')
-      )
-
-      expect(restoreButton.classes()).toContain('loading')
+      const restoreButton = wrapper.find('button[aria-label="Restore deleted product"]')
+      expect(restoreButton.exists()).toBe(true)
+      // The button should have loading attribute passed through
+      expect(restoreButton.attributes('loading')).toBe('true')
     })
 
-    it('disables restore button when another product is being restored', () => {
+    it('disables purge button when product is being restored', () => {
       const wrapper = createWrapper({
         modelValue: true,
-        deletedProducts: sampleDeletedProducts,
+        deletedProducts: [sampleDeletedProducts[0]],
         restoringProductId: 'prod-1'
       })
 
-      // Find restore buttons for products other than prod-1
-      const buttons = wrapper.findAll('.v-btn')
-      const restoreButtons = buttons.filter(btn =>
-        btn.html().includes('Restore') || btn.html().includes('mdi-restore')
-      )
+      const purgeButton = wrapper.find('button[aria-label="Permanently delete product"]')
+      expect(purgeButton.exists()).toBe(true)
+      expect(purgeButton.attributes('disabled')).toBeDefined()
+    })
+  })
 
-      // At least one button should be disabled
-      const hasDisabledButton = restoreButtons.some(btn => btn.attributes('disabled') !== undefined)
-      expect(hasDisabledButton).toBe(true)
+  describe('Purge Functionality', () => {
+    it('emits purge event with product id when purge button clicked', async () => {
+      const wrapper = createWrapper({
+        modelValue: true,
+        deletedProducts: [sampleDeletedProducts[0]]
+      })
+
+      const purgeButton = wrapper.find('button[aria-label="Permanently delete product"]')
+      expect(purgeButton.exists()).toBe(true)
+      await purgeButton.trigger('click')
+
+      expect(wrapper.emitted('purge')).toBeTruthy()
+      expect(wrapper.emitted('purge')[0]).toEqual(['prod-1'])
+    })
+
+    it('emits purge-all event when Delete All button clicked', async () => {
+      const wrapper = createWrapper({
+        modelValue: true,
+        deletedProducts: sampleDeletedProducts
+      })
+
+      const buttons = wrapper.findAll('button')
+      const deleteAllBtn = buttons.find(btn => btn.text().includes('Delete All'))
+      expect(deleteAllBtn).toBeTruthy()
+      await deleteAllBtn.trigger('click')
+
+      expect(wrapper.emitted('purge-all')).toBeTruthy()
+    })
+
+    it('disables Delete All button when no products', () => {
+      const wrapper = createWrapper({
+        modelValue: true,
+        deletedProducts: []
+      })
+
+      const buttons = wrapper.findAll('button')
+      const deleteAllBtn = buttons.find(btn => btn.text().includes('Delete All'))
+      expect(deleteAllBtn).toBeTruthy()
+      expect(deleteAllBtn.attributes('disabled')).toBeDefined()
     })
   })
 
@@ -289,7 +235,7 @@ describe('DeletedProductsRecoveryDialog Component', () => {
       })
 
       const html = wrapper.html()
-      expect(html).toContain('mdi-delete-empty')
+      expect(html).toContain('mdi-package-variant')
     })
 
     it('does not show list when empty', () => {
@@ -302,51 +248,16 @@ describe('DeletedProductsRecoveryDialog Component', () => {
     })
   })
 
-  describe('Loading State', () => {
-    it('shows loading indicator when loading prop is true', () => {
-      const wrapper = createWrapper({
-        modelValue: true,
-        deletedProducts: [],
-        loading: true
-      })
-
-      expect(wrapper.find('.v-progress-circular').exists()).toBe(true)
-    })
-
-    it('shows loading text when loading', () => {
-      const wrapper = createWrapper({
-        modelValue: true,
-        deletedProducts: [],
-        loading: true
-      })
-
-      const html = wrapper.html()
-      expect(html).toContain('Loading deleted products')
-    })
-
-    it('does not show list while loading', () => {
-      const wrapper = createWrapper({
-        modelValue: true,
-        deletedProducts: sampleDeletedProducts,
-        loading: true
-      })
-
-      // When loading, should not render the list even if products exist
-      const listItems = wrapper.findAll('.v-list-item')
-      expect(listItems.length).toBe(0)
-    })
-  })
-
-  describe('Info Alert', () => {
-    it('displays informational alert about purge timeline', () => {
+  describe('Warning Alert', () => {
+    it('displays warning alert when products exist', () => {
       const wrapper = createWrapper({
         modelValue: true,
         deletedProducts: sampleDeletedProducts
       })
 
       const html = wrapper.html()
-      expect(html).toContain('10 days')
-      expect(html).toContain('permanently purged')
+      expect(html).toContain('Permanently deleting')
+      expect(html).toContain('cannot be undone')
     })
   })
 
@@ -354,7 +265,8 @@ describe('DeletedProductsRecoveryDialog Component', () => {
     it('emits update:modelValue when Close button in actions is clicked', async () => {
       const wrapper = createWrapper({ modelValue: true })
 
-      const closeButton = wrapper.findAll('.v-btn').find(btn =>
+      const buttons = wrapper.findAll('button')
+      const closeButton = buttons.find(btn =>
         btn.text().includes('Close')
       )
 
@@ -370,16 +282,13 @@ describe('DeletedProductsRecoveryDialog Component', () => {
       const wrapper = createWrapper({ modelValue: true })
 
       expect(wrapper.find('.v-dialog').exists()).toBe(true)
-      expect(wrapper.find('.v-card').exists()).toBe(true)
-      expect(wrapper.find('.v-card-title').exists()).toBe(true)
     })
 
-    it('has close button in header', () => {
+    it('has close button with aria-label in header', () => {
       const wrapper = createWrapper({ modelValue: true })
 
-      const cardTitle = wrapper.find('.v-card-title')
-      const closeIcon = cardTitle.find('.v-icon')
-      expect(closeIcon.exists()).toBe(true)
+      const closeButton = wrapper.find('button[aria-label="Close dialog"]')
+      expect(closeButton.exists()).toBe(true)
     })
   })
 })

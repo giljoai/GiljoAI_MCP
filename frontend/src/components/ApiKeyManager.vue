@@ -56,7 +56,7 @@
 
         <!-- Created Date Column -->
         <template #item.created_at="{ item }">
-          <span class="text-caption">{{ formatDate(item.created_at) }}</span>
+          <span class="text-caption">{{ formatDateTime(item.created_at) }}</span>
         </template>
 
         <!-- Last Used Column -->
@@ -129,6 +129,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import { useFormatDate } from '@/composables/useFormatDate'
+
+const { formatDateTime } = useFormatDate()
 
 // State
 const apiKeys = ref([])
@@ -235,11 +238,6 @@ async function revokeKey() {
   }
 }
 
-function formatDate(dateString) {
-  if (!dateString) return 'N/A'
-  const date = new Date(dateString)
-  return `${date.toLocaleDateString()  } ${  date.toLocaleTimeString()}`
-}
 
 // Lifecycle
 onMounted(() => {

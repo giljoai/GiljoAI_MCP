@@ -343,18 +343,19 @@ describe('ApiKeyManager.vue - Handover 0028 Simplified Interface', () => {
     })
 
     it('formats created date with date and time', () => {
-      const formatted = wrapper.vm.formatDate('2025-10-01T10:00:00Z')
-      expect(formatted).toMatch(/\d{1,2}\/\d{1,2}\/\d{4}/)
-      expect(formatted).toMatch(/\d{1,2}:\d{2}/)
+      const formatted = wrapper.vm.formatDateTime('2025-10-01T10:00:00Z')
+      // useFormatDate composable returns "Mon DD, YYYY, HH:MM AM/PM"
+      expect(formatted).toMatch(/[A-Z][a-z]{2} \d{1,2}, \d{4}/)
+      expect(formatted).toMatch(/\d{2}:\d{2}/)
     })
 
     it('handles null created date', () => {
-      const formatted = wrapper.vm.formatDate(null)
+      const formatted = wrapper.vm.formatDateTime(null)
       expect(formatted).toBe('N/A')
     })
 
     it('handles invalid created date', () => {
-      const formatted = wrapper.vm.formatDate('invalid')
+      const formatted = wrapper.vm.formatDateTime('invalid')
       // Invalid dates may result in 'Invalid Date' from toLocaleDateString
       // The component doesn't explicitly handle invalid dates, so it returns formatted output
       expect(typeof formatted).toBe('string')

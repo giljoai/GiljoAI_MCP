@@ -220,6 +220,7 @@ inline-quotes = "double"
 # --- Application entry points (logging/config before imports) ---
 "api/app.py" = [
     "E402",   # Module-level import not at top - logging configured before imports
+    "BLE001", # Broad exception OK for optional startup phase degraded-mode handling
 ]
 "startup.py" = [
     "E402",   # Module-level import not at top - early initialization required

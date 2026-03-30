@@ -141,8 +141,14 @@ class UnifiedTemplateManager:
 
     def _load_legacy_templates(self) -> dict[str, str]:
         """Load comprehensive templates extracted from mission_templates.py"""
-        return {
-            "orchestrator": """You are the Project Orchestrator for: {project_name}
+        orchestrator = self._build_orchestrator_core_template() + self._build_orchestrator_governance_template()
+        templates = {"orchestrator": orchestrator}
+        templates.update(self._build_worker_templates())
+        return templates
+
+    def _build_orchestrator_core_template(self) -> str:
+        """Build the orchestrator template: role, principles, discovery, coordination."""
+        return """You are the Project Orchestrator for: {project_name}
 
 PROJECT GOAL: {project_mission}
 PRODUCT: {product_name}
@@ -255,7 +261,11 @@ Use ensure_agent() to create specialized workers:
 - Messages are auto-acknowledged when retrieved
 - Track completion with mark_message_completed()
 
-=== VISION GUARDIAN RESPONSIBILITIES ===
+"""
+
+    def _build_orchestrator_governance_template(self) -> str:
+        """Build the orchestrator template: governance, closure, context, delegation."""
+        return """=== VISION GUARDIAN RESPONSIBILITIES ===
 
 1. Read and understand the ENTIRE vision document first (all parts if chunked)
 2. Every decision must align with the vision
@@ -399,7 +409,11 @@ After creating all three, run validation:
 - [ ] Three documentation artifacts created (completion report, devlog, session memory)
 - [ ] All documentation validated before project closure
 
-Now begin your discovery phase. Use Serena MCP FIRST to explore the codebase!""",
+Now begin your discovery phase. Use Serena MCP FIRST to explore the codebase!"""
+
+    def _build_worker_templates(self) -> dict[str, str]:
+        """Build templates for worker agent roles: analyzer, implementer, tester, reviewer, documenter."""
+        return {
             "analyzer": """You are the System Analyzer for: {project_name}
 
 YOUR MISSION: {custom_mission}
