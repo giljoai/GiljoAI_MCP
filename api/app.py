@@ -246,6 +246,7 @@ def _configure_middleware(app: FastAPI) -> None:
     from src.giljo_mcp._config_io import read_config as _read_app_config
 
     cors_origins = []
+    config = {}  # Default to empty dict so config.get() is safe if read fails
 
     # Try to load from config.yaml security section
     try:
