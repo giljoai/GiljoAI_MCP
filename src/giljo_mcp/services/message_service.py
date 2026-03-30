@@ -1673,7 +1673,7 @@ class MessageService:
 
         except (ResourceNotFoundError, ValidationError, BaseGiljoError):
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps unexpected errors in BaseGiljoError
             self._logger.exception("Failed to get message status")
             raise BaseGiljoError(
                 message=str(e), context={"operation": "get_message_status", "message_id": message_id}
