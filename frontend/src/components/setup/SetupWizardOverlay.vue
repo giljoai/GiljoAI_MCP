@@ -146,10 +146,6 @@
                   </div>
                 </div>
 
-                <p class="tools-learn-more">
-                  Don't have one yet?
-                  <a href="#" class="learn-more-link" @click.prevent>Learn more</a>
-                </p>
               </div>
 
               <!-- Step 1: Connect (0855d) -->
@@ -636,23 +632,6 @@ function handleDismiss() {
   color: #8f97b7;
 }
 
-.tools-learn-more {
-  text-align: center;
-  margin-top: 20px;
-  font-size: 0.8125rem;
-  color: #8f97b7;
-}
-
-.learn-more-link {
-  color: #8f97b7;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  transition: color 250ms ease-out;
-}
-
-.learn-more-link:hover {
-  color: #ffc300;
-}
 
 /* Placeholder steps */
 .step-placeholder {
