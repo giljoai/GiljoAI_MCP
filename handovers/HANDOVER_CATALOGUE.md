@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-29 (0846 MCP SDK Standardization series added, NOT STARTED)
+**Last Updated:** 2026-03-29 (0855a-g Setup Wizard series COMPLETE)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c NOT STARTED.** **0847 NOT STARTED.** **0855a-g NOT STARTED.** |
+| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c NOT STARTED.** **0847 NOT STARTED.** **0855a-g COMPLETE.** |
 
 ---
 
@@ -42,13 +42,6 @@
 | 0846b | Security Re-integration & Old Code Removal | Not Started | High | Wire Bearer auth + tenant isolation into SDK server, promote to /mcp, delete old mcp_http.py transport. 1.5-2h. Depends on 0846a. |
 | 0846c | Documentation, Frontend & Test Updates | Not Started | High | Update MCP docs, frontend config commands, orphan sweep, test cleanup. 1-1.5h. Depends on 0846b. |
 | 0847 | Tool-Aware Orchestrator Protocol | Not Started | High | Make orchestrator protocol (CH1-CH5 + identity) fully tool-aware. Codex/Gemini get native-only language, no Claude refs. Multi-terminal → "Any Coding Agent". 2-3h. |
-| 0855a | Setup Wizard — Backend Schema + API Endpoints | Not Started | High | User setup state columns (setup_complete, setup_selected_tools, setup_step_completed), PATCH endpoint, active API key lookup. Series: 0855a-g. |
-| 0855b | Setup Wizard — WebSocket Setup Events | Not Started | High | 3 new event types: setup:tool_connected, setup:commands_installed, setup:agents_downloaded. Parallel with 0855a. |
-| 0855c | Setup Wizard — Overlay Shell + Step 1 (Tool Selection) | Not Started | High | Full-screen overlay component, 4-step stepper, tool selection cards (Claude/Codex/Gemini). Depends on 0855a. |
-| 0855d | Setup Wizard — Step 2 (Connect to GiljoAI) | Not Started | High | Inline MCP config per tool, API key reuse, live WebSocket connection status. Heaviest frontend step. Depends on 0855a+b+c. |
-| 0855e | Setup Wizard — Step 3 (Install Commands & Agents) | Not Started | High | Bootstrap prompt display, auto-updating checklist via WebSocket. Depends on 0855b+c+d. |
-| 0855f | Setup Wizard — Step 4 (Completion Launchpad) + Wiring | Not Started | High | Completion cards, full lifecycle wiring, delete StartupQuickStart.vue. Depends on 0855a+c-e. |
-| 0855g | Setup Wizard — Learning Overlay + Cleanup | Not Started | Medium | "How to Use" read-only overlay mode, dead-code sweep, catalogue update. Depends on 0855f. |
 
 ### Deferred (Still in Root Folder)
 
@@ -61,6 +54,7 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0855a-g | Setup Wizard Redesign (7 sessions) | 2026-03-29 | COMPLETE — Backend schema (3 User columns + migration + 2 endpoints), 3 WebSocket event types, full-screen overlay with 4-step progress bar, Step 1 tool selection, Step 2 MCP config + live connection status, Step 3 bootstrap prompt + WebSocket checklist, Step 4 launchpad cards, learning mode ("How to Use") overlay, useMcpConfig composable, StartupQuickStart deleted (639 lines). 106 Vitest tests. Branch: feature/0855-setup-wizard. |
 | 0842a-e | Vision Document Analysis (5 sessions) | 2026-03-27 | COMPLETE — DB migration + Sumy wiring, Context Manager AI-preferred reads, MCP tools (gil_get_vision_doc + gil_write_product), frontend UI (tuning icon + analysis banner + custom instructions), E2E tests. 6 commits, 33 tests. Branch: feature/0842-vision-doc-analysis. |
 | 0842f | Agent Lab — Chain Strategy Template Download | 2026-03-27 | COMPLETE (`a5a4c8e7`) — Chapter 3 in Agent Lab dialog, downloadable 220-line tool-agnostic chain strategy template. |
 | 0842i | Product Setup Wizard — Vision-First Flow Redesign | 2026-03-27 | COMPLETE (`d07a968c`) — Vision doc upload merged into Tab 1, manual/AI mode radio, tab locking during analysis, progress indicator. Single-file change. |
