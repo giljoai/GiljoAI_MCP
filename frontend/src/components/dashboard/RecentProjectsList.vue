@@ -19,7 +19,7 @@
             v-if="project.taxonomy_alias"
             size="x-small"
             variant="flat"
-            :color="project.project_type_color || '#9e9e9e'"
+            :color="project.project_type_color || '#9e9e9e'" <!-- exempt: Vuetify color prop fallback ($color-text-muted) -->
             class="mr-2 taxonomy-chip"
           >
             {{ project.taxonomy_alias }}
@@ -33,7 +33,7 @@
 
         <template v-slot:append>
           <span class="text-caption text-medium-emphasis completion-date">
-            {{ formatDate(project.completed_at) }}
+            {{ formatDateTime(project.completed_at) }}
           </span>
         </template>
       </v-list-item>
@@ -42,6 +42,10 @@
 </template>
 
 <script setup>
+import { useFormatDate } from '@/composables/useFormatDate'
+
+const { formatDateTime } = useFormatDate()
+
 defineProps({
   projects: {
     type: Array,
@@ -49,22 +53,18 @@ defineProps({
   },
 })
 
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-    + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-}
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../../styles/design-tokens' as *;
+
 .projects-scroll {
   max-height: 340px;
   overflow-y: auto;
 }
 
 .project-row {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid $color-border-tertiary;
   min-height: 36px;
 }
 

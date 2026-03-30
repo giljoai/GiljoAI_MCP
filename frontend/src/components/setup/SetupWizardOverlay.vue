@@ -52,7 +52,7 @@
                       },
                     ]"
                   >
-                    <v-icon v-if="index < currentStep" size="14" color="#0e1c2d">
+                    <v-icon v-if="index < currentStep" size="14" style="color: var(--color-bg-primary)">
                       mdi-check
                     </v-icon>
                   </div>
@@ -97,7 +97,7 @@
                     :aria-controls="`learning-${section.id}`"
                     @click="toggleSection(section.id)"
                   >
-                    <v-icon size="20" class="section-icon" :color="expandedSections[section.id] ? '#ffc300' : '#8f97b7'">
+                    <v-icon size="20" class="section-icon" :style="{ color: expandedSections[section.id] ? 'var(--color-accent-primary)' : 'var(--color-text-secondary)' }">
                       {{ section.icon }}
                     </v-icon>
                     <span class="section-title">{{ section.title }}</span>
@@ -345,8 +345,8 @@ watch(
 const step2ConnectedTools = computed(() => step2Data.value?.connectedTools || [])
 
 const selectedCardStyle = {
-  '--smooth-border-color': '#ffc300',
-  'box-shadow': 'inset 0 0 0 1px #ffc300, 0 0 12px rgba(255, 195, 0, 0.15)',
+  '--smooth-border-color': 'var(--color-accent-primary)',
+  'box-shadow': 'inset 0 0 0 1px var(--color-accent-primary), 0 0 12px rgba(255, 195, 0, 0.15)',
 }
 
 function toggleTool(toolId) {
@@ -418,7 +418,10 @@ function handleDismiss() {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../../styles/variables' as *;
+@use '../../styles/design-tokens' as *;
+
 /* Overlay transition */
 .overlay-fade-enter-active {
   transition: opacity 250ms ease-out;
@@ -448,7 +451,7 @@ function handleDismiss() {
 .setup-wizard-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(14, 28, 45, 0.85);
+  background: rgba($color-background-primary, 0.85);
 }
 
 /* Centered content panel */
@@ -458,7 +461,7 @@ function handleDismiss() {
   max-width: 800px;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
-  background: #182739;
+  background: $elevation-raised;
   border-radius: 16px;
   display: flex;
   flex-direction: column;
@@ -476,7 +479,7 @@ function handleDismiss() {
 .setup-wizard-title {
   font-size: 3rem;
   font-weight: 700;
-  color: #e1e1e1;
+  color: $color-text-primary;
   margin: 0;
   line-height: 1.2;
   letter-spacing: 0.5px;
@@ -536,16 +539,16 @@ function handleDismiss() {
 }
 
 .step-circle--active {
-  background: #ffc300;
+  background: $color-brand-yellow;
 }
 
 .step-circle--completed {
-  background: #ffc300;
+  background: $color-brand-yellow;
 }
 
 .step-circle--future {
   background: transparent;
-  box-shadow: inset 0 0 0 2px #315074;
+  box-shadow: inset 0 0 0 2px $med-blue;
 }
 
 .step-label {
@@ -556,22 +559,22 @@ function handleDismiss() {
 }
 
 .step-label--active {
-  color: #ffc300;
+  color: $color-brand-yellow;
 }
 
 .step-label--completed {
-  color: #ffc300;
+  color: $color-brand-yellow;
 }
 
 .step-label--future {
-  color: #8f97b7;
+  color: $lightest-blue;
 }
 
 /* Connector bar between steps */
 .step-connector {
   flex: 1;
   height: 4px;
-  background: #315074;
+  background: $med-blue;
   border-radius: 2px;
   margin: 0 8px;
   margin-bottom: 22px;
@@ -582,7 +585,7 @@ function handleDismiss() {
   height: 100%;
   width: 0;
   border-radius: 2px;
-  background: #ffc300;
+  background: $color-brand-yellow;
   transition: width 250ms ease-out;
 }
 
@@ -601,7 +604,7 @@ function handleDismiss() {
   font-family: "Roboto", "Segoe UI", system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 500;
-  color: #e1e1e1;
+  color: $color-text-primary;
   margin-bottom: 20px;
   text-align: center;
 }
@@ -623,7 +626,7 @@ function handleDismiss() {
   min-width: 180px;
   max-width: 220px;
   flex: 1;
-  background: #1e3147;
+  background: $elevation-elevated;
   border-radius: 12px;
   cursor: pointer;
   user-select: none;
@@ -635,7 +638,7 @@ function handleDismiss() {
 }
 
 .tool-card:focus-visible {
-  outline: 2px solid #ffc300;
+  outline: 2px solid $color-brand-yellow;
   outline-offset: 2px;
 }
 
@@ -643,12 +646,12 @@ function handleDismiss() {
   font-family: "Roboto", "Segoe UI", system-ui, -apple-system, sans-serif;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #e1e1e1;
+  color: $color-text-primary;
 }
 
 .tool-provider {
   font-size: 0.8125rem;
-  color: #8f97b7;
+  color: $lightest-blue;
 }
 
 .tool-card-logo {
@@ -666,7 +669,7 @@ function handleDismiss() {
 }
 
 .placeholder-text {
-  color: #8f97b7;
+  color: $lightest-blue;
   font-size: 0.875rem;
   font-style: italic;
 }
@@ -679,7 +682,7 @@ function handleDismiss() {
 }
 
 .footer-btn-back {
-  color: #8f97b7 !important;
+  color: $lightest-blue !important;
 }
 
 .footer-btn-next {
@@ -706,7 +709,7 @@ function handleDismiss() {
 }
 
 .learning-section {
-  background: #1e3147;
+  background: $elevation-elevated;
   border-radius: 10px;
   overflow: hidden;
 }
@@ -720,7 +723,7 @@ function handleDismiss() {
   background: none;
   border: none;
   cursor: pointer;
-  color: #e1e1e1;
+  color: $color-text-primary;
   font-size: 0.9375rem;
   font-weight: 600;
   text-align: left;
@@ -728,11 +731,11 @@ function handleDismiss() {
 }
 
 .learning-section-header:hover {
-  background: rgba(255, 195, 0, 0.05);
+  background: rgba($color-brand-yellow, 0.05);
 }
 
 .learning-section-header:focus-visible {
-  outline: 2px solid #ffc300;
+  outline: 2px solid $color-brand-yellow;
   outline-offset: -2px;
 }
 
@@ -745,7 +748,7 @@ function handleDismiss() {
 }
 
 .section-chevron {
-  color: #8f97b7;
+  color: $lightest-blue;
   transition: transform 250ms ease-out;
   flex-shrink: 0;
 }
@@ -760,7 +763,7 @@ function handleDismiss() {
 
 .learning-line {
   font-size: 0.8125rem;
-  color: #b0b8d0;
+  color: $lightest-blue; /* design-token-exempt: closest match, original #b0b8d0 */
   line-height: 1.6;
   margin: 0 0 6px;
 }
