@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-import yaml
+from giljo_mcp._config_io import read_config
 
 
 logger = logging.getLogger(__name__)
@@ -72,19 +72,7 @@ class ConfigService:
 
     def _read_config(self) -> dict[str, Any]:
         """Read config.yaml. Returns raw YAML data as dict (dynamic structure)."""
-        if not self.config_path.exists():
-            logger.warning(f"Config file not found: {self.config_path}")
-            return {}
-
-        try:
-            with open(self.config_path, encoding="utf-8") as f:
-                return yaml.safe_load(f) or {}
-        except yaml.YAMLError:
-            logger.exception("Failed to parse config YAML")
-            return {}
-        except OSError:
-            logger.exception("Failed to read config file")
-            return {}
+        return read_config(self.config_path)
 
     def invalidate_cache(self) -> None:
         """Force cache refresh on next read."""

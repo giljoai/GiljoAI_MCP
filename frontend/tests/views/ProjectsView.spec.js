@@ -193,12 +193,10 @@ describe('ProjectsView.vue', () => {
       expect(button.exists()).toBe(true)
     })
 
-    it('renders stats cards for active product', async () => {
+    it('renders project list for active product', async () => {
       const wrapper = await createWrapper()
-      expect(wrapper.text()).toContain('Total Projects')
-      expect(wrapper.text()).toContain('Completed')
-      expect(wrapper.text()).toContain('Staged')
-      expect(wrapper.text()).toContain('Cancelled')
+      expect(wrapper.text()).toContain('Project List for Product 1')
+      expect(wrapper.text()).toContain('New Project')
     })
 
     it('renders search input field', async () => {
@@ -581,26 +579,28 @@ describe('ProjectsView.vue', () => {
   })
 
   describe('Date Formatting', () => {
-    it('formats dates as dd-MMM-yyyy', async () => {
+    it('formats dates as Mon DD, YYYY', async () => {
       const wrapper = await createWrapper()
       const dateStr = '2024-10-28T12:00:00Z'
       const formatted = wrapper.vm.formatDate(dateStr)
 
-      expect(formatted).toMatch(/28-Oct-2024/)
+      expect(formatted).toMatch(/Oct 28, 2024/)
     })
 
-    it('formats dates with time when includeTime is true', async () => {
+    it('formats dates with time via formatDateTime', async () => {
       const wrapper = await createWrapper()
       const dateStr = '2024-10-28T14:30:00Z'
-      const formatted = wrapper.vm.formatDate(dateStr, true)
+      const formatted = wrapper.vm.formatDateTime(dateStr)
 
-      expect(formatted).toMatch(/28-Oct-2024 \d{2}:\d{2}/)
+      // useFormatDate composable returns "Mon DD, YYYY, HH:MM AM/PM"
+      expect(formatted).toMatch(/Oct 28, 2024/)
+      expect(formatted).toMatch(/\d{2}:\d{2}/)
     })
 
-    it('returns dash for empty dates', async () => {
+    it('returns N/A for empty dates', async () => {
       const wrapper = await createWrapper()
-      expect(wrapper.vm.formatDate(null)).toBe('\u2014')
-      expect(wrapper.vm.formatDate('')).toBe('\u2014')
+      expect(wrapper.vm.formatDate(null)).toBe('N/A')
+      expect(wrapper.vm.formatDate('')).toBe('N/A')
     })
   })
 

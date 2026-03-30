@@ -376,14 +376,11 @@ describe('AgentMissionEditModal.vue', () => {
       wrapper.vm.handleClose()
       await nextTick()
 
-      expect(window.confirm).toHaveBeenCalledWith(
-        'You have unsaved changes. Are you sure you want to close?',
-      )
+      // Component now uses a v-dialog (showDiscardDialog) instead of window.confirm
+      expect(wrapper.vm.showDiscardDialog).toBe(true)
     })
 
-    it('keeps modal open when user cancels confirmation', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(false)
-
+    it('keeps modal open when user does not confirm discard', async () => {
       wrapper = createWrapper({ modelValue: true })
       await nextTick()
 
@@ -393,14 +390,16 @@ describe('AgentMissionEditModal.vue', () => {
       wrapper.vm.handleClose()
       await nextTick()
 
-      // Modal should still be open
+      // Discard dialog is shown but user dismisses it (sets showDiscardDialog to false)
+      wrapper.vm.showDiscardDialog = false
+      await nextTick()
+
+      // Modal should still be open - no update:modelValue emitted with false
       const emitted = wrapper.emitted('update:modelValue')
       expect(emitted).toBeFalsy()
     })
 
-    it('closes modal and resets when user confirms', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true)
-
+    it('closes modal and resets when user confirms discard', async () => {
       wrapper = createWrapper({ modelValue: true })
       await nextTick()
 
@@ -408,6 +407,10 @@ describe('AgentMissionEditModal.vue', () => {
       await nextTick()
 
       wrapper.vm.handleClose()
+      await nextTick()
+
+      // User confirms via discardAndClose method
+      wrapper.vm.discardAndClose()
       await nextTick()
 
       // Mission should be reset

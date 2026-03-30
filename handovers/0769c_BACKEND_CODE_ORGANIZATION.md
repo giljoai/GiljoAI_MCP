@@ -146,6 +146,16 @@ Update the worst offenders: `_broadcast_message_events` (13 params), `_broadcast
 
 ---
 
+## Agent Protocols (MANDATORY)
+
+### Rejection Authority
+You have freedom to reject any audit proposal if you find the application already has valid reasoning or a sound current implementation. If a god class is actually cohesive and splitting it would create artificial boundaries, document why in the chain log `deviations` field and move on. The audit is a guideline, not a mandate.
+
+### Flow Investigation
+Before splitting ANY class or method, investigate the FLOW upstream and downstream. Understand WHY methods are grouped together — they may share transaction boundaries, database sessions, or state that makes separation non-trivial. Map every caller of every method you plan to move using `find_referencing_symbols` or grep. If you discover a split would cascade into touching 20+ files or break transaction semantics, STOP immediately — set your status to `blocked` in the chain log and let the orchestrator decide how to proceed. A bad split is worse than a big class.
+
+---
+
 ## What NOT To Do
 
 - Do NOT change any public API endpoint signatures

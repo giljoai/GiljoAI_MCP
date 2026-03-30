@@ -241,6 +241,8 @@ function downloadTemplate() {
 </script>
 
 <style scoped lang="scss">
+@use '../../styles/design-tokens' as *;
+
 .agent-lab-trigger {
   display: inline-flex;
   align-items: center;
@@ -284,7 +286,7 @@ function downloadTemplate() {
 
 .tool-selector {
   .tool-chip-active {
-    background: rgba(255, 195, 0, 0.15);
+    background: rgba($color-brand-yellow, 0.15);
     border-color: rgb(var(--v-theme-primary));
     color: rgb(var(--v-theme-primary));
   }

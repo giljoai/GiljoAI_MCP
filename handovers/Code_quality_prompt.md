@@ -6,7 +6,7 @@
 
 **Frequency:** After every 15-30 commits, or before any release milestone.
 
-**Baseline:** 0765 sprint (March 2026) — 8.35/10, 1,390 tests / 0 skipped, zero ruff issues, ESLint budget 8 warnings.
+**Baseline:** 0769 sprint (March 2026) — 8.5/10, 1,893 frontend tests / 0 skipped, 661 backend unit tests / 0 failures, zero ruff issues, ESLint 6 warnings (budget 8). MyPy blocked by src-layout dual-module-name (pre-existing). Alembic chain valid (model drift detected — indexes/comments only, not structural).
 
 ---
 
@@ -33,17 +33,56 @@ Run these directly (do NOT delegate to subagents):
 # Backend linting (baseline: 0 issues)
 ruff check src/ api/
 
-# Frontend linting (baseline: 8 warnings max)
+# Frontend linting (baseline: 6 warnings, budget: 8 max)
 cd frontend && npx eslint src/ --max-warnings 8
 
-# Frontend build (baseline: clean build, 0 warnings)
+# Frontend build (baseline: clean build, main chunk ~736KB)
 cd frontend && npm run build
 
 # CE/SaaS import boundary (baseline: 0 violations)
 python scripts/check_saas_import_boundary.py src/ api/ frontend/src/
 
-# Test suite (baseline: 1,390+ pass, 0 skip, 0 fail)
-python -m pytest tests/ -q --timeout=60
+# Frontend test suite (baseline: 1,893 pass, 0 skip, 0 fail)
+cd frontend && npx vitest run
+
+# Backend unit tests (baseline: 661 pass, 0 fail — no DB required)
+python -m pytest tests/unit/ -q --timeout=60 --no-cov
+
+# Backend full suite (requires PostgreSQL giljo_mcp_test database)
+# Integration/smoke/e2e tests need DB — see tests/helpers/test_db_helper.py
+python -m pytest tests/ -q --timeout=60 --no-cov
+```
+
+### Step 2b: Runtime & Type Verification
+
+These checks catch issues that linting and unit tests miss (circular imports, broken migrations, type mismatches after refactors):
+
+```bash
+# Startup verification — catches circular imports and broken service wiring
+# Must succeed without a running database (import-only check)
+python -c "from api.app import create_app; print('Startup import OK')"
+
+# Type checking (baseline: blocked by src-layout dual-module-name issue)
+# The editable install + mypy_path=src causes "Source file found twice" error.
+# CI runs: mypy src/ --ignore-missing-imports --no-strict-optional || true
+# To unblock locally: pip install -e . in a venv without src/ on PYTHONPATH.
+python -m mypy src/ --ignore-missing-imports --no-strict-optional 2>&1 | tail -5
+
+# Migration chain validity
+alembic check
+
+# Frontend coverage (baseline: 80% lines/functions/statements, 75% branches)
+cd frontend && npx vitest run --coverage 2>&1 | grep -A5 "Coverage summary"
+```
+
+### Step 2c: Dependency Security
+
+```bash
+# Python dependency vulnerabilities
+pip-audit 2>&1 | tail -10
+
+# Frontend dependency vulnerabilities
+cd frontend && npm audit --audit-level=moderate 2>&1 | tail -10
 ```
 
 Record all results. Any regression from baseline is a finding.
