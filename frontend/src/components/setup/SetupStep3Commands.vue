@@ -232,12 +232,6 @@ async function fetchPrompt(toolId) {
   try {
     const promptText = await fetchBootstrapPrompt(toolId)
     prompts[toolId] = promptText
-    // Mark commands as installed — the backend emitted setup:commands_installed
-    // during this fetch, but the WebSocket event may race with mount timing.
-    // Directly mark it here since we know the prompt was generated successfully.
-    if (toolStatus[toolId]) {
-      toolStatus[toolId].commands = true
-    }
   } catch (e) {
     promptErrors[toolId] = e.message || 'Failed to fetch bootstrap prompt'
   } finally {
@@ -259,6 +253,10 @@ async function copyPrompt(toolId) {
   const success = await clipboardCopy(text)
   if (success) {
     showToast({ message: 'Bootstrap prompt copied to clipboard!', type: 'success' })
+    // Mark commands as installed once user copies the prompt
+    if (toolStatus[toolId]) {
+      toolStatus[toolId].commands = true
+    }
   } else {
     showToast({ message: 'Copy failed -- select the text and press Ctrl+C', type: 'warning' })
   }
