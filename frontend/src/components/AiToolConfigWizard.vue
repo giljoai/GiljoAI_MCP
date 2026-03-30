@@ -276,23 +276,23 @@ function buildServerUrl() {
 }
 
 function claudePrompt(serverUrl, apiKey) {
-  return `claude mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "Authorization: Bearer ${apiKey}"`
+  return `claude mcp add --transport http giljo_mcp ${serverUrl}/mcp --header "Authorization: Bearer ${apiKey}"`
 }
 
 function codexPrompt(serverUrl) {
   // Codex CLI reads bearer token from env var at runtime.
   // Env var value shown separately in the UI alert above.
-  return `codex mcp add giljo-mcp --url ${serverUrl}/mcp --bearer-token-env-var GILJO_API_KEY`
+  return `codex mcp add giljo_mcp --url ${serverUrl}/mcp --bearer-token-env-var GILJO_API_KEY`
 }
 
 function geminiPrompt(serverUrl, apiKey) {
-  return `gemini mcp add -t http -H "Authorization: Bearer ${apiKey}" giljo-mcp ${serverUrl}/mcp`
+  return `gemini mcp add -t http -H "Authorization: Bearer ${apiKey}" giljo_mcp ${serverUrl}/mcp`
 }
 
 function openclawPrompt(serverUrl, apiKey) {
   // JSON snippet for ~/.openclaw/openclaw.json mcpServers block
   return JSON.stringify({
-    'giljo-mcp': {
+    'giljo_mcp': {
       transport: 'streamable-http',
       url: `${serverUrl}/mcp`,
       headers: { Authorization: `Bearer ${apiKey}` },
