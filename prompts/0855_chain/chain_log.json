@@ -258,10 +258,10 @@
       "session_id": "0855g",
       "title": "Learning Overlay + Final Cleanup",
       "handover": "handovers/0855g_SETUP_WIZARD_LEARNING_OVERLAY_CLEANUP.md",
-      "color": "#F44336",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "complete",
+      "started_at": "2026-03-29T22:50:00Z",
+      "completed_at": "2026-03-29T23:05:00Z",
       "agent_types": ["ux-designer", "documentation-manager"],
       "planned_tasks": [
         "Implement mode=learning in SetupWizardOverlay.vue",
@@ -271,14 +271,26 @@
         "Update handover_catalogue.md",
         "Vitest tests for learning mode"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Implemented mode='learning' in SetupWizardOverlay.vue: conditional title, hidden progress bar, hidden step content, 5 collapsible learning sections with expand/collapse transitions",
+        "Wrote 5 learning content sections: Product Hierarchy, AI Coding Tools, Slash Commands, Agent Templates, Dashboard — each with 4 concise reference lines",
+        "WelcomeView 'How to Use' button already wired by 0855c/f (mode='learning' when setupComplete) — verified working",
+        "Dead-code sweep: found and fixed ProductIntroTour.vue stale 'Go to Startup' reference (changed to 'Open Setup Wizard' with route navigation). design-system-sample.html static reference left as-is per 0855f decision. Zero hits for giljo_startup_checklist, startup-cta.",
+        "Updated handover_catalogue.md: 0855a-g moved from Active to Recently Closed with summary, Quick Reference row updated to COMPLETE",
+        "Added 13 Vitest tests for learning mode: title, no progress bar, no step content, 5 sections render, section titles, first expanded by default, toggle behavior, Got it button, no Next/Back, dismiss emits, no step-complete on dismiss, setup mode regression, close X button"
+      ],
+      "deviations": [
+        "WelcomeView button wiring was already complete from 0855c (mode prop) and 0855f (label + conditional) — no additional wiring needed",
+        "ProductIntroTour.vue had stale 'Go to Startup' reference pointing to old startup tab — updated to route to WelcomeView instead of userSettingsTab navigation"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "This is the final session in the 0855 chain. All 7 sessions complete. The feature/0855-setup-wizard branch is ready for review and merge to master.",
+      "cascading_impacts": [
+        "ProductIntroTour.vue last slide now routes to '/' (WelcomeView) instead of UserSettings startup tab — changes the intro tour's final action destination"
+      ],
+      "summary": "All 6 planned tasks completed. Implemented learning mode with 5 collapsible reference sections, 'Got it' dismiss button, hidden stepper/navigation. Fixed stale ProductIntroTour reference. Dead-code sweep clean. 13 new tests (106 total setup wizard tests passing). Catalogue updated. Clean build verified."
     }
   ],
-  "chain_summary": null,
-  "final_status": "pending"
+  "chain_summary": "The 0855 Setup Wizard Redesign chain is complete. 7 sessions (0855a-g) delivered a full-screen setup wizard overlay replacing the old StartupQuickStart checklist. Key deliverables: (1) Backend: 3 User model columns, idempotent migration, PATCH /me/setup-state and GET /api-keys/active endpoints. (2) WebSocket: 3 event types (tool_connected, commands_installed, agents_downloaded) with EventFactory methods and fire-and-forget emissions. (3) Frontend: SetupWizardOverlay.vue with 4-step progress bar, Step 1 tool selection (3 cards), Step 2 MCP config + live connection status (SetupStep2Connect.vue + useMcpConfig.js composable), Step 3 bootstrap prompt + WebSocket checklist (SetupStep3Commands.vue), Step 4 launchpad cards (SetupStep4Complete.vue), and learning mode ('How to Use GiljoAI MCP') with 5 collapsible reference sections. (4) Cleanup: StartupQuickStart.vue deleted (639 lines), all giljo_startup_checklist localStorage refs removed, ProductIntroTour updated. (5) Tests: 106 Vitest component tests across 4 test files. Branch: feature/0855-setup-wizard.",
+  "final_status": "complete"
 }

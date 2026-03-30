@@ -419,4 +419,120 @@ describe('SetupWizardOverlay', () => {
       expect(progressBar.attributes('aria-valuemax')).toBe('3')
     })
   })
+
+  // -------------------------------------------------------------------
+  // Learning mode (0855g)
+  // -------------------------------------------------------------------
+  describe('Learning mode', () => {
+    it('displays "How to Use GiljoAI MCP" title when mode is learning', () => {
+      const wrapper = mountOverlay({ mode: 'learning' })
+
+      expect(wrapper.find('.setup-wizard-title').text()).toBe('How to Use GiljoAI MCP')
+    })
+
+    it('does not render progress bar in learning mode', () => {
+      const wrapper = mountOverlay({ mode: 'learning' })
+
+      expect(wrapper.find('.setup-wizard-progress').exists()).toBe(false)
+    })
+
+    it('does not render step content (tool cards) in learning mode', () => {
+      const wrapper = mountOverlay({ mode: 'learning' })
+
+      expect(wrapper.find('.step-tools').exists()).toBe(false)
+      expect(wrapper.find('.tool-card').exists()).toBe(false)
+    })
+
+    it('renders 5 learning content sections', () => {
+      const wrapper = mountOverlay({ mode: 'learning' })
+      const sections = wrapper.findAll('.learning-section')
+
+      expect(sections).toHaveLength(5)
+    })
+
+    it('renders section titles', () => {
+      const wrapper = mountOverlay({ mode: 'learning' })
+      const titles = wrapper.findAll('.section-title')
+
+      expect(titles[0].text()).toBe('Product Hierarchy')
+      expect(titles[1].text()).toBe('AI Coding Tools')
+      expect(titles[2].text()).toBe('Slash Commands')
+      expect(titles[3].text()).toBe('Agent Templates')
+      expect(titles[4].text()).toBe('Dashboard')
+    })
+
+    it('first section is expanded by default', () => {
+      const wrapper = mountOverlay({ mode: 'learning' })
+      const headers = wrapper.findAll('.learning-section-header')
+
+      expect(headers[0].attributes('aria-expanded')).toBe('true')
+      expect(headers[1].attributes('aria-expanded')).toBe('false')
+    })
+
+    it('toggles section on click', async () => {
+      const wrapper = mountOverlay({ mode: 'learning' })
+      const headers = wrapper.findAll('.learning-section-header')
+
+      // Collapse the first (open) section
+      await headers[0].trigger('click')
+      expect(headers[0].attributes('aria-expanded')).toBe('false')
+
+      // Expand the second section
+      await headers[1].trigger('click')
+      expect(headers[1].attributes('aria-expanded')).toBe('true')
+    })
+
+    it('shows "Got it" button in learning mode', () => {
+      const wrapper = mountOverlay({ mode: 'learning' })
+      const gotItBtn = wrapper.find('.footer-btn-gotit')
+
+      expect(gotItBtn.exists()).toBe(true)
+      expect(gotItBtn.text()).toBe('Got it')
+    })
+
+    it('does not show Next/Back buttons in learning mode', () => {
+      const wrapper = mountOverlay({ mode: 'learning' })
+
+      expect(wrapper.find('.footer-btn-next').exists()).toBe(false)
+      expect(wrapper.find('.footer-btn-back').exists()).toBe(false)
+    })
+
+    it('"Got it" emits dismiss and update:modelValue false', async () => {
+      const wrapper = mountOverlay({ mode: 'learning' })
+      const gotItBtn = wrapper.find('.footer-btn-gotit')
+
+      await gotItBtn.trigger('click')
+
+      expect(wrapper.emitted('dismiss')).toBeTruthy()
+      const modelEvents = wrapper.emitted('update:modelValue')
+      expect(modelEvents).toBeTruthy()
+      expect(modelEvents[0][0]).toBe(false)
+    })
+
+    it('"Got it" does not emit step-complete', async () => {
+      const wrapper = mountOverlay({ mode: 'learning' })
+      const gotItBtn = wrapper.find('.footer-btn-gotit')
+
+      await gotItBtn.trigger('click')
+
+      expect(wrapper.emitted('step-complete')).toBeUndefined()
+    })
+
+    it('setup mode still shows progress bar (regression)', () => {
+      const wrapper = mountOverlay({ mode: 'setup' })
+
+      expect(wrapper.find('.setup-wizard-progress').exists()).toBe(true)
+      expect(wrapper.find('.setup-wizard-title').text()).toBe('Setup GiljoAI MCP')
+    })
+
+    it('close X button works in learning mode', async () => {
+      const wrapper = mountOverlay({ mode: 'learning' })
+      const closeBtn = wrapper.find('[aria-label="Close guide"]')
+
+      expect(closeBtn.exists()).toBe(true)
+      await closeBtn.trigger('click')
+
+      expect(wrapper.emitted('dismiss')).toBeTruthy()
+    })
+  })
 })

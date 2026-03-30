@@ -16,20 +16,22 @@
         <div class="setup-wizard-panel smooth-border" tabindex="-1">
           <!-- Header -->
           <div class="setup-wizard-header">
-            <h2 class="setup-wizard-title">Setup GiljoAI MCP</h2>
+            <h2 class="setup-wizard-title">
+              {{ mode === 'learning' ? 'How to Use GiljoAI MCP' : 'Setup GiljoAI MCP' }}
+            </h2>
             <v-btn
               icon
               variant="text"
               size="small"
-              aria-label="Close setup wizard"
+              :aria-label="mode === 'learning' ? 'Close guide' : 'Close setup wizard'"
               @click="handleDismiss"
             >
               <v-icon>mdi-close</v-icon>
             </v-btn>
           </div>
 
-          <!-- Progress bar -->
-          <div class="setup-wizard-progress" role="progressbar" :aria-valuenow="currentStep" aria-valuemin="0" aria-valuemax="3">
+          <!-- Progress bar (setup mode only) -->
+          <div v-if="mode !== 'learning'" class="setup-wizard-progress" role="progressbar" :aria-valuenow="currentStep" aria-valuemin="0" aria-valuemax="3">
             <div class="progress-steps">
               <div
                 v-for="(step, index) in STEPS"
@@ -79,65 +81,118 @@
 
           <!-- Step content -->
           <div class="setup-wizard-content">
-            <!-- Step 0: Choose Tools -->
-            <div v-if="currentStep === 0" class="step-tools">
-              <p class="step-question">Which AI coding agent(s) do you use?</p>
-
-              <div class="tools-grid">
+            <!-- Learning mode: read-only reference guide -->
+            <template v-if="mode === 'learning'">
+              <div class="learning-content">
                 <div
-                  v-for="tool in TOOLS"
-                  :key="tool.id"
-                  :class="['tool-card', 'smooth-border']"
-                  :style="isSelected(tool.id) ? selectedCardStyle : undefined"
-                  role="checkbox"
-                  :aria-checked="isSelected(tool.id)"
-                  :aria-label="tool.name"
-                  tabindex="0"
-                  @click="toggleTool(tool.id)"
-                  @keydown.enter.prevent="toggleTool(tool.id)"
-                  @keydown.space.prevent="toggleTool(tool.id)"
+                  v-for="section in LEARNING_SECTIONS"
+                  :key="section.id"
+                  class="learning-section smooth-border"
                 >
-                  <v-icon size="36" :color="isSelected(tool.id) ? '#ffc300' : '#8f97b7'">
-                    {{ tool.icon }}
-                  </v-icon>
-                  <span class="tool-name">{{ tool.name }}</span>
-                  <span class="tool-provider">{{ tool.provider }}</span>
+                  <button
+                    class="learning-section-header"
+                    :aria-expanded="expandedSections[section.id]"
+                    :aria-controls="`learning-${section.id}`"
+                    @click="toggleSection(section.id)"
+                  >
+                    <v-icon size="20" class="section-icon" :color="expandedSections[section.id] ? '#ffc300' : '#8f97b7'">
+                      {{ section.icon }}
+                    </v-icon>
+                    <span class="section-title">{{ section.title }}</span>
+                    <v-icon size="18" :class="['section-chevron', { 'section-chevron--open': expandedSections[section.id] }]">
+                      mdi-chevron-down
+                    </v-icon>
+                  </button>
+                  <Transition name="section-expand">
+                    <div
+                      v-if="expandedSections[section.id]"
+                      :id="`learning-${section.id}`"
+                      class="learning-section-body"
+                    >
+                      <p v-for="(line, i) in section.content" :key="i" class="learning-line">
+                        {{ line }}
+                      </p>
+                    </div>
+                  </Transition>
                 </div>
               </div>
+            </template>
 
-              <p class="tools-learn-more">
-                Don't have one yet?
-                <a href="#" class="learn-more-link" @click.prevent>Learn more</a>
-              </p>
-            </div>
+            <!-- Setup mode: interactive wizard steps -->
+            <template v-else>
+              <!-- Step 0: Choose Tools -->
+              <div v-if="currentStep === 0" class="step-tools">
+                <p class="step-question">Which AI coding agent(s) do you use?</p>
 
-            <!-- Step 1: Connect (0855d) -->
-            <SetupStep2Connect
-              v-else-if="currentStep === 1"
-              :selected-tools="localSelectedTools"
-              @can-proceed="step2CanProceed = $event"
-              @step-data="step2Data = $event"
-            />
+                <div class="tools-grid">
+                  <div
+                    v-for="tool in TOOLS"
+                    :key="tool.id"
+                    :class="['tool-card', 'smooth-border']"
+                    :style="isSelected(tool.id) ? selectedCardStyle : undefined"
+                    role="checkbox"
+                    :aria-checked="isSelected(tool.id)"
+                    :aria-label="tool.name"
+                    tabindex="0"
+                    @click="toggleTool(tool.id)"
+                    @keydown.enter.prevent="toggleTool(tool.id)"
+                    @keydown.space.prevent="toggleTool(tool.id)"
+                  >
+                    <v-icon size="36" :color="isSelected(tool.id) ? '#ffc300' : '#8f97b7'">
+                      {{ tool.icon }}
+                    </v-icon>
+                    <span class="tool-name">{{ tool.name }}</span>
+                    <span class="tool-provider">{{ tool.provider }}</span>
+                  </div>
+                </div>
 
-            <!-- Step 2: Install (0855e) -->
-            <SetupStep3Commands
-              v-else-if="currentStep === 2"
-              :selected-tools="localSelectedTools"
-              :connected-tools="step2ConnectedTools"
-              @can-proceed="step3CanProceed = $event"
-              @step-data="step3Data = $event"
-              @skip="handleStep3Skip"
-            />
+                <p class="tools-learn-more">
+                  Don't have one yet?
+                  <a href="#" class="learn-more-link" @click.prevent>Learn more</a>
+                </p>
+              </div>
 
-            <!-- Step 3: Launch (0855f) -->
-            <SetupStep4Complete
-              v-else-if="currentStep === 3"
-              @complete="handleStep4Complete"
-            />
+              <!-- Step 1: Connect (0855d) -->
+              <SetupStep2Connect
+                v-else-if="currentStep === 1"
+                :selected-tools="localSelectedTools"
+                @can-proceed="step2CanProceed = $event"
+                @step-data="step2Data = $event"
+              />
+
+              <!-- Step 2: Install (0855e) -->
+              <SetupStep3Commands
+                v-else-if="currentStep === 2"
+                :selected-tools="localSelectedTools"
+                :connected-tools="step2ConnectedTools"
+                @can-proceed="step3CanProceed = $event"
+                @step-data="step3Data = $event"
+                @skip="handleStep3Skip"
+              />
+
+              <!-- Step 3: Launch (0855f) -->
+              <SetupStep4Complete
+                v-else-if="currentStep === 3"
+                @complete="handleStep4Complete"
+              />
+            </template>
           </div>
 
-          <!-- Footer (hidden on step 3 — Step 4 has its own card-based navigation) -->
-          <div v-if="currentStep < 3" class="setup-wizard-footer">
+          <!-- Learning mode footer: single "Got it" button -->
+          <div v-if="mode === 'learning'" class="setup-wizard-footer setup-wizard-footer--learning">
+            <v-spacer />
+            <v-btn
+              color="primary"
+              variant="flat"
+              class="footer-btn-gotit"
+              @click="handleDismiss"
+            >
+              Got it
+            </v-btn>
+          </div>
+
+          <!-- Setup mode footer (hidden on step 3 — Step 4 has its own card-based navigation) -->
+          <div v-else-if="currentStep < 3" class="setup-wizard-footer">
             <v-btn
               v-if="currentStep > 0"
               variant="text"
@@ -164,10 +219,68 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import SetupStep2Connect from './SetupStep2Connect.vue'
 import SetupStep3Commands from './SetupStep3Commands.vue'
 import SetupStep4Complete from './SetupStep4Complete.vue'
+
+const LEARNING_SECTIONS = [
+  {
+    id: 'hierarchy',
+    icon: 'mdi-sitemap',
+    title: 'Product Hierarchy',
+    content: [
+      'Products are the top level — they represent a software product or system you are building.',
+      'Projects live inside Products. Each project is a focused unit of work (a feature, sprint, or initiative).',
+      'Jobs are created when you run an agent within a project. They track each AI coding session.',
+      'Agents execute inside jobs. Multiple agents can collaborate on a single job using chain strategies.',
+    ],
+  },
+  {
+    id: 'tools',
+    icon: 'mdi-console',
+    title: 'AI Coding Tools',
+    content: [
+      'GiljoAI MCP works with Claude Code, Codex CLI, and Gemini CLI via the MCP protocol.',
+      'Each tool connects to GiljoAI as an MCP server — your orchestration commands become tool calls.',
+      'You can use multiple tools simultaneously. Each gets its own API key and connection.',
+      'The MCP connection gives your AI agent access to project context, agent templates, and coordination tools.',
+    ],
+  },
+  {
+    id: 'commands',
+    icon: 'mdi-slash-forward-box',
+    title: 'Slash Commands',
+    content: [
+      '/gil_add — Add tasks or projects to the dashboard directly from your coding agent.',
+      '/gil_get_agents — Download agent templates with orchestration protocols into your workspace.',
+      'Slash commands are the primary way to interact with GiljoAI from within your AI coding tool.',
+      'Commands are context-aware: they know which product and project you are working in.',
+    ],
+  },
+  {
+    id: 'agents',
+    icon: 'mdi-robot',
+    title: 'Agent Templates',
+    content: [
+      'Agent templates are pre-configured protocols that tell your AI coding tool how to work on a task.',
+      'Templates include chain strategies (sequential handovers, parallel work, orchestrator-gated flows).',
+      'The Agent Lab lets you browse, customize, and download templates for different workflow patterns.',
+      'Templates are tool-agnostic — the same strategy works with Claude Code, Codex CLI, or Gemini CLI.',
+    ],
+  },
+  {
+    id: 'dashboard',
+    icon: 'mdi-view-dashboard',
+    title: 'Dashboard',
+    content: [
+      'The Products page shows all your software products and their vision documents.',
+      'The Projects page lists active projects with status, progress, and linked jobs.',
+      'The Tasks page tracks technical debt, TODOs, and action items across all products.',
+      'Each page offers filtering, search, and quick actions to manage your development workflow.',
+    ],
+  },
+]
 
 const TOOLS = [
   { id: 'claude_code', name: 'Claude Code', provider: 'by Anthropic', icon: 'mdi-console' },
@@ -207,6 +320,15 @@ const emit = defineEmits([
   'dismiss',
   'step-complete',
 ])
+
+// Learning mode: collapsible sections (first section expanded by default)
+const expandedSections = reactive(
+  Object.fromEntries(LEARNING_SECTIONS.map((s, i) => [s.id, i === 0])),
+)
+
+function toggleSection(sectionId) {
+  expandedSections[sectionId] = !expandedSections[sectionId]
+}
 
 // Internal state
 const localSelectedTools = ref([...props.selectedTools])
@@ -561,6 +683,110 @@ function handleDismiss() {
   border-radius: 8px;
   min-width: 100px;
   font-weight: 600;
+}
+
+.footer-btn-gotit {
+  border-radius: 8px;
+  min-width: 120px;
+  font-weight: 600;
+}
+
+.setup-wizard-footer--learning {
+  justify-content: flex-end;
+}
+
+/* Learning mode sections */
+.learning-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.learning-section {
+  background: #1e3147;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.learning-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #e1e1e1;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-align: left;
+  transition: background-color 150ms ease-out;
+}
+
+.learning-section-header:hover {
+  background: rgba(255, 195, 0, 0.05);
+}
+
+.learning-section-header:focus-visible {
+  outline: 2px solid #ffc300;
+  outline-offset: -2px;
+}
+
+.section-icon {
+  flex-shrink: 0;
+}
+
+.section-title {
+  flex: 1;
+}
+
+.section-chevron {
+  color: #8f97b7;
+  transition: transform 250ms ease-out;
+  flex-shrink: 0;
+}
+
+.section-chevron--open {
+  transform: rotate(180deg);
+}
+
+.learning-section-body {
+  padding: 0 16px 14px 46px;
+}
+
+.learning-line {
+  font-size: 0.8125rem;
+  color: #b0b8d0;
+  line-height: 1.6;
+  margin: 0 0 6px;
+}
+
+.learning-line:last-child {
+  margin-bottom: 0;
+}
+
+/* Section expand transition */
+.section-expand-enter-active {
+  transition: max-height 250ms ease-out, opacity 250ms ease-out;
+  max-height: 300px;
+  overflow: hidden;
+}
+
+.section-expand-leave-active {
+  transition: max-height 200ms ease-in, opacity 200ms ease-in;
+  max-height: 300px;
+  overflow: hidden;
+}
+
+.section-expand-enter-from {
+  max-height: 0;
+  opacity: 0;
+}
+
+.section-expand-leave-to {
+  max-height: 0;
+  opacity: 0;
 }
 
 /* Responsive: mobile */
