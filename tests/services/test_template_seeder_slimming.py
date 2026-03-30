@@ -56,8 +56,8 @@ class TestMCPCoordinationSectionSlimming:
     def test_mcp_section_shows_tool_call_example(self):
         """MCP section should show an example of calling MCP tools correctly."""
         section = _get_mcp_coordination_section()
-        # Should show the mcp__giljo-mcp__ prefix pattern
-        assert "mcp__giljo-mcp__" in section
+        # Should show the mcp__giljo_mcp__ prefix pattern
+        assert "mcp__giljo_mcp__" in section
         # Should show get_agent_mission as the key tool reference
         assert "get_agent_mission" in section
 

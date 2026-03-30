@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 
 
 try:
-    from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+    from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
     from fastapi.exceptions import WebSocketException
     from fastapi.middleware.cors import CORSMiddleware
     from sqlalchemy import select, text
@@ -79,7 +79,6 @@ try:
         database_setup,
         downloads,
         git,
-        mcp_http,
         mcp_installer,
         messages,
         network,
@@ -215,6 +214,11 @@ async def lifespan(app: FastAPI):
 
         loop.set_exception_handler(_suppress_connection_reset)
 
+    # Phase 8: MCP SDK session manager (Handover 0846)
+    from api.endpoints.mcp_sdk_server import start_mcp_session_manager, stop_mcp_session_manager
+
+    await start_mcp_session_manager()
+
     logger.info("=" * 70)
     logger.info("API startup complete - All systems initialized")
     logger.info("=" * 70)
@@ -222,6 +226,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
+    await stop_mcp_session_manager()
     await shutdown(state)
 
     logger.info("API shutdown complete")
@@ -440,8 +445,43 @@ def _register_routers(app: FastAPI) -> None:
     # MCP Installer endpoints for downloadable script generation (Phase 2.1)
     app.include_router(mcp_installer.router, prefix="/api/mcp-installer", tags=["MCP Integration"])
 
-    # Pure MCP JSON-RPC 2.0 over HTTP endpoint (Handover 0032)
-    app.include_router(mcp_http.router, tags=["mcp"])
+    # MCP SDK Streamable HTTP endpoint (Handover 0846 — replaces custom JSON-RPC 0032)
+    # Registered as a direct FastAPI route (not app.mount) to avoid the
+    # 307 trailing-slash redirect that Mount adds and breaks MCP clients.
+    from api.endpoints.mcp_sdk_server import get_mcp_asgi_app
+
+    _mcp_app = get_mcp_asgi_app()
+
+    @app.api_route("/mcp", methods=["GET", "POST", "DELETE"], include_in_schema=False)
+    @app.api_route("/mcp/", methods=["GET", "POST", "DELETE"], include_in_schema=False)
+    async def mcp_endpoint(request: Request):
+        """MCP SDK Streamable HTTP endpoint."""
+        from starlette.responses import Response
+
+        response_started = False
+        status_code = 200
+        headers_list = []
+        body_parts = []
+
+        async def send(message):
+            nonlocal response_started, status_code, headers_list
+            if message["type"] == "http.response.start":
+                response_started = True
+                status_code = message["status"]
+                headers_list = message.get("headers", [])
+            elif message["type"] == "http.response.body":
+                body_parts.append(message.get("body", b""))
+
+        await _mcp_app(request.scope, request.receive, send)
+
+        return Response(
+            content=b"".join(body_parts),
+            status_code=status_code,
+            headers={
+                (k.decode() if isinstance(k, bytes) else k): (v.decode() if isinstance(v, bytes) else v)
+                for k, v in headers_list
+            },
+        )
 
     # Slash command endpoints (Handover 0080a)
     app.include_router(slash_commands.router, prefix="/api", tags=["slash-commands"])
