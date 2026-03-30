@@ -332,7 +332,28 @@ async def get_agent_templates_for_export(
     ctx: Context = None,
 ) -> dict:
     """Export agent templates for target CLI platform."""
-    return await _call_tool(ctx, "get_agent_templates_for_export", {"platform": platform})
+    result = await _call_tool(ctx, "get_agent_templates_for_export", {"platform": platform})
+
+    # Handover 0855b: Emit setup:agents_downloaded when CLI fetches templates via MCP
+    try:
+        from api.app import state as app_state
+
+        ws_manager = getattr(app_state, "websocket_manager", None)
+        tenant_key = _resolve_tenant(ctx)
+        if ws_manager and tenant_key:
+            from api.events.schemas import EventFactory
+
+            agent_count = len(result.get("files", {})) if isinstance(result, dict) else 0
+            event = EventFactory.setup_agents_downloaded(
+                tenant_key=tenant_key,
+                user_id="mcp_tool",
+                agent_count=agent_count,
+            )
+            await ws_manager.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
+    except (OSError, RuntimeError, ValueError, TypeError, AttributeError, ImportError):
+        pass  # Fire-and-forget
+
+    return result
 
 
 # ---------------------------------------------------------------------------
