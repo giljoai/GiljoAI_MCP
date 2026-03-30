@@ -181,9 +181,9 @@ class TestTemplateSeederDualField:
             assert "GiljoAI MCP Agent" in system_inst, (
                 f"{template.role} missing GiljoAI MCP Agent header"
             )
-            # Should reference mcp__giljo-mcp__ prefix
-            assert "mcp__giljo-mcp__" in system_inst, (
-                f"{template.role} should reference mcp__giljo-mcp__ tool prefix"
+            # Should reference mcp__giljo_mcp__ prefix
+            assert "mcp__giljo_mcp__" in system_inst, (
+                f"{template.role} should reference mcp__giljo_mcp__ tool prefix"
             )
             # Should reference get_agent_mission for full protocol delivery
             assert "get_agent_mission" in system_inst, (
@@ -326,7 +326,7 @@ class TestMCPCoordinationSection:
 
         # After Handover 0431 slimming, the MCP section only contains the
         # "MCP tools are native calls" warning and an example tool call.
-        assert "mcp__giljo-mcp__" in mcp_section, "Should show mcp__giljo-mcp__ prefix"
+        assert "mcp__giljo_mcp__" in mcp_section, "Should show mcp__giljo_mcp__ prefix"
         assert "get_agent_mission" in mcp_section, "Should have example tool call"
 
     def test_mcp_section_has_proper_structure(self):

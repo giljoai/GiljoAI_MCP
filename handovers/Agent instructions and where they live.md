@@ -13,7 +13,7 @@ We now have three clearly separated layers:
 - **Template layer** (Claude `.md`, `GenericAgentTemplate`, seeder MCP section):
   - Teaches how to talk to the MCP server.
   - Injects identity: `agent_id`, `job_id` / `agent_job_id`, `product_id`, `project_id`, `tenant_key`.
-  - Emphasizes that MCP tools are native: `mcp__giljo-mcp__*` (no HTTP/curl/SDK).
+  - Emphasizes that MCP tools are native: `mcp__giljo_mcp__*` (no HTTP/curl/SDK).
   - Points agents to `get_agent_mission` and `full_protocol`.
   - Avoids re-encoding the full lifecycle.
   - **Orchestrator vs Agent differences** (Handover 0432):
@@ -46,9 +46,9 @@ We now have three clearly separated layers:
   - Injects identity: `agent_id`, `job_id`, `product_id`, `project_id`, `tenant_key`.
   - Has a concise **MCP wiring** section:
     - MCP tools are native.
-    - Key tools: `mcp__giljo-mcp__get_agent_mission`, `mcp__giljo-mcp__report_progress`, `mcp__giljo-mcp__complete_job`, `mcp__giljo-mcp__report_error`.
+    - Key tools: `mcp__giljo_mcp__get_agent_mission`, `mcp__giljo_mcp__report_progress`, `mcp__giljo_mcp__complete_job`, `mcp__giljo_mcp__report_error`.
   - Delegates behavior:
-    - First action: call `mcp__giljo-mcp__get_agent_mission(agent_job_id="{job_id}", tenant_key="{tenant_key}")`.
+    - First action: call `mcp__giljo_mcp__get_agent_mission(agent_job_id="{job_id}", tenant_key="{tenant_key}")`.
     - Then read `mission` + `full_protocol` and follow `full_protocol` for all lifecycle behavior.
 
 2.2 Thin client spawn prompts
@@ -59,7 +59,7 @@ We now have three clearly separated layers:
   - Keep the identity line ("I am {agent_name}…").
   - Include a short "MCP tools are native" block.
   - Replace long "MANDATORY STARTUP SEQUENCE" with:
-    - Step 1: call `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)`.
+    - Step 1: call `mcp__giljo_mcp__get_agent_mission(agent_job_id, tenant_key)`.
     - Step 2: follow `full_protocol` from that response.
 
 2.3 Template Injection for Multi-Terminal Mode (Handover 0417)
@@ -98,7 +98,7 @@ When `spawn_agent_job()` is called, the backend checks `Project.execution_mode`:
 
 - File: `src/giljo_mcp/thin_prompt_generator.py`, `_build_claude_code_execution_prompt`.
 - Task instructions now:
-  - Tell subagents to call `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` as a tool.
+  - Tell subagents to call `mcp__giljo_mcp__get_agent_mission(agent_job_id, tenant_key)` as a tool.
   - Explicitly mention that this returns `mission` + `full_protocol`.
   - Tell subagents to follow `full_protocol` for lifecycle behavior.
 
@@ -153,7 +153,7 @@ blocked ─[acknowledge_job()]─→ working (resume from blocked)
     - CRITICAL MCP wiring + "tools are native" block.
     - Role-specific guidance (implementer vs tester vs analyzer etc.).
     - A short startup note:
-      - "Call `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)`."
+      - "Call `mcp__giljo_mcp__get_agent_mission(agent_job_id, tenant_key)`."
       - "Follow `full_protocol` for lifecycle behavior."
       - "Team information (if any) is provided in your mission text."
   - Remove:
