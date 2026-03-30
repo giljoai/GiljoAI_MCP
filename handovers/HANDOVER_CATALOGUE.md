@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-29 (0855a-g Setup Wizard series COMPLETE)
+**Last Updated:** 2026-03-30 (0846a-c MCP SDK Standardization + 0855a-g Setup Wizard CLOSED OUT)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c NOT STARTED.** **0847 NOT STARTED.** **0855a-g COMPLETE.** |
+| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 NOT STARTED.** **0855a-g COMPLETE.** |
 
 ---
 
@@ -37,10 +37,6 @@
 | 0844a | Tenant Export Service | Not Started | Medium | Backend export engine: 31 models, field stripping, vision file bundling, ZIP creation, REPEATABLE READ, SHA-256 checksums. 1-2 sessions. |
 | 0844b | Tenant Import Service + Schema Diff | Not Started | Medium | Backend import: schema compatibility analysis, UPSERT pipeline, topological sort, vision file extraction, TSVECTOR regen. Heaviest phase, 2-3 sessions. Depends on 0844a. |
 | 0844c | Tenant Data Frontend | Not Started | Medium | Vue component in Database tab: export/import UI, compatibility report dialog, stale backup warning, WebSocket progress. 1 session. Depends on 0844a+b. |
-| 0846 | MCP SDK Standardization (Series Coordinator) | Not Started | High | Replace custom JSON-RPC transport with official Anthropic MCP Python SDK (FastMCP + Streamable HTTP). 3-session orchestrator-gated chain. Branch: feature/0846-mcp-sdk-standardization. |
-| 0846a | FastMCP SDK Transport Replacement | Not Started | High | Create FastMCP server, register 30 tools, mount at /mcp/v2 alongside old endpoint. 1.5-2h. |
-| 0846b | Security Re-integration & Old Code Removal | Not Started | High | Wire Bearer auth + tenant isolation into SDK server, promote to /mcp, delete old mcp_http.py transport. 1.5-2h. Depends on 0846a. |
-| 0846c | Documentation, Frontend & Test Updates | Not Started | High | Update MCP docs, frontend config commands, orphan sweep, test cleanup. 1-1.5h. Depends on 0846b. |
 | 0847 | Tool-Aware Orchestrator Protocol | Not Started | High | Make orchestrator protocol (CH1-CH5 + identity) fully tool-aware. Codex/Gemini get native-only language, no Claude refs. Multi-terminal → "Any Coding Agent". 2-3h. |
 
 ### Deferred (Still in Root Folder)
@@ -54,6 +50,7 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0846a-c | MCP SDK Standardization (3 sessions) | 2026-03-29 | COMPLETE — Replaced custom JSON-RPC transport with official MCP SDK (FastMCP + Streamable HTTP). 27 tools registered via @mcp.tool(), MCPAuthMiddleware (JWT + API key), promoted to /mcp, old router removed from app.py. 3 docs updated. mcp_http.py kept on disk for test compat. Branch: feature/0846-mcp-sdk-standardization. |
 | 0855a-g | Setup Wizard Redesign (7 sessions) | 2026-03-29 | COMPLETE — Backend schema (3 User columns + migration + 2 endpoints), 3 WebSocket event types, full-screen overlay with 4-step progress bar, Step 1 tool selection, Step 2 MCP config + live connection status, Step 3 bootstrap prompt + WebSocket checklist, Step 4 launchpad cards, learning mode ("How to Use") overlay, useMcpConfig composable, StartupQuickStart deleted (639 lines). 106 Vitest tests. Branch: feature/0855-setup-wizard. |
 | 0842a-e | Vision Document Analysis (5 sessions) | 2026-03-27 | COMPLETE — DB migration + Sumy wiring, Context Manager AI-preferred reads, MCP tools (gil_get_vision_doc + gil_write_product), frontend UI (tuning icon + analysis banner + custom instructions), E2E tests. 6 commits, 33 tests. Branch: feature/0842-vision-doc-analysis. |
 | 0842f | Agent Lab — Chain Strategy Template Download | 2026-03-27 | COMPLETE (`a5a4c8e7`) — Chapter 3 in Agent Lab dialog, downloadable 220-line tool-agnostic chain strategy template. |
@@ -554,7 +551,7 @@ completed/reference/
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
-**0700-0769** (Code Quality — RESERVED): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy (SUPERSEDED), 0732 release packaging (COMPLETE), 0732b screenshots (COMPLETE), 0740-0750 (complete), 0760 (proposal), 0765a-s (sprint, COMPLETE), 0766-0768 (triage chains). **Do NOT use for non-quality work.**
+**0700-0769** (Code Quality — RESERVED): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy (SUPERSEDED), 0732 release packaging (COMPLETE), 0732b screenshots (COMPLETE), 0740-0750 (complete), 0760 (proposal), 0765a-s (sprint, COMPLETE), 0766-0768 (triage chains), 0769 (Code Quality & Fragility Audit, AUDIT COMPLETE — remediation not started). **Do NOT use for non-quality work. Range fully allocated.**
 **0770-0799** (Edition Strategy & SaaS Architecture): 0770 (SaaS Edition Proposal, complete), 0771 (Edition Isolation Architecture, COMPLETE)
 **0800-0807** (Enhancement & Triage): 0800a/b, 0801a/b, 0802a/b, 0803a, 0804a, 0805a, 0806a, 0807a (all complete)
 **0808-0811** (Tier 2 Triage): 0808a, 0809a, 0810a, 0811a (all research complete, fixes in `f665c861`)
