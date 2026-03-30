@@ -68,19 +68,20 @@
       <!-- Setup Settings -->
       <v-window-item value="startup">
         <v-card data-test="startup-settings">
-          <v-card-title class="d-flex align-center justify-space-between">
-            <span>Startup</span>
-            <v-btn
-              v-if="startupRef?.setupFinished"
-              variant="text"
-              color="primary"
-              icon="mdi-refresh"
-              @click="startupRef?.resetChecklist()"
-            />
-          </v-card-title>
-          <v-card-subtitle>Visual setup quick start</v-card-subtitle>
+          <v-card-title>Startup</v-card-title>
+          <v-card-subtitle>Setup wizard and getting started</v-card-subtitle>
           <v-card-text>
-            <StartupQuickStart ref="startupRef" :git-enabled="gitEnabled" :serena-enabled="serenaEnabled" />
+            <p class="text-body-2 mb-4" style="color: #8f97b7;">
+              The setup wizard guides you through connecting AI coding tools and configuring GiljoAI MCP.
+            </p>
+            <v-btn
+              color="primary"
+              variant="flat"
+              prepend-icon="mdi-rocket-launch"
+              @click="router.push('/')"
+            >
+              Open Setup Wizard
+            </v-btn>
           </v-card-text>
         </v-card>
       </v-window-item>
@@ -208,7 +209,6 @@ import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import AgentExport from '@/components/AgentExport.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
-import StartupQuickStart from '@/components/settings/StartupQuickStart.vue'
 import ProductIntroTour from '@/components/settings/ProductIntroTour.vue'
 import McpIntegrationCard from '@/components/settings/integrations/McpIntegrationCard.vue'
 import SerenaIntegrationCard from '@/components/settings/integrations/SerenaIntegrationCard.vue'
@@ -237,7 +237,6 @@ const gitEnabled = ref(false)
 const templateExportEvent = ref(null)
 provide('templateExportEvent', templateExportEvent)
 const togglingGit = ref(false)
-const startupRef = ref(null)
 
 // Settings object
 const settings = ref({
@@ -438,23 +437,10 @@ function isIntroTourHidden() {
   }
 }
 
-function isChecklistComplete() {
-  try {
-    const raw = localStorage.getItem('giljo_startup_checklist_v1')
-    if (!raw) return false
-    const checklist = JSON.parse(raw)
-    const itemIds = ['tools', 'connect', 'slash', 'templates', 'context', 'integrations']
-    return itemIds.every(id => checklist[id] === true)
-  } catch {
-    return false
-  }
-}
-
 function maybeShowIntroTour() {
   if (introTourShownThisSession.value) return
   if (activeTab.value !== 'startup') return
   if (isIntroTourHidden()) return
-  if (isChecklistComplete()) return // Don't show if checklist is complete
   showIntroTour.value = true
   introTourShownThisSession.value = true
 }

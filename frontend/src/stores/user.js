@@ -133,6 +133,18 @@ export const useUserStore = defineStore('user', () => {
     orgRole.value = null
   }
 
+  // Update setup wizard state (Handover 0855c)
+  async function updateSetupState(payload) {
+    const response = await api.auth.updateSetupState(payload)
+    const data = response.data
+    if (currentUser.value) {
+      if (data.setup_complete !== undefined) currentUser.value.setup_complete = data.setup_complete
+      if (data.setup_selected_tools !== undefined) currentUser.value.setup_selected_tools = data.setup_selected_tools
+      if (data.setup_step_completed !== undefined) currentUser.value.setup_step_completed = data.setup_step_completed
+    }
+    return data
+  }
+
   // Clear all user and org state (Handover 0424h)
   function clearUser() {
     currentUser.value = null
@@ -156,6 +168,7 @@ export const useUserStore = defineStore('user', () => {
     login,
     logout,
     checkAuth,
+    updateSetupState,
     clearUser,
   }
 })
