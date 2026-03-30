@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp._config_io import read_config
+
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import ValidationError
 from src.giljo_mcp.schemas.service_responses import (
@@ -441,8 +441,7 @@ class ToolAccessor:
                 from giljo_mcp.config_manager import get_config
 
                 config = get_config()
-                config_data = read_config()
-                host = config_data.get("services", {}).get("external_host", "localhost")
+                host = config.get_nested("services.external_host", "localhost")
                 port = config.server.api_port
                 protocol = "https" if config.get_nested("features.ssl_enabled", default=False) else "http"
                 server_url = f"{protocol}://{host}:{port}"

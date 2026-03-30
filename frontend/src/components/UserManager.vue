@@ -325,6 +325,9 @@ import { formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
+import { useFormatDate } from '@/composables/useFormatDate'
+
+const { formatDate } = useFormatDate()
 
 // Store
 const userStore = useUserStore()
@@ -442,11 +445,6 @@ function formatRelativeTime(timestamp) {
   }
 }
 
-function formatDate(dateString) {
-  if (!dateString) return 'N/A'
-  const date = new Date(dateString)
-  return date.toLocaleDateString()
-}
 
 async function loadUsers() {
   loading.value = true

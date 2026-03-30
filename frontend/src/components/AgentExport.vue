@@ -145,26 +145,7 @@ const setupLoading = reactive({
 
 const downloadLoading = reactive({})
 
-/**
- * Generate a download token for a given content type and platform.
- * Returns the download_url from the server response.
- */
-async function generateToken(contentType, platform) {
-  const response = await fetch(
-    `/api/download/generate-token?content_type=${contentType}&platform=${platform}`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-      },
-    },
-  )
-  if (!response.ok) {
-    throw new Error(`Token generation failed: ${response.status}`)
-  }
-  const data = await response.json()
-  return data.download_url
-}
+
 
 /**
  * Generate the combined bootstrap prompt for a platform and copy to clipboard.

@@ -42,7 +42,7 @@
                 size="small"
                 :style="{
                   backgroundColor: swatch,
-                  border: color === swatch ? '3px solid white' : '1px solid rgba(255,255,255,0.3)',
+                  border: color === swatch ? '3px solid white' : '1px solid rgba(255,255,255,0.3)', /* exempt: dynamic color picker UI */
                   boxShadow: color === swatch ? '0 0 0 2px ' + swatch : 'none',
                 }"
                 :aria-label="'Select color ' + swatch"

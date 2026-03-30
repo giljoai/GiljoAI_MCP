@@ -443,7 +443,9 @@ const createAdmin = async () => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../styles/design-tokens' as *;
+
 .fill-height {
   min-height: 100vh;
 }
@@ -469,6 +471,6 @@ const createAdmin = async () => {
 }
 
 .footer-brand {
-  color: #ffd93d;
+  color: $gradient-brand-start;
 }
 </style>

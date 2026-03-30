@@ -260,7 +260,9 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
       wrapper.vm.projectTypes = mockProjectTypes
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.text()).toContain('Filter')
+      // Filter button is an icon button (mdi-filter-variant) with aria-label
+      const filterBtn = wrapper.find('button[aria-label="Toggle filters"]')
+      expect(filterBtn.exists()).toBe(true)
 
       // Expand the filter row
       wrapper.vm.showFilterRow = true

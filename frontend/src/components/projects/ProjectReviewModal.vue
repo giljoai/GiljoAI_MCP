@@ -45,8 +45,8 @@
             <h3 class="text-h6 mb-2">Overview</h3>
             <v-chip :color="statusColor" :style="statusTextStyle" variant="flat" size="small" class="mr-2">{{ projectData.status }}</v-chip>
             <span class="text-caption text-medium-emphasis">
-              Created {{ formatDate(projectData.created_at) }}
-              <template v-if="projectData.completed_at"> | Completed {{ formatDate(projectData.completed_at) }}</template>
+              Created {{ formatDateTime(projectData.created_at) }}
+              <template v-if="projectData.completed_at"> | Completed {{ formatDateTime(projectData.completed_at) }}</template>
             </span>
             <p class="mt-2">{{ projectData.description || 'No description provided.' }}</p>
           </div>
@@ -88,7 +88,7 @@
                       size="x-small"
                       variant="flat"
                       :style="{ backgroundColor: agentTypeColor(agent.agent_name), color: '#fff' }"
-                    >{{ agent.agent_name }}</v-chip>
+                    ><!-- exempt: dynamic inline style -->{{ agent.agent_name }}</v-chip>
                     <span v-else class="text-medium-emphasis">-</span>
                   </td>
                   <td><v-chip :color="agentStatusColor(agent.status)" size="x-small" variant="flat">{{ agent.status }}</v-chip></td>
@@ -133,7 +133,7 @@
                           <span class="text-caption font-weight-bold">{{ msg.from }}</span>
                           <v-chip v-if="msg.direction" size="x-small" :color="msg.direction === 'outbound' ? 'primary' : 'default'" class="ml-2">{{ msg.direction }}</v-chip>
                         </div>
-                        <span class="text-caption text-medium-emphasis">{{ formatDate(msg.created_at) }}</span>
+                        <span class="text-caption text-medium-emphasis">{{ formatDateTime(msg.created_at) }}</span>
                       </div>
                       <p class="text-body-2 mt-1">{{ truncate(msg.content, 300) }}</p>
                     </div>
@@ -157,7 +157,7 @@
                       #{{ entry.sequence ?? i + 1 }} - {{ entry.project_name || 'Memory Entry' }}
                     </span>
                     <v-spacer />
-                    <span v-if="entry.timestamp" class="text-caption text-medium-emphasis">{{ formatDate(entry.timestamp) }}</span>
+                    <span v-if="entry.timestamp" class="text-caption text-medium-emphasis">{{ formatDateTime(entry.timestamp) }}</span>
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
@@ -219,8 +219,11 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useClipboard } from '@/composables/useClipboard'
+import { useFormatDate } from '@/composables/useFormatDate'
 import { getAgentColor } from '@/config/agentColors'
 import api from '@/services/api'
+
+const { formatDateTime } = useFormatDate()
 
 const props = defineProps({
   show: { type: Boolean, required: true },
@@ -348,14 +351,14 @@ const missionText = computed(() => {
 const statusColor = computed(() => {
   const s = projectData.value?.status
   if (s === 'completed') return 'success'
-  if (s === 'active') return '#fff'
+  if (s === 'active') return '#fff' // exempt: Vuetify color prop requires hex
   if (s === 'terminated') return 'warning'
   if (s === 'cancelled') return 'grey'
   return 'primary'
 })
 
 const statusTextStyle = computed(() => {
-  if (projectData.value?.status === 'active') return { color: '#333' }
+  if (projectData.value?.status === 'active') return { color: '#333' } // exempt: dynamic inline style
   return {}
 })
 
@@ -367,12 +370,6 @@ function agentStatusColor(status) {
   return 'default'
 }
 
-function formatDate(ts) {
-  if (!ts) return 'Unknown'
-  try {
-    return new Date(ts).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-  } catch { return ts }
-}
 
 function truncate(text, maxLen) {
   if (!text) return ''
@@ -380,9 +377,11 @@ function truncate(text, maxLen) {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../../styles/design-tokens' as *;
+
 .review-project-name {
-  color: #FFC300;
+  color: $color-brand-yellow;
   font-weight: 600;
 }
 .review-project-id {

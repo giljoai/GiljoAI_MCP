@@ -264,7 +264,7 @@ async def test_complete_product_lifecycle(db_session, test_tenant):
     )
 
     # Verify orchestrator created
-    assert orchestrator.status == "pending"
+    assert orchestrator.status == "waiting"
 ```
 
 ### **Multi-Tenant Isolation Tests**
