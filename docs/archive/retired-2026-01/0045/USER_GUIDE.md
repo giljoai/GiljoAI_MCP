@@ -1,3 +1,5 @@
+> **ARCHIVED:** This document is retired and may contain outdated information.
+
 # Multi-Tool Agent Orchestration - User Guide
 
 **Version**: 3.1.0
