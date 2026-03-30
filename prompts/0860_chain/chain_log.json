@@ -48,8 +48,8 @@
       "title": "ScanCode Source Scanning",
       "handover": "handovers/0860b_SCANCODE_SOURCE_SCAN.md",
       "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-03-30T15:00:00Z",
       "completed_at": null,
       "agent_types": ["general-purpose"],
       "planned_tasks": [
@@ -70,9 +70,9 @@
       "title": "SCANOSS Snippet Scanning",
       "handover": "handovers/0860c_SCANOSS_SNIPPET_SCAN.md",
       "color": "#9C27B0",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-30T15:00:00Z",
+      "completed_at": "2026-03-30T15:30:00Z",
       "agent_types": ["general-purpose"],
       "planned_tasks": [
         "SCANOSS backend scan (src/giljo_mcp/, api/)",
@@ -81,12 +81,20 @@
         "Filter expected false positives (FastAPI, SQLAlchemy, Vue boilerplate)",
         "Produce audit/SCANOSS_FINDINGS.md with all 5 required sections"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "SCANOSS backend scan: 132 files (src/giljo_mcp/) + 110 files (api/) -> audit/scanoss_backend.json",
+        "SCANOSS frontend scan: 142 files (frontend/src/) -> audit/scanoss_frontend.json",
+        "Parse and triage: 12 snippet matches, 0 file matches across 384 files",
+        "False positive filtering: 7 false positives identified (SQLAlchemy, FastAPI, Vue boilerplate patterns)",
+        "audit/SCANOSS_FINDINGS.md produced with all 5 required sections plus false positive analysis and AGPL assessment"
+      ],
+      "deviations": [
+        "scanoss-py only accepts a single directory argument — ran src/giljo_mcp/ and api/ as separate scans, then merged into scanoss_backend.json"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
+      "notes_for_next": "SCANOSS scan complete. 384 files scanned (242 backend, 142 frontend). Match breakdown: 372 none, 12 snippet, 0 file. Triage: 0 BLOCK, 0 TRACK, 1 REVIEW (useToast.js 79% match against unlicensed FreshTab — assessed as common Vue pattern but flagged for owner review), 7 false positives (SQLAlchemy/FastAPI/Vue boilerplate), 4 ignored (below thresholds). ZERO AGPL code provenance concerns — two AGPL-component matches (settings.py 14%, DonutChart.vue 4%) were both framework boilerplate false positives. No API rate limiting encountered — free tier was sufficient. Combined with 0860a dependency results (zero AGPL, zero shipped GPL), no code provenance or license issues block CE launch from the SCANOSS perspective.",
       "cascading_impacts": [],
-      "summary": null
+      "summary": "SCANOSS snippet scan complete. 384 source files scanned against OSSKB. Zero BLOCK items, zero TRACK items. One REVIEW item (useToast.js 79% match against unlicensed component — common Vue pattern). Two AGPL-component matches were false positives (SQLAlchemy and Vue boilerplate at 14% and 4%). No code provenance concerns for CE or SaaS editions."
     },
     {
       "session_id": "0860d",
