@@ -216,12 +216,12 @@
           <p>
             In rare cases, a subagent may enter a loop. When this happens, you must manually
             intervene by pressing <kbd>ESC</kbd> in the CLI to stop the looping agent.
-            Carefully identify which agent is looping before stopping it — the remaining
+            Carefully identify which agent is looping before stopping it, the remaining
             team members will continue normally.
           </p>
           <p class="mb-0">
             This is a limitation of Gemini's subagent architecture, not an MCP server issue.
-            Stay attentive during execution so you can act quickly if needed.
+            Stay attentive during execution so you can intervene quickly and not waste tokens.
           </p>
         </v-card-text>
         <v-card-actions>
