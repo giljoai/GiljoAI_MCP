@@ -52,7 +52,7 @@
                       },
                     ]"
                   >
-                    <v-icon v-if="index < currentStep" size="14" color="#6bcf7f">
+                    <v-icon v-if="index < currentStep" size="14" color="#0e1c2d">
                       mdi-check
                     </v-icon>
                   </div>
@@ -474,17 +474,17 @@ function handleDismiss() {
 }
 
 .setup-wizard-title {
-  font-size: 2rem;
-  font-weight: 400;
+  font-size: 3rem;
+  font-weight: 700;
   color: #e1e1e1;
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.2;
   letter-spacing: 0.5px;
   text-align: center;
 }
 
 .setup-wizard-title-gradient {
-  background: linear-gradient(45deg, #ffd93d, #6bcf7f);
+  background: var(--gradient-brand);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -540,7 +540,7 @@ function handleDismiss() {
 }
 
 .step-circle--completed {
-  background: #6bcf7f;
+  background: #ffc300;
 }
 
 .step-circle--future {
@@ -560,7 +560,7 @@ function handleDismiss() {
 }
 
 .step-label--completed {
-  color: #6bcf7f;
+  color: #ffc300;
 }
 
 .step-label--future {
@@ -582,7 +582,7 @@ function handleDismiss() {
   height: 100%;
   width: 0;
   border-radius: 2px;
-  background: linear-gradient(45deg, #ffd93d, #6bcf7f);
+  background: #ffc300;
   transition: width 250ms ease-out;
 }
 
