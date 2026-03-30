@@ -139,17 +139,17 @@ Note: tenant_key is auto-injected by server from your API key session
 
 FIRST ACTIONS (DO NOT RE-STAGE):
 
-1. Verify MCP: mcp__giljo-mcp__health_check()
+1. Verify MCP: mcp__giljo_mcp__health_check()
    -> Expected: {{"status": "healthy"}}
 
 2. Signal you are alive:
-   mcp__giljo-mcp__report_progress(
+   mcp__giljo_mcp__report_progress(
        job_id="{job_id}",
        todo_items=[{{"content": "Continuation startup", "status": "in_progress"}}]
    )
 
 3. Read 360 Memory for session context:
-   mcp__giljo-mcp__fetch_context(
+   mcp__giljo_mcp__fetch_context(
        product_id="{product_param}",
        categories=["memory_360"]
    )
@@ -157,12 +157,12 @@ FIRST ACTIONS (DO NOT RE-STAGE):
    -> Contains: previous progress, current status, next steps
 
 4. Check messages + retrieve execution plan (can run in parallel):
-   mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
-   mcp__giljo-mcp__get_agent_mission(job_id="{job_id}")
+   mcp__giljo_mcp__receive_messages(agent_id="{agent_id}")
+   mcp__giljo_mcp__get_agent_mission(job_id="{job_id}")
    -> Mission contains: team roster with agent_id UUIDs, execution strategy, completion criteria
 
 5. Check workflow status:
-   mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
+   mcp__giljo_mcp__get_workflow_status(project_id="{project_id}")
 
 AFTER CONTEXT GATHERING — decide next action based on workflow status:
 - If all agents completed: proceed to closeout (update your own todos to completed via report_progress, then complete_job, then close_project_and_update_memory)
@@ -236,7 +236,7 @@ Timeout: If any agent is still "working" after 60 seconds, skip it and document 
 
 STEP 1 — Pre-flight: Gather team state (do NOT modify anything yet)
 
-mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
+mcp__giljo_mcp__get_workflow_status(project_id="{project_id}")
 
 Record:
 - Which agents need cleanup (status is NOT "complete" and NOT "decommissioned")
@@ -248,11 +248,11 @@ STEP 2 — Drain and close out each subagent
 LOOP over each non-orchestrator agent from Step 1 that needs cleanup:
 
   2a. Drain their messages:
-      mcp__giljo-mcp__receive_messages(agent_id="<agent_id>")
+      mcp__giljo_mcp__receive_messages(agent_id="<agent_id>")
       Record any important content for the 360 Memory summary.
 
   2b. If agent has incomplete todos, mark remaining as skipped:
-      mcp__giljo-mcp__report_progress(
+      mcp__giljo_mcp__report_progress(
           job_id="<their_job_id>",
           todo_items=[
               ...keep completed items as "completed",
@@ -263,7 +263,7 @@ LOOP over each non-orchestrator agent from Step 1 that needs cleanup:
       If it fails, skip and include their incomplete todos in your 360 Memory summary instead.
 
   2c. ONLY if agent is NOT already "complete", force complete it:
-      mcp__giljo-mcp__complete_job(
+      mcp__giljo_mcp__complete_job(
           job_id="<their_job_id>",
           result={{
               "summary": "Handed over due to context exhaustion. Skipped items documented in 360 Memory.",
@@ -277,18 +277,18 @@ Skip agents in status "complete" with 0 unread messages and all todos done (full
 
 STEP 3 — Drain YOUR OWN message queue
 
-mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
+mcp__giljo_mcp__receive_messages(agent_id="{agent_id}")
 
 STEP 4 — Report progress (signal alive on dashboard)
 
-mcp__giljo-mcp__report_progress(
+mcp__giljo_mcp__report_progress(
     job_id="{job_id}",
     todo_items=[...mark your own items appropriately...]
 )
 
 STEP 5 — Write 360 Memory ONCE (this is the ONLY write, must succeed first attempt)
 
-mcp__giljo-mcp__write_360_memory(
+mcp__giljo_mcp__write_360_memory(
     project_id="{project_id}",
     entry_type="handover_closeout",
     author_job_id="{job_id}",
@@ -745,14 +745,14 @@ IDENTITY:
 
 MCP CONNECTION:
 - Server URL: {mcp_url}
-- Tool Prefix: mcp__giljo-mcp__
+- Tool Prefix: mcp__giljo_mcp__
 - Auth Status: {auth_note}
 
 YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
 You are STAGING the project by creating a mission plan. You will NOT execute the work yourself.
 Your job is to: 1) Analyze requirements, 2) Create mission plan, 3) Assign work to specialist agents.
 
-MCP TOOLS AVAILABLE (ALL start with "mcp__giljo-mcp__"):
+MCP TOOLS AVAILABLE (ALL start with "mcp__giljo_mcp__"):
 ✓ health_check() - Verify MCP connection
 ✓ get_orchestrator_instructions(job_id) - Fetch context (tenant auto-injected by server)
 ✓ update_project_mission(project_id, mission) - Save mission plan
@@ -761,17 +761,17 @@ MCP TOOLS AVAILABLE (ALL start with "mcp__giljo-mcp__"):
 ✓ send_message(to_agents, content, project_id, message_type, priority) - Send message to agents (use agent_id UUIDs in to_agents)
 
 STARTUP SEQUENCE:
-1. Verify MCP: mcp__giljo-mcp__health_check()
-2. Fetch context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}')
+1. Verify MCP: mcp__giljo_mcp__health_check()
+2. Fetch context: mcp__giljo_mcp__get_orchestrator_instructions('{orchestrator_id}')
    └─► Returns: Project.description (user requirements), Product context, Agent templates
    └─► Note: tenant_key auto-injected by server from your API key session
 3. CREATE MISSION: Analyze requirements → Generate execution plan (context prioritization and orchestration)
-4. PERSIST MISSION: mcp__giljo-mcp__update_project_mission('{project_id}', your_created_mission)
+4. PERSIST MISSION: mcp__giljo_mcp__update_project_mission('{project_id}', your_created_mission)
    └─► Saves to Project.mission field for UI display
-5. SPAWN AGENTS: mcp__giljo-mcp__spawn_agent_job() to create specialist agent jobs
+5. SPAWN AGENTS: mcp__giljo_mcp__spawn_agent_job() to create specialist agent jobs
    └─► Agents will EXECUTE the work (not you)
    └─► SAVE each spawn response's agent_id - needed for UUID-based messaging later
-6. SIGNAL COMPLETE: mcp__giljo-mcp__send_message() to broadcast staging done
+6. SIGNAL COMPLETE: mcp__giljo_mcp__send_message() to broadcast staging done
    └─► Message: "STAGING_COMPLETE: Mission created, N agents spawned: [list agent names]"
    └─► This enables the Implement button in UI (required for workflow)
 
@@ -855,7 +855,7 @@ IDENTITY:
 
 MCP CONNECTION:
 - Server URL: {mcp_url}
-- Tool Prefix: mcp__giljo-mcp__
+- Tool Prefix: mcp__giljo_mcp__
 - Auth Status: {auth_note}
 
 YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
@@ -868,20 +868,20 @@ PROJECT CONTEXT (Inline - ~200 tokens):
 - Mission: {project.mission or "(Mission will be created by you)"}
 
 WORKFLOW:
-1. Verify MCP connection: mcp__giljo-mcp__health_check()
+1. Verify MCP connection: mcp__giljo_mcp__health_check()
    → Expected: {{"status": "healthy", "database": "connected"}}
    → If failed: STOP and report error - do NOT proceed
-2. Fetch complete context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}')
+2. Fetch complete context: mcp__giljo_mcp__get_orchestrator_instructions('{orchestrator_id}')
    → Returns configured context (vision, tech stack, architecture, memory, git history, templates)
    → User toggle/depth configuration automatically applied server-side
    → Depth configuration (chunking, commit count, etc.) pre-configured
    → Note: tenant_key auto-injected by server from your API key session
 3. Create condensed mission plan from fetched context
-4. Persist mission: mcp__giljo-mcp__update_project_mission('{project_id}', mission)
-5. Spawn specialist agents: mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}')
+4. Persist mission: mcp__giljo_mcp__update_project_mission('{project_id}', mission)
+5. Spawn specialist agents: mcp__giljo_mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}')
    → SAVE each response's agent_id UUID - needed for UUID-based messaging
-6. Monitor: mcp__giljo-mcp__get_workflow_status('{project_id}')
-7. Signal complete: mcp__giljo-mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
+6. Monitor: mcp__giljo_mcp__get_workflow_status('{project_id}')
+7. Signal complete: mcp__giljo_mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
    → This broadcast enables the Implement button in UI (REQUIRED)
 
 Claude Code: Use TodoWrite tool to track workflow progress.
@@ -895,12 +895,12 @@ CRITICAL DISTINCTIONS:
 - Agent jobs = Specialist agents who will DO THE ACTUAL WORK (you coordinate them)
 
 MCP CORE TOOLS (Always Available - tenant_key auto-injected by server):
-✓ mcp__giljo-mcp__health_check() - Verify MCP connection
-✓ mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}') - Fetch complete prioritized context
-✓ mcp__giljo-mcp__update_project_mission('{project_id}', mission) - Save mission plan
-✓ mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}') - Create agents (returns agent_id UUID)
-✓ mcp__giljo-mcp__get_workflow_status('{project_id}') - Check spawned agents
-✓ mcp__giljo-mcp__send_message(to_agents, content, project_id, message_type, priority) - Send message (use agent_id UUIDs in to_agents)
+✓ mcp__giljo_mcp__health_check() - Verify MCP connection
+✓ mcp__giljo_mcp__get_orchestrator_instructions('{orchestrator_id}') - Fetch complete prioritized context
+✓ mcp__giljo_mcp__update_project_mission('{project_id}', mission) - Save mission plan
+✓ mcp__giljo_mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}') - Create agents (returns agent_id UUID)
+✓ mcp__giljo_mcp__get_workflow_status('{project_id}') - Check spawned agents
+✓ mcp__giljo_mcp__send_message(to_agents, content, project_id, message_type, priority) - Send message (use agent_id UUIDs in to_agents)
 
 CONNECTION TROUBLESHOOTING:
 If MCP fails: Check server running at {mcp_url}/health
@@ -1243,9 +1243,9 @@ MCP Server: {mcp_url}
 Note: tenant_key is auto-injected by server from your API key session (secure server-side isolation)
 
 START NOW:
-1. Verify MCP: mcp__giljo-mcp__health_check()
+1. Verify MCP: mcp__giljo_mcp__health_check()
    → Expected: {{"status": "healthy"}} - If failed, STOP and report error
-2. Fetch instructions: mcp__giljo-mcp__get_orchestrator_instructions(job_id='{orchestrator_id}')
+2. Fetch instructions: mcp__giljo_mcp__get_orchestrator_instructions(job_id='{orchestrator_id}')
    → Response includes orchestrator_protocol (5-chapter workflow) AND orchestrator_identity (behavioral guidance)
 """
 
@@ -1328,7 +1328,7 @@ START NOW:
             "## FIRST ACTION (MANDATORY)",
             "Before anything else, verify MCP connection:",
             "```python",
-            "mcp__giljo-mcp__health_check()",
+            "mcp__giljo_mcp__health_check()",
             "```",
             'Expected: `{"status": "healthy"}` - If failed, STOP and report error',
             "",
@@ -1341,7 +1341,7 @@ START NOW:
             "",
             "Fetch your stored execution plan from staging:",
             "```python",
-            f'mcp__giljo-mcp__get_agent_mission(job_id="{orchestrator_id}")',
+            f'mcp__giljo_mcp__get_agent_mission(job_id="{orchestrator_id}")',
             "```",
             "Note: tenant_key is auto-injected by server from your API key session",
             "",
@@ -1409,7 +1409,7 @@ START NOW:
             '    instructions="""',
             "    You are {agent_name} (job_id: {job_id})",
             "    ",
-            '    First action: Call mcp__giljo-mcp__get_agent_mission(job_id="{job_id}")',
+            '    First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}")',
             "    Note: tenant_key is auto-injected by server from your API key session",
             "    This returns your `mission` and `full_protocol`.",
             "    Follow `full_protocol` for all lifecycle behavior",
@@ -1432,7 +1432,7 @@ START NOW:
                     '    instructions="""',
                     f"    You are {first.agent_name} (job_id: {first.job_id})",
                     "    ",
-                    f'    First action: Call mcp__giljo-mcp__get_agent_mission(job_id="{first.job_id}")',
+                    f'    First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{first.job_id}")',
                     "    Note: tenant_key is auto-injected by server from your API key session",
                     "    This returns your `mission` and `full_protocol`.",
                     "    Follow `full_protocol` for all lifecycle behavior",
@@ -1462,10 +1462,10 @@ START NOW:
         monitoring_section = [
             "## Monitoring Agent Progress",
             "",
-            "### mcp__giljo-mcp__get_workflow_status()",
+            "### mcp__giljo_mcp__get_workflow_status()",
             "Check all agent statuses:",
             "```python",
-            f'mcp__giljo-mcp__get_workflow_status(project_id="{project.id}")',
+            f'mcp__giljo_mcp__get_workflow_status(project_id="{project.id}")',
             "```",
             "Note: tenant_key is auto-injected by server from your API key session",
             "",
@@ -1481,11 +1481,11 @@ START NOW:
             "",
             "### Handle Blockers",
             "- When agent status is 'blocked', read their messages",
-            "- Respond via mcp__giljo-mcp__send_message(to_agents=['<agent-id-uuid>'], ...) using agent_id UUID",
+            "- Respond via mcp__giljo_mcp__send_message(to_agents=['<agent-id-uuid>'], ...) using agent_id UUID",
             "- Update their next_instruction field if needed",
             "",
             "### Message Handling",
-            "- Agents report progress via mcp__giljo-mcp__report_progress() and mcp__giljo-mcp__send_message()",
+            "- Agents report progress via mcp__giljo_mcp__report_progress() and mcp__giljo_mcp__send_message()",
             "- Monitor messages for questions or blockers",
             "- Respond promptly to keep workflow moving",
             "- ALWAYS use agent_id UUIDs in to_agents (from spawn_agent_job responses), never display names",
@@ -1498,7 +1498,7 @@ START NOW:
             "",
             "If you need to re-read your orchestrator mission:",
             "```python",
-            f'mcp__giljo-mcp__get_orchestrator_instructions(job_id="{orchestrator_id}")',
+            f'mcp__giljo_mcp__get_orchestrator_instructions(job_id="{orchestrator_id}")',
             "```",
             "Note: tenant_key is auto-injected by server from your API key session",
             "",
@@ -1551,7 +1551,7 @@ START NOW:
             "## When You're Done",
             "",
             "### Verify Sub-Agents Completed",
-            "1. Check all agents via mcp__giljo-mcp__get_workflow_status()",
+            "1. Check all agents via mcp__giljo_mcp__get_workflow_status()",
             "2. Ensure all have status='complete' (no failures or blockers)",
             "3. Review final deliverables",
             "",
@@ -1561,12 +1561,12 @@ START NOW:
             "you MUST resolve them before closeout. For each non-complete agent:",
             "",
             "1. **Drain their messages:**",
-            '   `mcp__giljo-mcp__receive_messages(agent_id="<their_agent_id>")`',
+            '   `mcp__giljo_mcp__receive_messages(agent_id="<their_agent_id>")`',
             "   Record any important content for the 360 Memory summary.",
             "",
             "2. **Process incomplete todos** — mark remaining items as completed or skipped:",
             "   ```python",
-            "   mcp__giljo-mcp__report_progress(",
+            "   mcp__giljo_mcp__report_progress(",
             '       job_id="<their_job_id>",',
             "       todo_items=[",
             '           ...keep completed items as "completed",',
@@ -1578,7 +1578,7 @@ START NOW:
             "",
             "3. **Force-complete the agent** (ONLY if NOT already 'complete'):",
             "   ```python",
-            "   mcp__giljo-mcp__complete_job(",
+            "   mcp__giljo_mcp__complete_job(",
             '       job_id="<their_job_id>",',
             '       result={"summary": "Force-completed by orchestrator during closeout.", "status": "force_completed"}',
             "   )",
@@ -1592,7 +1592,7 @@ START NOW:
             "### Complete Your Orchestrator Job",
             "When all sub-agents are done and project is complete:",
             "```python",
-            f'mcp__giljo-mcp__complete_job(job_id="{orchestrator_id}")',
+            f'mcp__giljo_mcp__complete_job(job_id="{orchestrator_id}")',
             "```",
             "",
             "### Handover (if needed)",
@@ -1630,7 +1630,7 @@ START NOW:
             "## FIRST ACTION (MANDATORY)",
             "Before anything else, verify MCP connection:",
             "```python",
-            "mcp__giljo-mcp__health_check()",
+            "mcp__giljo_mcp__health_check()",
             "```",
             'Expected: `{"status": "healthy"}` - If failed, STOP and report error',
             "",
@@ -1643,7 +1643,7 @@ START NOW:
             "",
             "Fetch your stored execution plan from staging:",
             "```python",
-            f'mcp__giljo-mcp__get_agent_mission(job_id="{orchestrator_id}")',
+            f'mcp__giljo_mcp__get_agent_mission(job_id="{orchestrator_id}")',
             "```",
             "Note: tenant_key is auto-injected by server from your API key session",
             "",
@@ -1703,7 +1703,7 @@ START NOW:
             '    instructions="""',
             "    You are {agent_name} (job_id: {job_id})",
             "    ",
-            '    First action: Call mcp__giljo-mcp__get_agent_mission(job_id="{job_id}")',
+            '    First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}")',
             "    Note: tenant_key is auto-injected by server from your API key session",
             "    This returns your `mission` and `full_protocol`.",
             "    Follow `full_protocol` for all lifecycle behavior.",
@@ -1724,7 +1724,7 @@ START NOW:
                     '    instructions="""',
                     f"    You are {first.agent_name} (job_id: {first.job_id})",
                     "    ",
-                    f'    First action: Call mcp__giljo-mcp__get_agent_mission(job_id="{first.job_id}")',
+                    f'    First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{first.job_id}")',
                     "    Note: tenant_key is auto-injected by server from your API key session",
                     "    This returns your `mission` and `full_protocol`.",
                     "    Follow `full_protocol` for all lifecycle behavior.",
@@ -1738,10 +1738,10 @@ START NOW:
         monitoring_section = [
             "## Monitoring Agent Progress",
             "",
-            "### mcp__giljo-mcp__get_workflow_status()",
+            "### mcp__giljo_mcp__get_workflow_status()",
             "Check all agent statuses:",
             "```python",
-            f'mcp__giljo-mcp__get_workflow_status(project_id="{project.id}")',
+            f'mcp__giljo_mcp__get_workflow_status(project_id="{project.id}")',
             "```",
             "Note: tenant_key is auto-injected by server from your API key session",
             "",
@@ -1752,7 +1752,7 @@ START NOW:
             "",
             "If you need to re-read your orchestrator mission:",
             "```python",
-            f'mcp__giljo-mcp__get_orchestrator_instructions(job_id="{orchestrator_id}")',
+            f'mcp__giljo_mcp__get_orchestrator_instructions(job_id="{orchestrator_id}")',
             "```",
             "",
         ]
@@ -1776,13 +1776,13 @@ START NOW:
         completion_section = [
             "## When You're Done",
             "",
-            "1. Check all agents via mcp__giljo-mcp__get_workflow_status()",
+            "1. Check all agents via mcp__giljo_mcp__get_workflow_status()",
             "2. Ensure all have status='complete'",
             "3. Review final deliverables",
             *git_closeout_lines,
             "### Complete Your Orchestrator Job",
             "```python",
-            f'mcp__giljo-mcp__complete_job(job_id="{orchestrator_id}")',
+            f'mcp__giljo_mcp__complete_job(job_id="{orchestrator_id}")',
             "```",
             "",
         ]
@@ -1811,7 +1811,7 @@ START NOW:
             "## FIRST ACTION (MANDATORY)",
             "Before anything else, verify MCP connection:",
             "```python",
-            "mcp__giljo-mcp__health_check()",
+            "mcp__giljo_mcp__health_check()",
             "```",
             'Expected: `{"status": "healthy"}` - If failed, STOP and report error',
             "",
@@ -1824,7 +1824,7 @@ START NOW:
             "",
             "Fetch your stored execution plan from staging:",
             "```python",
-            f'mcp__giljo-mcp__get_agent_mission(job_id="{orchestrator_id}")',
+            f'mcp__giljo_mcp__get_agent_mission(job_id="{orchestrator_id}")',
             "```",
             "Note: tenant_key is auto-injected by server from your API key session",
             "",
@@ -1880,7 +1880,7 @@ START NOW:
             "@{agent_name}",
             "You are {agent_name} (job_id: {job_id})",
             "",
-            'First action: Call mcp__giljo-mcp__get_agent_mission(job_id="{job_id}")',
+            'First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}")',
             "Note: tenant_key is auto-injected by server from your API key session",
             "This returns your `mission` and `full_protocol`.",
             "Follow `full_protocol` for all lifecycle behavior.",
@@ -1903,7 +1903,7 @@ START NOW:
                     f"@{first.agent_name}",
                     f"You are {first.agent_name} (job_id: {first.job_id})",
                     "",
-                    f'First action: Call mcp__giljo-mcp__get_agent_mission(job_id="{first.job_id}")',
+                    f'First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{first.job_id}")',
                     "Note: tenant_key is auto-injected by server from your API key session",
                     "This returns your `mission` and `full_protocol`.",
                     "Follow `full_protocol` for all lifecycle behavior.",
@@ -1915,10 +1915,10 @@ START NOW:
         monitoring_section = [
             "## Monitoring Agent Progress",
             "",
-            "### mcp__giljo-mcp__get_workflow_status()",
+            "### mcp__giljo_mcp__get_workflow_status()",
             "Check all agent statuses:",
             "```python",
-            f'mcp__giljo-mcp__get_workflow_status(project_id="{project.id}")',
+            f'mcp__giljo_mcp__get_workflow_status(project_id="{project.id}")',
             "```",
             "Note: tenant_key is auto-injected by server from your API key session",
             "",
@@ -1929,7 +1929,7 @@ START NOW:
             "",
             "If you need to re-read your orchestrator mission:",
             "```python",
-            f'mcp__giljo-mcp__get_orchestrator_instructions(job_id="{orchestrator_id}")',
+            f'mcp__giljo_mcp__get_orchestrator_instructions(job_id="{orchestrator_id}")',
             "```",
             "",
         ]
@@ -1953,13 +1953,13 @@ START NOW:
         completion_section = [
             "## When You're Done",
             "",
-            "1. Check all agents via mcp__giljo-mcp__get_workflow_status()",
+            "1. Check all agents via mcp__giljo_mcp__get_workflow_status()",
             "2. Ensure all have status='complete'",
             "3. Review final deliverables",
             *git_closeout_lines,
             "### Complete Your Orchestrator Job",
             "```python",
-            f'mcp__giljo-mcp__complete_job(job_id="{orchestrator_id}")',
+            f'mcp__giljo_mcp__complete_job(job_id="{orchestrator_id}")',
             "```",
             "",
         ]
@@ -1990,7 +1990,7 @@ START NOW:
             "## FIRST ACTION (MANDATORY)",
             "Verify MCP connection:",
             "```",
-            "mcp__giljo-mcp__health_check()",
+            "mcp__giljo_mcp__health_check()",
             "```",
             "",
             f"You are the ORCHESTRATOR for project '{project.name}'.",
@@ -1998,7 +1998,7 @@ START NOW:
             "",
             "Call `get_agent_mission` to receive your current team state and operating protocol:",
             "```",
-            f'mcp__giljo-mcp__get_agent_mission(job_id="{orchestrator_id}")',
+            f'mcp__giljo_mcp__get_agent_mission(job_id="{orchestrator_id}")',
             "```",
         ]
         return "\n".join(lines)

@@ -16,14 +16,14 @@ Also provides bootstrap prompt templates for one-time CLI onboarding.
 GIL_GET_AGENTS_MD = """---
 name: gil_get_agents
 description: Download and install GiljoAI agent templates from the MCP server
-allowed-tools: mcp__giljo-mcp__*, Bash, Read, Write, AskUserQuestion
+allowed-tools: mcp__giljo_mcp__*, Bash, Read, Write, AskUserQuestion
 ---
 
 You are the GiljoAI agent template installer for Claude Code.
 
 ## Your Job
 
-1. Call `mcp__giljo-mcp__get_agent_templates_for_export` with `platform="claude_code"`
+1. Call `mcp__giljo_mcp__get_agent_templates_for_export` with `platform="claude_code"`
 2. Show a summary table of all agents (role, name, description)
 3. Use AskUserQuestion to ask for model preference with selectable options:
    Question: "Which model should agents use?"
@@ -154,7 +154,7 @@ FLAGS:
    ```
 
 3. **Call MCP Tool:**
-   Use the `mcp__giljo-mcp__create_task` tool with:
+   Use the `mcp__giljo_mcp__create_task` tool with:
    ```
    title: <title value>
    description: <description value or title if not provided>
@@ -194,7 +194,7 @@ FLAGS:
    If `--description` is not provided, review the conversation context and generate a concise description of the project's purpose and scope. If there is no meaningful conversation context, use the project name as the description.
 
 4. **Call MCP Tool:**
-   Use the `mcp__giljo-mcp__create_project` tool with:
+   Use the `mcp__giljo_mcp__create_project` tool with:
    ```
    name: <project name>
    description: <description value>
@@ -282,7 +282,7 @@ FLAGS:
    ```
 
 4. **Call MCP Tool:**
-   Use `mcp__giljo-mcp__create_task` with:
+   Use `mcp__giljo_mcp__create_task` with:
    ```
    title: <confirmed title>
    description: <confirmed description>
@@ -322,7 +322,7 @@ FLAGS:
    If the user provides a type, pass it as `project_type`. If skipped, omit the parameter.
 
 3. **Call MCP Tool:**
-   Use `mcp__giljo-mcp__create_project` with:
+   Use `mcp__giljo_mcp__create_project` with:
    ```
    name: <confirmed project name>
    description: <confirmed description>
@@ -495,14 +495,14 @@ tools:
   - grep_search
   - list_directory
   - read_many_files
-  - mcp_giljo-mcp_*
+  - mcp_giljo_mcp_*
 ---
 ```
 
 CRITICAL format rules:
 - `kind` MUST be `local` (not `agent`) — matches Gemini built-in agent format
 - Tool names: `run_shell_command` (NOT `shell`), `grep_search` (NOT `search`)
-- MCP tools: use `mcp_giljo-mcp_*` (server-specific wildcard, proven to work)
+- MCP tools: use `mcp_giljo_mcp_*` (server-specific wildcard, proven to work)
 - `model: inherit` uses the parent session's model; `/gil_get_agents` rewrites this to user's choice
 - Colors are NOT supported — omit any color fields
 

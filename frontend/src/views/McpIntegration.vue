@@ -397,7 +397,7 @@ const shareLinks = ref(null)
 const manualConfigJson = computed(() => {
   return JSON.stringify(
     {
-      'giljo-mcp': {
+      'giljo_mcp': {
         command: 'python',
         args: ['-m', 'giljo_mcp'],
         env: {
