@@ -221,24 +221,3 @@ class JWTManager:
                 return None
         except jwt.InvalidTokenError:
             return None
-
-    @classmethod
-    def decode_token_no_verify(cls, token: str) -> dict:
-        """
-        Decode JWT token without verification (for debugging/testing only).
-
-        WARNING: Do NOT use for authentication - this does not verify signature!
-        Use verify_token() for production authentication.
-
-        Args:
-            token: JWT token string to decode
-
-        Returns:
-            Decoded payload (unverified)
-
-        Example:
-            >>> token = JWTManager.create_access_token(...)
-            >>> payload = JWTManager.decode_token_no_verify(token)
-            >>> payload["exp"]  # Check expiration claim in tests
-        """
-        return jwt.decode(token, options={"verify_signature": False})
