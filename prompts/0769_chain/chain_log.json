@@ -134,9 +134,9 @@
       "title": "Frontend Design Token Remediation",
       "handover": "handovers/0769d_FRONTEND_DESIGN_TOKENS.md",
       "color": "#FF9800",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-30T13:00:00Z",
+      "completed_at": "2026-03-30T14:05:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "Fix 2 ESLint errors",
@@ -146,12 +146,31 @@
         "Extract useFormatDate composable, replace 11 implementations",
         "Remove dead code (generateToken, statusIcon, getPhaseColor)"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Task 1: Fixed ESLint errors — let->const in ProjectsView.vue, string concat->template literal in RecentProjectsList.vue",
+        "Task 2: Replaced hardcoded colors across 21 .vue files with SCSS design tokens. Added new tokens to design-tokens.scss: $color-status-success, $color-status-error, $color-status-warning, $color-status-info, $color-brand-yellow, $color-text-muted, $color-text-dark, $color-surface, $color-border-subtle, $color-border-light. JS/template colors that can't use SCSS vars annotated with design-token-exempt comments.",
+        "Task 3: Fixed 12 CSS border violations across 8 files — replaced border on rounded elements with box-shadow: inset pattern",
+        "Task 4: All !important hardcoded color overrides already fixed by Task 2 color token work — no additional changes needed",
+        "Task 5: Created useFormatDate composable (frontend/src/composables/useFormatDate.js) with formatDate, formatDateTime, formatDateCompact. Replaced 11 implementations across ApiKeyManager, UserManager, MemberList, ProductForm, ProductDetailsDialog, CloseoutModal, ProjectReviewModal, ProjectsView, ProductsView, ProductDetailView, RecentProjectsList",
+        "Task 6: Removed dead code — generateToken from AgentExport.vue, statusIcon computed from StatusBadge.vue, getPhaseColor + phaseColors from JobsTab.vue",
+        "Bonus: Fixed 5 pre-existing ESLint catch clause warnings (unused _e, _, _err params) in ActiveProductDisplay, AiToolConfigWizard, SetupStep2Connect, useFieldPriority"
+      ],
+      "deviations": [
+        "Actual hardcoded color count was ~140 across 21 files, not 396 across 55 — audit overcounted or many were already fixed",
+        "Some JS runtime colors (chart colors, Vuetify color props, dynamic inline styles) cannot use SCSS variables — annotated with design-token-exempt comments documenting the matching token name",
+        "SetupWizardOverlay #b0b8d0: no exact token, mapped to closest match $lightest-blue with exempt comment",
+        "StatusBadge test count dropped from 13 to 12 — removed test for deleted statusIcon computed property"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "New tokens in design-tokens.scss: $color-status-success (#4caf50), $color-status-error (#f44336), $color-status-warning (#ff9800), $color-status-info (#2196f3), $color-brand-yellow (#ffc300), $color-text-muted (#9e9e9e), $color-text-dark (#333333), $color-surface (#ffffff), $color-border-subtle (rgba(0,0,0,0.12)), $color-border-light (rgba(255,255,255,0.12)). useFormatDate composable at frontend/src/composables/useFormatDate.js exports { formatDate, formatDateTime, formatDateCompact }. formatDate returns 'Mar 30, 2026' (en-US short month), formatDateTime returns 'Mar 30, 2026, 02:45 PM', formatDateCompact returns 'DD/MM/YY'. Empty inputs return 'N/A' (formatDate/formatDateTime) or em-dash (formatDateCompact). Border violations: 12 files converted from CSS border to box-shadow: inset on rounded elements. Components that had smooth-border-color set to #ffc300 now use var(--color-accent-primary). Vitest: 96 files, 1893 tests passing, 0 failures (1 test removed for deleted statusIcon).",
+      "cascading_impacts": [
+        "useFormatDate composable — 11 components now use centralized date formatting; output format changed from mixed local formats to standardized en-US short-month",
+        "design-tokens.scss has 10 new tokens — available for any component that imports design-tokens",
+        "Dead code removed: generateToken (AgentExport), statusIcon (StatusBadge), getPhaseColor+phaseColors (JobsTab)",
+        "SetupStep2Connect and SetupStep3Commands: Vuetify color props now use JS constants (COLOR_MUTED, COLOR_SUCCESS, COLOR_ERROR_LIGHT) instead of inline hex",
+        "SetupWizardOverlay: selectedCardStyle --smooth-border-color uses var(--color-accent-primary) instead of #ffc300"
+      ],
+      "summary": "All 6 tasks completed. Replaced hardcoded colors across 21 .vue files with SCSS design tokens (10 new tokens added). Fixed 12 CSS border violations (box-shadow: inset). Created useFormatDate composable replacing 11 implementations. Removed 3 dead code items. Fixed 5 bonus ESLint catch clause warnings. ESLint: 0 errors, 6 warnings (under 8 max). Build passes. Vitest: 96 files, 1893 tests, 0 failures."
     },
     {
       "session_id": "0769e",

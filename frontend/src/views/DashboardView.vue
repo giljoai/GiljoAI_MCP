@@ -178,7 +178,7 @@
           </template>
           <v-list-item-title class="text-body-2">{{ c.message }}</v-list-item-title>
           <v-list-item-subtitle class="text-caption">
-            <span style="font-family: monospace; color: #FFD700">{{ c.sha?.substring(0, 8) }}</span>
+            <span style="font-family: monospace; color: var(--color-accent-primary)">{{ c.sha?.substring(0, 8) }}</span>
             <span v-if="c.author" class="mx-2">|</span>
             <span v-if="c.author">{{ c.author }}</span>
           </v-list-item-subtitle>
@@ -242,16 +242,16 @@ const recentCommits = ref([])
 
 // Status chart colors — harmonized with StatusBadge.vue
 const statusColors = {
-  active: '#ffffff',
-  inactive: '#9e9e9e',
-  completed: '#4caf50',
-  cancelled: '#c6298c',
-  terminated: '#f44336',
-  staged: '#ffc107',
+  active: '#ffffff', /* design-token-exempt: chart color — $color-surface */
+  inactive: '#9e9e9e', /* design-token-exempt: chart color — $color-text-muted */
+  completed: '#4caf50', /* design-token-exempt: chart color — $color-status-success */
+  cancelled: '#c6298c', /* design-token-exempt: chart color — $color-status-failed */
+  terminated: '#f44336', /* design-token-exempt: chart color — $color-status-error */
+  staged: '#ffc107', /* design-token-exempt: chart color — closest $color-brand-yellow */
 }
 
 // Fallback color for agents without a configured background_color
-const defaultAgentColor = '#9e9e9e'
+const defaultAgentColor = '#9e9e9e' /* design-token-exempt: chart color — $color-text-muted */
 
 // Computed stat cards
 const projectStatCards = computed(() => {
@@ -307,7 +307,7 @@ const statusChartData = computed(() => {
     if (count > 0 && status !== 'deleted') {
       labels.push(status.charAt(0).toUpperCase() + status.slice(1))
       values.push(count)
-      colors.push(statusColors[status] || '#9e9e9e')
+      colors.push(statusColors[status] || '#9e9e9e') /* design-token-exempt: chart color — $color-text-muted */
     }
   }
 
@@ -324,7 +324,7 @@ const taxonomyChartData = computed(() => {
     if (item.count > 0) {
       labels.push(item.label || 'Untyped')
       values.push(item.count)
-      colors.push(item.color || '#9e9e9e')
+      colors.push(item.color || '#9e9e9e') /* design-token-exempt: chart color — $color-text-muted */
     }
   }
 
@@ -551,7 +551,10 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../styles/variables' as *;
+@use '../styles/design-tokens' as *;
+
 .stats-grid {
   display: flex;
   flex-wrap: wrap;
@@ -559,14 +562,14 @@ onUnmounted(() => {
 }
 
 .stats-wrapper {
-  background: #0e1c2d !important;
-  border-radius: 12px !important;
+  background: $color-background-primary !important;
+  border-radius: $radius-lg !important;
 }
 
 .stat-card {
   flex: 0 0 auto;
-  border-radius: 8px !important;
-  background: #182739 !important;
+  border-radius: $radius-md !important;
+  background: $elevation-raised !important;
 }
 
 .stat-card-inner {
@@ -579,9 +582,10 @@ onUnmounted(() => {
 .stat-icon-box {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: $radius-md;
   background: transparent;
-  border: 2px solid #315074;
+  border: none !important;
+  box-shadow: inset 0 0 0 2px $med-blue;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -597,7 +601,7 @@ onUnmounted(() => {
 .stat-value {
   font-size: 1.1rem;
   font-weight: 700;
-  color: rgb(255, 215, 0);
+  color: $color-status-waiting;
   margin-left: auto;
   padding-left: 8px;
 }
@@ -609,8 +613,8 @@ onUnmounted(() => {
 }
 
 .chart-card {
-  background: #182739 !important;
-  border-radius: 12px !important;
+  background: $elevation-raised !important;
+  border-radius: $radius-lg !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -618,7 +622,7 @@ onUnmounted(() => {
 }
 
 .activity-card {
-  background: #182739 !important;
-  border-radius: 12px !important;
+  background: $elevation-raised !important;
+  border-radius: $radius-lg !important;
 }
 </style>

@@ -481,11 +481,6 @@ const phaseSortedAgents = computed(() => {
  * Handover 0829: Phase badge color palette.
  * Reuses tones from the execution order bar for visual consistency.
  */
-const phaseColors = ['#1565C0', '#00838F', '#6A1B9A', '#E65100', '#2E7D32', '#AD1457']
-function getPhaseColor(phase) {
-  if (phase == null || phase < 1) return 'transparent'
-  return phaseColors[(phase - 1) % phaseColors.length]
-}
 
 /**
  * GiljoAI face icon (dark theme only)
@@ -963,6 +958,8 @@ async function copyToClipboard(text) {
 </script>
 
 <style scoped lang="scss">
+@use '../../styles/design-tokens' as *;
+
 .implement-tab-wrapper {
   padding: 16px;
 
@@ -1095,8 +1092,8 @@ async function copyToClipboard(text) {
             font-weight: 600;
             padding: 2px 8px;
             border-radius: 10px;
-            background-color: #FBC02D;
-            color: #182739;
+            background-color: #FBC02D; // exempt: amber, no token
+            color: $elevation-raised;
             white-space: nowrap;
 
             &--none {
@@ -1123,7 +1120,8 @@ async function copyToClipboard(text) {
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            border: 2px solid rgb(255, 215, 0);
+            border: none !important;
+            box-shadow: inset 0 0 0 2px rgb(255, 215, 0);
             background: transparent;
             color: rgb(255, 215, 0);
             cursor: pointer;
@@ -1138,7 +1136,7 @@ async function copyToClipboard(text) {
             }
 
             &:hover:not(:disabled) {
-              border-color: rgb(var(--v-theme-highlight));
+              box-shadow: inset 0 0 0 2px rgb(var(--v-theme-highlight));
               background: rgba(255, 215, 0, 0.1);
               transform: scale(1.1);
 
@@ -1321,7 +1319,8 @@ async function copyToClipboard(text) {
 
     .recipient-btn,
     .broadcast-btn {
-      border: 2px solid rgba(255, 215, 0, 0.4);
+      border: none !important;
+      box-shadow: inset 0 0 0 2px rgba(255, 215, 0, 0.4);
       border-radius: 6px;
       text-transform: none;
       font-size: 14px;
@@ -1334,7 +1333,7 @@ async function copyToClipboard(text) {
         background: rgb(var(--v-theme-highlight));
         color: rgb(var(--v-theme-on-primary));
         font-weight: 600;
-        border-color: rgb(var(--v-theme-highlight));
+        box-shadow: inset 0 0 0 2px rgb(var(--v-theme-highlight));
 
         &:hover {
           background: rgb(var(--v-theme-highlight-hover));
@@ -1344,7 +1343,7 @@ async function copyToClipboard(text) {
       &.v-btn--variant-outlined {
         &:hover {
           background: rgba(255, 215, 0, 0.1);
-          border-color: rgba(255, 215, 0, 0.6);
+          box-shadow: inset 0 0 0 2px rgba(255, 215, 0, 0.6);
           color: rgba(255, 215, 0, 0.9);
         }
       }
@@ -1355,7 +1354,8 @@ async function copyToClipboard(text) {
 
       ::v-deep(.v-field) {
         background: rgba(var(--v-theme-on-surface), 0.05);
-        border: 2px solid rgba(var(--v-theme-on-surface), 0.2);
+        border: none !important;
+        box-shadow: inset 0 0 0 2px rgba(var(--v-theme-on-surface), 0.2);
         border-radius: 8px;
 
         input {
@@ -1369,11 +1369,11 @@ async function copyToClipboard(text) {
         }
 
         &:hover {
-          border-color: rgba(var(--v-theme-on-surface), 0.3);
+          box-shadow: inset 0 0 0 2px rgba(var(--v-theme-on-surface), 0.3);
         }
 
         &.v-field--focused {
-          border-color: rgb(var(--v-theme-highlight));
+          box-shadow: inset 0 0 0 2px rgb(var(--v-theme-highlight));
         }
       }
     }

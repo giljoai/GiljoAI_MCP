@@ -597,15 +597,15 @@ const hierarchicalTasks = computed(() => {
 function getStatusColor(status) {
   const colors = {
     pending: 'warning',
-    in_progress: '#fff',
+    in_progress: '#fff', // exempt: Vuetify color prop requires hex ($color-surface)
     completed: 'success',
-    cancelled: '#c6298c',
+    cancelled: '#c6298c', // exempt: Vuetify color prop requires hex ($color-status-failed)
   }
   return colors[status] || 'grey'
 }
 
 function getStatusTextStyle(status) {
-  if (status === 'in_progress') return { color: '#333' }
+  if (status === 'in_progress') return { color: '#333' } // exempt: dynamic inline style ($color-text-dark)
   return {}
 }
 

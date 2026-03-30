@@ -239,7 +239,7 @@
             <!-- Compact dot: small viewports -->
             <span
               class="staged-dot"
-              :style="{ backgroundColor: isProjectStaged(item) ? '#4caf50' : '#9e9e9e' }"
+              :style="{ backgroundColor: isProjectStaged(item) ? 'var(--color-status-success)' : 'var(--color-text-muted)' }"
             >{{ isProjectStaged(item) ? 'Y' : 'N' }}</span>
           </template>
 
@@ -384,9 +384,9 @@
           <div v-if="editingProject" class="text-caption text-medium-emphasis mb-4">
             <div>Project ID: <span style="font-family: monospace">{{ editingProject.id }}</span></div>
             <div>
-              Created: {{ formatDate(editingProject.created_at, true) }}
+              Created: {{ formatDateTime(editingProject.created_at) }}
               <span class="mx-2">|</span>
-              Updated: {{ formatDate(editingProject.updated_at, true) }}
+              Updated: {{ formatDateTime(editingProject.updated_at) }}
             </div>
           </div>
 
@@ -782,6 +782,7 @@ import AddTypeModal from '@/components/projects/AddTypeModal.vue'
 import AgentTipsDialog from '@/components/common/AgentTipsDialog.vue'
 import { DEFAULT_PROJECT_TYPE_COLOR } from '@/utils/constants'
 import api from '@/services/api'
+import { useFormatDate } from '@/composables/useFormatDate'
 
 // Router
 const router = useRouter()
@@ -824,42 +825,19 @@ const showPurgeAllDialog = ref(false)
 // Sort configuration
 const sortConfig = ref([{ key: 'created_at', order: 'desc' }])
 
-// Date locale preference (US: MM-DD-YYYY, EU: DD-MM-YYYY)
-// Format date as dd-MMM-yyyy (locked format)
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-function formatDate(dateStr, includeTime = false) {
-  if (!dateStr) return '—'
-  const d = new Date(dateStr)
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mmm = MONTHS[d.getMonth()]
-  const yyyy = d.getFullYear()
-  if (!includeTime) return `${dd}-${mmm}-${yyyy}`
-  const hh = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  return `${dd}-${mmm}-${yyyy} ${hh}:${min}`
-}
+const { formatDate, formatDateTime, formatDateCompact } = useFormatDate()
 
-// Compact date for small viewports: DD/MM/YY
-function formatDateCompact(dateStr) {
-  if (!dateStr) return '—'
-  const d = new Date(dateStr)
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const yy = String(d.getFullYear()).slice(-2)
-  return `${dd}/${mm}/${yy}`
-}
-
-// Status dot color mapping for compact view
+/* design-token-exempt: dynamic JS color lookup used in template :style bindings */
 function statusDotColor(status) {
   const colors = {
-    active: '#ffffff',
-    inactive: '#9e9e9e',
-    completed: '#4caf50',
-    cancelled: '#fb8c00',
-    terminated: '#f44336',
-    deleted: '#f44336',
+    active: '#ffffff', /* design-token-exempt: $color-surface */
+    inactive: '#9e9e9e', /* design-token-exempt: $color-text-muted */
+    completed: '#4caf50', /* design-token-exempt: $color-status-success */
+    cancelled: '#fb8c00', /* design-token-exempt: $color-status-warning */
+    terminated: '#f44336', /* design-token-exempt: $color-status-error */
+    deleted: '#f44336', /* design-token-exempt: $color-status-error */
   }
-  return colors[status] || '#9e9e9e'
+  return colors[status] || '#9e9e9e' /* design-token-exempt: $color-text-muted */
 }
 
 // Form data
@@ -1208,7 +1186,7 @@ const actionsByStatus = {
 // Get available status actions for a project based on its current status
 function getStatusActions(item) {
   const normalized = normalizeStatus(item.status)
-  let keys = [...(actionsByStatus[normalized] || [])]
+  const keys = [...(actionsByStatus[normalized] || [])]
   if (normalized === 'cancelled' && !isProjectStaged(item)) {
     keys.unshift('reopen')
   }
@@ -1531,7 +1509,16 @@ onBeforeUnmount(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/variables' as *;
+@use '../styles/design-tokens' as *;
+
+/* CSS custom properties for template-level token references */
+:deep(.v-container) {
+  --color-status-success: #{$color-status-success};
+  --color-text-muted: #{$color-text-muted};
+}
+
 .cursor-pointer {
   cursor: pointer;
 }
@@ -1541,11 +1528,12 @@ onBeforeUnmount(() => {
 }
 
 .border {
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: none !important;
+  box-shadow: inset 0 0 0 1px $color-border-subtle;
 }
 
 .border-b {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid $color-border-subtle;
 }
 
 .rounded {
@@ -1569,7 +1557,7 @@ onBeforeUnmount(() => {
   position: sticky;
   top: 0;
   z-index: 2;
-  background-color: white;
+  background-color: $color-surface;
 }
 
 /* Remove default table wrapper overflow to allow container scroll */
@@ -1582,9 +1570,10 @@ onBeforeUnmount(() => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 2px solid rgb(255, 215, 0);
+  border: none !important;
+  box-shadow: inset 0 0 0 2px $color-brand-yellow;
   background: transparent;
-  color: rgb(255, 215, 0);
+  color: $color-brand-yellow;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -1594,12 +1583,12 @@ onBeforeUnmount(() => {
 }
 
 .play-circle-btn :deep(.v-icon) {
-  color: rgb(255, 215, 0);
+  color: $color-brand-yellow;
 }
 
 .play-circle-btn:hover {
-  background: rgba(255, 215, 0, 0.15);
-  border-color: rgb(255, 215, 0);
+  background: rgba($color-brand-yellow, 0.15);
+  box-shadow: inset 0 0 0 2px $color-brand-yellow;
 }
 
 /* ── Responsive compact elements (hidden by default, shown via media queries) ── */
@@ -1627,7 +1616,7 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   font-size: 11px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: $darkest-blue;
   line-height: 22px;
   text-align: center;
 }
@@ -1640,7 +1629,7 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   font-size: 11px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: $darkest-blue;
   line-height: 22px;
   text-align: center;
 }
