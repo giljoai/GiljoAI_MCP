@@ -575,7 +575,7 @@ completed/reference/
 **0827** (Enhancement & Feature Series): 0827 Agent Reactivation & Continuation (COMPLETE, 7 commits, 4 phases: display names + auto-block + tools + todo_append)
 **0828** (Enhancement & Feature Series): 0828 OAuth 2.1 PKCE Flow for MCP Client Authorization (ACTIVE)
 **0844a-c** (Enhancement & Feature Series): 0844 Tenant Data Export/Import series (ALL NOT STARTED). 0844a export service, 0844b import+schema diff, 0844c frontend. Sequential with manual gates between phases.
-**0860a-d** (Code Provenance & License Audit): 0860a tool install + dep scan (COMPLETE), 0860b ScanCode source scan (COMPLETE), 0860c SCANOSS snippet scan (COMPLETE), 0860d findings consolidation + audit summary (COMPLETE 2026-03-30). CE: PASS WITH REVIEW ITEMS, SaaS: PASS.
+**0860a-d** (Code Provenance & License Audit — PERMANENT, reusable): All phases COMPLETE (2026-03-30). CE: PASS, SaaS: PASS. Owner review cleared all 4 REVIEW items. **Handovers live in `audit/` folder (not `handovers/`) — never closed out, rerun before each major release.** Spec: `audit/CODE_PROVENANCE_LICENSE_AUDIT.md`. Results: `audit/AUDIT_SUMMARY.md`.
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
