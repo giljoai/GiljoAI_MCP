@@ -568,21 +568,6 @@ async def get_bootstrap_prompt(
 
     logger.info(f"Bootstrap prompt generated: platform={platform}, token={token}")
 
-    try:
-        ws_manager = request.app.state.websocket_manager
-        if ws_manager:
-            from api.events.schemas import EventFactory
-
-            event = EventFactory.setup_commands_installed(
-                tenant_key=tenant_key,
-                user_id=str(current_user.id),
-                tool_name=platform,
-                command_count=len(get_all_templates(platform)),
-            )
-            await ws_manager.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
-    except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as e:
-        logger.debug(f"Setup commands_installed event emission failed (non-blocking): {e}")
-
     return {
         "prompt": prompt,
         "expires_at": expires_at,
