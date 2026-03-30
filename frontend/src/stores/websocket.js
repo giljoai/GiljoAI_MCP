@@ -18,6 +18,7 @@ import { ref, computed } from 'vue'
 import { API_CONFIG } from '@/config/api'
 import { useToast } from '@/composables/useToast'
 import { useNotificationStore } from '@/stores/notifications'
+import { normalizeWebsocketPayload } from '@/utils/normalizeWebsocketPayload'
 
 export const useWebSocketStore = defineStore('websocket', () => {
   // ============================================
@@ -57,6 +58,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   // Connection listeners
   const connectionListeners = ref(new Set())
+
+  // Reconnection mutex
+  const reconnectTimer = ref(null)
 
   // Heartbeat
   const pingInterval = ref(null)
@@ -213,6 +217,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
   function disconnect() {
     log('Disconnecting')
 
+    // Cancel pending reconnect
+    if (reconnectTimer.value) {
+      clearTimeout(reconnectTimer.value)
+      reconnectTimer.value = null
+    }
+
     // Stop heartbeat
     if (pingInterval.value) {
       clearInterval(pingInterval.value)
@@ -286,6 +296,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
    * Attempt to reconnect with exponential backoff
    */
   async function attemptReconnect() {
+    // Clear any existing reconnect timer to prevent overlapping attempts
+    if (reconnectTimer.value) {
+      clearTimeout(reconnectTimer.value)
+      reconnectTimer.value = null
+    }
+
     reconnectAttempts.value++
     connectionStatus.value = 'reconnecting'
 
@@ -316,7 +332,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
       timeout: 2000,
     })
 
-    setTimeout(async () => {
+    reconnectTimer.value = setTimeout(async () => {
+      reconnectTimer.value = null
       try {
         await connect(authCredentials.value)
 
@@ -425,17 +442,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
    * @see Handover 0290 - WebSocket Payload Normalization
    */
   function handleMessage(data) {
-    const { type, ...rest } = data
-
     // Normalize nested payloads (Handover 0290)
-    // If payload has 'data' key with object value, merge nested fields to top level
-    // This provides backward compatibility for both:
-    // - HTTP bridge (flat): { type, project_id, tenant_key, ... }
-    // - Direct broadcast (nested): { type, data: { project_id, tenant_key, ... } }
-    let payload = rest
-    if (rest.data && typeof rest.data === 'object' && !Array.isArray(rest.data)) {
-      payload = { ...rest, ...rest.data } // Merge nested to top level, preserve original
-    }
+    // Uses shared utility for consistent normalization with event router
+    const { type, payload } = normalizeWebsocketPayload(data)
 
     // Handle system messages
     switch (type) {
