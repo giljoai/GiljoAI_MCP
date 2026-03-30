@@ -1,0 +1,106 @@
+{
+  "chain_id": "0860",
+  "chain_name": "Code Provenance & License Compliance Audit",
+  "created_at": "2026-03-30",
+  "spec_document": "handovers/CODE_PROVENANCE_LICENSE_AUDIT.md",
+  "branch": "feature/0860-license-audit",
+  "total_sessions": 4,
+  "orchestrator_notes": "Agents: read this file BEFORE starting. If orchestrator_directives contains STOP, halt immediately. This audit gates the CE public launch on April 5, 2026. Every agent MUST read the spec document (handovers/CODE_PROVENANCE_LICENSE_AUDIT.md) before starting — it contains the license policy table, edition-aware triage rules, and output format requirements. CRITICAL: Do NOT resolve findings. Do NOT rewrite code. Document everything and stop. If you find ANY AGPL dependency or code match, note it immediately in blockers_encountered — this is a BLOCK for BOTH editions.",
+  "orchestrator_directives": [],
+  "sessions": [
+    {
+      "session_id": "0860a",
+      "title": "Tool Installation + Dependency License Scan",
+      "handover": "handovers/0860a_TOOL_INSTALL_DEP_SCAN.md",
+      "color": "#4CAF50",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["general-purpose"],
+      "planned_tasks": [
+        "Create audit/ output directory, verify .gitignore",
+        "Install ScanCode Toolkit, SCANOSS, pip-licenses",
+        "Run pip-licenses for Python dependency tree",
+        "Run license-checker for npm dependency tree",
+        "Produce audit/DEPENDENCY_LICENSES.md with flagged items",
+        "Early warning check for AGPL dependencies"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0860b",
+      "title": "ScanCode Source Scanning",
+      "handover": "handovers/0860b_SCANCODE_SOURCE_SCAN.md",
+      "color": "#2196F3",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["general-purpose"],
+      "planned_tasks": [
+        "ScanCode backend scan (src/giljo_mcp/, api/, migrations/, installers)",
+        "ScanCode frontend scan (frontend/src/, package.json, package-lock.json)",
+        "Parse and triage results per license policy table",
+        "Produce audit/SCANCODE_FINDINGS.md with all 7 required sections"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0860c",
+      "title": "SCANOSS Snippet Scanning",
+      "handover": "handovers/0860c_SCANOSS_SNIPPET_SCAN.md",
+      "color": "#9C27B0",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["general-purpose"],
+      "planned_tasks": [
+        "SCANOSS backend scan (src/giljo_mcp/, api/)",
+        "SCANOSS frontend scan (frontend/src/)",
+        "Parse and triage with edition-aware rules",
+        "Filter expected false positives (FastAPI, SQLAlchemy, Vue boilerplate)",
+        "Produce audit/SCANOSS_FINDINGS.md with all 5 required sections"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0860d",
+      "title": "Findings Consolidation + Audit Summary",
+      "handover": "handovers/0860d_FINDINGS_CONSOLIDATION.md",
+      "color": "#FF9800",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["general-purpose"],
+      "planned_tasks": [
+        "Cross-reference findings across all 3 sources",
+        "Produce audit/AUDIT_SUMMARY.md with CE and SaaS verdicts",
+        "Produce remediation plan if CE verdict is FAIL",
+        "Update handover catalogue",
+        "Commit summary documents to branch"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    }
+  ],
+  "chain_summary": null,
+  "final_status": "pending"
+}

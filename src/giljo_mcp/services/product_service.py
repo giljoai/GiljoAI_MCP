@@ -896,7 +896,7 @@ class ProductService:
 
         except ResourceNotFoundError:
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps unexpected errors in BaseGiljoError
             self._logger.exception("Failed to purge product")
             raise BaseGiljoError(
                 message=f"Failed to permanently delete product: {e!s}",

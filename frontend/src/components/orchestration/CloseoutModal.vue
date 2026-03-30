@@ -88,7 +88,7 @@
                   </span>
                   <v-spacer />
                   <span class="text-caption text-grey">
-                    {{ formatDate(entry.timestamp) }}
+                    {{ formatDateTime(entry.timestamp) }}
                   </span>
                 </div>
               </v-expansion-panel-title>
@@ -238,7 +238,10 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useDisplay } from 'vuetify'
+import { useFormatDate } from '@/composables/useFormatDate'
 import api from '@/services/api'
+
+const { formatDateTime } = useFormatDate()
 
 const props = defineProps({
   show: {
@@ -365,21 +368,6 @@ const handleClose = () => {
   }
 }
 
-const formatDate = (timestamp) => {
-  if (!timestamp) return 'Unknown'
-  try {
-    const date = new Date(timestamp)
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return timestamp
-  }
-}
 
 const formatCommitDate = (timestamp) => {
   if (!timestamp) return ''

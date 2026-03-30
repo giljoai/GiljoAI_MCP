@@ -56,7 +56,7 @@ describe('SetupWizardOverlay', () => {
     it('displays the title "Setup GiljoAI MCP"', () => {
       const wrapper = mountOverlay()
 
-      expect(wrapper.find('.setup-wizard-title').text()).toBe('Setup GiljoAI MCP')
+      expect(wrapper.find('.setup-wizard-title').text()).toBe('Setup')
     })
 
     it('renders all 4 step labels in the progress bar', () => {
@@ -181,7 +181,7 @@ describe('SetupWizardOverlay', () => {
 
       await toolCards[0].trigger('click')
 
-      expect(toolCards[0].attributes('style')).toContain('--smooth-border-color: #ffc300')
+      expect(toolCards[0].attributes('style')).toContain('--smooth-border-color: var(--color-accent-primary)')
     })
 
     it('does not apply --smooth-border-color to unselected cards', () => {
@@ -522,7 +522,7 @@ describe('SetupWizardOverlay', () => {
       const wrapper = mountOverlay({ mode: 'setup' })
 
       expect(wrapper.find('.setup-wizard-progress').exists()).toBe(true)
-      expect(wrapper.find('.setup-wizard-title').text()).toBe('Setup GiljoAI MCP')
+      expect(wrapper.find('.setup-wizard-title').text()).toBe('Setup')
     })
 
     it('close X button works in learning mode', async () => {

@@ -44,15 +44,14 @@ describe('Product UI Refactor (Handover 0316)', () => {
     })
   })
 
-  it('Core Features field is in Basic Info tab', async () => {
+  it('Core Features field is in Setup tab', async () => {
     await wrapper.vm.$nextTick()
 
-    // Should be on Basic Info tab by default
-    expect(wrapper.vm.dialogTab).toBe('basic')
+    // Should be on Setup tab by default
+    expect(wrapper.vm.dialogTab).toBe('setup')
 
-    // Core Features v-textarea should exist in Basic Info tab
-    // Check productForm.configData.features.core is bound
-    const coreFeatures = wrapper.vm.productForm.configData.features.core
+    // Core Features field is bound to productForm.coreFeatures
+    const coreFeatures = wrapper.vm.productForm.coreFeatures
     expect(coreFeatures).toBeDefined()
   })
 
@@ -62,7 +61,7 @@ describe('Product UI Refactor (Handover 0316)', () => {
     // Check tab order - 'features' tab should still exist (internal value)
     expect(wrapper.vm.tabOrder).toContain('features')
 
-    // The tab LABEL should be "Testing" (not "Features & Testing")
+    // The tab LABEL should not be "Features & Testing"
     const tabsText = wrapper.text()
     expect(tabsText).not.toContain('Features & Testing')
   })
@@ -74,10 +73,10 @@ describe('Product UI Refactor (Handover 0316)', () => {
     wrapper.vm.dialogTab = 'features'
     await wrapper.vm.$nextTick()
 
-    // Quality Standards field should be in productForm.configData.test_config
+    // Quality Standards field should be in productForm.testConfig
     const form = wrapper.vm.productForm
-    expect(form.configData).toBeDefined()
-    expect(form.configData.test_config).toBeDefined()
+    expect(form.testConfig).toBeDefined()
+    expect(form.testConfig.quality_standards).toBeDefined()
   })
 
   it('Product creation saves quality_standards field', async () => {
@@ -92,15 +91,15 @@ describe('Product UI Refactor (Handover 0316)', () => {
     await wrapper.vm.$nextTick()
 
     // Set quality_standards
-    if (wrapper.vm.productForm.configData.test_config.quality_standards !== undefined) {
-      wrapper.vm.productForm.configData.test_config.quality_standards = '80% coverage, zero bugs'
+    if (wrapper.vm.productForm.testConfig.quality_standards !== undefined) {
+      wrapper.vm.productForm.testConfig.quality_standards = '80% coverage, zero bugs'
     }
 
     // Verify form data is structured correctly
-    expect(wrapper.vm.productForm.configData.test_config).toBeDefined()
+    expect(wrapper.vm.productForm.testConfig).toBeDefined()
   })
 
   it('tabOrder is defined correctly', () => {
-    expect(wrapper.vm.tabOrder).toEqual(['basic', 'vision', 'tech', 'arch', 'features'])
+    expect(wrapper.vm.tabOrder).toEqual(['setup', 'info', 'tech', 'arch', 'features'])
   })
 })

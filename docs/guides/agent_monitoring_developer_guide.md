@@ -172,7 +172,7 @@ class AgentJob(Base):
 -- Index for stale agent detection query
 CREATE INDEX idx_agent_jobs_activity
 ON mcp_agent_jobs(tenant_key, status, last_progress_at)
-WHERE status IN ('active', 'working');
+WHERE status IN ('working');
 
 -- Index for message checking
 CREATE INDEX idx_agent_jobs_message_check
@@ -459,7 +459,7 @@ Get agent health metrics.
 ```json
 {
   "job_id": "abc-123",
-  "status": "active",
+  "status": "working",
   "last_progress_at": "2025-11-06T10:30:00Z",
   "last_message_check_at": "2025-11-06T10:31:00Z",
   "minutes_since_progress": 3,
@@ -529,7 +529,7 @@ async def monitor_agent_health():
 
                 result = await db.execute(
                     select(AgentJob).where(
-                        AgentJob.status.in_(['active', 'working']),
+                        AgentJob.status.in_(['working']),
                         AgentJob.last_progress_at < stale_threshold
                     )
                 )
@@ -967,7 +967,7 @@ grep "Agent health monitor started" logs/app.log
 ```sql
 SELECT id, agent_id, status, last_progress_at, last_message_check_at
 FROM mcp_agent_jobs
-WHERE status IN ('active', 'working');
+WHERE status IN ('working');
 ```
 
 **Fix**:

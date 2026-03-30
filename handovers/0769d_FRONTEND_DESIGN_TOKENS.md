@@ -130,6 +130,16 @@ Replace 11 implementations:
 
 ---
 
+## Agent Protocols (MANDATORY)
+
+### Rejection Authority
+You have freedom to reject any audit proposal if you find the hardcoded color is intentional. Examples: chart colors that must be specific hex values, third-party component overrides where tokens don't apply, gradient stops that are computed. If a color is exempt, add `/* design-token-exempt: <reason> */` and document it in the chain log `deviations` field.
+
+### Flow Investigation
+Before replacing ANY color, understand the visual context. Check if the color is part of a coordinated set (e.g., phase colors in JobsTab that match a specific design system). Replacing one color in a set without replacing all will look broken. If you discover a component's color scheme is deeply interconnected and would require a design decision beyond simple token mapping, STOP and set your status to `blocked` in the chain log so the orchestrator can provide guidance.
+
+---
+
 ## What NOT To Do
 
 - Do NOT change component behavior or logic — only styling and formatting

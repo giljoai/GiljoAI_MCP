@@ -383,7 +383,7 @@ function runAction(action) {
   padding: 4px; /* border thickness */
   border-radius: inherit;
   background: var(--gradient-brand);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); /* exempt: CSS mask technique, not a visible color */
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;

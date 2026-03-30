@@ -23,7 +23,7 @@
               </v-col>
               <v-col cols="12" md="6">
                 <div class="text-subtitle-2 text-medium-emphasis">Created</div>
-                <div class="text-body-1">{{ formatDate(product.created_at) }}</div>
+                <div class="text-body-1">{{ formatDateTime(product.created_at) }}</div>
               </v-col>
               <v-col cols="12">
                 <div class="text-subtitle-2 text-medium-emphasis">Description</div>
@@ -45,6 +45,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProductStore } from '@/stores/products'
+import { useFormatDate } from '@/composables/useFormatDate'
 
 const route = useRoute()
 const productStore = useProductStore()
@@ -52,10 +53,7 @@ const productStore = useProductStore()
 const product = ref(null)
 const loading = ref(true)
 
-function formatDate(dateStr) {
-  if (!dateStr) return 'N/A'
-  return new Date(dateStr).toLocaleString()
-}
+const { formatDateTime } = useFormatDate()
 
 onMounted(async () => {
   loading.value = true

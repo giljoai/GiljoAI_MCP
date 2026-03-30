@@ -118,7 +118,7 @@ describe('TasksView - Task Statistics', () => {
     vi.clearAllMocks()
   })
 
-  it('displays statistics cards', async () => {
+  it('displays task list section', async () => {
     const wrapper = mount(TasksView, {
       global: {
         plugins: [vuetify],
@@ -126,10 +126,8 @@ describe('TasksView - Task Statistics', () => {
     })
 
     await flushPromises()
-    expect(wrapper.text()).toContain('Total Tasks')
-    expect(wrapper.text()).toContain('Pending')
-    expect(wrapper.text()).toContain('In Progress')
-    expect(wrapper.text()).toContain('Completed')
+    expect(wrapper.text()).toContain('Task List')
+    expect(wrapper.text()).toContain('New Task')
   })
 })
 

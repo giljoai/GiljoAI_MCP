@@ -86,7 +86,7 @@ async def test_report_progress_transitions_blocked_to_working(mock_db_manager, m
 
     service = _build_service(db_manager, mock_tenant_manager, mock_ws)
 
-    with patch.object(service, "_fetch_and_broadcast_progress", new_callable=AsyncMock):
+    with patch.object(service._progress, "_fetch_and_broadcast_progress", new_callable=AsyncMock):
         result = await service.report_progress(
             job_id="job-001",
             tenant_key="test-tenant",
@@ -113,7 +113,7 @@ async def test_report_progress_broadcasts_status_change_on_blocked_to_working(
 
     service = _build_service(db_manager, mock_tenant_manager, mock_ws)
 
-    with patch.object(service, "_fetch_and_broadcast_progress", new_callable=AsyncMock):
+    with patch.object(service._progress, "_fetch_and_broadcast_progress", new_callable=AsyncMock):
         await service.report_progress(
             job_id="job-001",
             tenant_key="test-tenant",
@@ -144,7 +144,7 @@ async def test_report_progress_does_not_change_working_status(mock_db_manager, m
 
     service = _build_service(db_manager, mock_tenant_manager, mock_ws)
 
-    with patch.object(service, "_fetch_and_broadcast_progress", new_callable=AsyncMock):
+    with patch.object(service._progress, "_fetch_and_broadcast_progress", new_callable=AsyncMock):
         result = await service.report_progress(
             job_id="job-001",
             tenant_key="test-tenant",
@@ -170,7 +170,7 @@ async def test_report_progress_does_not_change_waiting_status(mock_db_manager, m
 
     service = _build_service(db_manager, mock_tenant_manager, mock_ws)
 
-    with patch.object(service, "_fetch_and_broadcast_progress", new_callable=AsyncMock):
+    with patch.object(service._progress, "_fetch_and_broadcast_progress", new_callable=AsyncMock):
         result = await service.report_progress(
             job_id="job-001",
             tenant_key="test-tenant",
@@ -195,7 +195,7 @@ async def test_report_progress_does_not_change_silent_status(mock_db_manager, mo
 
     service = _build_service(db_manager, mock_tenant_manager, mock_ws)
 
-    with patch.object(service, "_fetch_and_broadcast_progress", new_callable=AsyncMock):
+    with patch.object(service._progress, "_fetch_and_broadcast_progress", new_callable=AsyncMock):
         result = await service.report_progress(
             job_id="job-001",
             tenant_key="test-tenant",

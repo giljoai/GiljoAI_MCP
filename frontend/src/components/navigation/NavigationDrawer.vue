@@ -189,7 +189,9 @@ watch(
 
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../../styles/design-tokens' as *;
+
 /* NavigationDrawer styling */
 
 .navigation-drawer-container {
@@ -209,7 +211,8 @@ watch(
   width: 32px;
   height: 32px;
   background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), 0.2);
+  border: none !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-border-color), 0.2);
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -222,7 +225,7 @@ watch(
 
 .edge-toggle-tab:hover {
   background: rgba(var(--v-theme-primary), 0.1);
-  border-color: rgb(var(--v-theme-primary));
+  box-shadow: inset 0 0 0 1px rgb(var(--v-theme-primary));
 }
 
 .edge-toggle-tab:focus {
@@ -239,7 +242,7 @@ watch(
 }
 
 .edition-label {
-  color: #ffc300;
+  color: $color-brand-yellow;
   font-weight: 500;
   letter-spacing: 0.02em;
 }
