@@ -68,6 +68,7 @@ except ImportError as e:
     raise
 
 try:
+    logger.info("Loading API endpoints...")
     from .auth_utils import authenticate_websocket
     from .endpoints import (
         agent_jobs,
@@ -101,6 +102,8 @@ try:
     )
     from .endpoints.organizations import crud as org_crud
     from .endpoints.organizations import members as org_members
+
+    logger.info("Loading middleware and websocket...")
     from .exception_handlers import register_exception_handlers
     from .middleware import (
         APIMetricsMiddleware,
