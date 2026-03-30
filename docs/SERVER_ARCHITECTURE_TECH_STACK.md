@@ -1146,7 +1146,7 @@ api/
 │   ├── setup.py          # Setup wizard endpoints
 │   ├── ai_tools.py       # AI coding agent configuration generator (425 lines)
 │   ├── templates.py      # Template CRUD operations
-│   ├── mcp_http.py       # MCP-over-HTTP endpoint (398 lines)
+│   ├── mcp_sdk_server.py  # FastMCP SDK Streamable HTTP endpoint
 │   └── mcp_session.py    # MCP session management (186 lines)
 └── websocket/            # WebSocket handlers
     ├── manager.py        # WebSocket connection management
@@ -1560,9 +1560,9 @@ Content-Type: application/json
 X-API-Key: gk_YOUR_API_KEY_HERE
 ```
 
-**Protocol:** JSON-RPC 2.0 (https://www.jsonrpc.org/specification)
+**Protocol:** Streamable HTTP (Anthropic FastMCP SDK)
 
-**Code Reference:** `api/endpoints/mcp_http.py` (398 lines)
+**Code Reference:** `api/endpoints/mcp_sdk_server.py`
 
 ### Supported MCP Methods
 
@@ -1579,7 +1579,7 @@ X-API-Key: gk_YOUR_API_KEY_HERE
 **3. tools/call** - Execute MCP tool
 - Routes to existing tool_accessor methods
 - Preserves multi-tenant isolation
-- Returns JSON-RPC 2.0 formatted results
+- Returns MCP SDK structured results
 
 ### Session Management
 
@@ -1611,7 +1611,7 @@ X-API-Key header
 
 **Code Reference:**
 - `api/middleware.py` line 111 - Public endpoint definition
-- `api/endpoints/mcp_http.py` lines 329-354 - API key validation
+- `api/endpoints/mcp_sdk_server.py` - API key validation
 
 ### Integration Example
 
@@ -1676,7 +1676,7 @@ CLIENT PC                          SERVER (F:\GiljoAI_MCP)
                                        - 360 memory
 
 5. Receives mission data       ←──  6. Returns mission (~10K tokens)
-   (~10K tokens)                       via JSON-RPC response
+   (~10K tokens)                       via MCP Streamable HTTP
 
 7. Orchestrator executes
    7-task staging workflow
@@ -1750,7 +1750,7 @@ The implementation correctly follows the distributed client-server architecture:
    ↓
 3. CLIENT orchestrator (Claude Code) calls get_orchestrator_instructions() MCP tool
    ↓
-4. SERVER returns prompt via HTTP JSON-RPC
+4. SERVER returns prompt via MCP Streamable HTTP
    ↓
 5. CLIENT orchestrator executes 7-task staging workflow locally
    ↓

@@ -9,7 +9,7 @@
 If you don’t already have the `/gil_*` commands in Claude Code:
 
 1. Configure the GiljoAI MCP server connection in Claude Code
-2. Call the MCP tool `mcp__giljo-mcp__setup_slash_commands` (no arguments)
+2. Call the MCP tool `mcp__giljo_mcp__setup_slash_commands` (no arguments)
 3. Run the returned `bash_command`
 4. Restart Claude Code
 
