@@ -455,6 +455,7 @@ export const api = {
   // API Key Management
   apiKeys: {
     list: () => apiClient.get('/api/auth/api-keys'),
+    getActive: () => apiClient.get('/api/auth/api-keys/active'),
     create: (name) => apiClient.post('/api/auth/api-keys', { name }),
     delete: (keyId) => apiClient.delete(`/api/auth/api-keys/${keyId}`),
   },
