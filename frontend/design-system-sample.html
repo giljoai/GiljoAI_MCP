@@ -403,8 +403,7 @@
     justify-content: center;
     font-size: 0.625rem;
     font-weight: 700;
-    color: #ffffff;
-    border: 2px solid #ffffff;
+    color: #0e1c2d;
     flex-shrink: 0;
   }
 
@@ -442,7 +441,7 @@
     border-radius: 9999px;
     font-size: 0.625rem;
     font-weight: 600;
-    color: #ffffff;
+    color: #0e1c2d;
     gap: 4px;
   }
 
@@ -495,6 +494,75 @@
   .status-working::after {
     content: '';
     animation: workingDots 1.5s steps(4, end) infinite;
+  }
+
+  /* ========================================
+     TAB DEMO
+     ======================================== */
+  .tab-toggle-demo {
+    display: inline-flex;
+    border: 1px solid #315074;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+  }
+
+  .tab-btn {
+    background: transparent;
+    color: rgba(255,255,255,0.7);
+    border: none;
+    border-right: 1px solid #315074;
+    padding: 10px 20px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .tab-btn:last-child {
+    border-right: none;
+  }
+
+  .tab-btn:hover:not(.tab-btn--active) {
+    background: rgba(255,255,255,0.05);
+  }
+
+  .tab-btn--active {
+    background: #182739;
+    color: #ffffff;
+  }
+
+  .tab-icon {
+    font-size: 1rem;
+  }
+
+  .tab-content-demo {
+    border: 1px solid #315074;
+    border-top: none;
+    border-radius: 0 8px 8px 8px;
+    padding: 24px;
+    background: #182739;
+    min-height: 80px;
+    width: 100%;
+    color: #8f97b7;
+    font-size: 0.875rem;
+  }
+
+  .tab-panel {
+    display: none;
+  }
+
+  .tab-panel--active {
+    display: block;
+    animation: tabFadeIn 0.2s ease-in;
+  }
+
+  @keyframes tabFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   /* ========================================
@@ -1152,7 +1220,7 @@
               <div class="agent-mini-swatch-label">light</div>
             </div>
           </div>
-          <div class="agent-chip" style="background: #FFC300; color: #0e1c2d;">TE Tester</div>
+          <div class="agent-chip" style="background: #FFC300;">TE Tester</div>
           <div class="agent-hex-list">#FFC300 / #E6B000 / #FFD633</div>
         </div>
 
@@ -1226,6 +1294,35 @@
           <div class="status-item">
             <span class="status-pill" style="background: rgba(230,126,34,0.2); color: #e67e22; border-color: rgba(230,126,34,0.4);">blocked</span>
             <span class="token-label">--status-blocked: #e67e22</span>
+          </div>
+        </div>
+
+        <h4 style="margin-top: 24px;">Opaque Variants</h4>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Full-color, fully opaque pills used for project status badges (e.g. Completed in project list)</p>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="status-item">
+            <span class="status-pill" style="background: #90a4ae; color: #0e1c2d; border-color: #90a4ae;">waiting</span>
+            <span class="token-label">bg: #90a4ae | text: #0e1c2d</span>
+          </div>
+          <div class="status-item">
+            <span class="status-pill" style="background: #3498db; color: #0e1c2d; border-color: #3498db;">working</span>
+            <span class="token-label">bg: #3498db | text: #0e1c2d</span>
+          </div>
+          <div class="status-item">
+            <span class="status-pill" style="background: #ffc300; color: #0e1c2d; border-color: #ffc300;">complete</span>
+            <span class="token-label">bg: #ffc300 | text: #0e1c2d</span>
+          </div>
+          <div class="status-item">
+            <span class="status-pill" style="background: #4caf50; color: #0e1c2d; border-color: #4caf50;">completed</span>
+            <span class="token-label">bg: #4caf50 (StatusBadge) | text: #0e1c2d</span>
+          </div>
+          <div class="status-item">
+            <span class="status-pill" style="background: #c6298c; color: #0e1c2d; border-color: #c6298c;">failure</span>
+            <span class="token-label">bg: #c6298c | text: #0e1c2d</span>
+          </div>
+          <div class="status-item">
+            <span class="status-pill" style="background: #e67e22; color: #0e1c2d; border-color: #e67e22;">blocked</span>
+            <span class="token-label">bg: #e67e22 | text: #0e1c2d</span>
           </div>
         </div>
       </div>
@@ -1523,7 +1620,69 @@
   </section>
 
   <!-- ============================================
-       10. SCROLLBAR STYLING
+       10. TABS
+       ============================================ -->
+  <section class="section">
+    <h2 class="section-title">Tabs</h2>
+    <p class="section-subtitle">Source: global-tabs.scss &mdash; v-btn-toggle with bordered content panel</p>
+
+    <div class="card">
+      <h4>Tab Toggle (v-btn-toggle)</h4>
+      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Used in User Settings, Project Tabs (Staging / Implementation), and other views</p>
+
+      <!-- Tab demo -->
+      <div style="display: flex; flex-direction: column; align-items: flex-start;">
+        <!-- Tab buttons -->
+        <div class="tab-toggle-demo">
+          <button class="tab-btn tab-btn--active" onclick="switchDemoTab(this, 'demo-panel-1')">
+            <span class="tab-icon">&#9881;</span>
+            Startup
+          </button>
+          <button class="tab-btn" onclick="switchDemoTab(this, 'demo-panel-2')">
+            <span class="tab-icon">&#128276;</span>
+            Notifications
+          </button>
+          <button class="tab-btn" onclick="switchDemoTab(this, 'demo-panel-3')">
+            <span class="tab-icon">&#129302;</span>
+            Agents
+          </button>
+          <button class="tab-btn" onclick="switchDemoTab(this, 'demo-panel-4')">
+            <span class="tab-icon">&#128273;</span>
+            API Keys
+          </button>
+          <button class="tab-btn" onclick="switchDemoTab(this, 'demo-panel-5')">
+            <span class="tab-icon">&#128268;</span>
+            Integrations
+          </button>
+        </div>
+        <!-- Content panel -->
+        <div class="tab-content-demo">
+          <div id="demo-panel-1" class="tab-panel tab-panel--active">Startup settings content area</div>
+          <div id="demo-panel-2" class="tab-panel">Notifications content area</div>
+          <div id="demo-panel-3" class="tab-panel">Agents content area</div>
+          <div id="demo-panel-4" class="tab-panel">API Keys content area</div>
+          <div id="demo-panel-5" class="tab-panel">Integrations content area</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <h4>Specs</h4>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.75rem; color: #8f97b7; margin-top: 8px;">
+          <div><strong style="color: #e1e1e1;">Component:</strong> v-btn-toggle &mdash; variant="outlined", divided, rounded="t-lg", color="primary"</div>
+          <div><strong style="color: #e1e1e1;">Active tab bg:</strong> #182739 (surface)</div>
+          <div><strong style="color: #e1e1e1;">Active tab text:</strong> #ffffff</div>
+          <div><strong style="color: #e1e1e1;">Inactive tab text:</strong> rgba(255,255,255,0.7)</div>
+          <div><strong style="color: #e1e1e1;">Content border:</strong> 1px solid rgba(var(--v-border-color), var(--v-border-opacity)), top edge removed</div>
+          <div><strong style="color: #e1e1e1;">Content radius:</strong> 0 8px 8px 8px (flat top-left, rounded elsewhere)</div>
+          <div><strong style="color: #e1e1e1;">Content bg:</strong> rgb(var(--v-theme-surface))</div>
+          <div><strong style="color: #e1e1e1;">Transition:</strong> fade-in 0.2s ease-in on panel switch</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================
+       11. SCROLLBAR STYLING
        ============================================ -->
   <section class="section">
     <h2 class="section-title">Scrollbar Styling</h2>
@@ -1564,7 +1723,7 @@
   </section>
 
   <!-- ============================================
-       11. DISCREPANCIES
+       12. DISCREPANCIES
        ============================================ -->
   <section class="section">
     <h2 class="section-title" style="color: #c6298c; border-bottom-color: rgba(198,41,140,0.4);">Discrepancies Found</h2>
@@ -1714,6 +1873,22 @@
   </section>
 
 </div>
+
+<script>
+function switchDemoTab(btn, panelId) {
+  // Deactivate all tabs
+  btn.parentElement.querySelectorAll('.tab-btn').forEach(function(b) {
+    b.classList.remove('tab-btn--active');
+  });
+  // Activate clicked tab
+  btn.classList.add('tab-btn--active');
+  // Hide all panels
+  var panels = btn.closest('.card').querySelectorAll('.tab-panel');
+  panels.forEach(function(p) { p.classList.remove('tab-panel--active'); });
+  // Show target panel
+  document.getElementById(panelId).classList.add('tab-panel--active');
+}
+</script>
 
 </body>
 </html>
