@@ -814,6 +814,24 @@ async def download_temp_file(
         await token_manager.increment_download_count(token)
 
         logger.info(f"Download served: {filename} ({len(content)} bytes) token={token}")
+
+        # Handover 0855b: Emit setup events when CLI downloads resources
+        try:
+            ws_manager = request.app.state.websocket_manager
+            if ws_manager and tenant_key:
+                from api.events.schemas import EventFactory
+
+                if filename == "slash_commands.zip":
+                    event = EventFactory.setup_commands_installed(
+                        tenant_key=tenant_key,
+                        user_id="cli_download",
+                        tool_name="all",
+                        command_count=0,
+                    )
+                    await ws_manager.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
+        except (OSError, RuntimeError, ValueError, TypeError, AttributeError):
+            pass  # Fire-and-forget, non-blocking
+
         return Response(
             content=content,
             media_type="application/zip",
