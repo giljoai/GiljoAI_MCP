@@ -131,7 +131,7 @@ async def _is_category_enabled(
             enabled = prio_result.scalar_one_or_none()
             # No row means default enabled
             return enabled if enabled is not None else True
-    except Exception:
+    except Exception:  # Broad catch: fail-open for category toggle, non-critical path
         logger.error("category_toggle_check_failed", category=category, tenant_key=tenant_key, exc_info=True)
         return True  # Fail open — don't block context on toggle errors
 
@@ -209,7 +209,7 @@ async def _load_user_depth_config(
             )
             return normalized
 
-    except Exception:
+    except Exception:  # Broad catch: fail-open for depth config, returns None fallback
         logger.error(
             "depth_config_load_failed",
             tenant_key=tenant_key,

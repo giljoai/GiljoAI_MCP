@@ -61,7 +61,7 @@ export function useFieldPriority() {
 
       priorities.value = normalized
       loaded.value = true
-    } catch (_err) {
+    } catch {
       // Silently fail -- fields will show no priority chips
       priorities.value = {}
       loaded.value = true

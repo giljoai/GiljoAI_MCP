@@ -378,7 +378,7 @@ class AgentJobRepository(BaseRepository[AgentJob]):
     async def get_active_jobs(self, tenant_key: str) -> List[AgentJob]:
         stmt = select(AgentJob).where(
             AgentJob.tenant_key == tenant_key,
-            AgentJob.status.in_(["pending", "running"])
+            AgentJob.status.in_(["waiting", "working"])
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()

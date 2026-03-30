@@ -71,7 +71,7 @@
           <v-card-title>Startup</v-card-title>
           <v-card-subtitle>Setup wizard and getting started</v-card-subtitle>
           <v-card-text>
-            <p class="text-body-2 mb-4" style="color: #8f97b7;">
+            <p class="text-body-2 mb-4" style="color: var(--color-text-secondary);">
               The setup wizard guides you through connecting AI coding tools and configuring GiljoAI MCP.
             </p>
             <v-btn

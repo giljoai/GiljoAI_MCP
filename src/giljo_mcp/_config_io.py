@@ -1,11 +1,15 @@
 """Shared low-level config.yaml I/O.
 
-Provides the canonical path, read, and write functions for config.yaml.
-Every site that needs raw dict access to config.yaml should import from
-this module instead of duplicating the boilerplate.
+This module is for raw file I/O only. Production code should use
+get_config() from config_manager.py, which provides typed access
+with environment variable overrides via get_nested() for arbitrary
+YAML key paths.
 
-Existing higher-level modules (ConfigManager for typed config with
-env-var overrides, ConfigService for cached reads) are unaffected.
+Legitimate uses of read_config() / write_config():
+  - Config CRUD endpoints that manage the YAML file directly
+  - ConfigManager initialization itself
+  - Bootstrapping code that runs before ConfigManager is available
+  - Utilities that read from non-standard config paths
 
 Design: read_config() returns a plain dict so the implementation can
 later be extended (env-var overlays, per-tenant overrides, remote config)

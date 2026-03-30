@@ -438,8 +438,11 @@
 <script setup>
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import api from '@/services/api'
+import { useFormatDate } from '@/composables/useFormatDate'
 import ProductTuningMenu from './ProductTuningMenu.vue'
 import ProductTuningReview from './ProductTuningReview.vue'
+
+const { formatDate } = useFormatDate()
 
 const props = defineProps({
   modelValue: {
@@ -643,15 +646,6 @@ function formatFileSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)  } MB`
 }
 
-function formatDate(dateString) {
-  if (!dateString) return 'N/A'
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
 
 function formatPlatform(platform) {
   const labels = {

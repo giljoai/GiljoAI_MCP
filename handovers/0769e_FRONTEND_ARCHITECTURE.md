@@ -94,6 +94,16 @@ Import and use in both locations. Remove the duplicate logic.
 
 ---
 
+## Agent Protocols (MANDATORY)
+
+### Rejection Authority
+You have freedom to reject any audit proposal if the current implementation has valid reasoning. The WebSocket reconnect logic may already handle edge cases the audit missed. The event router's centralization may be intentional for debugging. If you find the current approach is sound, document your reasoning in the chain log `deviations` field and move on.
+
+### Flow Investigation
+Before restructuring ANY WebSocket or event routing code, trace the full flow: message received -> parsed -> normalized -> routed -> store updated -> UI reacted. Understand the complete chain. If splitting the event router would break error boundaries, event ordering, or debugging capabilities, STOP and set your status to `blocked` in the chain log so the orchestrator can decide. Real-time systems are fragile — a "clean" refactor that introduces a race condition is worse than a big file.
+
+---
+
 ## What NOT To Do
 
 - Do NOT change the WebSocket message protocol or event types
