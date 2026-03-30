@@ -5,7 +5,7 @@
   "spec_document": "handovers/0769_CODE_QUALITY_FRAGILITY_AUDIT.md",
   "branch": "feature/0769-quality-sprint",
   "total_sessions": 7,
-  "orchestrator_notes": "Agents: read this file BEFORE starting. If orchestrator_directives contains STOP, halt immediately. This is a code quality sprint remediating audit 0769 (score 6.3/10, target >= 8.0). Each phase is independent but sequential. Run ruff/eslint/vitest after changes to verify no regressions.",
+  "orchestrator_notes": "Agents: read this file BEFORE starting. If orchestrator_directives contains STOP, halt immediately. This is a code quality sprint remediating audit 0769 (score 6.3/10, target >= 8.0). Each phase is independent but sequential. Run ruff/eslint/vitest after changes to verify no regressions. CRITICAL PROTOCOLS: (1) REJECTION AUTHORITY — You have freedom to reject any audit proposal if you find the application already has security layers, valid reasoning, or a sound current implementation. Do NOT blindly apply fixes. If you reject a finding, document your reasoning in 'deviations' and move on. (2) FLOW INVESTIGATION — Before changing ANY code, investigate the FLOW upstream and downstream. Understand WHY something is implemented the way it is, not just what it does. Map the constellation of impact a change may have. If you discover a change would cascade into a massive refactor, STOP immediately — set your status to 'blocked', document the situation in 'blockers_encountered', and let the orchestrator decide how to proceed.",
   "orchestrator_directives": [],
   "sessions": [
     {
@@ -13,9 +13,9 @@
       "title": "Security & Critical Fixes",
       "handover": "handovers/0769a_SECURITY_CRITICAL_FIXES.md",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-30T00:00:00Z",
+      "completed_at": "2026-03-30T16:35:00Z",
       "agent_types": ["tdd-implementor"],
       "planned_tasks": [
         "Fix WebSocket cross-tenant subscription leak in api/app.py:635",
@@ -23,12 +23,26 @@
         "Add tenant_key filters to PIN recovery, MCP session, MCP installer queries",
         "Add annotation comments to 6 unannotated broad exception catches"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Task 1: WebSocket cross-tenant subscription validation added in api/app.py:667",
+        "Task 2: agent_coordination.py rewritten - delegates to AgentJobManager, raises exceptions, new spawn_execution() method on AgentJobManager",
+        "Task 3: Tenant isolation defense-in-depth for auth_pin_recovery.py, mcp_session.py (key_prefix filter), mcp_installer.py (tenant_key in JWT)",
+        "Task 4: All 6 broad-catch annotations added across 4 files"
+      ],
+      "deviations": [
+        "Audit claimed 'from src.giljo_mcp.database' was a stale import - REJECTED, this is the correct convention (203 files use this pattern, 0 use 'from giljo_mcp.')",
+        "Added AgentJobManager.spawn_execution() instead of delegating to spawn_agent() because APIs differ: spawn_agent() creates job+execution, but agent_coordination.spawn_agent() creates execution-only for existing job",
+        "mcp_session.py: key_prefix format includes '...' suffix (e.g. 'gk_abc12345...'), fixed agent's initial implementation which missed the ellipsis",
+        "auth_pin_recovery.py tenant fix uses get_config().tenant.default_tenant_key - works for CE single-tenant, SaaS would need separate recovery flow"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "agent_coordination.py now raises ValidationError and ResourceNotFoundError instead of returning dicts. Any test that checks for {'success': False, 'error': ...} return values will need to use pytest.raises() instead. New method AgentJobManager.spawn_execution() added at agent_job_manager.py:188. The conftest.py init_for_testing fixture still works unchanged. Vitest: 111 pre-existing failures (same infrastructure issues), 10 tests pass - no regressions from our changes.",
+      "cascading_impacts": [
+        "New AgentJobManager.spawn_execution() method - any code calling agent_coordination.spawn_agent() now gets exceptions instead of error dicts",
+        "mcp_installer JWT tokens now contain tenant_key field - old tokens without it fall back to 'default'",
+        "mcp_session API key auth now filters by key_prefix - performance improvement, should not affect functionality"
+      ],
+      "summary": "All 4 tasks completed. Security: WebSocket cross-tenant leak fixed. Critical: agent_coordination.py fully rewritten to delegate to service layer with exception-based error handling. Medium: tenant isolation defense-in-depth applied to 3 endpoint files. Medium: 6 broad-catch annotations added. Ruff passes clean. No test regressions."
     },
     {
       "session_id": "0769b",
