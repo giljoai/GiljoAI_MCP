@@ -179,7 +179,7 @@
         <!-- Main config command -->
         <div class="config-block smooth-border">
           <div class="config-block-header">
-            <span class="config-block-label">Configuration Command</span>
+            <span class="config-block-label">Configuration Command — copy in terminal, not inside tool session</span>
             <v-btn
               icon="mdi-content-copy"
               size="x-small"
