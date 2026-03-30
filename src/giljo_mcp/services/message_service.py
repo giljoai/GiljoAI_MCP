@@ -49,6 +49,7 @@ from src.giljo_mcp.schemas.service_responses import (
     SendMessageResult,
     StagingDirective,
 )
+from src.giljo_mcp.services.dto import BroadcastMessageContext
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.utils.db_retry import with_deadlock_retry
 
@@ -163,130 +164,34 @@ class MessageService:
                 # Handover 0410: Detect broadcast intent before fan-out resolution
                 is_broadcast_fanout = "all" in to_agents
 
-                # Resolve agent_display_name strings to agent_id UUIDs (executor, not work order)
-                # Handover 0372: This enables succession - messages route to NEW executor after handover
-                resolved_to_agents = []
-                for agent_ref in to_agents:
-                    if agent_ref == "all":
-                        # FAN-OUT: Query active agents in project (Handover 0387)
-                        exec_result = await session.execute(
-                            select(AgentExecution)
-                            .join(AgentJob)
-                            .where(
-                                and_(
-                                    AgentJob.project_id == project_id,
-                                    AgentExecution.status.in_(["waiting", "working", "blocked"]),
-                                    AgentExecution.tenant_key == tenant_key,
-                                )
-                            )
-                        )
-                        executions = exec_result.scalars().all()
+                # Resolve agent_display_name strings to agent_id UUIDs
+                resolved_to_agents = await self._resolve_message_recipients(
+                    session, to_agents, project_id, tenant_key, from_agent
+                )
 
-                        # Expand to individual recipients (excluding sender)
-                        sender_ref = from_agent or "orchestrator"
-                        for execution in executions:
-                            # Skip sender - compare both agent_display_name and agent_id
-                            if sender_ref in (execution.agent_display_name, execution.agent_id):
-                                continue
-                            resolved_to_agents.append(execution.agent_id)
-                            self._logger.info(f"[FANOUT] Expanded broadcast to agent_id '{execution.agent_id}'")
-                    elif len(agent_ref) == 36 and "-" in agent_ref:
-                        # Already a UUID (agent_id) - use directly
-                        resolved_to_agents.append(agent_ref)
-                    else:
-                        # Agent display name string (e.g., "Orchestrator") - resolve to active execution agent_id
-                        exec_result = await session.execute(
-                            select(AgentExecution)
-                            .join(AgentJob)
-                            .where(
-                                and_(
-                                    AgentJob.project_id == project_id,
-                                    AgentExecution.agent_display_name == agent_ref,
-                                    AgentExecution.status.in_(
-                                        ["waiting", "working", "blocked", "complete"]
-                                    ),  # Active + completed statuses (0827a)
-                                    AgentExecution.tenant_key == tenant_key,
-                                )
-                            )
-                            .order_by(AgentExecution.started_at.desc())
-                            .limit(1)  # Latest instance
-                        )
-                        execution = exec_result.scalar_one_or_none()
-                        if execution:
-                            resolved_to_agents.append(execution.agent_id)
-                            self._logger.info(
-                                f"[RESOLVER] Resolved agent_display_name '{agent_ref}' to agent_id '{execution.agent_id}'"
-                            )
-                        else:
-                            # Could not resolve - keep original (will fail to deliver)
-                            resolved_to_agents.append(agent_ref)
-                            self._logger.warning(
-                                f"[RESOLVER] Could not resolve agent_display_name '{agent_ref}' to active execution in project {project_id}"
-                            )
-
-                # Sort recipients for deterministic lock ordering (prevents deadlocks
-                # when concurrent broadcasts update the same AgentExecution counter rows)
+                # Sort recipients for deterministic lock ordering (prevents deadlocks)
                 resolved_to_agents.sort()
 
                 # Resolve sender display name for message enrichment (Handover 0827a)
-                sender_display_name = from_agent or "orchestrator"
-                if from_agent:
-                    sender_lookup = await session.execute(
-                        select(AgentExecution.agent_display_name)
-                        .join(AgentJob)
-                        .where(
-                            and_(
-                                AgentJob.project_id == project.id,
-                                AgentExecution.tenant_key == project.tenant_key,
-                                (AgentExecution.agent_display_name == from_agent)
-                                | (AgentExecution.agent_id == from_agent),
-                            )
-                        )
-                        .order_by(AgentExecution.started_at.desc())
-                        .limit(1)
-                    )
-                    sender_display_row = sender_lookup.scalar_one_or_none()
-                    if sender_display_row:
-                        sender_display_name = sender_display_row
+                sender_display_name = await self._resolve_sender_display_name(session, from_agent, project)
 
-                # Create individual messages for each recipient (Handover 0387 - Broadcast Fan-out)
-                messages = []
-                if len(resolved_to_agents) > 0:
-                    for recipient_id in resolved_to_agents:
-                        message = Message(
-                            project_id=project.id,
-                            tenant_key=project.tenant_key,
-                            content=content,
-                            message_type="broadcast" if is_broadcast_fanout else message_type,
-                            priority=priority,
-                            status="pending",
-                            from_agent_id=from_agent or "orchestrator",
-                            from_display_name=sender_display_name,
-                        )
-                        session.add(message)
-                        await session.flush()  # Flush to assign message.id before creating recipient
-                        session.add(
-                            MessageRecipient(
-                                message_id=message.id,
-                                agent_id=recipient_id,
-                                tenant_key=project.tenant_key,
-                            )
-                        )
-                        messages.append(message)
-                    await session.flush()  # Flush all recipients
-                    message_ids = [str(msg.id) for msg in messages]
-                    await session.commit()
-                    message_id = message_ids[0] if message_ids else None
-                else:
-                    # No recipients (e.g., broadcast to empty project) - skip message creation
-                    await session.commit()
-                    message_id = None
+                # Create and persist messages
+                messages, message_id = await self._persist_messages(
+                    session,
+                    resolved_to_agents,
+                    project,
+                    content,
+                    is_broadcast_fanout,
+                    message_type,
+                    priority,
+                    from_agent,
+                    sender_display_name,
+                )
 
                 self._logger.info(
                     f"Sent {message_type} message {message_id} from {from_agent or 'orchestrator'} to {to_agents}"
                 )
 
-                # DIAGNOSTIC: Check WebSocket manager availability
                 self._logger.info(
                     f"[WEBSOCKET DEBUG] websocket_manager is {'AVAILABLE' if self._websocket_manager else 'NONE'} "
                     f"for message {message_id}"
@@ -308,18 +213,20 @@ class MessageService:
 
                 # Emit WebSocket events if manager is available
                 await self._broadcast_message_events(
-                    session,
-                    messages,
-                    message_id,
-                    project,
-                    tenant_key,
-                    to_agents,
-                    resolved_to_agents,
-                    from_agent,
-                    message_type,
-                    content,
-                    priority,
-                    sender_execution,
+                    BroadcastMessageContext(
+                        session=session,
+                        messages=messages,
+                        message_id=message_id,
+                        project=project,
+                        tenant_key=tenant_key,
+                        to_agents=to_agents,
+                        resolved_to_agents=resolved_to_agents,
+                        from_agent=from_agent,
+                        message_type=message_type,
+                        content=content,
+                        priority=priority,
+                        sender_execution=sender_execution,
+                    ),
                 )
 
                 # Handover 0731c: Build typed response (SendMessageResult)
@@ -329,65 +236,16 @@ class MessageService:
                     message_type=message_type,
                 )
 
-                # Handover 0709b: Detect staging orchestrator broadcast and enrich response
-                # Defense-in-depth Layer 5.5: Reinforced advisory STOP signal for staging completion
-                # Conditions:
-                # 1. Sender is an orchestrator (agent_name == "orchestrator")
-                # 2. Job is in staging phase (status == "waiting")
-                # 3. Message is a broadcast (to_agents resolved to multiple agents or was ['all'])
-                is_broadcast = len(resolved_to_agents) > 1 or (to_agents and to_agents[0] == "all")
-
-                if is_broadcast and from_agent:
-                    # Look up sender's execution to check if this is a staging orchestrator
-                    sender_result = await session.execute(
-                        select(AgentExecution)
-                        .where(and_(AgentExecution.agent_id == from_agent, AgentExecution.tenant_key == tenant_key))
-                        .order_by(AgentExecution.started_at.desc())
-                        .limit(1)
-                    )
-                    sender_execution = sender_result.scalar_one_or_none()
-
-                    if sender_execution:
-                        # Look up the job to check agent_name and status
-                        # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
-                        sender_job_result = await session.execute(
-                            select(AgentJob).where(
-                                AgentJob.job_id == sender_execution.job_id, AgentJob.tenant_key == tenant_key
-                            )
-                        )
-                        sender_job = sender_job_result.scalar_one_or_none()
-
-                        if sender_job:
-                            # Check if this is a staging orchestrator:
-                            # - agent_name is "orchestrator" (on AgentExecution)
-                            # - status is "waiting" (staging phase, not yet acknowledged)
-                            is_orchestrator = sender_execution.agent_name == "orchestrator"
-                            is_staging = sender_execution.status == "waiting"
-
-                            if is_orchestrator and is_staging:
-                                # Set staging_status now that staging is truly complete
-                                if project.staging_status != "staging_complete":
-                                    project.staging_status = "staging_complete"
-                                    project.updated_at = datetime.now(timezone.utc)
-
-                                # Enrich response with staging directive (typed model)
-                                response.staging_directive = StagingDirective(
-                                    status="STAGING_SESSION_COMPLETE",
-                                    action="STOP",
-                                    message=(
-                                        "STAGING IS COMPLETE. Your session must end NOW. "
-                                        "Do NOT proceed to implementation. Do NOT call Task(). "
-                                        "Do NOT call complete_job() or write_360_memory(). "
-                                        "The user will click 'Implement' in the dashboard to start "
-                                        "a new implementation session with a fresh orchestrator."
-                                    ),
-                                    implementation_gate="LOCKED",
-                                    next_step="Report staging complete to user and stop.",
-                                )
-                                self._logger.info(
-                                    f"[STAGING DIRECTIVE] Added STOP directive to staging orchestrator broadcast "
-                                    f"(agent_id={from_agent}, status=waiting)"
-                                )
+                # Check for staging broadcast directive
+                await self._check_staging_broadcast_directive(
+                    session,
+                    response,
+                    resolved_to_agents,
+                    to_agents,
+                    from_agent,
+                    tenant_key,
+                    project,
+                )
 
                 return response
 
@@ -433,6 +291,208 @@ class MessageService:
             )
 
         return tenant_key, project
+
+    async def _resolve_message_recipients(
+        self,
+        session: AsyncSession,
+        to_agents: list[str],
+        project_id: str,
+        tenant_key: str,
+        from_agent: Optional[str],
+    ) -> list[str]:
+        """Resolve agent display names/refs to agent_id UUIDs.
+
+        Handover 0372: Routes by agent_id (executor) instead of job_id (work order).
+        """
+        resolved_to_agents: list[str] = []
+        for agent_ref in to_agents:
+            if agent_ref == "all":
+                # FAN-OUT: Query active agents in project (Handover 0387)
+                exec_result = await session.execute(
+                    select(AgentExecution)
+                    .join(AgentJob)
+                    .where(
+                        and_(
+                            AgentJob.project_id == project_id,
+                            AgentExecution.status.in_(["waiting", "working", "blocked"]),
+                            AgentExecution.tenant_key == tenant_key,
+                        )
+                    )
+                )
+                executions = exec_result.scalars().all()
+
+                sender_ref = from_agent or "orchestrator"
+                for execution in executions:
+                    if sender_ref in (execution.agent_display_name, execution.agent_id):
+                        continue
+                    resolved_to_agents.append(execution.agent_id)
+                    self._logger.info(f"[FANOUT] Expanded broadcast to agent_id '{execution.agent_id}'")
+            elif len(agent_ref) == 36 and "-" in agent_ref:
+                resolved_to_agents.append(agent_ref)
+            else:
+                exec_result = await session.execute(
+                    select(AgentExecution)
+                    .join(AgentJob)
+                    .where(
+                        and_(
+                            AgentJob.project_id == project_id,
+                            AgentExecution.agent_display_name == agent_ref,
+                            AgentExecution.status.in_(
+                                ["waiting", "working", "blocked", "complete"]
+                            ),  # Active + completed statuses (0827a)
+                            AgentExecution.tenant_key == tenant_key,
+                        )
+                    )
+                    .order_by(AgentExecution.started_at.desc())
+                    .limit(1)
+                )
+                execution = exec_result.scalar_one_or_none()
+                if execution:
+                    resolved_to_agents.append(execution.agent_id)
+                    self._logger.info(
+                        f"[RESOLVER] Resolved agent_display_name '{agent_ref}' to agent_id '{execution.agent_id}'"
+                    )
+                else:
+                    resolved_to_agents.append(agent_ref)
+                    self._logger.warning(
+                        f"[RESOLVER] Could not resolve agent_display_name '{agent_ref}' to active execution in project {project_id}"
+                    )
+        return resolved_to_agents
+
+    async def _resolve_sender_display_name(
+        self,
+        session: AsyncSession,
+        from_agent: Optional[str],
+        project: Any,
+    ) -> str:
+        """Resolve sender agent reference to display name (Handover 0827a)."""
+        sender_display_name = from_agent or "orchestrator"
+        if from_agent:
+            sender_lookup = await session.execute(
+                select(AgentExecution.agent_display_name)
+                .join(AgentJob)
+                .where(
+                    and_(
+                        AgentJob.project_id == project.id,
+                        AgentExecution.tenant_key == project.tenant_key,
+                        (AgentExecution.agent_display_name == from_agent) | (AgentExecution.agent_id == from_agent),
+                    )
+                )
+                .order_by(AgentExecution.started_at.desc())
+                .limit(1)
+            )
+            sender_display_row = sender_lookup.scalar_one_or_none()
+            if sender_display_row:
+                sender_display_name = sender_display_row
+        return sender_display_name
+
+    async def _persist_messages(
+        self,
+        session: AsyncSession,
+        resolved_to_agents: list[str],
+        project: Any,
+        content: str,
+        is_broadcast_fanout: bool,
+        message_type: str,
+        priority: str,
+        from_agent: Optional[str],
+        sender_display_name: str,
+    ) -> tuple[list[Message], str | None]:
+        """Create Message + MessageRecipient rows for each recipient. Returns (messages, first_message_id)."""
+        messages: list[Message] = []
+        if len(resolved_to_agents) > 0:
+            for recipient_id in resolved_to_agents:
+                message = Message(
+                    project_id=project.id,
+                    tenant_key=project.tenant_key,
+                    content=content,
+                    message_type="broadcast" if is_broadcast_fanout else message_type,
+                    priority=priority,
+                    status="pending",
+                    from_agent_id=from_agent or "orchestrator",
+                    from_display_name=sender_display_name,
+                )
+                session.add(message)
+                await session.flush()
+                session.add(
+                    MessageRecipient(
+                        message_id=message.id,
+                        agent_id=recipient_id,
+                        tenant_key=project.tenant_key,
+                    )
+                )
+                messages.append(message)
+            await session.flush()
+            message_ids = [str(msg.id) for msg in messages]
+            await session.commit()
+            message_id = message_ids[0] if message_ids else None
+        else:
+            await session.commit()
+            message_id = None
+        return messages, message_id
+
+    async def _check_staging_broadcast_directive(
+        self,
+        session: AsyncSession,
+        response: SendMessageResult,
+        resolved_to_agents: list[str],
+        to_agents: list[str],
+        from_agent: Optional[str],
+        tenant_key: str,
+        project: Any,
+    ) -> None:
+        """Detect staging orchestrator broadcast and enrich response with STOP directive.
+
+        Handover 0709b: Defense-in-depth Layer 5.5 for staging completion.
+        """
+        is_broadcast = len(resolved_to_agents) > 1 or (to_agents and to_agents[0] == "all")
+
+        if not (is_broadcast and from_agent):
+            return
+
+        sender_result = await session.execute(
+            select(AgentExecution)
+            .where(and_(AgentExecution.agent_id == from_agent, AgentExecution.tenant_key == tenant_key))
+            .order_by(AgentExecution.started_at.desc())
+            .limit(1)
+        )
+        sender_execution = sender_result.scalar_one_or_none()
+        if not sender_execution:
+            return
+
+        # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
+        sender_job_result = await session.execute(
+            select(AgentJob).where(AgentJob.job_id == sender_execution.job_id, AgentJob.tenant_key == tenant_key)
+        )
+        sender_job = sender_job_result.scalar_one_or_none()
+        if not sender_job:
+            return
+
+        is_orchestrator = sender_execution.agent_name == "orchestrator"
+        is_staging = sender_execution.status == "waiting"
+
+        if is_orchestrator and is_staging:
+            if project.staging_status != "staging_complete":
+                project.staging_status = "staging_complete"
+                project.updated_at = datetime.now(timezone.utc)
+
+            response.staging_directive = StagingDirective(
+                status="STAGING_SESSION_COMPLETE",
+                action="STOP",
+                message=(
+                    "STAGING IS COMPLETE. Your session must end NOW. "
+                    "Do NOT proceed to implementation. Do NOT call Task(). "
+                    "Do NOT call complete_job() or write_360_memory(). "
+                    "The user will click 'Implement' in the dashboard to start "
+                    "a new implementation session with a fresh orchestrator."
+                ),
+                implementation_gate="LOCKED",
+                next_step="Report staging complete to user and stop.",
+            )
+            self._logger.info(
+                f"[STAGING DIRECTIVE] Added STOP directive to staging orchestrator broadcast "
+                f"(agent_id={from_agent}, status=waiting)"
+            )
 
     async def _handle_send_message_side_effects(
         self,
@@ -604,24 +664,25 @@ class MessageService:
 
     async def _broadcast_message_events(
         self,
-        session: AsyncSession,
-        messages: list,
-        message_id: Optional[str],
-        project: Any,
-        tenant_key: str,
-        to_agents: list[str],
-        resolved_to_agents: list[str],
-        from_agent: Optional[str],
-        message_type: str,
-        content: str,
-        priority: str,
-        sender_execution: Any,
+        ctx: BroadcastMessageContext,
     ) -> None:
         """Emit WebSocket events for sent/received messages.
 
         Broadcasts message_sent event to the sender and message_received event
         to each recipient via the WebSocket manager.
         """
+        session = ctx.session
+        messages = ctx.messages
+        message_id = ctx.message_id
+        project = ctx.project
+        tenant_key = ctx.tenant_key
+        to_agents = ctx.to_agents
+        resolved_to_agents = ctx.resolved_to_agents
+        from_agent = ctx.from_agent
+        message_type = ctx.message_type
+        content = ctx.content
+        priority = ctx.priority
+        sender_execution = ctx.sender_execution
         if self._websocket_manager and messages:
             self._logger.info(f"[WEBSOCKET DEBUG] Calling broadcast_message_sent for message {message_id}")
             try:
@@ -1084,231 +1145,34 @@ class MessageService:
                         context={"agent_id": agent_id, "job_id": execution.job_id},
                     )
 
-                # Query messages using native SQLAlchemy queries
-                # Handover 0840b: JOIN on MessageRecipient instead of JSONB containment
-                # Handover 0387: fan-out at write means no 'all' broadcast matching needed
-                conditions = [
-                    Message.tenant_key == tenant_key,
-                    Message.project_id == job.project_id,
-                    Message.status == "pending",  # Only unread messages
-                    MessageRecipient.agent_id == agent_id,
-                ]
-
-                # HANDOVER 0372: Apply filtering conditions from 0366b
-
-                # Filter: exclude_self - Filter out messages from the same agent
-                if exclude_self:
-                    # Handover 0840b: from_agent_id is now a proper column
-                    conditions.append(func.coalesce(Message.from_agent_id, "") != agent_id)
-
-                # Filter: exclude_progress - Filter out progress-type messages
-                if exclude_progress:
-                    conditions.append(Message.message_type != "progress")
-
-                # Filter: message_types - Allow-list of message types
-                if message_types is not None:
-                    if len(message_types) == 0:
-                        # Empty allow-list means no messages should pass
-                        conditions.append(Message.id is None)
-                    else:
-                        # Only allow specified message types
-                        conditions.append(Message.message_type.in_(message_types))
-
-                query = (
-                    select(Message)
-                    .join(MessageRecipient)
-                    .options(selectinload(Message.acknowledgments), selectinload(Message.recipients))
-                    .where(and_(*conditions))
-                    .order_by(Message.created_at)
+                # Build filtered query
+                query = self._build_receive_query(
+                    agent_id=agent_id,
+                    tenant_key=tenant_key,
+                    project_id=job.project_id,
+                    exclude_self=exclude_self,
+                    exclude_progress=exclude_progress,
+                    message_types=message_types,
+                    limit=limit,
                 )
-
-                # Apply limit
-                if isinstance(limit, int) and limit > 0:
-                    query = query.limit(limit)
 
                 result = await session.execute(query)
                 messages = result.scalars().all()
 
-                # AUTO-ACKNOWLEDGE: Bulk update all retrieved messages to acknowledged status (Handover 0326)
-                # This happens immediately when agent retrieves messages
-                if messages:
-                    for msg in messages:
-                        msg.status = "acknowledged"
-                        msg.acknowledged_at = datetime.now(timezone.utc)
-                        # Handover 0840b: INSERT into junction table instead of JSONB append
-                        ack_stmt = (
-                            pg_insert(MessageAcknowledgment)
-                            .values(
-                                message_id=str(msg.id),
-                                agent_id=agent_id,
-                                tenant_key=tenant_key,
-                            )
-                            .on_conflict_do_nothing(constraint="uq_msg_ack")
-                        )
-                        await session.execute(ack_stmt)
-
-                    await session.commit()
-                    self._logger.info(f"Auto-acknowledged {len(messages)} messages for agent {agent_id}")
-
-                    # Self-healing counter: count actual remaining pending messages
-                    # instead of blindly decrementing (prevents permanent counter drift)
-                    async def _acknowledge_counters():
-                        # Count actual remaining pending messages for this agent
-                        # Handover 0840b: JOIN on MessageRecipient instead of JSONB containment
-                        pending_stmt = (
-                            select(func.count())
-                            .select_from(Message)
-                            .join(MessageRecipient)
-                            .where(
-                                Message.tenant_key == tenant_key,
-                                Message.project_id == job.project_id,
-                                Message.status == "pending",
-                                MessageRecipient.agent_id == agent_id,
-                            )
-                        )
-                        pending_result = await session.execute(pending_stmt)
-                        actual_pending = pending_result.scalar() or 0
-
-                        # SET waiting count to actual pending (self-healing)
-                        # INCREMENT read count by number of messages just acknowledged
-                        await session.execute(
-                            update(AgentExecution)
-                            .where(
-                                AgentExecution.agent_id == agent_id,
-                                AgentExecution.tenant_key == tenant_key,
-                            )
-                            .values(
-                                messages_waiting_count=actual_pending,
-                                messages_read_count=AgentExecution.messages_read_count + len(messages),
-                            )
-                        )
-                        await session.commit()
-
-                    try:
-                        await with_deadlock_retry(
-                            session,
-                            _acknowledge_counters,
-                            operation_name="receive_counter_update",
-                            context={"agent_id": agent_id},
-                        )
-                        self._logger.info(
-                            f"[COUNTER] Self-healing acknowledge: {len(messages)} messages for {agent_id}"
-                        )
-                    except RetryExhaustedError:
-                        # Counter update is non-critical; messages are already acknowledged.
-                        # Log at ERROR for visibility -- counter drift until next receive.
-                        self._logger.exception("Failed to update receive counters for %s", agent_id)
-
-                    # Emit WebSocket event for UI update (Handover 0326)
-                    # Use broadcast_message_acknowledged for real-time counter updates
-                    if self._websocket_manager:
-                        try:
-                            # Fetch updated counter values after commit (Handover 0425 fix)
-                            counter_stats = await self._repo.get_counter_stats(
-                                session=session,
-                                agent_id=agent_id,
-                                tenant_key=tenant_key,
-                            )
-                            waiting_count = counter_stats["waiting"] if counter_stats else 0
-                            read_count = counter_stats["read"] if counter_stats else 0
-
-                            await self._websocket_manager.broadcast_message_acknowledged(
-                                message_id=str(messages[0].id) if messages else "",
-                                agent_id=agent_id,
-                                tenant_key=tenant_key,
-                                project_id=str(job.project_id),
-                                message_ids=[str(msg.id) for msg in messages],
-                                waiting_count=waiting_count,
-                                read_count=read_count,
-                            )
-                            self._logger.info(
-                                f"[WEBSOCKET] Broadcast message:acknowledged for {len(messages)} messages (waiting={waiting_count}, read={read_count})"
-                            )
-                        except (RuntimeError, ValueError) as e:
-                            self._logger.warning(f"Failed to emit WebSocket for acknowledged messages: {e}")
-
-                # Handover 0827a: Batch-resolve sender display names for old messages (fallback)
-                # Handover 0840b: Use from_agent_id / from_display_name columns
-                sender_ids = {msg.from_agent_id for msg in messages if msg.from_agent_id and not msg.from_display_name}
-                uuid_ids = [s for s in sender_ids if s and "-" in s and len(s) == 36]
-                sender_name_map: dict[str, str] = {}
-                if uuid_ids:
-                    name_result = await session.execute(
-                        select(AgentExecution.agent_id, AgentExecution.agent_display_name).where(
-                            AgentExecution.agent_id.in_(uuid_ids),
-                            AgentExecution.tenant_key == tenant_key,
-                        )
-                    )
-                    sender_name_map = {row.agent_id: row.agent_display_name for row in name_result}
-
-                # Convert to AgentMessageQueue-compatible format
-                messages_list = []
-                for msg in messages:
-                    # Map priority to integer for backward compatibility
-                    priority_reverse_map = {"low": 0, "normal": 1, "high": 2, "critical": 2}
-                    priority_int = priority_reverse_map.get(msg.priority, 1)
-
-                    # Handover 0827a: Prefer display name over raw UUID
-                    # Handover 0840b: Use from_agent_id / from_display_name columns
-                    from_agent_raw = msg.from_agent_id or ""
-                    from_display = msg.from_display_name or sender_name_map.get(from_agent_raw, "")
-
-                    # Build recipient context for broadcast awareness
-                    recipient_ids = [r.agent_id for r in msg.recipients] if msg.recipients else []
-
-                    messages_list.append(
-                        {
-                            "id": str(msg.id),
-                            "from_agent": from_display or from_agent_raw,
-                            "from_agent_id": from_agent_raw,
-                            "type": msg.message_type,
-                            "content": msg.content,
-                            "priority": priority_int,
-                            "acknowledged": msg.status in ["acknowledged", "completed"],
-                            "acknowledged_at": msg.acknowledged_at.isoformat() if msg.acknowledged_at else None,
-                            "acknowledged_by": msg.acknowledgments[0].agent_id if msg.acknowledgments else None,
-                            "timestamp": msg.created_at.isoformat(),
-                            "recipients_count": len(recipient_ids),
-                            "metadata": {},
-                        }
-                    )
+                # Auto-acknowledge, update counters, resolve senders, format results
+                messages_list = await self._process_received_messages(
+                    session=session,
+                    messages=messages,
+                    agent_id=agent_id,
+                    tenant_key=tenant_key,
+                    job=job,
+                    execution=execution,
+                )
 
                 self._logger.info(f"Retrieved {len(messages_list)} messages for agent {agent_id}")
 
                 # Handover 0827c: Append reactivation guidance for auto-blocked agents
-                # Only show for post-completion auto-blocks (completed_at set),
-                # not for mid-work blocks via report_error()
-                reactivation_guidance = None
-                is_post_completion_block = (
-                    execution and execution.status == "blocked" and execution.completed_at is not None
-                )
-                is_mid_work_block = execution and execution.status == "blocked" and execution.completed_at is None
-                if is_post_completion_block and messages_list:
-                    reactivation_guidance = {
-                        "your_status": "blocked",
-                        "your_job_id": str(execution.job_id),
-                        "instruction": (
-                            "You were in COMPLETE status and received a message. "
-                            "Review the message(s) above, then choose ONE action:\n"
-                            f'- If action is needed: call reactivate_job(job_id="{execution.job_id}", '
-                            'reason="brief reason")\n'
-                            f'- If no action needed: call dismiss_reactivation(job_id="{execution.job_id}", '
-                            'reason="informational only")'
-                        ),
-                    }
-                elif is_mid_work_block and messages_list:
-                    reactivation_guidance = {
-                        "your_status": "blocked",
-                        "your_job_id": str(execution.job_id),
-                        "block_reason": execution.block_reason or "unknown",
-                        "instruction": (
-                            "You are BLOCKED due to an error you reported. "
-                            "Review any message(s) above for guidance, then resume by calling:\n"
-                            f'report_progress(job_id="{execution.job_id}", '
-                            "todo_items=[...your updated tasks...])\n"
-                            "This will transition you back to WORKING status."
-                        ),
-                    }
+                reactivation_guidance = self._build_reactivation_guidance(execution, messages_list)
 
                 # Handover 0731c: Return MessageListResult typed model
                 result = MessageListResult(messages=messages_list, count=len(messages_list))
@@ -1324,6 +1188,252 @@ class MessageService:
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to receive messages")
             raise BaseGiljoError(message=str(e), context={"operation": "receive_messages", "agent_id": agent_id}) from e
+
+    def _build_receive_query(
+        self,
+        agent_id: str,
+        tenant_key: str,
+        project_id: Any,
+        exclude_self: bool,
+        exclude_progress: bool,
+        message_types: Optional[list[str]],
+        limit: int,
+    ) -> Any:
+        """Build the SQLAlchemy query for receive_messages with all filters applied."""
+        # Handover 0840b: JOIN on MessageRecipient instead of JSONB containment
+        # Handover 0387: fan-out at write means no 'all' broadcast matching needed
+        conditions = [
+            Message.tenant_key == tenant_key,
+            Message.project_id == project_id,
+            Message.status == "pending",  # Only unread messages
+            MessageRecipient.agent_id == agent_id,
+        ]
+
+        # HANDOVER 0372: Apply filtering conditions from 0366b
+
+        # Filter: exclude_self - Filter out messages from the same agent
+        if exclude_self:
+            # Handover 0840b: from_agent_id is now a proper column
+            conditions.append(func.coalesce(Message.from_agent_id, "") != agent_id)
+
+        # Filter: exclude_progress - Filter out progress-type messages
+        if exclude_progress:
+            conditions.append(Message.message_type != "progress")
+
+        # Filter: message_types - Allow-list of message types
+        if message_types is not None:
+            if len(message_types) == 0:
+                # Empty allow-list means no messages should pass
+                conditions.append(Message.id is None)
+            else:
+                # Only allow specified message types
+                conditions.append(Message.message_type.in_(message_types))
+
+        query = (
+            select(Message)
+            .join(MessageRecipient)
+            .options(selectinload(Message.acknowledgments), selectinload(Message.recipients))
+            .where(and_(*conditions))
+            .order_by(Message.created_at)
+        )
+
+        # Apply limit
+        if isinstance(limit, int) and limit > 0:
+            query = query.limit(limit)
+
+        return query
+
+    async def _process_received_messages(
+        self,
+        session: Any,
+        messages: list,
+        agent_id: str,
+        tenant_key: str,
+        job: Any,
+        execution: Any,
+    ) -> list[dict]:
+        """Auto-acknowledge messages, update counters, resolve senders, and format results."""
+        # AUTO-ACKNOWLEDGE: Bulk update all retrieved messages to acknowledged status (Handover 0326)
+        # This happens immediately when agent retrieves messages
+        if messages:
+            for msg in messages:
+                msg.status = "acknowledged"
+                msg.acknowledged_at = datetime.now(timezone.utc)
+                # Handover 0840b: INSERT into junction table instead of JSONB append
+                ack_stmt = (
+                    pg_insert(MessageAcknowledgment)
+                    .values(
+                        message_id=str(msg.id),
+                        agent_id=agent_id,
+                        tenant_key=tenant_key,
+                    )
+                    .on_conflict_do_nothing(constraint="uq_msg_ack")
+                )
+                await session.execute(ack_stmt)
+
+            await session.commit()
+            self._logger.info(f"Auto-acknowledged {len(messages)} messages for agent {agent_id}")
+
+            # Self-healing counter: count actual remaining pending messages
+            # instead of blindly decrementing (prevents permanent counter drift)
+            async def _acknowledge_counters():
+                # Count actual remaining pending messages for this agent
+                # Handover 0840b: JOIN on MessageRecipient instead of JSONB containment
+                pending_stmt = (
+                    select(func.count())
+                    .select_from(Message)
+                    .join(MessageRecipient)
+                    .where(
+                        Message.tenant_key == tenant_key,
+                        Message.project_id == job.project_id,
+                        Message.status == "pending",
+                        MessageRecipient.agent_id == agent_id,
+                    )
+                )
+                pending_result = await session.execute(pending_stmt)
+                actual_pending = pending_result.scalar() or 0
+
+                # SET waiting count to actual pending (self-healing)
+                # INCREMENT read count by number of messages just acknowledged
+                await session.execute(
+                    update(AgentExecution)
+                    .where(
+                        AgentExecution.agent_id == agent_id,
+                        AgentExecution.tenant_key == tenant_key,
+                    )
+                    .values(
+                        messages_waiting_count=actual_pending,
+                        messages_read_count=AgentExecution.messages_read_count + len(messages),
+                    )
+                )
+                await session.commit()
+
+            try:
+                await with_deadlock_retry(
+                    session,
+                    _acknowledge_counters,
+                    operation_name="receive_counter_update",
+                    context={"agent_id": agent_id},
+                )
+                self._logger.info(f"[COUNTER] Self-healing acknowledge: {len(messages)} messages for {agent_id}")
+            except RetryExhaustedError:
+                # Counter update is non-critical; messages are already acknowledged.
+                # Log at ERROR for visibility -- counter drift until next receive.
+                self._logger.exception("Failed to update receive counters for %s", agent_id)
+
+            # Emit WebSocket event for UI update (Handover 0326)
+            # Use broadcast_message_acknowledged for real-time counter updates
+            if self._websocket_manager:
+                try:
+                    # Fetch updated counter values after commit (Handover 0425 fix)
+                    counter_stats = await self._repo.get_counter_stats(
+                        session=session,
+                        agent_id=agent_id,
+                        tenant_key=tenant_key,
+                    )
+                    waiting_count = counter_stats["waiting"] if counter_stats else 0
+                    read_count = counter_stats["read"] if counter_stats else 0
+
+                    await self._websocket_manager.broadcast_message_acknowledged(
+                        message_id=str(messages[0].id) if messages else "",
+                        agent_id=agent_id,
+                        tenant_key=tenant_key,
+                        project_id=str(job.project_id),
+                        message_ids=[str(msg.id) for msg in messages],
+                        waiting_count=waiting_count,
+                        read_count=read_count,
+                    )
+                    self._logger.info(
+                        f"[WEBSOCKET] Broadcast message:acknowledged for {len(messages)} messages (waiting={waiting_count}, read={read_count})"
+                    )
+                except (RuntimeError, ValueError) as e:
+                    self._logger.warning(f"Failed to emit WebSocket for acknowledged messages: {e}")
+
+        # Handover 0827a: Batch-resolve sender display names for old messages (fallback)
+        # Handover 0840b: Use from_agent_id / from_display_name columns
+        sender_ids = {msg.from_agent_id for msg in messages if msg.from_agent_id and not msg.from_display_name}
+        uuid_ids = [s for s in sender_ids if s and "-" in s and len(s) == 36]
+        sender_name_map: dict[str, str] = {}
+        if uuid_ids:
+            name_result = await session.execute(
+                select(AgentExecution.agent_id, AgentExecution.agent_display_name).where(
+                    AgentExecution.agent_id.in_(uuid_ids),
+                    AgentExecution.tenant_key == tenant_key,
+                )
+            )
+            sender_name_map = {row.agent_id: row.agent_display_name for row in name_result}
+
+        # Convert to AgentMessageQueue-compatible format
+        messages_list = []
+        for msg in messages:
+            # Map priority to integer for backward compatibility
+            priority_reverse_map = {"low": 0, "normal": 1, "high": 2, "critical": 2}
+            priority_int = priority_reverse_map.get(msg.priority, 1)
+
+            # Handover 0827a: Prefer display name over raw UUID
+            # Handover 0840b: Use from_agent_id / from_display_name columns
+            from_agent_raw = msg.from_agent_id or ""
+            from_display = msg.from_display_name or sender_name_map.get(from_agent_raw, "")
+
+            # Build recipient context for broadcast awareness
+            recipient_ids = [r.agent_id for r in msg.recipients] if msg.recipients else []
+
+            messages_list.append(
+                {
+                    "id": str(msg.id),
+                    "from_agent": from_display or from_agent_raw,
+                    "from_agent_id": from_agent_raw,
+                    "type": msg.message_type,
+                    "content": msg.content,
+                    "priority": priority_int,
+                    "acknowledged": msg.status in ["acknowledged", "completed"],
+                    "acknowledged_at": msg.acknowledged_at.isoformat() if msg.acknowledged_at else None,
+                    "acknowledged_by": msg.acknowledgments[0].agent_id if msg.acknowledgments else None,
+                    "timestamp": msg.created_at.isoformat(),
+                    "recipients_count": len(recipient_ids),
+                    "metadata": {},
+                }
+            )
+
+        return messages_list
+
+    def _build_reactivation_guidance(
+        self,
+        execution: Any,
+        messages_list: list[dict],
+    ) -> Optional[dict]:
+        """Build reactivation guidance for auto-blocked agents (Handover 0827c)."""
+        # Only show for post-completion auto-blocks (completed_at set),
+        # not for mid-work blocks via report_error()
+        is_post_completion_block = execution and execution.status == "blocked" and execution.completed_at is not None
+        is_mid_work_block = execution and execution.status == "blocked" and execution.completed_at is None
+        if is_post_completion_block and messages_list:
+            return {
+                "your_status": "blocked",
+                "your_job_id": str(execution.job_id),
+                "instruction": (
+                    "You were in COMPLETE status and received a message. "
+                    "Review the message(s) above, then choose ONE action:\n"
+                    f'- If action is needed: call reactivate_job(job_id="{execution.job_id}", '
+                    'reason="brief reason")\n'
+                    f'- If no action needed: call dismiss_reactivation(job_id="{execution.job_id}", '
+                    'reason="informational only")'
+                ),
+            }
+        if is_mid_work_block and messages_list:
+            return {
+                "your_status": "blocked",
+                "your_job_id": str(execution.job_id),
+                "block_reason": execution.block_reason or "unknown",
+                "instruction": (
+                    "You are BLOCKED due to an error you reported. "
+                    "Review any message(s) above for guidance, then resume by calling:\n"
+                    f'report_progress(job_id="{execution.job_id}", '
+                    "todo_items=[...your updated tasks...])\n"
+                    "This will transition you back to WORKING status."
+                ),
+            }
+        return None
 
     async def list_messages(
         self,
