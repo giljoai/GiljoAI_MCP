@@ -115,8 +115,8 @@ class TestRendererExcludesOldProtocol:
                 "## GiljoAI MCP Agent\n\n"
                 "You are part of a GiljoAI MCP orchestration system.\n\n"
                 "### STARTUP (MANDATORY)\n"
-                "1. Call `mcp__giljo-mcp__health_check()`\n"
-                "2. Call `mcp__giljo-mcp__get_agent_mission(job_id=\"<your_job_id>\")`\n"
+                "1. Call `mcp__giljo_mcp__health_check()`\n"
+                "2. Call `mcp__giljo_mcp__get_agent_mission(job_id=\"<your_job_id>\")`\n"
                 "3. Follow `full_protocol` for all lifecycle behavior\n"
             ),
             user_instructions="You are an implementation specialist.",
@@ -334,10 +334,10 @@ class TestExportedFileSize:
             system_instructions=(
                 "## GiljoAI MCP Agent\n\n"
                 "You are part of a GiljoAI MCP orchestration system. MCP tools are available as native\n"
-                "tool calls prefixed `mcp__giljo-mcp__*` in your tool list.\n\n"
+                "tool calls prefixed `mcp__giljo_mcp__*` in your tool list.\n\n"
                 "### STARTUP (MANDATORY)\n"
-                "1. Call `mcp__giljo-mcp__health_check()` to verify MCP connectivity\n"
-                "2. Call `mcp__giljo-mcp__get_agent_mission(job_id=\"<your_job_id>\")` to receive:\n"
+                "1. Call `mcp__giljo_mcp__health_check()` to verify MCP connectivity\n"
+                "2. Call `mcp__giljo_mcp__get_agent_mission(job_id=\"<your_job_id>\")` to receive:\n"
                 "   - Your full operating protocols (`full_protocol`)\n"
                 "   - Your work order and team context (`mission`)\n"
                 "3. Follow `full_protocol` for all lifecycle behavior\n\n"
