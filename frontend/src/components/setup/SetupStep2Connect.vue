@@ -62,14 +62,64 @@
       <!-- 2. API Key Status -->
       <div class="panel-section panel-section--centered">
         <label class="section-label">API Key</label>
-        <div v-if="generatingKey" class="api-key-status api-key-status--centered">
+
+        <!-- Checking for existing key -->
+        <div v-if="checkingKey" class="api-key-status api-key-status--centered">
+          <v-progress-circular size="16" width="2" indeterminate color="#8f97b7" />
+          <span class="status-text">Checking for existing key...</span>
+        </div>
+
+        <!-- Generating key -->
+        <div v-else-if="generatingKey" class="api-key-status api-key-status--centered">
           <v-progress-circular size="16" width="2" indeterminate color="#8f97b7" />
           <span class="status-text">Generating API key...</span>
         </div>
+
+        <!-- Fresh key generated (full key available) -->
         <div v-else-if="generatedKey" class="api-key-status api-key-status--centered">
           <v-icon size="16" color="#6bcf7f">mdi-check-circle</v-icon>
-          <span class="status-text">Key generated</span>
+          <span class="status-text">Key generated — copy the config below</span>
         </div>
+
+        <!-- Existing key found (prefix only, no plaintext) -->
+        <div v-else-if="existingKeyPrefix" class="api-key-status api-key-status--centered">
+          <v-icon size="16" color="#6bcf7f">mdi-check-circle</v-icon>
+          <span class="status-text">Key exists ({{ existingKeyPrefix }}...)</span>
+          <v-btn
+            size="small"
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-key-plus"
+            class="ml-3"
+            :loading="generatingKey"
+            @click="handleGenerateKey"
+          >
+            Generate New Config
+          </v-btn>
+          <v-btn
+            size="small"
+            variant="text"
+            class="ml-1"
+            @click="skipAlreadyConfigured"
+          >
+            I already configured this
+          </v-btn>
+        </div>
+
+        <!-- No key at all -->
+        <div v-else class="api-key-status api-key-status--centered">
+          <v-btn
+            size="small"
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-key-plus"
+            :loading="generatingKey"
+            @click="handleGenerateKey"
+          >
+            Generate API Key
+          </v-btn>
+        </div>
+
         <v-alert v-if="keyError" type="error" variant="tonal" density="compact" class="mt-2" closable @click:close="keyError = ''">
           {{ keyError }}
         </v-alert>
@@ -224,6 +274,8 @@ const serverUrl = computed(() => buildServerUrl(serverHostname.value, serverPort
 const platform = ref(detectPlatform())
 
 // API key state
+const checkingKey = ref(false)
+const existingKeyPrefix = ref(null)
 const generatedKey = ref(null)
 const generatingKey = ref(false)
 const keyError = ref('')
@@ -260,10 +312,21 @@ async function copyText(text, field) {
   }
 }
 
-// Auto-generate API key on mount
-async function autoGenerateKey() {
-  if (generatedKey.value) return
-  await handleGenerateKey()
+// Check for existing API key on mount
+async function checkExistingKey() {
+  if (existingKeyPrefix.value || generatedKey.value) return
+  checkingKey.value = true
+  try {
+    const resp = await api.apiKeys.getActive()
+    const keys = resp.data
+    if (keys && keys.length > 0) {
+      existingKeyPrefix.value = keys[0].key_prefix
+    }
+  } catch (e) {
+    console.warn('[SetupStep2] Failed to check active keys:', e)
+  } finally {
+    checkingKey.value = false
+  }
 }
 
 async function handleGenerateKey() {
@@ -273,6 +336,7 @@ async function handleGenerateKey() {
     const keyName = makeKeyName(activeToolId.value)
     const resp = await api.apiKeys.create(keyName)
     generatedKey.value = resp.data.api_key
+    existingKeyPrefix.value = null  // clear prefix state since we have the full key now
     try {
       window.dispatchEvent(new CustomEvent('api-key-created', { detail: { name: keyName } }))
     } catch (_) { /* no-op */ }
@@ -280,6 +344,13 @@ async function handleGenerateKey() {
     keyError.value = e?.response?.data?.message || e?.message || 'Failed to generate API key'
   } finally {
     generatingKey.value = false
+  }
+}
+
+function skipAlreadyConfigured() {
+  // User says they already configured — mark all tools connected
+  for (const id of props.selectedTools) {
+    connectionStatus.value[id] = 'connected'
   }
 }
 
@@ -334,7 +405,7 @@ watch(connectedTools, (val) => {
 }, { deep: true })
 
 onMounted(() => {
-  autoGenerateKey()
+  checkExistingKey()
   wsUnsub = wsStore.on('setup:tool_connected', handleToolConnected)
 })
 
