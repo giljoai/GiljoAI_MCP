@@ -59,6 +59,10 @@
 </template>
 
 <script setup>
+import { useFormatDate } from '@/composables/useFormatDate'
+
+const { formatDate } = useFormatDate()
+
 /**
  * MemberList - Displays and manages organization members.
  * Handover 0424d: Member list with role management.
@@ -98,10 +102,6 @@ function roleColor(role) {
   return colors[role] || 'grey'
 }
 
-function formatDate(dateStr) {
-  if (!dateStr) return 'Unknown'
-  return new Date(dateStr).toLocaleDateString()
-}
 
 function getInitials(member) {
   // Try to get initials from username or email, fall back to user_id

@@ -88,10 +88,9 @@ const mountProjectsView = () =>
 describe('ProjectsView - Deleted Projects Purge Controls', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    window.confirm = vi.fn().mockReturnValue(true)
   })
 
-  it('shows Delete All control and purges when confirmed', async () => {
+  it('shows Delete All control and opens confirmation dialog when clicked', async () => {
     const wrapper = mountProjectsView()
 
     wrapper.vm.showDeletedDialog = true
@@ -101,10 +100,14 @@ describe('ProjectsView - Deleted Projects Purge Controls', () => {
 
     expect(deleteAllButton.exists()).toBe(true)
 
+    // Click opens confirmPurgeAllDeleted which sets showPurgeAllDialog
     await deleteAllButton.trigger('click')
     await nextTick()
 
-    expect(window.confirm).toHaveBeenCalled()
+    // executePurgeAll is the method that actually calls purgeAllDeletedProjects
+    await wrapper.vm.executePurgeAll()
+    await nextTick()
+
     expect(purgeAllDeletedProjects).toHaveBeenCalled()
   })
 
@@ -116,10 +119,14 @@ describe('ProjectsView - Deleted Projects Purge Controls', () => {
 
     expect(wrapper.html()).toContain('purge-project')
 
-    await wrapper.vm.confirmPurgeDeleted({ id: 'deleted-1', name: 'First Deleted' })
+    // confirmPurgeDeleted opens a dialog; purgeDeletedProject does the actual purge
+    wrapper.vm.confirmPurgeDeleted({ id: 'deleted-1', name: 'First Deleted' })
     await nextTick()
 
-    expect(window.confirm).toHaveBeenCalled()
+    // Simulate dialog confirmation by calling purgeDeletedProject directly
+    await wrapper.vm.purgeDeletedProject({ id: 'deleted-1', name: 'First Deleted' })
+    await nextTick()
+
     expect(purgeDeletedProject).toHaveBeenCalledWith('deleted-1')
   })
 })

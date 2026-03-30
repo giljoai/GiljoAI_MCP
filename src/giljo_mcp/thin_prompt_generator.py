@@ -42,7 +42,6 @@ Priority: CRITICAL - Enables Commercial Product
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -50,7 +49,6 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src.giljo_mcp._config_io import read_config
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
@@ -66,14 +64,8 @@ def _get_ssl_protocol() -> str:
         "https" if ssl_enabled is True in config.yaml, "http" otherwise.
     """
     try:
-        import yaml
-
-        config_path = Path(__file__).parent.parent.parent / "config.yaml"
-        if config_path.exists():
-            with open(config_path) as f:
-                config = yaml.safe_load(f) or {}
-            return "https" if config.get("features", {}).get("ssl_enabled", False) else "http"
-    except (OSError, ValueError, ImportError):
+        return "https" if get_config().get_nested("features.ssl_enabled", default=False) else "http"
+    except (OSError, ValueError):
         pass
     return "http"
 
@@ -104,16 +96,7 @@ def build_continuation_prompt(
     """
     # Resolve MCP URL from config (supports external_host for public IP)
     config = get_config()
-    mcp_host = config.server.api_host
-
-    # Check for external_host override (public IP deployments)
-    try:
-        config_data = read_config()
-        external_host = config_data.get("services", {}).get("external_host")
-        if external_host:
-            mcp_host = external_host
-    except (OSError, ValueError, KeyError):
-        pass  # nosec B110
+    mcp_host = config.get_nested("services.external_host") or config.server.api_host
 
     mcp_port = config.server.api_port
     mcp_proto = _get_ssl_protocol()
@@ -720,14 +703,7 @@ class ThinClientPromptGenerator:
         config = get_config()
 
         # Use external_host (user-facing IP) not api_host (bind address 0.0.0.0)
-        # External host is configured during installation for network access
-        # Need to read config.yaml directly as ConfigManager doesn't load services section
-        try:
-            config_data = read_config()
-            mcp_host = config_data.get("services", {}).get("external_host") or config.server.api_host
-        except (OSError, ValueError, KeyError):  # nosec B110
-            # Fallback to api_host if YAML loading fails
-            mcp_host = config.server.api_host
+        mcp_host = config.get_nested("services.external_host") or config.server.api_host
 
         mcp_port = config.server.api_port
         mcp_proto = self._get_protocol()
@@ -829,12 +805,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         config = get_config()
 
         # Use external_host (user-facing IP) not api_host (bind address 0.0.0.0)
-        try:
-            config_data = read_config()
-            mcp_host = config_data.get("services", {}).get("external_host") or config.server.api_host
-        except (OSError, ValueError, KeyError):  # nosec B110
-            # Fallback to api_host if YAML loading fails
-            mcp_host = config.server.api_host
+        mcp_host = config.get_nested("services.external_host") or config.server.api_host
 
         mcp_port = config.server.api_port
         mcp_proto = self._get_protocol()
@@ -1162,17 +1133,8 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         Returns external_host for user-facing connections,
         falls back to api_host if not configured.
         """
-        try:
-            config_data = read_config()
-            external_host = config_data.get("services", {}).get("external_host")
-            if external_host:
-                return external_host
-        except (OSError, ValueError, KeyError):
-            pass  # nosec B110
-
-        # Fallback to api_host from config
         config = get_config()
-        return config.server.api_host
+        return config.get_nested("services.external_host") or config.server.api_host
 
     def _get_protocol(self) -> str:
         """Get HTTP protocol based on SSL configuration."""

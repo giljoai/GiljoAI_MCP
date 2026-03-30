@@ -65,25 +65,25 @@
 
         <!-- Checking for existing key -->
         <div v-if="checkingKey" class="api-key-status api-key-status--centered">
-          <v-progress-circular size="16" width="2" indeterminate color="#8f97b7" />
+          <v-progress-circular size="16" width="2" indeterminate :color="COLOR_MUTED" />
           <span class="status-text">Checking for existing key...</span>
         </div>
 
         <!-- Generating key -->
         <div v-else-if="generatingKey" class="api-key-status api-key-status--centered">
-          <v-progress-circular size="16" width="2" indeterminate color="#8f97b7" />
+          <v-progress-circular size="16" width="2" indeterminate :color="COLOR_MUTED" />
           <span class="status-text">Generating API key...</span>
         </div>
 
         <!-- Fresh key generated (full key available) -->
         <div v-else-if="generatedKey" class="api-key-status api-key-status--centered">
-          <v-icon size="16" color="#6bcf7f">mdi-check-circle</v-icon>
+          <v-icon size="16" :color="COLOR_SUCCESS">mdi-check-circle</v-icon>
           <span class="status-text">Key generated — copy the config below</span>
         </div>
 
         <!-- Existing key found (prefix only, no plaintext) -->
         <div v-else-if="existingKeyPrefix" class="api-key-status api-key-status--centered">
-          <v-icon size="16" color="#6bcf7f">mdi-check-circle</v-icon>
+          <v-icon size="16" :color="COLOR_SUCCESS">mdi-check-circle</v-icon>
           <span class="status-text">Key exists ({{ existingKeyPrefix }}...)</span>
           <v-btn
             size="small"
@@ -218,6 +218,10 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+
+/* design-token-exempt: Vuetify color prop requires hex values */
+const COLOR_MUTED = '#8f97b7' // $lightest-blue
+const COLOR_SUCCESS = '#6bcf7f' // $gradient-brand-end
 import api from '@/services/api'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
@@ -339,7 +343,7 @@ async function handleGenerateKey() {
     existingKeyPrefix.value = null  // clear prefix state since we have the full key now
     try {
       window.dispatchEvent(new CustomEvent('api-key-created', { detail: { name: keyName } }))
-    } catch (_) { /* no-op */ }
+    } catch { /* no-op */ }
   } catch (e) {
     keyError.value = e?.response?.data?.message || e?.message || 'Failed to generate API key'
   } finally {
@@ -415,7 +419,10 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../../styles/variables' as *;
+@use '../../styles/design-tokens' as *;
+
 .step-connect {
   max-width: 680px;
   margin: 0 auto;
@@ -424,7 +431,7 @@ onUnmounted(() => {
 .step-heading {
   font-size: 1rem;
   font-weight: 500;
-  color: #e1e1e1;
+  color: $color-text-primary;
   margin-bottom: 20px;
   text-align: center;
 }
@@ -442,10 +449,10 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #1e3147;
+  background: $elevation-elevated;
   border: none;
   border-radius: 8px;
-  color: #8f97b7;
+  color: $lightest-blue;
   cursor: pointer;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -453,12 +460,12 @@ onUnmounted(() => {
 }
 
 .tool-tab--active {
-  color: #ffc300;
-  --smooth-border-color: #ffc300;
+  color: $color-brand-yellow;
+  --smooth-border-color: #{$color-brand-yellow};
 }
 
 .tool-tab:hover:not(.tool-tab--active) {
-  color: #e1e1e1;
+  color: $color-text-primary;
 }
 
 .tool-tab-logo {
@@ -471,12 +478,12 @@ onUnmounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #8f97b7;
+  background: $lightest-blue;
   transition: background 250ms ease-out;
 }
 
 .tab-status-dot--connected {
-  background: #6bcf7f;
+  background: $gradient-brand-end;
 }
 
 /* Panel sections */
@@ -488,7 +495,7 @@ onUnmounted(() => {
   display: block;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #8f97b7;
+  color: $lightest-blue;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 8px;
@@ -550,15 +557,15 @@ onUnmounted(() => {
 
 .status-text {
   font-size: 0.875rem;
-  color: #e1e1e1;
+  color: $color-text-primary;
 }
 
 
 
 /* Platform toggle overrides for dark overlay background */
 .step-connect :deep(.v-btn-toggle > .v-btn.v-btn--active) {
-  background: #1e3147 !important;
-  color: white !important;
+  background: $elevation-elevated !important;
+  color: $color-surface !important;
 }
 
 .step-connect :deep(.v-btn-toggle > .v-btn:not(.v-btn--active)) {
@@ -568,7 +575,7 @@ onUnmounted(() => {
 /* Config blocks */
 .config-block {
   position: relative;
-  background: #0e1c2d;
+  background: $color-background-primary;
   border-radius: 8px;
   padding: 0;
   margin-bottom: 12px;
@@ -580,13 +587,13 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 6px 12px;
-  background: rgba(49, 80, 116, 0.3);
+  background: rgba($med-blue, 0.3);
 }
 
 .config-block-label {
   font-size: 0.6875rem;
   font-weight: 600;
-  color: #8f97b7;
+  color: $lightest-blue;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -597,7 +604,7 @@ onUnmounted(() => {
   font-family: "Roboto Mono", "Courier New", monospace;
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: #e1e1e1;
+  color: $color-text-primary;
   white-space: pre-wrap;
   word-break: break-all;
 }
@@ -607,7 +614,7 @@ onUnmounted(() => {
   top: 6px;
   right: 44px;
   font-size: 0.6875rem;
-  color: #6bcf7f;
+  color: $gradient-brand-end;
   font-weight: 600;
 }
 
@@ -633,24 +640,24 @@ onUnmounted(() => {
 }
 
 .status-indicator--waiting {
-  color: #8f97b7;
+  color: $lightest-blue;
 }
 
 .status-indicator--waiting::before {
-  background: #8f97b7;
+  background: $lightest-blue;
 }
 
 .status-indicator--connected {
-  color: #6bcf7f;
+  color: $gradient-brand-end;
 }
 
 .status-indicator--connected::before {
-  background: #6bcf7f;
+  background: $gradient-brand-end;
 }
 
 .instruction-text {
   font-size: 0.8125rem;
-  color: #8f97b7;
+  color: $lightest-blue;
   line-height: 1.5;
 }
 

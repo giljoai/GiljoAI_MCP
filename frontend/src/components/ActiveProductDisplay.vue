@@ -65,7 +65,7 @@ onMounted(async () => {
   // 1. Subscribe to WebSocket events first
   try {
     unsubscribe = wsStore.on('product:status:changed', handleProductStatusChanged)
-  } catch (_e) {
+  } catch {
     console.warn('[ActiveProductDisplay] Failed to register WS handler')
   }
 
@@ -99,7 +99,7 @@ onUnmounted(() => {
     if (typeof unsubscribe === 'function') {
       unsubscribe()
     }
-  } catch (_e) {
+  } catch {
     // no-op
   }
 })

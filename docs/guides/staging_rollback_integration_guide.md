@@ -78,7 +78,7 @@ async def cancel_staging(
     
     **Agent deletion rules**:
     - Deletes agents with status='waiting' or 'preparing' (not yet launched)
-    - Protects agents with status='active', 'working', 'review' (already launched)
+    - Protects agents with status='working', 'review' (already launched)
     - Updates orchestrator to 'failed' status
     - Clears project mission field
     
@@ -383,7 +383,7 @@ result = await rollback_project_staging(
 
 **Behavior**:
 - Agents with `status='waiting'` or `'preparing'` → Deleted
-- Agents with `status='active'`, `'working'`, `'review'` → Protected (NOT deleted)
+- Agents with `status='working'`, `'review'` → Protected (NOT deleted)
 
 **Result**:
 ```python
