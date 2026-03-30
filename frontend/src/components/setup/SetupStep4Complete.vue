@@ -2,7 +2,7 @@
   <div class="step-complete">
     <!-- Header -->
     <div class="complete-header">
-      <v-icon size="36" color="#6bcf7f" class="complete-icon">
+      <v-icon size="36" class="complete-icon success-icon">
         mdi-check-circle
       </v-icon>
       <h2 class="complete-title">You're all set!</h2>
@@ -19,7 +19,7 @@
         class="launchpad-card smooth-border"
       >
         <div class="card-icon-wrap">
-          <v-icon size="24" color="#ffc300">{{ card.icon }}</v-icon>
+          <v-icon size="24" class="card-icon">{{ card.icon }}</v-icon>
         </div>
         <h3 class="card-title">{{ card.title }}</h3>
         <p class="card-body">{{ card.body }}</p>
@@ -88,7 +88,10 @@ function handleDashboard() {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/variables' as *;
+@use '../../styles/design-tokens' as *;
+
 .step-complete {
   max-width: 780px;
   margin: 0 auto;
@@ -104,16 +107,20 @@ function handleDashboard() {
   margin-bottom: 12px;
 }
 
+.success-icon {
+  color: $gradient-brand-end;
+}
+
 .complete-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #e1e1e1;
+  color: $color-text-primary;
   margin: 0 0 8px;
 }
 
 .complete-subtitle {
   font-size: 0.875rem;
-  color: #8f97b7;
+  color: $lightest-blue;
   margin: 0;
   line-height: 1.5;
 }
@@ -127,7 +134,7 @@ function handleDashboard() {
 }
 
 .launchpad-card {
-  background: #1e3147;
+  background: $elevation-elevated;
   border-radius: 12px;
   padding: 24px 20px;
   display: flex;
@@ -139,7 +146,7 @@ function handleDashboard() {
 
 .launchpad-card:hover {
   box-shadow:
-    inset 0 0 0 1px var(--smooth-border-color, #315074),
+    inset 0 0 0 1px var(--smooth-border-color, #{$med-blue}),
     0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
@@ -148,7 +155,7 @@ function handleDashboard() {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(255, 195, 0, 0.15);
+  background: rgba($color-brand-yellow, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -156,16 +163,20 @@ function handleDashboard() {
   flex-shrink: 0;
 }
 
+.card-icon {
+  color: $color-brand-yellow;
+}
+
 .card-title {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #e1e1e1;
+  color: $color-text-primary;
   margin: 0 0 8px;
 }
 
 .card-body {
   font-size: 0.8125rem;
-  color: #8f97b7;
+  color: $lightest-blue;
   line-height: 1.5;
   margin: 0 0 20px;
   flex: 1;
@@ -188,7 +199,7 @@ function handleDashboard() {
 
 .dashboard-link {
   font-size: 0.8125rem;
-  color: #8f97b7;
+  color: $lightest-blue;
   cursor: pointer;
   text-decoration: none;
   transition: color 250ms ease-out, text-decoration 250ms ease-out;
@@ -196,13 +207,13 @@ function handleDashboard() {
 
 .dashboard-link:hover,
 .dashboard-link:focus-visible {
-  color: #ffc300;
+  color: $color-brand-yellow;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .dashboard-link:focus-visible {
-  outline: 2px solid #ffc300;
+  outline: 2px solid $color-brand-yellow;
   outline-offset: 2px;
   border-radius: 2px;
 }

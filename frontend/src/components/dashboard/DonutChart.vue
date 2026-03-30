@@ -48,9 +48,9 @@ const formattedData = computed(() => ({
     {
       data: props.chartData.values || [],
       backgroundColor: props.chartData.colors || [],
-      borderColor: 'rgba(0, 0, 0, 0.3)',
+      borderColor: 'rgba(0, 0, 0, 0.3)', // exempt: chart-specific color
       borderWidth: 1,
-      hoverBorderColor: '#FFFFFF',
+      hoverBorderColor: '#FFFFFF', // exempt: chart-specific color
       hoverBorderWidth: 2,
     },
   ],
@@ -68,7 +68,7 @@ const chartOptions = computed(() => ({
     legend: {
       position: 'bottom',
       labels: {
-        color: 'rgba(255, 255, 255, 0.7)',
+        color: 'rgba(255, 255, 255, 0.7)', // exempt: chart-specific color
         font: {
           size: 11,
           family: 'Roboto, sans-serif',
@@ -80,10 +80,10 @@ const chartOptions = computed(() => ({
       },
     },
     tooltip: {
-      backgroundColor: '#1e3147',
-      titleColor: '#FFFFFF',
-      bodyColor: 'rgba(255, 255, 255, 0.9)',
-      borderColor: 'rgba(255, 255, 255, 0.3)',
+      backgroundColor: '#1e3147', // exempt: chart-specific color ($elevation-elevated)
+      titleColor: '#FFFFFF', // exempt: chart-specific color
+      bodyColor: 'rgba(255, 255, 255, 0.9)', // exempt: chart-specific color
+      borderColor: 'rgba(255, 255, 255, 0.3)', // exempt: chart-specific color
       borderWidth: 1,
       padding: 10,
       callbacks: {
@@ -114,7 +114,7 @@ const chartOptions = computed(() => ({
   width: 200px;
   height: 200px;
   border-radius: 50%;
-  border: 2px dashed rgba(255, 255, 255, 0.15);
+  border: 2px dashed rgba(255, 255, 255, 0.15); /* exempt: chart placeholder border */
   margin: 0 auto;
 }
 </style>
