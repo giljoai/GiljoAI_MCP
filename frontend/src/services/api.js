@@ -449,11 +449,13 @@ export const api = {
       apiClient.post('/api/auth/verify-pin-and-reset-password', data),
     setRecoveryPin: (data) => apiClient.post('/api/auth/set-recovery-pin', data),
     resetUserPassword: (userId) => apiClient.post(`/api/v1/users/${userId}/reset-password`),
+    updateSetupState: (payload) => apiClient.patch('/api/auth/me/setup-state', payload),
   },
 
   // API Key Management
   apiKeys: {
     list: () => apiClient.get('/api/auth/api-keys'),
+    getActive: () => apiClient.get('/api/auth/api-keys/active'),
     create: (name) => apiClient.post('/api/auth/api-keys', { name }),
     delete: (keyId) => apiClient.delete(`/api/auth/api-keys/${keyId}`),
   },

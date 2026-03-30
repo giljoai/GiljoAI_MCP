@@ -249,12 +249,12 @@ const slides = computed(() => [
   {
     id: 'next',
     icon: 'mdi-flag-checkered',
-    title: 'Next: run the Startup quick start',
+    title: 'Next: run the Setup Wizard',
     body:
-      'The Startup tab is your “do this now” checklist: connect your tool(s), install slash commands, create a product/project, and start running tasks.',
-    note: 'Tip: you can always reopen this mini-tour using the (?) button next to the Startup tab.',
+      'The Setup Wizard walks you through connecting your AI coding tool, installing slash commands, and getting started with your first product and project.',
+    note: 'Tip: you can always reopen the wizard from the Welcome page.',
     actions: [
-      { id: 'go-startup', label: 'Go to Startup', icon: 'mdi-rocket-launch', type: 'userSettingsTab', tab: 'startup' },
+      { id: 'go-setup', label: 'Open Setup Wizard', icon: 'mdi-rocket-launch', type: 'route', route: '/' },
     ],
   },
 ])
