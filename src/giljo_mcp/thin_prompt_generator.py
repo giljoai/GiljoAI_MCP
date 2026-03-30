@@ -1049,9 +1049,18 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         if not project:
             return None
 
-        # Fetch product via project.product_id
-        product_stmt = select(Product).where(
-            and_(Product.id == project.product_id, Product.tenant_key == self.tenant_key)
+        # Fetch product via project.product_id (eagerly load relationships
+        # needed by _regenerate_mission — tech_stack, architecture, vision_documents)
+        from sqlalchemy.orm import selectinload
+
+        product_stmt = (
+            select(Product)
+            .options(
+                selectinload(Product.tech_stack),
+                selectinload(Product.architecture),
+                selectinload(Product.vision_documents),
+            )
+            .where(and_(Product.id == project.product_id, Product.tenant_key == self.tenant_key))
         )
         product_result = await self.db.execute(product_stmt)
         product = product_result.scalar_one_or_none()
