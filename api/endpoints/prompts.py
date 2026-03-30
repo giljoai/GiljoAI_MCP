@@ -279,11 +279,11 @@ async def generate_agent_prompt(
 ## MCP TOOL USAGE
 
 MCP tools are **native tool calls** (like Read/Write/Bash/Glob).
-- Use `mcp__giljo-mcp__*` tools directly (no HTTP, curl, or SDKs).
+- Use `mcp__giljo_mcp__*` tools directly (no HTTP, curl, or SDKs).
 
 ## STARTUP (MANDATORY)
 
-1. Call `mcp__giljo-mcp__get_agent_mission` with:
+1. Call `mcp__giljo_mcp__get_agent_mission` with:
    - job_id="{job_id}"
    - tenant_key="{tenant_key}"
 

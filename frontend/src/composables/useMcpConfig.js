@@ -61,7 +61,7 @@ export function isHttps() {
  * Generate Claude Code MCP add command.
  */
 export function generateClaudeConfig(serverUrl, apiKey) {
-  return `claude mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "Authorization: Bearer ${apiKey}"`
+  return `claude mcp add --transport http giljo_mcp ${serverUrl}/mcp --header "Authorization: Bearer ${apiKey}"`
 }
 
 /**
@@ -69,14 +69,14 @@ export function generateClaudeConfig(serverUrl, apiKey) {
  * Codex reads bearer token from env var at runtime.
  */
 export function generateCodexConfig(serverUrl) {
-  return `codex mcp add giljo-mcp --url ${serverUrl}/mcp --bearer-token-env-var GILJO_API_KEY`
+  return `codex mcp add giljo_mcp --url ${serverUrl}/mcp --bearer-token-env-var GILJO_API_KEY`
 }
 
 /**
  * Generate Gemini CLI MCP add command.
  */
 export function generateGeminiConfig(serverUrl, apiKey) {
-  return `gemini mcp add -t http -H "Authorization: Bearer ${apiKey}" giljo-mcp ${serverUrl}/mcp`
+  return `gemini mcp add -t http -H "Authorization: Bearer ${apiKey}" giljo_mcp ${serverUrl}/mcp`
 }
 
 /**
@@ -85,7 +85,7 @@ export function generateGeminiConfig(serverUrl, apiKey) {
  */
 export function generateOpenclawConfig(serverUrl, apiKey) {
   return JSON.stringify({
-    'giljo-mcp': {
+    'giljo_mcp': {
       transport: 'streamable-http',
       url: `${serverUrl}/mcp`,
       headers: { Authorization: `Bearer ${apiKey}` },

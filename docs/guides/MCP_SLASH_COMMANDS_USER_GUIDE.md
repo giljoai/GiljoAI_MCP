@@ -30,7 +30,7 @@ Current supported commands:
 
 If Claude Code does not show `/gil_*` commands yet:
 
-1. In Claude Code, call the MCP tool: `mcp__giljo-mcp__setup_slash_commands`
+1. In Claude Code, call the MCP tool: `mcp__giljo_mcp__setup_slash_commands`
 2. Run the returned `bash_command` (use the Bash tool, not PowerShell)
 3. Restart Claude Code
 
@@ -46,7 +46,7 @@ Run:
 ```
 
 This command:
-- Calls `mcp__giljo-mcp__get_agent_download_url` to get a one-time ZIP URL
+- Calls `mcp__giljo_mcp__get_agent_download_url` to get a one-time ZIP URL
 - Downloads the ZIP and asks where to install:
   - **Project**: `.claude/agents/` (only this repo)
   - **User**: `~/.claude/agents/` (all repos)
@@ -99,7 +99,7 @@ No new agent instances are created - you simply continue with a fresh context wi
 
 ## Troubleshooting
 
-- **Command not found**: Re-run `mcp__giljo-mcp__setup_slash_commands` and restart Claude Code.
+- **Command not found**: Re-run `mcp__giljo_mcp__setup_slash_commands` and restart Claude Code.
 - **Agents not available**: Re-run `/gil_get_agents` and restart Claude Code.
 - **401 / not authenticated**: Verify your MCP connection and API key (`X-API-Key`).
 - **Wrong install location**: Re-run `/gil_get_agents` and pick the correct location.
