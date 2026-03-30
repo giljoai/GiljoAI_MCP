@@ -17,12 +17,14 @@
           <!-- Header -->
           <div class="setup-wizard-header">
             <h2 class="setup-wizard-title">
-              {{ mode === 'learning' ? 'How to Use GiljoAI MCP' : 'Setup GiljoAI MCP' }}
+              <template v-if="mode === 'learning'">How to Use GiljoAI MCP</template>
+              <template v-else><span class="setup-wizard-title-gradient">Setup</span></template>
             </h2>
             <v-btn
               icon
               variant="text"
               size="small"
+              class="setup-wizard-close-btn"
               :aria-label="mode === 'learning' ? 'Close guide' : 'Close setup wizard'"
               @click="handleDismiss"
             >
@@ -138,9 +140,7 @@
                     @keydown.enter.prevent="toggleTool(tool.id)"
                     @keydown.space.prevent="toggleTool(tool.id)"
                   >
-                    <v-icon size="36" :color="isSelected(tool.id) ? '#ffc300' : '#8f97b7'">
-                      {{ tool.icon }}
-                    </v-icon>
+                    <img :src="tool.logo" :alt="tool.name" class="tool-card-logo" />
                     <span class="tool-name">{{ tool.name }}</span>
                     <span class="tool-provider">{{ tool.provider }}</span>
                   </div>
@@ -279,9 +279,9 @@ const LEARNING_SECTIONS = [
 ]
 
 const TOOLS = [
-  { id: 'claude_code', name: 'Claude Code', provider: 'by Anthropic', icon: 'mdi-console' },
-  { id: 'codex_cli', name: 'Codex CLI', provider: 'by OpenAI', icon: 'mdi-code-braces' },
-  { id: 'gemini_cli', name: 'Gemini CLI', provider: 'by Google', icon: 'mdi-google' },
+  { id: 'claude_code', name: 'Claude Code', provider: 'by Anthropic', logo: '/claude_pix.svg' },
+  { id: 'codex_cli', name: 'Codex CLI', provider: 'by OpenAI', logo: '/icons/codex_mark_white.svg' },
+  { id: 'gemini_cli', name: 'Gemini CLI', provider: 'by Google', logo: '/gemini-icon.svg' },
 ]
 
 const STEPS = [
@@ -468,16 +468,33 @@ function handleDismiss() {
 .setup-wizard-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  position: relative;
   padding: 20px 24px 12px;
 }
 
 .setup-wizard-title {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 2rem;
+  font-weight: 400;
   color: #e1e1e1;
   margin: 0;
   line-height: 1.4;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
+.setup-wizard-title-gradient {
+  background: linear-gradient(45deg, #ffd93d, #6bcf7f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.setup-wizard-close-btn {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* Progress bar */
@@ -581,6 +598,7 @@ function handleDismiss() {
 }
 
 .step-question {
+  font-family: "Roboto", "Segoe UI", system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 500;
   color: #e1e1e1;
@@ -622,6 +640,7 @@ function handleDismiss() {
 }
 
 .tool-name {
+  font-family: "Roboto", "Segoe UI", system-ui, -apple-system, sans-serif;
   font-size: 0.9375rem;
   font-weight: 600;
   color: #e1e1e1;
@@ -632,6 +651,11 @@ function handleDismiss() {
   color: #8f97b7;
 }
 
+.tool-card-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
 
 /* Placeholder steps */
 .step-placeholder {
