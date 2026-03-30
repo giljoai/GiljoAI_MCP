@@ -540,7 +540,7 @@ async def fetch_context(
     ctx: Context = None,
 ) -> dict:
     """Unified context fetcher by category with depth control."""
-    kwargs: dict[str, Any] = {"product_id": product_id, "format": output_format}
+    kwargs: dict[str, Any] = {"product_id": product_id, "output_format": output_format}
     if project_id:
         kwargs["project_id"] = project_id
     if agent_name:
