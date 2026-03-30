@@ -177,9 +177,9 @@
       "title": "Frontend Architecture Hardening",
       "handover": "handovers/0769e_FRONTEND_ARCHITECTURE.md",
       "color": "#F44336",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-30T14:10:00Z",
+      "completed_at": "2026-03-30T14:15:00Z",
       "agent_types": ["tdd-implementor"],
       "planned_tasks": [
         "Split websocketEventRouter.js into domain-specific route files",
@@ -187,12 +187,25 @@
         "Fix payload normalization duplication",
         "Fix CORS origin resolution scoping bug"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Task 1: Split websocketEventRouter.js (576 -> 179 lines) into 4 domain route files: agentEventRoutes.js (146 lines), messageEventRoutes.js (66 lines), projectEventRoutes.js (59 lines), systemEventRoutes.js (113 lines). Main router composes EVENT_MAP via spread.",
+        "Task 2: Fixed WebSocket reconnection race condition — added reconnectTimer ref, cleared on each attemptReconnect() call and in disconnect(). Prevents overlapping setTimeout reconnection attempts.",
+        "Task 3: Created shared normalizeWebsocketPayload.js utility (27 lines). Replaced inline normalization in both websocket.js handleMessage() and websocketEventRouter.js normalizeWebsocketEvent(). Single source of truth for payload normalization.",
+        "Task 4: Fixed CORS origin resolution scoping bug — initialized config = {} before try block in api/app.py:249. Prevents NameError if config read fails and network_mode/ssl_enabled access it on line 289/329."
+      ],
+      "deviations": [
+        "websocketEventRouter.js at 179 lines (target 150) — 29 lines over due to STORE_REGISTRY (11 lines) + 12 store imports required by the composer. Moving STORE_REGISTRY to its own file would add a file for marginal benefit. 69% reduction from 576 lines is substantial.",
+        "normalizeWebsocketPayload preserves the `data` key in spread (matches websocket.js's prior behavior) rather than stripping it (router's prior behavior). The websocket.payload-normalization.spec.js tests explicitly assert `receivedPayload.data` is defined, so this is the correct behavior."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "New file paths: frontend/src/stores/eventRoutes/agentEventRoutes.js (AGENT_EVENT_ROUTES), frontend/src/stores/eventRoutes/messageEventRoutes.js (MESSAGE_EVENT_ROUTES), frontend/src/stores/eventRoutes/projectEventRoutes.js (PROJECT_EVENT_ROUTES), frontend/src/stores/eventRoutes/systemEventRoutes.js (SYSTEM_EVENT_ROUTES), frontend/src/utils/normalizeWebsocketPayload.js (normalizeWebsocketPayload). The main websocketEventRouter.js still exports EVENT_MAP, routeWebsocketEvent, defaultShouldRoute, and initWebsocketEventRouter — all public APIs unchanged. WebSocket reconnect now uses reconnectTimer ref — cleared on each attemptReconnect and disconnect. CORS fix: api/app.py line 249 initializes config = {} before try block. Vitest: 96 files, 1893 tests, 0 failures. Build passes. ESLint: 0 errors.",
+      "cascading_impacts": [
+        "4 new eventRoutes files — imported only by websocketEventRouter.js, not exported from stores/",
+        "normalizeWebsocketPayload.js — shared utility imported by websocket.js and websocketEventRouter.js",
+        "WebSocket reconnectTimer ref added — prevents duplicate reconnection attempts on rapid disconnect/reconnect cycles",
+        "CORS config = {} default — network_mode and ssl_enabled now safely default to 'localhost' and False if config read fails"
+      ],
+      "summary": "All 4 tasks completed. websocketEventRouter.js split from 576 to 179 lines with 4 domain route files. WebSocket reconnect race condition fixed with reconnectTimer mutex. Payload normalization consolidated into shared utility. CORS scoping bug fixed with safe default. Vitest: 96 files, 1893 tests, 0 failures. Build passes. ESLint: 0 errors."
     },
     {
       "session_id": "0769f",
