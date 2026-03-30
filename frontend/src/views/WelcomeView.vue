@@ -16,15 +16,26 @@
             Intelligent multi-agent coordination for complex software development
           </p>
 
-          <!-- Contextual CTA: Get Started or Relaunch Tutorial -->
-          <div v-if="showTutorialCta" class="mb-6">
+          <!-- Setup wizard CTA -->
+          <div class="mb-6">
             <v-btn
+              v-if="!setupComplete"
               color="primary"
               size="large"
-              prepend-icon="mdi-play-circle"
-              @click="handleTutorialCta"
+              prepend-icon="mdi-rocket-launch"
+              @click="showSetupOverlay = true"
             >
-              {{ tutorialCtaLabel }}
+              {{ setupCtaLabel }}
+            </v-btn>
+            <v-btn
+              v-else
+              color="primary"
+              variant="outlined"
+              size="large"
+              prepend-icon="mdi-book-open-variant"
+              @click="showSetupOverlay = true"
+            >
+              How to Use GiljoAI MCP
             </v-btn>
           </div>
 
@@ -68,53 +79,77 @@
               </v-btn>
             </v-col>
           </v-row>
-
-          <v-row v-if="!isChecklistComplete" class="mt-3" justify="center">
-            <v-col cols="12" md="8">
-              <v-btn
-                :to="{ name: 'UserSettings', query: { tab: 'startup' } }"
-                color="primary"
-                variant="outlined"
-                size="large"
-                block
-                prepend-icon="mdi-rocket-launch"
-                class="startup-cta"
-              >
-                Setup Quick Start
-              </v-btn>
-            </v-col>
-          </v-row>
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Setup wizard overlay -->
+    <SetupWizardOverlay
+      v-model="showSetupOverlay"
+      :current-step="setupStep"
+      :selected-tools="setupSelectedTools"
+      :mode="setupComplete ? 'learning' : 'setup'"
+      @update:current-step="setupStep = $event"
+      @step-complete="handleStepComplete"
+      @dismiss="handleDismiss"
+    />
   </v-container>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useProductStore } from '@/stores/products'
 import GilMascot from '@/components/GilMascot.vue'
+import SetupWizardOverlay from '@/components/setup/SetupWizardOverlay.vue'
 
+const router = useRouter()
 const userStore = useUserStore()
 const productStore = useProductStore()
 
-// Checklist completion tracking (same storage key as StartupQuickStart.vue)
-const CHECKLIST_STORAGE_KEY = 'giljo_startup_checklist_v1'
-const checklistItemIds = ['tools', 'connect', 'slash', 'templates', 'context', 'integrations']
+// Setup wizard state
+const showSetupOverlay = ref(false)
+const setupStep = ref(0)
 
-const isChecklistComplete = computed(() => {
-  try {
-    const raw = localStorage.getItem(CHECKLIST_STORAGE_KEY)
-    if (!raw) return false
-    const checklist = JSON.parse(raw)
-    return checklistItemIds.every(id => checklist[id] === true)
-  } catch {
-    return false
-  }
+const setupComplete = computed(() => userStore.currentUser?.setup_complete ?? false)
+const setupStepCompleted = computed(() => userStore.currentUser?.setup_step_completed ?? 0)
+const setupSelectedTools = computed(() => userStore.currentUser?.setup_selected_tools ?? [])
+
+const setupCtaLabel = computed(() => {
+  if (setupStepCompleted.value > 0) return 'Resume Setup'
+  return 'Begin Setup'
 })
 
-// Mascot handled by inline component (no iframe to avoid background issues)
+async function handleStepComplete({ step, data }) {
+  if (step === 0 && data.tools) {
+    await userStore.updateSetupState({
+      setup_selected_tools: data.tools,
+      setup_step_completed: 1,
+    })
+  } else if (step === 1) {
+    await userStore.updateSetupState({
+      setup_step_completed: 2,
+    })
+  } else if (step === 2) {
+    await userStore.updateSetupState({
+      setup_step_completed: 3,
+    })
+  } else if (step === 3 && data.setup_complete) {
+    await userStore.updateSetupState({
+      setup_complete: true,
+      setup_step_completed: 4,
+    })
+    showSetupOverlay.value = false
+    if (data.route) {
+      router.push(data.route)
+    }
+  }
+}
+
+function handleDismiss() {
+  showSetupOverlay.value = false
+}
 
 // User name and greeting
 const firstName = computed(() => {
@@ -221,32 +256,18 @@ const fullGreeting = computed(() => {
   return msg.replace('{name}', name)
 })
 
-// Tutorial CTA logic
-const tutorialKey = 'giljo_tutorial_launched'
-const tutorialLaunched = ref(false)
-const showTutorialCta = computed(() => {
-  // Show when there are no products OR user wants to relaunch
-  return !productStore.hasProducts || tutorialLaunched.value
-})
-const tutorialCtaLabel = computed(() =>
-  tutorialLaunched.value || productStore.hasProducts ? 'Relaunch Tutorial' : 'Get Started',
-)
-
-function handleTutorialCta() {
-  tutorialLaunched.value = true
-  localStorage.setItem(tutorialKey, 'true')
-  // Placeholder for tutorial launch hook
-  // For now: take the user to Products to create their first product
-  window.location.href = '/Products'
-}
-
 onMounted(async () => {
   try {
     await productStore.fetchProducts()
   } catch {
     // ignore
   }
-  tutorialLaunched.value = localStorage.getItem(tutorialKey) === 'true'
+
+  // Auto-launch overlay on first login (setup not complete)
+  if (!setupComplete.value) {
+    setupStep.value = setupStepCompleted.value
+    showSetupOverlay.value = true
+  }
 })
 </script>
 
@@ -264,33 +285,5 @@ onMounted(async () => {
 }
 .mascot-frame {
   background: transparent;
-}
-
-.startup-cta {
-  font-weight: 700;
-  position: relative;
-  border: none;
-  overflow: hidden;
-}
-
-.startup-cta::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 2px;
-  background: var(--gradient-brand);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-.startup-cta :deep(.v-btn__content) {
-  background: var(--gradient-brand);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 700;
 }
 </style>

@@ -112,7 +112,6 @@ describe('UserSettings.vue', () => {
           AgentExport: true,
           SerenaAdvancedSettingsDialog: true,
           ContextPriorityConfig: true,
-          StartupQuickStart: true,
           ProductIntroTour: true,
           GitAdvancedSettingsDialog: true,
           McpIntegrationCard: {
