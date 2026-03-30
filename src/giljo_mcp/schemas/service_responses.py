@@ -386,10 +386,16 @@ class MissionResponse(BaseModel):
     started_at: Optional[str] = None
     thin_client: bool = True
     full_protocol: Optional[str] = None
-    current_team_state: Optional[list[dict]] = None  # Handover 0830: Live team state for orchestrator
+    current_team_state: Optional[list[dict]] = Field(
+        default=None,
+        description="Orchestrator-only. Live team state with agent statuses. Null for non-orchestrator agents.",
+    )
     blocked: bool = False
     error: Optional[str] = None
-    user_instruction: Optional[str] = None
+    user_instruction: Optional[str] = Field(
+        default=None,
+        description="Present only when blocked=True. Contains guidance for the blocked state. Null in normal responses.",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

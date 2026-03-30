@@ -389,7 +389,7 @@ class TestOrchestratorProtocolFork:
             job_type="orchestrator",
         )
         assert "STARTUP" in protocol
-        assert "REACTIVE" in protocol
+        assert "ACTIVE COORDINATION" in protocol
         assert "CLOSEOUT" in protocol
 
 
