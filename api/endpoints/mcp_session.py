@@ -49,8 +49,13 @@ class MCPSessionManager:
         owning user is inactive.
         """
         try:
+            # Defense-in-depth: narrow candidates by key_prefix to avoid loading all keys (Handover 0769a)
+            # key_prefix is stored as "first12chars..." (see api_key_utils.get_key_prefix)
+            key_prefix = f"{api_key_value[:12]}..." if len(api_key_value) >= 12 else api_key_value
             stmt = select(APIKey).where(
-                APIKey.is_active, or_(APIKey.expires_at > func.now(), APIKey.expires_at.is_(None))
+                APIKey.is_active,
+                APIKey.key_prefix == key_prefix,
+                or_(APIKey.expires_at > func.now(), APIKey.expires_at.is_(None)),
             )
             result = await self.db.execute(stmt)
             api_keys = result.scalars().all()

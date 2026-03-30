@@ -6,16 +6,17 @@ All tools enforce multi-tenant isolation and integrate with AgentJobManager.
 
 Production-grade features:
 - Multi-tenant isolation enforcement
-- Comprehensive error handling
+- Exception-based error handling (post-0480)
 - Audit logging for all operations
 - Type validation and safety checks
-- Integration with existing AgentJobManager and MessageQueue (Handover 0120)
+- Delegation to AgentJobManager service layer (Handover 0769a)
 """
 
 import logging
 from typing import Any, Optional
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import ValidationError
 
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,20 @@ def init_for_testing(db_manager: DatabaseManager, db_session) -> None:
     _AgentCoordinationState.test_session = db_session
 
 
+def _create_job_manager():
+    """Create AgentJobManager with current state."""
+    from src.giljo_mcp.services.agent_job_manager import AgentJobManager
+    from src.giljo_mcp.tenant import TenantManager
+
+    db_manager = _get_db_manager()
+    tenant_manager = TenantManager()
+    return AgentJobManager(
+        db_manager=db_manager,
+        tenant_manager=tenant_manager,
+        test_session=_AgentCoordinationState.test_session,
+    )
+
+
 # Module-level functions for direct import (Handover 0366c)
 async def spawn_agent(
     job_id: str,
@@ -81,160 +96,45 @@ async def spawn_agent(
     an EXISTING AgentJob (work order). Enables agent succession while
     preserving job continuity.
 
-    Semantic Contract:
-    - job_id = Work order UUID (the WHAT - persistent across succession)
-    - agent_id = Executor UUID (the WHO - changes on succession)
-    - Returns BOTH for clarity
+    Delegates to AgentJobManager.spawn_execution() (Handover 0769a).
 
     Args:
         job_id: AgentJob UUID to spawn execution for (must exist)
-        agent_display_name: Agent display name for this executor (e.g., "implementer", "tester")
+        agent_display_name: Agent display name for this executor
         tenant_key: Tenant key for multi-tenant isolation
         spawned_by_agent_id: Parent executor's agent_id (for succession tracking)
 
     Returns:
-        dict: {
-            "success": True,
-            "job_id": str (work order UUID - persistent),
-            "agent_id": str (executor UUID - NEW instance)
-        }
+        dict with success, job_id, agent_id
 
-    Security:
-        - Only jobs owned by tenant can have executions spawned
-        - Validates tenant_key matches job's tenant
-        - No cross-tenant spawning possible
-
-    Succession:
-        - Links to parent executor via spawned_by_agent_id
-        - Enables multi-level succession chains
+    Raises:
+        ValidationError: Empty required parameters
+        ResourceNotFoundError: Job not found for tenant
     """
-    try:
-        # Validate input parameters
-        if not job_id or not job_id.strip():
-            return {
-                "success": False,
-                "error": "job_id cannot be empty",
-            }
+    if not job_id or not job_id.strip():
+        raise ValidationError(message="job_id cannot be empty")
 
-        if not agent_display_name or not agent_display_name.strip():
-            return {
-                "success": False,
-                "error": "agent_display_name cannot be empty",
-            }
+    if not agent_display_name or not agent_display_name.strip():
+        raise ValidationError(message="agent_display_name cannot be empty")
 
-        if not tenant_key or not tenant_key.strip():
-            return {
-                "success": False,
-                "error": "tenant_key cannot be empty",
-            }
+    if not tenant_key or not tenant_key.strip():
+        raise ValidationError(message="tenant_key cannot be empty")
 
-        # Import models
-        from uuid import uuid4
+    job_manager = _create_job_manager()
+    job_id, new_agent_id = await job_manager.spawn_execution(
+        job_id=job_id,
+        agent_display_name=agent_display_name,
+        tenant_key=tenant_key,
+        spawned_by=spawned_by_agent_id,
+    )
 
-        from sqlalchemy import select
+    logger.info(f"[spawn_agent] Spawned agent_id={new_agent_id} for job_id={job_id}, tenant={tenant_key}")
 
-        from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-
-        # Get database manager
-        db_manager = _get_db_manager()
-
-        # Use test session if available (for test isolation), otherwise create new session
-        if _AgentCoordinationState.test_session is not None:
-            session = _AgentCoordinationState.test_session
-            # Don't use context manager for test session (managed by test fixtures)
-            # Verify job exists and belongs to tenant
-            job_query = select(AgentJob).where(
-                AgentJob.job_id == job_id,
-                AgentJob.tenant_key == tenant_key,
-            )
-            job_result = await session.execute(job_query)
-            job = job_result.scalar_one_or_none()
-
-            if not job:
-                return {
-                    "success": False,
-                    "error": f"AgentJob with job_id={job_id} not found for tenant {tenant_key}",
-                }
-
-            # Create NEW AgentExecution (executor instance)
-            new_agent_id = str(uuid4())
-
-            new_execution = AgentExecution(
-                agent_id=new_agent_id,
-                job_id=job_id,
-                tenant_key=tenant_key,
-                agent_display_name=agent_display_name,
-                status="waiting",
-                spawned_by=spawned_by_agent_id,  # Link to parent executor
-                agent_name=agent_display_name.title(),
-                tool_type="universal",
-            )
-
-            session.add(new_execution)
-            await session.flush()  # Use flush instead of commit for test session
-            await session.refresh(new_execution)
-
-            logger.info(f"[spawn_agent] Spawned agent_id={new_agent_id} for job_id={job_id}, tenant={tenant_key}")
-
-            return {
-                "success": True,
-                "job_id": job_id,  # Work order (persistent)
-                "agent_id": new_agent_id,  # Executor (NEW instance)
-            }
-        # Production path: create new session
-        async with db_manager.get_session_async() as session:
-            # Verify job exists and belongs to tenant
-            job_query = select(AgentJob).where(
-                AgentJob.job_id == job_id,
-                AgentJob.tenant_key == tenant_key,
-            )
-            job_result = await session.execute(job_query)
-            job = job_result.scalar_one_or_none()
-
-            if not job:
-                return {
-                    "success": False,
-                    "error": f"AgentJob with job_id={job_id} not found for tenant {tenant_key}",
-                }
-
-            # Get next instance number (count existing executions + 1)
-            select(AgentExecution).where(
-                AgentExecution.job_id == job_id,
-                AgentExecution.tenant_key == tenant_key,
-            )
-
-            # Create NEW AgentExecution (executor instance)
-            new_agent_id = str(uuid4())
-
-            new_execution = AgentExecution(
-                agent_id=new_agent_id,
-                job_id=job_id,
-                tenant_key=tenant_key,
-                agent_display_name=agent_display_name,
-                status="waiting",
-                spawned_by=spawned_by_agent_id,  # Link to parent executor
-                agent_name=agent_display_name.title(),
-                tool_type="universal",
-            )
-
-            session.add(new_execution)
-            await session.commit()
-            await session.refresh(new_execution)
-
-            logger.info(f"[spawn_agent] Spawned agent_id={new_agent_id} for job_id={job_id}, tenant={tenant_key}")
-
-            return {
-                "success": True,
-                "job_id": job_id,  # Work order (persistent)
-                "agent_id": new_agent_id,  # Executor (NEW instance)
-            }
-
-    except Exception as e:  # Broad catch: tool boundary, logs and re-raises
-        logger.error(f"[spawn_agent] Error: {e}", exc_info=True)
-        return {
-            "success": False,
-            "error": str(e),
-        }
+    return {
+        "success": True,
+        "job_id": job_id,
+        "agent_id": new_agent_id,
+    }
 
 
 async def get_team_agents(
@@ -246,14 +146,7 @@ async def get_team_agents(
     List agent executions (teammates) associated with this job.
 
     Handover 0360 Feature 2: Team Discovery Tool.
-
-    Enables agents to discover teammates working on the same job/project.
-    Useful for coordination, status checking, and understanding team composition.
-
-    Semantic Contract:
-    - job_id = Work order UUID (the WHAT - identifies the work)
-    - Returns list of agent executions (the WHO - all executors for this job)
-    - Filtered by active status by default (waiting, working, blocked)
+    Delegates to AgentJobManager.list_team_agents().
 
     Args:
         job_id: Job ID to get teammates for
@@ -261,90 +154,30 @@ async def get_team_agents(
         include_inactive: If True, include completed/decommissioned executions
 
     Returns:
-        dict: {
-            "success": True,
-            "team": [
-                {
-                    "agent_id": str (executor UUID),
-                    "job_id": str (work order UUID),
-                    "agent_display_name": str (agent role),
-                    "status": str (execution status),
-                    "agent_name": str (display name),
-                    "tenant_key": str
-                },
-                ...
-            ]
-        }
+        dict with success flag and team member list
 
-    Security:
-        - Only returns executions for jobs owned by tenant
-        - Validates tenant_key matches job's tenant
-        - No cross-tenant execution visibility
-
-    Use Cases:
-        - Check who else is working on this job
-        - Identify orchestrator vs specialist agents
-        - Track succession history (all instances)
-        - Coordinate with specific teammates
-
-    Example:
-        >>> result = await get_team_agents(
-        ...     job_id="job-uuid-123",
-        ...     tenant_key="tenant-abc",
-        ...     include_inactive=False
-        ... )
-        >>> for member in result["team"]:
-        ...     print(f"{member['agent_display_name']}: {member['status']}")
+    Raises:
+        ValidationError: Empty required parameters
     """
-    try:
-        # Validate input parameters
-        if not job_id or not job_id.strip():
-            return {
-                "success": False,
-                "error": "job_id cannot be empty",
-            }
+    if not job_id or not job_id.strip():
+        raise ValidationError(message="job_id cannot be empty")
 
-        if not tenant_key or not tenant_key.strip():
-            return {
-                "success": False,
-                "error": "tenant_key cannot be empty",
-            }
+    if not tenant_key or not tenant_key.strip():
+        raise ValidationError(message="tenant_key cannot be empty")
 
-        # Import service and models
-        from giljo_mcp.services.agent_job_manager import AgentJobManager
-        from giljo_mcp.tenant import TenantManager
+    job_manager = _create_job_manager()
+    team_members = await job_manager.list_team_agents(
+        job_id=job_id,
+        tenant_key=tenant_key,
+        include_inactive=include_inactive,
+    )
 
-        # Get database manager
-        db_manager = _get_db_manager()
+    logger.info(
+        f"[get_team_agents] Retrieved {len(team_members)} teammates for job {job_id}, "
+        f"include_inactive={include_inactive}, tenant={tenant_key}"
+    )
 
-        # Create AgentJobManager instance
-        tenant_manager = TenantManager()
-        job_manager = AgentJobManager(
-            db_manager=db_manager,
-            tenant_manager=tenant_manager,
-            test_session=_AgentCoordinationState.test_session,  # Use test session if available
-        )
-
-        # Call service method
-        team_members = await job_manager.list_team_agents(
-            job_id=job_id,
-            tenant_key=tenant_key,
-            include_inactive=include_inactive,
-        )
-
-        logger.info(
-            f"[get_team_agents] Retrieved {len(team_members)} teammates for job {job_id}, "
-            f"include_inactive={include_inactive}, tenant={tenant_key}"
-        )
-
-        return {
-            "success": True,
-            "team": team_members,
-        }
-
-    except Exception as e:  # Broad catch: tool boundary, logs and re-raises
-        logger.error(f"[get_team_agents] Error: {e}", exc_info=True)
-        return {
-            "success": False,
-            "error": str(e),
-        }
+    return {
+        "success": True,
+        "team": team_members,
+    }

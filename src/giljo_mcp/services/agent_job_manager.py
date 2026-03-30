@@ -186,6 +186,80 @@ class AgentJobManager:
             raise BaseGiljoError(message=str(e), context={"operation": "spawn_agent"}) from e
 
     # ============================================================================
+    # Execution Spawning (creates execution for existing job)
+    # ============================================================================
+
+    async def spawn_execution(
+        self,
+        job_id: str,
+        agent_display_name: str,
+        tenant_key: str,
+        spawned_by: str | None = None,
+    ) -> tuple[str, str]:
+        """
+        Spawn a NEW execution for an EXISTING job (Handover 0769a).
+
+        Creates an AgentExecution (executor instance) for an existing AgentJob.
+        Enables agent succession while preserving job continuity.
+
+        Args:
+            job_id: AgentJob UUID to spawn execution for (must exist)
+            agent_display_name: Display name for this executor
+            tenant_key: Tenant key for multi-tenant isolation
+            spawned_by: Parent executor's agent_id (for succession tracking)
+
+        Returns:
+            Tuple of (job_id, agent_id)
+
+        Raises:
+            ResourceNotFoundError: Job not found for tenant
+            BaseGiljoError: Database operation failed
+        """
+        try:
+            async with self._get_session() as session:
+                job_result = await session.execute(
+                    select(AgentJob).where(
+                        AgentJob.job_id == job_id,
+                        AgentJob.tenant_key == tenant_key,
+                    )
+                )
+                job = job_result.scalar_one_or_none()
+
+                if not job:
+                    raise ResourceNotFoundError(
+                        message=f"AgentJob with job_id={job_id} not found for tenant {tenant_key}",
+                        context={"job_id": job_id, "tenant_key": tenant_key},
+                    )
+
+                new_agent_id = str(uuid4())
+                execution = AgentExecution(
+                    agent_id=new_agent_id,
+                    job_id=job_id,
+                    tenant_key=tenant_key,
+                    agent_display_name=agent_display_name,
+                    status="waiting",
+                    spawned_by=spawned_by,
+                    agent_name=agent_display_name.title(),
+                    tool_type="universal",
+                )
+
+                session.add(execution)
+                await session.commit()
+                await session.refresh(execution)
+
+                self._logger.info(
+                    f"Spawned execution: agent_id={new_agent_id} for job_id={job_id}, tenant={tenant_key}"
+                )
+
+                return (job_id, new_agent_id)
+
+        except (ResourceNotFoundError, BaseGiljoError):
+            raise
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
+            self._logger.exception("Failed to spawn execution")
+            raise BaseGiljoError(message=str(e), context={"operation": "spawn_execution", "job_id": job_id}) from e
+
+    # ============================================================================
     # Job Completion (decommissions all executions)
     # ============================================================================
 
