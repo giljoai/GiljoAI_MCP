@@ -169,7 +169,8 @@ describe('UserManager.vue - Handover 0028 Email and Created Date Fields', () => 
 
     it('formats created date correctly', () => {
       const formattedDate = wrapper.vm.formatDate('2025-01-01T00:00:00Z')
-      expect(formattedDate).toMatch(/\d{1,2}\/\d{1,2}\/\d{4}/)
+      // useFormatDate composable returns "Mon DD, YYYY" format (e.g. "Jan 1, 2025")
+      expect(formattedDate).toMatch(/[A-Z][a-z]{2} \d{1,2}, \d{4}/)
     })
 
     it('handles null created date gracefully', () => {
