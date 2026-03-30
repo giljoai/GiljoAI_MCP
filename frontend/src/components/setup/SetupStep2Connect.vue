@@ -23,7 +23,7 @@
     <!-- Active tool panel -->
     <div class="tool-panel" role="tabpanel">
       <!-- 1. Server URL -->
-      <div class="panel-section">
+      <div class="panel-section panel-section--centered">
         <label class="section-label">Server URL</label>
         <div class="server-url-row">
           <v-text-field
@@ -67,33 +67,15 @@
       </div>
 
       <!-- 2. API Key Status -->
-      <div class="panel-section">
+      <div class="panel-section panel-section--centered">
         <label class="section-label">API Key</label>
-        <div v-if="apiKeyLoading" class="api-key-status">
+        <div v-if="generatingKey" class="api-key-status api-key-status--centered">
           <v-progress-circular size="16" width="2" indeterminate color="#8f97b7" />
-          <span class="status-text">Checking for existing key...</span>
+          <span class="status-text">Generating API key...</span>
         </div>
-        <div v-else-if="activeKeyPrefix" class="api-key-status">
-          <v-icon size="16" color="#6bcf7f">mdi-check-circle</v-icon>
-          <span class="status-text">Key already generated</span>
-          <span class="key-prefix">{{ activeKeyPrefix }}...</span>
-        </div>
-        <div v-else-if="generatedKey" class="api-key-status">
+        <div v-else-if="generatedKey" class="api-key-status api-key-status--centered">
           <v-icon size="16" color="#6bcf7f">mdi-check-circle</v-icon>
           <span class="status-text">Key generated</span>
-          <v-chip size="x-small" color="warning" variant="tonal" class="ml-2">Copy config now — key shown only once</v-chip>
-        </div>
-        <div v-else class="api-key-status">
-          <v-btn
-            size="small"
-            color="primary"
-            variant="flat"
-            prepend-icon="mdi-key-plus"
-            :loading="generatingKey"
-            @click="handleGenerateKey"
-          >
-            Generate API Key
-          </v-btn>
         </div>
         <v-alert v-if="keyError" type="error" variant="tonal" density="compact" class="mt-2" closable @click:close="keyError = ''">
           {{ keyError }}
@@ -253,14 +235,12 @@ const serverUrl = computed(() => buildServerUrl(serverHostname.value, serverPort
 const platform = ref(detectPlatform())
 
 // API key state
-const apiKeyLoading = ref(false)
-const activeKeyPrefix = ref(null)
 const generatedKey = ref(null)
 const generatingKey = ref(false)
 const keyError = ref('')
 
-const hasKey = computed(() => !!(activeKeyPrefix.value || generatedKey.value))
-const currentApiKey = computed(() => generatedKey.value || 'YOUR_API_KEY')
+const hasKey = computed(() => !!generatedKey.value)
+const currentApiKey = computed(() => generatedKey.value || '')
 
 // Config generation
 const configCommand = computed(() =>
@@ -291,20 +271,10 @@ async function copyText(text, field) {
   }
 }
 
-// API key flow
-async function checkActiveKeys() {
-  apiKeyLoading.value = true
-  try {
-    const resp = await api.apiKeys.getActive()
-    const keys = resp.data
-    if (keys && keys.length > 0) {
-      activeKeyPrefix.value = keys[0].key_prefix
-    }
-  } catch (e) {
-    console.warn('[SetupStep2] Failed to check active keys:', e)
-  } finally {
-    apiKeyLoading.value = false
-  }
+// Auto-generate API key on mount
+async function autoGenerateKey() {
+  if (generatedKey.value) return
+  await handleGenerateKey()
 }
 
 async function handleGenerateKey() {
@@ -366,7 +336,7 @@ watch(connectedTools, (val) => {
 }, { deep: true })
 
 onMounted(() => {
-  checkActiveKeys()
+  autoGenerateKey()
   wsUnsub = wsStore.on('setup:tool_connected', handleToolConnected)
 })
 
@@ -455,10 +425,19 @@ onUnmounted(() => {
   margin-bottom: 8px;
 }
 
+.panel-section--centered {
+  text-align: center;
+}
+
+.panel-section--centered .section-label {
+  text-align: center;
+}
+
 /* Server URL */
 .server-url-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
 }
 
@@ -499,16 +478,15 @@ onUnmounted(() => {
   gap: 8px;
 }
 
+.api-key-status--centered {
+  justify-content: center;
+}
+
 .status-text {
   font-size: 0.875rem;
   color: #e1e1e1;
 }
 
-.key-prefix {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.8125rem;
-  color: #8f97b7;
-}
 
 /* Platform toggle */
 .platform-toggle {
