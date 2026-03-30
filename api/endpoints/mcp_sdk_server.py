@@ -823,6 +823,24 @@ class MCPAuthMiddleware:
         scope["state"]["tenant_key"] = tenant_key
         scope["state"]["user_id"] = user_id
 
+        # Handover 0855b: Emit setup:tool_connected on first MCP auth
+        # (replaces emission from deleted mcp_http.py after 0846 SDK migration)
+        try:
+            from api.app import state as app_state
+
+            ws_manager = getattr(app_state, "websocket_manager", None)
+            if ws_manager and tenant_key:
+                from api.events.schemas import EventFactory
+
+                event = EventFactory.setup_tool_connected(
+                    tenant_key=tenant_key,
+                    user_id=str(user_id) if user_id else "unknown",
+                    tool_name="unknown",
+                )
+                await ws_manager.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
+        except (OSError, RuntimeError, ValueError, TypeError, AttributeError, ImportError):
+            pass  # Fire-and-forget, non-blocking
+
         await self.app(scope, receive, send)
 
 

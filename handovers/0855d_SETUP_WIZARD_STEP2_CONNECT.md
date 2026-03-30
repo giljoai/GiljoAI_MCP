@@ -38,7 +38,7 @@ The existing `AiToolConfigWizard.vue` (368 lines) renders as a modal dialog with
 
 **Important:** Strip OpenClaw from the wizard. Leave `AiToolConfigWizard.vue` standalone modal untouched — only extract shared logic.
 
-**What 0855a provides:** `GET /api/v1/auth/api-keys/active` — returns `[{id, key_prefix, created_at, is_active, expires_at}]` for active keys. `PATCH /api/v1/auth/me/setup-state` — updates `setup_step_completed` to 2 on Next.
+**What 0855a provides:** `GET /api/auth/api-keys/active` — returns `[{id, key_prefix, created_at, is_active, expires_at}]` for active keys. `PATCH /api/auth/me/setup-state` — updates `setup_step_completed` to 2 on Next.
 
 **What 0855b provides:** WebSocket event `setup:tool_connected` with `{tenant_key, user_id, tool_name, connected_at}` — emitted from `api/endpoints/mcp_http.py` `handle_initialize` when a tool connects.
 

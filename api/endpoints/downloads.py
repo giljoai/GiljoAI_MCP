@@ -339,6 +339,21 @@ async def download_agent_templates(
     user_info = f"user: {current_user.username}" if current_user else "public/unauthenticated"
     logger.info(f"Agent templates ZIP generated ({user_info}): {len(files)} files (max 8), {len(zip_bytes)} bytes")
 
+    if current_user:
+        try:
+            ws_manager = request.app.state.websocket_manager
+            if ws_manager:
+                from api.events.schemas import EventFactory
+
+                event = EventFactory.setup_agents_downloaded(
+                    tenant_key=current_user.tenant_key,
+                    user_id=str(current_user.id),
+                    agent_count=len(selected),
+                )
+                await ws_manager.broadcast_event_to_tenant(tenant_key=current_user.tenant_key, event=event)
+        except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as e:
+            logger.debug(f"Setup agents_downloaded event emission failed (non-blocking): {e}")
+
     return Response(
         content=zip_bytes,
         media_type="application/zip",
@@ -552,6 +567,22 @@ async def get_bootstrap_prompt(
     expires_at = token_data["expires_at"] if token_data else None
 
     logger.info(f"Bootstrap prompt generated: platform={platform}, token={token}")
+
+    try:
+        ws_manager = request.app.state.websocket_manager
+        if ws_manager:
+            from api.events.schemas import EventFactory
+
+            event = EventFactory.setup_commands_installed(
+                tenant_key=tenant_key,
+                user_id=str(current_user.id),
+                tool_name=platform,
+                command_count=len(get_all_templates(platform)),
+            )
+            await ws_manager.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
+    except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as e:
+        logger.debug(f"Setup commands_installed event emission failed (non-blocking): {e}")
+
     return {
         "prompt": prompt,
         "expires_at": expires_at,
