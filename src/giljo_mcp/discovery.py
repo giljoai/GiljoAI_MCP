@@ -9,9 +9,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import ClassVar, Optional
 
-import yaml
 from sqlalchemy import select
 
+from ._config_io import read_config
 from .database import DatabaseManager
 from .models import Configuration
 from .tenant import TenantManager
@@ -129,14 +129,10 @@ class PathResolver:
             if not config_path.exists():
                 config_path = Path("config.yaml")
 
-            if config_path.exists():
-                with open(config_path, encoding="utf-8") as f:
-                    config = yaml.safe_load(f)
-
-                # Look for paths section
-                paths = config.get("paths", {})
-                if path_key in paths:
-                    return paths[path_key]
+            config = read_config(config_path)
+            paths = config.get("paths", {})
+            if path_key in paths:
+                return paths[path_key]
         except (ValueError, KeyError, OSError) as e:
             logger.warning(f"Failed to get config file path for {path_key}: {e}")
 
