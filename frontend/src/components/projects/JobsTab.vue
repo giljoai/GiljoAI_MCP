@@ -425,6 +425,10 @@ const { sortedJobs: sortedAgents, loadJobs, store: agentJobsStore } = useAgentJo
  * Phases with '+' (multiple agents) get "Parallel Execution" suffix.
  */
 const executionOrderPhases = computed(() => {
+  // Only show execution order in multi-terminal mode
+  const executionMode = props.project?.execution_mode
+  if (['claude_code_cli', 'codex_cli', 'gemini_cli'].includes(executionMode)) return null
+
   const agentList = sortedAgents.value
   if (!agentList.some(a => a.phase != null)) return null
 
@@ -678,7 +682,7 @@ function getMessagesWaiting(agent) {
 function shouldShowCopyButton(agent) {
   // Get execution mode from project prop (read-only)
   const executionMode = props.project?.execution_mode
-  const claudeCodeCliMode = executionMode === 'claude_code_cli'
+  const claudeCodeCliMode = ['claude_code_cli', 'codex_cli', 'gemini_cli'].includes(executionMode)
 
   // Use consolidated function from actionConfig.js
   return shouldShowLaunchAction(agent, claudeCodeCliMode)
@@ -700,7 +704,7 @@ async function handlePlay(agent) {
     // Handover 0337: CLI mode implementation prompt for orchestrator
     if (agent.agent_display_name === 'orchestrator') {
       // CLI mode: Generate implementation prompt
-      if (props.project?.execution_mode === 'claude_code_cli') {
+      if (['claude_code_cli', 'codex_cli', 'gemini_cli'].includes(props.project?.execution_mode)) {
         try {
           // Handover 0709: Set implementation phase gate before copying prompt
           const projectId = props.project.project_id || props.project.id
