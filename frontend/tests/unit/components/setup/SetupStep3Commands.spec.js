@@ -91,16 +91,16 @@ describe('SetupStep3Commands', () => {
       expect(wrapper.text()).toContain('Install commands and agents')
     })
 
-    it('renders bootstrap prompt for connected tool', async () => {
+    it('renders copy prompt button for connected tool', async () => {
       const wrapper = mountStep3()
       await flushPromises()
-      expect(wrapper.text()).toContain(MOCK_PROMPT_TEXT)
+      expect(wrapper.text()).toContain('Copy Prompt')
     })
 
     it('renders instruction label with tool name', async () => {
       const wrapper = mountStep3()
       await flushPromises()
-      expect(wrapper.text()).toContain('Paste this into your Claude Code terminal')
+      expect(wrapper.text()).toContain('Paste this into your Claude Code terminal and press Enter')
     })
 
     it('does not show tab bar with single connected tool', async () => {
@@ -143,7 +143,7 @@ describe('SetupStep3Commands', () => {
       global.fetch = vi.fn(() => new Promise(() => {}))
       const wrapper = mountStep3()
       expect(wrapper.find('.prompt-loading').exists()).toBe(true)
-      expect(wrapper.text()).toContain('Fetching bootstrap prompt')
+      expect(wrapper.text()).toContain('Preparing prompt...')
     })
 
     it('shows error state when fetch fails', async () => {
@@ -167,7 +167,7 @@ describe('SetupStep3Commands', () => {
       await flushPromises()
 
       expect(wrapper.find('.prompt-error').exists()).toBe(false)
-      expect(wrapper.text()).toContain(MOCK_PROMPT_TEXT)
+      expect(wrapper.text()).toContain('Copy Prompt')
     })
   })
 
@@ -175,17 +175,17 @@ describe('SetupStep3Commands', () => {
   // Copy functionality
   // -------------------------------------------------------------------
   describe('Copy functionality', () => {
-    it('renders copy button', async () => {
+    it('renders copy prompt button', async () => {
       const wrapper = mountStep3()
       await flushPromises()
-      expect(wrapper.text()).toContain('Copy to Clipboard')
+      expect(wrapper.text()).toContain('Copy Prompt')
     })
 
-    it('copies prompt text when copy button is clicked', async () => {
+    it('copies prompt text when copy prompt button is clicked', async () => {
       const wrapper = mountStep3()
       await flushPromises()
 
-      const copyBtn = wrapper.find('.copy-btn')
+      const copyBtn = wrapper.find('.copy-prompt-row button')
       expect(copyBtn.exists()).toBe(true)
       await copyBtn.trigger('click')
       await flushPromises()
@@ -269,25 +269,12 @@ describe('SetupStep3Commands', () => {
   // Post-install command display
   // -------------------------------------------------------------------
   describe('Post-install command', () => {
-    it('does not show agent command before commands installed', async () => {
+    it('shows agent command immediately for claude_code', async () => {
       const wrapper = mountStep3()
       await flushPromises()
-      expect(wrapper.text()).not.toContain('/gil_get_agents')
-    })
-
-    it('shows /gil_get_agents after slash commands installed for claude_code', async () => {
-      const wrapper = mountStep3()
-      await flushPromises()
-
-      const cmdCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:commands_installed',
-      )
-      cmdCall[1]({ tool_name: 'claude_code', command_count: 5 })
-      await flushPromises()
-
       expect(wrapper.text()).toContain('/gil_get_agents')
-      expect(wrapper.text()).toContain('Now run this command')
-      expect(wrapper.text()).toContain('Use default model for all')
+      expect(wrapper.text()).toContain('Run')
+      expect(wrapper.text()).toContain('in your Claude Code terminal session')
     })
 
     it('shows $gil-get-agents for codex_cli', async () => {
@@ -295,12 +282,6 @@ describe('SetupStep3Commands', () => {
         selectedTools: ['codex_cli'],
         connectedTools: ['codex_cli'],
       })
-      await flushPromises()
-
-      const cmdCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:commands_installed',
-      )
-      cmdCall[1]({ tool_name: 'codex_cli', command_count: 5 })
       await flushPromises()
 
       expect(wrapper.text()).toContain('$gil-get-agents')
@@ -311,12 +292,6 @@ describe('SetupStep3Commands', () => {
         selectedTools: ['gemini_cli'],
         connectedTools: ['gemini_cli'],
       })
-      await flushPromises()
-
-      const cmdCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:commands_installed',
-      )
-      cmdCall[1]({ tool_name: 'gemini_cli', command_count: 5 })
       await flushPromises()
 
       expect(wrapper.text()).toContain('/gil_get_agents')
@@ -336,19 +311,14 @@ describe('SetupStep3Commands', () => {
       expect(events[0]).toEqual([false])
     })
 
-    it('emits can-proceed true when both checkmarks are green for at least 1 tool', async () => {
+    it('emits can-proceed true when commands are installed for at least 1 tool', async () => {
       const wrapper = mountStep3()
       await flushPromises()
 
       const cmdCall = mockWsOn.mock.calls.find(
         (call) => call[0] === 'setup:commands_installed',
       )
-      const agentCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:agents_downloaded',
-      )
-
       cmdCall[1]({ tool_name: 'claude_code', command_count: 5 })
-      agentCall[1]({ agent_count: 3 })
       await flushPromises()
 
       const events = wrapper.emitted('can-proceed')
@@ -356,14 +326,8 @@ describe('SetupStep3Commands', () => {
       expect(lastEmit).toEqual([true])
     })
 
-    it('does not emit can-proceed true with only commands installed', async () => {
+    it('does not emit can-proceed true with no commands installed', async () => {
       const wrapper = mountStep3()
-      await flushPromises()
-
-      const cmdCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:commands_installed',
-      )
-      cmdCall[1]({ tool_name: 'claude_code', command_count: 5 })
       await flushPromises()
 
       const events = wrapper.emitted('can-proceed')
@@ -376,19 +340,15 @@ describe('SetupStep3Commands', () => {
   // step-data emit
   // -------------------------------------------------------------------
   describe('step-data', () => {
-    it('emits step-data with installed tools after both events fire', async () => {
+    it('emits step-data with installed tools after commands installed', async () => {
       const wrapper = mountStep3()
       await flushPromises()
 
       const cmdCall = mockWsOn.mock.calls.find(
         (call) => call[0] === 'setup:commands_installed',
       )
-      const agentCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:agents_downloaded',
-      )
 
       cmdCall[1]({ tool_name: 'claude_code', command_count: 5 })
-      agentCall[1]({ agent_count: 3 })
       await flushPromises()
 
       const events = wrapper.emitted('step-data')
@@ -447,7 +407,7 @@ describe('SetupStep3Commands', () => {
       expect(tabs[1].classes()).toContain('tool-tab--active')
     })
 
-    it('shows tab status dot as complete when both checkmarks are green', async () => {
+    it('emits can-proceed when one tool has commands installed in multi-tool setup', async () => {
       const wrapper = mountStep3({
         selectedTools: ['claude_code', 'codex_cli'],
         connectedTools: ['claude_code', 'codex_cli'],
@@ -457,20 +417,14 @@ describe('SetupStep3Commands', () => {
       const cmdCall = mockWsOn.mock.calls.find(
         (call) => call[0] === 'setup:commands_installed',
       )
-      const agentCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:agents_downloaded',
-      )
 
+      // Only claude_code gets commands installed, codex_cli does not
       cmdCall[1]({ tool_name: 'claude_code', command_count: 5 })
-      agentCall[1]({ agent_count: 3 })
       await flushPromises()
 
-      const dots = wrapper.findAll('.tab-status-dot')
-      // claude_code should be complete (both events), codex_cli should be complete (agents is user-level)
-      // Actually agents_downloaded marks ALL tools, so codex has agents=true but commands=false
-      // Only claude_code has both
-      expect(dots[0].classes()).toContain('tab-status-dot--complete')
-      expect(dots[1].classes()).not.toContain('tab-status-dot--complete')
+      const events = wrapper.emitted('can-proceed')
+      const lastEmit = events[events.length - 1]
+      expect(lastEmit).toEqual([true])
     })
   })
 
