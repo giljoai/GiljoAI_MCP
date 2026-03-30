@@ -189,7 +189,7 @@ class TestMockAgentSimulatorMethods:
             # Verify MCP request format
             mock_request.assert_called_once()
             call_args = mock_request.call_args[1]
-            assert call_args["method"] == "mcp__giljo-mcp__get_agent_mission"
+            assert call_args["method"] == "mcp__giljo_mcp__get_agent_mission"
             assert call_args["arguments"]["job_id"] == mock_job_id
             assert call_args["arguments"]["tenant_key"] == mock_tenant_key
 
@@ -231,7 +231,7 @@ class TestMockAgentSimulatorMethods:
             # Verify MCP request format
             mock_request.assert_called_once()
             call_args = mock_request.call_args[1]
-            assert call_args["method"] == "mcp__giljo-mcp__send_message"
+            assert call_args["method"] == "mcp__giljo_mcp__send_message"
             assert call_args["arguments"]["to_agent"] == "tester-job-456"
             assert call_args["arguments"]["message"] == "Implementation complete"
 
@@ -263,7 +263,7 @@ class TestMockAgentSimulatorMethods:
             # Verify MCP request format
             mock_request.assert_called_once()
             call_args = mock_request.call_args[1]
-            assert call_args["method"] == "mcp__giljo-mcp__report_progress"
+            assert call_args["method"] == "mcp__giljo_mcp__report_progress"
             assert call_args["arguments"]["progress"] == progress_data
 
     @pytest.mark.asyncio
@@ -281,7 +281,7 @@ class TestMockAgentSimulatorMethods:
             # Verify MCP request format
             mock_request.assert_called_once()
             call_args = mock_request.call_args[1]
-            assert call_args["method"] == "mcp__giljo-mcp__complete_job"
+            assert call_args["method"] == "mcp__giljo_mcp__complete_job"
             assert call_args["arguments"]["result"] == completion_data
 
     @pytest.mark.asyncio

@@ -17,17 +17,17 @@ You have access to comprehensive MCP tools for agent coordination. Use these too
 ### Available MCP Tools
 
 **Startup Tools:**
-- `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` - Get your mission
-- `mcp__giljo-mcp__acknowledge_job(job_id, agent_id)` - Mark yourself active
+- `mcp__giljo_mcp__get_agent_mission(agent_job_id, tenant_key)` - Get your mission
+- `mcp__giljo_mcp__acknowledge_job(job_id, agent_id)` - Mark yourself active
 
 **Working Tools:**
-- `mcp__giljo-mcp__report_progress(job_id, progress)` - Report incremental progress
-- `mcp__giljo-mcp__get_next_instruction(job_id, agent_type, tenant_key)` - Check for instructions
-- `mcp__giljo-mcp__send_message(to_agent, message, priority)` - Message orchestrator
+- `mcp__giljo_mcp__report_progress(job_id, progress)` - Report incremental progress
+- `mcp__giljo_mcp__get_next_instruction(job_id, agent_type, tenant_key)` - Check for instructions
+- `mcp__giljo_mcp__send_message(to_agent, message, priority)` - Message orchestrator
 
 **Completion Tools:**
-- `mcp__giljo-mcp__complete_job(job_id, result)` - Mark work complete
-- `mcp__giljo-mcp__report_error(job_id, error)` - Report blocking errors
+- `mcp__giljo_mcp__complete_job(job_id, result)` - Mark work complete
+- `mcp__giljo_mcp__report_error(job_id, error)` - Report blocking errors
 
 ### CRITICAL CHECKPOINTS
 
@@ -35,24 +35,24 @@ You MUST use MCP tools at these checkpoints:
 
 ### Phase 1: Job Acknowledgment (BEFORE ANY WORK)
 
-1. Call `mcp__giljo-mcp__get_pending_jobs(agent_type="<AGENT_TYPE>", tenant_key="<TENANT_KEY>")`
+1. Call `mcp__giljo_mcp__get_pending_jobs(agent_type="<AGENT_TYPE>", tenant_key="<TENANT_KEY>")`
 2. Find your assigned job in the response
-3. Call `mcp__giljo-mcp__acknowledge_job(job_id=<job_id>, agent_id="<AGENT_TYPE>", tenant_key="<TENANT_KEY>")`
+3. Call `mcp__giljo_mcp__acknowledge_job(job_id=<job_id>, agent_id="<AGENT_TYPE>", tenant_key="<TENANT_KEY>")`
 3. **CRITICAL**: Acknowledge job when starting work:
-   - Call `mcp__giljo-mcp__acknowledge_job(job_id=<job_id>, agent_id="<AGENT_TYPE>")`
+   - Call `mcp__giljo_mcp__acknowledge_job(job_id=<job_id>, agent_id="<AGENT_TYPE>")`
    - This moves your job card from "Pending" to "Active" column in Kanban dashboard
    - Developer will see you've started working
 
 ### Phase 2: Incremental Progress (AFTER EACH TODO)
 
 1. Complete one actionable todo item
-2. Call `mcp__giljo-mcp__report_progress()`:
+2. Call `mcp__giljo_mcp__report_progress()`:
    - job_id: Your job ID from acknowledgment
    - completed_todo: Description of what you completed
    - files_modified: List of file paths changed
    - tenant_key: "<TENANT_KEY>"
 
-3. Call `mcp__giljo-mcp__get_next_instruction()`:
+3. Call `mcp__giljo_mcp__get_next_instruction()`:
    - job_id: Your job ID
    - agent_type: "<AGENT_TYPE>"
    - tenant_key: "<TENANT_KEY>"
@@ -63,7 +63,7 @@ You MUST use MCP tools at these checkpoints:
 
 1. Complete all mission objectives
 2. **CRITICAL**: Mark job as complete:
-   - Call `mcp__giljo-mcp__complete_job(job_id=<job_id>, result={...})`
+   - Call `mcp__giljo_mcp__complete_job(job_id=<job_id>, result={...})`
    - result: {summary, files_created, files_modified, tests_written, coverage}
    - This moves your job card to "Completed" column in Kanban dashboard
    - tenant_key: "<TENANT_KEY>"
@@ -72,7 +72,7 @@ You MUST use MCP tools at these checkpoints:
 
 On ANY error or if you need human input:
 1. **CRITICAL**: Report blocking error:
-   - Call `mcp__giljo-mcp__report_error(job_id=<job_id>, error="Describe the issue")`
+   - Call `mcp__giljo_mcp__report_error(job_id=<job_id>, error="Describe the issue")`
    - This moves your job card to "BLOCKED" column in Kanban dashboard
    - Developer will be notified you need help
 2. STOP work and await orchestrator guidance
@@ -81,7 +81,7 @@ On ANY error or if you need human input:
 
 **When starting work:**
 ```
-Tool: mcp__giljo-mcp__acknowledge_job
+Tool: mcp__giljo_mcp__acknowledge_job
 Parameters:
   - job_id: "your-job-id"
   - agent_id: "analyzer"
@@ -89,7 +89,7 @@ Parameters:
 
 **When blocked (need database schema clarification):**
 ```
-Tool: mcp__giljo-mcp__report_error
+Tool: mcp__giljo_mcp__report_error
 Parameters:
   - job_id: "your-job-id"
   - error: "Need database schema clarification for user authentication table"
@@ -97,7 +97,7 @@ Parameters:
 
 **When completing work:**
 ```
-Tool: mcp__giljo-mcp__complete_job
+Tool: mcp__giljo_mcp__complete_job
 Parameters:
   - job_id: "your-job-id"
   - result: {"summary": "Analysis complete", "files_created": [...]}
@@ -125,7 +125,7 @@ If your mission objectives are unclear or require broader project context:
 
 1. **Use MCP messaging tool**:
    ```
-   mcp__giljo-mcp__send_message(
+   mcp__giljo_mcp__send_message(
      to_agent="orchestrator",
      message="REQUEST_CONTEXT: [specific need]",
      priority="medium",
@@ -139,7 +139,7 @@ If your mission objectives are unclear or require broader project context:
    - ❌ Bad: "REQUEST_CONTEXT: Tell me everything about the project"
 
 3. **Wait for orchestrator response**:
-   - Check: `mcp__giljo-mcp__get_next_instruction(job_id="{job_id}", agent_type="{agent_type}", tenant_key="{tenant_key}")`
+   - Check: `mcp__giljo_mcp__get_next_instruction(job_id="{job_id}", agent_type="{agent_type}", tenant_key="{tenant_key}")`
    - Orchestrator will provide filtered context excerpt
    - Continue work after receiving clarification
 

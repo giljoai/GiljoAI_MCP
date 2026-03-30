@@ -216,7 +216,7 @@
             <strong>Action required:</strong> Changing the protocol (HTTP/HTTPS) invalidates existing
             MCP tool connections. You must remove and re-add your AI coding agents:
             <ol class="mt-2 ml-4 text-body-2">
-              <li>Remove existing connections: <code>claude mcp remove giljo-mcp</code>, <code>codex mcp remove giljo-mcp</code>, <code>gemini mcp remove giljo-mcp</code></li>
+              <li>Remove existing connections: <code>claude mcp remove giljo_mcp</code>, <code>codex mcp remove giljo_mcp</code>, <code>gemini mcp remove giljo_mcp</code></li>
               <li>Delete old API keys from User Settings</li>
               <li>Use the Configurator to generate new connection commands</li>
             </ol>
