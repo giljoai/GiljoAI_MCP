@@ -343,15 +343,20 @@ async def get_agent_templates_for_export(
         if ws_manager and tenant_key:
             from api.events.schemas import EventFactory
 
-            agent_count = len(result.get("files", {})) if isinstance(result, dict) else 0
+            agent_count = len(result.get("agents", [])) if isinstance(result, dict) else 0
             event = EventFactory.setup_agents_downloaded(
                 tenant_key=tenant_key,
                 user_id="mcp_tool",
                 agent_count=agent_count,
             )
             await ws_manager.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
-    except (OSError, RuntimeError, ValueError, TypeError, AttributeError, ImportError):
-        pass  # Fire-and-forget
+            logger.info(f"setup:agents_downloaded emitted for tenant {tenant_key}, {agent_count} agents")
+        else:
+            logger.warning(
+                f"setup:agents_downloaded NOT emitted: ws_manager={ws_manager is not None}, tenant_key={tenant_key}"
+            )
+    except (OSError, RuntimeError, ValueError, TypeError, AttributeError, ImportError, KeyError) as e:
+        logger.warning(f"setup:agents_downloaded emission failed: {type(e).__name__}: {e}")
 
     return result
 
