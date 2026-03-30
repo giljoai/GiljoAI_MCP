@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 mcp = FastMCP(
-    name="giljo-mcp",
+    name="giljo_mcp",
     instructions="GiljoAI Coding Orchestrator -- AI agent orchestration tools",
     stateless_http=True,
     json_response=True,
@@ -829,11 +829,6 @@ class MCPAuthMiddleware:
 # ---------------------------------------------------------------------------
 # Build the mountable Starlette app with auth middleware
 # ---------------------------------------------------------------------------
-
-
-def build_mcp_app():
-    """Legacy entry point — use get_mcp_asgi_app() instead."""
-    return get_mcp_asgi_app()
 
 
 def get_mcp_asgi_app():
