@@ -295,7 +295,16 @@ function handleToolConnected(payload) {
   const toolName = payload?.tool_name
   if (!toolName) return
 
-  // Match against selected tools
+  // Generic MCP connection event — mark all selected tools as connected
+  // (the MCP server can't distinguish which specific CLI tool connected)
+  if (toolName === 'mcp_connected') {
+    for (const id of props.selectedTools) {
+      connectionStatus.value[id] = 'connected'
+    }
+    return
+  }
+
+  // Specific tool match (legacy/future use)
   for (const id of props.selectedTools) {
     if (normalizeToolId(id) === toolName || id === toolName) {
       connectionStatus.value[id] = 'connected'
