@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-30 (0846a-c MCP SDK Standardization + 0855a-g Setup Wizard CLOSED OUT)
+**Last Updated:** 2026-03-30 (0860a-d Code Provenance & License Audit COMPLETE)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE, **0769a-g sprint COMPLETE (2026-03-30)**. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 NOT STARTED.** **0855a-g COMPLETE.** |
+| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 NOT STARTED.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
 
 ---
 
@@ -50,6 +50,7 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0860a-d | Code Provenance & License Audit (4 sessions) | 2026-03-30 | COMPLETE — ScanCode 32.5.0 + SCANOSS 1.51.0 + pip-licenses + license-checker. 268 Python + 383 npm deps scanned. 494 source files (ScanCode) + 384 source files (SCANOSS). **CE: PASS WITH REVIEW ITEMS** (4 REVIEW: useToast.js 79% SCANOSS match, psycopg2-binary LGPL exception, pycountry LGPL dynamic link, PyGithub LGPL verify-not-shipped). **SaaS: PASS.** Zero AGPL. Zero GPL in shipped deps. Zero copyleft in source. Branch: feature/0860-license-audit. |
 | 0846a-c | MCP SDK Standardization (3 sessions) | 2026-03-29 | COMPLETE — Replaced custom JSON-RPC transport with official MCP SDK (FastMCP + Streamable HTTP). 27 tools registered via @mcp.tool(), MCPAuthMiddleware (JWT + API key), promoted to /mcp, old router removed from app.py. 3 docs updated. mcp_http.py kept on disk for test compat. Branch: feature/0846-mcp-sdk-standardization. |
 | 0855a-g | Setup Wizard Redesign (7 sessions) | 2026-03-29 | COMPLETE — Backend schema (3 User columns + migration + 2 endpoints), 3 WebSocket event types, full-screen overlay with 4-step progress bar, Step 1 tool selection, Step 2 MCP config + live connection status, Step 3 bootstrap prompt + WebSocket checklist, Step 4 launchpad cards, learning mode ("How to Use") overlay, useMcpConfig composable, StartupQuickStart deleted (639 lines). 106 Vitest tests. Branch: feature/0855-setup-wizard. |
 | 0842a-e | Vision Document Analysis (5 sessions) | 2026-03-27 | COMPLETE — DB migration + Sumy wiring, Context Manager AI-preferred reads, MCP tools (gil_get_vision_doc + gil_write_product), frontend UI (tuning icon + analysis banner + custom instructions), E2E tests. 6 commits, 33 tests. Branch: feature/0842-vision-doc-analysis. |
@@ -574,6 +575,7 @@ completed/reference/
 **0827** (Enhancement & Feature Series): 0827 Agent Reactivation & Continuation (COMPLETE, 7 commits, 4 phases: display names + auto-block + tools + todo_append)
 **0828** (Enhancement & Feature Series): 0828 OAuth 2.1 PKCE Flow for MCP Client Authorization (ACTIVE)
 **0844a-c** (Enhancement & Feature Series): 0844 Tenant Data Export/Import series (ALL NOT STARTED). 0844a export service, 0844b import+schema diff, 0844c frontend. Sequential with manual gates between phases.
+**0860a-d** (Code Provenance & License Audit — PERMANENT, reusable): All phases COMPLETE (2026-03-30). CE: PASS, SaaS: PASS. Owner review cleared all 4 REVIEW items. **Handovers live in `audit/` folder (not `handovers/`) — never closed out, rerun before each major release.** Spec: `audit/CODE_PROVENANCE_LICENSE_AUDIT.md`. Results: `audit/AUDIT_SUMMARY.md`.
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
