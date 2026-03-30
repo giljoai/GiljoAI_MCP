@@ -129,14 +129,15 @@
               @skip="handleStep3Skip"
             />
 
-            <!-- Step 3: Launch (placeholder) -->
-            <div v-else-if="currentStep === 3" class="step-placeholder">
-              <p class="placeholder-text">Step 4 content will be added by handover 0855f</p>
-            </div>
+            <!-- Step 3: Launch (0855f) -->
+            <SetupStep4Complete
+              v-else-if="currentStep === 3"
+              @complete="handleStep4Complete"
+            />
           </div>
 
-          <!-- Footer -->
-          <div class="setup-wizard-footer">
+          <!-- Footer (hidden on step 3 — Step 4 has its own card-based navigation) -->
+          <div v-if="currentStep < 3" class="setup-wizard-footer">
             <v-btn
               v-if="currentStep > 0"
               variant="text"
@@ -153,7 +154,7 @@
               :disabled="!canProceed"
               @click="handleNext"
             >
-              {{ currentStep === STEPS.length - 1 ? 'Finish' : 'Next' }}
+              Next
             </v-btn>
           </div>
         </div>
@@ -166,6 +167,7 @@
 import { ref, computed, watch } from 'vue'
 import SetupStep2Connect from './SetupStep2Connect.vue'
 import SetupStep3Commands from './SetupStep3Commands.vue'
+import SetupStep4Complete from './SetupStep4Complete.vue'
 
 const TOOLS = [
   { id: 'claude_code', name: 'Claude Code', provider: 'by Anthropic', icon: 'mdi-console' },
@@ -252,8 +254,8 @@ const canProceed = computed(() => {
   if (props.currentStep === 2) {
     return step3CanProceed.value
   }
-  // Placeholder steps: always allow proceeding
-  return true
+  // Step 3 (Launch) has its own card-based navigation
+  return false
 })
 
 function handleNext() {
@@ -285,6 +287,11 @@ function handleStep3Skip() {
   if (props.currentStep < STEPS.length - 1) {
     emit('update:currentStep', props.currentStep + 1)
   }
+}
+
+function handleStep4Complete({ action, route }) {
+  emit('step-complete', { step: 3, data: { action, route, setup_complete: true } })
+  emit('update:modelValue', false)
 }
 
 function handleDismiss() {
