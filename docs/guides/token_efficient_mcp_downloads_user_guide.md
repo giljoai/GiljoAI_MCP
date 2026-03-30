@@ -39,7 +39,7 @@ Downloads are:
 ### A) Install Slash Commands (One-Time)
 
 1. Configure the GiljoAI MCP server in Claude Code
-2. Call the MCP tool: `mcp__giljo-mcp__setup_slash_commands`
+2. Call the MCP tool: `mcp__giljo_mcp__setup_slash_commands`
 3. Run the returned `bash_command`
 4. Restart Claude Code
 
@@ -50,7 +50,7 @@ Run:
 /gil_get_agents
 ```
 
-This stages a one-time ZIP URL via `mcp__giljo-mcp__get_agent_download_url`, downloads it, and then asks where to install:
+This stages a one-time ZIP URL via `mcp__giljo_mcp__get_agent_download_url`, downloads it, and then asks where to install:
 - **Project**: `.claude/agents/`
 - **User**: `~/.claude/agents/`
 

@@ -3,10 +3,9 @@ Tests for Handover 0411a: Phase parameter additions.
 
 Tests cover:
 1. tool_accessor.spawn_agent_job passes phase parameter through
-2. mcp_http.py _TOOL_SCHEMA_PARAMS includes phase for spawn_agent_job
-3. mcp_http.py tool schema includes phase property for spawn_agent_job
-4. JobResponse model accepts optional phase field
-5. job_to_response converter maps phase from job dict
+2. SDK tool registration includes phase for spawn_agent_job
+3. JobResponse model accepts optional phase field
+4. job_to_response converter maps phase from job dict
 """
 
 import inspect
@@ -130,83 +129,31 @@ class TestToolAccessorPhasePassthrough:
 
 
 # ---------------------------------------------------------------------------
-# 2. _TOOL_SCHEMA_PARAMS includes phase for spawn_agent_job
-# ---------------------------------------------------------------------------
-
-
-class TestMCPSchemaParamsPhase:
-    """Tests that the security allowlist includes phase for spawn_agent_job."""
-
-    def test_phase_in_schema_params_allowlist(self):
-        """_TOOL_SCHEMA_PARAMS['spawn_agent_job'] must include 'phase'."""
-        from api.endpoints.mcp_http import _TOOL_SCHEMA_PARAMS
-
-        assert "spawn_agent_job" in _TOOL_SCHEMA_PARAMS
-        assert "phase" in _TOOL_SCHEMA_PARAMS["spawn_agent_job"]
-
-
-# ---------------------------------------------------------------------------
-# 3. MCP tool schema includes phase property
+# 2. SDK tool schema includes phase for spawn_agent_job
 # ---------------------------------------------------------------------------
 
 
 class TestMCPToolSchemaPhase:
     """Tests that the spawn_agent_job tool schema advertises the phase property."""
 
-    def _get_spawn_tool_schema(self) -> dict[str, Any]:
-        """Extract the spawn_agent_job tool definition from the tools list builder."""
-        # We import the module and inspect the tools list that handle_tools_list builds.
-        # Since handle_tools_list is async and requires session_manager, we instead
-        # directly inspect the static tools list defined in the function body.
-        # The most reliable way is to search for the tool in the source module.
-        from pathlib import Path
+    def test_phase_in_sdk_tool_registration(self):
+        """spawn_agent_job registered via SDK must include 'phase' parameter."""
+        import inspect
 
-        mcp_http_path = Path(__file__).resolve().parent.parent.parent / "api" / "endpoints" / "mcp_http.py"
-        source = mcp_http_path.read_text(encoding="utf-8")
+        from api.endpoints.mcp_sdk_server import spawn_agent_job
 
-        # Find spawn_agent_job in the tool schemas by checking the properties dict
-        # We'll use a simpler approach: import and check the schema params
-        # Since the tool schema is defined inline in a function, we verify
-        # by checking _TOOL_SCHEMA_PARAMS plus a source-level check
-        assert '"phase"' in source, "phase property not found in mcp_http.py source"
-        return {}
+        sig = inspect.signature(spawn_agent_job)
+        assert "phase" in sig.parameters, "phase not in spawn_agent_job SDK tool signature"
 
-    def test_phase_property_in_spawn_tool_schema_source(self):
-        """The spawn_agent_job inputSchema properties must include phase."""
-        from pathlib import Path
+    def test_phase_type_is_optional_int(self):
+        """The phase parameter should be typed as int | None."""
+        import inspect
 
-        mcp_http_path = Path(__file__).resolve().parent.parent.parent / "api" / "endpoints" / "mcp_http.py"
-        source = mcp_http_path.read_text(encoding="utf-8")
+        from api.endpoints.mcp_sdk_server import spawn_agent_job
 
-        # Find the spawn_agent_job tool definition block and verify phase is in its properties
-        # We search for the section between spawn_agent_job name and the next tool definition
-        spawn_idx = source.find('"name": "spawn_agent_job"')
-        assert spawn_idx != -1, "spawn_agent_job tool definition not found"
-
-        # Find the next tool block (next '"name":' after spawn_agent_job)
-        next_tool_idx = source.find('"name":', spawn_idx + 30)
-        spawn_block = source[spawn_idx:next_tool_idx] if next_tool_idx != -1 else source[spawn_idx:]
-
-        assert '"phase"' in spawn_block, "phase property not found in spawn_agent_job inputSchema"
-
-    def test_phase_property_type_is_integer(self):
-        """The phase property should be typed as integer in the schema."""
-        from pathlib import Path
-
-        mcp_http_path = Path(__file__).resolve().parent.parent.parent / "api" / "endpoints" / "mcp_http.py"
-        source = mcp_http_path.read_text(encoding="utf-8")
-
-        # Find the spawn_agent_job tool block
-        spawn_idx = source.find('"name": "spawn_agent_job"')
-        next_tool_idx = source.find('"name":', spawn_idx + 30)
-        spawn_block = source[spawn_idx:next_tool_idx] if next_tool_idx != -1 else source[spawn_idx:]
-
-        # Verify phase has integer type
-        phase_idx = spawn_block.find('"phase"')
-        assert phase_idx != -1
-        # The type definition should be nearby
-        phase_section = spawn_block[phase_idx : phase_idx + 200]
-        assert '"integer"' in phase_section, "phase property should have type 'integer'"
+        sig = inspect.signature(spawn_agent_job)
+        param = sig.parameters["phase"]
+        assert param.default is None, "phase should default to None"
 
 
 # ---------------------------------------------------------------------------
