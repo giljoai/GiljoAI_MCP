@@ -193,12 +193,10 @@ describe('ProjectsView.vue', () => {
       expect(button.exists()).toBe(true)
     })
 
-    it('renders stats cards for active product', async () => {
+    it('renders project list for active product', async () => {
       const wrapper = await createWrapper()
-      expect(wrapper.text()).toContain('Total Projects')
-      expect(wrapper.text()).toContain('Completed')
-      expect(wrapper.text()).toContain('Staged')
-      expect(wrapper.text()).toContain('Cancelled')
+      expect(wrapper.text()).toContain('Project List for Product 1')
+      expect(wrapper.text()).toContain('New Project')
     })
 
     it('renders search input field', async () => {

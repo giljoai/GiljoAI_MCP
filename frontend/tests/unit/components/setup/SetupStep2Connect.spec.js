@@ -106,7 +106,7 @@ describe('SetupStep2Connect', () => {
     const wrapper = mountStep2()
     await flushPromises()
     expect(wrapper.text()).toContain('giljo_abc')
-    expect(wrapper.text()).toContain('Key already generated')
+    expect(wrapper.text()).toContain('Key exists')
   })
 
   // 6. API key check: shows generate button when no active keys
@@ -139,23 +139,44 @@ describe('SetupStep2Connect', () => {
     expect(api.apiKeys.create).toHaveBeenCalled()
   })
 
-  // 8. Config renders with key prefix (existing key — no plaintext key, so shows YOUR_API_KEY)
-  it('renders config command for claude_code when key exists', async () => {
+  // 8. Config renders after key is generated (config section only shows when generatedKey is set)
+  it('renders config command for claude_code when key is generated', async () => {
+    api.apiKeys.getActive.mockResolvedValue({ data: [] })
     const wrapper = mountStep2({ selectedTools: ['claude_code'] })
     await flushPromises()
-    // With existing key (only prefix known), config uses YOUR_API_KEY placeholder
+
+    // Click generate key button
+    const buttons = wrapper.findAll('button')
+    const generateBtn = buttons.find((b) => b.text().includes('Generate API Key'))
+    await generateBtn.trigger('click')
+    await flushPromises()
+
     expect(wrapper.text()).toContain('claude mcp add')
   })
 
   it('renders config command for codex_cli', async () => {
+    api.apiKeys.getActive.mockResolvedValue({ data: [] })
     const wrapper = mountStep2({ selectedTools: ['codex_cli'] })
     await flushPromises()
+
+    const buttons = wrapper.findAll('button')
+    const generateBtn = buttons.find((b) => b.text().includes('Generate API Key'))
+    await generateBtn.trigger('click')
+    await flushPromises()
+
     expect(wrapper.text()).toContain('codex mcp add')
   })
 
   it('renders config command for gemini_cli', async () => {
+    api.apiKeys.getActive.mockResolvedValue({ data: [] })
     const wrapper = mountStep2({ selectedTools: ['gemini_cli'] })
     await flushPromises()
+
+    const buttons = wrapper.findAll('button')
+    const generateBtn = buttons.find((b) => b.text().includes('Generate API Key'))
+    await generateBtn.trigger('click')
+    await flushPromises()
+
     expect(wrapper.text()).toContain('gemini mcp add')
   })
 

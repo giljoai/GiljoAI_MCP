@@ -57,16 +57,16 @@ describe('GitIntegrationCard.vue', () => {
       expect(html).toContain('variant="outlined"')
     })
 
-    it('displays "Git + 360 Memory" title', () => {
+    it('displays "Git + GiljoAI 360 Memory" title', () => {
       wrapper = mountComponent()
       const text = wrapper.text()
-      expect(text).toContain('Git + 360 Memory')
+      expect(text).toContain('Git + GiljoAI 360 Memory')
     })
 
     it('displays description about commit tracking', () => {
       wrapper = mountComponent()
       const text = wrapper.text()
-      expect(text).toContain('Track git commits in 360 Memory')
+      expect(text).toContain('Enable to automatically include git commit history in project summaries')
     })
 
     it('displays git icon (mdi-github)', () => {
@@ -78,7 +78,7 @@ describe('GitIntegrationCard.vue', () => {
     it('displays subtitle about orchestrator context', () => {
       wrapper = mountComponent()
       const text = wrapper.text()
-      expect(text).toContain('orchestrator context')
+      expect(text).toContain('orchestrators with cumulative context')
     })
 
     it('displays tooltip component', () => {
@@ -123,34 +123,23 @@ describe('GitIntegrationCard.vue', () => {
     })
   })
 
-  describe('Advanced Button', () => {
-    it('has Advanced button', () => {
+  describe('Info Alert', () => {
+    it('has info alert about git configuration', () => {
       wrapper = mountComponent()
       const text = wrapper.text()
-      expect(text).toContain('Advanced')
+      expect(text).toContain('Git configuration is your responsibility')
     })
 
-    it('Advanced button emits openAdvanced event when clicked', async () => {
+    it('displays GitHub Setup Guide link button', () => {
       wrapper = mountComponent()
-      const buttons = wrapper.findAll('button')
-      const advancedBtn = buttons.find((btn) => btn.text().includes('Advanced'))
-      expect(advancedBtn).toBeTruthy()
-
-      if (advancedBtn) {
-        await advancedBtn.trigger('click')
-        const emitted = wrapper.emitted('openAdvanced')
-        expect(emitted).toBeTruthy()
-      }
+      const text = wrapper.text()
+      expect(text).toContain('GitHub Setup Guide')
     })
 
-    it('Advanced button is disabled when loading', () => {
+    it('info alert is visible when loading', () => {
       wrapper = mountComponent({ loading: true })
-      const buttons = wrapper.findAll('button')
-      const advancedBtn = buttons.find((btn) => btn.text().includes('Advanced'))
-
-      if (advancedBtn) {
-        expect(advancedBtn.attributes('disabled')).toBeDefined()
-      }
+      const text = wrapper.text()
+      expect(text).toContain('Git configuration is your responsibility')
     })
   })
 
@@ -163,11 +152,11 @@ describe('GitIntegrationCard.vue', () => {
       expect(text).toContain('Enable to automatically include git commit history')
     })
 
-    it('mentions product memory', () => {
+    it('mentions 360 Memory', () => {
       wrapper = mountComponent({ enabled: false })
 
       const text = wrapper.text()
-      expect(text).toContain('product memory')
+      expect(text).toContain('360 Memory')
     })
   })
 
@@ -255,11 +244,11 @@ describe('GitIntegrationCard.vue', () => {
   })
 
   describe('Visual Elements', () => {
-    it('displays avatar in html', () => {
+    it('displays git icon in html', () => {
       wrapper = mountComponent()
 
       const html = wrapper.html()
-      expect(html).toContain('v-avatar')
+      expect(html).toContain('mdi-github')
     })
 
     it('uses outlined card variant', () => {

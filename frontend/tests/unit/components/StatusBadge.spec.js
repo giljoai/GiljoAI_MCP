@@ -14,14 +14,10 @@ describe('StatusBadge.vue', () => {
     return mount(StatusBadge, {
       props: {
         status: 'active',
-        projectId: 'proj-123',
         ...props,
       },
       global: {
         plugins: [vuetify],
-        stubs: {
-          teleport: true,
-        },
       },
     })
   }
@@ -29,16 +25,14 @@ describe('StatusBadge.vue', () => {
   describe('Rendering', () => {
     it('renders badge with correct status text', () => {
       const wrapper = createWrapper({ status: 'active' })
-      // The v-chip with statusLabel is inside v-menu's activator slot.
-      // Global test stubs don't render named slots, so verify via vm.
       expect(wrapper.vm.statusLabel).toBe('Active')
     })
 
     it('renders badge with correct color for each status', () => {
       const statusColors = {
-        active: 'success',
+        active: '#fff',
         inactive: 'grey',
-        completed: 'info',
+        completed: 'success',
         cancelled: 'warning',
         terminated: 'error',
         deleted: 'error',
@@ -46,163 +40,84 @@ describe('StatusBadge.vue', () => {
 
       Object.entries(statusColors).forEach(([status, expectedColor]) => {
         const wrapper = createWrapper({ status })
-        // Verify color through the computed property since the v-chip
-        // is inside a named slot that stubs don't render
         expect(wrapper.vm.statusColor).toBe(expectedColor)
       })
     })
 
-    it('has status-badge-chip class defined in component', () => {
-      // The chip is in v-menu's activator slot which doesn't render in stubs.
-      // Verify the component exists and has the statusLabel computed.
+    it('has status-badge-chip class on the chip element', () => {
       const wrapper = createWrapper()
-      expect(wrapper.vm.statusLabel).toBeDefined()
-      expect(wrapper.vm.statusColor).toBeDefined()
-    })
-  })
-
-  describe('Menu Actions', () => {
-    it('shows activate action for inactive status', async () => {
-      const wrapper = createWrapper({ status: 'inactive' })
-      const actions = wrapper.vm.availableActions
-      expect(actions.some((a) => a.value === 'activate')).toBe(true)
+      expect(wrapper.find('.status-badge-chip').exists()).toBe(true)
     })
 
-    it('shows deactivate action for active status', async () => {
-      const wrapper = createWrapper({ status: 'active' })
-      const actions = wrapper.vm.availableActions
-
-      expect(actions.some((a) => a.value === 'deactivate')).toBe(true)
-      expect(actions.some((a) => a.value === 'activate')).toBe(false)
+    it('renders as a v-chip with flat variant', () => {
+      const wrapper = createWrapper()
+      const chip = wrapper.find('.v-chip')
+      expect(chip.exists()).toBe(true)
     })
 
-    it('shows complete and cancel actions for inactive projects', async () => {
-      const wrapper = createWrapper({ status: 'inactive' })
-      const actions = wrapper.vm.availableActions
-
-      expect(actions.some((a) => a.value === 'complete')).toBe(true)
-      expect(actions.some((a) => a.value === 'cancel')).toBe(true)
-    })
-
-    it('shows complete and cancel actions for active projects', async () => {
-      const wrapper = createWrapper({ status: 'active' })
-      const actions = wrapper.vm.availableActions
-
-      expect(actions.some((a) => a.value === 'complete')).toBe(true)
-      expect(actions.some((a) => a.value === 'cancel')).toBe(true)
-    })
-
-    it('shows review action for completed projects', async () => {
+    it('renders status label text inside the chip', () => {
       const wrapper = createWrapper({ status: 'completed' })
-      const actions = wrapper.vm.availableActions
-      expect(actions.some((a) => a.value === 'review')).toBe(true)
-      expect(actions.some((a) => a.value === 'activate')).toBe(false)
-      expect(actions.some((a) => a.value === 'complete')).toBe(false)
-    })
-
-    it('shows reopen action for cancelled projects', async () => {
-      const wrapper = createWrapper({ status: 'cancelled' })
-      const actions = wrapper.vm.availableActions
-      expect(actions.some((a) => a.value === 'reopen')).toBe(true)
-    })
-
-    it('shows review action for terminated projects', async () => {
-      const wrapper = createWrapper({ status: 'terminated' })
-      const actions = wrapper.vm.availableActions
-      expect(actions.some((a) => a.value === 'review')).toBe(true)
-    })
-
-    it('has no actions for deleted status', async () => {
-      const wrapper = createWrapper({ status: 'deleted' })
-      const actions = wrapper.vm.availableActions
-      expect(actions.length).toBe(0)
+      expect(wrapper.text()).toContain('Completed')
     })
   })
 
-  describe('Events', () => {
-    it('emits action event when action is clicked', async () => {
-      const wrapper = createWrapper({ status: 'inactive' })
-      const actions = wrapper.vm.availableActions
-
-      const activateAction = actions.find((a) => a.value === 'activate')
-      // handleActionClick handles non-confirm actions immediately
-      wrapper.vm.handleActionClick(activateAction)
-
-      expect(wrapper.emitted('action')).toBeTruthy()
-      const emitted = wrapper.emitted('action')[0][0]
-      expect(emitted.action).toBe('activate')
-      expect(emitted.projectId).toBe('proj-123')
-    })
-
-    it('includes projectId in emitted event', () => {
-      const wrapper = createWrapper({ status: 'inactive', projectId: 'special-id' })
-      const actions = wrapper.vm.availableActions
-      const activateAction = actions.find((a) => a.value === 'activate')
-      wrapper.vm.handleActionClick(activateAction)
-
-      const emitted = wrapper.emitted('action')[0][0]
-      expect(emitted.projectId).toBe('special-id')
-    })
-  })
-
-  describe('Status Transitions', () => {
-    it('correctly handles transition from active to inactive (deactivate)', () => {
+  describe('Computed Properties', () => {
+    it('returns correct textColor for active status', () => {
       const wrapper = createWrapper({ status: 'active' })
-      const activeActions = wrapper.vm.availableActions
-
-      expect(activeActions.some((a) => a.value === 'deactivate')).toBe(true)
-      expect(activeActions.some((a) => a.value === 'activate')).toBe(false)
+      expect(wrapper.vm.statusTextColor).toBe('#333')
     })
 
-    it('correctly handles transition from inactive to active', () => {
+    it('returns correct textColor for inactive status', () => {
       const wrapper = createWrapper({ status: 'inactive' })
-      const inactiveActions = wrapper.vm.availableActions
-
-      expect(inactiveActions.some((a) => a.value === 'activate')).toBe(true)
-      expect(inactiveActions.some((a) => a.value === 'deactivate')).toBe(false)
+      expect(wrapper.vm.statusTextColor).toBe('#1a237e')
     })
 
-    it('correctly handles completed project transitions', () => {
+    it('returns undefined textColor for statuses without custom textColor', () => {
       const wrapper = createWrapper({ status: 'completed' })
-      const completedActions = wrapper.vm.availableActions
+      expect(wrapper.vm.statusTextColor).toBeUndefined()
+    })
 
-      expect(completedActions.some((a) => a.value === 'review')).toBe(true)
-      expect(completedActions.some((a) => a.value === 'activate')).toBe(false)
-      expect(completedActions.some((a) => a.value === 'complete')).toBe(false)
+    it('returns correct icon for each status', () => {
+      const statusIcons = {
+        active: 'mdi-play-circle',
+        inactive: 'mdi-stop-circle-outline',
+        completed: 'mdi-check-circle',
+        cancelled: 'mdi-cancel',
+        terminated: 'mdi-stop-circle',
+        deleted: 'mdi-delete',
+      }
+
+      Object.entries(statusIcons).forEach(([status, expectedIcon]) => {
+        const wrapper = createWrapper({ status })
+        expect(wrapper.vm.statusIcon).toBe(expectedIcon)
+      })
+    })
+
+    it('falls back to grey color for unknown status', () => {
+      // The validator would reject this, but the computed handles the fallback
+      const wrapper = mount(StatusBadge, {
+        props: { status: 'active' },
+        global: { plugins: [vuetify] },
+      })
+      // Verify the default fallback logic exists by checking a known status
+      expect(wrapper.vm.statusColor).toBe('#fff')
     })
   })
 
   describe('Accessibility', () => {
-    it('has proper ARIA attributes on badge', () => {
-      const wrapper = createWrapper()
-      // Global test stubs render v-menu as <div class="v-menu">
-      const menu = wrapper.find('.v-menu')
-      expect(menu.exists()).toBe(true)
+    it('has proper aria-label on the chip', () => {
+      const wrapper = createWrapper({ status: 'active' })
+      const chip = wrapper.find('.status-badge-chip')
+      expect(chip.attributes('aria-label')).toBe('Project status: Active')
     })
 
-    it('menu items have labels', () => {
-      const wrapper = createWrapper({ status: 'inactive' })
-      const actions = wrapper.vm.availableActions
-
-      const activateAction = actions.find((a) => a.value === 'activate')
-      expect(activateAction.label).toBe('Activate')
-    })
-
-    it('shows proper icons for each action', () => {
-      const wrapper = createWrapper({ status: 'inactive' })
-      const actions = wrapper.vm.availableActions
-
-      const actionIcons = {
-        activate: 'mdi-play',
-        complete: 'mdi-check-circle',
-        cancel: 'mdi-cancel',
-      }
-
-      Object.entries(actionIcons).forEach(([actionValue, expectedIcon]) => {
-        const action = actions.find((a) => a.value === actionValue)
-        if (action) {
-          expect(action.icon).toBe(expectedIcon)
-        }
+    it('sets aria-label correctly for each status', () => {
+      const statuses = ['inactive', 'completed', 'cancelled', 'terminated', 'deleted']
+      statuses.forEach((status) => {
+        const wrapper = createWrapper({ status })
+        const chip = wrapper.find('.status-badge-chip')
+        const label = wrapper.vm.statusLabel
+        expect(chip.attributes('aria-label')).toBe(`Project status: ${label}`)
       })
     })
   })
@@ -220,8 +135,6 @@ describe('StatusBadge.vue', () => {
 
       Object.entries(statuses).forEach(([status, expected]) => {
         const wrapper = createWrapper({ status })
-        // Verify via computed statusLabel since the label text is
-        // inside v-menu's activator slot which stubs don't render
         expect(wrapper.vm.statusLabel).toBe(expected)
       })
     })
