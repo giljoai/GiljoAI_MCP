@@ -40,10 +40,6 @@ vi.mock('@/components/settings/ContextPriorityConfig.vue', () => ({
   default: { template: '<div data-test="context-priority-mock">Context Priority Config</div>' }
 }))
 
-vi.mock('@/components/settings/StartupQuickStart.vue', () => ({
-  default: { template: '<div data-test="startup-quickstart-mock">Startup Quick Start</div>' }
-}))
-
 vi.mock('@/components/settings/ProductIntroTour.vue', () => ({
   default: { template: '<div data-test="product-intro-tour-mock"></div>' }
 }))
