@@ -33,13 +33,6 @@
             hide-details
             class="server-url-field"
             readonly
-          />
-          <v-btn
-            icon="mdi-pencil-outline"
-            size="x-small"
-            variant="text"
-            class="server-edit-btn"
-            aria-label="Edit server URL"
             @click="editingServer = !editingServer"
           />
         </div>
@@ -442,8 +435,8 @@ onUnmounted(() => {
 }
 
 .server-url-field {
-  flex: 1;
-  max-width: 400px;
+  max-width: 320px;
+  cursor: pointer;
 }
 
 .server-url-field :deep(input) {
@@ -451,9 +444,6 @@ onUnmounted(() => {
   font-size: 0.875rem;
 }
 
-.server-edit-btn {
-  color: #8f97b7 !important;
-}
 
 .server-edit-fields {
   display: flex;
