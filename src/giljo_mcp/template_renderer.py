@@ -272,7 +272,7 @@ def render_gemini_agent(template: AgentTemplate) -> str:
             "grep_search",
             "list_directory",
             "read_many_files",
-            "mcp_giljo-mcp_*",
+            "mcp_giljo_mcp_*",
         ],
     }
 

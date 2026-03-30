@@ -508,11 +508,11 @@ class OrchestrationService:
 ## MCP TOOL USAGE
 
 MCP tools are **native tool calls** (like Read/Write/Bash/Glob).
-- Use `mcp__giljo-mcp__*` tools directly (no HTTP, curl, or SDKs).
+- Use `mcp__giljo_mcp__*` tools directly (no HTTP, curl, or SDKs).
 
 ## STARTUP (MANDATORY)
 
-1. Call `mcp__giljo-mcp__get_agent_mission` with:
+1. Call `mcp__giljo_mcp__get_agent_mission` with:
    - job_id="{job_id}"
    - tenant_key="{tenant_key}"
 
@@ -670,7 +670,7 @@ Commits: {pred_commits}
 Your task: Read the predecessor's work, understand what was done, then fix the issues described in your mission below.
 
 If git integration is enabled, run `git log --oneline -10` to see recent commits.
-If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predecessor_job_id}", tenant_key="{tenant_key}")`.
+If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predecessor_job_id}", tenant_key="{tenant_key}")`.
 
 ---
 """
@@ -3320,7 +3320,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
         """MCP server health check."""
         return {
             "status": "healthy",
-            "server": "giljo-mcp",
+            "server": "giljo_mcp",
             "version": "1.0.0",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "database": "connected",

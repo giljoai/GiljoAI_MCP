@@ -63,7 +63,7 @@ def get_claude_code_config(server_url: str, api_key: str) -> str:
     Returns:
         Command string for HTTP transport
     """
-    return f"""claude mcp add --transport http giljo-mcp {server_url}/mcp \\
+    return f"""claude mcp add --transport http giljo_mcp {server_url}/mcp \\
   --header "Authorization: Bearer {api_key}" """
 
 
@@ -81,7 +81,7 @@ def get_codex_config(server_url: str, api_key: str) -> str:
     Returns:
         Shell commands to export the key and register the MCP server
     """
-    return f"codex mcp add giljo-mcp --url {server_url}/mcp --bearer-token-env-var GILJO_API_KEY"
+    return f"codex mcp add giljo_mcp --url {server_url}/mcp --bearer-token-env-var GILJO_API_KEY"
 
 
 def get_gemini_config(server_url: str, api_key: str) -> str:
@@ -98,7 +98,7 @@ def get_gemini_config(server_url: str, api_key: str) -> str:
     Returns:
         Command string for HTTP transport (single line)
     """
-    return f'gemini mcp add -t http -H "Authorization: Bearer {api_key}" giljo-mcp {server_url}/mcp'
+    return f'gemini mcp add -t http -H "Authorization: Bearer {api_key}" giljo_mcp {server_url}/mcp'
 
 
 def get_http_tool_instructions(tool_id: str) -> list[str]:
