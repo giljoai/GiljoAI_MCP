@@ -81,10 +81,10 @@
 
         <!-- HTTPS cert trust (Node.js tools) -->
         <template v-if="needsCertTrust">
-          <v-tabs v-model="platform" class="global-tabs mb-3" density="compact">
-            <v-tab value="windows">PowerShell</v-tab>
-            <v-tab value="unix">Linux / macOS</v-tab>
-          </v-tabs>
+          <v-btn-toggle v-model="platform" mandatory variant="outlined" divided rounded="t-lg" color="primary" class="mb-3">
+            <v-btn value="windows" size="small">PowerShell</v-btn>
+            <v-btn value="unix" size="small">Linux / macOS</v-btn>
+          </v-btn-toggle>
           <v-alert type="info" variant="tonal" density="compact" class="mb-3">
             <strong>HTTPS with self-signed certificates:</strong> Node.js-based AI coding agents need to trust the system CA store (one-time setup, requires Node.js 20.12+).
           </v-alert>
@@ -105,10 +105,10 @@
         </template>
 
         <!-- Platform toggle for Codex env var (if not already shown for HTTPS) -->
-        <v-tabs v-if="!needsCertTrust && activeNormalizedId === 'codex'" v-model="platform" class="global-tabs mb-3" density="compact">
-          <v-tab value="windows">PowerShell</v-tab>
-          <v-tab value="unix">Linux / macOS</v-tab>
-        </v-tabs>
+        <v-btn-toggle v-if="!needsCertTrust && activeNormalizedId === 'codex'" v-model="platform" mandatory variant="outlined" divided rounded="t-lg" color="primary" class="mb-3">
+          <v-btn value="windows" size="small">PowerShell</v-btn>
+          <v-btn value="unix" size="small">Linux / macOS</v-btn>
+        </v-btn-toggle>
 
         <!-- Codex: Environment Variable -->
         <div v-if="activeNormalizedId === 'codex'" class="config-block smooth-border">
