@@ -26,6 +26,7 @@ function mountOverlay(props = {}) {
         Teleport: true,
         SetupStep2Connect: { template: '<div class="step-connect">Step2Connect stub</div>' },
         SetupStep3Commands: { template: '<div class="step-commands">Step3Commands stub</div>' },
+        SetupStep4Complete: { template: '<div class="step-complete">Step4Complete stub</div>' },
       },
     },
   })
@@ -277,18 +278,18 @@ describe('SetupWizardOverlay', () => {
       expect(wrapper.emitted('update:currentStep')).toBeUndefined()
     })
 
-    it('is enabled on placeholder steps (3+) regardless of tool selection', () => {
+    it('footer is not visible on step 3 (Step 4 has its own navigation)', () => {
       const wrapper = mountOverlay({ currentStep: 3, selectedTools: [] })
-      const nextBtn = wrapper.find('.footer-btn-next')
+      const footer = wrapper.find('.setup-wizard-footer')
 
-      expect(nextBtn.attributes('disabled')).toBeUndefined()
+      expect(footer.exists()).toBe(false)
     })
 
-    it('shows "Finish" text on the last step', () => {
+    it('footer is absent on the last step (step 3)', () => {
       const wrapper = mountOverlay({ currentStep: 3 })
       const nextBtn = wrapper.find('.footer-btn-next')
 
-      expect(nextBtn.text()).toBe('Finish')
+      expect(nextBtn.exists()).toBe(false)
     })
 
     it('shows "Next" text on non-last steps', () => {
@@ -370,10 +371,10 @@ describe('SetupWizardOverlay', () => {
       expect(wrapper.find('.step-commands').exists()).toBe(true)
     })
 
-    it('step 3 shows placeholder text about 0855f', () => {
+    it('step 3 renders SetupStep4Complete component (0855f)', () => {
       const wrapper = mountOverlay({ currentStep: 3 })
 
-      expect(wrapper.find('.placeholder-text').text()).toContain('0855f')
+      expect(wrapper.find('.step-complete').exists()).toBe(true)
     })
   })
 
