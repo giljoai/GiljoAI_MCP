@@ -42,7 +42,6 @@ Priority: CRITICAL - Enables Commercial Product
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -66,14 +65,9 @@ def _get_ssl_protocol() -> str:
         "https" if ssl_enabled is True in config.yaml, "http" otherwise.
     """
     try:
-        import yaml
-
-        config_path = Path(__file__).parent.parent.parent / "config.yaml"
-        if config_path.exists():
-            with open(config_path) as f:
-                config = yaml.safe_load(f) or {}
-            return "https" if config.get("features", {}).get("ssl_enabled", False) else "http"
-    except (OSError, ValueError, ImportError):
+        config = read_config()
+        return "https" if config.get("features", {}).get("ssl_enabled", False) else "http"
+    except (OSError, ValueError):
         pass
     return "http"
 
