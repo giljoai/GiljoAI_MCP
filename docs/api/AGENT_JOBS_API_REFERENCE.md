@@ -184,7 +184,7 @@ Authorization: Bearer YOUR_TOKEN
       "tenant_key": "tenant-123",
       "agent_type": "implementer",
       "mission": "Implement feature X",
-      "status": "pending",
+      "status": "waiting",
       "spawned_by": null,
       "context_chunks": ["chunk-001"],
       "messages": [],
@@ -236,7 +236,7 @@ Authorization: Bearer YOUR_TOKEN
   "tenant_key": "tenant-123",
   "agent_type": "implementer",
   "mission": "Implement feature X",
-  "status": "pending",
+  "status": "waiting",
   "spawned_by": null,
   "context_chunks": ["chunk-001"],
   "messages": [],
@@ -264,7 +264,7 @@ Authorization: Bearer YOUR_TOKEN
 Content-Type: application/json
 
 {
-  "status": "active"
+  "status": "working"
 }
 ```
 
@@ -273,7 +273,7 @@ Content-Type: application/json
 {
   "id": 1,
   "job_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "active",
+  "status": "working",
   ...
 }
 ```
@@ -328,7 +328,7 @@ Authorization: Bearer YOUR_TOKEN
 ```json
 {
   "job_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "active",
+  "status": "working",
   "started_at": "2025-10-19T10:35:00Z",
   "message": "Job acknowledged successfully"
 }
@@ -637,7 +637,7 @@ Authorization: Bearer YOUR_TOKEN
     "job_id": "parent-job-id",
     "agent_type": "orchestrator",
     "mission": "Coordinate implementation",
-    "status": "active",
+    "status": "working",
     ...
   },
   "children": [
@@ -655,7 +655,7 @@ Authorization: Bearer YOUR_TOKEN
       "job_id": "child-2-id",
       "agent_type": "implementer",
       "mission": "Implement backend",
-      "status": "active",
+      "status": "working",
       "spawned_by": "parent-job-id",
       ...
     }
@@ -797,7 +797,7 @@ Fired when a job is created.
   "data": {
     "job_id": "550e8400-e29b-41d4-a716-446655440000",
     "agent_type": "implementer",
-    "status": "pending",
+    "status": "waiting",
     "tenant_key": "tenant-123",
     "created_at": "2025-10-19T10:30:00Z"
   }
@@ -813,7 +813,7 @@ Fired when a job is acknowledged.
   "type": "agent_job:acknowledged",
   "data": {
     "job_id": "550e8400-e29b-41d4-a716-446655440000",
-    "status": "active",
+    "status": "working",
     "started_at": "2025-10-19T10:35:00Z"
   }
 }
