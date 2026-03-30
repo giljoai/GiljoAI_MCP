@@ -169,23 +169,45 @@
       "title": "Step 3 (Install Commands & Agents)",
       "handover": "handovers/0855e_SETUP_WIZARD_STEP3_COMMANDS.md",
       "color": "#9C27B0",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-29T18:00:00Z",
+      "completed_at": "2026-03-29T18:30:00Z",
       "agent_types": ["ux-designer", "tdd-implementor"],
       "planned_tasks": [
         "Build SetupStep3Commands.vue with bootstrap prompt display",
         "Wire WebSocket setup:commands_installed and setup:agents_downloaded",
         "Build auto-updating mini-checklist",
         "Handle Codex two-step flow",
+        "Wire Step 3 into SetupWizardOverlay.vue",
         "Vitest component tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Created SetupStep3Commands.vue (~330 lines script+template, ~280 lines style) with per-tool bootstrap prompt display, copy-to-clipboard, mini-checklist, post-install command, skip link",
+        "Bootstrap prompt fetched from /api/download/bootstrap-prompt?platform={toolId} using same pattern as AgentExport.vue (raw fetch with JWT auth)",
+        "Mini-checklist subscribes to setup:commands_installed (per-tool match) and setup:agents_downloaded (user-level, marks all tools)",
+        "Post-install command shows /gil_get_agents for claude_code/gemini_cli and $gil-get-agents for codex_cli with fade-slide transition",
+        "Skip link emits 'skip' event, handled by overlay parent which advances to step 3 with {skipped: true}",
+        "Wired SetupStep3Commands into SetupWizardOverlay.vue at currentStep===2 with can-proceed and step-data bindings",
+        "Updated canProceed computed: step 2 requires step3CanProceed (>= 1 tool with both checkmarks green)",
+        "Added handleStep3Skip to overlay: emits step-complete with {installedTools:[], skipped:true} and advances",
+        "Added step2ConnectedTools computed (derived from step2Data.connectedTools) to pass as prop to Step 3",
+        "30 Vitest component tests passing (SetupStep3Commands.spec.js)",
+        "Updated 2 tests in SetupWizardOverlay.spec.js (placeholder replaced with stub check, canProceed test adjusted to step 3+)",
+        "All 83 setup wizard tests passing (30 step3 + 38 overlay + 15 step2)"
+      ],
+      "deviations": [
+        "Bootstrap prompt uses raw fetch() instead of api service — consistent with existing AgentExport.vue pattern (the api service has no download namespace method for this endpoint)",
+        "Reactive state (prompts, promptLoading, promptErrors, toolStatus) initialized eagerly in script setup rather than in onMounted, so template sees correct initial state (loading=true) on first render",
+        "setup:agents_downloaded marks ALL connected tools (user-level event has no tool_name), matching the backend emission pattern"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "**For 0855f (Step 4 + E2E Wiring):** Component: `SetupStep3Commands.vue` at `frontend/src/components/setup/SetupStep3Commands.vue`. Props: `selectedTools` (Array), `connectedTools` (Array). Emits: `can-proceed` (Boolean), `step-data` ({ installedTools: string[] }), `skip`. The overlay parent receives step-complete with `{ step: 2, data: { installedTools: [...] } }` or `{ step: 2, data: { installedTools: [], skipped: true } }` for skip. The overlay's `canProceed` for step 2 checks `step3CanProceed` ref set by the `can-proceed` emit. `step2ConnectedTools` computed derives connected tool IDs from `step2Data.connectedTools` and is passed to Step 3 as the `connected-tools` prop. WebSocket subscriptions: `setup:commands_installed` (per-tool, matches tool_name to toolStatus keys), `setup:agents_downloaded` (user-level, marks all tools). Tool agent commands: claude_code/gemini_cli use `/gil_get_agents`, codex_cli uses `$gil-get-agents`. The skip handler in overlay emits step-complete with skipped flag and advances step. All 83 tests pass. Overlay stubs: SetupStep2Connect and SetupStep3Commands are both stubbed in overlay tests.",
+      "cascading_impacts": [
+        "SetupWizardOverlay.vue now imports SetupStep3Commands — any changes to Step 3 props/emits affect the overlay wiring",
+        "SetupWizardOverlay.spec.js updated: step 2 placeholder test replaced with stub check, canProceed test adjusted from step 2+ to step 3+",
+        "step2ConnectedTools computed added to overlay — 0855f can use this pattern for passing data between steps"
+      ],
+      "summary": "All 6 planned tasks completed. Created SetupStep3Commands.vue with per-tool bootstrap prompt fetching, copy-to-clipboard, auto-updating mini-checklist via WebSocket (setup:commands_installed + setup:agents_downloaded), post-install /gil_get_agents command display, Codex $gil-get-agents variant, and skip link. Wired into SetupWizardOverlay.vue at currentStep===2 with canProceed gating. 30 new Vitest tests + 2 updated overlay tests. All 83 setup wizard tests passing."
     },
     {
       "session_id": "0855f",

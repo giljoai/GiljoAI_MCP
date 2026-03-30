@@ -119,10 +119,15 @@
               @step-data="step2Data = $event"
             />
 
-            <!-- Step 2: Install (placeholder) -->
-            <div v-else-if="currentStep === 2" class="step-placeholder">
-              <p class="placeholder-text">Step 3 content will be added by handover 0855e</p>
-            </div>
+            <!-- Step 2: Install (0855e) -->
+            <SetupStep3Commands
+              v-else-if="currentStep === 2"
+              :selected-tools="localSelectedTools"
+              :connected-tools="step2ConnectedTools"
+              @can-proceed="step3CanProceed = $event"
+              @step-data="step3Data = $event"
+              @skip="handleStep3Skip"
+            />
 
             <!-- Step 3: Launch (placeholder) -->
             <div v-else-if="currentStep === 3" class="step-placeholder">
@@ -160,6 +165,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import SetupStep2Connect from './SetupStep2Connect.vue'
+import SetupStep3Commands from './SetupStep3Commands.vue'
 
 const TOOLS = [
   { id: 'claude_code', name: 'Claude Code', provider: 'by Anthropic', icon: 'mdi-console' },
@@ -204,6 +210,8 @@ const emit = defineEmits([
 const localSelectedTools = ref([...props.selectedTools])
 const step2CanProceed = ref(false)
 const step2Data = ref({})
+const step3CanProceed = ref(false)
+const step3Data = ref({})
 
 // Sync when prop changes externally
 watch(
@@ -212,6 +220,9 @@ watch(
     localSelectedTools.value = [...newVal]
   },
 )
+
+// Connected tools from Step 2 data, passed to Step 3
+const step2ConnectedTools = computed(() => step2Data.value?.connectedTools || [])
 
 const selectedCardStyle = {
   '--smooth-border-color': '#ffc300',
@@ -238,6 +249,9 @@ const canProceed = computed(() => {
   if (props.currentStep === 1) {
     return step2CanProceed.value
   }
+  if (props.currentStep === 2) {
+    return step3CanProceed.value
+  }
   // Placeholder steps: always allow proceeding
   return true
 })
@@ -249,6 +263,8 @@ function handleNext() {
     emit('step-complete', { step: 0, data: { tools: [...localSelectedTools.value] } })
   } else if (props.currentStep === 1) {
     emit('step-complete', { step: 1, data: { ...step2Data.value } })
+  } else if (props.currentStep === 2) {
+    emit('step-complete', { step: 2, data: { ...step3Data.value } })
   } else {
     emit('step-complete', { step: props.currentStep, data: {} })
   }
@@ -261,6 +277,13 @@ function handleNext() {
 function handleBack() {
   if (props.currentStep > 0) {
     emit('update:currentStep', props.currentStep - 1)
+  }
+}
+
+function handleStep3Skip() {
+  emit('step-complete', { step: 2, data: { installedTools: [], skipped: true } })
+  if (props.currentStep < STEPS.length - 1) {
+    emit('update:currentStep', props.currentStep + 1)
   }
 }
 

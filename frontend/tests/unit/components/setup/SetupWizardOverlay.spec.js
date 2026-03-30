@@ -25,6 +25,7 @@ function mountOverlay(props = {}) {
       stubs: {
         Teleport: true,
         SetupStep2Connect: { template: '<div class="step-connect">Step2Connect stub</div>' },
+        SetupStep3Commands: { template: '<div class="step-commands">Step3Commands stub</div>' },
       },
     },
   })
@@ -276,8 +277,8 @@ describe('SetupWizardOverlay', () => {
       expect(wrapper.emitted('update:currentStep')).toBeUndefined()
     })
 
-    it('is enabled on placeholder steps (2+) regardless of tool selection', () => {
-      const wrapper = mountOverlay({ currentStep: 2, selectedTools: [] })
+    it('is enabled on placeholder steps (3+) regardless of tool selection', () => {
+      const wrapper = mountOverlay({ currentStep: 3, selectedTools: [] })
       const nextBtn = wrapper.find('.footer-btn-next')
 
       expect(nextBtn.attributes('disabled')).toBeUndefined()
@@ -363,10 +364,10 @@ describe('SetupWizardOverlay', () => {
       expect(wrapper.find('.step-connect').exists()).toBe(true)
     })
 
-    it('step 2 shows placeholder text about 0855e', () => {
-      const wrapper = mountOverlay({ currentStep: 2 })
+    it('step 2 renders SetupStep3Commands component (0855e)', () => {
+      const wrapper = mountOverlay({ currentStep: 2, selectedTools: ['claude_code'] })
 
-      expect(wrapper.find('.placeholder-text').text()).toContain('0855e')
+      expect(wrapper.find('.step-commands').exists()).toBe(true)
     })
 
     it('step 3 shows placeholder text about 0855f', () => {
