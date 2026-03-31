@@ -13,9 +13,9 @@
       "title": "Shared Component Extraction",
       "handover": "handovers/0871_design_remediation_polish.md#0871a",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31T18:30:00Z",
+      "completed_at": "2026-03-31T18:45:00Z",
       "agent_types": ["ux-designer", "tdd-implementor"],
       "planned_tasks": [
         "Create TintedChip.vue (props: color, label, size, pill)",
@@ -27,21 +27,39 @@
         "Add unit tests for TintedChip and TintedBadge",
         "Run full test suite"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Created TintedChip.vue — props: color, label, size (sm|default), pill (default true). Renders span with rgba bg + bright text.",
+        "Created TintedBadge.vue — props: color, label, size (default 36). Square div 8px radius, proportional font sizing.",
+        "Added getAgentBadgeStyle(agentName) to colorUtils.js — returns {backgroundColor, color, borderRadius} using getAgentColor from agentColors.js",
+        "Removed duplicate getAgentBadgeStyle from 4 files: LaunchTab, JobsTab, AgentTableView, AgentJobModal. Import from shared utility.",
+        "Added global .text-muted-a11y class to main.scss with color: var(--text-muted) !important",
+        "Refactored 33 Vue files from scoped *-text-muted classes to global text-muted-a11y class",
+        "Fixed OAuthAuthorize.vue — v-icon was using CSS class as Vuetify color prop, changed to CSS class",
+        "Added 21 Vitest tests: TintedChip (7), TintedBadge (8), colorUtils (6 including getAgentBadgeStyle)",
+        "Updated McpIntegrationCard.spec.js test to match new class name",
+        "Full suite: 99 test files, 1914 tests — all pass"
+      ],
+      "deviations": [
+        "Spec estimated ~9 files with duplicate getAgentBadgeStyle; found 4 actual duplicates (LaunchTab, JobsTab, AgentTableView, AgentJobModal). Other files mentioned in spec (BroadcastPanel, MessageItem, AgentDetailsModal, ProjectReviewModal, TemplateManager) use hexToRgba inline for different purposes, not getAgentBadgeStyle.",
+        "Spec estimated ~20 scoped text-muted classes; found 33 across Vue files.",
+        "Found and fixed OAuthAuthorize.vue misusing CSS class name as Vuetify color prop (pre-existing bug, not introduced by refactor)."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "All shared utilities are now in place. Subsequent sessions should: (1) use TintedChip.vue instead of inline tinted chip markup, (2) use TintedBadge.vue instead of inline tinted badge markup, (3) use getAgentBadgeStyle() from @/utils/colorUtils instead of local functions, (4) use class='text-muted-a11y' instead of scoped muted classes, (5) never add new scoped *-text-muted classes.",
+      "cascading_impacts": [
+        "colorUtils.js now imports from agentColors.js — circular dependency is not an issue since agentColors has no imports from colorUtils",
+        "33 Vue files lost their scoped text-muted CSS class — the global .text-muted-a11y class in main.scss provides the styling"
+      ],
+      "summary": "Created TintedChip.vue and TintedBadge.vue shared components. Consolidated getAgentBadgeStyle into colorUtils.js (removed from 4 files). Added global .text-muted-a11y class and refactored 33 Vue files to use it. Added 21 unit tests. All 1914 tests pass. Commit: 8a54a815."
     },
     {
       "session_id": "0871b",
       "title": "Tab-to-Pill: User Settings & Admin Settings",
       "handover": "handovers/0871_design_remediation_polish.md#0871b",
       "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31T18:50:00Z",
+      "completed_at": "2026-03-31T19:00:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "UserSettings.vue — replace v-tabs with pill-button row (6 pills: Startup, Notifications, Agents, Context, API Keys, Integrations)",
@@ -49,12 +67,24 @@
         "Pill style: border-radius 9999px, active=tinted yellow, inactive=transparent+muted+smooth-border",
         "Run existing tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "UserSettings.vue — replaced v-btn-toggle with 6 pill-toggle buttons (Startup, Notifications, Agents, Context, API Keys, Integrations). Each pill has icon + label. Active: rgba(255,195,0,0.12) bg + #ffc300 text. Inactive: transparent + #8895a8 + smooth-border inset box-shadow.",
+        "SystemSettings.vue — replaced v-btn-toggle with 5 pill-toggle buttons (Identity, Network, Database, Security, Prompts). Same pill styling.",
+        "Replaced bordered-tabs-content wrapper with pill-tabs-content (no connected-border assumption).",
+        "Updated global-tab-styles.spec.js — tests now verify pill-toggle pattern for UserSettings (6 pills) and SystemSettings (5 pills). Also updated ProjectTabs assertions (already converted to pills by prior work).",
+        "Full suite: 99 test files, 1916 tests — all pass."
+      ],
+      "deviations": [
+        "Spec said 'replace v-tabs' but both files already used v-btn-toggle (not v-tabs). Replaced v-btn-toggle with pill buttons.",
+        "ProjectTabs.vue was already converted to pill buttons (pill-btn class) by prior work on same branch. Updated test file to reflect this."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "UserSettings and SystemSettings now use pill-toggle class pattern. ProjectTabs uses pill-btn class pattern (different naming from prior work). 0871c should decide whether to unify naming or leave as-is. The v-window / v-window-item content panels remain unchanged — only the selector UI was replaced. ProductForm.vue still uses v-btn-toggle (not in scope for 0871b).",
+      "cascading_impacts": [
+        "global-tab-styles.spec.js updated — no longer expects v-btn-toggle for UserSettings, SystemSettings, or ProjectTabs",
+        "bordered-tabs-content class removed from UserSettings and SystemSettings — replaced with pill-tabs-content"
+      ],
+      "summary": "Replaced v-btn-toggle tab selectors with pill-button toggles in UserSettings.vue (6 pills) and SystemSettings.vue (5 pills). Pill style: border-radius 9999px, active yellow tint, inactive muted with smooth-border. Updated test assertions. All 1916 tests pass."
     },
     {
       "session_id": "0871c",
