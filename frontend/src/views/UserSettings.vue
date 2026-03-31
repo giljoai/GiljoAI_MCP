@@ -2,7 +2,7 @@
   <v-container>
     <!-- Page Header -->
     <h1 class="text-h4 mb-2">My Settings</h1>
-    <p class="text-subtitle-1 mb-4">Manage your personal preferences</p>
+    <p class="text-subtitle-1 mb-4 settings-subtitle">Manage your personal preferences</p>
 
     <!-- Settings Tabs (v-btn-toggle - native Vuetify) -->
     <v-btn-toggle
@@ -60,9 +60,9 @@
 
       <!-- Setup Settings -->
       <v-window-item value="startup">
-        <v-card data-test="startup-settings">
+        <v-card variant="flat" class="smooth-border settings-card" data-test="startup-settings">
           <v-card-title>Startup</v-card-title>
-          <v-card-subtitle>Setup wizard and getting started</v-card-subtitle>
+          <v-card-subtitle class="settings-card-subtitle">Setup wizard and getting started</v-card-subtitle>
           <v-card-text>
             <p class="text-body-2 mb-4" style="color: var(--color-text-secondary);">
               The setup wizard guides you through connecting AI coding tools and configuring GiljoAI MCP.
@@ -90,9 +90,9 @@
 
       <!-- Notification Settings -->
       <v-window-item value="notifications">
-        <v-card data-test="notification-settings">
+        <v-card variant="flat" class="smooth-border settings-card" data-test="notification-settings">
           <v-card-title>Notification Display</v-card-title>
-          <v-card-subtitle>Configure where and how long notifications appear</v-card-subtitle>
+          <v-card-subtitle class="settings-card-subtitle">Configure where and how long notifications appear</v-card-subtitle>
           <v-card-text>
             <v-select
               v-model="settings.notifications.position"
@@ -167,9 +167,9 @@
 
       <!-- Integrations -->
       <v-window-item value="integrations">
-        <v-card>
+        <v-card variant="flat" class="smooth-border settings-card">
           <v-card-title>Integrations</v-card-title>
-          <v-card-subtitle>Configure MCP tools and integrations</v-card-subtitle>
+          <v-card-subtitle class="settings-card-subtitle">Configure MCP tools and integrations</v-card-subtitle>
           <v-card-text>
             <!-- GiljoAI MCP Integration -->
             <McpIntegrationCard />
@@ -454,6 +454,19 @@ function openIntroTour() {
 </script>
 
 <style scoped>
+.settings-subtitle {
+  color: #8895a8;
+}
+
+.settings-card {
+  background: var(--bg-raised, #1e3147);
+  border-radius: 16px;
+}
+
+.settings-card-subtitle {
+  color: #8895a8;
+}
+
 /* Integrations section divider should follow theme */
 .integrations-divider {
   --v-theme-overlay-multiplier: 1; /* ensure visibility */

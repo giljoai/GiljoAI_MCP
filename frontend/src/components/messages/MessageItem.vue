@@ -64,6 +64,7 @@
 import { computed } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import { hexToRgba } from '@/utils/colorUtils'
 import type { Message } from '@/types/message'
 
 interface Props {
@@ -95,13 +96,7 @@ const isSystem = computed(() => messageType.value === 'system' || displaySender.
 const isUser = computed(() => displaySender.value === 'User')
 const isOrchestrator = computed(() => displaySender.value === 'Orchestrator')
 
-// Helper
-const hexToRgba = (hex: string, alpha: number): string => {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
+// hexToRgba imported from @/utils/colorUtils
 
 // Sender appearance
 const senderHex = computed(() => {

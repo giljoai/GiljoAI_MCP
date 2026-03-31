@@ -16,7 +16,7 @@
       <!-- Organization Details -->
       <v-row>
         <v-col cols="12" md="6">
-          <v-card>
+          <v-card variant="flat" class="smooth-border org-card">
             <v-card-title>Organization Details</v-card-title>
             <v-card-text>
               <v-text-field
@@ -47,7 +47,7 @@
 
         <!-- Members Section -->
         <v-col cols="12" md="6">
-          <v-card>
+          <v-card variant="flat" class="smooth-border org-card">
             <v-card-title>
               Members
               <v-spacer />
@@ -79,7 +79,7 @@
       <!-- Danger Zone (Owner only) -->
       <v-row v-if="isOwner">
         <v-col cols="12">
-          <v-card color="error" variant="outlined">
+          <v-card variant="flat" class="smooth-border org-card" style="--smooth-border-color: rgba(224, 120, 114, 0.3)">
             <v-card-title class="text-error">Danger Zone</v-card-title>
             <v-card-text>
               <v-btn
@@ -243,3 +243,10 @@ async function deleteOrg() {
   showDeleteDialog.value = false
 }
 </script>
+
+<style scoped>
+.org-card {
+  background: var(--bg-raised, #1e3147);
+  border-radius: 16px;
+}
+</style>

@@ -1,7 +1,7 @@
 <template>
-  <v-card>
+  <v-card variant="flat" class="smooth-border network-card">
     <v-card-title>Network Configuration</v-card-title>
-    <v-card-subtitle>Server network settings (configured during installation)</v-card-subtitle>
+    <v-card-subtitle class="network-subtitle">Server network settings (configured during installation)</v-card-subtitle>
 
     <v-card-text>
       <!-- Loading State -->
@@ -83,7 +83,7 @@
         <!-- CORS Origins Management -->
         <v-divider class="my-6" />
 
-        <h3 class="text-h6 mb-3 text-medium-emphasis">CORS Allowed Origins</h3>
+        <h3 class="text-h6 mb-3" style="color: #a3aac4;">CORS Allowed Origins</h3>
 
         <v-alert type="info" variant="tonal" class="mb-4">
           <strong>Foundation implementation exists.</strong> Reserved for future use when frontend
@@ -94,7 +94,7 @@
         <div data-test="cors-origins-section" class="disabled-section">
           <v-list v-if="corsOrigins.length > 0" density="compact" class="mb-4" disabled>
             <v-list-item v-for="(origin, index) in corsOrigins" :key="index" disabled>
-              <v-list-item-title class="text-medium-emphasis">{{ origin }}</v-list-item-title>
+              <v-list-item-title class="network-text-muted">{{ origin }}</v-list-item-title>
 
               <template v-slot:append>
                 <v-btn
@@ -120,7 +120,7 @@
           </v-list>
 
           <v-alert v-else type="info" variant="outlined" class="mb-4">
-            <span class="text-medium-emphasis"
+            <span class="network-text-muted"
               >No CORS origins configured. Foundation ready for future SaaS deployments.</span
             >
           </v-alert>
@@ -237,7 +237,7 @@
 
           <!-- Certificate info when certs exist -->
           <div v-if="sslStatus.has_certificate" class="mb-3">
-            <div class="text-caption text-medium-emphasis">
+            <div class="text-caption network-text-muted">
               <v-icon size="x-small" class="mr-1">mdi-certificate</v-icon>
               Certificate: <code>{{ sslStatus.cert_path }}</code>
             </div>
@@ -253,12 +253,12 @@
               <v-icon start size="small">
                 {{ showHttpsGuide ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
               </v-icon>
-              <span class="text-subtitle-2 text-medium-emphasis">
+              <span class="text-subtitle-2 network-text-muted">
                 {{ sslStatus.ssl_enabled ? 'How to use trusted certificates (no browser warnings)' : 'How to set up trusted HTTPS certificates' }}
               </span>
             </div>
 
-            <v-card v-if="showHttpsGuide" variant="outlined" class="mb-4 pa-4">
+            <v-card v-if="showHttpsGuide" variant="flat" class="smooth-border mb-4 pa-4">
               <div class="text-body-2">
                 <p class="mb-3">
                   To avoid browser "connection not private" warnings, you need
@@ -504,3 +504,18 @@ onMounted(() => {
   loadSslStatus()
 })
 </script>
+
+<style scoped>
+.network-card {
+  background: var(--bg-raised, #1e3147);
+  border-radius: 16px;
+}
+
+.network-subtitle {
+  color: #8895a8;
+}
+
+.network-text-muted {
+  color: #8895a8;
+}
+</style>
