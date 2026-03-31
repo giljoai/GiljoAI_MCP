@@ -19,18 +19,20 @@
             {{ memory.project_name }}
           </span>
           <span v-if="memory.product_name" class="text-caption text-medium-emphasis">({{ memory.product_name }})</span>
-          <v-chip
-            v-if="memory.entry_type"
-            size="x-small"
-            variant="outlined"
-            color="yellow-darken-2"
-            class="entry-type-chip"
-            :aria-label="`Entry type: ${memory.entry_type}`"
-          >
-            {{ memory.entry_type }}
-          </v-chip>
-          <span class="text-caption text-medium-emphasis ml-auto relative-time">
-            {{ relativeTime(memory.timestamp) }}
+          <span class="ml-auto d-flex align-center ga-2">
+            <v-chip
+              v-if="memory.entry_type"
+              size="x-small"
+              variant="outlined"
+              color="yellow-darken-2"
+              class="entry-type-chip"
+              :aria-label="`Archived: ${humanizeType(memory.entry_type)}`"
+            >
+              Archived
+            </v-chip>
+            <span class="text-caption text-medium-emphasis relative-time">
+              {{ relativeTime(memory.timestamp) }}
+            </span>
           </span>
         </div>
         <div class="text-caption text-medium-emphasis summary-text">
@@ -48,6 +50,16 @@ defineProps({
     default: () => [],
   },
 })
+
+function humanizeType(type) {
+  const labels = {
+    project_closeout: 'Project closeout',
+    project_completion: 'Project completion',
+    session_handover: 'Session handover',
+    handover_closeout: 'Handover closeout',
+  }
+  return labels[type] || type.replace(/_/g, ' ')
+}
 
 function truncate(text, maxLen) {
   if (!text) return ''
