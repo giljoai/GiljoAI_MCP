@@ -2,14 +2,14 @@
   <v-container class="pa-0 ma-0" fluid>
     <v-row no-gutters class="fill-height">
       <v-col cols="12" class="d-flex flex-column align-center justify-center">
-        <v-card class="admin-card mx-auto" max-width="500" elevation="8">
+        <v-card class="admin-card smooth-border mx-auto" max-width="500" elevation="8">
 
           <!-- ============ STEP 1: Account Setup ============ -->
           <template v-if="step === 1">
             <div class="text-center pa-6">
               <GilMascot :size="80" :happy="mascotHappy" class="mb-4" />
               <h1 class="admin-title text-h3 mb-2">{{ greeting }}</h1>
-              <h3 class="text-subtitle-1 text-medium-emphasis">
+              <h3 class="text-subtitle-1 admin-text-muted">
                 Create your administrator account to get started
               </h3>
             </div>
@@ -158,7 +158,7 @@
                 <v-icon class="mr-2">mdi-shield-key</v-icon>
                 Recovery PIN Setup
               </h2>
-              <p class="text-body-2 text-medium-emphasis">
+              <p class="text-body-2 admin-text-muted">
                 Create a 4-digit PIN for password recovery. This PIN can be used if you forget your
                 password.
               </p>
@@ -452,7 +452,10 @@ const createAdmin = async () => {
 
 .admin-card {
   margin-top: 5vh;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.admin-text-muted {
+  color: #8895a8 !important;
 }
 
 .admin-title {
