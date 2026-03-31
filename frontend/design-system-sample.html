@@ -1747,85 +1747,30 @@
        12. DISCREPANCIES
        ============================================ -->
   <section class="section">
-    <h2 class="section-title" style="color: #c6298c; border-bottom-color: rgba(198,41,140,0.4);">Discrepancies Found</h2>
-    <p class="section-subtitle">Real mismatches between design-tokens.scss, agent-colors.scss, agentColors.js, theme.js, and main.scss</p>
+    <h2 class="section-title" style="color: #6bcf7f; border-bottom-color: rgba(107,207,127,0.4);">Discrepancies &mdash; All Resolved</h2>
+    <p class="section-subtitle">Previously found mismatches between design-tokens.scss, agent-colors.scss, agentColors.js, theme.js, and main.scss. All resolved in 0769d sprint (2026-03-30).</p>
 
     <div class="disc-section">
 
+      <div style="background: rgba(107,207,127,0.1); border-radius: 8px; padding: 16px; margin-bottom: 24px; box-shadow: inset 0 0 0 1px rgba(107,207,127,0.3);">
+        <p style="color: #6bcf7f; font-size: 0.875rem; margin: 0;"><strong>All 4 discrepancies resolved.</strong> Agent colors, status colors, font family, and primary text color are now fully synchronized across design-tokens.scss, agent-colors.scss, agentColors.js, theme.js, and main.scss.</p>
+      </div>
+
       <!-- A. Agent Colors -->
-      <div class="disc-subtitle">A. Agent Colors &mdash; design-tokens.scss vs agent-colors.scss / agentColors.js</div>
-      <table class="disc-table">
-        <thead>
-          <tr>
-            <th>Role</th>
-            <th>design-tokens.scss</th>
-            <th>agent-colors.scss / agentColors.js</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Analyzer</td>
-            <td><span class="disc-inline-swatch" style="background: #e1564b;"></span><code>#e1564b</code></td>
-            <td><span class="disc-inline-swatch" style="background: #e74c3c;"></span><code>#e74c3c</code></td>
-          </tr>
-          <tr>
-            <td>Implementor</td>
-            <td><span class="disc-inline-swatch" style="background: #3493bf;"></span><code>#3493bf</code></td>
-            <td><span class="disc-inline-swatch" style="background: #3498db;"></span><code>#3498db</code></td>
-          </tr>
-          <tr>
-            <td>Tester</td>
-            <td><span class="disc-inline-swatch" style="background: #d4a574;"></span><code>#d4a574</code></td>
-            <td><span class="disc-inline-swatch" style="background: #ffc300;"></span><code>#ffc300</code></td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="disc-subtitle">A. Agent Colors &mdash; <span style="color: #6bcf7f;">RESOLVED</span></div>
+      <p class="disc-text">Analyzer (#e74c3c), Implementor (#3498db), Tester (#ffc300) &mdash; all synchronized across all 3 sources.</p>
 
       <!-- B. Status Colors -->
-      <div class="disc-subtitle">B. Status Colors &mdash; design-tokens.scss vs agent-colors.scss CSS vars</div>
-      <table class="disc-table">
-        <thead>
-          <tr>
-            <th>Status</th>
-            <th>design-tokens.scss</th>
-            <th>agent-colors.scss</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>waiting</td>
-            <td><span class="disc-inline-swatch" style="background: #ffd700;"></span><code>#ffd700</code></td>
-            <td><span class="disc-inline-swatch" style="background: #90a4ae;"></span><code>#90a4ae</code></td>
-          </tr>
-          <tr>
-            <td>working</td>
-            <td><span class="disc-inline-swatch" style="background: #ffd700;"></span><code>#ffd700</code></td>
-            <td><span class="disc-inline-swatch" style="background: #3498db;"></span><code>#3498db</code></td>
-          </tr>
-          <tr>
-            <td>complete</td>
-            <td><span class="disc-inline-swatch" style="background: #67bd6d;"></span><code>#67bd6d</code></td>
-            <td><span class="disc-inline-swatch" style="background: #ffc300;"></span><code>#ffc300</code></td>
-          </tr>
-          <tr>
-            <td>failed / failure</td>
-            <td><span class="disc-inline-swatch" style="background: #e53935;"></span><code>#e53935</code></td>
-            <td><span class="disc-inline-swatch" style="background: #c6298c;"></span><code>#c6298c</code></td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="disc-subtitle">B. Status Colors &mdash; <span style="color: #6bcf7f;">RESOLVED</span></div>
+      <p class="disc-text">waiting (#ffd700), working (#ffffff), complete (#67bd6d), failed (#c6298c) &mdash; design-tokens.scss and agent-colors.scss now match.</p>
 
       <!-- C. Font Family -->
-      <div class="disc-subtitle">C. Font Family Conflict</div>
-      <p class="disc-text"><code>design-tokens.scss</code> declares <code>"Cairo", sans-serif</code></p>
-      <p class="disc-text"><code>main.scss</code> body applies <code>"Roboto", sans-serif</code> &mdash; this is what renders in the browser</p>
+      <div class="disc-subtitle">C. Font Family &mdash; <span style="color: #6bcf7f;">RESOLVED</span></div>
+      <p class="disc-text">Both design-tokens.scss and main.scss now use <code>"Roboto", sans-serif</code>. The "Cairo" reference has been removed.</p>
 
       <!-- D. Primary Text Color -->
-      <div class="disc-subtitle">D. Primary Text Color</div>
-      <p class="disc-text">
-        <code>design-tokens.scss</code>: <span class="disc-inline-swatch" style="background: #e0e0e0;"></span><code>#e0e0e0</code>
-        &nbsp;&nbsp;vs&nbsp;&nbsp;
-        <code>theme.js / main.scss</code>: <span class="disc-inline-swatch" style="background: #e1e1e1;"></span><code>#e1e1e1</code>
+      <div class="disc-subtitle">D. Primary Text Color &mdash; <span style="color: #6bcf7f;">RESOLVED</span></div>
+      <p class="disc-text">All sources now use <code>#e1e1e1</code>. The #e0e0e0 variant has been removed from design-tokens.scss.</p>
       </p>
 
       <!-- E. Duplicate Radius Systems -->
