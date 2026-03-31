@@ -94,7 +94,7 @@
         <div data-test="cors-origins-section" class="disabled-section">
           <v-list v-if="corsOrigins.length > 0" density="compact" class="mb-4" disabled>
             <v-list-item v-for="(origin, index) in corsOrigins" :key="index" disabled>
-              <v-list-item-title class="network-text-muted">{{ origin }}</v-list-item-title>
+              <v-list-item-title class="text-muted-a11y">{{ origin }}</v-list-item-title>
 
               <template v-slot:append>
                 <v-btn
@@ -120,7 +120,7 @@
           </v-list>
 
           <v-alert v-else type="info" variant="outlined" class="mb-4">
-            <span class="network-text-muted"
+            <span class="text-muted-a11y"
               >No CORS origins configured. Foundation ready for future SaaS deployments.</span
             >
           </v-alert>
@@ -237,7 +237,7 @@
 
           <!-- Certificate info when certs exist -->
           <div v-if="sslStatus.has_certificate" class="mb-3">
-            <div class="text-caption network-text-muted">
+            <div class="text-caption text-muted-a11y">
               <v-icon size="x-small" class="mr-1">mdi-certificate</v-icon>
               Certificate: <code>{{ sslStatus.cert_path }}</code>
             </div>
@@ -253,7 +253,7 @@
               <v-icon start size="small">
                 {{ showHttpsGuide ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
               </v-icon>
-              <span class="text-subtitle-2 network-text-muted">
+              <span class="text-subtitle-2 text-muted-a11y">
                 {{ sslStatus.ssl_enabled ? 'How to use trusted certificates (no browser warnings)' : 'How to set up trusted HTTPS certificates' }}
               </span>
             </div>
@@ -512,10 +512,6 @@ onMounted(() => {
 }
 
 .network-subtitle {
-  color: #8895a8;
-}
-
-.network-text-muted {
   color: #8895a8;
 }
 </style>

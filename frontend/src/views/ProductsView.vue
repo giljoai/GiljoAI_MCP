@@ -64,7 +64,7 @@
               <v-row v-if="loading">
                 <v-col cols="12" class="text-center py-8">
                   <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                  <div class="product-text-muted mt-4">Loading products...</div>
+                  <div class="text-muted-a11y mt-4">Loading products...</div>
                 </v-col>
               </v-row>
 
@@ -72,7 +72,7 @@
                 <v-col cols="12" class="text-center py-8">
                   <v-icon size="64" color="grey-lighten-2">mdi-package-variant-remove</v-icon>
                   <div class="text-h6 product-text-secondary mt-4">No products found</div>
-                  <div class="text-body-2 product-text-muted">
+                  <div class="text-body-2 text-muted-a11y">
                     {{
                       search
                         ? 'Try adjusting your search'
@@ -108,14 +108,14 @@
                         </span>
                       </div>
 
-                      <div class="text-caption product-text-muted mb-3">
+                      <div class="text-caption text-muted-a11y mb-3">
                         Created: {{ formatDate(product.created_at) }}
                       </div>
 
                       <div class="mb-3">
-                        <div class="text-caption product-text-muted">Product ID:</div>
+                        <div class="text-caption text-muted-a11y">Product ID:</div>
                         <div
-                          class="font-monospace product-text-muted"
+                          class="font-monospace text-muted-a11y"
                           style="font-size: 0.65rem; word-break: break-all; line-height: 1.3"
                         >
                           {{ product.id }}
@@ -126,19 +126,19 @@
                       <v-divider class="my-3 product-divider"></v-divider>
                       <v-row dense>
                         <v-col cols="4" class="text-center">
-                          <div class="text-caption product-text-muted">Tasks</div>
+                          <div class="text-caption text-muted-a11y">Tasks</div>
                           <div class="text-h6 product-text-secondary">
                             {{ product.task_count || 0 }}
                           </div>
                         </v-col>
                         <v-col cols="4" class="text-center">
-                          <div class="text-caption product-text-muted">Projects</div>
+                          <div class="text-caption text-muted-a11y">Projects</div>
                           <div class="text-h6 product-text-secondary">
                             {{ product.project_count || 0 }}
                           </div>
                         </v-col>
                         <v-col cols="4" class="text-center">
-                          <div class="text-caption product-text-muted">Completed</div>
+                          <div class="text-caption text-muted-a11y">Completed</div>
                           <div class="text-h6 product-text-secondary">
                             {{ getCompletedProjectsCount(product) }}
                           </div>
@@ -1129,11 +1129,6 @@ onMounted(async () => {
 .product-status-active {
   background: rgba(103, 189, 109, 0.15);
   color: #67bd6d;
-}
-
-/* Accessible text colors */
-.product-text-muted {
-  color: #8895a8 !important;
 }
 
 .product-text-secondary {
