@@ -30,7 +30,7 @@
 
             <v-row v-if="slide.panels?.length" class="mt-4" dense justify="center">
               <v-col v-for="panel in slide.panels" :key="panel.title" cols="12" sm="6" md="6">
-                <v-card variant="outlined" class="h-100 intro-panel-card">
+                <v-card variant="flat" class="h-100 intro-panel-card smooth-border">
                   <v-card-text class="d-flex align-center justify-center intro-panel-content">
                     <div class="d-flex align-center ga-4 intro-panel-inner">
                       <div class="d-flex align-center justify-center intro-panel-icon">
