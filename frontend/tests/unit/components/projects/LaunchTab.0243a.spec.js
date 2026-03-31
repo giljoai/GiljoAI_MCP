@@ -166,8 +166,8 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
       if (fs.existsSync(designTokensPath)) {
         const content = fs.readFileSync(designTokensPath, 'utf-8')
         expect(content).toContain('$border-container:')
-        expect(content).toContain('$radius-container:')
-        expect(content).toContain('$radius-panel-content:')
+        expect(content).toContain('$border-radius-rounded:')
+        expect(content).toContain('$border-radius-default:')
       }
     })
   })
@@ -303,7 +303,7 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
       const styleMatch = content.match(/<style[^>]*>([\s\S]*?)<\/style>/)
       if (styleMatch) {
         const styleContent = styleMatch[1]
-        expect(styleContent).toContain('$radius')
+        expect(styleContent).toContain('$border-radius')
       }
     })
 
@@ -418,8 +418,7 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
       const designTokensPath = getDesignTokensPath()
       if (fs.existsSync(designTokensPath)) {
         const content = fs.readFileSync(designTokensPath, 'utf-8')
-        // $radius-container references $border-radius-rounded which is 16px
-        expect(content).toMatch(/\$radius-container:\s*\$border-radius-rounded/)
+        // $border-radius-rounded is the canonical container radius token (16px)
         expect(content).toMatch(/\$border-radius-rounded:\s*16px/)
       }
     })
