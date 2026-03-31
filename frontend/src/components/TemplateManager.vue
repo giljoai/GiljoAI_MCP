@@ -2,12 +2,24 @@
   <v-card class="template-manager">
     <v-card-title class="d-flex align-center">
       Agent Template Manager
+      <v-tooltip location="bottom" max-width="360">
+        <template #activator="{ props }">
+          <v-icon v-bind="props" size="small" class="ml-2" color="medium-emphasis"
+            >mdi-information-outline</v-icon
+          >
+        </template>
+        <span
+          >Each active agent template consumes context tokens during orchestration. The 8-slot limit
+          keeps prompt budgets manageable. 1 slot is reserved for the Orchestrator (managed in Admin
+          Settings), leaving 7 for your custom agents.</span
+        >
+      </v-tooltip>
       <v-chip
         v-if="totalActiveAgents !== null"
         :color="remainingUserSlots === 0 ? 'warning' : 'default'"
         size="small"
         variant="tonal"
-        class="ml-3"
+        class="ml-4"
       >
         {{ totalActiveAgents }} / {{ totalCapacity }}
       </v-chip>
