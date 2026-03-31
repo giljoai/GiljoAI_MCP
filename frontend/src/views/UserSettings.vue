@@ -17,13 +17,6 @@
       <v-btn value="startup" data-testid="startup-settings-tab">
         <v-icon start>mdi-rocket-launch</v-icon>
         Startup
-        <v-icon
-          size="18"
-          class="ml-1 startup-help-icon"
-          aria-label="What is GiljoAI MCP?"
-          data-testid="startup-intro-help"
-          @click.stop="openIntroTour"
-        >mdi-help-circle-outline</v-icon>
       </v-btn>
       <v-btn value="notifications">
         <v-icon start>mdi-bell</v-icon>
@@ -78,9 +71,18 @@
               color="primary"
               variant="flat"
               prepend-icon="mdi-rocket-launch"
-              @click="router.push('/')"
+              @click="router.push({ path: '/', query: { openSetup: 'true' } })"
             >
               Open Setup Wizard
+            </v-btn>
+            <v-btn
+              variant="text"
+              prepend-icon="mdi-help-circle-outline"
+              class="ml-3"
+              data-testid="startup-intro-help"
+              @click="openIntroTour"
+            >
+              What is GiljoAI MCP?
             </v-btn>
           </v-card-text>
         </v-card>
