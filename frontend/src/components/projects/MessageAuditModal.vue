@@ -6,19 +6,19 @@
     class="message-audit-modal"
     @keydown.esc="handleClose"
   >
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <!-- Header -->
       <v-card-title class="d-flex align-center justify-space-between">
         <div class="d-flex align-center">
           <v-icon icon="mdi-folder-account-outline" class="mr-2" />
           <div class="d-flex flex-column">
             <span class="text-subtitle-1">Message Audit: {{ agentLabel }}</span>
-            <span class="text-caption text-medium-emphasis">
+            <span class="text-caption audit-text-muted">
               {{ displayAgent?.job_id || 'Unknown job' }}
             </span>
             <span
               v-if="steps && typeof steps.completed === 'number' && typeof steps.total === 'number'"
-              class="text-caption text-medium-emphasis"
+              class="text-caption audit-text-muted"
             >
               Steps: {{ steps.completed }} / {{ steps.total }}
             </span>
@@ -41,7 +41,7 @@
         <!-- Loading State (Handover 0387g Phase 4) -->
         <div v-if="loading" class="pa-8 text-center">
           <v-progress-circular indeterminate color="primary" size="48" class="mb-4" />
-          <div class="text-body-2 text-medium-emphasis">Loading messages...</div>
+          <div class="text-body-2 audit-text-muted">Loading messages...</div>
         </div>
 
         <!-- Error State (Handover 0387g Phase 4) -->
@@ -95,7 +95,7 @@
                 class="empty-state pa-4 text-center"
               >
                 <v-icon icon="mdi-message-outline" size="32" class="mb-2" color="primary" />
-                <div class="text-body-2 text-medium-emphasis">
+                <div class="text-body-2 audit-text-muted">
                   No messages in this category
                 </div>
               </div>
@@ -517,6 +517,10 @@ function getMessagePreview(message) {
 
 .empty-state {
   color: rgba(0, 0, 0, 0.6);
+}
+
+.audit-text-muted {
+  color: #8895a8;
 }
 
 /* Legacy styles (kept for compatibility with any remaining references) */

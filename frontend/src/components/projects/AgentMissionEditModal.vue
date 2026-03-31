@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="isOpen" max-width="900" persistent>
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <!-- Header -->
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2" :color="agentColor">mdi-pencil</v-icon>
@@ -117,7 +117,7 @@
 
   <!-- Unsaved Changes Confirmation -->
   <v-dialog v-model="showDiscardDialog" max-width="400" persistent z-index="2600">
-    <v-card>
+    <v-card class="smooth-border">
       <v-card-title class="bg-warning d-flex align-center">
         <v-icon class="mr-2">mdi-alert</v-icon>
         Unsaved Changes
