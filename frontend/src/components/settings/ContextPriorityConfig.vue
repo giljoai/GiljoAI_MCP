@@ -1,5 +1,5 @@
 <template>
-  <v-card>
+  <v-card variant="flat" class="smooth-border context-card">
     <v-card-title class="d-flex justify-space-between align-center">
       <span>Context Configuration</span>
       <v-btn
@@ -574,6 +574,11 @@ defineExpose({
 </script>
 
 <style scoped>
+.context-card {
+  background: var(--bg-raised, #1e3147);
+  border-radius: 16px;
+}
+
 .context-row {
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   min-height: 52px;
