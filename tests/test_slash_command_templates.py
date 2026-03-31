@@ -72,10 +72,10 @@ class TestGeminiTemplates:
         assert "prompt =" in GIL_GET_AGENTS_GEMINI_TOML
 
     def test_gemini_gil_add_has_same_modes_as_claude(self):
-        """GIL_ADD_GEMINI_TOML mentions all three operation modes."""
-        assert "Direct Task Mode" in GIL_ADD_GEMINI_TOML
-        assert "Direct Project Mode" in GIL_ADD_GEMINI_TOML
-        assert "Interactive Mode" in GIL_ADD_GEMINI_TOML
+        """GIL_ADD_GEMINI_TOML mentions direct and interactive modes."""
+        assert "--task" in GIL_ADD_GEMINI_TOML
+        assert "--project" in GIL_ADD_GEMINI_TOML
+        assert "Interactive" in GIL_ADD_GEMINI_TOML
 
 
 class TestCodexTemplates:
@@ -104,10 +104,10 @@ class TestCodexTemplates:
         assert "mcp__giljo_mcp__health_check" in GIL_GET_AGENTS_CODEX_SKILL_MD
 
     def test_codex_gil_add_has_same_modes_as_claude(self):
-        """GIL_ADD_CODEX_SKILL_MD mentions all three operation modes."""
-        assert "Direct Task Mode" in GIL_ADD_CODEX_SKILL_MD
-        assert "Direct Project Mode" in GIL_ADD_CODEX_SKILL_MD
-        assert "Interactive Mode" in GIL_ADD_CODEX_SKILL_MD
+        """GIL_ADD_CODEX_SKILL_MD mentions direct and interactive modes."""
+        assert "--task" in GIL_ADD_CODEX_SKILL_MD
+        assert "--project" in GIL_ADD_CODEX_SKILL_MD
+        assert "Interactive" in GIL_ADD_CODEX_SKILL_MD
 
 
 class TestProjectTypeParameter:
@@ -137,15 +137,15 @@ class TestProjectTypeParameter:
         """Codex /gil_add template references project_type MCP parameter."""
         assert "project_type" in GIL_ADD_CODEX_SKILL_MD
 
-    def test_all_templates_mention_graceful_type_fallback(self):
-        """All templates note that unrecognized type labels don't cause errors."""
+    def test_all_templates_mention_project_type_is_optional(self):
+        """All templates note that project_type is optional."""
         for name, template in [
             ("Claude", GIL_ADD_MD),
             ("Gemini", GIL_ADD_GEMINI_TOML),
             ("Codex", GIL_ADD_CODEX_SKILL_MD),
         ]:
-            assert "no error" in template.lower(), (
-                f"{name} template should mention graceful fallback for unknown type labels"
+            assert "optional" in template.lower(), (
+                f"{name} template should mention project_type is optional"
             )
 
 
