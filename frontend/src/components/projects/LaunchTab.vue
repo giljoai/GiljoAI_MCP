@@ -120,13 +120,11 @@
                 v-for="agent in sortedJobs"
                 :key="agent.job_id || agent.agent_id || agent.id"
                 class="agent-slim-card"
-                :class="{ 'orchestrator-card': agent.agent_display_name === 'orchestrator' }"
                 data-testid="agent-card"
                 :data-agent-display-name="agent.agent_display_name"
-                style="cursor: pointer;"
                 @click="handleAgentInfo(agent)"
               >
-                <div class="agent-avatar" :style="{ background: getAgentColor(agent.agent_name || agent.agent_display_name) }">
+                <div class="agent-badge" :style="getAgentBadgeStyle(agent.agent_name || agent.agent_display_name)">
                   {{ getAgentInitials(agent.agent_display_name) }}
                 </div>
                 <div class="agent-info">
@@ -284,6 +282,28 @@ const getAgentColor = (displayName) => {
 }
 
 /**
+ * Convert hex color to rgba string
+ */
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/**
+ * Get tinted square badge style for agent
+ * 0870j: rgba(color, 0.15) background + bright text, border-radius 8px
+ */
+const getAgentBadgeStyle = (displayName) => {
+  const hex = getAgentColor(displayName)
+  return {
+    background: hexToRgba(hex, 0.15),
+    color: hex,
+  }
+}
+
+/**
  * Get agent initials - uses word initials
  * Split by dash, space, or underscore and use first letter of each part
  * e.g., "Backend-Implementer" → "BI", "Backend-Tester" → "BT"
@@ -388,69 +408,75 @@ watch(missionText, (next, previous) => {
   display: flex;
   flex-direction: column;
   padding: 16px;
-  background: transparent; /* Already inside bordered box */
+  background: transparent;
 
   .main-container {
     flex: 1;
     display: flex;
     flex-direction: column;
-    min-height: 0; /* Critical for flex overflow */
-    /* No border - already inside bordered content box */
+    min-height: 0;
 
     .three-panels {
       flex: 1;
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: $spacing-panel-gap;
-      min-height: 0; /* Critical for grid overflow */
+      min-height: 0;
 
       .panel {
         display: flex;
         flex-direction: column;
-        min-height: 0; /* Critical for flex overflow */
+        min-height: 0;
+        background: $elevation-raised;
+        border-radius: 16px;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
 
         .panel-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          font-size: $typography-panel-header-size;
-          color: rgba(var(--v-theme-on-surface), 0.6);
-          height: 28px; /* Fixed height so all headers align */
-          margin-bottom: 16px;
-          font-weight: $typography-font-weight-bold;
-          text-transform: capitalize;
+          padding: 14px 16px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
           flex-shrink: 0;
+
+          span {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: $color-text-secondary;
+            font-weight: 500;
+          }
 
           .header-actions {
             display: flex;
             align-items: center;
-            margin-left: 4px;
+            gap: 2px;
           }
 
           .header-edit-btn {
-            color: white;
-            margin-left: 4px;
-            height: 32px;
-            width: 32px;
+            width: 26px;
+            height: 26px;
+            color: $color-text-muted;
 
             &:hover {
-              color: rgb(var(--v-theme-primary));
+              color: $color-text-secondary;
             }
           }
 
           .integration-icons {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 6px;
             margin-left: auto;
 
             .v-icon, .v-img {
-              opacity: 1;
+              opacity: 0.7;
               transition: opacity 0.2s ease;
               object-fit: contain;
+              font-size: 16px;
 
               &:hover {
-                opacity: 0.8;
+                opacity: 1;
               }
 
               &.icon-disabled {
@@ -461,17 +487,16 @@ watch(missionText, (next, previous) => {
         }
 
         .panel-content {
-          background: rgba(var(--v-theme-on-surface), 0.05);
-          border-radius: $border-radius-default;
-          padding: $spacing-panel-content-padding;
-          height: 550px; /* Fixed height for uniform panels */
+          padding: 14px 16px;
+          flex: 1;
+          min-height: 0;
           position: relative;
-          color: rgb(var(--v-theme-on-surface));
-          font-size: $typography-panel-content-size;
-          line-height: 1.6;
-          overflow-y: auto; /* Each panel scrolls independently */
+          overflow-y: auto;
+          font-size: 0.8rem;
+          line-height: 1.5;
+          color: $color-text-primary;
 
-          /* Custom Scrollbar for all panels */
+          /* Custom Scrollbar */
           &::-webkit-scrollbar {
             width: 8px;
           }
@@ -490,7 +515,6 @@ watch(missionText, (next, previous) => {
             }
           }
 
-          /* Firefox scrollbar */
           scrollbar-color: $color-scrollbar-thumb-background $color-scrollbar-track-background;
           scrollbar-width: thin;
 
@@ -508,12 +532,14 @@ watch(missionText, (next, previous) => {
           .mission-content {
             white-space: pre-wrap;
             word-break: break-word;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 0.875rem;
+            font-size: 0.78rem;
+            line-height: 1.5;
+            color: $color-text-secondary;
+            font-style: italic;
           }
 
           .description-text {
-            line-height: 1.6;
+            line-height: 1.5;
             white-space: pre-wrap;
             word-break: break-word;
           }
@@ -522,11 +548,12 @@ watch(missionText, (next, previous) => {
     }
   }
 
-  /* Unified Agents List */
+  /* Agents List */
   .agents-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 4px;
+    padding: 6px 10px;
 
     .empty-agents {
       display: flex;
@@ -543,31 +570,30 @@ watch(missionText, (next, previous) => {
     }
   }
 
-  /* Agent card - unified style for all agents */
+  /* Agent card — tinted square badge pattern (0870j) */
   .agent-slim-card {
     display: flex;
     align-items: center;
-    gap: 12px;
-    border: 2px solid rgb(var(--v-theme-success));
-    border-radius: $border-radius-pill;
-    padding: 10px 16px;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
     background: transparent;
+    border: none;
+    transition: background 0.15s;
+    cursor: pointer;
 
-    /* Orchestrator gets yellow border (read-only, not editable) */
-    &.orchestrator-card {
-      border-color: rgb(var(--v-theme-warning));
+    &:hover {
+      background: rgba(255, 255, 255, 0.03);
     }
 
-    .agent-avatar {
+    .agent-badge {
       width: 36px;
       height: 36px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: $color-background-primary;
-      font-weight: $typography-font-weight-bold;
-      font-size: 13px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 0.7rem;
+      font-weight: 700;
       flex-shrink: 0;
     }
 
@@ -576,55 +602,69 @@ watch(missionText, (next, previous) => {
       min-width: 0;
 
       .agent-name {
-        color: rgb(var(--v-theme-on-surface));
-        font-size: $typography-font-size-body;
+        font-size: 0.78rem;
         font-weight: 500;
+        color: $color-text-primary;
       }
+    }
+
+    // Meta line: status + id
+    .text-caption {
+      font-size: 0.62rem;
+      color: $color-text-muted;
+      margin-top: 1px;
     }
 
     .status-text {
       text-transform: capitalize;
-      font-weight: 500;
+      font-size: 0.62rem;
+      font-style: italic;
 
-      &.status-waiting { color: rgb(var(--v-theme-highlight)); }
-      &.status-working { color: var(--agent-orchestrator-primary); }
-      &.status-complete { color: rgb(var(--v-theme-success)); }
-      &.status-handed_over { color: rgb(var(--v-theme-on-surface-variant)); }
-      &.status-blocked { color: var(--status-blocked); }
-      &.status-silent { color: var(--status-blocked); }
-      &.status-pending { color: var(--status-waiting); }
+      &.status-waiting { color: $color-status-waiting; }
+      &.status-working { color: $color-status-working; font-style: italic; }
+      &.status-complete { color: $color-status-complete; }
+      &.status-handed_over { color: $color-status-handed-over; }
+      &.status-blocked { color: $color-status-blocked; }
+      &.status-silent { color: $color-status-blocked; }
+      &.status-pending { color: $color-status-waiting; }
     }
 
     .agent-id-link {
       cursor: pointer;
-      text-decoration: underline;
-      text-decoration-style: dotted;
+      font-family: 'IBM Plex Mono', monospace;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0 4px;
+      border-radius: 2px;
+      text-decoration: none;
 
       &:hover {
-        color: rgb(var(--v-theme-primary));
+        color: $color-brand-yellow;
       }
-    }
-
-    &:hover {
-      background: rgba(var(--v-theme-on-surface), 0.05);
     }
 
     .edit-icon,
     .info-icon {
-      color: rgba(var(--v-theme-on-surface), 0.6);
+      color: $color-text-muted;
       flex-shrink: 0;
       cursor: pointer;
-      transition: color 0.2s ease;
+      transition: all 0.15s;
+      width: 26px;
+      height: 26px;
 
       &:hover {
-        color: $color-text-highlight;
+        color: $color-text-secondary;
       }
     }
 
     .edit-icon {
-      margin-right: 4px;
+      margin-right: 2px;
     }
   }
+}
 
+@media (max-width: 1100px) {
+  .launch-tab-wrapper .main-container .three-panels {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -62,7 +62,7 @@
                 </v-tooltip>
               </div>
             </td>
-            <!-- Agent card: avatar + name -->
+            <!-- Agent card: tinted badge + name (0870j) -->
             <td class="agent-display-name-cell">
               <div class="agent-card-row">
                 <button
@@ -71,9 +71,9 @@
                   aria-label="View agent details"
                   @click="handleAgentRole(agent)"
                 >
-                  <v-avatar :color="getAgentColor(agent?.agent_name || agent?.agent_display_name)" size="32" class="agent-avatar">
-                    <span class="avatar-text">{{ getAgentAbbr(getPrimaryAgentLabel(agent)) }}</span>
-                  </v-avatar>
+                  <div class="agent-badge" :style="getAgentBadgeStyle(agent?.agent_name || agent?.agent_display_name)">
+                    {{ getAgentAbbr(getPrimaryAgentLabel(agent)) }}
+                  </div>
                 </button>
                 <div class="agent-info">
                   <button
@@ -134,7 +134,7 @@
               <span v-else>—</span>
             </td>
 
-            <!-- Messages (waiting count) -->
+            <!-- Messages (waiting count) — tinted badge (0870j) -->
             <td class="messages-waiting-cell text-center hide-mobile">
               <button
                 type="button"
@@ -142,7 +142,7 @@
                 aria-label="View messages"
                 @click="handleMessages(agent)"
               >
-                <span class="message-count message-waiting">{{ getMessagesWaiting(agent) }}</span>
+                <span class="msg-badge" :class="getMessagesWaiting(agent) > 0 ? 'has-msgs' : 'zero'">{{ getMessagesWaiting(agent) }}</span>
               </button>
             </td>
 
@@ -595,6 +595,27 @@ function getAgentColor(displayName) {
 }
 
 /**
+ * Convert hex to rgba string
+ */
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/**
+ * 0870j: Tinted square badge style for agent
+ */
+function getAgentBadgeStyle(displayName) {
+  const hex = getAgentColor(displayName)
+  return {
+    background: hexToRgba(hex, 0.15),
+    color: hex,
+  }
+}
+
+/**
  * Get agent avatar abbreviation - uses word initials
  * Split by dash, space, or underscore and use first letter of each part
  * e.g., "Backend-Implementer" → "BI", "Backend-Tester" → "BT"
@@ -964,20 +985,24 @@ async function copyToClipboard(text) {
   padding: 16px;
 
   .table-container {
-    padding: 16px;
+    background: $elevation-raised;
+    border-radius: 16px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
     margin-bottom: 16px;
+    overflow: hidden;
 
     // Handover 0411a: Proposed execution order display
     .execution-order-section {
-      padding: 8px 0 14px;
-      border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-      margin-bottom: 4px;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       text-align: center;
 
       .execution-order-title {
-        font-size: 17px;
-        font-weight: 700;
-        color: rgb(var(--v-theme-primary));
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: $color-text-secondary;
         margin-bottom: 8px;
       }
 
@@ -1001,7 +1026,7 @@ async function copyToClipboard(text) {
           gap: 5px;
 
           .phase-label {
-            font-size: 13px;
+            font-size: 0.72rem;
             font-weight: 700;
             color: white;
           }
@@ -1015,7 +1040,7 @@ async function copyToClipboard(text) {
               display: inline-block;
               padding: 2px 10px;
               border-radius: 12px;
-              font-size: 12px;
+              font-size: 0.68rem;
               font-weight: 600;
               white-space: nowrap;
               color: rgb(var(--v-theme-surface));
@@ -1033,15 +1058,19 @@ async function copyToClipboard(text) {
 
     .agents-table {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
 
       thead th {
         text-align: left;
-        padding: 12px 16px;
-        color: rgb(var(--v-theme-on-surface));
-        font-size: 14px;
+        padding: 10px 14px;
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: $color-text-muted;
         font-weight: 500;
-        border-bottom: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: $elevation-raised;
         white-space: nowrap;
 
         &.col-phase {
@@ -1050,7 +1079,7 @@ async function copyToClipboard(text) {
         }
 
         &.col-play {
-          width: 48px;
+          width: 40px;
           padding: 0;
         }
 
@@ -1064,36 +1093,38 @@ async function copyToClipboard(text) {
         }
 
         &.col-actions {
-          width: 140px;
+          width: 160px;
         }
       }
 
       tbody tr {
-        border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+        transition: background 0.15s;
+        cursor: pointer;
 
-        &:last-child {
-          border-bottom: none;
+        &:hover {
+          background: rgba(255, 255, 255, 0.02);
         }
       }
 
       tbody td {
-        padding: 16px;
-        color: rgb(var(--v-theme-on-surface));
-        font-size: 14px;
+        padding: 12px 14px;
+        font-size: 0.78rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        vertical-align: middle;
 
         &.phase-cell {
           width: 56px;
           text-align: center;
-          padding: 16px 8px;
+          padding: 12px 8px;
 
           .phase-badge {
             display: inline-block;
-            font-size: 0.75rem;
+            font-size: 0.68rem;
             font-weight: 600;
             padding: 2px 8px;
             border-radius: 10px;
-            background-color: #FBC02D; // exempt: amber, no token
-            color: $elevation-raised;
+            background-color: rgba(251, 192, 45, 0.15); // design-token-exempt: tinted amber phase badge
+            color: #FBC02D; // design-token-exempt: amber phase text
             white-space: nowrap;
 
             &--none {
@@ -1104,51 +1135,49 @@ async function copyToClipboard(text) {
         }
 
         &.play-cell {
-          width: 48px;
-          padding: 16px 4px 16px 16px;
+          width: 40px;
+          padding: 12px 4px 12px 14px;
           text-align: center;
 
           .play-btn-slot {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
           }
 
           .play-circle-btn {
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
-            border: none !important;
-            box-shadow: inset 0 0 0 2px rgb(255, 215, 0);
-            background: transparent;
-            color: rgb(255, 215, 0);
+            border: none;
+            background: rgba(255, 195, 0, 0.12);
+            color: $color-brand-yellow;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: grid;
+            place-items: center;
             padding: 0;
             transition: all 0.2s ease;
 
             .v-icon {
-              color: rgb(255, 215, 0);
+              color: $color-brand-yellow;
             }
 
             &:hover:not(:disabled) {
-              box-shadow: inset 0 0 0 2px rgb(var(--v-theme-highlight));
-              background: rgba(255, 215, 0, 0.1);
-              transform: scale(1.1);
-
-              .v-icon {
-                color: rgb(var(--v-theme-highlight));
-              }
+              background: rgba(255, 195, 0, 0.2);
             }
 
             &.play-btn-faded {
-              opacity: 0.25;
+              background: transparent;
+              color: $color-text-muted;
+              opacity: 0.2;
               cursor: default;
               pointer-events: none;
+
+              .v-icon {
+                color: $color-text-muted;
+              }
             }
           }
         }
@@ -1165,14 +1194,15 @@ async function copyToClipboard(text) {
             white-space: nowrap;
           }
 
-          .agent-avatar {
+          .agent-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: grid;
+            place-items: center;
+            font-size: 0.62rem;
+            font-weight: 700;
             flex-shrink: 0;
-
-            .avatar-text {
-              color: rgb(var(--v-theme-on-primary));
-              font-weight: bold;
-              font-size: 12px;
-            }
           }
 
           .agent-avatar-button,
@@ -1191,13 +1221,14 @@ async function copyToClipboard(text) {
             min-width: 0;
 
             .agent-name-primary {
+              font-size: 0.8rem;
               font-weight: 500;
               text-transform: capitalize;
             }
 
             .agent-display-name-secondary {
-              font-size: 0.75rem;
-              color: rgba(var(--v-theme-on-surface), 0.6);
+              font-size: 0.62rem;
+              color: $color-text-muted;
               text-transform: capitalize;
             }
           }
@@ -1205,7 +1236,7 @@ async function copyToClipboard(text) {
 
         &.status-cell {
           text-align: center;
-          font-style: italic;
+          font-size: 0.75rem;
 
           .working-dots {
             display: inline;
@@ -1228,13 +1259,19 @@ async function copyToClipboard(text) {
 
         &.duration-cell {
           text-align: center;
-          font-family: 'Roboto Mono', 'Courier New', monospace;
-          font-size: 13px;
-          color: rgba(var(--v-theme-on-surface), 0.7);
+          font-family: 'IBM Plex Mono', monospace;
+          font-size: 0.72rem;
+          color: $color-text-secondary;
+        }
+
+        .steps-trigger {
+          font-family: 'IBM Plex Mono', monospace;
+          font-size: 0.72rem;
+          color: $color-text-secondary;
         }
 
         .steps-skipped {
-          color: var(--status-blocked);
+          color: #ff9800; // design-token-exempt: status-blocked inline
           font-weight: 600;
         }
 
@@ -1246,22 +1283,45 @@ async function copyToClipboard(text) {
           color: inherit;
         }
 
+        /* Messages waiting badge — tinted (0870j) */
+        .msg-badge {
+          display: inline-grid;
+          place-items: center;
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          font-size: 0.62rem;
+          font-weight: 600;
+
+          &.zero {
+            background: rgba(103, 189, 109, 0.12);
+            color: #67bd6d; // design-token-exempt: status-complete
+          }
+
+          &.has-msgs {
+            background: rgba(255, 152, 0, 0.15);
+            color: #ff9800; // design-token-exempt: status-blocked
+          }
+        }
+
         &.actions-cell {
           text-align: right;
           white-space: nowrap;
 
           .actions-inline {
-            display: inline-flex;
-            align-items: center;
+            display: flex;
+            gap: 2px;
 
             .v-btn {
               min-width: auto;
-              padding: 4px;
-              margin-left: 4px;
-            }
+              width: 30px;
+              height: 30px;
+              padding: 0;
+              color: $color-text-muted;
 
-            .v-icon {
-              opacity: 1;
+              &:hover {
+                color: $color-brand-yellow;
+              }
             }
           }
 
@@ -1276,35 +1336,44 @@ async function copyToClipboard(text) {
           }
         }
       }
+
+      // Remove border-bottom on last row
+      tbody tr:last-child td {
+        border-bottom: none;
+      }
     }
   }
 
+  /* Message composer — smooth-border panel (0870j) */
   .message-composer {
     display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
     align-items: center;
-    padding: 16px;
-    background: rgba(var(--v-theme-on-surface), 0.05);
-    border-radius: 12px;
+    gap: 8px;
+    padding: 12px 18px;
+    background: $elevation-raised;
+    border-radius: 16px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
     margin-bottom: 20px;
 
     .composer-channels {
       display: flex;
-      gap: 12px;
+      gap: 4px;
+      flex-shrink: 0;
       order: 0;
     }
 
     .composer-input {
       display: flex;
       flex: 1;
-      gap: 12px;
+      gap: 8px;
       align-items: center;
       min-width: 0;
       order: 1;
     }
 
     @media (max-width: 576px) {
+      flex-wrap: wrap;
+
       .composer-channels {
         order: 2;
         width: 100%;
@@ -1320,31 +1389,27 @@ async function copyToClipboard(text) {
     .recipient-btn,
     .broadcast-btn {
       border: none !important;
-      box-shadow: inset 0 0 0 2px rgba(255, 215, 0, 0.4);
-      border-radius: 6px;
+      border-radius: 9999px;
       text-transform: none;
-      font-size: 14px;
-      font-weight: 400;
-      padding: 8px 16px;
-      color: rgba(255, 215, 0, 0.7);
+      font-size: 0.72rem;
+      font-weight: 500;
+      padding: 6px 14px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+      color: $color-text-muted;
       transition: all 0.2s ease;
 
       &.v-btn--variant-flat {
-        background: rgb(var(--v-theme-highlight));
-        color: rgb(var(--v-theme-on-primary));
-        font-weight: 600;
-        box-shadow: inset 0 0 0 2px rgb(var(--v-theme-highlight));
-
-        &:hover {
-          background: rgb(var(--v-theme-highlight-hover));
-        }
+        background: rgba(255, 195, 0, 0.12);
+        color: $color-brand-yellow;
+        box-shadow: none;
       }
 
       &.v-btn--variant-outlined {
+        background: transparent;
+
         &:hover {
-          background: rgba(255, 215, 0, 0.1);
-          box-shadow: inset 0 0 0 2px rgba(255, 215, 0, 0.6);
-          color: rgba(255, 215, 0, 0.9);
+          background: rgba(255, 255, 255, 0.04);
+          color: $color-text-secondary;
         }
       }
     }
@@ -1353,36 +1418,36 @@ async function copyToClipboard(text) {
       flex: 1;
 
       ::v-deep(.v-field) {
-        background: rgba(var(--v-theme-on-surface), 0.05);
+        background: $elevation-elevated;
         border: none !important;
-        box-shadow: inset 0 0 0 2px rgba(var(--v-theme-on-surface), 0.2);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
         border-radius: 8px;
 
         input {
-          color: rgb(var(--v-theme-on-surface));
-          font-size: 14px;
+          color: $color-text-primary;
+          font-size: 0.78rem;
           padding: 8px 12px;
 
           &::placeholder {
-            color: rgba(var(--v-theme-on-surface), 0.4);
+            color: $color-text-muted;
           }
         }
 
         &:hover {
-          box-shadow: inset 0 0 0 2px rgba(var(--v-theme-on-surface), 0.3);
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
         }
 
         &.v-field--focused {
-          box-shadow: inset 0 0 0 2px rgb(var(--v-theme-highlight));
+          box-shadow: inset 0 0 0 1px rgba(255, 195, 0, 0.3);
         }
       }
     }
 
     .send-btn {
       min-width: auto;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
 
       &:disabled {
         opacity: 0.4;
@@ -1390,27 +1455,10 @@ async function copyToClipboard(text) {
     }
   }
 
-  .message-count {
-    display: inline-block;
-    min-width: 24px;
-    padding: 4px 8px;
-    border-radius: 12px;
-    background: rgba(var(--v-theme-on-surface), 0.1);
-    color: rgb(var(--v-theme-on-surface));
-    font-size: 14px;
-    font-weight: 400;
-
-    &.message-waiting {
-      background: transparent;
-      color: rgb(var(--v-theme-on-surface));
-    }
-
-  }
-
-  /* GiljoAI Face Icon - Handover 0358 */
+  /* GiljoAI Face Icon */
   .giljo-face-icon {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     object-fit: contain;
   }
 
@@ -1429,7 +1477,7 @@ async function copyToClipboard(text) {
     }
   }
 
-  /* Responsive: below 840px — hide agent name text, show avatar only, centered */
+  /* Responsive: below 840px — hide agent name text, show badge only */
   @media (max-width: 840px) {
     .table-container .agents-table {
       thead th.col-agent-name {
@@ -1438,7 +1486,7 @@ async function copyToClipboard(text) {
 
       tbody td.agent-display-name-cell {
         text-align: center;
-        padding-left: 16px;
+        padding-left: 14px;
 
         .agent-card-row {
           justify-content: center;
@@ -1458,16 +1506,6 @@ async function copyToClipboard(text) {
         display: none;
       }
     }
-  }
-
-}
-
-/* Global avatar styles for modal consistency - Handover 0401b */
-.agent-avatar {
-  .avatar-text {
-    color: rgb(var(--v-theme-on-primary));
-    font-weight: bold;
-    font-size: 12px;
   }
 }
 </style>
