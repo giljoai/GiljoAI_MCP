@@ -375,10 +375,10 @@
       "session_id": "0870j",
       "title": "Jobs/Orchestration Views",
       "handover": "handovers/0870_design_system_harmonization.md#0870j",
-      "color": "#FF9800",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "completed",
+      "started_at": "2026-03-31T02:30:00Z",
+      "completed_at": "2026-03-31T02:45:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "Restyle LaunchTab.vue — execution mode selector, three-panel, tinted agent badges (square)",
@@ -387,12 +387,39 @@
         "Update ProjectLaunchView.vue header styling",
         "Reference mockup: frontend/mock/orchestration-view.html"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "LaunchTab.vue: three panels restyled with bg-raised background, smooth-border (inset box-shadow rgba 0.10), border-radius 16px. Panel headers: 0.72rem uppercase with letter-spacing 0.06em, secondary color, border-bottom separator. Panel content: padding 14px 16px, description at 0.8rem, mission text italic/secondary color.",
+        "LaunchTab.vue: agent cards converted from pill-shaped with colored borders to flat rows with square tinted badges — rgba(color, 0.15) background + bright agent color text, border-radius 8px, 36px size. Status text uses SCSS design tokens ($color-status-*). Agent meta shows monospace ID. Edit/info icons use muted color with secondary hover.",
+        "LaunchTab.vue: removed orchestrator-card class (colored borders), inline cursor style. Added hexToRgba() and getAgentBadgeStyle() helpers. Responsive breakpoint at 1100px for single-column panels.",
+        "JobsTab.vue: table container converted to smooth-border panel (bg-raised, border-radius 16px, inset box-shadow). Table headers: 0.6rem uppercase, muted color, letter-spacing 0.06em. Row hover: rgba(255,255,255,0.02). Cell separators: rgba(255,255,255,0.04).",
+        "JobsTab.vue: agent avatar replaced from round v-avatar to square tinted badge (32px, border-radius 8px, rgba 0.15 bg + bright text). Agent name 0.8rem, skills label 0.62rem muted. Added hexToRgba() and getAgentBadgeStyle() helpers.",
+        "JobsTab.vue: phase badge converted from solid amber to tinted (rgba(251,192,45,0.15) bg + #FBC02D text). Play/copy button converted from inset-border ring to tinted yellow bg (rgba 0.12) with hover 0.2. Faded state: transparent bg, muted color, opacity 0.2.",
+        "JobsTab.vue: messages waiting badge converted to tinted circular badges — zero: rgba(103,189,109,0.12) bg + #67bd6d text, has-msgs: rgba(255,152,0,0.15) bg + #ff9800 text. Duration/steps cells use IBM Plex Mono, 0.72rem, secondary color.",
+        "JobsTab.vue: action icons simplified — flex gap 2px, 30px buttons, muted color default, brand-yellow on hover. Execution order section: title restyled to 0.72rem uppercase secondary.",
+        "JobsTab.vue: message composer restyled — smooth-border panel (bg-raised, border-radius 16px), recipient buttons as pill-shaped with smooth-border inactive / tinted yellow active. Input with bg-elevated, smooth-border, focus ring with yellow 30% opacity. Send button border-radius 8px (square).",
+        "AgentTableView.vue: agent column converted from round v-avatar to square tinted badge (32px, border-radius 8px). Added getAgentBadgeStyle() with .hex extraction from composable color object. Agent cell uses flex layout with name 0.8rem + skills 0.62rem muted.",
+        "AgentTableView.vue: messages waiting column converted to tinted circular badges (same zero/has-msgs pattern as JobsTab). Table styling: smooth-border panel (border-radius 16px), uppercase 0.6rem headers, muted header color, subtle cell separators.",
+        "AgentTableView.vue: agent-id styling updated to IBM Plex Mono, rgba(255,255,255,0.05) background, secondary color text.",
+        "ProjectLaunchView.vue: verified — pure layout container with ProjectTabs delegate and edit dialog. No hardcoded colors, no agent-related styling. No changes needed.",
+        "npm run lint: 0 errors, 7 pre-existing warnings (unchanged). npm run test: 96 files, 1893 tests pass, 0 failures."
+      ],
+      "deviations": [
+        "ProjectLaunchView.vue required no changes — it is a pure layout container that delegates to ProjectTabs for all visible content. The project header styling referenced in the spec lives within ProjectTabs, not ProjectLaunchView.",
+        "Execution mode selector styling was not explicitly changed in LaunchTab.vue because the execution mode toggle lives in ProjectTabs.vue (moved there in Handover 0428), not in LaunchTab. The mockup's exec-mode-bar pattern can be applied to ProjectTabs in a future session if needed.",
+        "JobsTab play button changed from inset-border ring pattern (box-shadow: inset 0 0 0 2px) to tinted background pattern (rgba 0.12) to match mockup's copy-btn style. The faded state changed from opacity 0.25 to transparent + opacity 0.2.",
+        "AgentTableView getAgentBadgeStyle extracts .hex from the composable's color object (which returns {hex, name, badge, description}), unlike LaunchTab/JobsTab which call getAgentColorConfig().hex directly."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870k: All orchestration views (LaunchTab, JobsTab, AgentTableView) now use the 0870 design system with tinted square badges, smooth-border panels, accessible text colors, and consistent typography. The execution mode selector lives in ProjectTabs.vue (moved in 0428), not LaunchTab — if it needs restyling to match the mockup's exec-mode-pill pattern, that should happen in a ProjectTabs update. The message composer now uses pill-shaped recipient buttons and smooth-border input instead of Vuetify outlined variant. ActionIcons.vue (used in AgentTableView) was verified unchanged in 0870d — it uses actionConfig colors, not agent colors. StatusChip.vue (used in AgentTableView) was also verified unchanged in 0870d — uses statusConfig colors. The hexToRgba helper is now duplicated in 3 files (LaunchTab, JobsTab, AgentTableView) — consider extracting to a shared utility if more components need it.",
+      "cascading_impacts": [
+        "LaunchTab agent cards no longer have colored borders — the orchestrator-card class was removed. Tests should not rely on v-chip or border-color assertions.",
+        "JobsTab agent column no longer renders v-avatar — uses plain div.agent-badge with inline tinted styles instead",
+        "JobsTab play button no longer uses inset-border ring — now uses tinted background pattern matching mockup",
+        "JobsTab message waiting badge now has tinted .msg-badge.zero / .msg-badge.has-msgs classes — tests asserting on .message-count or .message-waiting classes will need updating",
+        "AgentTableView agent column no longer renders v-avatar — uses plain div.agent-badge with inline tinted styles instead",
+        "AgentTableView messages waiting column now renders .msg-badge instead of plain text — tests asserting on text-warning class will need updating"
+      ],
+      "summary": "Restyled 3 orchestration view files to match 0870 design system. LaunchTab: square tinted agent badges replacing round colored avatars, smooth-border staging panels with uppercase headers, status colors via SCSS tokens. JobsTab: tinted agent badges in table, tinted phase badges, tinted msg-waiting badges (green zero/orange has-msgs), smooth-border table panel and composer, play button with tinted bg, muted action icons. AgentTableView: tinted badges replacing v-avatar, tinted msg badges, updated table/header styling. ProjectLaunchView: no changes needed (pure layout). 3 files changed (405 insertions, 249 deletions), all 1893 tests pass."
     },
     {
       "session_id": "0870k",
