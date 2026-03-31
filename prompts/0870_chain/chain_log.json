@@ -289,22 +289,46 @@
       "session_id": "0870h",
       "title": "Projects & Tasks Views",
       "handover": "handovers/0870_design_system_harmonization.md#0870h",
-      "color": "#FF9800",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "completed",
+      "started_at": "2026-03-31T02:00:00Z",
+      "completed_at": "2026-03-31T02:15:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "Restyle ProjectsView.vue — tinted status chips, square project ID badges, accessible text",
         "Restyle TasksView.vue — tinted status/priority pills, search/filter bar",
         "Reference mockup: frontend/mock/projects-tasks-view.html"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "ProjectsView.vue: replaced Vuetify v-chip taxonomy badges with tinted square spans — rgba(color, 0.15) background + bright text, border-radius 4px. Dynamic projectIdBadgeStyle() helper generates hex-based rgba backgrounds via 26 suffix (~15% opacity).",
+        "ProjectsView.vue: project UUID text updated to use --text-muted (#8895a8) via .project-uuid-text class with IBM Plex Mono font, 0.58rem size.",
+        "ProjectsView.vue: staged column converted from Vuetify v-chip to tinted span chips — Yes: green tinted ($color-status-success at 12% opacity), No: coral tinted ($color-agent-analyzer at 12% opacity).",
+        "ProjectsView.vue: date cells updated with .date-cell class — 0.72rem font, --text-secondary color, empty dates use --text-muted.",
+        "ProjectsView.vue: table panel gets smooth-border (inset box-shadow 1px $color-border-subtle), 16px border-radius. Table headers: uppercase 0.6rem with muted color, 0.06em letter-spacing. Row hover: rgba(255,255,255,0.02). Cell separators: rgba(255,255,255,0.04).",
+        "TasksView.vue: status chips converted from Vuetify v-chip to tinted spans — pending=yellow (brand-yellow 12%), in_progress=blue (implementor 12%), completed=green (status-success 15%), cancelled=pink (#c6298c 12%). Pill-shaped with 9999px border-radius.",
+        "TasksView.vue: priority chips converted from Vuetify v-chip to tinted pills — critical/high: analyzer coral tinted, medium: subtle 5% white bg with secondary text, low: 3% white bg with muted text. Square with 4px border-radius.",
+        "TasksView.vue: filter bar restyled from v-row/v-col grid to flex layout — search input with smooth-border focus ring (brand-yellow 30%), selects with smooth-border, clear button in muted text.",
+        "TasksView.vue: task title text colored with brand-yellow ($color-brand-yellow), description uses muted text ($color-text-muted) with 2-line clamp.",
+        "TasksView.vue: category column uses .category-pill (pill-shaped, 5% white bg, secondary text). Convert column uses styled .row-action button with yellow color and opacity hover effect.",
+        "TasksView.vue: table panel smooth-border (16px border-radius), table header with Outfit font. Same row hover/separator pattern as ProjectsView.",
+        "TasksView.vue: removed unused getStatusTextStyle() and getPriorityColor() functions (replaced by CSS classes).",
+        "npm run lint: 0 errors, 7 pre-existing warnings (unchanged). npm run test: 96 files, 1893 tests pass, 0 failures."
+      ],
+      "deviations": [
+        "ProjectsView taxonomy badge uses hex + '26' suffix for 15% opacity (e.g. #E0787226) rather than CSS rgba(), because the color comes from a JS variable (project_type.color) and parsing hex to rgb channels for inline rgba() would be unnecessarily complex. The visual result is identical.",
+        "TasksView status chips no longer use Vuetify v-chip — replaced with plain HTML spans and CSS classes. The inline v-select dropdown for status changes still works, only the selected display changed.",
+        "TasksView priority dropdown items now show the tinted pill in the prepend slot instead of a Vuetify v-chip color swatch."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870i: Both ProjectsView and TasksView now use the tinted chip pattern with accessible text colors. StatusBadge (updated in 0870d) is still used for the project status column — it already uses the tinted style. The v-data-table component itself is preserved (Vuetify pagination, sorting, search all still work). The scoped styles override Vuetify defaults via :deep() selectors for table headers, row hover, and cell separators. Both files use SCSS @use imports for design-tokens and variables. The filter bar in TasksView uses v-text-field/v-select with variant='solo' and flat to allow custom box-shadow styling via :deep().",
+      "cascading_impacts": [
+        "ProjectsView taxonomy badge no longer renders as v-chip — any test asserting .v-chip class on taxonomy display will need adjustment",
+        "ProjectsView staged column no longer renders as v-chip — same consideration",
+        "TasksView status display no longer renders as v-chip — inline v-select still works but the selected value renders as a plain span",
+        "TasksView priority display no longer renders as v-chip — same pattern as status",
+        "Both views add :deep() overrides on .v-data-table elements — these may cascade if other styles target the same selectors"
+      ],
+      "summary": "Restyled ProjectsView.vue and TasksView.vue to match 0870 design system. ProjectsView: tinted square taxonomy badges (border-radius 4px), muted UUID text, tinted staged chips, accessible date colors, smooth-border panel. TasksView: tinted status chips (4 statuses), tinted priority pills, restyled filter bar, brand-yellow task titles, muted descriptions, category pills, styled actions. Removed 2 unused functions. 2 files changed (435 insertions, 186 deletions), all 1893 tests pass."
     },
     {
       "session_id": "0870i",
