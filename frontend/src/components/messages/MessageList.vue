@@ -11,8 +11,8 @@
     <!-- Empty state -->
     <v-alert v-else type="info" variant="tonal" class="ma-4">
       <div class="empty-state text-center">
-        <v-icon size="64" color="grey-lighten-1">mdi-message-text-outline</v-icon>
-        <p class="text-grey-lighten-1 mt-4">No messages yet</p>
+        <v-icon size="64" class="list-text-muted">mdi-message-text-outline</v-icon>
+        <p class="list-text-muted mt-4">No messages yet</p>
       </div>
     </v-alert>
   </div>
@@ -47,5 +47,9 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: center;
   min-height: 300px;
+}
+
+.list-text-muted {
+  color: #8895a8 !important;
 }
 </style>
