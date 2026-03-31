@@ -1103,7 +1103,7 @@ onMounted(async () => {
 .product-card {
   transition: all 0.3s ease;
   border: none !important;
-  box-shadow: inset 0 0 0 2px white;
+  box-shadow: inset 0 0 0 2px white !important; /* !important needed to override Vuetify :elevation="0" */
   border-radius: 12px;
 }
 
