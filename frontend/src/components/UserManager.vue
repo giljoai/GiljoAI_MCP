@@ -44,7 +44,7 @@
       <!-- Email column -->
       <template #item.email="{ item }">
         <div class="d-flex align-center">
-          <v-icon size="small" class="mr-2 text-medium-emphasis">mdi-email</v-icon>
+          <v-icon size="small" class="mr-2 usermgr-text-muted">mdi-email</v-icon>
           <span class="text-caption">{{ item.email || 'No email' }}</span>
         </div>
       </template>
@@ -70,7 +70,7 @@
       <!-- Created date column -->
       <template #item.created_at="{ item }">
         <div class="d-flex align-center">
-          <v-icon size="small" class="mr-2 text-medium-emphasis">mdi-calendar-plus</v-icon>
+          <v-icon size="small" class="mr-2 usermgr-text-muted">mdi-calendar-plus</v-icon>
           <span class="text-caption">{{ formatDate(item.created_at) }}</span>
         </div>
       </template>
@@ -121,7 +121,7 @@
 
     <!-- Create/Edit User Dialog -->
     <v-dialog v-model="showUserDialog" max-width="600" persistent>
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title>
           <v-icon class="mr-2">{{ isEditMode ? 'mdi-pencil' : 'mdi-account-plus' }}</v-icon>
           {{ isEditMode ? 'Edit User' : 'Create New User' }}
@@ -194,7 +194,7 @@
 
     <!-- Change Password Dialog -->
     <v-dialog v-model="showPasswordDialog" max-width="500" persistent>
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title>
           <v-icon class="mr-2">mdi-key-variant</v-icon>
           Change Password
@@ -229,7 +229,7 @@
 
     <!-- Reset Password Confirmation Dialog -->
     <v-dialog v-model="showResetPasswordDialog" max-width="500">
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title class="bg-warning">
           <v-icon class="mr-2">mdi-lock-reset</v-icon>
           Reset User Password?
@@ -237,7 +237,7 @@
 
         <v-card-text class="pt-6">
           <p class="text-body-1 mb-2">You are about to reset the password for:</p>
-          <v-card variant="outlined" class="mb-4 pa-3">
+          <v-card variant="flat" class="mb-4 pa-3 smooth-border">
             <div class="d-flex align-center">
               <v-icon class="mr-2">mdi-account</v-icon>
               <strong>{{ resetPasswordUser?.username }}</strong>
@@ -272,7 +272,7 @@
 
     <!-- Status Toggle Confirmation Dialog -->
     <v-dialog v-model="showStatusDialog" max-width="500">
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title :class="statusUser?.is_active ? 'bg-warning' : 'bg-success'">
           <v-icon class="mr-2">
             {{ statusUser?.is_active ? 'mdi-account-off' : 'mdi-account-check' }}
@@ -284,7 +284,7 @@
           <p class="text-body-1 mb-2">
             You are about to {{ statusUser?.is_active ? 'deactivate' : 'activate' }}:
           </p>
-          <v-card variant="outlined" class="mb-4 pa-3">
+          <v-card variant="flat" class="mb-4 pa-3 smooth-border">
             <div class="d-flex align-center">
               <v-icon class="mr-2">mdi-account</v-icon>
               <strong>{{ statusUser?.username }}</strong>
@@ -626,6 +626,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.usermgr-text-muted {
+  color: #8895a8;
+}
+
 .v-data-table {
   border-radius: 8px;
 }
