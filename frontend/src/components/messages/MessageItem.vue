@@ -1,11 +1,11 @@
 <template>
-  <v-card variant="outlined" class="message-item mb-3" :class="messageClass" data-testid="message-item">
+  <v-card variant="flat" class="message-item smooth-border mb-3" :class="messageClass" data-testid="message-item">
     <v-card-text class="pa-3">
       <div class="d-flex align-start">
-        <!-- Sender Avatar -->
-        <v-avatar :color="senderColor" size="40" class="mr-3">
-          <v-icon :icon="senderIcon" size="24" />
-        </v-avatar>
+        <!-- Sender Badge -->
+        <div class="sender-badge mr-3" :style="senderBadgeStyle">
+          <v-icon :icon="senderIcon" size="20" />
+        </div>
 
         <!-- Message Content -->
         <div class="flex-grow-1">
@@ -22,25 +22,24 @@
                 color="orange"
                 class="mr-2"
               />
-              <v-chip
+              <span
                 v-if="message.priority !== 'normal'"
-                :color="priorityColor"
-                size="x-small"
-                class="mr-2"
+                class="tinted-chip mr-2"
+                :style="priorityChipStyle"
               >
                 {{ message.priority }}
-              </v-chip>
-              <v-chip :color="statusColor" size="x-small" variant="flat">
+              </span>
+              <span class="tinted-chip" :style="statusChipStyle">
                 {{ message.status }}
-              </v-chip>
+              </span>
             </div>
-            <span class="text-caption text-medium-emphasis">
+            <span class="text-caption msg-text-muted">
               {{ relativeTime }}
             </span>
           </div>
 
           <!-- Recipients -->
-          <div v-if="recipients.length > 0" class="text-caption text-medium-emphasis mb-2" data-testid="message-to">
+          <div v-if="recipients.length > 0" class="text-caption msg-text-muted mb-2" data-testid="message-to">
             <v-icon icon="mdi-arrow-right" size="12" class="mr-1" />
             {{ recipientsText }}
           </div>
@@ -96,7 +95,35 @@ const isSystem = computed(() => messageType.value === 'system' || displaySender.
 const isUser = computed(() => displaySender.value === 'User')
 const isOrchestrator = computed(() => displaySender.value === 'Orchestrator')
 
+// Helper
+const hexToRgba = (hex: string, alpha: number): string => {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 // Sender appearance
+const senderHex = computed(() => {
+  if (isBroadcast.value) return '#EDBA4A'
+  if (isSystem.value) return '#8895a8'
+  if (isUser.value) return '#AC80CC'
+  if (isOrchestrator.value) return '#D4B08A'
+  return '#6DB3E4'
+})
+
+const senderBadgeStyle = computed(() => ({
+  width: '36px',
+  height: '36px',
+  minWidth: '36px',
+  borderRadius: '8px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: hexToRgba(senderHex.value, 0.15),
+  color: senderHex.value,
+}))
+
 const senderColor = computed(() => {
   if (isBroadcast.value) return 'orange'
   if (isSystem.value) return 'grey'
@@ -114,30 +141,33 @@ const senderIcon = computed(() => {
 })
 
 // Priority styling
-const priorityColor = computed(() => {
-  switch (props.message.priority) {
-    case 'urgent':
-      return 'error'
-    case 'high':
-      return 'warning'
-    default:
-      return 'default'
+const PRIORITY_COLORS: Record<string, string> = {
+  urgent: '#E07872',
+  high: '#EDBA4A',
+}
+
+const priorityChipStyle = computed(() => {
+  const hex = PRIORITY_COLORS[props.message.priority] || '#8895a8'
+  return {
+    backgroundColor: hexToRgba(hex, 0.15),
+    color: hex,
   }
 })
 
 // Status styling
-const statusColor = computed(() => {
-  switch (props.message.status) {
-    case 'completed':
-      return 'success'
-    case 'failed':
-      return 'error'
-    case 'acknowledged':
-      return 'info'
-    case 'delivered':
-      return 'primary'
-    default:
-      return 'grey'
+const STATUS_COLORS: Record<string, string> = {
+  completed: '#67bd6d',
+  failed: '#E07872',
+  acknowledged: '#6DB3E4',
+  delivered: '#6DB3E4',
+  pending: '#EDBA4A',
+}
+
+const statusChipStyle = computed(() => {
+  const hex = STATUS_COLORS[props.message.status] || '#8895a8'
+  return {
+    backgroundColor: hexToRgba(hex, 0.15),
+    color: hex,
   }
 })
 
@@ -197,19 +227,35 @@ const handleReply = () => {
 
 <style scoped>
 .message-item {
+  background: var(--bg-raised, #1a2a3c);
+  border-radius: 12px;
   transition: all 0.2s ease;
 }
 
 .message-item:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .broadcast-message {
-  border-left: 4px solid rgb(var(--v-theme-orange));
+  --smooth-border-color: rgba(237, 186, 74, 0.3);
 }
 
 .system-message {
-  background-color: rgba(var(--v-theme-surface-variant), 0.5);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.msg-text-muted {
+  color: #8895a8 !important;
+}
+
+.tinted-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: capitalize;
 }
 
 .message-content {
