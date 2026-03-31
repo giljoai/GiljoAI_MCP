@@ -19,7 +19,8 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE, **0769a-g sprint COMPLETE (2026-03-30)**. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 NOT STARTED.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
+| 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 NOT STARTED.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
+| 0870-0899 | Design System Harmonization | **0870a-p NOT STARTED.** Luminous Pastels palette, WCAG AA compliance, tinted badges, 89 Vue components + 5 SCSS + docs + landing page. Series coordinator: 0870. |
 
 ---
 
@@ -39,6 +40,23 @@
 | 0844b | Tenant Import Service + Schema Diff | Not Started | Medium | Backend import: schema compatibility analysis, UPSERT pipeline, topological sort, vision file extraction, TSVECTOR regen. Heaviest phase, 2-3 sessions. Depends on 0844a. |
 | 0844c | Tenant Data Frontend | Not Started | Medium | Vue component in Database tab: export/import UI, compatibility report dialog, stale backup warning, WebSocket progress. 1 session. Depends on 0844a+b. |
 | 0847 | Tool-Aware Orchestrator Protocol | Not Started | High | Make orchestrator protocol (CH1-CH5 + identity) fully tool-aware. Codex/Gemini get native-only language, no Claude refs. Multi-terminal → "Any Coding Agent". 2-3h. |
+| **0870** | **Design System Harmonization (Series Coordinator)** | **Not Started** | **High** | Series of 16 sub-handovers (0870a-p). Luminous Pastels palette, WCAG AA compliance, tinted badges, square badge geometry, stat pills, typography. 89 Vue components + 5 SCSS + docs + landing page. 12-16 sessions. Absorbs 0277 (radius/shadow tokens). |
+| 0870a | Design Token Update & SCSS Foundation | Not Started | High | Update design-tokens.scss, variables.scss, agent-colors.scss, main.scss, global-tabs.scss. New text-muted + text-secondary values. 5 files. |
+| 0870b | agentColors.js + theme.js Config Update | Not Started | High | Update 6 hex values in AGENT_COLORS, verify theme.js + statusConfig.js. 3-4 files. |
+| 0870c | Design System Sample v2 | Not Started | Medium | Rewrite design-system-sample.html with all new tokens. Reference doc. |
+| 0870d | Core Badge Components | Not Started | High | RoleBadge, StatusBadge, GiljoFaceIcon, StatusChip, ActionIcons. Tinted style, square geometry. ~6 files. |
+| 0870e | Navigation & Layout Shell | Not Started | High | NavigationDrawer (Jobs icon fix), AppBar, DefaultLayout, ActiveProductDisplay, ConnectionStatus, NotificationDropdown. ~6 files. |
+| 0870f | Dashboard View Redesign | Not Started | High | Stat pills + micro-bars, projects panel, 360 memories, git commits. Replace donuts. ~6 files. |
+| 0870g | Welcome/Home View Redesign | Not Started | High | Hero + quick-launch + team grid + conditional section. ~2 files. |
+| 0870h | Projects & Tasks Views | Not Started | Medium | Tinted chips, accessible text, table restyling. 2 files. |
+| 0870i | Products View & Dialogs | Not Started | Medium | Card styling, status badges, 8 dialog/form components. ~8 files. |
+| 0870j | Jobs/Orchestration Views | Not Started | Medium | Staging + Implementation tabs, tinted badges, phase pills, composer. ~5 files. |
+| 0870k | Messages View | Not Started | Medium | Messaging UI components. ~5 files. |
+| 0870l | Settings Views | Not Started | Medium | User/System/Org settings, integration cards, settings tabs. ~11 files. |
+| 0870m | All Modals, Dialogs & Utility Components | Not Started | Medium | Every popup/dialog/wizard. BaseDialog cascades. ~24 files. |
+| 0870n | Auth Pages & Setup Wizard | Not Started | Medium | Login, first-login, setup steps, error pages. ~10 files. |
+| 0870o | Documentation Update | Not Started | Medium | design-system-sample, CLAUDE.md, docs/, component READMEs, handover reference docs. 8-12 files. |
+| 0870p | Landing Page Harmonization | Not Started | Medium | giljoai-mcp-landing repo: index.html, getting-started.html, assets. Separate codebase. |
 
 ### Deferred (Still in Root Folder)
 
