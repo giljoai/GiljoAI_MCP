@@ -160,12 +160,12 @@
     <!-- Recent Activity Lists (stacked) -->
     <v-card variant="flat" class="activity-card smooth-border pa-4 mb-4">
       <div class="text-caption text-medium-emphasis mb-2">Recently Completed Projects</div>
-      <RecentProjectsList :projects="dashboardData.recent_projects" />
+      <RecentProjectsList :projects="dashboardData.recent_projects" @review-project="openProjectReview" />
     </v-card>
 
     <v-card variant="flat" class="activity-card smooth-border pa-4 mb-4">
       <div class="text-caption text-medium-emphasis mb-2">Recent 360 Memories</div>
-      <RecentMemoriesList :memories="dashboardData.recent_memories" />
+      <RecentMemoriesList :memories="dashboardData.recent_memories" @review-project="openProjectReview" />
     </v-card>
 
     <v-card variant="flat" class="activity-card smooth-border pa-4">
@@ -186,6 +186,14 @@
       </v-list>
     </v-card>
 
+    <!-- Project Review Modal (opened from Recently Completed Projects) -->
+    <ProjectReviewModal
+      :show="showReviewModal"
+      :project-id="reviewProjectId"
+      :product-id="reviewProductId"
+      @close="showReviewModal = false; reviewProjectId = null; reviewProductId = null"
+    />
+
   </v-container>
 </template>
 
@@ -196,6 +204,7 @@ import ProductSelector from '@/components/dashboard/ProductSelector.vue'
 import DonutChart from '@/components/dashboard/DonutChart.vue'
 import RecentProjectsList from '@/components/dashboard/RecentProjectsList.vue'
 import RecentMemoriesList from '@/components/dashboard/RecentMemoriesList.vue'
+import ProjectReviewModal from '@/components/projects/ProjectReviewModal.vue'
 import { useRouter } from 'vue-router'
 import { useProductStore } from '@/stores/products'
 
@@ -222,6 +231,17 @@ const serverProtocol = computed(() => window.location.protocol === 'https:' ? 'h
 
 // Product selection
 const selectedProductId = ref(null)
+
+// Project Review Modal
+const showReviewModal = ref(false)
+const reviewProjectId = ref(null)
+const reviewProductId = ref(null)
+
+function openProjectReview(item) {
+  reviewProjectId.value = item.id || item.project_id
+  reviewProductId.value = item.product_id || null
+  if (reviewProjectId.value) showReviewModal.value = true
+}
 
 // Dashboard data from consolidated endpoint
 const dashboardData = ref({
