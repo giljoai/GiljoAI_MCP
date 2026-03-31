@@ -22,56 +22,74 @@
       </p>
     </div>
 
-    <!-- Tabs (connected to bordered content box below) -->
-    <v-btn-toggle
-      v-model="activeTab"
-      mandatory
-      variant="outlined"
-      divided
-      rounded="t-lg"
-      color="primary"
-      class="tabs-toggle"
-    >
-      <v-btn value="launch" data-testid="launch-tab">
-        <v-icon start size="20">mdi-rocket-launch</v-icon>
-        STAGING
-      </v-btn>
-      <v-btn value="jobs" data-testid="jobs-tab">
-        <v-icon start size="20">mdi-code-braces</v-icon>
-        IMPLEMENTATION
-      </v-btn>
-    </v-btn-toggle>
+    <!-- Tab Pills -->
+    <div class="tab-pills">
+      <button
+        class="pill-btn"
+        :class="{ active: activeTab === 'launch' }"
+        data-testid="launch-tab"
+        @click="activeTab = 'launch'"
+      >
+        <v-icon size="18">mdi-rocket-launch-outline</v-icon>
+        Staging
+      </button>
+      <button
+        class="pill-btn"
+        :class="{ active: activeTab === 'jobs' }"
+        data-testid="jobs-tab"
+        @click="activeTab = 'jobs'"
+      >
+        <v-icon size="18">mdi-code-braces</v-icon>
+        Implementation
+      </button>
+    </div>
 
     <!-- Bordered Content Box (tabs connect to this) -->
     <div class="bordered-tabs-content">
-      <!-- Execution Mode Radio (above buttons) - only show on Launch tab -->
+      <!-- Execution Mode Pills (above buttons) - only show on Launch tab -->
       <div v-if="activeTab === 'launch'" class="execution-mode-row">
-        <div class="execution-mode-radio" :class="{ 'mode-locked': isExecutionModeLocked }">
+        <div class="execution-mode-pills" :class="{ 'mode-locked': isExecutionModeLocked }">
           <span class="mode-label">Execution Mode:</span>
-          <v-radio-group
-            v-model="executionPlatform"
-            inline
-            hide-details
-            density="compact"
-            :disabled="isExecutionModeLocked"
-            class="mode-radios"
-            @update:model-value="handleExecutionModeChange"
-          >
-            <v-radio value="multi_terminal" label="Multi-Terminal" data-testid="radio-multi-terminal" />
-            <v-radio value="claude_code_cli" label="Subagent: Claude" data-testid="radio-claude-cli" />
-            <v-radio value="codex_cli" data-testid="radio-codex-cli">
-              <template #label>
-                <span>Subagent: Codex</span>
-                <v-icon size="x-small" color="warning" class="ml-1" title="Experimental — limited testing">mdi-alert</v-icon>
-              </template>
-            </v-radio>
-            <v-radio value="gemini_cli" data-testid="radio-gemini-cli">
-              <template #label>
-                <span>Subagent: Gemini</span>
-                <v-icon size="x-small" color="warning" class="ml-1" title="Experimental — limited testing">mdi-alert</v-icon>
-              </template>
-            </v-radio>
-          </v-radio-group>
+          <div class="mode-pill-group">
+            <button
+              class="pill-btn pill-sm"
+              :class="{ active: executionPlatform === 'multi_terminal' }"
+              :disabled="isExecutionModeLocked"
+              data-testid="radio-multi-terminal"
+              @click="!isExecutionModeLocked && handleExecutionModeChange('multi_terminal')"
+            >
+              Multi-Terminal
+            </button>
+            <button
+              class="pill-btn pill-sm"
+              :class="{ active: executionPlatform === 'claude_code_cli' }"
+              :disabled="isExecutionModeLocked"
+              data-testid="radio-claude-cli"
+              @click="!isExecutionModeLocked && handleExecutionModeChange('claude_code_cli')"
+            >
+              Subagent: Claude
+            </button>
+            <button
+              class="pill-btn pill-sm"
+              :class="{ active: executionPlatform === 'codex_cli' }"
+              :disabled="isExecutionModeLocked"
+              data-testid="radio-codex-cli"
+              @click="!isExecutionModeLocked && handleExecutionModeChange('codex_cli')"
+            >
+              Subagent: Codex
+              <v-icon size="x-small" color="warning" class="ml-1" title="Experimental — limited testing">mdi-alert</v-icon>
+            </button>
+            <button
+              class="pill-btn pill-sm"
+              :class="{ active: executionPlatform === 'gemini_cli' }"
+              :disabled="isExecutionModeLocked"
+              data-testid="radio-gemini-cli"
+              @click="!isExecutionModeLocked && handleExecutionModeChange('gemini_cli')"
+            >
+              Subagent: Gemini
+              <v-icon size="x-small" color="warning" class="ml-1" title="Experimental — limited testing">mdi-alert</v-icon>
+            </button>
+          </div>
           <v-tooltip location="bottom">
             <template v-slot:activator="{ props: tooltipProps }">
               <v-icon v-bind="tooltipProps" size="small" class="help-icon" aria-label="Execution mode help">mdi-help-circle-outline</v-icon>
@@ -626,6 +644,9 @@ async function copyPromptToClipboard(text) {
  * Handle execution mode change from radio buttons (Handover 0428)
  */
 async function handleExecutionModeChange(newValue) {
+  const previousValue = executionPlatform.value
+  executionPlatform.value = newValue
+
   const _modeLabels = {
     multi_terminal: 'Multi-Terminal mode enabled',
     claude_code_cli: 'Claude Code CLI selected',
@@ -647,7 +668,7 @@ async function handleExecutionModeChange(newValue) {
     })
   } catch (error) {
     // Revert on failure
-    executionPlatform.value = executionMode.value || null
+    executionPlatform.value = previousValue
     console.error('Failed to update execution mode:', error)
     showToast({
       message: 'Failed to save execution mode',
@@ -829,22 +850,61 @@ async function handleContinueWorking() {
   }
 }
 
-/* Tabs - connect to bordered content box */
-.tabs-toggle {
-  align-self: flex-start;
-  margin-bottom: -1px; /* Overlap border to connect visually */
-  position: relative;
-  z-index: 1;
+/* Tab Pills */
+.tab-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
-/* Bordered content box - tabs connect to top */
+/* Shared pill button style */
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  color: #8895a8;
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.15);
+
+  &:hover:not(:disabled) {
+    color: #a3aac4;
+    box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.25);
+  }
+
+  &.active {
+    background: rgba(255, 195, 0, 0.12);
+    color: #ffc300;
+    box-shadow: none;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.pill-sm {
+  padding: 5px 14px;
+  font-size: 0.73rem;
+}
+
+/* Bordered content box */
 .bordered-tabs-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   border: none !important;
   box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: 0 8px 8px 8px; /* No top-left radius where tabs connect */
+  border-radius: 8px;
   background: rgb(var(--v-theme-surface));
   overflow: hidden;
 }
@@ -915,8 +975,8 @@ async function handleContinueWorking() {
   padding: 0 16px 12px 16px;
 }
 
-/* Execution mode radio buttons */
-.execution-mode-radio {
+/* Execution mode pills */
+.execution-mode-pills {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -929,22 +989,14 @@ async function handleContinueWorking() {
     font-weight: 500;
     color: white;
     font-size: 14px;
+    margin-right: 4px;
   }
 
-  .mode-radios {
-    :deep(.v-selection-control-group) {
-      gap: 16px;
-    }
-
-    :deep(.v-label) {
-      font-size: 14px;
-      color: rgba(var(--v-theme-on-surface), 0.7);
-    }
-
-    :deep(.v-selection-control--dirty .v-label) {
-      color: rgb(var(--v-theme-primary));
-      font-weight: 500;
-    }
+  .mode-pill-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
   }
 
   .help-icon {
