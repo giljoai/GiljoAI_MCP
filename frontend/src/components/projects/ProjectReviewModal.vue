@@ -14,6 +14,16 @@
       <v-card-title id="review-modal-title" class="d-flex align-center">
         <v-icon icon="mdi-eye" class="mr-2" />
         <span>Project Review: <span class="review-project-name">{{ projectData?.name }}</span></span>
+        <v-chip
+          v-if="projectData?.status"
+          :color="statusColor"
+          :style="statusTextStyle"
+          variant="flat"
+          size="x-small"
+          class="ml-3"
+        >
+          {{ projectData.status }}
+        </v-chip>
         <v-spacer />
         <v-btn icon="mdi-close" variant="text" aria-label="Close dialog" @click="$emit('close')" />
       </v-card-title>

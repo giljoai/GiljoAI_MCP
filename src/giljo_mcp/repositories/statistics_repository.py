@@ -992,6 +992,7 @@ class StatisticsRepository:
         """
         stmt = (
             select(
+                ProductMemoryEntry.project_id,
                 ProductMemoryEntry.project_name,
                 ProductMemoryEntry.summary,
                 ProductMemoryEntry.timestamp,
@@ -1010,6 +1011,7 @@ class StatisticsRepository:
         result = await session.execute(stmt)
         return [
             {
+                "project_id": str(row.project_id) if row.project_id else None,
                 "project_name": row.project_name,
                 "summary": (row.summary[:200] if row.summary else None),
                 "timestamp": row.timestamp.isoformat() if row.timestamp else None,
