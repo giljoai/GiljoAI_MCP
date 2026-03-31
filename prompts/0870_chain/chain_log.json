@@ -665,9 +665,9 @@
       "title": "Landing Page Harmonization",
       "handover": "handovers/0870_design_system_harmonization.md#0870p",
       "color": "#F44336",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31T04:35:00Z",
+      "completed_at": "2026-03-31T04:40:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "Update giljoai-mcp-landing/index.html — Luminous Pastels, accessible text",
@@ -675,14 +675,22 @@
         "Update assets if agent-colored",
         "Verify brand consistency with app"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Scanned giljoai-mcp-landing/index.html — no hardcoded agent hex values found (agents referenced by name/description, not by color hex). No color changes needed.",
+        "Scanned getting-started.html — no agent color references found.",
+        "Scanned assets/ folder — SVG logos use brand yellow (#ffc300) and face colors, not agent role colors. No changes needed.",
+        "Brand consistency verified: landing page uses #ffc300 brand yellow, #0e1c2d navy backgrounds, #e1e1e1 text — all consistent with app."
+      ],
+      "deviations": [
+        "Landing page does not reference agent hex colors anywhere — agents are described by name and role, not by color. 0870p was effectively a no-op verification pass.",
+        "Landing page repo is not a git repository — no commit was made. Changes (if any were needed) would need manual deployment."
+      ],
       "blockers_encountered": [],
       "notes_for_next": null,
       "cascading_impacts": [],
-      "summary": null
+      "summary": "Landing page verified — no agent hex colors present in any HTML or asset files. Brand colors (#ffc300, #0e1c2d, #e1e1e1) are consistent with app. No changes needed. 0870p was a verification-only pass."
     }
   ],
-  "chain_summary": null,
-  "final_status": "pending"
+  "chain_summary": "0870 Design System Harmonization COMPLETE. 16 sessions executed (0870a-p). Luminous Pastels agent colors deployed across all 5 SCSS files, 3 JS config files, 89 Vue components, 6 documentation files, and landing page verified. WCAG AA text accessibility fix applied (--text-muted #5a6a80 → #8895a8). Tinted badge style (rgba 0.15 bg + bright text, square border-radius 8px) replaces solid round avatars application-wide. Stat pills with inline micro-bars replace donut charts on dashboard. hexToRgba utility extracted to shared @/utils/colorUtils.js. All 1893 tests pass throughout. Zero stale agent hex values remain in active codebase (verified via grep). CLAUDE.md and BRANDING_GUIDE.md updated as authoritative references.",
+  "final_status": "complete"
 }
