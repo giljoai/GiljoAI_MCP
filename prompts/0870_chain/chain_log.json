@@ -210,10 +210,10 @@
       "session_id": "0870f",
       "title": "Dashboard View Redesign",
       "handover": "handovers/0870_design_system_harmonization.md#0870f",
-      "color": "#FF9800",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "completed",
+      "started_at": "2026-03-31T01:15:00Z",
+      "completed_at": "2026-03-31T01:25:00Z",
       "agent_types": ["ux-designer", "frontend-tester"],
       "planned_tasks": [
         "Restructure DashboardView.vue — stat pills row, mini stats, projects panel, bottom grid (360 memories + git commits)",
@@ -222,12 +222,28 @@
         "Update RecentMemoriesList.vue — tinted type tags",
         "Reference mockup: frontend/mock/dashboard-enhanced.html"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "DashboardView.vue: complete restructure — removed donut chart section, replaced with 3-column stat pills row (status distribution, taxonomy, agent roles) each with big number + stacked micro-bar + micro-legend. Added 6-column mini stats row (active, tasks, API calls, MCP calls, exec auto, exec supervised). Projects panel is now full-width with panel-header pattern. Bottom 2-column grid: 360 memories (left) with brain icon + tinted type tags, git commits (right) with SHA + message. Added header with product label and clock. Responsive breakpoints at 1100px, 960px, 600px.",
+        "RecentProjectsList.vue: replaced v-list with custom project-row divs — taxonomy shown as tinted badge (rgba 0.15 bg + bright text), project name with ellipsis, mono timestamp, pill-shaped status chips with semantic colors (active=white, completed=green, cancelled=yellow, terminated=pink). Hover state with negative margin expansion.",
+        "RecentMemoriesList.vue: replaced v-list with custom memory-row divs — brain icon in yellow-tinted square, 2-line clamped summary text, mono meta line (project · product · relative time), tinted type tags mapped to agent colors (closeout=implementer blue, completion=documenter green, handover=reviewer purple, archived=analyzer coral). Dialog retained with updated tinted type badge.",
+        "DonutChart.vue import removed from DashboardView — component still exists but is no longer used anywhere. Can be safely deleted in a cleanup pass.",
+        "Accessible text colors used throughout: --text-muted #8895a8 for labels/timestamps, --text-secondary #a3aac4 for legends/subtitles.",
+        "npm run lint: 0 errors, 7 pre-existing warnings (unchanged). npm run test: 96 files, 1893 tests pass, 0 failures."
+      ],
+      "deviations": [
+        "DonutChart.vue was not deleted — it was only removed from import. The file remains in case future cleanup wants a formal deprecation or in case another view references it. Grep confirms no other .vue file imports it.",
+        "The mockup's 'projects' panel shows project IDs (FE-0020, BE-0025) which don't exist in the current data model. RecentProjectsList uses taxonomy_alias as the leading badge instead, which maps to the existing API response structure.",
+        "Mini stats 'Exec: Auto' aggregates all autonomous execution modes (multi_terminal + claude_code_cli + codex_cli + gemini_cli) rather than showing them individually, since the mockup shows only 6 slots and the old dashboard had 4 separate execution mode cards."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870g: DonutChart.vue is now orphaned — no component imports it. It can be deleted when convenient or left for a cleanup session. The chart.js dependency (vue-chartjs, chart.js) may also become removable if no other component uses it — check before removing. ProductSelector.vue was not modified (verified clean, uses Vuetify semantic colors). The dashboard now uses CSS custom properties var(--text-muted) and var(--text-secondary) extensively — these were set up in 0870a. The stat pill pattern is pure CSS with inline styles for segment colors, no chart library needed.",
+      "cascading_impacts": [
+        "DonutChart.vue is no longer imported — chart.js dependency may be removable if unused elsewhere",
+        "RecentProjectsList.vue no longer uses v-list or v-chip — consumers expecting Vuetify list-item classes will need adjustment",
+        "RecentMemoriesList.vue no longer uses v-list for the main list — dialog still uses Vuetify v-dialog/v-card",
+        "Dashboard layout is now fully custom CSS grid — no longer depends on Vuetify v-row/v-col for the main content area (banners still use v-container)"
+      ],
+      "summary": "Replaced donut charts with stat pill + micro-bar pattern. New layout: 3 stat pills → 6 mini stat counters → full-width projects panel → 2-column bottom grid (360 memories + git commits). Updated RecentProjectsList with tinted taxonomy badges and status pill chips. Updated RecentMemoriesList with brain icon, tinted type tags mapped to agent colors, and compact row layout. 3 files changed, all 1893 tests pass."
     },
     {
       "session_id": "0870g",
