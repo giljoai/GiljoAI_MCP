@@ -106,7 +106,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useStalenessMonitor } from '@/composables/useStalenessMonitor'
 import api from '@/services/api'
-import { hexToRgba } from '@/utils/colorUtils'
+import { hexToRgba, getAgentBadgeStyle } from '@/utils/colorUtils'
 import StatusChip from '@/components/StatusBoard/StatusChip.vue'
 import ActionIcons from '@/components/StatusBoard/ActionIcons.vue'
 /**
@@ -151,17 +151,6 @@ const {
   getAgentAbbreviation,
 } = useAgentData(computed(() => props.agents))
 
-/**
- * 0870j: Tinted square badge style for agent
- */
-function getAgentBadgeStyle(displayName) {
-  const colorObj = getAgentDisplayNameColor(displayName)
-  const hex = colorObj?.hex || '#8895a8'
-  return {
-    background: hexToRgba(hex, 0.15),
-    color: hex,
-  }
-}
 
 // Handover 0230: Clipboard functionality
 const { copy } = useClipboard()

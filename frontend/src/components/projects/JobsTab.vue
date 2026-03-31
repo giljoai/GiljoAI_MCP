@@ -369,7 +369,7 @@ import { useWebSocketStore } from '@/stores/websocket'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { getStatusLabel, getStatusColor, isStatusItalic } from '@/utils/statusConfig'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
-import { hexToRgba } from '@/utils/colorUtils'
+import { hexToRgba, getAgentBadgeStyle } from '@/utils/colorUtils'
 import { shouldShowLaunchAction } from '@/utils/actionConfig'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import AgentJobModal from '@/components/projects/AgentJobModal.vue'
@@ -593,19 +593,6 @@ onUnmounted(() => {
  */
 function getAgentColor(displayName) {
   return getAgentColorConfig(displayName).hex
-}
-
-// hexToRgba imported from @/utils/colorUtils
-
-/**
- * 0870j: Tinted square badge style for agent
- */
-function getAgentBadgeStyle(displayName) {
-  const hex = getAgentColor(displayName)
-  return {
-    background: hexToRgba(hex, 0.15),
-    color: hex,
-  }
 }
 
 /**

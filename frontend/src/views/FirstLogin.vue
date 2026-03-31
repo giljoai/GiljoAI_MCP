@@ -15,7 +15,7 @@
                 class="mb-3"
               />
               <h1 class="text-h5 font-weight-bold">Complete Account Setup</h1>
-              <p class="text-body-2 first-login-text-muted mt-2">
+              <p class="text-body-2 text-muted-a11y mt-2">
                 Set your new password and recovery PIN
               </p>
             </div>
@@ -157,7 +157,7 @@
                 <v-icon class="mr-2">mdi-shield-key</v-icon>
                 Recovery PIN Setup
               </h3>
-              <p class="text-caption first-login-text-muted mb-4">
+              <p class="text-caption text-muted-a11y mb-4">
                 Create a 4-digit PIN for password recovery. This PIN can be used if you forget your
                 password.
               </p>
@@ -394,11 +394,6 @@ async function handleSubmit() {
 /* Dark theme adjustments */
 :deep(.v-theme--dark) .first-login-container {
   background: linear-gradient(135deg, rgb(18, 29, 42) 0%, rgb(10, 15, 22) 100%);
-}
-
-/* Accessible text colors */
-.first-login-text-muted {
-  color: #8895a8 !important;
 }
 
 /* Accessibility: Focus indicators */

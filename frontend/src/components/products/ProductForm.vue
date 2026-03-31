@@ -49,7 +49,7 @@
             <v-progress-circular indeterminate size="16" width="2" class="mr-2" />
             <span class="text-body-2">Waiting for AI analysis... Paste the prompt in your coding tool.</span>
           </div>
-          <div v-if="analysisHintVisible" class="text-caption form-text-muted mt-2">
+          <div v-if="analysisHintVisible" class="text-caption text-muted-a11y mt-2">
             Taking too long? Switch to "Manually define product" to continue.
           </div>
         </v-alert>
@@ -75,7 +75,7 @@
 
               <!-- Vision Documents Section -->
               <div class="text-subtitle-2 mt-2 mb-1">Vision Documents</div>
-              <div class="text-caption form-text-muted mb-4">
+              <div class="text-caption text-muted-a11y mb-4">
                 Optionally included as context source by orchestrator.
                 <v-chip size="x-small" color="success" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
               </div>
@@ -231,7 +231,7 @@
                   Your AI coding agent will read the document and populate your product configuration fields
                   (tech stack, architecture, testing, etc.) plus generate improved summaries.
                 </div>
-                <div class="text-caption form-text-muted mt-1 text-center">
+                <div class="text-caption text-muted-a11y mt-1 text-center">
                   Uses your AI coding agent (Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool).
                 </div>
               </v-alert>
@@ -412,7 +412,7 @@
               <!-- Target Platform(s) - Handover 0425 Phase 2 -->
               <div class="mb-4">
                 <label class="text-subtitle-2 mb-2 d-block">Target Platform(s)</label>
-                <div class="text-caption form-text-muted mb-3">
+                <div class="text-caption text-muted-a11y mb-3">
                   Select the operating systems this product is designed for
                 </div>
 
@@ -629,7 +629,7 @@
 
               <!-- Coverage Target Slider -->
               <div class="mb-4">
-                <label class="text-caption form-text-muted">
+                <label class="text-caption text-muted-a11y">
                   Test Coverage Target: {{ productForm.testConfig.coverage_target }}%
                 </label>
                 <v-slider
@@ -1120,10 +1120,6 @@ onUnmounted(() => {
   border-radius: 0 8px 8px 8px;
   padding: 16px;
   background: rgb(var(--v-theme-surface));
-}
-
-.form-text-muted {
-  color: #8895a8 !important;
 }
 
 /* All tabs - transparent background by default, remove bottom border */

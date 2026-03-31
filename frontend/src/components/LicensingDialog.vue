@@ -17,7 +17,7 @@
           The <strong>Community Edition</strong> is licensed for single-user use.
           Multi-user deployments require a Commercial License from GiljoAI LLC.
         </p>
-        <p class="text-body-2 licensing-text-muted">
+        <p class="text-body-2 text-muted-a11y">
           Commercial Licenses may be obtained at no cost at GiljoAI LLC's discretion.
         </p>
 
@@ -85,7 +85,4 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.licensing-text-muted {
-  color: #8895a8;
-}
 </style>

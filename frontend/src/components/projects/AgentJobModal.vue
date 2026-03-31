@@ -17,7 +17,7 @@
 
       <!-- Agent Info -->
       <v-card-text v-if="displayAgent" class="pb-0">
-        <div class="text-caption job-text-muted">
+        <div class="text-caption text-muted-a11y">
           <div><strong>Agent ID:</strong> {{ displayAgent.agent_id }}</div>
           <div><strong>Job ID:</strong> {{ displayAgent.job_id }}</div>
           <div v-if="formattedCreatedAt"><strong>Created:</strong> {{ formattedCreatedAt }}</div>
@@ -42,7 +42,7 @@
                 <pre class="mission-text">{{ displayAgent.mission || 'No mission assigned yet.' }}</pre>
               </v-card>
             </div>
-            <div v-else class="text-center py-4 job-text-muted">
+            <div v-else class="text-center py-4 text-muted-a11y">
               No agent selected
             </div>
           </v-window-item>
@@ -51,7 +51,7 @@
           <v-window-item value="plan">
             <div v-if="todoItems.length === 0" class="empty-state pa-4 text-center">
               <v-icon icon="mdi-checkbox-blank-outline" size="32" class="mb-2" />
-              <div class="text-body-2 job-text-muted">
+              <div class="text-body-2 text-muted-a11y">
                 No tasks reported yet
               </div>
             </div>
@@ -89,7 +89,7 @@
 <script setup>
 import { computed, ref, toRaw, watch } from 'vue'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
-import { hexToRgba } from '@/utils/colorUtils'
+import { hexToRgba, getAgentBadgeStyle } from '@/utils/colorUtils'
 
 // Props
 const props = defineProps({
@@ -192,14 +192,6 @@ function getStatusColor(status) {
   }
 }
 
-// Agent badge helpers
-function getAgentBadgeStyle(displayName) {
-  const hex = getAgentColorConfig(displayName).hex
-  return {
-    backgroundColor: hexToRgba(hex, 0.15),
-    color: hex,
-  }
-}
 
 function getAgentAbbr(agentName) {
   if (!agentName) return '?'
@@ -223,10 +215,6 @@ function getAgentAbbr(agentName) {
   font-size: 12px;
   font-weight: 700;
   flex-shrink: 0;
-}
-
-.job-text-muted {
-  color: #8895a8;
 }
 
 .mission-section {
