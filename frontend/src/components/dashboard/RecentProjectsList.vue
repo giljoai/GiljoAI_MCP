@@ -12,7 +12,8 @@
       <v-list-item
         v-for="project in projects"
         :key="project.id"
-        class="px-2 py-1 project-row"
+        class="px-2 py-1 project-row clickable-row"
+        @click="goToProject(project.id)"
       >
         <template v-slot:prepend>
           <!-- project_type_color fallback: design-token-exempt (Vuetify color prop, $color-text-muted) -->
@@ -43,8 +44,10 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router'
 import { useFormatDate } from '@/composables/useFormatDate'
 
+const router = useRouter()
 const { formatDateTime } = useFormatDate()
 
 defineProps({
@@ -53,6 +56,10 @@ defineProps({
     default: () => [],
   },
 })
+
+function goToProject(projectId) {
+  if (projectId) router.push(`/projects/${projectId}`)
+}
 
 </script>
 
@@ -82,5 +89,13 @@ defineProps({
 
 .completion-date {
   white-space: nowrap;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 </style>
