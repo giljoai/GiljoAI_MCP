@@ -2,7 +2,56 @@
 
 **Purpose:** Forward-looking planning document for post-launch work, including the CE/SaaS branch split and feature development.
 **Replaces:** PRIORITY_ORDER.md served as the launch checklist (now complete). This document is the active planning reference.
-**Last Updated:** 2026-03-28
+**Last Updated:** 2026-03-30
+
+---
+
+## Proposed Execution Order
+
+Prioritized sequence for remaining handovers and quick wins. Tier 1 items are standalone with no dependencies and can each be completed in a single session.
+
+### Tier 1: Quick Wins (1-3 hours each)
+
+| Order | ID | Title | Effort | Rationale |
+|-------|-----|-------|--------|-----------|
+| 1 | 0841 | Slash Command Optimization (`/gil_add`) | 1-2 hrs | Standalone refactor, 343→40 lines, no dependencies |
+| 2 | 0277 | Design Token Standardization (Radius & Shadow) | 1-2 hrs | ~15 CSS-only file edits, no backend risk |
+| 3 | 0847 | Tool-Aware Orchestrator Protocol | 2-3 hrs | High priority, self-contained protocol/config changes |
+| 4 | — | Housekeeping (move ref docs, archive PRIORITY_ORDER.md) | 30 min | Zero risk, declutters handovers folder |
+
+### Tier 2: 0842 Series Closure (merge-blocking)
+
+Complete in this order — 0842L must be last as it audits the full branch.
+
+| Order | ID | Title | Effort | Notes |
+|-------|-----|-------|--------|-------|
+| 5 | 0842h | Frontend Tests (Tuning/Vision) | 2-3 hrs | 11 Vitest tests, no feature code |
+| 6 | 0842g | Per-Document AI Summary Badges | 2-3 hrs | Small UI + API extension |
+| 7 | 0842L | Post-Implementation Audit & Cleanup | 3-4 hrs | Final gate before 0842 branch merges to master |
+
+### Tier 3: Pre-Launch (required before public repo)
+
+| Order | ID | Title | Effort | Notes |
+|-------|-----|-------|--------|-------|
+| 8 | CE Credential Scrub | Remove hardcoded secrets from code + git history | 4-6 hrs | Blocking for public repo |
+| 9 | Phase 0 | Branch cleanup, rename master→main, SaaS audit | 2-3 hrs | Prerequisite for CE/SaaS split |
+
+### Tier 4: Medium Features (post-launch)
+
+| Order | ID | Title | Effort | Notes |
+|-------|-----|-------|--------|-------|
+| 10 | 0844a→b→c | Tenant Data Export/Import | 4-8 hrs | Sequential chain with manual gates between phases |
+| 11 | 1014 | Security Event Auditing | 8 hrs | Deferred to `saas` branch, enterprise/compliance |
+
+### Quick Wins from Post-CE Wishlist
+
+Small items that can be slotted in between larger work.
+
+| Item | Effort | Why Easy |
+|------|--------|----------|
+| Model Selection in Template Manager | Small | DB field already exists, needs UI dropdown only |
+| Dashboard Scope Selector | Small | Per-product/project filtering, straightforward Pinia + API filter |
+| Mission Launch Summary | Small | Preview panel before execution, UX polish only |
 
 ---
 

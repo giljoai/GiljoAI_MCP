@@ -95,6 +95,7 @@ class ToolAccessor:
         product_id: str | None = None,
         tenant_key: str | None = None,
         project_type: str | None = None,
+        series_number: int | None = None,
     ) -> dict[str, Any]:
         """
         Create a new project bound to the active product.
@@ -161,6 +162,7 @@ class ToolAccessor:
             tenant_key=effective_tenant_key,
             status="inactive",
             project_type_id=project_type_id,
+            series_number=series_number,
         )
 
         logger.info(
