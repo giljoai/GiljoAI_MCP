@@ -280,7 +280,7 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
       if (styleMatch) {
         const styleContent = styleMatch[1]
         const hexMatches = styleContent.match(/#[0-9a-f]{6}|#[0-9a-f]{3}/gi) || []
-        const hardcodedHexes = hexMatches.filter((hex) => hex.toLowerCase() !== '#d4a574')
+        const hardcodedHexes = hexMatches.filter((hex) => hex.toLowerCase() !== '#d4b08a')
         expect(hardcodedHexes.length).toBe(0)
       }
     })
