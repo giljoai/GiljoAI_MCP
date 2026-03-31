@@ -38,16 +38,24 @@
             />
 
             <!-- Message Composer -->
-            <v-tabs v-model="activeTab" class="mb-4">
-              <v-tab value="edit">
-                <v-icon icon="mdi-pencil" start />
+            <div class="tab-pills mb-4">
+              <button
+                class="pill-btn"
+                :class="{ active: activeTab === 'edit' }"
+                @click="activeTab = 'edit'"
+              >
+                <v-icon size="18">mdi-pencil</v-icon>
                 Edit
-              </v-tab>
-              <v-tab value="preview">
-                <v-icon icon="mdi-eye" start />
+              </button>
+              <button
+                class="pill-btn"
+                :class="{ active: activeTab === 'preview' }"
+                @click="activeTab = 'preview'"
+              >
+                <v-icon size="18">mdi-eye</v-icon>
                 Preview
-              </v-tab>
-            </v-tabs>
+              </button>
+            </div>
 
             <v-window v-model="activeTab">
               <v-window-item value="edit">
@@ -471,6 +479,39 @@ onMounted(() => {
 .broadcast-panel-card {
   background: var(--bg-raised, #1a2a3c);
   border-radius: 16px;
+}
+
+.tab-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  color: #8895a8;
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.15);
+}
+
+.pill-btn:hover {
+  color: #a3aac4;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.25);
+}
+
+.pill-btn.active {
+  background: rgba(255, 195, 0, 0.12);
+  color: #ffc300;
+  box-shadow: none;
 }
 
 .recipient-chip {
