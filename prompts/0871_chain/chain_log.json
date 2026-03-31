@@ -1,0 +1,193 @@
+{
+  "chain_id": "0871",
+  "chain_name": "Design System Remediation & Polish",
+  "created_at": "2026-03-31",
+  "spec_document": "handovers/0871_design_remediation_polish.md",
+  "branch": "feature/0870-design-harmonization",
+  "total_sessions": 8,
+  "orchestrator_notes": "Agents: Read this file BEFORE starting. If orchestrator_directives contains STOP, halt immediately. This series fixes gaps from the 0870 audit. Key patterns: use TintedChip.vue and TintedBadge.vue (created in 0871a) instead of inline tinted markup. Use getAgentBadgeStyle() from @/utils/colorUtils instead of local functions. Use global .text-muted-a11y class instead of scoped *-text-muted classes. Pill-button style: border-radius 9999px, padding 8px 18px, active = rgba(255,195,0,0.12) bg + #ffc300 text, inactive = transparent + #8895a8 + smooth-border.",
+  "orchestrator_directives": [],
+  "sessions": [
+    {
+      "session_id": "0871a",
+      "title": "Shared Component Extraction",
+      "handover": "handovers/0871_design_remediation_polish.md#0871a",
+      "color": "#4CAF50",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["ux-designer", "tdd-implementor"],
+      "planned_tasks": [
+        "Create TintedChip.vue (props: color, label, size, pill)",
+        "Create TintedBadge.vue (props: color, label, size)",
+        "Add getAgentBadgeStyle() to @/utils/colorUtils.js",
+        "Remove duplicate getAgentBadgeStyle from ~9 files, import from shared utility",
+        "Add global .text-muted-a11y class to main.scss",
+        "Refactor ~20 scoped *-text-muted classes to use global class",
+        "Add unit tests for TintedChip and TintedBadge",
+        "Run full test suite"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0871b",
+      "title": "Tab-to-Pill: User Settings & Admin Settings",
+      "handover": "handovers/0871_design_remediation_polish.md#0871b",
+      "color": "#2196F3",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["ux-designer"],
+      "planned_tasks": [
+        "UserSettings.vue — replace v-tabs with pill-button row (6 pills: Startup, Notifications, Agents, Context, API Keys, Integrations)",
+        "SystemSettings.vue — replace v-tabs with pill-button row (5 pills: Identity, Network, Database, Security, Prompts)",
+        "Pill style: border-radius 9999px, active=tinted yellow, inactive=transparent+muted+smooth-border",
+        "Run existing tests"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0871c",
+      "title": "Tab-to-Pill: Jobs & Messages",
+      "handover": "handovers/0871_design_remediation_polish.md#0871c",
+      "color": "#2196F3",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["ux-designer"],
+      "planned_tasks": [
+        "ProjectTabs.vue — replace Staging/Implementation v-tabs with pill buttons (icons: rocket + code-braces)",
+        "ProjectTabs.vue — restyle execution mode radio group to pill-button pattern",
+        "MessagesView.vue — replace Message Timeline/Send Broadcast v-tabs with pill buttons",
+        "Run existing tests"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0871d",
+      "title": "Home Page Polish",
+      "handover": "handovers/0871_design_remediation_polish.md#0871d",
+      "color": "#FF9800",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["ux-designer"],
+      "planned_tasks": [
+        "WelcomeView.vue — add mascot glow (drop-shadow yellow+green, radial gradient, float animation)",
+        "Fix quick-launch cards: CSS border → smooth-border class",
+        "Fix team cards: CSS border → smooth-border class",
+        "Reference mockup: frontend/mock/welcome-v3-colors.html"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0871e",
+      "title": "Smooth-Border Sweep & Card Polish",
+      "handover": "handovers/0871_design_remediation_polish.md#0871e",
+      "color": "#FF9800",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["ux-designer"],
+      "planned_tasks": [
+        "grep for remaining variant=outlined across all .vue files",
+        "grep for CSS border: on rounded elements in scoped styles",
+        "Convert all found to smooth-border class + variant=flat",
+        "Key targets: Products cards, Admin Settings tab cards, dialog inner cards, integration card elements"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0871f",
+      "title": "Integration Cards & Export Buttons",
+      "handover": "handovers/0871_design_remediation_polish.md#0871f",
+      "color": "#9C27B0",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["ux-designer"],
+      "planned_tasks": [
+        "Restyle Claude/Codex/Gemini export buttons to pill-button pattern",
+        "McpIntegrationCard — restyle CONFIGURATOR button",
+        "Verify Git + Serena integration cards smooth-border",
+        "Use text-muted-a11y for descriptions"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0871g",
+      "title": "Messages & Remaining View Polish",
+      "handover": "handovers/0871_design_remediation_polish.md#0871g",
+      "color": "#9C27B0",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["ux-designer"],
+      "planned_tasks": [
+        "Verify Messages sender badges are square tinted",
+        "Dashboard ProductSelector pills → tinted pill-button style",
+        "Any remaining view-level polish from audit"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0871h",
+      "title": "Design System Sample v2 Comprehensive Rewrite",
+      "handover": "handovers/0871_design_remediation_polish.md#0871h",
+      "color": "#F44336",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["ux-designer", "documentation-manager"],
+      "planned_tasks": [
+        "Comprehensive rewrite of design-system-sample-v2.html",
+        "Must cover: all colors with WCAG, tinted badges, tinted chips, pill buttons, buttons, inputs, stat pills, smooth-border, elevations, typography, nav icons, table patterns, card patterns, status chips, brand, accessibility",
+        "Keep v1 as historical reference",
+        "Update doc references"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    }
+  ],
+  "chain_summary": null,
+  "final_status": "pending"
+}

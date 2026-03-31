@@ -57,6 +57,15 @@
 | 0870n | Auth Pages & Setup Wizard | Not Started | Medium | Login, first-login, setup steps, error pages. ~10 files. |
 | 0870o | Documentation Update | Not Started | Medium | design-system-sample, CLAUDE.md, docs/, component READMEs, handover reference docs. 8-12 files. |
 | 0870p | Landing Page Harmonization | Not Started | Medium | giljoai-mcp-landing repo: index.html, getting-started.html, assets. Separate codebase. |
+| **0871** | **Design Remediation & Polish (Series)** | **Not Started** | **High** | 8 sub-handovers (0871a-h). Fixes 0870 audit gaps: tab-to-pill, smooth-border sweep, shared components, Home glow, integration restyling, design system sample rewrite. |
+| 0871a | Shared Component Extraction | Not Started | High | TintedChip, TintedBadge, shared getAgentBadgeStyle, global text-muted-a11y. ~15 files. |
+| 0871b | Tab-to-Pill: User & Admin Settings | Not Started | High | Replace v-tabs with pill toggles. 2 files. |
+| 0871c | Tab-to-Pill: Jobs & Messages | Not Started | High | ProjectTabs + MessagesView pill conversion. 2 files. |
+| 0871d | Home Page Polish | Not Started | Medium | Mascot glow, card borders. 1 file. |
+| 0871e | Smooth-Border Sweep | Not Started | Medium | Remaining outlined cards. 5-10 files. |
+| 0871f | Integration Cards & Export Buttons | Not Started | Medium | Pill-style export buttons, card polish. ~4 files. |
+| 0871g | Messages & Remaining Polish | Not Started | Medium | Sender badges, ProductSelector pills. ~5 files. |
+| 0871h | Design System Sample v2 Comprehensive | Not Started | Medium | Authoritative reference HTML. 1 file. |
 
 ### Deferred (Still in Root Folder)
 
