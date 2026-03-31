@@ -368,6 +368,7 @@ def _generate_agent_protocol(
     execution_mode: str = "multi_terminal",
     git_integration_enabled: bool = False,
     job_type: str = "agent",
+    tool: str = "claude-code",
 ) -> str:
     """
     Generate the 5-phase agent lifecycle protocol (Handover 0334, 0355, 0358b, 0359, 0378, 0392).
@@ -426,11 +427,13 @@ Before calling `complete_job()`, commit your work:
 
     gil_add_block = ""
     if execution_mode == "multi_terminal":
-        gil_add_block = """
+        # Handover 0841: Platform-aware command syntax in closeout signoff
+        gil_add_cmd = "$gil-add" if tool == "codex" else "/gil_add"
+        gil_add_block = f"""
 ### User Guidance (Multi-Terminal)
 After completing your work, tell the user:
 "My work is complete. If you discovered technical debt or follow-up work,
-tell me and I'll use /gil_add to save it to your dashboard."
+tell me and I'll use {gil_add_cmd} to save it to your dashboard."
 """
 
     # Conditional Phase 1 Step 4: scope TodoWrite to job_type

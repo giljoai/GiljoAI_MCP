@@ -677,6 +677,13 @@ class MissionService:
         # Generate 5-phase lifecycle protocol (Handover 0334, 0359, 0378 Bug 2, 0497d)
         project_exec_mode = getattr(project, "execution_mode", "multi_terminal") if project else "multi_terminal"
         git_enabled = get_config().get_nested("features.git_integration.enabled", default=False)
+        # Handover 0841: Derive platform tool for platform-aware signoff
+        _exec_mode_to_tool = {
+            "claude_code_cli": "claude-code",
+            "codex_cli": "codex",
+            "gemini_cli": "gemini",
+        }
+        agent_tool = _exec_mode_to_tool.get(project_exec_mode, "claude-code")
         full_protocol = _generate_agent_protocol(
             job_id=job_id,
             tenant_key=tenant_key,
@@ -685,6 +692,7 @@ class MissionService:
             execution_mode=project_exec_mode,
             git_integration_enabled=git_enabled,
             job_type=job.job_type,
+            tool=agent_tool,
         )
 
         # Handover 0731c: Typed return (MissionResponse)
