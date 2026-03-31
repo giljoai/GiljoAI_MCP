@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="isOpen" max-width="800" persistent>
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <!-- Header -->
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-information-outline</v-icon>
@@ -19,17 +19,23 @@
         <!-- Agent Info Section (non-orchestrator) -->
         <div v-if="!isOrchestrator" class="mb-4">
           <div class="d-flex align-center gap-2 mb-2">
-            <v-chip size="small" :color="getAgentDisplayNameColor(agent.agent_display_name)" label>
+            <span
+              class="agent-tinted-badge"
+              :style="{
+                backgroundColor: hexToRgba(getAgentDisplayNameColor(agent.agent_display_name), 0.15),
+                color: getAgentDisplayNameColor(agent.agent_display_name),
+              }"
+            >
               {{ agent.agent_display_name }}
-            </v-chip>
-            <span class="text-caption text-medium-emphasis">Agent ID: {{ agent.agent_id || agent.id || '—' }}</span>
+            </span>
+            <span class="text-caption details-text-muted">Agent ID: {{ agent.agent_id || agent.id || '—' }}</span>
           </div>
         </div>
 
         <!-- Loading State -->
         <div v-if="loading" class="text-center py-8">
           <v-progress-circular indeterminate color="primary"></v-progress-circular>
-          <div class="text-body-2 text-medium-emphasis mt-3">Loading...</div>
+          <div class="text-body-2 details-text-muted mt-3">Loading...</div>
         </div>
 
         <!-- Error State -->
@@ -41,14 +47,14 @@
 
         <!-- Template Preview (Regular Agents) — Handover 0814: simplified to match TemplateManager preview -->
         <div v-else-if="!isOrchestrator && previewContent">
-          <v-card variant="outlined" class="template-content-card">
+          <v-card variant="flat" class="template-content-card smooth-border">
             <pre class="template-content">{{ previewContent }}</pre>
           </v-card>
         </div>
 
         <!-- Orchestrator Prompt Content -->
         <div v-else-if="isOrchestrator && orchestratorPrompt">
-          <v-card variant="outlined" class="template-content-card">
+          <v-card variant="flat" class="template-content-card smooth-border">
             <pre class="template-content">{{ orchestratorPrompt }}</pre>
           </v-card>
         </div>
@@ -83,6 +89,7 @@
 import { ref, computed, watch, getCurrentInstance } from 'vue'
 import api from '@/services/api'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
+import { hexToRgba } from '@/utils/colorUtils'
 
 const props = defineProps({
   modelValue: {
@@ -242,5 +249,17 @@ watch(
 
 .gap-2 {
   gap: 8px;
+}
+
+.details-text-muted {
+  color: #8895a8;
+}
+
+.agent-tinted-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 </style>

@@ -1,11 +1,11 @@
 <template>
   <v-dialog v-model="isVisible" max-width="700" persistent>
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <!-- Header -->
       <v-card-title class="d-flex align-center">
-        <v-avatar :color="getAgentColor(displayAgent?.agent_name || displayAgent?.agent_display_name)" size="32" class="agent-avatar mr-2">
-          <span class="avatar-text">{{ getAgentAbbr(displayAgent?.agent_name || displayAgent?.agent_display_name) }}</span>
-        </v-avatar>
+        <div class="agent-tinted-badge mr-2" :style="getAgentBadgeStyle(displayAgent?.agent_name || displayAgent?.agent_display_name)">
+          {{ getAgentAbbr(displayAgent?.agent_name || displayAgent?.agent_display_name) }}
+        </div>
         <span style="text-transform: capitalize">{{ displayAgent?.agent_name || displayAgent?.agent_display_name }}</span>&nbsp;- Assigned Job
         <v-spacer></v-spacer>
         <v-btn icon variant="text" aria-label="Close" @click="handleClose">
@@ -17,7 +17,7 @@
 
       <!-- Agent Info -->
       <v-card-text v-if="displayAgent" class="pb-0">
-        <div class="text-caption text-medium-emphasis">
+        <div class="text-caption job-text-muted">
           <div><strong>Agent ID:</strong> {{ displayAgent.agent_id }}</div>
           <div><strong>Job ID:</strong> {{ displayAgent.job_id }}</div>
           <div v-if="formattedCreatedAt"><strong>Created:</strong> {{ formattedCreatedAt }}</div>
@@ -38,11 +38,11 @@
           <!-- Mission Tab -->
           <v-window-item value="mission">
             <div v-if="displayAgent" class="mission-section">
-              <v-card variant="outlined" class="pa-3">
+              <v-card variant="flat" class="pa-3 smooth-border">
                 <pre class="mission-text">{{ displayAgent.mission || 'No mission assigned yet.' }}</pre>
               </v-card>
             </div>
-            <div v-else class="text-center py-4 text-medium-emphasis">
+            <div v-else class="text-center py-4 job-text-muted">
               No agent selected
             </div>
           </v-window-item>
@@ -51,7 +51,7 @@
           <v-window-item value="plan">
             <div v-if="todoItems.length === 0" class="empty-state pa-4 text-center">
               <v-icon icon="mdi-checkbox-blank-outline" size="32" class="mb-2" />
-              <div class="text-body-2 text-medium-emphasis">
+              <div class="text-body-2 job-text-muted">
                 No tasks reported yet
               </div>
             </div>
@@ -89,6 +89,7 @@
 <script setup>
 import { computed, ref, toRaw, watch } from 'vue'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
+import { hexToRgba } from '@/utils/colorUtils'
 
 // Props
 const props = defineProps({
@@ -191,9 +192,13 @@ function getStatusColor(status) {
   }
 }
 
-// Agent avatar helpers - uses centralized agentColors config
-function getAgentColor(displayName) {
-  return getAgentColorConfig(displayName).hex
+// Agent badge helpers
+function getAgentBadgeStyle(displayName) {
+  const hex = getAgentColorConfig(displayName).hex
+  return {
+    backgroundColor: hexToRgba(hex, 0.15),
+    color: hex,
+  }
 }
 
 function getAgentAbbr(agentName) {
@@ -208,15 +213,20 @@ function getAgentAbbr(agentName) {
 </script>
 
 <style scoped>
-.agent-avatar {
-  border: none !important;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2);
+.agent-tinted-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
-.avatar-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: white;
+.job-text-muted {
+  color: #8895a8;
 }
 
 .mission-section {
