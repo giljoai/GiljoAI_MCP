@@ -184,14 +184,16 @@ describe('AgentJobModal', () => {
       })
     })
 
-    it('should return a color for agent name', () => {
-      const color = wrapper.vm.getAgentColor('test-agent')
-      expect(color).toMatch(/^#[0-9A-F]{6}$/i) // Valid hex color
+    it('should return a badge style for agent name', () => {
+      const style = wrapper.vm.getAgentBadgeStyle('test-agent')
+      expect(style).toHaveProperty('backgroundColor')
+      expect(style).toHaveProperty('color')
+      expect(style.color).toMatch(/^#[0-9A-F]{6}$/i) // Valid hex color
     })
 
-    it('should return default color for null agent name', () => {
-      const color = wrapper.vm.getAgentColor(null)
-      expect(color).toBe('#D4B08A')
+    it('should return default badge style for null agent name', () => {
+      const style = wrapper.vm.getAgentBadgeStyle(null)
+      expect(style.color).toBe('#D4B08A')
     })
 
     it('should return abbreviation for agent name', () => {

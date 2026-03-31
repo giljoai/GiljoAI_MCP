@@ -1,5 +1,5 @@
 <template>
-  <v-card variant="outlined" class="mb-4">
+  <v-card variant="flat" class="mb-4 smooth-border">
     <v-card-text>
       <div class="d-flex align-center mb-3">
         <v-icon size="28" class="mr-2" color="primary">mdi-export</v-icon>
@@ -13,7 +13,7 @@
       </div>
 
       <div class="mb-5">
-        <p class="text-body-2 text-medium-emphasis mb-4">
+        <p class="text-body-2 export-text-muted mb-4">
           Generate a setup prompt for your AI coding agents.
         </p>
 
@@ -53,7 +53,7 @@
             <div class="d-flex align-center text-light-blue" style="font-size: 0.8125rem;">
               <v-icon start size="small">mdi-download</v-icon>
               Manual Downloads
-              <span class="text-caption text-medium-emphasis ml-2">(advanced)</span>
+              <span class="text-caption export-text-muted ml-2">(advanced)</span>
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
@@ -226,6 +226,10 @@ async function downloadZip(contentType, platform) {
 </script>
 
 <style scoped>
+.export-text-muted {
+  color: #8895a8;
+}
+
 code {
   background-color: rgba(var(--v-theme-on-surface), 0.05);
   padding: 2px 6px;
