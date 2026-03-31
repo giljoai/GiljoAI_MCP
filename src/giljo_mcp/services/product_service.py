@@ -39,6 +39,7 @@ from src.giljo_mcp.exceptions import (
     ValidationError,
 )
 from src.giljo_mcp.models import Product, Project, Task, VisionDocument
+from src.giljo_mcp.models.agent_identity import AgentJob
 from src.giljo_mcp.models.products import ProductArchitecture, ProductTechStack, ProductTestConfig
 from src.giljo_mcp.schemas.jsonb_validators import validate_product_memory
 from src.giljo_mcp.schemas.service_responses import (
@@ -654,6 +655,16 @@ class ProductService:
                         .values(status="inactive", updated_at=datetime.now(timezone.utc))
                     )
                     await session.execute(project_deactivate_stmt)
+
+                    # Cascade: cancel active jobs under deactivated products
+                    project_ids_stmt = select(Project.id).where(Project.product_id.in_(deactivated_product_ids))
+                    job_cancel_stmt = (
+                        update(AgentJob)
+                        .where(AgentJob.project_id.in_(project_ids_stmt))
+                        .where(AgentJob.status == "active")
+                        .values(status="cancelled", updated_at=datetime.now(timezone.utc))
+                    )
+                    await session.execute(job_cancel_stmt)
                     await session.flush()
 
                     # Emit WebSocket event for bulk project deactivation
@@ -723,13 +734,32 @@ class ProductService:
                 product.is_active = False
                 product.updated_at = datetime.now(timezone.utc)
 
+                # Cascade: deactivate active projects under this product
+                project_deactivate_stmt = (
+                    update(Project)
+                    .where(Project.product_id == product_id)
+                    .where(Project.status == "active")
+                    .values(status="inactive", updated_at=datetime.now(timezone.utc))
+                )
+                await session.execute(project_deactivate_stmt)
+
+                # Cascade: cancel active jobs under this product's projects
+                project_ids_stmt = select(Project.id).where(Project.product_id == product_id)
+                job_cancel_stmt = (
+                    update(AgentJob)
+                    .where(AgentJob.project_id.in_(project_ids_stmt))
+                    .where(AgentJob.status == "active")
+                    .values(status="cancelled", updated_at=datetime.now(timezone.utc))
+                )
+                await session.execute(job_cancel_stmt)
+
                 await session.commit()
                 await session.refresh(
                     product,
                     attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
                 )
 
-                self._logger.info(f"Deactivated product {product_id}")
+                self._logger.info(f"Deactivated product {product_id} (cascaded to projects and jobs)")
 
                 # Handover 0731b: Return Product ORM model directly
                 return product
