@@ -13,9 +13,9 @@
       "title": "Design Token Update & SCSS Foundation",
       "handover": "handovers/0870_design_system_harmonization.md#0870a",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31T00:00:00Z",
+      "completed_at": "2026-03-31T00:00:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "Update 6 agent hex values in design-tokens.scss (old → Luminous Pastels)",
@@ -29,21 +29,38 @@
         "Audit all design-token-exempt comments for validity",
         "Run npm run lint to verify zero errors"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Updated 6 agent hex values in design-tokens.scss: orchestrator #d4a574→#d4b08a, analyzer #e74c3c→#e07872, implementor #3498db→#6db3e4, tester #ffc300→#edba4a, researcher #27ae60→#5ec48e, reviewer #9b59b6→#ac80cc",
+        "Added --text-muted: #8895a8, --text-secondary: #a3aac4, --border-subtle: rgba(255,255,255,0.10), --badge-text: #0e1c2d to main.scss :root",
+        "Updated --color-text-secondary from #8f97b7 to #a3aac4 in main.scss",
+        "Updated all 6 agent primary/dark/light values in agent-colors.scss CSS custom properties",
+        "Added --agent-*-tinted: rgba(color, 0.15) variants for all 6 agents plus implementer/documenter aliases",
+        "variables.scss: no agent color references found — no changes needed",
+        "global-tabs.scss: no agent color or affected token references — no changes needed",
+        "Audited design-token-exempt comments: all valid (JS runtime colors, Vuetify color props, chart colors in ProjectsView, DashboardView, SetupWizard, RecentProjectsList)",
+        "npm run lint: 0 errors, 7 pre-existing warnings (unchanged)"
+      ],
+      "deviations": [
+        "--text-muted and --border-subtle did not previously exist as CSS custom properties — they were added as new tokens rather than updated. The #5a6a80 old value was never in the SCSS; the spec referenced a conceptual target.",
+        "--tool-codex (#9b59b6) and --tool-gemini (#3498db) in agent-colors.scss match old agent hex values but are Launch Prompt Tool Colors, not agent colors — correctly left unchanged."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870b: agentColors.js still has old hex values (confirmed via grep). Test files (agentColors.claude-code.spec.js, useAgentData.spec.js, AgentJobModal.spec.js) will also need updates when JS values change. The SCSS foundation is complete — all CSS custom properties and SCSS variables now use Luminous Pastels. variables.scss $lightest-blue (#8f97b7) is a general palette color used for scrollbar hover, not an agent color — leave it.",
+      "cascading_impacts": [
+        "All Vue components using var(--agent-*-primary) CSS vars will automatically pick up new colors",
+        "Components using SCSS $color-agent-* variables will get new colors on rebuild",
+        "New --agent-*-tinted vars available for badge backgrounds in 0870d+"
+      ],
+      "summary": "Updated all SCSS design tokens and CSS custom properties to Luminous Pastels palette. 3 files changed: design-tokens.scss (6 agent hex values), agent-colors.scss (6×4 primary/dark/light/tinted values + aliases), main.scss (4 new CSS vars + 1 updated). Lint passes with 0 errors."
     },
     {
       "session_id": "0870b",
       "title": "agentColors.js + theme.js + statusConfig.js",
       "handover": "handovers/0870_design_system_harmonization.md#0870b",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31T00:19:00Z",
+      "completed_at": "2026-03-31T00:20:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "Update 6 hex values in AGENT_COLORS in agentColors.js",
@@ -53,33 +70,61 @@
         "Check GiljoFaceIcon.vue for hardcoded colors",
         "Run existing Vitest tests"
       ],
-      "tasks_completed": [],
+      "tasks_completed": [
+        "Updated 6 agent hex values in agentColors.js AGENT_COLORS: orchestrator #D4A574→#D4B08A, analyzer #E74C3C→#E07872, implementer #3498DB→#6DB3E4, documenter #27AE60→#5EC48E, reviewer #9B59B6→#AC80CC, tester #FFC300→#EDBA4A",
+        "Verified synonym mappings — all 17 synonyms resolve correctly via canonical lookup, no changes needed",
+        "Checked theme.js — no agent color references found, only general theme/brand colors — no changes needed",
+        "Verified statusConfig.js — contains only status colors (waiting/working/blocked/complete/silent/handed_over/decommissioned), no agent colors — no changes needed",
+        "Checked GiljoFaceIcon.vue — uses SVG file references (/icons/Giljo_YW_Face.svg, /icons/Giljo_Inactive_Dark.svg), no hardcoded colors — no changes needed",
+        "Updated test assertions in agentColors.claude-code.spec.js (12 hex value assertions updated to Luminous Pastels)",
+        "Updated test assertions in useAgentData.spec.js (7 hex value assertions updated to Luminous Pastels)",
+        "Updated test assertion in AgentJobModal.spec.js (1 hex value assertion: #D4A574→#D4B08A)",
+        "AgentJobModal.snapshot.spec.js — uses mocked getAgentColor, no hex assertions — no changes needed",
+        "npm run test: 96 test files passed, 1893 tests passed, 0 failures"
+      ],
       "deviations": [],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870c: All JS config files now use Luminous Pastels. The SCSS foundation (0870a) and JS config layer (0870b) are complete. Any component calling getAgentColor() or reading CSS custom properties will automatically get the new colors. design-system-sample-v2.html should reference these final values.",
+      "cascading_impacts": [
+        "All components using getAgentColor() now return Luminous Pastels hex values",
+        "Synonym mappings (17 aliases including Claude Code agent templates) resolve to updated canonical colors",
+        "Test suite fully green — no downstream test breakage from color changes"
+      ],
+      "summary": "Updated all 6 agent hex values in agentColors.js to Luminous Pastels. Verified theme.js (no agent colors), statusConfig.js (status colors unchanged), GiljoFaceIcon.vue (SVG references only). Updated hex assertions in 3 test files (20 assertions total). All 1893 tests pass."
     },
     {
       "session_id": "0870c",
       "title": "Design System Sample v2 Integration",
       "handover": "handovers/0870_design_system_harmonization.md#0870c",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31T00:30:00Z",
+      "completed_at": "2026-03-31T00:31:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "Replace design-system-sample.html with design-system-sample-v2.html content",
         "Verify all token values in sample match updated SCSS/JS from 0870a+b",
         "Delete design-system-sample-v2.html (merged into original)"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Verified all 6 agent Luminous Pastels hex values in v2 HTML match SCSS design-tokens ($color-agent-*), agentColors.js (AGENT_COLORS), and agent-colors.scss (--agent-*-primary/tinted)",
+        "Verified text hierarchy tokens: #e1e1e1 (primary), #a3aac4 (secondary), #8895a8 (muted) match main.scss CSS vars",
+        "Verified --border-subtle rgba(255,255,255,0.10), --badge-text #0e1c2d, elevation layers (#0e1c2d/#182739/#1e3147/#243b53) all match design-tokens.scss",
+        "Verified status colors unchanged: #67bd6d, #ffd700, #ffffff, #c6298c, #ff9800, #9e9e9e",
+        "Replaced design-system-sample.html with v2 content (Luminous Pastels palette, tinted badges, stat pills, smooth borders, typography, nav icon alignment, brand section)",
+        "Deleted design-system-sample-v2.html (merged into original)",
+        "Committed all 0870a-c changes (9 files: 3 SCSS, 1 JS, 3 test files, 1 HTML replaced, 1 HTML deleted) — 0870a/b work was uncommitted in working tree"
+      ],
+      "deviations": [
+        "0870a and 0870b changes were found uncommitted in the working tree — committed together with 0870c in a single commit covering all foundation work (sessions a-c)"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870d: Foundation is now complete and committed. All SCSS tokens, JS configs, test assertions, and the design system reference document use Luminous Pastels. Components using getAgentColor() or CSS custom properties (var(--agent-*-primary)) will automatically show new colors. The tinted badge pattern is demonstrated in design-system-sample.html section 2 — use rgba(color, 0.15) background + bright text + border-radius: 8px. Start with RoleBadge.vue for the square tinted badge conversion.",
+      "cascading_impacts": [
+        "design-system-sample.html is now the authoritative visual reference for all subsequent 0870 sessions",
+        "All 0870a-c changes are committed in a single commit on feature/0870-design-harmonization"
+      ],
+      "summary": "Verified all token values in design-system-sample-v2.html match the SCSS and JS updates from 0870a/b. Replaced v1 with v2 content and deleted the v2 file. Committed all foundation work (0870a-c) in one commit: 9 files changed, 453 insertions, 2523 deletions."
     },
     {
       "session_id": "0870d",
