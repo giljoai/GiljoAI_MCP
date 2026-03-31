@@ -102,9 +102,21 @@ function relativeTime(timestamp) {
 
 .memory-header {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr 72px 56px;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+}
+
+.memory-header .entry-type-chip {
+  justify-self: center;
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
+.memory-header .relative-time {
+  justify-self: end;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .memory-title {
@@ -113,18 +125,8 @@ function relativeTime(timestamp) {
   white-space: nowrap;
 }
 
-.entry-type-chip {
-  font-size: 0.6rem;
-  font-weight: 600;
-}
-
 .summary-text {
   line-height: 1.3;
   word-break: break-word;
-}
-
-.relative-time {
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 </style>
