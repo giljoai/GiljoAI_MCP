@@ -191,7 +191,7 @@ describe('AgentJobModal', () => {
 
     it('should return default color for null agent name', () => {
       const color = wrapper.vm.getAgentColor(null)
-      expect(color).toBe('#D4A574')
+      expect(color).toBe('#D4B08A')
     })
 
     it('should return abbreviation for agent name', () => {
