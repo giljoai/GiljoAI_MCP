@@ -1,14 +1,11 @@
 <template>
-  <v-chip
-    :color="statusColor"
-    :text-color="statusTextColor"
-    variant="flat"
-    size="small"
-    class="status-badge-chip"
+  <span
+    class="status-badge"
+    :style="badgeStyle"
     :aria-label="`Project status: ${statusLabel}`"
   >
-    <span class="text-caption font-weight-bold" :style="statusTextColor ? { color: statusTextColor } : {}">{{ statusLabel }}</span>
-  </v-chip>
+    {{ statusLabel }}
+  </span>
 </template>
 
 <script setup>
@@ -23,51 +20,45 @@ const props = defineProps({
   },
 })
 
-// Status Configuration
-const statusConfig = {
-  active: {
-    label: 'Active',
-    color: '#fff', // exempt: Vuetify color prop requires hex ($color-surface)
-    textColor: '#333', // exempt: dynamic inline style ($color-text-dark)
-    icon: 'mdi-play-circle',
-  },
-  inactive: {
-    label: 'Inactive',
-    color: 'grey',
-    textColor: '#1a237e', // exempt: indigo, no token
-    icon: 'mdi-stop-circle-outline',
-  },
-  completed: {
-    label: 'Completed',
-    color: 'success',
-    icon: 'mdi-check-circle',
-  },
-  cancelled: {
-    label: 'Cancelled',
-    color: 'warning',
-    icon: 'mdi-cancel',
-  },
-  terminated: {
-    label: 'Terminated',
-    color: 'error',
-    icon: 'mdi-stop-circle',
-  },
-  deleted: {
-    label: 'Deleted',
-    color: 'error',
-    icon: 'mdi-delete',
-  },
+// Status colors unchanged — tinted style (rgba bg + bright text)
+const STATUS_CONFIG = {
+  active: { label: 'Active', color: '#67bd6d' },
+  inactive: { label: 'Inactive', color: '#9e9e9e' },
+  completed: { label: 'Completed', color: '#67bd6d' },
+  cancelled: { label: 'Cancelled', color: '#ff9800' },
+  terminated: { label: 'Terminated', color: '#e07872' },
+  deleted: { label: 'Deleted', color: '#e07872' },
 }
 
-// Computed
-const statusLabel = computed(() => statusConfig[props.status]?.label || props.status)
-const statusColor = computed(() => statusConfig[props.status]?.color || 'grey')
-const statusTextColor = computed(() => statusConfig[props.status]?.textColor || undefined)
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `${r}, ${g}, ${b}`
+}
 
+const config = computed(() => STATUS_CONFIG[props.status] || { label: props.status, color: '#9e9e9e' })
+const statusLabel = computed(() => config.value.label)
+
+const badgeStyle = computed(() => {
+  const color = config.value.color
+  return {
+    background: `rgba(${hexToRgb(color)}, 0.15)`,
+    color,
+  }
+})
 </script>
 
 <style scoped>
-.status-badge-chip {
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  white-space: nowrap;
+  line-height: 1.4;
   user-select: none;
 }
 </style>
