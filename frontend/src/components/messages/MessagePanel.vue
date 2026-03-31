@@ -50,26 +50,23 @@
     <!-- Message Timeline -->
     <v-row>
       <v-col cols="12">
-        <v-card variant="outlined">
+        <v-card variant="flat" class="smooth-border panel-card">
           <v-card-title class="d-flex align-center justify-space-between pa-4">
             <div class="d-flex align-center">
               <v-icon icon="mdi-message-text" size="24" class="mr-2" />
               <span>Message History</span>
-              <v-chip
+              <span
                 v-if="filteredMessages.length > 0"
-                size="small"
-                class="ml-2"
-                variant="flat"
-                color="primary"
+                class="count-chip ml-2"
               >
                 {{ filteredMessages.length }}
-              </v-chip>
+              </span>
             </div>
             <div class="d-flex align-center">
-              <v-chip size="small" :color="wsConnected ? 'success' : 'error'" variant="flat">
-                <v-icon :icon="wsConnected ? 'mdi-wifi' : 'mdi-wifi-off'" start size="16" />
+              <span class="connection-chip" :class="wsConnected ? 'connection-live' : 'connection-off'">
+                <v-icon :icon="wsConnected ? 'mdi-wifi' : 'mdi-wifi-off'" size="16" class="mr-1" />
                 {{ wsConnected ? 'Live' : 'Disconnected' }}
-              </v-chip>
+              </span>
               <v-btn
                 icon="mdi-refresh"
                 size="small"
@@ -87,7 +84,7 @@
             <!-- Loading State -->
             <div v-if="loading && messages.length === 0" class="text-center pa-8">
               <v-progress-circular indeterminate color="primary" size="48" />
-              <p class="text-body-2 text-medium-emphasis mt-4">Loading messages...</p>
+              <p class="text-body-2 panel-text-muted mt-4">Loading messages...</p>
             </div>
 
             <!-- Error State -->
@@ -312,5 +309,44 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Component-specific styles */
+.panel-card {
+  background: var(--bg-raised, #1a2a3c);
+  border-radius: 16px;
+}
+
+.panel-text-muted {
+  color: #8895a8 !important;
+}
+
+.count-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(109, 179, 228, 0.15);
+  color: #6DB3E4;
+  min-width: 24px;
+}
+
+.connection-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.connection-live {
+  background: rgba(103, 189, 109, 0.15);
+  color: #67bd6d;
+}
+
+.connection-off {
+  background: rgba(224, 120, 114, 0.15);
+  color: #E07872;
+}
 </style>

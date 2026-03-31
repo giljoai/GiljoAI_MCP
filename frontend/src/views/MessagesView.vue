@@ -9,7 +9,7 @@
               <v-icon icon="mdi-message-text" size="32" class="mr-2" />
               Messages
             </h1>
-            <p class="text-body-1 text-medium-emphasis">
+            <p class="text-body-1 messages-text-muted">
               View agent communications and send broadcast messages
             </p>
           </div>
@@ -74,5 +74,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Component-specific styles */
+.messages-text-muted {
+  color: #8895a8 !important;
+}
 </style>
