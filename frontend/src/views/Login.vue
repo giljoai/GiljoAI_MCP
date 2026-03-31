@@ -2,7 +2,7 @@
   <v-container fluid class="fill-height login-container">
     <v-row align="center" justify="center">
       <v-col cols="12" sm="8" md="5" lg="4">
-        <v-card elevation="8" class="login-card">
+        <v-card elevation="8" class="login-card smooth-border">
           <!-- Logo/Header -->
           <v-card-title class="text-center pa-6">
             <div class="d-flex flex-column align-center w-100">
@@ -15,14 +15,9 @@
                 class="mb-3"
               />
               <h1 class="text-h5 font-weight-bold">GiljoAI MCP Login</h1>
-              <v-chip
-                size="small"
-                variant="outlined"
-                color="grey"
-                class="mt-2 text-caption"
-              >
+              <span class="edition-badge mt-2 text-caption">
                 Community Edition
-              </v-chip>
+              </span>
             </div>
           </v-card-title>
 
@@ -146,7 +141,7 @@
               href="https://www.giljo.ai"
               target="_blank"
               rel="noopener noreferrer"
-              class="text-caption text-medium-emphasis text-decoration-none"
+              class="text-caption login-text-muted text-decoration-none"
             >
               www.giljo.ai
             </a>
@@ -350,6 +345,21 @@ onMounted(async () => {
 /* Dark theme adjustments */
 :deep(.v-theme--dark) .login-container {
   background: linear-gradient(135deg, rgb(18, 29, 42) 0%, rgb(10, 15, 22) 100%);
+}
+
+/* Accessible text colors */
+.login-text-muted {
+  color: #8895a8 !important;
+}
+
+/* Tinted edition badge */
+.edition-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 8px;
+  background: rgba(136, 149, 168, 0.15);
+  color: #8895a8;
+  font-weight: 500;
 }
 
 /* Accessibility: Focus indicators */
