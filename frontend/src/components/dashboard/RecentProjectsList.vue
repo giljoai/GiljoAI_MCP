@@ -13,7 +13,7 @@
         v-for="project in projects"
         :key="project.id"
         class="px-2 py-1 project-row clickable-row"
-        @click="goToProject(project.id)"
+        @click="emit('review-project', project)"
       >
         <template v-slot:prepend>
           <!-- project_type_color fallback: design-token-exempt (Vuetify color prop, $color-text-muted) -->
@@ -44,10 +44,8 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
 import { useFormatDate } from '@/composables/useFormatDate'
 
-const router = useRouter()
 const { formatDateTime } = useFormatDate()
 
 defineProps({
@@ -57,10 +55,7 @@ defineProps({
   },
 })
 
-function goToProject(projectId) {
-  if (projectId) router.push(`/projects/${projectId}`)
-}
-
+const emit = defineEmits(['review-project'])
 </script>
 
 <style scoped lang="scss">

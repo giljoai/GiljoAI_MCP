@@ -66,6 +66,18 @@
           </div>
           <div class="text-body-2" style="white-space: pre-wrap; line-height: 1.6;">{{ selectedMemory.summary }}</div>
         </v-card-text>
+        <v-divider v-if="selectedMemory.project_id" />
+        <v-card-actions v-if="selectedMemory.project_id">
+          <v-spacer />
+          <v-btn
+            variant="text"
+            color="yellow-darken-2"
+            prepend-icon="mdi-eye"
+            @click="showDetail = false; emit('review-project', selectedMemory)"
+          >
+            View Project Review
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
   </div>
@@ -80,6 +92,8 @@ defineProps({
     default: () => [],
   },
 })
+
+const emit = defineEmits(['review-project'])
 
 const showDetail = ref(false)
 const selectedMemory = ref(null)
