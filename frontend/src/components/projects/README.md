@@ -253,7 +253,7 @@ When `isOrchestrator={true}`:
 - **Width**: 280px (fixed)
 - **Min Height**: 200px
 - **Max Height**: 400px
-- **Border**: 2px solid (lightened agent color by 20%)
+- **Border**: `smooth-border` class (box-shadow inset, anti-aliased curves)
 - **Border Radius**: 8px
 
 ### Header
@@ -297,7 +297,7 @@ When `isOrchestrator={true}`:
 
 ### Utilities
 
-- **agentColors.js**: `getAgentColor()`, `darkenColor()`, `lightenColor()`
+- **agentColors.js**: `getAgentColor()`, `darkenColor()`, `lightenColor()` (Luminous Pastels palette)
 - **agent-colors.scss**: SCSS variables and mixins
 
 ---
@@ -443,7 +443,7 @@ const sortedAgents = computed(() => {
 
 ### ChatHeadBadge.vue
 
-Circular badge component for agent identification.
+Square tinted badge component for agent identification (border-radius 8px, tinted background at 15% opacity).
 
 **Props**:
 
