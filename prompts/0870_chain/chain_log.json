@@ -425,20 +425,44 @@
       "session_id": "0870k",
       "title": "Messages View",
       "handover": "handovers/0870_design_system_harmonization.md#0870k",
-      "color": "#9C27B0",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "completed",
+      "started_at": "2026-03-31T02:50:00Z",
+      "completed_at": "2026-03-31T03:00:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
-        "Update MessagesView.vue, BroadcastPanel.vue, MessageItem.vue, MessageList.vue, MessagePanel.vue"
+        "Update MessagesView.vue — accessible text color for subtitle",
+        "Update BroadcastPanel.vue — smooth-border cards, tinted status badges, tinted status/recipient chips, accessible text",
+        "Update MessageItem.vue — square tinted sender badges replacing round v-avatar, tinted priority/status chips, smooth-border card, accessible text",
+        "Update MessageList.vue — accessible muted text color for empty state",
+        "Update MessagePanel.vue — smooth-border card, tinted count/connection chips, accessible text"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "MessagesView.vue: subtitle text-medium-emphasis replaced with scoped messages-text-muted class (#8895a8).",
+        "BroadcastPanel.vue: both cards (Send Message, Broadcast History) converted from variant='outlined' to variant='flat' with smooth-border class, bg-raised background, border-radius 16px. All text-medium-emphasis replaced with broadcast-text-muted class (#8895a8).",
+        "BroadcastPanel.vue: broadcast history v-avatar replaced with square tinted status-badge (36px, border-radius 8px, rgba(statusColor, 0.15) bg + statusColor text). Status chip converted from v-chip to tinted span. Recipient count chip converted from v-chip to tinted span (blue rgba bg).",
+        "BroadcastPanel.vue: added hexToRgba(), getStatusBadgeStyle(), getStatusChipStyle() helpers and STATUS_COLORS map (delivered/completed: #67bd6d, failed: #E07872, pending: #EDBA4A).",
+        "MessageItem.vue: v-card converted from variant='outlined' to variant='flat' with smooth-border class, bg-raised background, border-radius 12px. Round v-avatar (40px) replaced with square sender-badge div (36px, border-radius 8px, rgba(senderHex, 0.15) bg + senderHex text). Sender colors mapped to Luminous Pastels: broadcast=#EDBA4A, system=#8895a8, user=#AC80CC (reviewer purple), orchestrator=#D4B08A, default=#6DB3E4 (implementer blue).",
+        "MessageItem.vue: priority and status v-chip elements replaced with tinted-chip spans. Priority colors: urgent=#E07872, high=#EDBA4A. Status colors: completed=#67bd6d, failed=#E07872, acknowledged/delivered=#6DB3E4, pending=#EDBA4A. All text-medium-emphasis replaced with msg-text-muted class (#8895a8).",
+        "MessageItem.vue: broadcast-message class changed from border-left solid to --smooth-border-color: rgba(237,186,74,0.3) for consistent smooth-border treatment. Hover changed from box-shadow to subtle rgba(255,255,255,0.02) bg.",
+        "MessageList.vue: empty state text-grey-lighten-1 replaced with list-text-muted class (#8895a8).",
+        "MessagePanel.vue: message history card converted from variant='outlined' to variant='flat' with smooth-border class, bg-raised background, border-radius 16px. Message count v-chip replaced with tinted count-chip span (blue rgba bg). WebSocket connection v-chip replaced with tinted connection-chip span (live: green rgba, off: red rgba). Loading text-medium-emphasis replaced with panel-text-muted class (#8895a8).",
+        "npm run lint: 0 errors, 7 pre-existing warnings (unchanged). npm run test: 96 files, 1893 tests pass, 0 failures."
+      ],
+      "deviations": [
+        "MessageItem sender colors use Luminous Pastels from the agent palette rather than Vuetify theme colors: orchestrator=#D4B08A, user=#AC80CC (reviewer purple as closest match), broadcast=#EDBA4A (tester yellow), system=#8895a8 (muted grey), default agent=#6DB3E4 (implementer blue).",
+        "BroadcastPanel status colors use explicit hex values (#67bd6d, #E07872, #EDBA4A) matching the semantic status palette rather than Vuetify color names, for consistent tinted badge rendering."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870l: All message view components now use the 0870 design system with tinted square badges, smooth-border panels, accessible text colors, and tinted chips. The hexToRgba helper is now duplicated in 4 files (LaunchTab, JobsTab, AgentTableView, BroadcastPanel) and inline in MessageItem — consider extracting to a shared utility if more components need it in 0870l+. MessageItem no longer uses v-avatar or v-chip — tests asserting on those classes will need updating. The sender badge uses inline styles via computed senderBadgeStyle rather than CSS classes, matching the pattern from 0870j's agent badges. Status colors in BroadcastPanel and MessageItem use the same hex values (#67bd6d for success, #E07872 for error, #EDBA4A for warning) — these are consistent with the semantic status palette but are hardcoded rather than referencing CSS variables.",
+      "cascading_impacts": [
+        "MessageItem no longer renders v-avatar — tests asserting on .v-avatar class will need updating",
+        "MessageItem priority and status no longer render as v-chip — tests asserting on .v-chip class will need updating",
+        "BroadcastPanel history items no longer render v-avatar or v-chip — tests asserting on those will need updating",
+        "MessagePanel message count and connection status no longer render as v-chip — tests asserting on v-chip will need updating",
+        "MessageItem broadcast-message class no longer uses border-left — uses --smooth-border-color instead"
+      ],
+      "summary": "Harmonized 5 message view files to 0870 design system. MessagesView: accessible subtitle color. BroadcastPanel: smooth-border cards, square tinted status badges replacing round v-avatar, tinted status/recipient chips. MessageItem: square tinted sender badges (36px, 8px radius) replacing round v-avatar (40px), tinted priority/status chips replacing v-chip, smooth-border card, broadcast highlight via --smooth-border-color. MessageList: accessible empty state text. MessagePanel: smooth-border card, tinted count/connection chips replacing v-chip. 5 files changed (220 insertions, 66 deletions), all 1893 tests pass."
     },
     {
       "session_id": "0870l",
