@@ -171,10 +171,10 @@
       "session_id": "0870e",
       "title": "Navigation & Layout Shell",
       "handover": "handovers/0870_design_system_harmonization.md#0870e",
-      "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "completed",
+      "started_at": "2026-03-31T01:00:00Z",
+      "completed_at": "2026-03-31T01:05:00Z",
       "agent_types": ["ux-designer", "frontend-tester"],
       "planned_tasks": [
         "Fix NavigationDrawer.vue Jobs icon — SVG fill to CSS var --nav-icon-color (#8f97b7), opacity 0.85, active state yellow+white",
@@ -185,12 +185,26 @@
         "Verify NotificationDropdown.vue badge colors",
         "Run existing tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Giljo_Inactive_Dark.svg: updated fill from #A5AAAF to #8f97b7 (matching MDI --nav-icon-color)",
+        "NavigationDrawer.vue: added opacity 0.85 on inactive Jobs icon, full opacity on active state. Active SVG already correct (#ffc300 body, #e1e1e1 eyes).",
+        "AppBar.vue: verified — uses Vuetify semantic colors (error, primary, success, grey) for role chips, $color-brand-yellow for about link. No hardcoded old agent colors.",
+        "DefaultLayout.vue: verified — no hardcoded colors at all, pure layout component.",
+        "ActiveProductDisplay.vue: verified — uses Vuetify semantic colors (primary, grey) only. No hardcoded old colors.",
+        "ConnectionStatus.vue: verified — uses Vuetify semantic colors (success, warning, error, grey, info) throughout. No hardcoded old colors.",
+        "NotificationDropdown.vue: verified — uses Vuetify semantic colors and theme CSS variables throughout. No hardcoded old agent colors.",
+        "npm run lint: 0 errors, 7 pre-existing warnings (unchanged). npm run test: 96 files, 1893 tests pass, 0 failures."
+      ],
+      "deviations": [
+        "SVG is loaded via v-img (renders as <img> tag), so CSS custom properties cannot penetrate the SVG. The fill color was updated directly in the SVG file rather than via a CSS variable. The opacity is controlled via inline style binding on the v-img element."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870f: All navigation and layout shell components are clean. No hardcoded old colors remain in the app shell. The Jobs icon now uses #8f97b7 inactive fill (matching MDI icons) with 0.85 opacity, and #ffc300/#e1e1e1 active state. AppBar role chips use Vuetify semantic color names (not hex), so they'll follow the Vuetify theme — no action needed. ConnectionStatus and NotificationDropdown also use Vuetify semantics exclusively.",
+      "cascading_impacts": [
+        "Giljo_Inactive_Dark.svg fill color change affects any component that references this SVG — currently only NavigationDrawer.vue uses it",
+        "The opacity 0.85 on inactive state is applied via dynamic style binding, no CSS class changes needed"
+      ],
+      "summary": "Fixed Jobs nav icon: SVG fill #A5AAAF → #8f97b7, opacity 0.85 inactive / 1.0 active. Verified 5 other layout components (AppBar, DefaultLayout, ActiveProductDisplay, ConnectionStatus, NotificationDropdown) — all clean, using Vuetify semantic colors only. 2 files changed, all 1893 tests pass."
     },
     {
       "session_id": "0870f",
