@@ -25,10 +25,26 @@
       </v-card-text>
 
       <!-- Tabs -->
-      <v-tabs v-model="activeTab" bg-color="transparent" class="px-4">
-        <v-tab value="mission" data-test="job-tab-mission">Mission</v-tab>
-        <v-tab value="plan" data-test="job-tab-plan">Plan ({{ todoItemsCount }})</v-tab>
-      </v-tabs>
+      <div class="tab-pills px-4 py-2">
+        <button
+          class="pill-btn"
+          :class="{ active: activeTab === 'mission' }"
+          data-test="job-tab-mission"
+          @click="activeTab = 'mission'"
+        >
+          <v-icon size="18">mdi-text-box-outline</v-icon>
+          Mission
+        </button>
+        <button
+          class="pill-btn"
+          :class="{ active: activeTab === 'plan' }"
+          data-test="job-tab-plan"
+          @click="activeTab = 'plan'"
+        >
+          <v-icon size="18">mdi-checkbox-marked-outline</v-icon>
+          Plan ({{ todoItemsCount }})
+        </button>
+      </div>
 
       <v-divider />
 
@@ -205,6 +221,39 @@ function getAgentAbbr(agentName) {
 </script>
 
 <style scoped>
+.tab-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  color: #8895a8;
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.15);
+}
+
+.pill-btn:hover {
+  color: #a3aac4;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.25);
+}
+
+.pill-btn.active {
+  background: rgba(255, 195, 0, 0.12);
+  color: #ffc300;
+  box-shadow: none;
+}
+
 .agent-tinted-badge {
   width: 32px;
   height: 32px;
