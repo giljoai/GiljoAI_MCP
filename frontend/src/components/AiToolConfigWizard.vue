@@ -6,7 +6,7 @@
       </v-btn>
     </template>
 
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <v-card-title class="d-flex align-center justify-space-between">
         <div class="d-flex align-center">
           <v-img src="/giljo_YW_Face.svg" width="32" height="32" class="mr-2" />

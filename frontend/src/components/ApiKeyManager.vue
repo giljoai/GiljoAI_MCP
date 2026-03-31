@@ -72,7 +72,7 @@
           <span v-else-if="item.expires_at" :class="expiryClass(item.expires_at)" class="text-caption">
             {{ humanizeTimestamp(item.expires_at) }}
           </span>
-          <span v-else class="text-caption text-medium-emphasis">No expiry</span>
+          <span v-else class="text-caption apikey-text-muted">No expiry</span>
         </template>
 
         <!-- Actions Column -->
@@ -105,7 +105,7 @@
       @cancel="cancelRevoke"
     >
       <p class="text-body-1 mb-2">You are about to revoke the API key:</p>
-      <v-card variant="outlined" class="mb-4 pa-3">
+      <v-card variant="flat" class="mb-4 pa-3 smooth-border">
         <div class="d-flex align-center">
           <v-icon class="mr-2">mdi-label</v-icon>
           <strong>{{ keyToRevoke?.name }}</strong>
@@ -261,6 +261,10 @@ code {
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Courier New', monospace;
+}
+
+.apikey-text-muted {
+  color: #8895a8;
 }
 
 .v-code {
