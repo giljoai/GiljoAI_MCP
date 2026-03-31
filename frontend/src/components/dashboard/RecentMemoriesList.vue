@@ -12,7 +12,8 @@
       <v-list-item
         v-for="(memory, idx) in memories"
         :key="idx"
-        class="px-2 py-1 memory-row"
+        class="px-2 py-1 memory-row clickable-row"
+        @click="openMemory(memory)"
       >
         <div class="memory-header">
           <span class="text-body-2 font-weight-bold memory-title">
@@ -38,16 +39,55 @@
         </div>
       </v-list-item>
     </v-list>
+
+    <!-- Memory Detail Dialog -->
+    <v-dialog v-model="showDetail" max-width="640" scrollable>
+      <v-card v-if="selectedMemory" class="smooth-border">
+        <v-card-title class="d-flex align-center ga-2 py-3">
+          <span>{{ selectedMemory.project_name }}</span>
+          <v-chip
+            v-if="selectedMemory.entry_type"
+            size="x-small"
+            variant="outlined"
+            color="yellow-darken-2"
+          >
+            {{ humanizeType(selectedMemory.entry_type) }}
+          </v-chip>
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="showDetail = false" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pa-4">
+          <div v-if="selectedMemory.product_name" class="text-caption text-medium-emphasis mb-3">
+            Product: {{ selectedMemory.product_name }}
+          </div>
+          <div v-if="selectedMemory.timestamp" class="text-caption text-medium-emphasis mb-4">
+            {{ new Date(selectedMemory.timestamp).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) }}
+          </div>
+          <div class="text-body-2" style="white-space: pre-wrap; line-height: 1.6;">{{ selectedMemory.summary }}</div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
+
 defineProps({
   memories: {
     type: Array,
     default: () => [],
   },
 })
+
+const showDetail = ref(false)
+const selectedMemory = ref(null)
+
+function openMemory(memory) {
+  selectedMemory.value = memory
+  showDetail.value = true
+}
 
 function humanizeType(type) {
   const labels = {
@@ -128,5 +168,13 @@ function relativeTime(timestamp) {
 .summary-text {
   line-height: 1.3;
   word-break: break-word;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 </style>
