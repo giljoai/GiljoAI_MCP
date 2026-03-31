@@ -155,28 +155,14 @@ $border-width-thin: 1px; // Row separators
 $border-width-standard: 2px; // Container borders
 $border-width-thick: 3px; // Active tab borders
 
-// Border radius — unified 4-token scale (design system)
-$border-radius-sharp: 4px; // Tight corners, scrollbars
-$border-radius-default: 8px; // Inputs, panels, buttons
-$border-radius-rounded: 16px; // Containers, cards
-$border-radius-pill: 9999px; // Pills, tags
-
-// Backward-compatible aliases
-$border-radius-small: $border-radius-sharp;
-$border-radius-medium: $border-radius-default;
-$border-radius-large: $border-radius-rounded;
+// Border radius (canonical — DO NOT add duplicates to variables.scss)
+$border-radius-sharp: 4px; // Tight corners, scrollbars, inputs
+$border-radius-default: 8px; // Panels, buttons, standard elements
+$border-radius-rounded: 16px; // Cards, containers
+$border-radius-pill: 9999px; // Pills, tags, chips
 
 // Container border (complete specification)
 $border-container: 2px solid rgba(255, 255, 255, 0.2);
-
-// Semantic radius aliases
-$radius-container: $border-radius-rounded;
-$radius-panel-content: $border-radius-default;
-$radius-small: $border-radius-sharp;
-$radius-medium: $border-radius-default;
-$radius-large: $border-radius-rounded;
-$radius-pill: $border-radius-pill;
-$radius-scrollbar: $border-radius-sharp;
 
 // =========================================================================
 // 9. UI COMPONENT COLORS (Orchestrator Card, Scrollbars, etc)
@@ -199,4 +185,13 @@ $elevation-flat: #0e1c2d; // Base surface
 $elevation-raised: #182739; // Cards, panels
 $elevation-elevated: #1e3147; // Modals, dropdowns
 $elevation-overlay: #243b53; // Overlays, popovers
+
+// =========================================================================
+// 11. BOX SHADOW TOKENS (canonical — use alongside $elevation-* surface colors)
+// =========================================================================
+
+$shadow-subtle: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-default: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+$shadow-strong: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+$shadow-dramatic: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
 

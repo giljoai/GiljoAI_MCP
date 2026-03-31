@@ -1,5 +1,6 @@
 @use "sass:color";
 @use "./variables.scss" as *;
+@use "./design-tokens.scss" as *;
 
 // CSS Variables for theme switching with smooth transitions
 :root {
@@ -45,7 +46,7 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: $med-blue;
-  border-radius: $radius-sm;
+  border-radius: $border-radius-sharp;
 
   &:hover {
     background: $lightest-blue;
@@ -126,7 +127,7 @@ body {
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: $shadow-lg;
+    box-shadow: $shadow-strong;
   }
 }
 
