@@ -1,5 +1,5 @@
 <template>
-  <v-card variant="outlined" class="config-snippet-card">
+  <v-card variant="flat" class="config-snippet-card smooth-border">
     <v-card-text class="pa-0 position-relative">
       <!-- Copy Button (Floating top-right) -->
       <v-btn
