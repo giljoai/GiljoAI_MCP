@@ -29,6 +29,7 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
+| 0277 | Design Token Standardization — Radius & Shadow | Not Started | Medium | Consolidate 3 radius systems + 2 shadow systems into single canonical set in design-tokens.scss. ~15 file edits, 1-2 hours. |
 | 0841 | Slash Command Optimization (/gil_add) | Not Started | Low | Rewrite /gil_add from 343 lines (~3,500 tokens) to ~40 lines (~500 tokens). Keep local, remove verbose templates. |
 | 0842g | Per-Document AI Summary Badges | Not Started | Medium | Add AI summary badge row to vision doc cards (wireframe fidelity). Needs API extension. Follow-up to 0842d deviation. |
 | 0842h | Frontend Tests — Tuning Icon & Vision Analysis Banner | Not Started | Medium | 11 Vitest component tests for 0842d features. Follow-up to 0842d deviation (agent missed existing test framework). |
@@ -592,7 +593,7 @@ completed/reference/
 - **0398-0399**: Gaps in 0301-0400 range
 - **0413, 0418, 0435-0439**: Gaps in 0401-0500 range
 - **0441-0449, 0454-0459, 0465-0469, 0471-0479, 0493-0499**: Additional 0401-0500 gaps
-- **0277, 0290**: Gaps in 0201-0300 range
+- **0290**: Gap in 0201-0300 range (0277 filled)
 - **0021, 0033, 0039, 0055-0059, 0068, 0097-0099**: Gaps in 0001-0100 range (0054 filled)
 - **0133-0134**: Gaps in 0101-0200 range
 
