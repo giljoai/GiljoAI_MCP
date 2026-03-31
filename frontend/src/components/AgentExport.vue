@@ -21,19 +21,25 @@
           <v-card-text class="pa-3">
             <div class="d-flex flex-wrap justify-center" style="gap: 25px;">
               <div v-for="p in platforms" :key="p.id" class="d-flex align-center gap-2">
-                <v-avatar size="24" rounded="0">
-                  <v-img :src="p.icon" :alt="p.label" />
-                </v-avatar>
-                <v-btn
-                  variant="flat"
-                  color="primary"
-                  :loading="setupLoading[p.id]"
+                <button
+                  class="export-pill"
+                  :class="{ 'export-pill--loading': setupLoading[p.id] }"
                   :disabled="setupLoading[p.id]"
                   :data-testid="`setup-${p.id}`"
                   @click="generateBootstrapPrompt(p.id)"
                 >
-                  {{ p.buttonLabel }}
-                </v-btn>
+                  <v-avatar size="20" rounded="0" class="mr-1">
+                    <v-img :src="p.icon" :alt="p.label" />
+                  </v-avatar>
+                  <span>{{ p.buttonLabel }}</span>
+                  <v-progress-circular
+                    v-if="setupLoading[p.id]"
+                    size="14"
+                    width="2"
+                    indeterminate
+                    class="ml-1"
+                  />
+                </button>
                 <v-tooltip v-if="p.experimental" location="top">
                   <template #activator="{ props: ttProps }">
                     <v-icon v-bind="ttProps" size="small" color="warning">mdi-alert</v-icon>
@@ -242,5 +248,33 @@ code {
 .manual-downloads-title {
   padding: 8px 0 !important;
   min-height: unset !important;
+}
+
+.export-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 6px 16px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: rgba(255, 195, 0, 0.12);
+  color: #ffc300;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+
+.export-pill:hover {
+  background: rgba(255, 195, 0, 0.2);
+}
+
+.export-pill--loading {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.export-pill:disabled {
+  cursor: wait;
 }
 </style>
