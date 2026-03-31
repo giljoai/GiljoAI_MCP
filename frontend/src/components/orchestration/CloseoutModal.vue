@@ -87,7 +87,7 @@
                     {{ entry.project_name || 'Entry #' + entry.sequence }} - {{ formatEntryType(entry.entry_type) }}
                   </span>
                   <v-spacer />
-                  <span class="text-caption closeout-text-muted">
+                  <span class="text-caption text-muted-a11y">
                     {{ formatDateTime(entry.timestamp) }}
                   </span>
                 </div>
@@ -160,7 +160,7 @@
 
                 <!-- Metadata -->
                 <div class="metadata-section mt-4 pt-3" style="border-top: 1px solid rgba(0,0,0,0.12)">
-                  <div class="text-caption closeout-text-muted">
+                  <div class="text-caption text-muted-a11y">
                     <strong>Type:</strong> {{ formatEntryType(entry.entry_type) }}
                     <span v-if="entry.sequence" class="ml-3">|</span>
                     <span v-if="entry.sequence" class="ml-3"><strong>Sequence:</strong> #{{ entry.sequence }}</span>
@@ -429,10 +429,6 @@ const resetState = () => {
   background-color: rgba(0, 0, 0, 0.02);
   padding: 12px;
   border-radius: 4px;
-}
-
-.closeout-text-muted {
-  color: #8895a8;
 }
 
 /* Focus trap for accessibility */

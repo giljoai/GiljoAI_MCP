@@ -53,7 +53,7 @@
                 Retry Connection
               </v-btn>
 
-              <div class="text-caption mt-2 server-down-text-muted">
+              <div class="text-caption mt-2 text-muted-a11y">
                 Last attempt: {{ lastAttempt }}
               </div>
 
@@ -64,7 +64,7 @@
                 height="4"
                 class="mt-4"
               ></v-progress-linear>
-              <div v-if="autoRetrying" class="text-caption mt-1 server-down-text-muted">
+              <div v-if="autoRetrying" class="text-caption mt-1 text-muted-a11y">
                 Auto-retry in {{ autoRetrySeconds }}s...
               </div>
             </div>
@@ -161,9 +161,5 @@ onUnmounted(() => {
 <style scoped>
 .fill-height {
   min-height: 100vh;
-}
-
-.server-down-text-muted {
-  color: #8895a8 !important;
 }
 </style>

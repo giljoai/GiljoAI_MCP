@@ -72,7 +72,7 @@
           <span v-else-if="item.expires_at" :class="expiryClass(item.expires_at)" class="text-caption">
             {{ humanizeTimestamp(item.expires_at) }}
           </span>
-          <span v-else class="text-caption apikey-text-muted">No expiry</span>
+          <span v-else class="text-caption text-muted-a11y">No expiry</span>
         </template>
 
         <!-- Actions Column -->
@@ -261,10 +261,6 @@ code {
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Courier New', monospace;
-}
-
-.apikey-text-muted {
-  color: #8895a8;
 }
 
 .v-code {

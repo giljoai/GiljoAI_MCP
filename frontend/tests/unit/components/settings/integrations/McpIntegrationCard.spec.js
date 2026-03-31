@@ -153,13 +153,13 @@ describe('McpIntegrationCard.vue', () => {
       }
     })
 
-    it('description uses mcp-text-muted class', () => {
+    it('description uses text-muted-a11y class', () => {
       const paragraphs = wrapper.findAll('p')
       const descriptionP = paragraphs.find(p =>
         p.text().includes('Attach GiljoAI MCP to your AI coding agents')
       )
       if (descriptionP) {
-        expect(descriptionP.classes()).toContain('mcp-text-muted')
+        expect(descriptionP.classes()).toContain('text-muted-a11y')
       }
     })
 

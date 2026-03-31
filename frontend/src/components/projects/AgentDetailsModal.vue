@@ -28,14 +28,14 @@
             >
               {{ agent.agent_display_name }}
             </span>
-            <span class="text-caption details-text-muted">Agent ID: {{ agent.agent_id || agent.id || '—' }}</span>
+            <span class="text-caption text-muted-a11y">Agent ID: {{ agent.agent_id || agent.id || '—' }}</span>
           </div>
         </div>
 
         <!-- Loading State -->
         <div v-if="loading" class="text-center py-8">
           <v-progress-circular indeterminate color="primary"></v-progress-circular>
-          <div class="text-body-2 details-text-muted mt-3">Loading...</div>
+          <div class="text-body-2 text-muted-a11y mt-3">Loading...</div>
         </div>
 
         <!-- Error State -->
@@ -249,10 +249,6 @@ watch(
 
 .gap-2 {
   gap: 8px;
-}
-
-.details-text-muted {
-  color: #8895a8;
 }
 
 .agent-tinted-badge {
