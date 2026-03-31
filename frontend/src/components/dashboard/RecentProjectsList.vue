@@ -15,11 +15,12 @@
         class="px-2 py-1 project-row"
       >
         <template v-slot:prepend>
+          <!-- project_type_color fallback: design-token-exempt (Vuetify color prop, $color-text-muted) -->
           <v-chip
             v-if="project.taxonomy_alias"
             size="x-small"
             variant="flat"
-            :color="project.project_type_color || '#9e9e9e'" <!-- exempt: Vuetify color prop fallback ($color-text-muted) -->
+            :color="project.project_type_color || '#9e9e9e'"
             class="mr-2 taxonomy-chip"
           >
             {{ project.taxonomy_alias }}
