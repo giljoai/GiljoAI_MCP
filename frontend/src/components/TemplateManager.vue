@@ -2,16 +2,15 @@
   <v-card class="template-manager">
     <v-card-title class="d-flex align-center">
       Agent Template Manager
-      <v-tooltip location="top" max-width="400">
-        <template #activator="{ props }">
-          <v-icon v-bind="props" color="warning" size="small" class="ml-2">mdi-alert</v-icon>
-        </template>
-        <span
-          ><strong>Context Budget Recommendation:</strong> Template manager is limiting to 8 agents
-          types maximum. Each agent description consumes context budget, reducing available tokens
-          for your project during implementation.</span
-        >
-      </v-tooltip>
+      <v-chip
+        v-if="totalActiveAgents !== null"
+        :color="remainingUserSlots === 0 ? 'warning' : 'default'"
+        size="small"
+        variant="tonal"
+        class="ml-3"
+      >
+        {{ totalActiveAgents }} / {{ totalCapacity }}
+      </v-chip>
       <v-spacer />
       <v-btn
         color="primary"
@@ -24,39 +23,6 @@
     </v-card-title>
 
     <v-card-text>
-      <!-- Active Agent Counter (Handover 0075) -->
-      <v-alert
-        v-if="totalActiveAgents !== null"
-        :type="remainingUserSlots === 0 ? 'warning' : 'info'"
-        variant="tonal"
-        density="compact"
-        class="mb-4"
-      >
-        <div class="d-flex align-center justify-space-between">
-          <div>
-            <strong>Active Agents:</strong>
-            <span :class="remainingUserSlots === 0 ? 'text-warning' : ''">
-              {{ totalActiveAgents }} / {{ totalCapacity }}
-            </span>
-            <span class="text-medium-emphasis ml-2">
-              ({{ remainingUserSlots }} user slots remaining — {{ systemReservedSlots }} reserved
-              for Orchestrator)
-            </span>
-          </div>
-          <v-chip
-            v-if="remainingUserSlots === 0"
-            size="small"
-            color="warning"
-            prepend-icon="mdi-alert"
-          >
-            User Limit Reached
-          </v-chip>
-        </div>
-        <div v-if="remainingUserSlots === 0" class="text-body-2 mt-2">
-          Maximum user-managed agents reached ({{ userAgentLimit }}). Orchestrator remains always-on
-          and reserved. Deactivate an agent to enable another.
-        </div>
-      </v-alert>
 
       <!-- Search and Filters -->
       <v-row class="mb-4">
@@ -516,7 +482,6 @@ const categories = ['role', 'project_type', 'custom']
 
 // Role options (for category = 'role')
 const roleOptions = [
-  'orchestrator',
   'analyzer',
   'designer',
   'frontend',
@@ -598,14 +563,18 @@ const loadActiveCount = async () => {
   try {
     const response = await api.templates.activeCount()
     const data = response.data || {}
+    // Backend returns: { active_count, limit (7), available }
+    // +1 for system-reserved orchestrator slot in totals
+    const userActive = data.active_count ?? 0
+    const userLimit = data.limit ?? 7
+    const systemReserved = 1
     activeStats.value = {
-      totalActive: data.total_active ?? (data.active_count || 0) + (data.system_reserved || 1),
-      totalCapacity: data.total_capacity ?? (data.max_allowed || 7) + (data.system_reserved || 1),
-      userActive: data.active_count ?? 0,
-      userLimit: data.max_allowed ?? 7,
-      remainingUserSlots:
-        data.remaining_slots ?? Math.max(0, (data.max_allowed || 7) - (data.active_count || 0)),
-      systemReserved: data.system_reserved ?? 1,
+      totalActive: userActive + systemReserved,
+      totalCapacity: userLimit + systemReserved,
+      userActive,
+      userLimit,
+      remainingUserSlots: Math.max(0, userLimit - userActive),
+      systemReserved,
     }
   } catch (error) {
     console.error('[TEMPLATE MANAGER] Failed to load active count:', error)
