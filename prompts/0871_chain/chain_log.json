@@ -156,9 +156,9 @@
       "title": "Smooth-Border Sweep & Card Polish",
       "handover": "handovers/0871_design_remediation_polish.md#0871e",
       "color": "#FF9800",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31T23:30:00Z",
+      "completed_at": "2026-03-31T23:40:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "grep for remaining variant=outlined across all .vue files",
@@ -166,21 +166,34 @@
         "Convert all found to smooth-border class + variant=flat",
         "Key targets: Products cards, Admin Settings tab cards, dialog inner cards, integration card elements"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Grep sweep: found 144 total variant=\"outlined\" across 37 Vue files. Of these, 5 were v-card (the target). Remaining 139 are form inputs (v-text-field, v-textarea, v-select, v-autocomplete, v-file-input), v-alert, v-btn, v-btn-toggle, v-chip — all legitimate uses.",
+        "CSS border sweep: found only 2 instances of 'border: Npx solid' in scoped styles — McpIntegration.vue high-contrast media query (accessibility, exempt) and AddTypeModal.vue color picker swatch (functional, exempt).",
+        "Converted ProductDetailsDialog.vue: 1 v-card outlined → flat + smooth-border (vision document cards)",
+        "Converted McpIntegration.vue: 4 v-card outlined → flat + smooth-border (email template card, JSON config card, 2 troubleshooting code cards)",
+        "Post-conversion: 0 v-card variant=\"outlined\" remain. 139 total variant=\"outlined\" remain (all legitimate non-card uses).",
+        "All 1916 tests pass across 99 test files."
+      ],
+      "deviations": [
+        "Spec expected 5-10 files to change; only 2 files had v-card outlined (ProductDetailsDialog, McpIntegration). Products view product cards use no-variant v-card (already flat). Admin Settings tab content is rendered in v-window-item, not in outlined cards. Dialog inner cards were already flat or used smooth-border from prior 0870 work.",
+        "No CSS border issues found on rounded card elements — only high-contrast accessibility border (exempt) and color picker swatch (exempt)."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "All v-card outlined instances are now eliminated. Remaining variant=\"outlined\" (139 instances) are exclusively on form inputs, alerts, buttons, and chips — these are standard Vuetify patterns, not card borders. The 5 v-chip variant=\"outlined\" instances (TasksView, AgentTipsDialog, AgentMissionEditModal) could be addressed in 0871f/0871g if desired. McpIntegration.vue uses bg-grey-lighten-4 on the email template card — may look odd in dark theme, worth checking visually.",
+      "cascading_impacts": [
+        "ProductDetailsDialog.vue vision document cards now use smooth-border inset box-shadow instead of Vuetify outlined border",
+        "McpIntegration.vue inner content cards now use smooth-border — affects email template, JSON config, and troubleshooting sections"
+      ],
+      "summary": "Converted all 5 remaining v-card variant=\"outlined\" to variant=\"flat\" + smooth-border class across 2 files (ProductDetailsDialog, McpIntegration). Before: 5 v-card outlined, 144 total outlined. After: 0 v-card outlined, 139 total outlined (all legitimate non-card uses). All 1916 tests pass. Commit: 1a0550d2."
     },
     {
       "session_id": "0871f",
       "title": "Integration Cards & Export Buttons",
       "handover": "handovers/0871_design_remediation_polish.md#0871f",
       "color": "#9C27B0",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31T23:45:00Z",
+      "completed_at": "2026-03-31T23:55:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "Restyle Claude/Codex/Gemini export buttons to pill-button pattern",
@@ -188,42 +201,72 @@
         "Verify Git + Serena integration cards smooth-border",
         "Use text-muted-a11y for descriptions"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "AgentExport.vue — converted 3 export buttons (Claude Prompt, Codex Prompt, Gemini Prompt) from solid yellow v-btn to pill-button pattern: border-radius 9999px, padding 6px 16px, rgba(255,195,0,0.12) bg + #ffc300 text. Each button has its tool icon avatar inline. Loading state preserved with v-progress-circular.",
+        "AiToolConfigWizard.vue — converted CONFIGURATOR button from flat v-btn to pill-button style with mdi-wrench-outline icon. Same tinted yellow pill styling.",
+        "Verified GitIntegrationCard.vue — already uses variant=\"flat\" class=\"smooth-border\" + text-muted-a11y on description. No changes needed.",
+        "Verified SerenaIntegrationCard.vue — already uses variant=\"flat\" class=\"smooth-border\" + text-muted-a11y on description. No changes needed.",
+        "Verified McpIntegrationCard.vue — already uses variant=\"flat\" class=\"smooth-border\" + text-muted-a11y on description. No changes needed.",
+        "All 1916 tests pass across 99 test files."
+      ],
+      "deviations": [
+        "Spec mentioned AgentExport.vue as possible location for export buttons — confirmed correct. Buttons were v-btn variant=\"flat\" color=\"primary\" (solid yellow rectangles), converted to native <button> with pill CSS class for full styling control.",
+        "CONFIGURATOR button lived in AiToolConfigWizard.vue (dialog activator), not directly in McpIntegrationCard.vue. Converted from v-btn to native <button> with pill CSS for consistency.",
+        "All 3 integration cards (Git, Serena, MCP) already had smooth-border and text-muted-a11y from prior 0870/0871a work — verification-only, no changes needed."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "Export buttons and CONFIGURATOR are now pill-styled. The Manual Downloads section in AgentExport.vue still uses small text v-btn variant=\"text\" — these are secondary/tertiary actions and intentionally left as-is. The AiToolConfigWizard dialog interior (radio groups, generate button, textareas) was not restyled — only the activator pill button.",
+      "cascading_impacts": [
+        "AgentExport.vue export buttons changed from v-btn to native <button> — any test selecting v-btn inside export section would need updating (no such tests exist currently)",
+        "AiToolConfigWizard.vue activator changed from v-btn to native <button> — McpIntegrationCard.spec.js stubs the component so unaffected"
+      ],
+      "summary": "Restyled 3 export buttons (Claude/Codex/Gemini Prompt) in AgentExport.vue and CONFIGURATOR button in AiToolConfigWizard.vue to pill-button pattern (border-radius 9999px, tinted yellow bg + #ffc300 text, tool icons). Verified Git, Serena, and MCP integration cards already use smooth-border and text-muted-a11y. All 1916 tests pass. Commit: 06a3fda3."
     },
     {
       "session_id": "0871g",
       "title": "Messages & Remaining View Polish",
       "handover": "handovers/0871_design_remediation_polish.md#0871g",
       "color": "#9C27B0",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31T23:50:00Z",
+      "completed_at": "2026-03-31T23:58:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "Verify Messages sender badges are square tinted",
         "Dashboard ProductSelector pills → tinted pill-button style",
         "Any remaining view-level polish from audit"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Verified MessageItem.vue sender badges: borderRadius 8px, hexToRgba(color, 0.15) bg + bright color text. Square tinted pattern confirmed — no changes needed.",
+        "Verified BroadcastPanel.vue status badges: borderRadius 8px, tinted bg. Cards use smooth-border. Confirmed correct.",
+        "Verified MessagePanel.vue: smooth-border card, tinted count-chip and connection-chip. Confirmed correct.",
+        "ProductSelector.vue: converted v-chip filter pills to native <button> with tinted pill-button style. Active: rgba(255,195,0,0.12) bg + #ffc300 text. Inactive: transparent + #8895a8 + smooth-border inset box-shadow.",
+        "BroadcastPanel.vue: converted Edit/Preview v-tabs to pill-button pattern (pill-btn class with active/inactive states).",
+        "AgentJobModal.vue: converted Mission/Plan v-tabs to pill-button pattern with icons (mdi-text-box-outline, mdi-checkbox-marked-outline). Preserved data-test attributes.",
+        "Zero v-tabs remain across all Vue files in the codebase.",
+        "All 1916 tests pass across 99 test files."
+      ],
+      "deviations": [
+        "Spec mentioned only ProductSelector and message views. Found and converted 2 additional v-tabs instances: BroadcastPanel (Edit/Preview) and AgentJobModal (Mission/Plan) — these were the last remaining v-tabs in the entire codebase.",
+        "ProductSelector used v-chip (not v-tabs) but the visual pattern was wrong (Vuetify color='yellow-darken-2' for active, outlined box-shadow for inactive). Converted to native button with correct tinted pill style."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "All v-tabs have been eliminated from the codebase. All views now use pill-button toggles. Two class naming patterns exist: .pill-toggle (UserSettings/SystemSettings from 0871b) and .pill-btn (ProjectTabs/MessagesView/BroadcastPanel/AgentJobModal from 0871c/0871g). Both produce identical visual output. ProductSelector uses .pill-filter (same visual, different semantic name). 0871h should document the pill-button pattern as the standard toggle pattern in the design system sample.",
+      "cascading_impacts": [
+        "ProductSelector.vue changed from v-chip to native <button> — any test selecting v-chip inside ProductSelector would need updating (no such tests exist currently)",
+        "BroadcastPanel.vue lost v-tabs — now uses native pill-btn buttons for Edit/Preview toggle",
+        "AgentJobModal.vue lost v-tabs — tests use data-test attributes which are preserved on the new pill-btn buttons"
+      ],
+      "summary": "Verified MessageItem sender badges are correct (square tinted, 8px radius). Converted ProductSelector from v-chip to tinted pill-buttons. Converted BroadcastPanel Edit/Preview and AgentJobModal Mission/Plan from v-tabs to pill-buttons. Zero v-tabs remain in codebase. All 1916 tests pass. Commit: c052d7f8."
     },
     {
       "session_id": "0871h",
       "title": "Design System Sample v2 Comprehensive Rewrite",
       "handover": "handovers/0871_design_remediation_polish.md#0871h",
       "color": "#F44336",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31T23:59:00Z",
+      "completed_at": "2026-04-01T00:15:00Z",
       "agent_types": ["ux-designer", "documentation-manager"],
       "planned_tasks": [
         "Comprehensive rewrite of design-system-sample-v2.html",
@@ -231,14 +274,40 @@
         "Keep v1 as historical reference",
         "Update doc references"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Comprehensive rewrite of design-system-sample-v2.html with 16 sections (up from 11).",
+        "Section 1: Color palette with WCAG AA contrast ratios for all text colors, agent colors, status colors, brand colors, and border colors on bg-raised (#182739).",
+        "Section 2: Tinted badge grid — all 6 agents with 44px and 28px (small) variants, plus deprecated solid style reference.",
+        "Section 3: Tinted chip showcase — status chips, priority chips (with icons), category chips, staged chips (square variant).",
+        "Section 4: Pill-button toggle demo — settings-style (6 pills with icons), jobs-style (compact), messages-style, execution mode pills (small variant).",
+        "Section 5: Button styles — primary yellow, secondary outline, danger, icon-only, pill (tinted export/action).",
+        "Section 6: Input styles — default, focused with yellow ring, search with icon prefix.",
+        "Section 7: Stat pill + micro-bar demo — 3 dashboard cards (status distribution, agent roles, taxonomy).",
+        "Section 8: Smooth-border demo — 3 variants (default 1px, 2px emphasis, accent yellow) plus custom color via CSS variable.",
+        "Section 9: Surface elevation layers — 4-tier nested demo (flat, raised, elevated, overlay) with smooth-border values.",
+        "Section 10: Typography scale — Outfit headings (700/600), Roboto body (600/500/400), IBM Plex Mono data (400/600) with all sizes.",
+        "Section 11: Nav icon alignment — MDI vs Giljo SVG in inactive (#8f97b7) and active (#ffc300) states.",
+        "Section 12: Table row patterns — headers (uppercase muted), data rows with agent badges, hover effect, monospace data, pagination controls.",
+        "Section 13: Card patterns — standard smooth-border card, hover lift card, elevated card, empty slot (dashed border exception).",
+        "Section 14: Status chip showcase — all 5 project statuses with color codes, all 7 agent statuses with descriptions.",
+        "Section 15: Brand section — logo mark SVG, brand yellow, gradient, danger, tagline, gradient bar.",
+        "Section 16: Accessibility section — prohibited patterns (text-medium-emphasis, old hex values, CSS borders on cards, v-tabs, round badges) and required patterns (text-muted-a11y, CSS variables, shared utilities, components, touch targets).",
+        "Added table of contents with anchor links to all 16 sections.",
+        "Cleaned up deleted frontend/design-system-sample.html (old unversioned file).",
+        "Kept frontend/design-system-sample-v1.html as historical reference."
+      ],
+      "deviations": [
+        "Old unversioned design-system-sample.html was already deleted (git tracked deletion from prior session). Included in this commit for cleanup.",
+        "No doc reference updates needed — no other docs reference the design system sample path directly."
+      ],
       "blockers_encountered": [],
       "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "cascading_impacts": [
+        "design-system-sample-v2.html is now the definitive design reference with 16 comprehensive sections covering every pattern used in the application."
+      ],
+      "summary": "Comprehensive rewrite of design-system-sample-v2.html from 11 sections to 16 sections. Added: tinted chip showcase (priority/category/staged), table row patterns (headers/hover/pagination), card patterns (standard/hover-lift/elevated/empty-slot), comprehensive status chip showcase (project + agent), accessibility section (prohibited + required patterns with contrast summary), and table of contents. All existing sections enhanced with more detail. Commit: 2a1a1224."
     }
   ],
-  "chain_summary": null,
-  "final_status": "pending"
+  "chain_summary": "The 0871 chain (Design System Remediation & Polish) completed all 8 sessions across 2026-03-31. Starting from audit findings after the 0870 chain, this series: (1) created shared TintedChip and TintedBadge components, consolidated getAgentBadgeStyle into colorUtils.js, added global text-muted-a11y class refactoring 33 Vue files [0871a]; (2-3) converted all v-tabs and v-btn-toggle to pill-button toggles across UserSettings, SystemSettings, ProjectTabs, MessagesView, BroadcastPanel, and AgentJobModal — zero v-tabs remain in the codebase [0871b-c]; (4) verified home page polish was already complete from 0870 [0871d]; (5) eliminated all v-card variant=outlined (5 instances across 2 files) [0871e]; (6) restyled export buttons and CONFIGURATOR to pill-button pattern [0871f]; (7) converted ProductSelector chips and last v-tabs in BroadcastPanel/AgentJobModal to pill-buttons [0871g]; (8) rewrote design-system-sample-v2.html as definitive 16-section reference [0871h]. Net result: 1916 tests passing, zero v-tabs, zero v-card outlined, all agent badges tinted-square, all muted text using global a11y class, comprehensive design system documentation.",
+  "final_status": "complete"
 }
