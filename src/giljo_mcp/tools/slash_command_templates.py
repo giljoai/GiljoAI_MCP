@@ -54,344 +54,38 @@ GIL_ADD_MD = """---
 description: "Add a task or project to the GiljoAI dashboard. Routes to task (technical debt/TODOs) or project (actionable work items) based on context."
 ---
 
-# /gil_add - Add Task or Project to Dashboard
-
-You are executing the `/gil_add` slash command to create either a **task** or a **project** in the GiljoAI MCP server's dashboard.
-
-**Tasks** are technical debt, TODOs, small fixes, "do this later" items, and scope creep punts.
-**Projects** are actionable work items requiring orchestrator coordination, feature implementations, multi-step development work, or continuation of completed work.
-
-## Three Modes of Operation
-
-### Direct Task Mode (--task or --name flags)
-When `$ARGUMENTS` contains `--task` or `--name`, create a task immediately.
-
-### Direct Project Mode (--project flag)
-When `$ARGUMENTS` contains `--project`, create a project immediately.
-
-### Interactive Mode (No recognized flags)
-When `$ARGUMENTS` is empty or contains no recognized flags, use conversation context to suggest the appropriate type and guide the user through creation.
-
----
-
-## Execution Instructions
-
-### Step 1: Parse Arguments
-
-Check `$ARGUMENTS` for the following flags:
-
-**Task flags:**
-- `--task` (triggers direct task mode, can be combined with other task flags)
-- `--name "Task Name"` (triggers direct task mode, required name for task)
-- `--priority [low|medium|high|critical]` (optional, default: medium)
-- `--category [frontend|backend|database|infra|docs|general]` (optional, default: general)
-- `--description "Detailed description"` (optional, uses name/task value if not provided)
-
-**Project flags:**
-- `--project "Project Name"` (triggers direct project mode, required name for project)
-- `--description "Detailed description"` (optional, Claude generates from context if missing)
-- `--type "Type Label"` (optional, human-readable project type e.g. "Frontend", "Backend")
-
-**Valid Categories:** `frontend`, `backend`, `database`, `infra`, `docs`, `general`
-**Valid Priorities:** `low`, `medium`, `high`, `critical`
-
-### Step 2: Route to Mode
-
-- If `$ARGUMENTS` contains `--help` -> Show Help (see below)
-- If `$ARGUMENTS` contains `--name` or `--task` -> Direct Task Mode
-- If `$ARGUMENTS` contains `--project` -> Direct Project Mode
-- Otherwise -> Interactive Mode
-
----
-
-## Help Mode
-
-When `$ARGUMENTS` contains `--help`, display this usage guide and stop:
-
-```
-/gil_add — Add tasks and projects to the GiljoAI dashboard
-
-TASKS (technical debt, TODOs, small fixes):
-  /gil_add --task "Fix login bug" --priority high --category backend
-  /gil_add --name "Refactor auth" --priority medium
-
-PROJECT (orchestrator work items):
-  /gil_add --project "API Redesign" --description "Full REST API overhaul"
-  /gil_add --project "New Feature" --type "Frontend"
-
-INTERACTIVE (context-aware):
-  /gil_add                  — analyzes conversation, suggests task or project
-
-FLAGS:
-  --task, --name            Task title (triggers direct task mode)
-  --project                 Project name (triggers direct project mode)
-  --priority                low | medium | high | critical (default: medium)
-  --category                frontend | backend | database | infra | docs | general
-  --type                    Project type label (e.g. "Frontend", "Backend")
-  --description             Detailed description
-  --help                    Show this help
-```
-
----
-
-## Direct Task Mode
-
-1. **Validate Flags:**
-   - If `--name` is present, use its value as the task name
-   - If `--task` is present with a quoted value (e.g., `--task "Fix login bug"`), use that as the task name
-   - If `--task` is present without a value but `--name` is also present, use `--name`
-   - If neither `--name` nor a `--task` value is provided, show error and stop
-   - Validate `--priority` is one of: low, medium, high, critical
-   - Validate `--category` is one of: frontend, backend, database, infra, docs, general
-
-2. **Parse Flag Values:**
-   ```
-   Extract values from $ARGUMENTS:
-   - title: value of --name or --task flag (required)
-   - priority: value of --priority flag (default: "medium")
-   - category: value of --category flag (default: "general")
-   - description: value of --description flag (default: same as title)
-   ```
-
-3. **Call MCP Tool:**
-   Use the `mcp__giljo_mcp__create_task` tool with:
-   ```
-   title: <title value>
-   description: <description value or title if not provided>
-   priority: <priority value>
-   category: <category value>
-   ```
-
-4. **Confirm Success:**
-   ```
-   Task created successfully.
-
-   Title: <task title>
-   Priority: <priority>
-   Category: <category>
-   Task ID: <task_id from MCP response>
-
-   You can view this task in the GiljoAI Tasks dashboard.
-   ```
-
----
-
-## Direct Project Mode
-
-1. **Validate Flags:**
-   - `--project` must have a quoted value (the project name)
-   - If `--project` has no value, show error and stop
-
-2. **Parse Flag Values:**
-   ```
-   Extract values from $ARGUMENTS:
-   - name: value of --project flag (required)
-   - description: value of --description flag (optional)
-   - project_type: value of --type flag (optional, e.g. "Frontend", "Backend")
-   ```
-
-3. **Generate Description (if missing):**
-   If `--description` is not provided, review the conversation context and generate a concise description of the project's purpose and scope. If there is no meaningful conversation context, use the project name as the description.
-
-4. **Call MCP Tool:**
-   Use the `mcp__giljo_mcp__create_project` tool with:
-   ```
-   name: <project name>
-   description: <description value>
-   project_type: <type value, if provided>
-   ```
-   Only include `project_type` if `--type` was specified. If the type label doesn't match any existing project type, the project is created without a type (no error).
-
-5. **Confirm Success:**
-   ```
-   Project created successfully.
-
-   Name: <project name>
-   Description: <description>
-   Project ID: <project_id from MCP response>
-   Alias: <alias from MCP response, if available>
-
-   Project created as inactive. Open the GiljoAI dashboard to activate and launch.
-   ```
-
----
-
-## Interactive Mode
-
-### Phase 1: Analyze and Suggest
-
-1. **Review Conversation Context:**
-   - Identify the most relevant recent concept, feature, or issue discussed
-   - Determine whether the item is better suited as a task or a project
-
-2. **Classification Guidance:**
-   - **Suggest Task when:** The item is technical debt, a TODO, a small fix, a "do this later" item, a scope creep punt, a bug to address later, or a minor improvement
-   - **Suggest Project when:** The item requires orchestrator coordination, involves multi-step development, is a feature implementation, represents a significant body of work, or is a continuation/follow-up of completed work
-
-3. **Present Suggestion to User:**
-   ```
-   Based on our conversation, this sounds like a [task/project]:
-
-   [Generated title/name]: <title or name>
-   [Generated description]: <description>
-
-   Would you like to add it as:
-   1. Task - technical debt / future TODO
-   2. Project - actionable work for orchestrator execution
-   ```
-
-4. **Wait for User Confirmation:**
-   - If user selects Task (or confirms task suggestion), proceed to Task Path
-   - If user selects Project (or confirms project suggestion), proceed to Project Path
-   - If user provides corrections to the title/description, incorporate them
-
-### Phase 2A: Task Path (Interactive)
-
-1. **Confirm Title and Description:**
-   If not already confirmed in Phase 1, present:
-   ```
-   Title: <generated title>
-   Description: <generated description>
-
-   Does this look correct?
-   ```
-   Allow user to edit or confirm.
-
-2. **Ask for Category:**
-   ```
-   What category best describes this task?
-   1. frontend - UI/UX work
-   2. backend - Server/API work
-   3. database - Schema/query work
-   4. infra - DevOps/deployment work
-   5. docs - Documentation work
-   6. general - Other/miscellaneous
-
-   Select a number (1-6):
-   ```
-
-3. **Ask for Priority:**
-   ```
-   What is the priority level?
-   1. low - Nice to have
-   2. medium - Should do eventually (default)
-   3. high - Important, do soon
-   4. critical - Blocking, do ASAP
-
-   Select a number (1-4, default is 2):
-   ```
-
-4. **Call MCP Tool:**
-   Use `mcp__giljo_mcp__create_task` with:
-   ```
-   title: <confirmed title>
-   description: <confirmed description>
-   priority: <user selected priority>
-   category: <user selected category>
-   ```
-
-5. **Confirm Success:**
-   ```
-   Task created successfully.
-
-   Title: <task title>
-   Category: <category>
-   Priority: <priority>
-   Task ID: <task_id from MCP response>
-
-   This task is now in your Tasks dashboard.
-   ```
-
-### Phase 2B: Project Path (Interactive)
-
-1. **Confirm Name and Description:**
-   If not already confirmed in Phase 1, present:
-   ```
-   Project Name: <generated name>
-   Description: <generated description>
-
-   Does this look correct?
-   ```
-   Allow user to edit or confirm.
-
-2. **Ask for Project Type (optional):**
-   ```
-   Would you like to assign a project type? (optional)
-   Enter a type label (e.g. "Frontend", "Backend") or press Enter to skip:
-   ```
-   If the user provides a type, pass it as `project_type`. If skipped, omit the parameter.
-
-3. **Call MCP Tool:**
-   Use `mcp__giljo_mcp__create_project` with:
-   ```
-   name: <confirmed project name>
-   description: <confirmed description>
-   project_type: <type label, if provided>
-   ```
-
-4. **Confirm Success:**
-   ```
-   Project created successfully.
-
-   Name: <project name>
-   Description: <description>
-   Project ID: <project_id from MCP response>
-   Alias: <alias from MCP response, if available>
-
-   Project created as inactive. Open the GiljoAI dashboard to activate and launch.
-   ```
-
----
-
-## Error Handling
-
-### Validation Errors (Direct Task Mode):
-- Missing name: "Error: A task name is required. Provide --name \\"Task Name\\" or --task \\"Task Name\\", or use /gil_add without flags for interactive mode."
-- Invalid priority: "Error: Invalid priority '<value>'. Must be one of: low, medium, high, critical"
-- Invalid category: "Error: Invalid category '<value>'. Must be one of: frontend, backend, database, infra, docs, general"
-
-### Validation Errors (Direct Project Mode):
-- Missing name: "Error: A project name is required. Provide --project \\"Project Name\\", or use /gil_add without flags for interactive mode."
-
-### MCP Tool Errors:
-If the MCP tool returns an error:
-```
-Failed to create [task/project]: <error message>
-
-Please check your connection to the GiljoAI MCP server and try again.
-```
-
-### Active Product Errors:
-If the MCP tool returns an error containing "No active product" or similar:
-```
-No active product is set. You need to activate a product in the GiljoAI dashboard before creating tasks or projects.
-
-Open the dashboard and select a product to activate, then try again.
-```
-
----
-
-## Important Notes
-
-1. **MCP Tool Parameters:** The `create_task` tool accepts `title`, `description`, `priority`, and `category`. The `create_project` tool accepts `name`, `description`, and optionally `project_type` (a human-readable label like "Frontend"). Tasks and projects are always bound to the active product (enforced server-side).
-
-2. **Tenant Key:** Never pass `tenant_key` to MCP tools. It is auto-injected by the MCP security layer.
-
-3. **Active Product Required:** Both tasks and projects require an active product. If the MCP tool returns an error about "No active product set", inform the user they need to activate a product in the GiljoAI dashboard first.
-
-4. **Conversation Context:** For interactive mode, analyze conversation history to generate meaningful titles and descriptions. Be specific based on what was discussed. Use your judgement on how far back to look for relevant context.
-
-5. **Project Lifecycle:** Projects are created as inactive. The user must open the GiljoAI dashboard to activate and launch them with orchestrator coordination.
-
-6. **$ARGUMENTS Variable:** This contains everything the user typed after `/gil_add`. Parse it for flags or treat the absence of flags as the trigger for interactive mode.
-
----
-
-## Task Arguments
-
-The `$ARGUMENTS` variable will contain the user's input after `/gil_add`.
-
-Execute the appropriate mode based on the presence of flags in `$ARGUMENTS`.
+# /gil_add — Add task or project to GiljoAI dashboard
+
+## Routing
+- **Task**: technical debt, TODOs, bugs, small fixes, scope creep punts -> `mcp__giljo_mcp__create_task`
+- **Project**: actionable work items, features, multi-step dev work -> `mcp__giljo_mcp__create_project`
+
+## Task parameters
+- `title` (required), `description` (optional), `priority` (low|medium|high|critical, default: medium), `category` (frontend|backend|database|infra|docs|general, default: general)
+
+## Project parameters
+- `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — label e.g. "Frontend" OR abbreviation e.g. "FE", "TST"), `series_number` (optional int 1-9999 — auto-assigned if omitted)
+
+## Modes
+
+### Direct flags in `$ARGUMENTS`
+- `--task "Name"` or `--name "Name"` (+ optional `--priority`, `--category`, `--description`) -> create task immediately
+- `--project "Name"` (+ optional `--description`, `--type`, `--series`) -> create project immediately
+- `--help` -> show usage summary and stop
+
+### Interactive (no flags or bare text)
+1. Analyze conversation context to suggest task vs project with generated title/description
+2. Ask user to confirm or adjust type, title, description
+3. For tasks: ask category and priority
+4. For projects: ask optional type label
+5. Call appropriate MCP tool and confirm
+
+## Rules
+- Never pass `tenant_key` (auto-injected by security layer)
+- Active product required (server-side enforced) — if error mentions "No active product", tell user to activate one in dashboard
+- Projects are created as inactive — user activates via dashboard
+- On success: show type, title/name, ID, and "View in GiljoAI dashboard"
+- On error: show what went wrong and how to fix
 """
 
 # =============================================================================
@@ -528,80 +222,38 @@ If agents don't appear after restart:
 GIL_ADD_GEMINI_TOML = """description = "Add a task or project to the GiljoAI dashboard"
 
 prompt = '''
-You are executing the gil_add command to create either a task or a project in the GiljoAI MCP server's dashboard.
+# /gil_add — Add task or project to GiljoAI dashboard
 
-Tasks are technical debt, TODOs, small fixes, "do this later" items, and scope creep punts.
-Projects are actionable work items requiring orchestrator coordination, feature implementations, multi-step development work, or continuation of completed work.
+## Routing
+- Task: technical debt, TODOs, bugs, small fixes, scope creep punts -> create_task MCP tool
+- Project: actionable work items, features, multi-step dev work -> create_project MCP tool
 
-## Three Modes of Operation
+## Task parameters
+- title (required), description (optional), priority (low|medium|high|critical, default: medium), category (frontend|backend|database|infra|docs|general, default: general)
 
-### Direct Task Mode (--task or --name flags)
-When arguments contain --task or --name, create a task immediately.
+## Project parameters
+- name (required), description (optional — generate from context if missing), project_type (optional — label e.g. "Frontend" OR abbreviation e.g. "FE", "TST"), series_number (optional int 1-9999 — auto-assigned if omitted)
 
-### Direct Project Mode (--project flag)
-When arguments contain --project, create a project immediately.
+## Modes
 
-### Interactive Mode (No recognized flags)
-When arguments are empty or contain no recognized flags, use conversation context to suggest the appropriate type and guide the user through creation.
+### Direct flags in arguments
+- --task "Name" or --name "Name" (+ optional --priority, --category, --description) -> create task immediately
+- --project "Name" (+ optional --description, --type, --series) -> create project immediately
+- --help -> show usage summary and stop
 
-## Execution Instructions
+### Interactive (no flags or bare text)
+1. Analyze conversation context to suggest task vs project with generated title/description
+2. Ask user to confirm or adjust type, title, description
+3. For tasks: ask category and priority
+4. For projects: ask optional type label
+5. Call appropriate MCP tool and confirm
 
-### Step 1: Parse Arguments
-
-Task flags:
-- --task (triggers direct task mode)
-- --name "Task Name" (triggers direct task mode, required name for task)
-- --priority [low|medium|high|critical] (optional, default: medium)
-- --category [frontend|backend|database|infra|docs|general] (optional, default: general)
-- --description "Detailed description" (optional)
-
-Project flags:
-- --project "Project Name" (triggers direct project mode)
-- --description "Detailed description" (optional)
-- --type "Type Label" (optional, human-readable project type e.g. "Frontend", "Backend")
-
-### Step 2: Route to Mode
-- If arguments contain --help -> Show Help (see below)
-- If arguments contain --name or --task -> Direct Task Mode
-- If arguments contain --project -> Direct Project Mode
-- Otherwise -> Interactive Mode
-
-## Help Mode
-When arguments contain --help, display this usage guide and stop:
-
-/gil_add — Add tasks and projects to the GiljoAI dashboard
-
-TASKS: /gil_add --task "Fix bug" --priority high --category backend
-PROJECTS: /gil_add --project "New Feature" --type "Frontend"
-INTERACTIVE: /gil_add (analyzes conversation, suggests task or project)
-
-FLAGS: --task/--name (task title), --project (project name), --priority (low/medium/high/critical), --category (frontend/backend/database/infra/docs/general), --type (project type label), --description (details), --help (this help)
-
-## Direct Task Mode
-1. Parse and validate flags (name required, validate priority/category values)
-2. Call GiljoAI MCP tool create_task with: title, description, priority, category
-3. Confirm success with task ID
-
-## Direct Project Mode
-1. Parse and validate flags (project name required)
-2. If --description missing, generate from conversation context
-3. Call GiljoAI MCP tool create_project with: name, description, project_type (if --type provided)
-4. Confirm success with project ID. Note: project created as inactive.
-5. If --type was provided but doesn't match an existing project type, the project is created without a type (no error).
-
-## Interactive Mode
-1. Review conversation context to suggest task vs project
-2. Present suggestion with generated title/description
-3. Ask user to confirm type (task or project)
-4. For tasks: ask category (frontend/backend/database/infra/docs/general) and priority (low/medium/high/critical)
-5. For projects: confirm name and description, ask for optional project type label
-6. Call appropriate MCP tool and confirm success
-
-## Important Notes
-- Never pass tenant_key to MCP tools (auto-injected)
-- Both tasks and projects require an active product (server-side enforced)
+## Rules
+- Never pass tenant_key (auto-injected by security layer)
+- Active product required (server-side enforced) — if error mentions "No active product", tell user to activate one in dashboard
 - Projects are created as inactive — user activates via dashboard
-- The create_project MCP tool accepts an optional project_type parameter (human-readable label like "Frontend")
+- On success: show type, title/name, ID, and "View in GiljoAI dashboard"
+- On error: show what went wrong and how to fix
 '''
 """
 
@@ -830,80 +482,38 @@ name: gil-add
 description: "Add a task or project to the GiljoAI dashboard"
 ---
 
-You are executing the gil-add skill to create either a **task** or a **project** in the GiljoAI MCP server's dashboard.
+# $gil-add — Add task or project to GiljoAI dashboard
 
-**Tasks** are technical debt, TODOs, small fixes, "do this later" items, and scope creep punts.
-**Projects** are actionable work items requiring orchestrator coordination, feature implementations, multi-step development work, or continuation of completed work.
+## Routing
+- **Task**: technical debt, TODOs, bugs, small fixes, scope creep punts -> `create_task` MCP tool
+- **Project**: actionable work items, features, multi-step dev work -> `create_project` MCP tool
 
-## Three Modes of Operation
+## Task parameters
+- `title` (required), `description` (optional), `priority` (low|medium|high|critical, default: medium), `category` (frontend|backend|database|infra|docs|general, default: general)
 
-### Direct Task Mode (--task or --name flags)
-When arguments contain `--task` or `--name`, create a task immediately.
+## Project parameters
+- `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — label e.g. "Frontend" OR abbreviation e.g. "FE", "TST"), `series_number` (optional int 1-9999 — auto-assigned if omitted)
 
-### Direct Project Mode (--project flag)
-When arguments contain `--project`, create a project immediately.
+## Modes
 
-### Interactive Mode (No recognized flags)
-When arguments are empty or contain no recognized flags, use conversation context to suggest the appropriate type and guide the user through creation.
+### Direct flags in arguments
+- `--task "Name"` or `--name "Name"` (+ optional `--priority`, `--category`, `--description`) -> create task immediately
+- `--project "Name"` (+ optional `--description`, `--type`, `--series`) -> create project immediately
+- `--help` -> show usage summary and stop
 
-## Execution Instructions
+### Interactive (no flags or bare text)
+1. Analyze conversation context to suggest task vs project with generated title/description
+2. Ask user to confirm or adjust type, title, description
+3. For tasks: ask category and priority
+4. For projects: ask optional type label
+5. Call appropriate MCP tool and confirm
 
-### Step 1: Parse Arguments
-
-**Task flags:**
-- `--task` (triggers direct task mode)
-- `--name "Task Name"` (triggers direct task mode, required name for task)
-- `--priority [low|medium|high|critical]` (optional, default: medium)
-- `--category [frontend|backend|database|infra|docs|general]` (optional, default: general)
-- `--description "Detailed description"` (optional)
-
-**Project flags:**
-- `--project "Project Name"` (triggers direct project mode)
-- `--description "Detailed description"` (optional)
-- `--type "Type Label"` (optional, human-readable project type e.g. "Frontend", "Backend")
-
-### Step 2: Route to Mode
-- If arguments contain `--help` -> Show Help (see below)
-- If arguments contain `--name` or `--task` -> Direct Task Mode
-- If arguments contain `--project` -> Direct Project Mode
-- Otherwise -> Interactive Mode
-
-## Help Mode
-When arguments contain `--help`, display this usage guide and stop:
-
-$gil-add — Add tasks and projects to the GiljoAI dashboard
-
-TASKS: $gil-add --task "Fix bug" --priority high --category backend
-PROJECTS: $gil-add --project "New Feature" --type "Frontend"
-INTERACTIVE: $gil-add (analyzes conversation, suggests task or project)
-
-FLAGS: --task/--name (task title), --project (project name), --priority (low/medium/high/critical), --category (frontend/backend/database/infra/docs/general), --type (project type label), --description (details), --help (this help)
-
-## Direct Task Mode
-1. Parse and validate flags (name required, validate priority/category values)
-2. Call GiljoAI MCP tool `create_task` with: title, description, priority, category
-3. Confirm success with task ID
-
-## Direct Project Mode
-1. Parse and validate flags (project name required)
-2. If `--description` missing, generate from conversation context
-3. Call GiljoAI MCP tool `create_project` with: name, description, project_type (if `--type` provided)
-4. Confirm success with project ID. Note: project created as inactive.
-5. If `--type` was provided but doesn't match an existing project type, the project is created without a type (no error).
-
-## Interactive Mode
-1. Review conversation context to suggest task vs project
-2. Present suggestion with generated title/description
-3. Ask user to confirm type (task or project)
-4. For tasks: ask category (frontend/backend/database/infra/docs/general) and priority (low/medium/high/critical)
-5. For projects: confirm name and description, ask for optional project type label
-6. Call appropriate MCP tool and confirm success
-
-## Important Notes
-- Never pass `tenant_key` to MCP tools (auto-injected by security layer)
-- Both tasks and projects require an active product (server-side enforced)
+## Rules
+- Never pass `tenant_key` (auto-injected by security layer)
+- Active product required (server-side enforced) — if error mentions "No active product", tell user to activate one in dashboard
 - Projects are created as inactive — user activates via dashboard
-- The `create_project` MCP tool accepts an optional `project_type` parameter (human-readable label like "Frontend")
+- On success: show type, title/name, ID, and "View in GiljoAI dashboard"
+- On error: show what went wrong and how to fix
 """
 
 # =============================================================================

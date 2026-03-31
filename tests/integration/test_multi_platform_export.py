@@ -85,9 +85,9 @@ class TestGilAddConsistency:
                     add_content = content
                     break
             assert add_content is not None, f"{platform} missing gil_add"
-            assert "Direct Task Mode" in add_content, f"{platform} missing task mode"
-            assert "Direct Project Mode" in add_content, f"{platform} missing project mode"
-            assert "Interactive Mode" in add_content, f"{platform} missing interactive mode"
+            assert "--task" in add_content, f"{platform} missing task mode"
+            assert "--project" in add_content, f"{platform} missing project mode"
+            assert "Interactive" in add_content, f"{platform} missing interactive mode"
 
 
 class TestBootstrapPromptTemplates:

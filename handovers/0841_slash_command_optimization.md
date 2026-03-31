@@ -1,77 +1,64 @@
-# Handover 0841: Slash Command Optimization (/gil_add)
+# Handover 0841: Slash Command Optimization (/gil_add, /gil_add, @gil_task)
 
-**Date:** 2026-03-26
+**Date:** 2026-03-30 (updated)
 **From Agent:** Orchestrator
 **To Agent:** Next Session
 **Priority:** Low
 **Estimated Complexity:** 2-3 hours
-**Status:** Not Started
+**Status:** In Progress
 **Edition Scope:** CE
 
 ---
 
 ## Task Summary
 
-Rewrite `/gil_add` slash command from 343 lines (~3,500 tokens) to ~40 lines (~500 tokens). The current file scripts the entire conversational flow verbatim, but Claude only needs the routing rules, tool names, parameter schemas, and valid values. The MCP tool definitions (already loaded via server connection) provide the rest.
+Slim down the `gil_add` / `gil_task` command templates across all three platforms (Claude, Gemini, Codex) and fix the agent closeout signoff to use platform-correct command syntax.
 
-## Context
+### Three Change Points
 
-- Slash commands are Claude Code-only (static `.md` files in `~/.claude/commands/`)
-- They are NOT dynamic across platforms — Codex CLI and Gemini CLI have separate systems (0836 series)
-- The file is injected as the full prompt on every invocation — zero prior context
-- Keep it local (no MCP round-trips) but slim
+1. **Claude template bloat** — Rewrite `GIL_ADD_MD` from 343 lines (~3,500 tokens) to match the density of Gemini/Codex (~80 lines, ~800 tokens). Gemini and Codex templates are already slim and prove the format works.
 
-## Current Problem
+2. **Gemini + Codex templates** — Already lean. Apply minor harmonization so all three share identical structure and wording where possible (only format/syntax wrappers differ).
 
-The 343-line file includes:
-- ~80 lines of interactive mode with verbatim prompt templates Claude doesn't need
-- ~40 lines of triplicated success confirmation templates
-- ~25 lines of error handling scripts
-- ~20 lines of embedded help text
+3. **Agent closeout signoff** — `protocol_builder.py` line 429-434 hardcodes `/gil_add` regardless of platform. Must say `/gil_add` (Claude/Gemini) or `$gil-add` (Codex) based on execution mode.
 
-Claude can generate conversational prompts and error messages from rules + valid values. It doesn't need a script.
+## Source File
 
-## Proposed Slim Version (~40 lines)
+All templates live in one file: `src/giljo_mcp/tools/slash_command_templates.py`
 
-```markdown
-# /gil_add — Add task or project to GiljoAI
+| Platform | Constant | Current Lines | Target |
+|----------|----------|---------------|--------|
+| Claude | `GIL_ADD_MD` (lines 53-395) | 343 | ~80 |
+| Gemini | `GIL_ADD_GEMINI_TOML` (lines 528-606) | 78 | ~78 (minor tweaks) |
+| Codex | `GIL_ADD_CODEX_SKILL_MD` (lines 828-907) | 80 | ~80 (minor tweaks) |
 
-## Routing
-- **Task**: technical debt, TODOs, bugs, improvements -> `create_task` MCP tool
-- **Project**: actionable work items, features, initiatives -> `create_project` MCP tool
+## Closeout Signoff Fix
 
-## Task parameters
-- title (required), description, category (frontend|backend|database|api|testing|devops|documentation|security|performance|general), priority (low|medium|high|critical)
+**File:** `src/giljo_mcp/services/protocol_builder.py` (lines 427-434)
 
-## Project parameters
-- name (required), description, project_type (optional label)
-
-## Behavior
-- If input is clear, route directly. If ambiguous, ask: task or project?
-- If no flags, analyze conversation context to suggest title/description
-- On success: show type, title, ID, and "View in GiljoAI dashboard"
-- On error: show what's wrong and how to fix
+**Current (hardcoded):**
 ```
+"tell me and I'll use /gil_add to save it to your dashboard."
+```
+
+**Fix:** Accept `tool` param (derived from `execution_mode` via existing `execution_mode_to_tool` mapping), then:
+- `claude-code` / `gemini` / default: `/gil_add`
+- `codex`: `$gil-add`
+
+Thread `tool` from `mission_service.py` line 680 using the same `execution_mode_to_tool` pattern already used for orchestrator protocols (line 978-983).
 
 ## Implementation Plan
 
-1. Back up current `~/.claude/commands/gil_add.md`
-2. Write slim version
-3. Test: `/gil_add fix the login bug` (should route to task)
-4. Test: `/gil_add implement OAuth support` (should route to project)
-5. Test: `/gil_add` with no args (should enter interactive mode)
-6. Test: `/gil_add --help` (should show usage)
-7. Update the server-side slash command export (`/api/download/slash-commands`) to ship the slim version
-
-## Also Consider
-
-- Review ALL slash commands in `~/.claude/commands/` for similar bloat
-- The server exports these via `FileStaging.stage_slash_commands()` — update the source templates
-- Source templates likely in `src/giljo_mcp/slash_commands/` or similar
+1. Rewrite `GIL_ADD_MD` to slim format (~80 lines)
+2. Review/harmonize `GIL_ADD_GEMINI_TOML` and `GIL_ADD_CODEX_SKILL_MD`
+3. Add `tool` param to `_generate_agent_protocol()`, thread from `mission_service.py`
+4. Make `gil_add_block` signoff platform-aware
+5. Test all three exports via `/api/download/slash-commands.zip?platform=`
 
 ## Success Criteria
 
-- [ ] `/gil_add` works identically with ~500 tokens instead of ~3,500
-- [ ] All routing scenarios tested (task, project, ambiguous, no args, --help)
-- [ ] Server-side export updated to ship slim version
-- [ ] No regression in MCP tool calls
+- [ ] Claude `GIL_ADD_MD` reduced from ~3,500 to ~800 tokens
+- [ ] All three platform templates share identical structure/wording
+- [ ] Agent closeout says `/gil_add` (Claude/Gemini) or `$gil-add` (Codex)
+- [ ] `/api/download/slash-commands.zip` ships slim versions for all platforms
+- [ ] No regression in MCP tool calls (create_task, create_project)
