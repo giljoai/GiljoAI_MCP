@@ -14,25 +14,23 @@
         :key="idx"
         class="px-2 py-1 memory-row"
       >
-        <div class="d-flex align-center ga-2 mb-1">
-          <span class="text-body-2 font-weight-bold">
+        <div class="memory-header">
+          <span class="text-body-2 font-weight-bold memory-title">
             {{ memory.project_name }}
+            <span v-if="memory.product_name" class="text-caption text-medium-emphasis">({{ memory.product_name }})</span>
           </span>
-          <span v-if="memory.product_name" class="text-caption text-medium-emphasis">({{ memory.product_name }})</span>
-          <span class="ml-auto d-flex align-center ga-2">
-            <v-chip
-              v-if="memory.entry_type"
-              size="x-small"
-              variant="outlined"
-              color="yellow-darken-2"
-              class="entry-type-chip"
-              :aria-label="`Archived: ${humanizeType(memory.entry_type)}`"
-            >
-              Archived
-            </v-chip>
-            <span class="text-caption text-medium-emphasis relative-time">
-              {{ relativeTime(memory.timestamp) }}
-            </span>
+          <v-chip
+            v-if="memory.entry_type"
+            size="x-small"
+            variant="outlined"
+            color="yellow-darken-2"
+            class="entry-type-chip"
+            :aria-label="`Archived: ${humanizeType(memory.entry_type)}`"
+          >
+            Archived
+          </v-chip>
+          <span class="text-caption text-medium-emphasis relative-time">
+            {{ relativeTime(memory.timestamp) }}
           </span>
         </div>
         <div class="text-caption text-medium-emphasis summary-text">
@@ -100,6 +98,19 @@ function relativeTime(timestamp) {
 
 .memory-row:last-child {
   border-bottom: none;
+}
+
+.memory-header {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.memory-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .entry-type-chip {
