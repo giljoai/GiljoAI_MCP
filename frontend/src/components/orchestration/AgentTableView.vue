@@ -106,6 +106,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useStalenessMonitor } from '@/composables/useStalenessMonitor'
 import api from '@/services/api'
+import { hexToRgba } from '@/utils/colorUtils'
 import StatusChip from '@/components/StatusBoard/StatusChip.vue'
 import ActionIcons from '@/components/StatusBoard/ActionIcons.vue'
 /**
@@ -156,11 +157,8 @@ const {
 function getAgentBadgeStyle(displayName) {
   const colorObj = getAgentDisplayNameColor(displayName)
   const hex = colorObj?.hex || '#8895a8'
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
   return {
-    background: `rgba(${r}, ${g}, ${b}, 0.15)`,
+    background: hexToRgba(hex, 0.15),
     color: hex,
   }
 }

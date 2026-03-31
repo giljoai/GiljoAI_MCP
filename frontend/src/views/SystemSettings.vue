@@ -2,7 +2,7 @@
   <v-container>
     <!-- Page Header -->
     <h1 class="text-h4 mb-2">Admin Settings</h1>
-    <p class="text-subtitle-1 mb-4">Configure server and system-wide settings (Admin only)</p>
+    <p class="text-subtitle-1 mb-4 settings-subtitle">Configure server and system-wide settings (Admin only)</p>
 
     <!-- Settings Tabs (v-btn-toggle - native Vuetify) -->
     <v-btn-toggle
@@ -302,3 +302,9 @@ onMounted(async () => {
   await loadCookieDomains()
 })
 </script>
+
+<style scoped>
+.settings-subtitle {
+  color: #8895a8;
+}
+</style>
