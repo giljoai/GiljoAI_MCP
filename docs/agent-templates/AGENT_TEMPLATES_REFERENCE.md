@@ -17,8 +17,8 @@
 - **Seeding trigger**: First user creation (auth.py:910)
 - **Source**: `src/giljo_mcp/template_seeder.py::_get_default_templates_v103()`
 - **Colors**: Each template has unique background_color for UI display
-  - orchestrator: #D4A574, implementer: #3498DB, tester: #FFC300
-  - analyzer: #E74C3C, reviewer: #9B59B6, documenter: #27AE60
+  - orchestrator: #D4B08A, implementer: #6DB3E4, tester: #EDBA4A
+  - analyzer: #E07872, reviewer: #AC80CC, documenter: #5EC48E
 
 **Agent Template Export** (Handover 0102):
 - 15-minute token TTL for secure downloads
