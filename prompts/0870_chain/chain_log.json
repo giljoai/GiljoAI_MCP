@@ -130,10 +130,10 @@
       "session_id": "0870d",
       "title": "Core Badge Components",
       "handover": "handovers/0870_design_system_harmonization.md#0870d",
-      "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "completed",
+      "started_at": "2026-03-31T00:45:00Z",
+      "completed_at": "2026-03-31T00:50:00Z",
       "agent_types": ["ux-designer", "frontend-tester"],
       "planned_tasks": [
         "Update RoleBadge.vue — tinted style, square geometry (border-radius 8px)",
@@ -144,12 +144,28 @@
         "Verify GilMascot.vue — no conflicts",
         "Run existing component tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "RoleBadge.vue: replaced Vuetify v-chip with tinted span — rgba(color, 0.15) background + bright text, border-radius 8px. Role colors: owner=#AC80CC, admin=#6DB3E4, member=#5EC48E, viewer=#8895a8. Supports x-small/small/default sizes.",
+        "StatusBadge.vue: replaced flat v-chip with tinted span — rgba(statusColor, 0.15) background + bright status color text, border-radius 8px. Status colors unchanged: active=#67bd6d, inactive=#9e9e9e, completed=#67bd6d, cancelled=#ff9800, terminated=#e07872, deleted=#e07872.",
+        "StatusChip.vue: verified — uses getStatusConfig() from statusConfig.js, all status colors unchanged (waiting/working/blocked/complete/silent/decommissioned/handed_over). No changes needed.",
+        "ActionIcons.vue: verified — uses getActionConfig() from actionConfig.js for button colors, no agent colors or hardcoded hex values. No changes needed.",
+        "GiljoFaceIcon.vue: verified — uses SVG file references (/icons/Giljo_YW_Face.svg, /icons/Giljo_Inactive_Dark.svg), no hardcoded colors. No changes needed.",
+        "GilMascot.vue: verified — body fill uses rgb(var(--v-theme-primary)), eyes use currentColor/theme vars. No agent color conflicts. No changes needed.",
+        "Updated StatusBadge.spec.js test assertions to match new DOM structure (span.status-badge instead of v-chip, tinted style checks, updated computed property names).",
+        "npm run lint: 0 errors, 7 pre-existing warnings (unchanged). npm run test: 96 files, 1893 tests pass, 0 failures."
+      ],
+      "deviations": [
+        "RoleBadge and StatusBadge were not imported by any other component — changes are self-contained with no downstream breakage risk.",
+        "StatusBadge previously used Vuetify semantic color names (success, warning, error) and hex (#fff) via color prop. Replaced with explicit hex values matching the existing semantic colors for the tinted pattern."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870e: Both RoleBadge and StatusBadge now use plain HTML spans with inline tinted styles instead of Vuetify v-chip. Components consuming these in the future should not rely on v-chip classes. The hexToRgb helper is duplicated in both components — if more tinted components emerge, consider extracting to a shared utility. StatusChip.vue (job statuses) still uses Vuetify v-chip with statusConfig colors — this is intentional as job status colors are unchanged and the chip includes tooltip/health indicator features that benefit from Vuetify integration.",
+      "cascading_impacts": [
+        "RoleBadge no longer renders as v-chip — any future consumer expecting .v-chip class will need adjustment",
+        "StatusBadge no longer renders as v-chip — same consideration applies",
+        "StatusBadge status colors are now explicit hex values rather than Vuetify theme names — decoupled from Vuetify theme changes"
+      ],
+      "summary": "Converted RoleBadge.vue and StatusBadge.vue to tinted style (rgba 0.15 background + bright text) with square geometry (border-radius 8px). Verified 4 other components unchanged: StatusChip.vue, ActionIcons.vue, GiljoFaceIcon.vue, GilMascot.vue. Updated StatusBadge test file. 3 files changed, all 1893 tests pass."
     },
     {
       "session_id": "0870e",
