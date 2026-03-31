@@ -2,7 +2,7 @@
   <v-container fluid class="fill-height first-login-container">
     <v-row align="center" justify="center">
       <v-col cols="12" sm="10" md="8" lg="6">
-        <v-card elevation="8" class="first-login-card">
+        <v-card elevation="8" class="first-login-card smooth-border">
           <!-- Header -->
           <v-card-title class="text-center pa-6">
             <div class="d-flex flex-column align-center w-100">
@@ -15,7 +15,7 @@
                 class="mb-3"
               />
               <h1 class="text-h5 font-weight-bold">Complete Account Setup</h1>
-              <p class="text-body-2 text-medium-emphasis mt-2">
+              <p class="text-body-2 first-login-text-muted mt-2">
                 Set your new password and recovery PIN
               </p>
             </div>
@@ -157,7 +157,7 @@
                 <v-icon class="mr-2">mdi-shield-key</v-icon>
                 Recovery PIN Setup
               </h3>
-              <p class="text-caption text-medium-emphasis mb-4">
+              <p class="text-caption first-login-text-muted mb-4">
                 Create a 4-digit PIN for password recovery. This PIN can be used if you forget your
                 password.
               </p>
@@ -394,6 +394,11 @@ async function handleSubmit() {
 /* Dark theme adjustments */
 :deep(.v-theme--dark) .first-login-container {
   background: linear-gradient(135deg, rgb(18, 29, 42) 0%, rgb(10, 15, 22) 100%);
+}
+
+/* Accessible text colors */
+.first-login-text-muted {
+  color: #8895a8 !important;
 }
 
 /* Accessibility: Focus indicators */
