@@ -15,7 +15,7 @@
       <v-card-text v-if="product">
         <!-- Product Name -->
         <div class="text-h6 mb-2">{{ product.name }}</div>
-        <div class="text-caption text-medium-emphasis mb-2">ID: {{ product.id }}</div>
+        <div class="text-caption mb-2" style="color: #8895a8; font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem">ID: {{ product.id }}</div>
 
         <!-- Context Tuning (Handover 0831) -->
         <div class="d-flex align-center mb-4">
@@ -56,12 +56,12 @@
           <div class="text-subtitle-2 mb-2">Statistics</div>
           <v-row dense>
             <v-col cols="6">
-              <div class="text-caption">Unresolved Tasks</div>
-              <div class="text-h6">{{ product.unresolved_tasks || 0 }}</div>
+              <div class="text-caption" style="color: #8895a8">Unresolved Tasks</div>
+              <div class="text-h6" style="color: #a3aac4">{{ product.unresolved_tasks || 0 }}</div>
             </v-col>
             <v-col cols="6">
-              <div class="text-caption">Unfinished Projects</div>
-              <div class="text-h6">{{ product.unfinished_projects || 0 }}</div>
+              <div class="text-caption" style="color: #8895a8">Unfinished Projects</div>
+              <div class="text-h6" style="color: #a3aac4">{{ product.unfinished_projects || 0 }}</div>
             </v-col>
           </v-row>
         </div>
@@ -87,54 +87,66 @@
 
               <!-- Summary Levels Preview (Handover 0246b: light/medium/full) -->
               <v-card-text v-if="doc.is_summarized || doc.vision_document" class="pt-0 pb-2">
-                <div class="text-caption text-medium-emphasis mb-1">Summary Previews</div>
+                <div class="text-caption mb-1" style="color: #8895a8">Summary Previews</div>
                 <div class="d-flex justify-space-around">
-                  <v-chip
-                    size="small"
-                    variant="tonal"
-                    color="success"
-                    :loading="loadingSummary.docId === doc.id && loadingSummary.level === 'light'"
-                    class="cursor-pointer"
+                  <span
+                    class="summary-level-chip cursor-pointer"
+                    style="background: rgba(103,189,109,0.15); color: #67bd6d"
+                    role="button"
+                    tabindex="0"
                     @click="showSummary(doc, 'light')"
+                    @keydown.enter="showSummary(doc, 'light')"
                   >
+                    <v-progress-circular
+                      v-if="loadingSummary.docId === doc.id && loadingSummary.level === 'light'"
+                      indeterminate size="12" width="2" class="mr-1"
+                    />
                     Light
                     <v-icon end size="14">mdi-eye</v-icon>
                     <v-tooltip activator="parent" location="bottom">
                       {{ doc.summary_light_tokens ? `~${formatTokens(doc.summary_light_tokens)} tokens (33%)` : 'Click to load' }}
                     </v-tooltip>
-                  </v-chip>
-                  <v-chip
-                    size="small"
-                    variant="tonal"
-                    color="warning"
-                    :loading="loadingSummary.docId === doc.id && loadingSummary.level === 'medium'"
-                    class="cursor-pointer"
+                  </span>
+                  <span
+                    class="summary-level-chip cursor-pointer"
+                    style="background: rgba(237,186,74,0.15); color: #EDBA4A"
+                    role="button"
+                    tabindex="0"
                     @click="showSummary(doc, 'medium')"
+                    @keydown.enter="showSummary(doc, 'medium')"
                   >
+                    <v-progress-circular
+                      v-if="loadingSummary.docId === doc.id && loadingSummary.level === 'medium'"
+                      indeterminate size="12" width="2" class="mr-1"
+                    />
                     Medium
                     <v-icon end size="14">mdi-eye</v-icon>
                     <v-tooltip activator="parent" location="bottom">
                       {{ doc.summary_medium_tokens ? `~${formatTokens(doc.summary_medium_tokens)} tokens (66%)` : 'Click to load' }}
                     </v-tooltip>
-                  </v-chip>
-                  <v-chip
-                    size="small"
-                    variant="tonal"
-                    color="primary-lighten-1"
-                    :loading="loadingSummary.docId === doc.id && loadingSummary.level === 'full'"
-                    class="cursor-pointer"
+                  </span>
+                  <span
+                    class="summary-level-chip cursor-pointer"
+                    style="background: rgba(109,179,228,0.15); color: #6DB3E4"
+                    role="button"
+                    tabindex="0"
                     @click="showSummary(doc, 'full')"
+                    @keydown.enter="showSummary(doc, 'full')"
                   >
+                    <v-progress-circular
+                      v-if="loadingSummary.docId === doc.id && loadingSummary.level === 'full'"
+                      indeterminate size="12" width="2" class="mr-1"
+                    />
                     Full
                     <v-icon end size="14">mdi-eye</v-icon>
                     <v-tooltip activator="parent" location="bottom">
                       {{ doc.original_token_count ? `~${formatTokens(doc.original_token_count)} tokens (100%)` : 'Click to load' }}
                     </v-tooltip>
-                  </v-chip>
+                  </span>
                 </div>
               </v-card-text>
               <v-card-text v-else class="pt-0 pb-2">
-                <div class="text-caption text-medium-emphasis">
+                <div class="text-caption" style="color: #8895a8">
                   <v-icon size="12" class="mr-1">mdi-information-outline</v-icon>
                   No summaries generated yet
                 </div>
@@ -192,35 +204,37 @@
             Consolidated Vision Summaries
           </div>
           <div class="d-flex flex-wrap ga-2 mb-3">
-            <v-chip
-              size="small"
-              variant="tonal"
-              color="success"
-              class="cursor-pointer"
+            <span
+              class="summary-level-chip cursor-pointer"
+              style="background: rgba(103,189,109,0.15); color: #67bd6d"
+              role="button"
+              tabindex="0"
               @click="showConsolidatedSummary('light')"
+              @keydown.enter="showConsolidatedSummary('light')"
             >
               Light (33%)
               <v-tooltip activator="parent" location="bottom">
                 ~{{ formatTokens(product.consolidated_vision_light_tokens) }} tokens
               </v-tooltip>
-            </v-chip>
+            </span>
 
-            <v-chip
+            <span
               v-if="product?.consolidated_vision_medium"
-              size="small"
-              variant="tonal"
-              color="info"
-              class="cursor-pointer"
+              class="summary-level-chip cursor-pointer"
+              style="background: rgba(109,179,228,0.15); color: #6DB3E4"
+              role="button"
+              tabindex="0"
               @click="showConsolidatedSummary('medium')"
+              @keydown.enter="showConsolidatedSummary('medium')"
             >
               Medium (66%)
               <v-tooltip activator="parent" location="bottom">
                 ~{{ formatTokens(product.consolidated_vision_medium_tokens) }} tokens
               </v-tooltip>
-            </v-chip>
+            </span>
           </div>
 
-          <div v-if="product?.consolidated_at" class="text-caption text-medium-emphasis mb-3">
+          <div v-if="product?.consolidated_at" class="text-caption mb-3" style="color: #8895a8">
             <v-icon size="14" class="mr-1">mdi-clock-outline</v-icon>
             Last consolidated: {{ formatDate(product.consolidated_at) }}
             <span v-if="product?.consolidated_vision_hash" class="ml-2">
@@ -348,7 +362,7 @@
         </div>
 
         <!-- Created/Updated -->
-        <div class="text-caption text-medium-emphasis mt-4">
+        <div class="text-caption detail-text-muted mt-4">
           Created: {{ formatDate(product.created_at) }}<br />
           Updated: {{ formatDate(product.updated_at) }}
         </div>
@@ -381,7 +395,7 @@
       <v-divider></v-divider>
 
       <v-card-text class="summary-content" style="max-height: 60vh; overflow-y: auto;">
-        <div class="text-caption text-medium-emphasis mb-2">
+        <div class="text-caption detail-text-muted mb-2">
           <v-icon size="14" class="mr-1">mdi-counter</v-icon>
           ~{{ formatTokens(summaryTokens) }} tokens
         </div>
@@ -415,7 +429,7 @@
       <v-divider></v-divider>
 
       <v-card-text class="summary-content" style="max-height: 60vh; overflow-y: auto;">
-        <div class="text-caption text-medium-emphasis mb-2">
+        <div class="text-caption detail-text-muted mb-2">
           <v-icon size="14" class="mr-1">mdi-counter</v-icon>
           ~{{ formatTokens(consolidatedSummaryTokens) }} tokens
           <span v-if="consolidatedSummaryHash" class="ml-2">
@@ -711,3 +725,25 @@ async function regenerateConsolidation() {
   }
 }
 </script>
+
+<style scoped>
+.detail-text-muted {
+  color: #8895a8 !important;
+}
+
+.summary-level-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 8px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  transition: opacity 0.15s ease;
+}
+
+.summary-level-chip:hover {
+  opacity: 0.85;
+}
+</style>
