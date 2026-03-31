@@ -91,6 +91,12 @@ body {
   user-select: none;
 }
 
+// Accessible muted text (WCAG AA 4.98:1 on #182739)
+// Replaces per-component scoped *-text-muted classes.
+.text-muted-a11y {
+  color: var(--text-muted) !important;
+}
+
 // =========================================================================
 // Smooth Border Utilities (box-shadow inset)
 // =========================================================================

@@ -84,7 +84,7 @@
             <!-- Loading State -->
             <div v-if="loading && messages.length === 0" class="text-center pa-8">
               <v-progress-circular indeterminate color="primary" size="48" />
-              <p class="text-body-2 panel-text-muted mt-4">Loading messages...</p>
+              <p class="text-body-2 text-muted-a11y mt-4">Loading messages...</p>
             </div>
 
             <!-- Error State -->
@@ -312,10 +312,6 @@ onUnmounted(() => {
 .panel-card {
   background: var(--bg-raised, #1a2a3c);
   border-radius: 16px;
-}
-
-.panel-text-muted {
-  color: #8895a8 !important;
 }
 
 .count-chip {

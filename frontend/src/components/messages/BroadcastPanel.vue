@@ -69,7 +69,7 @@
               <v-window-item value="preview">
                 <v-card variant="tonal" class="pa-4" min-height="200">
                   <div v-if="messageContent" v-html="markdownPreview" class="markdown-preview" />
-                  <div v-else class="text-center broadcast-text-muted">
+                  <div v-else class="text-center text-muted-a11y">
                     <v-icon icon="mdi-text-box-outline" size="48" class="mb-2" />
                     <p>No content to preview</p>
                   </div>
@@ -136,14 +136,14 @@
             <!-- Loading State -->
             <div v-if="loadingHistory && broadcastHistory.length === 0" class="text-center pa-8">
               <v-progress-circular indeterminate color="primary" size="48" />
-              <p class="text-body-2 broadcast-text-muted mt-4">Loading history...</p>
+              <p class="text-body-2 text-muted-a11y mt-4">Loading history...</p>
             </div>
 
             <!-- Empty State -->
             <div v-else-if="broadcastHistory.length === 0" class="text-center pa-8">
               <v-icon icon="mdi-broadcast-off" size="64" color="grey" class="mb-4" />
-              <p class="text-body-1 broadcast-text-muted">No broadcasts sent yet</p>
-              <p class="text-caption broadcast-text-muted">
+              <p class="text-body-1 text-muted-a11y">No broadcasts sent yet</p>
+              <p class="text-caption text-muted-a11y">
                 Send your first broadcast message to see history here
               </p>
             </div>
@@ -471,10 +471,6 @@ onMounted(() => {
 .broadcast-panel-card {
   background: var(--bg-raised, #1a2a3c);
   border-radius: 16px;
-}
-
-.broadcast-text-muted {
-  color: #8895a8 !important;
 }
 
 .recipient-chip {

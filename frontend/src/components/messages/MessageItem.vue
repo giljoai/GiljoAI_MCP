@@ -33,13 +33,13 @@
                 {{ message.status }}
               </span>
             </div>
-            <span class="text-caption msg-text-muted">
+            <span class="text-caption text-muted-a11y">
               {{ relativeTime }}
             </span>
           </div>
 
           <!-- Recipients -->
-          <div v-if="recipients.length > 0" class="text-caption msg-text-muted mb-2" data-testid="message-to">
+          <div v-if="recipients.length > 0" class="text-caption text-muted-a11y mb-2" data-testid="message-to">
             <v-icon icon="mdi-arrow-right" size="12" class="mr-1" />
             {{ recipientsText }}
           </div>
@@ -237,10 +237,6 @@ const handleReply = () => {
 
 .system-message {
   background-color: rgba(255, 255, 255, 0.02);
-}
-
-.msg-text-muted {
-  color: #8895a8 !important;
 }
 
 .tinted-chip {

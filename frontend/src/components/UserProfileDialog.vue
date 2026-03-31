@@ -21,7 +21,7 @@
 
           <!-- Workspace/Organization (read-only) - Handover 0424o -->
           <div v-if="userStore.currentOrg" class="mb-4 pa-3 bg-surface-variant rounded">
-            <div class="text-caption profile-text-muted mb-1">Workspace</div>
+            <div class="text-caption text-muted-a11y mb-1">Workspace</div>
             <div class="d-flex align-center gap-2">
               <v-icon size="small" color="primary">mdi-office-building</v-icon>
               <span class="font-weight-medium">{{ userStore.currentOrg.name }}</span>
@@ -200,7 +200,4 @@ async function save() {
 </script>
 
 <style scoped>
-.profile-text-muted {
-  color: #8895a8;
-}
 </style>
