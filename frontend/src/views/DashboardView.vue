@@ -563,12 +563,12 @@ onUnmounted(() => {
 
 .stats-wrapper {
   background: $color-background-primary !important;
-  border-radius: $radius-lg !important;
+  border-radius: $border-radius-rounded !important;
 }
 
 .stat-card {
   flex: 0 0 auto;
-  border-radius: $radius-md !important;
+  border-radius: $border-radius-default !important;
   background: $elevation-raised !important;
 }
 
@@ -582,7 +582,7 @@ onUnmounted(() => {
 .stat-icon-box {
   width: 32px;
   height: 32px;
-  border-radius: $radius-md;
+  border-radius: $border-radius-default;
   background: transparent;
   border: none !important;
   box-shadow: inset 0 0 0 2px $med-blue;
@@ -614,7 +614,7 @@ onUnmounted(() => {
 
 .chart-card {
   background: $elevation-raised !important;
-  border-radius: $radius-lg !important;
+  border-radius: $border-radius-rounded !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -623,6 +623,6 @@ onUnmounted(() => {
 
 .activity-card {
   background: $elevation-raised !important;
-  border-radius: $radius-lg !important;
+  border-radius: $border-radius-rounded !important;
 }
 </style>

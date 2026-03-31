@@ -1443,39 +1443,23 @@
       </div>
 
       <div class="card">
-        <h4>Elevation (variables.scss)</h4>
+        <h4>Box Shadows (design-tokens.scss — canonical)</h4>
         <div class="shadow-row">
           <div class="shadow-box" style="box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);">
-            <span class="shadow-name">sm</span>
+            <span class="shadow-name">$shadow-subtle</span>
             <span class="shadow-value">0 1px 2px 0 rgba(0,0,0,0.05)</span>
           </div>
           <div class="shadow-box" style="box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-            <span class="shadow-name">md</span>
+            <span class="shadow-name">$shadow-default</span>
             <span class="shadow-value">0 4px 6px -1px rgba(0,0,0,0.1)</span>
           </div>
           <div class="shadow-box" style="box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
-            <span class="shadow-name">lg</span>
+            <span class="shadow-name">$shadow-strong</span>
             <span class="shadow-value">0 10px 15px -3px rgba(0,0,0,0.1)</span>
           </div>
           <div class="shadow-box" style="box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-            <span class="shadow-name">xl</span>
+            <span class="shadow-name">$shadow-dramatic</span>
             <span class="shadow-value">0 20px 25px -5px rgba(0,0,0,0.1)</span>
-          </div>
-        </div>
-
-        <h4 style="margin-top: 24px;">Elevation (design-tokens.scss)</h4>
-        <div class="shadow-row">
-          <div class="shadow-box" style="box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <span class="shadow-name">subtle</span>
-            <span class="shadow-value">0 2px 4px rgba(0,0,0,0.1)</span>
-          </div>
-          <div class="shadow-box" style="box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
-            <span class="shadow-name">medium</span>
-            <span class="shadow-value">0 4px 8px rgba(0,0,0,0.15)</span>
-          </div>
-          <div class="shadow-box" style="box-shadow: 0 8px 16px rgba(0,0,0,0.2);">
-            <span class="shadow-name">strong</span>
-            <span class="shadow-value">0 8px 16px rgba(0,0,0,0.2)</span>
           </div>
         </div>
       </div>
@@ -1483,53 +1467,23 @@
 
     <!-- Border Radius -->
     <div class="card" style="margin-top: 24px;">
-      <h4>Border Radius</h4>
-      <div class="grid-2" style="gap: 24px;">
-        <div>
-          <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 12px; font-weight: 600;">variables.scss scale</p>
-          <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 4px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">sm<br>4px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 8px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">md<br>8px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 12px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">lg<br>12px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 16px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">xl<br>16px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 9999px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">full<br>9999px</span>
-            </div>
-          </div>
+      <h4>Border Radius (design-tokens.scss — canonical)</h4>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+        <div style="text-align: center;">
+          <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 4px;"></div>
+          <span class="spacing-label" style="margin-top: 4px;">$border-radius-sharp<br>4px</span>
         </div>
-        <div>
-          <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 12px; font-weight: 600;">design-tokens.scss scale (duplicate)</p>
-          <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 8px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">small<br>8px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 10px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">medium<br>10px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 16px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">large<br>16px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 24px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">pill<br>24px</span>
-            </div>
-          </div>
+        <div style="text-align: center;">
+          <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 8px;"></div>
+          <span class="spacing-label" style="margin-top: 4px;">$border-radius-default<br>8px</span>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 16px;"></div>
+          <span class="spacing-label" style="margin-top: 4px;">$border-radius-rounded<br>16px</span>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 9999px;"></div>
+          <span class="spacing-label" style="margin-top: 4px;">$border-radius-pill<br>9999px</span>
         </div>
       </div>
     </div>
@@ -1773,67 +1727,13 @@
       <p class="disc-text">All sources now use <code>#e1e1e1</code>. The #e0e0e0 variant has been removed from design-tokens.scss.</p>
       </p>
 
-      <!-- E. Duplicate Radius Systems -->
-      <div class="disc-subtitle">E. Duplicate Radius Systems</div>
-      <table class="disc-table">
-        <thead>
-          <tr>
-            <th>variables.scss</th>
-            <th>design-tokens.scss</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>sm = <code>4px</code></td>
-            <td>small = <code>8px</code></td>
-          </tr>
-          <tr>
-            <td>md = <code>8px</code></td>
-            <td>medium = <code>10px</code></td>
-          </tr>
-          <tr>
-            <td>lg = <code>12px</code></td>
-            <td>large = <code>16px</code></td>
-          </tr>
-          <tr>
-            <td>xl = <code>16px</code></td>
-            <td>pill = <code>24px</code></td>
-          </tr>
-          <tr>
-            <td>full = <code>9999px</code></td>
-            <td>&mdash;</td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- E. Duplicate Radius Systems — RESOLVED (0277) -->
+      <div class="disc-subtitle">E. Duplicate Radius Systems — <span style="color: #67bd6d;">RESOLVED</span> (Handover 0277)</div>
+      <p style="font-size: 0.8rem; color: #8f97b7; margin: 8px 0;">Consolidated to 4 canonical tokens in design-tokens.scss: <code>$border-radius-sharp</code> (4px), <code>$border-radius-default</code> (8px), <code>$border-radius-rounded</code> (16px), <code>$border-radius-pill</code> (9999px). All aliases and variables.scss duplicates removed.</p>
 
-      <!-- F. Duplicate Shadow Systems -->
-      <div class="disc-subtitle">F. Duplicate Shadow Systems</div>
-      <table class="disc-table">
-        <thead>
-          <tr>
-            <th>variables.scss</th>
-            <th>design-tokens.scss</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>sm: <code>0 1px 2px 0 rgba(0,0,0,0.05)</code></td>
-            <td>subtle: <code>0 2px 4px rgba(0,0,0,0.1)</code></td>
-          </tr>
-          <tr>
-            <td>md: <code>0 4px 6px -1px rgba(0,0,0,0.1)</code></td>
-            <td>medium: <code>0 4px 8px rgba(0,0,0,0.15)</code></td>
-          </tr>
-          <tr>
-            <td>lg: <code>0 10px 15px -3px rgba(0,0,0,0.1)</code></td>
-            <td>strong: <code>0 8px 16px rgba(0,0,0,0.2)</code></td>
-          </tr>
-          <tr>
-            <td>xl: <code>0 20px 25px -5px rgba(0,0,0,0.1)</code></td>
-            <td>&mdash;</td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- F. Duplicate Shadow Systems — RESOLVED (0277) -->
+      <div class="disc-subtitle">F. Duplicate Shadow Systems — <span style="color: #67bd6d;">RESOLVED</span> (Handover 0277)</div>
+      <p style="font-size: 0.8rem; color: #8f97b7; margin: 8px 0;">Consolidated to 4 semantic tokens in design-tokens.scss: <code>$shadow-subtle</code>, <code>$shadow-default</code>, <code>$shadow-strong</code>, <code>$shadow-dramatic</code>. Old <code>$shadow-sm/md/lg/xl</code> from variables.scss removed.</p>
 
     </div>
   </section>

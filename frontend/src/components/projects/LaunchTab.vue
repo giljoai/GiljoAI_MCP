@@ -462,7 +462,7 @@ watch(missionText, (next, previous) => {
 
         .panel-content {
           background: rgba(var(--v-theme-on-surface), 0.05);
-          border-radius: $radius-medium;
+          border-radius: $border-radius-default;
           padding: $spacing-panel-content-padding;
           height: 550px; /* Fixed height for uniform panels */
           position: relative;
@@ -478,12 +478,12 @@ watch(missionText, (next, previous) => {
 
           &::-webkit-scrollbar-track {
             background: $color-scrollbar-track-background;
-            border-radius: $radius-scrollbar;
+            border-radius: $border-radius-sharp;
           }
 
           &::-webkit-scrollbar-thumb {
             background: $color-scrollbar-thumb-background;
-            border-radius: $radius-scrollbar;
+            border-radius: $border-radius-sharp;
 
             &:hover {
               background: $color-scrollbar-thumb-hover-background;
