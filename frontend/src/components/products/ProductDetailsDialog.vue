@@ -71,7 +71,7 @@
           <div class="text-subtitle-2 mb-2">Vision Documents ({{ visionDocuments.length }})</div>
 
           <v-list v-if="visionDocuments.length > 0" density="compact">
-            <v-card v-for="doc in visionDocuments" :key="doc.id" variant="outlined" class="mb-2">
+            <v-card v-for="doc in visionDocuments" :key="doc.id" variant="flat" class="smooth-border mb-2">
               <v-list-item class="px-3">
                 <template v-slot:prepend>
                   <v-icon color="primary">mdi-file-document</v-icon>

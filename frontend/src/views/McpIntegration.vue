@@ -158,7 +158,7 @@
                 View Email Template
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-                <v-card variant="outlined" class="pa-4 bg-grey-lighten-4">
+                <v-card variant="flat" class="smooth-border pa-4 bg-grey-lighten-4">
                   <pre class="email-template">
 Subject: GiljoAI MCP Setup Instructions
 
@@ -227,7 +227,7 @@ Questions? Let me know!
               </p>
 
               <!-- JSON Config Display -->
-              <v-card variant="outlined" class="mb-4">
+              <v-card variant="flat" class="smooth-border mb-4">
                 <v-card-text>
                   <div class="d-flex justify-space-between align-center mb-2">
                     <span class="text-caption text-grey">JSON Configuration</span>
@@ -280,12 +280,12 @@ Questions? Let me know!
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <p class="mb-2"><strong>Windows:</strong></p>
-              <v-card variant="outlined" class="mb-3 pa-3">
+              <v-card variant="flat" class="smooth-border mb-3 pa-3">
                 <code>Right-click the .bat file > Run as administrator</code>
               </v-card>
 
               <p class="mb-2"><strong>macOS/Linux:</strong></p>
-              <v-card variant="outlined" class="pa-3">
+              <v-card variant="flat" class="smooth-border pa-3">
                 <code>chmod +x giljo-mcp-setup.sh && ./giljo-mcp-setup.sh</code>
               </v-card>
             </v-expansion-panel-text>
