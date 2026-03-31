@@ -34,6 +34,9 @@ const vuetify = createVuetify({
   icons: {
     defaultSet: 'mdi',
   },
+  display: {
+    mobileBreakpoint: 'md', // 960px — aligns with sidebar SIDEBAR_BREAKPOINT (1024px)
+  },
 })
 
 // Create Vue app SYNCHRONOUSLY (before async operations)
