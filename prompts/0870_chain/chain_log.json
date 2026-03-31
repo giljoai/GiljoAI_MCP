@@ -619,10 +619,10 @@
       "session_id": "0870o",
       "title": "Documentation Update",
       "handover": "handovers/0870_design_system_harmonization.md#0870o",
-      "color": "#F44336",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "completed",
+      "started_at": "2026-03-31T04:10:00Z",
+      "completed_at": "2026-03-31T04:30:00Z",
       "agent_types": ["documentation-manager"],
       "planned_tasks": [
         "Update CLAUDE.md — add Luminous Pastels reference, WCAG AA note",
@@ -631,12 +631,34 @@
         "Scan handovers/Reference_docs/ for stale color values",
         "Run grep for old hex values to verify zero hits"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "CLAUDE.md: Added 3 new code conventions — Luminous Pastels agent color palette with all 6 hex values and usage guidance (getAgentColor/CSS vars), tinted badge style rule (rgba 0.15 bg + bright text, border-radius 8px), WCAG AA text accessibility note (--text-muted #8895a8, --text-secondary #a3aac4, never use text-medium-emphasis).",
+        "docs/guides/BRANDING_GUIDE.md: Updated agent role color table (6 roles + researcher alias) from old hex values to Luminous Pastels with updated RGB/dark/light variants. Updated color aliases (implementer #6DB3E4, documenter #5EC48E). Replaced agent card code example from solid v-chip to tinted span badge. Replaced chat head badge SCSS example from circular solid to square tinted (border-radius 8px). Updated visual consistency rules: added tinted badge rule, square geometry, getAgentColor() mandate, text-medium-emphasis prohibition. Updated accessibility section with --text-muted and --text-secondary WCAG ratios.",
+        "docs/agent-templates/AGENT_TEMPLATES_REFERENCE.md: Updated 6 agent hex values (orchestrator #D4B08A, implementer #6DB3E4, tester #EDBA4A, analyzer #E07872, reviewer #AC80CC, documenter #5EC48E).",
+        "handovers/Reference_docs/agent_template.md: Updated canonical roles color table (6 hex values to Luminous Pastels).",
+        "frontend/src/components/projects/README.md: Updated AgentCardEnhanced styling section — border from '2px solid' to 'smooth-border class', ChatHeadBadge from 'Circular badge' to 'Square tinted badge (border-radius 8px, tinted background at 15% opacity)', agentColors.js note updated to mention Luminous Pastels.",
+        "frontend/src/components/common/README.md: No changes needed — BaseDialog README has no color references.",
+        "frontend/src/views/PROJECTS_VIEW_README.md: No changes needed — ProjectsView README has no agent color references.",
+        "frontend/tests/unit/components/projects/LaunchTab.0243a.spec.js: Updated hardcoded hex whitelist from #d4a574 to #d4b08a (new orchestrator color).",
+        "docs/SERVER_ARCHITECTURE_TECH_STACK.md: Scanned — no stale color references found.",
+        "docs/README_FIRST.md: Scanned — no stale color references found.",
+        "Verification grep for old hex values (#E74C3C, #3498DB, #27AE60, #9B59B6, #D4A574) in .vue/.js/.scss: ZERO hits (except --tool-codex/#9b59b6 and --tool-gemini/#3498db which are Launch Prompt Tool Colors, not agent colors — correctly unchanged per 0870a deviation).",
+        "Verification grep for #5a6a80 (old text-muted) in .vue/.js/.scss: ZERO hits.",
+        "npm run lint: 0 errors, 7 pre-existing warnings (unchanged). npm run test: 96 files, 1893 tests pass, 0 failures."
+      ],
+      "deviations": [
+        "BRANDING_GUIDE.md status badge colors (Working #3498DB) and AI coding tool colors (Codex CLI #9B59B6, Gemini #3498DB) left unchanged — these are status/tool colors, not agent colors. Status colors are UNCHANGED per spec, and tool colors are not agent colors per 0870a deviation.",
+        "Historical documentation in handovers/completed/, migrations/archive/, docs/archive/, and tests/integration/ was NOT updated — these are historical records documenting what the system looked like at the time they were written. Updating them would falsify the historical record.",
+        "BRANDING_GUIDE.md tester color (old #FFC300) was updated to #EDBA4A in the agent role table, but #FFC300 remains in the status badge 'Complete' row (status colors unchanged) and as brand accent color."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870p: All active documentation now reflects the Luminous Pastels palette and 0870 design system. The only old agent hex values remaining in the codebase are in: (1) historical/completed handover docs (correctly preserved), (2) archived migration docs (correctly preserved), (3) the 0870 spec itself (documenting old→new mapping), (4) --tool-codex/#9b59b6 and --tool-gemini/#3498db in agent-colors.scss (tool colors, not agent colors). The BRANDING_GUIDE.md is now the authoritative color reference for the Luminous Pastels palette. CLAUDE.md has the quick-reference for agents working on the codebase.",
+      "cascading_impacts": [
+        "CLAUDE.md now instructs all future agents to use Luminous Pastels, tinted badges, and #8895a8 for muted text — ensures design consistency in future sessions",
+        "BRANDING_GUIDE.md code examples now show tinted badge pattern — any agent referencing this guide will produce correct badge markup",
+        "LaunchTab.0243a.spec.js whitelist updated — test correctly validates against new orchestrator color #d4b08a"
+      ],
+      "summary": "Updated 6 documentation files to reflect the 0870 Luminous Pastels design system. CLAUDE.md gained 3 new code conventions (agent palette, tinted badges, WCAG AA text). BRANDING_GUIDE.md comprehensively updated: agent color table, code examples, consistency rules, and accessibility section. Agent template docs updated in both docs/ and handovers/Reference_docs/. Component READMEs updated for smooth-border and square tinted badges. Test hex whitelist updated. Final verification grep confirms zero stale agent color hex values in active .vue/.js/.scss files. All 1893 tests pass."
     },
     {
       "session_id": "0870p",
