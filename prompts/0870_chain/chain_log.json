@@ -249,22 +249,41 @@
       "session_id": "0870g",
       "title": "Welcome/Home View Redesign",
       "handover": "handovers/0870_design_system_harmonization.md#0870g",
-      "color": "#FF9800",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "completed",
+      "started_at": "2026-03-31T01:35:00Z",
+      "completed_at": "2026-03-31T01:45:00Z",
       "agent_types": ["ux-designer", "frontend-tester"],
       "planned_tasks": [
         "Rewrite WelcomeView.vue — hero (giljo face + glow + greeting + tagline), quick-launch cards (dynamic), Your Team grid, conditional section (setup on first login, recent projects otherwise)",
         "Verify SetupWizardOverlay.vue compatibility",
         "Reference mockup: frontend/mock/welcome-v3-colors.html"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "WelcomeView.vue: complete rewrite — hero section with GilMascot wrapped in CSS drop-shadow glow (yellow + green), float animation (4s ease-in-out), radial gradient glow pulse behind mascot. Personalized greeting logic preserved verbatim (time-based pools: withComma, withoutComma, funCasual).",
+        "Hero subtitle: website tagline 'The context engineering platform for AI-assisted development. Define your product once — every agent starts with the full picture.' with dimmed second line.",
+        "Quick-launch cards: 3 dynamic cards adapting to product state. No active product: New Product, Dashboard, Task Board. Active product: New Project (with product name), Active Projects (with count badge), Task Board. Each card has tinted icon square, title, description, optional mono badge. Hover: translateY(-3px) + accent top-border reveal.",
+        "Your Team section: fetches templates from api.templates.list(), maps to tinted square badges (rgba 0.15 bg + bright agent color text, border-radius 12px) using getAgentColor(). Shows active count / total slots pill, empty slots with dashed border + plus icon. Manage link routes to /Settings.",
+        "Conditional bottom section: if setup not complete, shows Getting Started CTA card (rocket icon, title, description, chevron) that triggers SetupWizardOverlay. If setup complete and projects exist, shows Recent Projects panel reusing RecentProjectsList component with panel header + 'All Projects →' link.",
+        "Footer: 'Community Edition · v{version}' with dot separator, version fetched from api.stats.getSystem().",
+        "SetupWizardOverlay integration: all props, events, and wizard state logic preserved exactly (showSetupOverlay, setupStep, setupSelectedTools, handleStepComplete with step 0-3 handlers, handleDismiss, auto-launch on first login or openSetup query param).",
+        "Atmosphere gradient background (fixed position, yellow + blue radial gradients). Staggered fadeSlideUp animations on all sections. Responsive breakpoint at 960px (single-column quick cards, smaller team cards).",
+        "npm run lint: 0 errors, 7 pre-existing warnings (unchanged). npm run test: 96 files, 1893 tests pass, 0 failures."
+      ],
+      "deviations": [
+        "Mockup uses inline SVG for the hero mascot; implementation wraps the existing GilMascot.vue component (which has blinking eyes animation) inside a filter/glow wrapper div, achieving the same visual effect while preserving the blink behavior.",
+        "Mockup has a Solid/Tinted badge style toggle for the team section — omitted in implementation since the 0870 design system standardizes on tinted badges only (no toggle needed).",
+        "Version is fetched from api.stats.getSystem() at runtime; if the API call fails, the version field is silently empty rather than showing a hardcoded value.",
+        "Template total slots defaults to 8; attempts to read max_slots from api.templates.activeCount() response but gracefully falls back if not present in the API response."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870h: WelcomeView.vue is fully rewritten. It now imports RecentProjectsList from dashboard/, useProjectStore, and api.templates. The setup wizard integration is unchanged — SetupWizardOverlay.vue was not modified, only verified compatible (all props and events match). The quick-launch cards use hardcoded agent color hex values (#6DB3E4, #AC80CC) for icon tinting rather than CSS custom properties, since these are inline styles on dynamic cards. DonutChart.vue remains orphaned from 0870f — still safe to delete. The GilMascot glow effect is pure CSS (filter: drop-shadow + radial-gradient background), no new dependencies added.",
+      "cascading_impacts": [
+        "WelcomeView now imports RecentProjectsList, useProjectStore, and api (templates + stats) — more API calls on mount than before",
+        "The old welcome layout (v-container + v-card + v-row quick nav buttons) is completely replaced — any test asserting on old DOM structure will need updating",
+        "SetupWizardOverlay integration is unchanged — no downstream impact on setup flow"
+      ],
+      "summary": "Complete rewrite of WelcomeView.vue matching v3 mockup. Hero: GilMascot with CSS glow + float animation + personalized greeting + website tagline. Quick-launch: 3 dynamic cards adapting to product state. Your Team: active templates from API with tinted square badges + empty slots. Conditional bottom: setup CTA or recent projects. Footer: Community Edition + version. 1 file changed (658 insertions, 91 deletions), all 1893 tests pass."
     },
     {
       "session_id": "0870h",
