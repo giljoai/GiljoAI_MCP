@@ -14,37 +14,37 @@
 // We also support legacy aliases (implementor, researcher) via a synonym map below.
 const AGENT_COLORS = {
   orchestrator: {
-    hex: '#D4A574',
+    hex: '#D4B08A',
     name: 'ORCHESTRATOR',
     badge: 'OR',
     description: 'Primary coordinator and mission planner',
   },
   analyzer: {
-    hex: '#E74C3C',
+    hex: '#E07872',
     name: 'ANALYZER',
     badge: 'AN',
     description: 'Architecture and analysis tasks',
   },
   implementer: {
-    hex: '#3498DB',
+    hex: '#6DB3E4',
     name: 'IMPLEMENTER',
     badge: 'IM',
     description: 'Implementation and development tasks',
   },
   documenter: {
-    hex: '#27AE60',
+    hex: '#5EC48E',
     name: 'DOCUMENTER',
     badge: 'DO',
     description: 'Creates and updates documentation',
   },
   reviewer: {
-    hex: '#9B59B6',
+    hex: '#AC80CC',
     name: 'REVIEWER',
     badge: 'RV',
     description: 'Code review and quality assurance',
   },
   tester: {
-    hex: '#FFC300',
+    hex: '#EDBA4A',
     name: 'TESTER',
     badge: 'TE',
     description: 'Testing and validation tasks',
