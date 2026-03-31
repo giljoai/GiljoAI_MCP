@@ -334,22 +334,42 @@
       "session_id": "0870i",
       "title": "Products View & Dialogs",
       "handover": "handovers/0870_design_system_harmonization.md#0870i",
-      "color": "#FF9800",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "completed",
+      "started_at": "2026-03-31T02:15:00Z",
+      "completed_at": "2026-03-31T02:30:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "Update ProductsView.vue, ProductDetailView.vue, ProductForm.vue",
         "Update all product dialogs: ProductDetailsDialog, ProductDeleteDialog, ActivationWarningDialog, DeletedProductsRecoveryDialog",
         "Update ProductTuningMenu.vue, ProductTuningReview.vue"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "ProductsView.vue: Active status badge converted from v-chip to tinted span (rgba(103,189,109,0.15) bg + #67bd6d text, pill-shaped). Product cards use smooth-border class (border-radius 12px). Vision doc chips converted from v-chip to tinted spans with rgba backgrounds. Stat numbers use --text-secondary (#a3aac4). Labels/timestamps use --text-muted (#8895a8). Removed old product-card box-shadow white border.",
+        "ProductDetailView.vue: card wrapped with smooth-border class (border-radius 12px). Field labels updated from text-medium-emphasis to explicit #8895a8 color. Product ID uses monospace font at 0.75rem with #a3aac4 color.",
+        "ProductDetailsDialog.vue: Product ID uses IBM Plex Mono font, #8895a8 color. Summary level chips (Light/Medium/Full) converted from Vuetify v-chip to tinted spans — Light: green rgba, Medium: yellow rgba, Full: blue rgba. Consolidated vision chips also converted. Stat labels use #8895a8. All text-medium-emphasis replaced with detail-text-muted class (#8895a8). Added scoped style for summary-level-chip class.",
+        "ProductForm.vue: bordered-tabs-content border replaced with smooth-border pattern (inset box-shadow rgba(255,255,255,0.10)). All text-medium-emphasis replaced with form-text-muted class (#8895a8).",
+        "ActivationWarningDialog.vue: text-medium-emphasis replaced with activation-text-muted class (#8895a8).",
+        "DeletedProductsRecoveryDialog.vue: text-medium-emphasis replaced with recovery-text-muted class (#8895a8).",
+        "ProductDeleteDialog.vue: verified — no text-medium-emphasis usage, no hardcoded old colors. Uses BaseDialog which will be updated in 0870m. No changes needed.",
+        "ProductTuningMenu.vue: section panel and generated prompt cards converted from variant='outlined' to variant='flat' with smooth-border class (border-radius 12px).",
+        "ProductTuningReview.vue: drift badge and confidence chip converted from Vuetify v-chip to tinted spans with rgba backgrounds. Current/proposed value cards converted from variant='outlined' to variant='flat' with smooth-border class. Changed proposed value border highlight from Vuetify border-warning to --smooth-border-color: #EDBA4A. Label colors updated from text-medium-emphasis to explicit #8895a8. Added getConfidenceStyle() function replacing getConfidenceColor(). Added scoped tuning-chip class.",
+        "npm run lint: 0 errors, 7 pre-existing warnings (unchanged). npm run test: 96 files, 1893 tests pass, 0 failures."
+      ],
+      "deviations": [
+        "ProductDeleteDialog.vue required no changes — it uses BaseDialog and has no text-medium-emphasis or hardcoded old colors. BaseDialog styling will be updated in 0870m.",
+        "ProductDetailsDialog summary chips now use v-progress-circular for loading state instead of the v-chip :loading prop, since plain spans don't have a built-in loading state.",
+        "ProductTuningReview's getConfidenceColor() was renamed to getConfidenceStyle() since it now returns inline style strings instead of Vuetify theme color names."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870j: All product views and dialogs now use the 0870 design system. ProductDeleteDialog and ActivationWarningDialog use BaseDialog — when BaseDialog is updated in 0870m, these will automatically inherit the new styling. The summary-level-chip pattern (tinted span with rgba bg) is now used in ProductDetailsDialog — same pattern as the dashboard and projects views. ProductTuningReview no longer uses Vuetify v-chip for drift/confidence — uses plain spans with inline tinted styles. Vision doc cards inside ProductDetailsDialog still use v-card variant='outlined' — these could be converted to smooth-border in 0870m if desired, but they're functional sub-cards within the dialog.",
+      "cascading_impacts": [
+        "ProductsView Active chip no longer renders as v-chip — tests asserting .v-chip on Active badge will need adjustment",
+        "ProductDetailsDialog summary level chips no longer render as v-chip — loading state uses v-progress-circular instead of v-chip :loading prop",
+        "ProductTuningReview drift/confidence indicators no longer render as v-chip — any test asserting on v-chip class will need updating",
+        "ProductForm bordered-tabs-content border changed from CSS border to box-shadow — visual appearance identical but CSS targeting differs"
+      ],
+      "summary": "Harmonized 8 product view/dialog files to 0870 design system. ProductsView: tinted Active chip, vision doc chips, smooth-border cards, accessible text colors. ProductDetailView: smooth-border card, muted labels. ProductDetailsDialog: summary chips converted to tinted spans (Light/green, Medium/yellow, Full/blue), consolidated chips tinted. ProductForm: smooth-border tabs content, muted text. ActivationWarningDialog + DeletedProductsRecoveryDialog: muted label colors. ProductTuningMenu: smooth-border cards. ProductTuningReview: tinted drift/confidence chips, smooth-border value cards. ProductDeleteDialog: no changes needed. 8 files changed (218 insertions, 124 deletions), all 1893 tests pass."
     },
     {
       "session_id": "0870j",
