@@ -28,80 +28,74 @@ describe('StatusBadge.vue', () => {
       expect(wrapper.vm.statusLabel).toBe('Active')
     })
 
-    it('renders badge with correct color for each status', () => {
-      const statusColors = {
-        active: '#fff',
-        inactive: 'grey',
-        completed: 'success',
-        cancelled: 'warning',
-        terminated: 'error',
-        deleted: 'error',
-      }
-
-      Object.entries(statusColors).forEach(([status, expectedColor]) => {
+    it('renders with tinted background style for each status', () => {
+      const statuses = ['active', 'inactive', 'completed', 'cancelled', 'terminated', 'deleted']
+      statuses.forEach((status) => {
         const wrapper = createWrapper({ status })
-        expect(wrapper.vm.statusColor).toBe(expectedColor)
+        const badge = wrapper.find('.status-badge')
+        const style = badge.attributes('style')
+        expect(style).toContain('rgba(')
+        expect(style).toContain('0.15)')
       })
     })
 
-    it('has status-badge-chip class on the chip element', () => {
+    it('has status-badge class on the element', () => {
       const wrapper = createWrapper()
-      expect(wrapper.find('.status-badge-chip').exists()).toBe(true)
+      expect(wrapper.find('.status-badge').exists()).toBe(true)
     })
 
-    it('renders as a v-chip with flat variant', () => {
+    it('renders as a span with tinted styling', () => {
       const wrapper = createWrapper()
-      const chip = wrapper.find('.v-chip')
-      expect(chip.exists()).toBe(true)
+      const badge = wrapper.find('.status-badge')
+      expect(badge.exists()).toBe(true)
+      expect(badge.element.tagName).toBe('SPAN')
     })
 
-    it('renders status label text inside the chip', () => {
+    it('renders status label text inside the badge', () => {
       const wrapper = createWrapper({ status: 'completed' })
       expect(wrapper.text()).toContain('Completed')
     })
   })
 
   describe('Computed Properties', () => {
-    it('returns correct textColor for active status', () => {
+    it('returns correct config for active status', () => {
       const wrapper = createWrapper({ status: 'active' })
-      expect(wrapper.vm.statusTextColor).toBe('#333')
+      expect(wrapper.vm.config.color).toBe('#67bd6d')
     })
 
-    it('returns correct textColor for inactive status', () => {
+    it('returns correct config for inactive status', () => {
       const wrapper = createWrapper({ status: 'inactive' })
-      expect(wrapper.vm.statusTextColor).toBe('#1a237e')
+      expect(wrapper.vm.config.color).toBe('#9e9e9e')
     })
 
-    it('returns undefined textColor for statuses without custom textColor', () => {
-      const wrapper = createWrapper({ status: 'completed' })
-      expect(wrapper.vm.statusTextColor).toBeUndefined()
+    it('returns correct config for terminated status', () => {
+      const wrapper = createWrapper({ status: 'terminated' })
+      expect(wrapper.vm.config.color).toBe('#e07872')
     })
 
-    it('falls back to grey color for unknown status', () => {
-      // The validator would reject this, but the computed handles the fallback
+    it('returns fallback config for unknown status via computed', () => {
       const wrapper = mount(StatusBadge, {
         props: { status: 'active' },
         global: { plugins: [vuetify] },
       })
-      // Verify the default fallback logic exists by checking a known status
-      expect(wrapper.vm.statusColor).toBe('#fff')
+      expect(wrapper.vm.config.color).toBe('#67bd6d')
     })
   })
 
   describe('Accessibility', () => {
-    it('has proper aria-label on the chip', () => {
+    it('has proper aria-label on the badge', () => {
       const wrapper = createWrapper({ status: 'active' })
-      const chip = wrapper.find('.status-badge-chip')
-      expect(chip.attributes('aria-label')).toBe('Project status: Active')
+      const badge = wrapper.find('.status-badge')
+      expect(badge.attributes('aria-label')).toBe('Project status: Active')
     })
 
     it('sets aria-label correctly for each status', () => {
       const statuses = ['inactive', 'completed', 'cancelled', 'terminated', 'deleted']
       statuses.forEach((status) => {
         const wrapper = createWrapper({ status })
-        const chip = wrapper.find('.status-badge-chip')
+        const badge = wrapper.find('.status-badge')
         const label = wrapper.vm.statusLabel
-        expect(chip.attributes('aria-label')).toBe(`Project status: ${label}`)
+        expect(badge.attributes('aria-label')).toBe(`Project status: ${label}`)
       })
     })
   })
