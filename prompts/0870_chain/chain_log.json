@@ -577,10 +577,10 @@
       "session_id": "0870n",
       "title": "Auth Pages & Setup Wizard",
       "handover": "handovers/0870_design_system_harmonization.md#0870n",
-      "color": "#F44336",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "color": "#4CAF50",
+      "status": "completed",
+      "started_at": "2026-03-31T03:50:00Z",
+      "completed_at": "2026-03-31T04:05:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "Update Login.vue, FirstLogin.vue, CreateAdminAccount.vue, OAuthAuthorize.vue",
@@ -588,12 +588,32 @@
         "Update setup steps: SetupStep2Connect, SetupStep3Commands, SetupStep4Complete",
         "Update SetupWizardOverlay.vue, AuthLayout.vue"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Login.vue: smooth-border on v-card. Community Edition v-chip (variant=outlined, color=grey) replaced with tinted span badge (rgba(#8895a8, 0.15) bg + #8895a8 text, border-radius 8px). Footer link text-medium-emphasis replaced with login-text-muted class (#8895a8).",
+        "FirstLogin.vue: smooth-border on v-card. All text-medium-emphasis (subtitle, PIN description) replaced with first-login-text-muted class (#8895a8).",
+        "CreateAdminAccount.vue: smooth-border on v-card. Removed CSS border: 1px solid rgba(255,255,255,0.12) from .admin-card (smooth-border handles it). All text-medium-emphasis (step 1 subtitle, step 2 PIN description) replaced with admin-text-muted class (#8895a8).",
+        "OAuthAuthorize.vue: smooth-border on v-card. All text-medium-emphasis (subtitle, client caption, user identity, footer) replaced with oauth-text-muted class (#8895a8).",
+        "ServerDownView.vue: smooth-border on v-card. All text-medium-emphasis (last attempt, auto-retry) replaced with server-down-text-muted class (#8895a8).",
+        "NotFoundView.vue: no changes — stub component with no cards or text-medium-emphasis to update.",
+        "SetupStep2Connect.vue: no changes — already uses smooth-border on config blocks and tool tabs, SCSS variables for text colors, no text-medium-emphasis.",
+        "SetupStep3Commands.vue: no changes — already uses smooth-border on tool tabs, SCSS variables for text colors, no text-medium-emphasis.",
+        "SetupStep4Complete.vue: no changes — already uses smooth-border on launchpad cards, SCSS variables for text colors.",
+        "SetupWizardOverlay.vue: no changes — already uses smooth-border on panel, learning sections, and tool cards, SCSS variables throughout.",
+        "AuthLayout.vue: no changes — minimal wrapper (v-app > v-main > router-view), no styling to harmonize.",
+        "npm run lint: 0 errors, 7 pre-existing warnings (unchanged). npm run test: 96 files, 1893 tests pass, 0 failures."
+      ],
+      "deviations": [
+        "NotFoundView.vue is a stub (placeholder pending implementation) with no cards or text-medium-emphasis — no changes applied.",
+        "SetupStep2Connect, SetupStep3Commands, SetupStep4Complete, SetupWizardOverlay, and AuthLayout were already harmonized in prior sessions (0870g setup wizard build) — they already use smooth-border classes, SCSS design tokens, and have no Vuetify text-medium-emphasis classes.",
+        "Login.vue Community Edition chip was converted from v-chip (variant=outlined, color=grey) to a plain tinted span badge rather than keeping v-chip. This is consistent with the 0870 tinted badge pattern used across the codebase."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0870o: All auth pages and setup wizard components are now harmonized. 5 view files were updated (Login, FirstLogin, CreateAdminAccount, OAuthAuthorize, ServerDownView). 6 components required no changes (already harmonized or stub). The only remaining text-medium-emphasis usage in the frontend should be checked during 0870o documentation scan. The Login.vue edition badge is now a tinted span — if future sessions add SaaS edition badge, follow the same pattern.",
+      "cascading_impacts": [
+        "Login.vue no longer renders a v-chip for edition badge — tests asserting on .v-chip in Login will need updating",
+        "CreateAdminAccount.vue no longer has CSS border on .admin-card — visual appearance unchanged due to smooth-border class"
+      ],
+      "summary": "Harmonized 5 auth page view files to the 0870 design system. All v-card elements received smooth-border class. All text-medium-emphasis Vuetify classes replaced with scoped accessible color classes (#8895a8). Login edition chip converted from outlined v-chip to tinted span badge. CreateAdminAccount CSS border removed (smooth-border handles it). 6 setup/auth components required no changes (already harmonized or stub). 5 files changed (52 insertions, 25 deletions), all 1893 tests pass."
     },
     {
       "session_id": "0870o",
