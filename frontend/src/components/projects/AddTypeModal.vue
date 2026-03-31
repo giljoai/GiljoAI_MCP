@@ -33,7 +33,7 @@
           />
 
           <div class="mb-3">
-            <label class="text-caption addtype-text-muted d-block mb-1">Color</label>
+            <label class="text-caption text-muted-a11y d-block mb-1">Color</label>
             <div class="d-flex align-center ga-2 flex-wrap">
               <v-btn
                 v-for="swatch in colorSwatches"
@@ -167,7 +167,4 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.addtype-text-muted {
-  color: #8895a8;
-}
 </style>

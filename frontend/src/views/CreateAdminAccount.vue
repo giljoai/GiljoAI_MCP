@@ -9,7 +9,7 @@
             <div class="text-center pa-6">
               <GilMascot :size="80" :happy="mascotHappy" class="mb-4" />
               <h1 class="admin-title text-h3 mb-2">{{ greeting }}</h1>
-              <h3 class="text-subtitle-1 admin-text-muted">
+              <h3 class="text-subtitle-1 text-muted-a11y">
                 Create your administrator account to get started
               </h3>
             </div>
@@ -158,7 +158,7 @@
                 <v-icon class="mr-2">mdi-shield-key</v-icon>
                 Recovery PIN Setup
               </h2>
-              <p class="text-body-2 admin-text-muted">
+              <p class="text-body-2 text-muted-a11y">
                 Create a 4-digit PIN for password recovery. This PIN can be used if you forget your
                 password.
               </p>
@@ -452,10 +452,6 @@ const createAdmin = async () => {
 
 .admin-card {
   margin-top: 5vh;
-}
-
-.admin-text-muted {
-  color: #8895a8 !important;
 }
 
 .admin-title {

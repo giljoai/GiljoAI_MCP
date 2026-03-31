@@ -141,7 +141,7 @@
               href="https://www.giljo.ai"
               target="_blank"
               rel="noopener noreferrer"
-              class="text-caption login-text-muted text-decoration-none"
+              class="text-caption text-muted-a11y text-decoration-none"
             >
               www.giljo.ai
             </a>
@@ -345,11 +345,6 @@ onMounted(async () => {
 /* Dark theme adjustments */
 :deep(.v-theme--dark) .login-container {
   background: linear-gradient(135deg, rgb(18, 29, 42) 0%, rgb(10, 15, 22) 100%);
-}
-
-/* Accessible text colors */
-.login-text-muted {
-  color: #8895a8 !important;
 }
 
 /* Tinted edition badge */

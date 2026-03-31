@@ -362,7 +362,7 @@
         </div>
 
         <!-- Created/Updated -->
-        <div class="text-caption detail-text-muted mt-4">
+        <div class="text-caption text-muted-a11y mt-4">
           Created: {{ formatDate(product.created_at) }}<br />
           Updated: {{ formatDate(product.updated_at) }}
         </div>
@@ -395,7 +395,7 @@
       <v-divider></v-divider>
 
       <v-card-text class="summary-content" style="max-height: 60vh; overflow-y: auto;">
-        <div class="text-caption detail-text-muted mb-2">
+        <div class="text-caption text-muted-a11y mb-2">
           <v-icon size="14" class="mr-1">mdi-counter</v-icon>
           ~{{ formatTokens(summaryTokens) }} tokens
         </div>
@@ -429,7 +429,7 @@
       <v-divider></v-divider>
 
       <v-card-text class="summary-content" style="max-height: 60vh; overflow-y: auto;">
-        <div class="text-caption detail-text-muted mb-2">
+        <div class="text-caption text-muted-a11y mb-2">
           <v-icon size="14" class="mr-1">mdi-counter</v-icon>
           ~{{ formatTokens(consolidatedSummaryTokens) }} tokens
           <span v-if="consolidatedSummaryHash" class="ml-2">
@@ -727,9 +727,6 @@ async function regenerateConsolidation() {
 </script>
 
 <style scoped>
-.detail-text-muted {
-  color: #8895a8 !important;
-}
 
 .summary-level-chip {
   display: inline-flex;

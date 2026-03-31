@@ -16,7 +16,7 @@
 
       <v-card-text>
         <v-form ref="form" v-model="valid">
-          <div class="mb-4 git-adv-text-muted">
+          <div class="mb-4 text-muted-a11y">
             Configure how Git integration works with 360 Memory and agent prompts.
           </div>
 
@@ -129,7 +129,4 @@ function handleSave() {
 </script>
 
 <style scoped>
-.git-adv-text-muted {
-  color: #8895a8;
-}
 </style>
