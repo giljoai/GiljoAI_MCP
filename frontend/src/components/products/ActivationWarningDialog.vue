@@ -16,14 +16,14 @@
     </v-alert>
 
     <div class="mb-3">
-      <div class="text-subtitle-2 text-medium-emphasis">Current Active Product:</div>
+      <div class="text-subtitle-2 activation-text-muted">Current Active Product:</div>
       <div class="text-h6 ml-2 mt-1">
         {{ currentActive?.name || 'None' }}
       </div>
     </div>
 
     <div class="mb-4">
-      <div class="text-subtitle-2 text-medium-emphasis">New Active Product:</div>
+      <div class="text-subtitle-2 activation-text-muted">New Active Product:</div>
       <div class="text-h6 ml-2 mt-1 text-primary">
         {{ newProduct?.name || 'Unknown' }}
       </div>
@@ -132,3 +132,9 @@ watch(
   },
 )
 </script>
+
+<style scoped>
+.activation-text-muted {
+  color: #8895a8 !important;
+}
+</style>
