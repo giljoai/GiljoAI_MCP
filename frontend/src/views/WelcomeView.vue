@@ -98,12 +98,13 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useProductStore } from '@/stores/products'
 import GilMascot from '@/components/GilMascot.vue'
 import SetupWizardOverlay from '@/components/setup/SetupWizardOverlay.vue'
 
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const productStore = useProductStore()
@@ -263,10 +264,14 @@ onMounted(async () => {
     // ignore
   }
 
-  // Auto-launch overlay on first login (setup not complete)
-  if (!setupComplete.value) {
+  // Auto-launch overlay on first login or when directed from UserSettings
+  if (route.query.openSetup === 'true' || !setupComplete.value) {
     setupStep.value = setupStepCompleted.value
     showSetupOverlay.value = true
+    // Clean up query param so refresh doesn't re-trigger
+    if (route.query.openSetup) {
+      router.replace({ path: '/', query: {} })
+    }
   }
 })
 </script>
