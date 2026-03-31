@@ -91,9 +91,9 @@
       "title": "Tab-to-Pill: Jobs & Messages",
       "handover": "handovers/0871_design_remediation_polish.md#0871c",
       "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31T23:00:00Z",
+      "completed_at": "2026-03-31T23:10:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "ProjectTabs.vue — replace Staging/Implementation v-tabs with pill buttons (icons: rocket + code-braces)",
@@ -101,21 +101,34 @@
         "MessagesView.vue — replace Message Timeline/Send Broadcast v-tabs with pill buttons",
         "Run existing tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "ProjectTabs.vue — replaced v-btn-toggle with pill-button row (Staging with mdi-rocket-launch-outline, Implementation with mdi-code-braces). Tab pills use .pill-btn class with active/inactive states.",
+        "ProjectTabs.vue — replaced v-radio-group execution mode selector with pill-button pattern (.pill-sm variant). Supports disabled state when execution mode is locked. Direct click handler sets executionPlatform and calls handleExecutionModeChange.",
+        "MessagesView.vue — replaced v-tabs/v-tab with pill-button row (Message Timeline with mdi-timeline-text, Send Broadcast with mdi-bullhorn). Added scoped pill styles.",
+        "Updated bordered-tabs-content border-radius from '0 8px 8px 8px' to '8px' (pills don't visually connect to box like old btn-toggle did).",
+        "Updated global-tab-styles.spec.js — ProjectTabs tests now check for .pill-btn and .tab-pills instead of v-btn-toggle. Split consistency test to separate ProductForm (v-btn-toggle) from ProjectTabs (pill-btn).",
+        "All 1916 tests pass across 99 test files."
+      ],
+      "deviations": [
+        "ProjectTabs had v-btn-toggle (not v-tabs as spec said) — functionally equivalent, replaced with pills either way.",
+        "Used .pill-btn class name (consistent with ProjectTabs pattern) rather than .pill-toggle (0871b's pattern for UserSettings/SystemSettings). Both patterns achieve identical visual result. Future session may unify naming."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "Pill-button class naming divergence: 0871b used .pill-toggle for UserSettings/SystemSettings, 0871c used .pill-btn for ProjectTabs/MessagesView. Both produce identical visual styling. A future pass could unify, but both are scoped styles so no functional conflict. ProductForm.vue still uses v-btn-toggle (not in scope for tab-to-pill conversion). The v-window/v-window-item content panels remain unchanged in both files.",
+      "cascading_impacts": [
+        "global-tab-styles.spec.js updated — ProjectTabs tests now expect pill-btn class, not v-btn-toggle",
+        "ProjectTabs bordered-tabs-content has full 8px border-radius (was asymmetric 0 8px 8px 8px when tabs visually connected)"
+      ],
+      "summary": "Replaced v-btn-toggle with pill-button toggles in ProjectTabs.vue (Staging/Implementation + execution mode radio group restyled to pills) and v-tabs with pill buttons in MessagesView.vue (Timeline/Broadcast). Updated test assertions. All 1916 tests pass. Commits: b9456d91, 1bf0279b."
     },
     {
       "session_id": "0871d",
       "title": "Home Page Polish",
       "handover": "handovers/0871_design_remediation_polish.md#0871d",
       "color": "#FF9800",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31T23:15:00Z",
+      "completed_at": "2026-03-31T23:20:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "WelcomeView.vue — add mascot glow (drop-shadow yellow+green, radial gradient, float animation)",
@@ -123,12 +136,20 @@
         "Fix team cards: CSS border → smooth-border class",
         "Reference mockup: frontend/mock/welcome-v3-colors.html"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Verified mascot glow already present: hero-mascot-inner has drop-shadow filter (yellow+green) + mascotFloat 4s animation. hero-mascot-glow div has radial-gradient(circle, rgba(255,217,61,0.14)...). glowPulse keyframes present.",
+        "Verified quick-launch cards already use smooth-border class (no CSS border property on .quick-card).",
+        "Verified team cards already use smooth-border class (no CSS border property on .team-card).",
+        "Verified empty slot cards retain intentional dashed border: border: 1px dashed rgba(255,255,255,0.1).",
+        "Cross-referenced all patterns against frontend/mock/welcome-v3-colors.html mockup — WelcomeView.vue matches spec."
+      ],
+      "deviations": [
+        "All planned changes were already implemented during the 0870 chain (which built WelcomeView.vue from scratch on this branch). No code modifications were needed — session was verification-only."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
+      "notes_for_next": "WelcomeView.vue is fully aligned with the design spec. No further home page work needed. The file was not modified by this session.",
       "cascading_impacts": [],
-      "summary": null
+      "summary": "Verification-only session. All 0871d planned changes (mascot glow with drop-shadow + float animation + radial gradient, quick-launch cards with smooth-border, team cards with smooth-border, empty slots with dashed border) were already present in WelcomeView.vue from the 0870 chain. No code changes required."
     },
     {
       "session_id": "0871e",
