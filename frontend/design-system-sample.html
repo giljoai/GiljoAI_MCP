@@ -3,2080 +3,451 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GiljoAI MCP Design System</title>
+<title>GiljoAI MCP Design System v2 — Luminous Pastels + WCAG AA</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
 <style>
-  /* ========================================
-     RESET & BASE
-     ======================================== */
-  *, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
-  html {
-    font-size: 16px;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  body {
-    background: #0e1c2d;
-    color: #e1e1e1;
-    font-family: "Roboto", "Segoe UI", system-ui, -apple-system, sans-serif;
-    font-size: 0.875rem;
-    font-weight: 400;
-    line-height: 1.6;
-    min-height: 100vh;
-    padding: 0;
-  }
-
-  /* ========================================
-     SCROLLBAR (documented, applied)
-     ======================================== */
-  ::-webkit-scrollbar { width: 8px; }
-  ::-webkit-scrollbar-track { background: #182739; }
-  ::-webkit-scrollbar-thumb { background: #315074; border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: #8f97b7; }
-
-  /* ========================================
-     LAYOUT
-     ======================================== */
-  .page-wrapper {
-    max-width: 1400px;
-    min-width: 320px;
-    margin: 0 auto;
-    padding: 0 32px 64px;
-  }
-
-  .section {
-    margin-bottom: 48px;
-  }
-
-  .section-title {
-    font-size: 1.5rem;
-    font-weight: 400;
-    color: #e1e1e1;
-    margin-bottom: 8px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #315074;
-  }
-
-  .section-subtitle {
-    font-size: 0.75rem;
-    color: #8f97b7;
-    margin-bottom: 24px;
-    font-weight: 400;
-  }
-
-  .grid-2 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    gap: 24px;
-  }
-
-  .grid-3 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 16px;
-  }
-
-  .grid-6 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-  }
-
-  /* ========================================
-     CARD (Surface)
-     ======================================== */
-  .card {
-    background: #182739;
-    border: none;
-    border-radius: 12px;
-    padding: 24px;
-    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.85), 0 4px 6px -1px rgba(0,0,0,0.1);
-    /* 2px bright white anti-aliased border via box-shadow inset (smooth-border-2 pattern).
-       NEVER use CSS border on rounded elements — see CLAUDE.md smooth-border rule. */
-  }
-
-  .card-elevated {
-    background: #1e3147;
-    border: none;
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.85), 0 4px 8px rgba(0,0,0,0.15);
-  }
-
-  .card h4 {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: #e1e1e1;
-    margin-bottom: 16px;
-  }
-
-  /* ========================================
-     TOKENS / LABELS
-     ======================================== */
-  .token-label {
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.75rem;
-    color: #8f97b7;
-    display: block;
-    margin-top: 4px;
-  }
-
-  .token-value {
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.625rem;
-    color: #c0c0c0;
-    display: block;
-  }
-
-  .token-name {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #e1e1e1;
-    margin-bottom: 2px;
-  }
-
-  /* ========================================
-     HEADER
-     ======================================== */
-  .header {
-    padding: 48px 0 32px;
-    text-align: center;
-  }
-
-  .header-gradient-bar {
-    height: 4px;
-    background: linear-gradient(45deg, #ffd93d, #6bcf7f);
-    border-radius: 2px;
-    margin-bottom: 32px;
-  }
-
-  .header h1 {
-    font-size: 2rem;
-    font-weight: 400;
-    color: #e1e1e1;
-    margin-bottom: 8px;
-    letter-spacing: 0.5px;
-  }
-
-  .header p {
-    font-size: 0.875rem;
-    color: #8f97b7;
-    font-weight: 400;
-  }
-
-  /* ========================================
-     COLOR SWATCHES
-     ======================================== */
-  .swatch-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  .swatch {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 80px;
-  }
-
-  .swatch-color {
-    width: 64px;
-    height: 64px;
-    border-radius: 8px;
-    border: 1px solid rgba(225,225,225,0.2);
-    margin-bottom: 6px;
-  }
-
-  .swatch-hex {
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.625rem;
-    color: #e1e1e1;
-    font-weight: 500;
-  }
-
-  .swatch-name {
-    font-size: 0.625rem;
-    color: #8f97b7;
-    text-align: center;
-    line-height: 1.3;
-  }
-
-  /* ========================================
-     LAYOUT LAYERS DEMO
-     ======================================== */
-  .layers-demo {
-    background: #0e1c2d;
-    border: 2px dashed #315074;
-    border-radius: 12px;
-    padding: 24px;
-    position: relative;
-  }
-
-  .layers-demo .layer-label {
-    position: absolute;
-    top: 8px;
-    right: 12px;
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.625rem;
-    color: #8f97b7;
-  }
-
-  .layer-1 {
-    background: #182739;
-    border: 1px solid #315074;
-    border-radius: 12px;
-    padding: 24px;
-    position: relative;
-  }
-
-  .layer-2 {
-    background: #1e3147;
-    border: 1px solid rgba(225,225,225,0.2);
-    border-radius: 8px;
-    padding: 16px;
-    position: relative;
-  }
-
-  .layer-tag {
-    display: inline-block;
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.625rem;
-    color: #c0c0c0;
-    background: rgba(0,0,0,0.3);
-    padding: 2px 8px;
-    border-radius: 4px;
-    margin-bottom: 8px;
-  }
-
-  .layer-description {
-    font-size: 0.75rem;
-    color: #8f97b7;
-    margin-top: 4px;
-  }
-
-  /* ========================================
-     BUTTONS
-     ======================================== */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 20px;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: all 0.15s ease;
-    text-decoration: none;
-    gap: 6px;
-    line-height: 1.4;
-  }
-
-  .btn-primary {
-    background: #ffc300;
-    color: #0e1c2d;
-    border-color: #ffc300;
-  }
-  .btn-primary:hover {
-    background: #ffed4e;
-    border-color: #ffed4e;
-  }
-
-  .btn-secondary {
-    background: transparent;
-    color: #ffc300;
-    border-color: #ffc300;
-  }
-  .btn-secondary:hover {
-    background: rgba(255,195,0,0.1);
-  }
-
-  .btn-danger {
-    background: #c6298c;
-    color: #ffffff;
-    border-color: #c6298c;
-  }
-  .btn-danger:hover {
-    background: #d43da0;
-    border-color: #d43da0;
-  }
-
-  .btn-icon {
-    background: transparent;
-    color: #ffc300;
-    border: none;
-    padding: 6px 10px;
-    font-size: 0.875rem;
-    font-weight: 400;
-  }
-  .btn-icon:hover {
-    background: rgba(255,195,0,0.08);
-    border-radius: 8px;
-  }
-
-  .btn-gradient {
-    background: linear-gradient(135deg, #ffc300 0%, #e6a800 100%);
-    color: #0e1c2d;
-    border-color: transparent;
-    font-weight: 600;
-  }
-  .btn-gradient:hover {
-    background: linear-gradient(135deg, #ffed4e 0%, #ffc300 100%);
-  }
-
-  .btn-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-
-  /* ========================================
-     TEXT INPUTS
-     ======================================== */
-  .input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-width: 360px;
-  }
-
-  .input-label {
-    font-size: 0.75rem;
-    color: #8f97b7;
-    font-weight: 500;
-  }
-
-  .text-input {
-    background: rgba(225,225,225,0.05);
-    border: 2px solid rgba(225,225,225,0.2);
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 0.875rem;
-    font-family: inherit;
-    color: #e1e1e1;
-    outline: none;
-    transition: border-color 0.15s ease;
-  }
-  .text-input::placeholder {
-    color: #8f97b7;
-    font-style: italic;
-  }
-  .text-input:focus {
-    border-color: #ffd700;
-  }
-  .text-input-focused {
-    border-color: #ffd700;
-  }
-
-  /* ========================================
-     AGENT AVATARS & CHIPS
-     ======================================== */
-  .agent-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 24px;
-  }
-
-  .agent-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 140px;
-    gap: 8px;
-  }
-
-  .agent-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.625rem;
-    font-weight: 700;
-    color: #0e1c2d;
-    flex-shrink: 0;
-  }
-
-  .agent-name {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #e1e1e1;
-  }
-
-  .agent-swatches {
-    display: flex;
-    gap: 4px;
-    margin-top: 4px;
-  }
-
-  .agent-mini-swatch {
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
-    border: 1px solid rgba(225,225,225,0.15);
-    position: relative;
-  }
-
-  .agent-mini-swatch-label {
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.5rem;
-    color: #8f97b7;
-    text-align: center;
-  }
-
-  .agent-chip {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 10px;
-    border-radius: 9999px;
-    font-size: 0.625rem;
-    font-weight: 600;
-    color: #0e1c2d;
-    gap: 4px;
-  }
-
-  .agent-hex-list {
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.5rem;
-    color: #c0c0c0;
-    text-align: center;
-    line-height: 1.5;
-  }
-
-  /* ========================================
-     STATUS BADGES
-     ======================================== */
-  .status-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    align-items: center;
-  }
-
-  .status-item {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .status-text {
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-
-  .status-pill {
-    display: inline-block;
-    padding: 3px 12px;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border: 1px solid;
-  }
-
-  /* Working dots animation */
-  @keyframes workingDots {
-    0% { content: ''; }
-    25% { content: '.'; }
-    50% { content: '..'; }
-    75% { content: '...'; }
-  }
-  .status-working::after {
-    content: '';
-    animation: workingDots 1.5s steps(4, end) infinite;
-  }
-
-  /* ========================================
-     TAB DEMO
-     ======================================== */
-  .tab-toggle-demo {
-    display: inline-flex;
-    border: 1px solid #315074;
-    border-bottom: none;
-    border-radius: 8px 8px 0 0;
-    overflow: hidden;
-  }
-
-  .tab-btn {
-    background: transparent;
-    color: rgba(255,255,255,0.7);
-    border: none;
-    border-right: 1px solid #315074;
-    padding: 10px 20px;
-    font-size: 0.875rem;
-    font-family: inherit;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: background 0.15s, color 0.15s;
-  }
-
-  .tab-btn:last-child {
-    border-right: none;
-  }
-
-  .tab-btn:hover:not(.tab-btn--active) {
-    background: rgba(255,255,255,0.05);
-  }
-
-  .tab-btn--active {
-    background: #182739;
-    color: #ffffff;
-  }
-
-  .tab-icon {
-    font-size: 1rem;
-  }
-
-  .tab-content-demo {
-    border: 1px solid #315074;
-    border-top: none;
-    border-radius: 0 8px 8px 8px;
-    padding: 24px;
-    background: #182739;
-    min-height: 80px;
-    width: 100%;
-    color: #8f97b7;
-    font-size: 0.875rem;
-  }
-
-  .tab-panel {
-    display: none;
-  }
-
-  .tab-panel--active {
-    display: block;
-    animation: tabFadeIn 0.2s ease-in;
-  }
-
-  @keyframes tabFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  /* ========================================
-     TYPOGRAPHY SAMPLES
-     ======================================== */
-  .type-sample {
-    margin-bottom: 20px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid rgba(49,80,116,0.4);
-  }
-  .type-sample:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-  }
-
-  .type-meta {
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.625rem;
-    color: #8f97b7;
-    margin-top: 4px;
-  }
-
-  /* ========================================
-     SPACING DEMO
-     ======================================== */
-  .spacing-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    align-items: flex-end;
-  }
-
-  .spacing-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .spacing-box {
-    background: #ffc300;
-    border-radius: 4px;
-    opacity: 0.6;
-  }
-
-  .spacing-label {
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.625rem;
-    color: #8f97b7;
-    text-align: center;
-  }
-
-  /* ========================================
-     SHADOW DEMO
-     ======================================== */
-  .shadow-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 24px;
-  }
-
-  .shadow-box {
-    width: 140px;
-    height: 80px;
-    background: #182739;
-    border: 1px solid #315074;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-  }
-
-  .shadow-name {
-    font-size: 0.75rem;
-    color: #e1e1e1;
-    font-weight: 500;
-  }
-
-  .shadow-value {
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.5rem;
-    color: #8f97b7;
-    text-align: center;
-    max-width: 120px;
-    word-break: break-all;
-  }
-
-  /* ========================================
-     GRADIENT BARS
-     ======================================== */
-  .gradient-item {
-    margin-bottom: 16px;
-  }
-
-  .gradient-bar {
-    height: 40px;
-    border-radius: 8px;
-    margin-bottom: 6px;
-  }
-
-  .gradient-label {
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.625rem;
-    color: #8f97b7;
-  }
-
-  .gradient-name {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #e1e1e1;
-    margin-bottom: 2px;
-  }
-
-  /* ========================================
-     TOOL SWATCHES
-     ======================================== */
-  .tool-swatch {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: #1e3147;
-    border-radius: 8px;
-    border: 1px solid #315074;
-  }
-
-  .tool-dot {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .tool-name {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #e1e1e1;
-  }
-
-  .tool-hex {
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.625rem;
-    color: #8f97b7;
-  }
-
-  /* ========================================
-     SCROLLBAR NOTE
-     ======================================== */
-  .scrollbar-demo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .scrollbar-piece {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .scrollbar-sample {
-    width: 8px;
-    height: 32px;
-    border-radius: 4px;
-  }
-
-  /* ========================================
-     DISCREPANCIES TABLE
-     ======================================== */
-  .disc-section {
-    border: 1px solid #c6298c;
-    border-radius: 12px;
-    padding: 24px;
-    background: rgba(198,41,140,0.05);
-  }
-
-  .disc-title {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: #c6298c;
-    margin-bottom: 8px;
-  }
-
-  .disc-subtitle {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #e1e1e1;
-    margin-top: 20px;
-    margin-bottom: 8px;
-  }
-
-  .disc-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.75rem;
-    margin-bottom: 12px;
-  }
-
-  .disc-table th {
-    text-align: left;
-    padding: 6px 10px;
-    background: rgba(198,41,140,0.1);
-    color: #c0c0c0;
-    font-weight: 600;
-    border-bottom: 1px solid rgba(198,41,140,0.3);
-    font-size: 0.625rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .disc-table td {
-    padding: 6px 10px;
-    border-bottom: 1px solid rgba(49,80,116,0.3);
-    color: #e1e1e1;
-    vertical-align: middle;
-  }
-
-  .disc-table td code {
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.6875rem;
-    background: rgba(0,0,0,0.3);
-    padding: 1px 5px;
-    border-radius: 3px;
-    color: #c0c0c0;
-  }
-
-  .disc-inline-swatch {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border-radius: 3px;
-    vertical-align: middle;
-    margin-right: 4px;
-    border: 1px solid rgba(225,225,225,0.15);
-  }
-
-  .disc-text {
-    font-size: 0.75rem;
-    color: #8f97b7;
-    line-height: 1.6;
-    margin-bottom: 4px;
-  }
-
-  .disc-text code {
-    font-family: "Roboto Mono", "Courier New", monospace;
-    font-size: 0.6875rem;
-    background: rgba(0,0,0,0.3);
-    padding: 1px 5px;
-    border-radius: 3px;
-    color: #c0c0c0;
-  }
-
-  /* ========================================
-     RESPONSIVE
-     ======================================== */
-  @media (max-width: 860px) {
-    .page-wrapper {
-      padding: 0 16px 48px;
-    }
-    .grid-2 {
-      grid-template-columns: 1fr;
-    }
-    .agent-row {
-      gap: 16px;
-    }
-    .shadow-row {
-      gap: 16px;
-    }
-    .shadow-box {
-      width: 120px;
-      height: 70px;
-    }
-  }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; font-size: 0.875rem; line-height: 1.6; padding: 0; }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #182739; }
+::-webkit-scrollbar-thumb { background: #315074; border-radius: 4px; }
+
+.page { max-width: 1400px; margin: 0 auto; padding: 0 32px 64px; }
+
+/* Section */
+.section { margin-bottom: 48px; }
+.section-title { font-family: 'Outfit', sans-serif; font-size: 1.4rem; font-weight: 600; margin-bottom: 6px; padding-bottom: 8px; border-bottom: 1px solid #315074; }
+.section-sub { font-size: 0.75rem; color: #a3aac4; margin-bottom: 20px; }
+
+/* Header */
+.header { padding: 40px 0 28px; text-align: center; }
+.header-bar { height: 4px; background: linear-gradient(45deg, #ffd93d, #6bcf7f); border-radius: 2px; margin-bottom: 28px; }
+.header h1 { font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 600; margin-bottom: 6px; letter-spacing: -0.02em; }
+.header p { font-size: 0.82rem; color: #a3aac4; }
+.header .version-badge { display: inline-block; margin-top: 10px; padding: 3px 12px; border-radius: 9999px; background: rgba(255,195,0,0.1); color: #ffc300; font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; font-weight: 600; }
+
+/* Grids */
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.grid-6 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.flex-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.flex-row-tight { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Card */
+.card { background: #182739; border: none; border-radius: 16px; padding: 24px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); }
+.card h4 { font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 600; margin-bottom: 14px; }
+
+/* Labels */
+.token-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; color: #a3aac4; display: block; margin-top: 4px; }
+.token-value { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: #8895a8; display: block; }
+.token-name { font-size: 0.82rem; font-weight: 500; margin-bottom: 2px; }
+.wcag-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; font-weight: 600; margin-left: 4px; }
+.wcag-badge.pass { background: rgba(103,189,109,0.12); color: #67bd6d; }
+.wcag-badge.fail { background: rgba(224,120,114,0.12); color: #E07872; }
+
+/* Swatches */
+.swatch { display: flex; flex-direction: column; align-items: center; width: 80px; }
+.swatch-color { width: 64px; height: 64px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); margin-bottom: 6px; }
+.swatch-hex { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; font-weight: 500; }
+.swatch-name { font-size: 0.6rem; color: #a3aac4; text-align: center; line-height: 1.3; }
+
+/* Elevation layers */
+.layers-demo { background: #0e1c2d; border: 2px dashed #315074; border-radius: 12px; padding: 20px; position: relative; }
+.layer-tag { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: #8895a8; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px; margin-bottom: 6px; }
+.layer-1 { background: #182739; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); border-radius: 12px; padding: 20px; }
+.layer-2 { background: #1e3147; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14); border-radius: 8px; padding: 16px; margin-top: 12px; }
+.layer-desc { font-size: 0.72rem; color: #a3aac4; margin-top: 4px; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 20px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; gap: 6px; line-height: 1.4; }
+.btn-primary { background: #ffc300; color: #0e1c2d; }
+.btn-primary:hover { background: #ffed4e; }
+.btn-secondary { background: transparent; color: #ffc300; box-shadow: inset 0 0 0 2px #ffc300; }
+.btn-secondary:hover { background: rgba(255,195,0,0.1); }
+.btn-danger { background: #c6298c; color: #fff; }
+.btn-danger:hover { background: #d43da0; }
+.btn-icon { background: transparent; color: #ffc300; padding: 6px 10px; font-weight: 400; border: none; }
+.btn-icon:hover { background: rgba(255,195,0,0.08); border-radius: 8px; }
+.btn-pill { padding: 6px 16px; border-radius: 9999px; background: transparent; color: #8895a8; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); font-size: 0.75rem; cursor: pointer; border: none; }
+.btn-pill.active { background: rgba(255,195,0,0.12); color: #ffc300; box-shadow: none; }
+
+/* Agent Badges — TINTED STYLE (square, rounded corners) */
+.agent-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+.agent-card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 10px; background: #182739; border-radius: 16px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); }
+.agent-badge { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; font-size: 0.78rem; font-weight: 700; }
+.agent-name { font-size: 0.78rem; font-weight: 500; }
+.agent-hex { font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; color: #8895a8; }
+.agent-ratio { font-family: 'IBM Plex Mono', monospace; font-size: 0.52rem; }
+
+/* Status Chips (tinted) */
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 9999px; font-size: 0.68rem; font-weight: 600; }
+
+/* Text input */
+.text-input { background: rgba(255,255,255,0.04); border: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #e1e1e1; outline: none; width: 100%; max-width: 360px; transition: box-shadow 0.15s; }
+.text-input::placeholder { color: #8895a8; }
+.text-input:focus { box-shadow: inset 0 0 0 1px rgba(255,195,0,0.4); }
+
+/* Stat Pill + Micro-bar */
+.stat-pill-demo { background: #182739; border-radius: 16px; padding: 18px 20px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); }
+.stat-pill-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: #8895a8; margin-bottom: 4px; }
+.stat-pill-value { font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; font-weight: 500; margin-bottom: 12px; }
+.stat-pill-value small { font-size: 0.6rem; color: #8895a8; font-weight: 400; margin-left: 4px; }
+.micro-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: rgba(255,255,255,0.04); margin-bottom: 8px; }
+.micro-seg { height: 100%; }
+.micro-seg + .micro-seg { margin-left: 1px; }
+.micro-legend { display: flex; flex-wrap: wrap; gap: 3px 10px; }
+.micro-legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.58rem; color: #a3aac4; }
+.micro-legend-dot { width: 5px; height: 5px; border-radius: 2px; }
+
+/* Typography scale */
+.type-sample { margin-bottom: 8px; }
+.type-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; color: #8895a8; margin-bottom: 2px; }
+
+/* Tab pill toggle */
+.tab-pills { display: flex; gap: 4px; }
+.tab-pill { padding: 8px 18px; border: none; border-radius: 9999px; font-size: 0.78rem; font-weight: 500; cursor: pointer; background: transparent; color: #8895a8; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); display: flex; align-items: center; gap: 6px; }
+.tab-pill.active { background: rgba(255,195,0,0.12); color: #ffc300; box-shadow: none; }
+
+/* Smooth border demo */
+.smooth-demo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.smooth-box { padding: 16px; border-radius: 12px; text-align: center; font-size: 0.72rem; color: #a3aac4; }
 </style>
 </head>
 <body>
-
-<div class="page-wrapper">
-
-  <!-- ============================================
-       HEADER
-       ============================================ -->
-  <header class="header">
-    <div class="header-gradient-bar"></div>
+<div class="page">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-bar"></div>
     <h1>GiljoAI MCP Design System</h1>
-    <p>Dark Theme Visual Reference</p>
-  </header>
-
-  <!-- ============================================
-       PAGE TABS
-       ============================================ -->
-  <div style="display: flex; gap: 0; margin-bottom: 32px;">
-    <button class="page-tab page-tab--active" onclick="switchPageTab(this, 'tab-design-tokens')"
-      style="background: #182739; color: #fff; border: none; border-bottom: 3px solid #ffc300; padding: 14px 32px; font-size: 1rem; font-family: inherit; cursor: pointer; font-weight: 500;">
-      Design Tokens
-    </button>
-    <button class="page-tab" onclick="switchPageTab(this, 'tab-icons-logos')"
-      style="background: transparent; color: #8f97b7; border: none; border-bottom: 3px solid transparent; padding: 14px 32px; font-size: 1rem; font-family: inherit; cursor: pointer; font-weight: 500;">
-      Icons &amp; Logos
-    </button>
+    <p>Luminous Pastels palette · WCAG AA compliant · Tinted badge style</p>
+    <div class="version-badge">v2.0 — March 2026</div>
   </div>
 
-  <!-- ============================================
-       TAB 1: DESIGN TOKENS (existing content)
-       ============================================ -->
-  <div id="tab-design-tokens">
+  <!-- 1. COLOR PALETTE -->
+  <div class="section">
+    <div class="section-title">1. Color Palette</div>
+    <div class="section-sub">All colors tested against bg-raised (#182739) for WCAG AA compliance (4.5:1 minimum).</div>
 
-  <!-- ============================================
-       0. NAMING & TERMINOLOGY
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title">Naming &amp; Terminology</h2>
-    <p class="section-subtitle">Mandatory naming conventions for all UI text, tooltips, descriptions, and documentation</p>
+    <div class="grid-2">
+      <!-- Backgrounds -->
+      <div class="card">
+        <h4>Background Surfaces</h4>
+        <div class="flex-row">
+          <div class="swatch"><div class="swatch-color" style="background:#0e1c2d;"></div><div class="swatch-hex">#0e1c2d</div><div class="swatch-name">bg-primary</div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#182739;"></div><div class="swatch-hex">#182739</div><div class="swatch-name">bg-raised</div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#1e3147;"></div><div class="swatch-hex">#1e3147</div><div class="swatch-name">bg-elevated</div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#243b53;"></div><div class="swatch-hex">#243b53</div><div class="swatch-name">bg-overlay</div></div>
+        </div>
+      </div>
 
-    <div style="background: #182739; border: 1px solid #315074; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-      <h3 style="color: #ffc300; margin-bottom: 16px;">Product Name</h3>
-      <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
-        <tr style="border-bottom: 1px solid #315074;">
-          <td style="padding: 8px; color: #8f97b7; width: 35%;">Product name (all contexts)</td>
-          <td style="padding: 8px;"><strong>GiljoAI MCP</strong></td>
-        </tr>
-        <tr style="border-bottom: 1px solid #315074;">
-          <td style="padding: 8px; color: #8f97b7;">Company/brand</td>
-          <td style="padding: 8px;"><strong>GiljoAI</strong></td>
-        </tr>
-        <tr style="border-bottom: 1px solid #315074;">
-          <td style="padding: 8px; color: #8f97b7;">Trademark</td>
-          <td style="padding: 8px;"><strong>GILJO&trade;</strong></td>
-        </tr>
-        <tr style="border-bottom: 1px solid #315074;">
-          <td style="padding: 8px; color: #8f97b7;">LICENSE file only</td>
-          <td style="padding: 8px;">GiljoAI MCP Coding Orchestrator</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px; color: #8f97b7;">Informal shorthand (after first mention)</td>
-          <td style="padding: 8px;">the MCP server <span style="color: #8f97b7;">(lowercase "server")</span></td>
-        </tr>
-      </table>
+      <!-- Text & Borders -->
+      <div class="card">
+        <h4>Text Hierarchy (WCAG AA)</h4>
+        <div style="margin-bottom:10px;">
+          <span style="font-size:1rem;color:#e1e1e1;">Primary text #e1e1e1</span>
+          <span class="wcag-badge pass">11.57:1</span>
+        </div>
+        <div style="margin-bottom:10px;">
+          <span style="font-size:0.875rem;color:#a3aac4;">Secondary text #a3aac4</span>
+          <span class="wcag-badge pass">6.56:1</span>
+        </div>
+        <div style="margin-bottom:10px;">
+          <span style="font-size:0.75rem;color:#8895a8;">Muted text #8895a8</span>
+          <span class="wcag-badge pass">4.98:1</span>
+        </div>
+        <div style="margin-bottom:10px;">
+          <span style="font-size:0.75rem;color:#5a6a80;text-decoration:line-through;">Old muted #5a6a80</span>
+          <span class="wcag-badge fail">2.74:1 FAIL</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-      <div style="margin-top: 16px; padding: 12px; background: rgba(198,41,140,0.1); border: 1px solid rgba(198,41,140,0.3); border-radius: 8px;">
-        <strong style="color: #c6298c;">Retired forms &mdash; never use:</strong>
-        <span style="color: #8f97b7;"> GiljoAI MCP Coding Orchestrator (except LICENSE) &bull; GiljoAI Orchestrator &bull; Giljo MCP &bull; MCP Orchestrator</span>
+  <!-- 2. AGENT COLORS: LUMINOUS PASTELS -->
+  <div class="section">
+    <div class="section-title">2. Agent Colors — Luminous Pastels</div>
+    <div class="section-sub">Tinted badge style: rgba(color, 0.15) background + bright text. Square geometry, border-radius: 8px. All pass WCAG AA on #182739.</div>
+
+    <div class="agent-grid">
+      <div class="agent-card">
+        <div class="agent-badge" style="background:rgba(212,176,138,0.15);color:#D4B08A;">OR</div>
+        <div class="agent-name">Orchestrator</div>
+        <div class="agent-hex">#D4B08A</div>
+        <div class="agent-ratio"><span class="wcag-badge pass">7.48:1</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-badge" style="background:rgba(224,120,114,0.15);color:#E07872;">AN</div>
+        <div class="agent-name">Analyzer</div>
+        <div class="agent-hex">#E07872</div>
+        <div class="agent-ratio"><span class="wcag-badge pass">5.11:1</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-badge" style="background:rgba(109,179,228,0.15);color:#6DB3E4;">IM</div>
+        <div class="agent-name">Implementer</div>
+        <div class="agent-hex">#6DB3E4</div>
+        <div class="agent-ratio"><span class="wcag-badge pass">6.64:1</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-badge" style="background:rgba(94,196,142,0.15);color:#5EC48E;">DO</div>
+        <div class="agent-name">Documenter</div>
+        <div class="agent-hex">#5EC48E</div>
+        <div class="agent-ratio"><span class="wcag-badge pass">7.03:1</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-badge" style="background:rgba(172,128,204,0.15);color:#AC80CC;">RV</div>
+        <div class="agent-name">Reviewer</div>
+        <div class="agent-hex">#AC80CC</div>
+        <div class="agent-ratio"><span class="wcag-badge pass">4.84:1</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-badge" style="background:rgba(237,186,74,0.15);color:#EDBA4A;">TE</div>
+        <div class="agent-name">Tester</div>
+        <div class="agent-hex">#EDBA4A</div>
+        <div class="agent-ratio"><span class="wcag-badge pass">8.45:1</span></div>
       </div>
     </div>
 
-    <div style="background: #182739; border: 1px solid #315074; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-      <h3 style="color: #ffc300; margin-bottom: 16px;">Terminology</h3>
-      <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
-        <tr style="border-bottom: 1px solid #315074;">
-          <td style="padding: 8px; color: #67bd6d; width: 35%;">Standard term</td>
-          <td style="padding: 8px;"><strong>AI coding agents</strong> <span style="color: #8f97b7;">(or "AI coding agent" singular)</span></td>
-        </tr>
-        <tr style="border-bottom: 1px solid #315074;">
-          <td style="padding: 8px; color: #8f97b7;">Primary functional descriptor</td>
-          <td style="padding: 8px;"><strong>context engineering platform</strong></td>
-        </tr>
-        <tr>
-          <td style="padding: 8px; color: #8f97b7;">Technical clarification only</td>
-          <td style="padding: 8px;"><strong>passive orchestrator</strong> <span style="color: #8f97b7;">(where no-AI-inference distinction matters)</span></td>
-        </tr>
-      </table>
-
-      <div style="margin-top: 16px; padding: 12px; background: rgba(198,41,140,0.1); border: 1px solid rgba(198,41,140,0.3); border-radius: 8px;">
-        <strong style="color: #c6298c;">Retired terms &mdash; never use:</strong>
-        <span style="color: #8f97b7;"> CLI tool/tools &bull; coding tool/tools &bull; AI tool/tools &bull; CLI agent/agents &bull; agentic CLI &bull; AI coding tool/tools &bull; passive orchestration platform &bull; persistent context layer</span>
+    <!-- Solid comparison (deprecated) -->
+    <div style="margin-top:20px;">
+      <div style="font-size:0.68rem;color:#8895a8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Previous (solid style — deprecated)</div>
+      <div class="flex-row">
+        <div class="agent-badge" style="width:32px;height:32px;border-radius:50%;background:#D4A574;color:#0e1c2d;font-size:0.58rem;display:grid;place-items:center;font-weight:700;opacity:0.4;">OR</div>
+        <div class="agent-badge" style="width:32px;height:32px;border-radius:50%;background:#E74C3C;color:#fff;font-size:0.58rem;display:grid;place-items:center;font-weight:700;opacity:0.4;">AN</div>
+        <div class="agent-badge" style="width:32px;height:32px;border-radius:50%;background:#3498DB;color:#fff;font-size:0.58rem;display:grid;place-items:center;font-weight:700;opacity:0.4;">IM</div>
+        <div class="agent-badge" style="width:32px;height:32px;border-radius:50%;background:#27AE60;color:#fff;font-size:0.58rem;display:grid;place-items:center;font-weight:700;opacity:0.4;">DO</div>
+        <div class="agent-badge" style="width:32px;height:32px;border-radius:50%;background:#9B59B6;color:#fff;font-size:0.58rem;display:grid;place-items:center;font-weight:700;opacity:0.4;">RV</div>
+        <div class="agent-badge" style="width:32px;height:32px;border-radius:50%;background:#FFC300;color:#0e1c2d;font-size:0.58rem;display:grid;place-items:center;font-weight:700;opacity:0.4;">TE</div>
+        <span style="font-size:0.62rem;color:#8895a8;margin-left:8px;">Round, solid fill, mixed contrast — retired</span>
       </div>
     </div>
+  </div>
 
-    <div style="background: #182739; border: 1px solid #315074; border-radius: 12px; padding: 24px;">
-      <h3 style="color: #ffc300; margin-bottom: 16px;">Footer Standard</h3>
-      <div style="background: #0e1c2d; padding: 16px; border-radius: 8px; text-align: center; color: #8f97b7; font-size: 0.8125rem;">
-        &copy; 2026 GiljoAI LLC. GILJO&trade; is a trademark of GiljoAI LLC. Source-available under GiljoAI Community License.
+  <!-- 3. STATUS COLORS -->
+  <div class="section">
+    <div class="section-title">3. Status Colors (Unchanged)</div>
+    <div class="section-sub">Semantic colors for project/agent status. These do NOT change — they serve functional meaning users have learned.</div>
+    <div class="card">
+      <div class="flex-row" style="gap:16px;">
+        <div><span class="chip" style="background:rgba(255,255,255,0.12);color:#fff;">Active</span><div class="token-value">#ffffff</div></div>
+        <div><span class="chip" style="background:rgba(103,189,109,0.15);color:#67bd6d;">Completed</span><div class="token-value">#67bd6d</div></div>
+        <div><span class="chip" style="background:rgba(158,158,158,0.12);color:#9e9e9e;">Inactive</span><div class="token-value">#9e9e9e</div></div>
+        <div><span class="chip" style="background:rgba(255,195,0,0.12);color:#ffc300;">Cancelled</span><div class="token-value">#ffc300</div></div>
+        <div><span class="chip" style="background:rgba(198,41,140,0.12);color:#c6298c;">Terminated</span><div class="token-value">#c6298c</div></div>
+      </div>
+      <div style="margin-top:16px;">
+        <div style="font-size:0.68rem;color:#8895a8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Agent Status (in Jobs table)</div>
+        <div class="flex-row" style="gap:16px;">
+          <span style="color:#ffd700;font-style:italic;font-size:0.82rem;">Waiting.</span>
+          <span style="color:#fff;font-style:italic;font-size:0.82rem;">Working...</span>
+          <span style="color:#ff9800;font-size:0.82rem;">Needs Input</span>
+          <span style="color:#67bd6d;font-size:0.82rem;">Complete</span>
+          <span style="color:#9e9e9e;font-size:0.82rem;">Handed Over</span>
+          <span style="color:#757575;font-size:0.82rem;">Decommissioned</span>
+        </div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- ============================================
-       1. LAYOUT LAYERS
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title">Layout Layers</h2>
-    <p class="section-subtitle">Surface hierarchy demonstrating background, card, and elevated layers</p>
-
+  <!-- 4. ELEVATION LAYERS -->
+  <div class="section">
+    <div class="section-title">4. Surface Elevation</div>
+    <div class="section-sub">Smooth-border rule: NEVER use CSS border on rounded elements. Use box-shadow: inset instead.</div>
     <div class="layers-demo">
-      <span class="layer-label">background: #0e1c2d</span>
-      <div class="layer-tag">Page Background &mdash; background: #0e1c2d</div>
-      <p class="layer-description" style="margin-bottom: 16px;">Outermost layer. CSS: <code style="font-family: 'Roboto Mono', 'Courier New', monospace; font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 3px; color: #c0c0c0;">background: #0e1c2d</code></p>
-
+      <div class="layer-tag">$elevation-flat: #0e1c2d — body background</div>
       <div class="layer-1">
-        <div class="layer-tag">Layer 1: Card / Panel &mdash; background: #182739 | border: 1px solid #315074 | border-radius: 12px</div>
-        <p class="layer-description" style="margin-bottom: 16px;">Cards sit on the page background. Border uses <code style="font-family: 'Roboto Mono', 'Courier New', monospace; font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 3px; color: #c0c0c0;">#315074</code></p>
-
+        <div class="layer-tag">$elevation-raised: #182739 — cards, panels</div>
+        <div class="layer-desc">smooth-border: inset 0 0 0 1px rgba(255,255,255,0.10)</div>
         <div class="layer-2">
-          <div class="layer-tag">Layer 2: Elevated Surface &mdash; background: #1e3147 | border: 1px solid rgba(225,225,225,0.2) | border-radius: 8px</div>
-          <p class="layer-description">Nested elements within cards. Content borders use <code style="font-family: 'Roboto Mono', 'Courier New', monospace; font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 3px; color: #c0c0c0;">rgba(225,225,225,0.2)</code></p>
+          <div class="layer-tag">$elevation-elevated: #1e3147 — modals, dropdowns</div>
+          <div class="layer-desc">smooth-border-2: inset 0 0 0 1px rgba(255,255,255,0.14)</div>
         </div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- ============================================
-       2. COLOR PALETTE
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title">Color Palette</h2>
-    <p class="section-subtitle">Core palette tokens used across the application</p>
-
-    <div class="card" style="margin-bottom: 24px;">
-      <h4>Brand Blues</h4>
-      <div class="swatch-row">
-        <div class="swatch">
-          <div class="swatch-color" style="background: #0e1c2d;"></div>
-          <span class="swatch-hex">#0e1c2d</span>
-          <span class="swatch-name">Page bg</span>
-        </div>
-        <div class="swatch">
-          <div class="swatch-color" style="background: #182739;"></div>
-          <span class="swatch-hex">#182739</span>
-          <span class="swatch-name">Surface</span>
-        </div>
-        <div class="swatch">
-          <div class="swatch-color" style="background: #1e3147;"></div>
-          <span class="swatch-hex">#1e3147</span>
-          <span class="swatch-name">Elevated</span>
-        </div>
-        <div class="swatch">
-          <div class="swatch-color" style="background: #315074;"></div>
-          <span class="swatch-hex">#315074</span>
-          <span class="swatch-name">Border</span>
-        </div>
-        <div class="swatch">
-          <div class="swatch-color" style="background: #8f97b7;"></div>
-          <span class="swatch-hex">#8f97b7</span>
-          <span class="swatch-name">Secondary text</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-2">
-      <div class="card">
-        <h4>Brand Yellow</h4>
-        <div class="swatch-row">
-          <div class="swatch">
-            <div class="swatch-color" style="background: #ffc300;"></div>
-            <span class="swatch-hex">#ffc300</span>
-            <span class="swatch-name">Primary / Brand</span>
-          </div>
-          <div class="swatch">
-            <div class="swatch-color" style="background: #ffd700;"></div>
-            <span class="swatch-hex">#ffd700</span>
-            <span class="swatch-name">Highlight</span>
-          </div>
-          <div class="swatch">
-            <div class="swatch-color" style="background: #ffd93d;"></div>
-            <span class="swatch-hex">#ffd93d</span>
-            <span class="swatch-name">Gradient start</span>
-          </div>
-          <div class="swatch">
-            <div class="swatch-color" style="background: #ffed4e;"></div>
-            <span class="swatch-hex">#ffed4e</span>
-            <span class="swatch-name">Highlight hover</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h4>Accent Colors</h4>
-        <div class="swatch-row">
-          <div class="swatch">
-            <div class="swatch-color" style="background: #67bd6d;"></div>
-            <span class="swatch-hex">#67bd6d</span>
-            <span class="swatch-name">Success</span>
-          </div>
-          <div class="swatch">
-            <div class="swatch-color" style="background: #c6298c;"></div>
-            <span class="swatch-hex">#c6298c</span>
-            <span class="swatch-name">Error / Danger</span>
-          </div>
-          <div class="swatch">
-            <div class="swatch-color" style="background: #8b5cf6;"></div>
-            <span class="swatch-hex">#8b5cf6</span>
-            <span class="swatch-name">Special</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================================
-       3. INTERACTIVE ELEMENTS
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title">Interactive Elements</h2>
-    <p class="section-subtitle">Buttons and form controls</p>
-
-    <div class="grid-2">
-      <div class="card">
-        <h4>Buttons</h4>
-        <div class="btn-row">
-          <button class="btn btn-primary">Primary</button>
-          <button class="btn btn-secondary">Secondary</button>
-          <button class="btn btn-danger">Danger</button>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-icon">&#9998; Icon</button>
-          <button class="btn btn-gradient">Gradient</button>
-        </div>
-        <div style="margin-top: 16px;">
-          <div class="token-label">Primary: bg #ffc300, color #0e1c2d, font-weight 600</div>
-          <div class="token-label">Secondary: transparent bg, border #ffc300, color #ffc300</div>
-          <div class="token-label">Danger: bg #c6298c, color #ffffff</div>
-          <div class="token-label">Icon: transparent, color #ffc300, text variant</div>
-          <div class="token-label">Gradient: linear-gradient(135deg, #ffc300, #e6a800)</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h4>Text Input</h4>
-        <div style="display: flex; flex-direction: column; gap: 16px;">
-          <div class="input-group">
-            <span class="input-label">Default state</span>
-            <input type="text" class="text-input" placeholder="Placeholder text..." readonly>
-            <span class="token-label">bg: rgba(225,225,225,0.05) | border: 2px solid rgba(225,225,225,0.2) | border-radius: 8px</span>
-          </div>
-          <div class="input-group">
-            <span class="input-label">Focused state</span>
-            <input type="text" class="text-input text-input-focused" value="Active input" readonly>
-            <span class="token-label">border-color: #ffd700 (gold) on :focus</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================================
-       4. AGENT ROLE COLORS
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title">Agent Role Colors</h2>
-    <p class="section-subtitle">Source: agentColors.js / agent-colors.scss (canonical)</p>
-
+  <!-- 5. BUTTONS -->
+  <div class="section">
+    <div class="section-title">5. Buttons</div>
     <div class="card">
-      <div class="agent-row">
-
-        <!-- Orchestrator -->
-        <div class="agent-card">
-          <div class="agent-avatar" style="background: #D4A574;">OR</div>
-          <span class="agent-name">Orchestrator</span>
-          <div class="agent-swatches">
-            <div>
-              <div class="agent-mini-swatch" style="background: #D4A574;"></div>
-              <div class="agent-mini-swatch-label">primary</div>
-            </div>
-            <div>
-              <div class="agent-mini-swatch" style="background: #B8905E;"></div>
-              <div class="agent-mini-swatch-label">dark</div>
-            </div>
-            <div>
-              <div class="agent-mini-swatch" style="background: #E5C9A3;"></div>
-              <div class="agent-mini-swatch-label">light</div>
-            </div>
-          </div>
-          <div class="agent-chip" style="background: #D4A574;">OR Orchestrator</div>
-          <div class="agent-hex-list">#D4A574 / #B8905E / #E5C9A3</div>
-        </div>
-
-        <!-- Analyzer -->
-        <div class="agent-card">
-          <div class="agent-avatar" style="background: #E74C3C;">AN</div>
-          <span class="agent-name">Analyzer</span>
-          <div class="agent-swatches">
-            <div>
-              <div class="agent-mini-swatch" style="background: #E74C3C;"></div>
-              <div class="agent-mini-swatch-label">primary</div>
-            </div>
-            <div>
-              <div class="agent-mini-swatch" style="background: #C0392B;"></div>
-              <div class="agent-mini-swatch-label">dark</div>
-            </div>
-            <div>
-              <div class="agent-mini-swatch" style="background: #F1948A;"></div>
-              <div class="agent-mini-swatch-label">light</div>
-            </div>
-          </div>
-          <div class="agent-chip" style="background: #E74C3C;">AN Analyzer</div>
-          <div class="agent-hex-list">#E74C3C / #C0392B / #F1948A</div>
-        </div>
-
-        <!-- Implementer -->
-        <div class="agent-card">
-          <div class="agent-avatar" style="background: #3498DB;">IM</div>
-          <span class="agent-name">Implementer</span>
-          <div class="agent-swatches">
-            <div>
-              <div class="agent-mini-swatch" style="background: #3498DB;"></div>
-              <div class="agent-mini-swatch-label">primary</div>
-            </div>
-            <div>
-              <div class="agent-mini-swatch" style="background: #2980B9;"></div>
-              <div class="agent-mini-swatch-label">dark</div>
-            </div>
-            <div>
-              <div class="agent-mini-swatch" style="background: #85C1E9;"></div>
-              <div class="agent-mini-swatch-label">light</div>
-            </div>
-          </div>
-          <div class="agent-chip" style="background: #3498DB;">IM Implementer</div>
-          <div class="agent-hex-list">#3498DB / #2980B9 / #85C1E9</div>
-        </div>
-
-        <!-- Documenter -->
-        <div class="agent-card">
-          <div class="agent-avatar" style="background: #27AE60;">DO</div>
-          <span class="agent-name">Documenter</span>
-          <div class="agent-swatches">
-            <div>
-              <div class="agent-mini-swatch" style="background: #27AE60;"></div>
-              <div class="agent-mini-swatch-label">primary</div>
-            </div>
-            <div>
-              <div class="agent-mini-swatch" style="background: #229954;"></div>
-              <div class="agent-mini-swatch-label">dark</div>
-            </div>
-            <div>
-              <div class="agent-mini-swatch" style="background: #7DCEA0;"></div>
-              <div class="agent-mini-swatch-label">light</div>
-            </div>
-          </div>
-          <div class="agent-chip" style="background: #27AE60;">DO Documenter</div>
-          <div class="agent-hex-list">#27AE60 / #229954 / #7DCEA0</div>
-        </div>
-
-        <!-- Reviewer -->
-        <div class="agent-card">
-          <div class="agent-avatar" style="background: #9B59B6;">RV</div>
-          <span class="agent-name">Reviewer</span>
-          <div class="agent-swatches">
-            <div>
-              <div class="agent-mini-swatch" style="background: #9B59B6;"></div>
-              <div class="agent-mini-swatch-label">primary</div>
-            </div>
-            <div>
-              <div class="agent-mini-swatch" style="background: #8E44AD;"></div>
-              <div class="agent-mini-swatch-label">dark</div>
-            </div>
-            <div>
-              <div class="agent-mini-swatch" style="background: #C39BD3;"></div>
-              <div class="agent-mini-swatch-label">light</div>
-            </div>
-          </div>
-          <div class="agent-chip" style="background: #9B59B6;">RV Reviewer</div>
-          <div class="agent-hex-list">#9B59B6 / #8E44AD / #C39BD3</div>
-        </div>
-
-        <!-- Tester -->
-        <div class="agent-card">
-          <div class="agent-avatar" style="background: #FFC300;">TE</div>
-          <span class="agent-name">Tester</span>
-          <div class="agent-swatches">
-            <div>
-              <div class="agent-mini-swatch" style="background: #FFC300;"></div>
-              <div class="agent-mini-swatch-label">primary</div>
-            </div>
-            <div>
-              <div class="agent-mini-swatch" style="background: #E6B000;"></div>
-              <div class="agent-mini-swatch-label">dark</div>
-            </div>
-            <div>
-              <div class="agent-mini-swatch" style="background: #FFD633;"></div>
-              <div class="agent-mini-swatch-label">light</div>
-            </div>
-          </div>
-          <div class="agent-chip" style="background: #FFC300;">TE Tester</div>
-          <div class="agent-hex-list">#FFC300 / #E6B000 / #FFD633</div>
-        </div>
-
+      <div class="flex-row" style="margin-bottom:16px;">
+        <button class="btn btn-primary"><span class="mdi mdi-rocket-launch"></span> Stage Project</button>
+        <button class="btn btn-secondary">Edit Phases</button>
+        <button class="btn btn-danger"><span class="mdi mdi-delete"></span> Delete</button>
+        <button class="btn btn-icon"><span class="mdi mdi-pencil"></span> Edit</button>
+      </div>
+      <div style="font-size:0.68rem;color:#8895a8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Pill Toggle Buttons (replacing tabs)</div>
+      <div class="tab-pills">
+        <button class="tab-pill active"><span class="mdi mdi-rocket-launch-outline"></span> Staging</button>
+        <button class="tab-pill"><span class="mdi mdi-code-braces"></span> Implementation</button>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- ============================================
-       5. STATUS BADGES
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title">Status Badges</h2>
-    <p class="section-subtitle">Two distinct status color systems coexist in the codebase</p>
-
-    <div class="grid-2">
-      <div class="card">
-        <h4>Primary (statusConfig.js)</h4>
-        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">What JobsTab actually renders</p>
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-          <div class="status-item">
-            <span class="status-text" style="color: #ffd700; font-style: italic;">Waiting.</span>
-            <span class="token-label">color: #ffd700 | font-style: italic</span>
-          </div>
-          <div class="status-item">
-            <span class="status-text status-working" style="color: #ffffff; font-style: italic;">Working</span>
-            <span class="token-label">color: #ffffff | font-style: italic | animated dots</span>
-          </div>
-          <div class="status-item">
-            <span class="status-text" style="color: #ff9800;">Needs Input</span>
-            <span class="token-label">color: #ff9800</span>
-          </div>
-          <div class="status-item">
-            <span class="status-text" style="color: #67bd6d;">Complete</span>
-            <span class="token-label">color: #67bd6d</span>
-          </div>
-          <div class="status-item">
-            <span class="status-text" style="color: #ff9800;">Silent</span>
-            <span class="token-label">color: #ff9800</span>
-          </div>
-          <div class="status-item">
-            <span class="status-text" style="color: #9e9e9e;">Handed Over</span>
-            <span class="token-label">color: #9e9e9e</span>
-          </div>
-          <div class="status-item">
-            <span class="status-text" style="color: #757575;">Decommissioned</span>
-            <span class="token-label">color: #757575</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h4>CSS Variable Set (agent-colors.scss)</h4>
-        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Used in some components as pill badges</p>
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-          <div class="status-item">
-            <span class="status-pill" style="background: rgba(144,164,174,0.2); color: #90a4ae; border-color: rgba(144,164,174,0.4);">waiting</span>
-            <span class="token-label">--status-waiting: #90a4ae</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: rgba(52,152,219,0.2); color: #3498db; border-color: rgba(52,152,219,0.4);">working</span>
-            <span class="token-label">--status-working: #3498db</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: rgba(255,195,0,0.2); color: #ffc300; border-color: rgba(255,195,0,0.4);">complete</span>
-            <span class="token-label">--status-complete: #ffc300</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: rgba(198,41,140,0.2); color: #c6298c; border-color: rgba(198,41,140,0.4);">failure</span>
-            <span class="token-label">--status-failure: #c6298c</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: rgba(230,126,34,0.2); color: #e67e22; border-color: rgba(230,126,34,0.4);">blocked</span>
-            <span class="token-label">--status-blocked: #e67e22</span>
-          </div>
-        </div>
-
-        <h4 style="margin-top: 24px;">Opaque Variants</h4>
-        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Full-color, fully opaque pills used for project status badges (e.g. Completed in project list)</p>
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-          <div class="status-item">
-            <span class="status-pill" style="background: #90a4ae; color: #0e1c2d; border-color: #90a4ae;">waiting</span>
-            <span class="token-label">bg: #90a4ae | text: #0e1c2d</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: #3498db; color: #0e1c2d; border-color: #3498db;">working</span>
-            <span class="token-label">bg: #3498db | text: #0e1c2d</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: #ffc300; color: #0e1c2d; border-color: #ffc300;">complete</span>
-            <span class="token-label">bg: #ffc300 | text: #0e1c2d</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: #4caf50; color: #0e1c2d; border-color: #4caf50;">completed</span>
-            <span class="token-label">bg: #4caf50 (StatusBadge) | text: #0e1c2d</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: #c6298c; color: #0e1c2d; border-color: #c6298c;">failure</span>
-            <span class="token-label">bg: #c6298c | text: #0e1c2d</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: #e67e22; color: #0e1c2d; border-color: #e67e22;">blocked</span>
-            <span class="token-label">bg: #e67e22 | text: #0e1c2d</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================================
-       6. TYPOGRAPHY
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title">Typography</h2>
-    <p class="section-subtitle">Font family: "Roboto", sans-serif | Mono: "Roboto Mono", monospace</p>
-
+  <!-- 6. INPUTS -->
+  <div class="section">
+    <div class="section-title">6. Text Inputs</div>
     <div class="card">
-      <div class="type-sample">
-        <h1 style="font-size: 2rem; font-weight: 400; color: #e1e1e1;">Heading 1 &mdash; Page Title</h1>
-        <div class="type-meta">h1 | 2rem (32px) | weight 400 | color: #e1e1e1</div>
-      </div>
-
-      <div class="type-sample">
-        <h2 style="font-size: 1.5rem; font-weight: 400; color: #e1e1e1;">Heading 2 &mdash; Section Title</h2>
-        <div class="type-meta">h2 | 1.5rem (24px) | weight 400 | color: #e1e1e1</div>
-      </div>
-
-      <div class="type-sample">
-        <h3 style="font-size: 1.25rem; font-weight: 500; color: #e1e1e1;">Heading 3 &mdash; Subsection</h3>
-        <div class="type-meta">h3 | 1.25rem (20px) | weight 500 | color: #e1e1e1</div>
-      </div>
-
-      <div class="type-sample">
-        <h4 style="font-size: 1.125rem; font-weight: 700; color: #e1e1e1;">Heading 4 &mdash; Panel Header</h4>
-        <div class="type-meta">h4 | 1.125rem (18px) | weight 700 | color: #e1e1e1</div>
-      </div>
-
-      <div class="type-sample">
-        <p style="font-size: 0.875rem; font-weight: 400; color: #e1e1e1; line-height: 1.6;">Body text at the standard size. This is the default paragraph style used for most content throughout the application. It should be highly readable against the dark background.</p>
-        <div class="type-meta">body | 0.875rem (14px) | weight 400 | line-height: 1.6 | color: #e1e1e1</div>
-      </div>
-
-      <div class="type-sample">
-        <p style="font-size: 0.75rem; font-weight: 400; color: #8f97b7;">Caption text used for labels, metadata, and supplementary information that does not need primary emphasis.</p>
-        <div class="type-meta">caption | 0.75rem (12px) | weight 400 | color: #8f97b7 (secondary)</div>
-      </div>
-
-      <div class="type-sample">
-        <p style="font-size: 0.625rem; font-weight: 400; color: #c0c0c0;">Tiny text for auxiliary labels and fine print.</p>
-        <div class="type-meta">tiny | 0.625rem (10px) | weight 400 | color: #c0c0c0 (tertiary)</div>
-      </div>
-
-      <div class="type-sample">
-        <code style="font-family: 'Roboto Mono', 'Courier New', monospace; font-size: 13px; color: #e1e1e1; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; display: inline-block;">const agentStatus = "working"; // monospace sample</code>
-        <div class="type-meta">monospace | Roboto Mono | 13px | bg: rgba(0,0,0,0.3)</div>
-      </div>
+      <div style="font-size:0.72rem;color:#a3aac4;margin-bottom:6px;font-weight:500;">Search</div>
+      <input class="text-input" placeholder="Search projects..." />
+      <div style="margin-top:12px;font-size:0.72rem;color:#a3aac4;margin-bottom:6px;font-weight:500;">Focused State</div>
+      <input class="text-input" placeholder="Type message..." style="box-shadow: inset 0 0 0 1px rgba(255,195,0,0.4);" />
     </div>
-  </section>
+  </div>
 
-  <!-- ============================================
-       7. SPACING & ELEVATION
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title">Spacing &amp; Elevation</h2>
-    <p class="section-subtitle">Spacing scale and shadow elevation levels</p>
-
-    <div class="grid-2">
-      <div class="card">
-        <h4>Spacing Scale</h4>
-        <div class="spacing-row">
-          <div class="spacing-item">
-            <div class="spacing-box" style="width: 4px; height: 4px;"></div>
-            <span class="spacing-label">xs<br>4px</span>
-          </div>
-          <div class="spacing-item">
-            <div class="spacing-box" style="width: 8px; height: 8px;"></div>
-            <span class="spacing-label">sm<br>8px</span>
-          </div>
-          <div class="spacing-item">
-            <div class="spacing-box" style="width: 16px; height: 16px;"></div>
-            <span class="spacing-label">md<br>16px</span>
-          </div>
-          <div class="spacing-item">
-            <div class="spacing-box" style="width: 24px; height: 24px;"></div>
-            <span class="spacing-label">lg<br>24px</span>
-          </div>
-          <div class="spacing-item">
-            <div class="spacing-box" style="width: 32px; height: 32px;"></div>
-            <span class="spacing-label">xl<br>32px</span>
-          </div>
-          <div class="spacing-item">
-            <div class="spacing-box" style="width: 48px; height: 48px;"></div>
-            <span class="spacing-label">2xl<br>48px</span>
-          </div>
-          <div class="spacing-item">
-            <div class="spacing-box" style="width: 64px; height: 64px;"></div>
-            <span class="spacing-label">3xl<br>64px</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h4>Box Shadows (design-tokens.scss — canonical)</h4>
-        <div class="shadow-row">
-          <div class="shadow-box" style="box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);">
-            <span class="shadow-name">$shadow-subtle</span>
-            <span class="shadow-value">0 1px 2px 0 rgba(0,0,0,0.05)</span>
-          </div>
-          <div class="shadow-box" style="box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-            <span class="shadow-name">$shadow-default</span>
-            <span class="shadow-value">0 4px 6px -1px rgba(0,0,0,0.1)</span>
-          </div>
-          <div class="shadow-box" style="box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
-            <span class="shadow-name">$shadow-strong</span>
-            <span class="shadow-value">0 10px 15px -3px rgba(0,0,0,0.1)</span>
-          </div>
-          <div class="shadow-box" style="box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-            <span class="shadow-name">$shadow-dramatic</span>
-            <span class="shadow-value">0 20px 25px -5px rgba(0,0,0,0.1)</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Border Radius -->
-    <div class="card" style="margin-top: 24px;">
-      <h4>Border Radius (design-tokens.scss — canonical)</h4>
-      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
-        <div style="text-align: center;">
-          <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 4px;"></div>
-          <span class="spacing-label" style="margin-top: 4px;">$border-radius-sharp<br>4px</span>
-        </div>
-        <div style="text-align: center;">
-          <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 8px;"></div>
-          <span class="spacing-label" style="margin-top: 4px;">$border-radius-default<br>8px</span>
-        </div>
-        <div style="text-align: center;">
-          <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 16px;"></div>
-          <span class="spacing-label" style="margin-top: 4px;">$border-radius-rounded<br>16px</span>
-        </div>
-        <div style="text-align: center;">
-          <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 9999px;"></div>
-          <span class="spacing-label" style="margin-top: 4px;">$border-radius-pill<br>9999px</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Smooth Borders (box-shadow inset) -->
-    <div class="card" style="margin-top: 24px;">
-      <h4>Smooth Borders (MANDATORY)</h4>
-      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">
-        <strong style="color: #ffc300;">NEVER use CSS <code>border</code> on rounded elements.</strong>
-        Use <code>box-shadow: inset</code> instead — it renders anti-aliased curves on all zoom levels
-        and Windows display scaling, avoiding the pixelated staircase effect of thin CSS borders.
-        Global utility classes are defined in <code>main.scss</code>.
-      </p>
-      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
-        <div style="text-align: center;">
-          <div style="width: 120px; height: 72px; background: #1e3147; border-radius: 12px; box-shadow: inset 0 0 0 1px #315074; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 0.7rem; color: #8f97b7;">content</span>
-          </div>
-          <span class="spacing-label" style="margin-top: 6px;">.smooth-border<br>1px theme</span>
-          <code style="font-size: 0.6rem; color: #67bd6d; display: block; margin-top: 2px;">inset 0 0 0 1px #315074</code>
-        </div>
-        <div style="text-align: center;">
-          <div style="width: 120px; height: 72px; background: #1e3147; border-radius: 12px; box-shadow: inset 0 0 0 2px #315074; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 0.7rem; color: #8f97b7;">content</span>
-          </div>
-          <span class="spacing-label" style="margin-top: 6px;">.smooth-border-2<br>2px theme</span>
-          <code style="font-size: 0.6rem; color: #67bd6d; display: block; margin-top: 2px;">inset 0 0 0 2px #315074</code>
-        </div>
-        <div style="text-align: center;">
-          <div style="width: 120px; height: 72px; background: transparent; border-radius: 12px; box-shadow: inset 0 0 0 2px #ffc300; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 0.7rem; color: #e1e1e1;">content</span>
-          </div>
-          <span class="spacing-label" style="margin-top: 6px;">.smooth-border-accent<br>2px brand yellow</span>
-          <code style="font-size: 0.6rem; color: #67bd6d; display: block; margin-top: 2px;">inset 0 0 0 2px #ffc300</code>
-        </div>
-        <div style="text-align: center;">
-          <div style="width: 120px; height: 72px; background: #1e3147; border-radius: 12px; border: 1px solid #315074; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 0.7rem; color: #c6298c;">DO NOT USE</span>
-          </div>
-          <span class="spacing-label" style="margin-top: 6px; color: #c6298c;">CSS border<br>pixelated on zoom</span>
-          <code style="font-size: 0.6rem; color: #c6298c; display: block; margin-top: 2px;">border: 1px solid #315074</code>
-        </div>
-      </div>
-      <p style="font-size: 0.7rem; color: #8f97b7; margin-top: 16px;">
-        Custom color override: <code>style="--smooth-border-color: #hex"</code><br>
-        For chips/pills: use <code>box-shadow: inset 0 0 0 2px var(--color-accent-primary)</code> in scoped CSS with transparent background.
-      </p>
-    </div>
-  </section>
-
-  <!-- ============================================
-       8. GRADIENTS
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title">Gradients</h2>
-    <p class="section-subtitle">Named gradient treatments used across the application</p>
-
-    <div class="card">
-      <div class="gradient-item">
-        <span class="gradient-name">Brand Gradient</span>
-        <div class="gradient-bar" style="background: linear-gradient(45deg, #ffd93d, #6bcf7f);"></div>
-        <span class="gradient-label">linear-gradient(45deg, #ffd93d, #6bcf7f)</span>
-      </div>
-
-      <div class="gradient-item">
-        <span class="gradient-name">Orchestrator Card Gradient</span>
-        <div class="gradient-bar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
-        <span class="gradient-label">linear-gradient(135deg, #667eea 0%, #764ba2 100%)</span>
-      </div>
-
-      <div class="gradient-item">
-        <span class="gradient-name">Stats Card Gradient</span>
-        <div class="gradient-bar" style="background: linear-gradient(135deg, #182739 0%, #1e3147 100%); border: 1px solid #315074; border-radius: 8px;"></div>
-        <span class="gradient-label">linear-gradient(135deg, #182739 0%, #1e3147 100%)</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================================
-       9. AI TOOL COLORS
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title">AI Tool Colors</h2>
-    <p class="section-subtitle">Color assignments for each AI tool integration</p>
-
+  <!-- 7. STAT PILL + MICRO-BAR -->
+  <div class="section">
+    <div class="section-title">7. Stat Pill + Inline Micro-bar</div>
+    <div class="section-sub">Replaces donut charts. Consolidates stats + chart into a single card.</div>
     <div class="grid-3">
-      <div class="tool-swatch">
-        <div class="tool-dot" style="background: #E67E22;"></div>
-        <div>
-          <div class="tool-name">Claude Code</div>
-          <div class="tool-hex">#E67E22</div>
+      <div class="stat-pill-demo">
+        <div class="stat-pill-label">Status Distribution</div>
+        <div class="stat-pill-value">24<small>projects</small></div>
+        <div class="micro-bar">
+          <div class="micro-seg" style="width:33%;background:#67bd6d;"></div>
+          <div class="micro-seg" style="width:29%;background:#fff;"></div>
+          <div class="micro-seg" style="width:21%;background:#9e9e9e;"></div>
+          <div class="micro-seg" style="width:8%;background:#ffc300;"></div>
+          <div class="micro-seg" style="width:8%;background:#c6298c;"></div>
+        </div>
+        <div class="micro-legend">
+          <div class="micro-legend-item"><div class="micro-legend-dot" style="background:#67bd6d;"></div>Completed 8</div>
+          <div class="micro-legend-item"><div class="micro-legend-dot" style="background:#fff;"></div>Active 7</div>
+          <div class="micro-legend-item"><div class="micro-legend-dot" style="background:#9e9e9e;"></div>Inactive 5</div>
         </div>
       </div>
-      <div class="tool-swatch">
-        <div class="tool-dot" style="background: #9B59B6;"></div>
-        <div>
-          <div class="tool-name">Codex CLI</div>
-          <div class="tool-hex">#9B59B6</div>
+      <div class="stat-pill-demo">
+        <div class="stat-pill-label">Agent Roles</div>
+        <div class="stat-pill-value">56<small>spawned</small></div>
+        <div class="micro-bar">
+          <div class="micro-seg" style="width:32%;background:#6DB3E4;"></div>
+          <div class="micro-seg" style="width:21%;background:#E07872;"></div>
+          <div class="micro-seg" style="width:18%;background:#EDBA4A;"></div>
+          <div class="micro-seg" style="width:14%;background:#AC80CC;"></div>
+          <div class="micro-seg" style="width:9%;background:#5EC48E;"></div>
+          <div class="micro-seg" style="width:5%;background:#D4B08A;"></div>
+        </div>
+        <div class="micro-legend">
+          <div class="micro-legend-item"><div class="micro-legend-dot" style="background:#6DB3E4;"></div>Implementer 18</div>
+          <div class="micro-legend-item"><div class="micro-legend-dot" style="background:#E07872;"></div>Analyzer 12</div>
+          <div class="micro-legend-item"><div class="micro-legend-dot" style="background:#EDBA4A;"></div>Tester 10</div>
         </div>
       </div>
-      <div class="tool-swatch">
-        <div class="tool-dot" style="background: #3498DB;"></div>
-        <div>
-          <div class="tool-name">Gemini</div>
-          <div class="tool-hex">#3498DB</div>
+      <div class="stat-pill-demo">
+        <div class="stat-pill-label">Taxonomy</div>
+        <div class="stat-pill-value">5<small>types</small></div>
+        <div class="micro-bar">
+          <div class="micro-seg" style="width:33%;background:#6DB3E4;"></div>
+          <div class="micro-seg" style="width:25%;background:#E07872;"></div>
+          <div class="micro-seg" style="width:21%;background:#5EC48E;"></div>
+          <div class="micro-seg" style="width:13%;background:#AC80CC;"></div>
+          <div class="micro-seg" style="width:8%;background:#EDBA4A;"></div>
+        </div>
+        <div class="micro-legend">
+          <div class="micro-legend-item"><div class="micro-legend-dot" style="background:#6DB3E4;"></div>Backend 8</div>
+          <div class="micro-legend-item"><div class="micro-legend-dot" style="background:#E07872;"></div>Frontend 6</div>
+          <div class="micro-legend-item"><div class="micro-legend-dot" style="background:#5EC48E;"></div>API 5</div>
         </div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- ============================================
-       10. TABS
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title">Tabs</h2>
-    <p class="section-subtitle">Source: global-tabs.scss &mdash; v-btn-toggle with bordered content panel</p>
+  <!-- 8. SMOOTH BORDER DEMO -->
+  <div class="section">
+    <div class="section-title">8. Smooth Border Classes</div>
+    <div class="smooth-demo">
+      <div class="smooth-box" style="background:#182739;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10);">
+        <div class="token-name">.smooth-border</div>
+        <div class="token-value">1px · rgba(255,255,255,0.10)</div>
+      </div>
+      <div class="smooth-box" style="background:#182739;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.14);">
+        <div class="token-name">.smooth-border-2</div>
+        <div class="token-value">1px · rgba(255,255,255,0.14)</div>
+      </div>
+      <div class="smooth-box" style="background:#182739;box-shadow:inset 0 0 0 2px rgba(255,195,0,0.4);">
+        <div class="token-name">.smooth-border-accent</div>
+        <div class="token-value">2px · brand yellow 40%</div>
+      </div>
+    </div>
+  </div>
 
+  <!-- 9. TYPOGRAPHY -->
+  <div class="section">
+    <div class="section-title">9. Typography</div>
     <div class="card">
-      <h4>Tab Toggle (v-btn-toggle)</h4>
-      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Used in User Settings, Project Tabs (Staging / Implementation), and other views</p>
-
-      <!-- Tab demo -->
-      <div style="display: flex; flex-direction: column; align-items: flex-start;">
-        <!-- Tab buttons -->
-        <div class="tab-toggle-demo">
-          <button class="tab-btn tab-btn--active" onclick="switchDemoTab(this, 'demo-panel-1')">
-            <span class="tab-icon">&#9881;</span>
-            Startup
-          </button>
-          <button class="tab-btn" onclick="switchDemoTab(this, 'demo-panel-2')">
-            <span class="tab-icon">&#128276;</span>
-            Notifications
-          </button>
-          <button class="tab-btn" onclick="switchDemoTab(this, 'demo-panel-3')">
-            <span class="tab-icon">&#129302;</span>
-            Agents
-          </button>
-          <button class="tab-btn" onclick="switchDemoTab(this, 'demo-panel-4')">
-            <span class="tab-icon">&#128273;</span>
-            API Keys
-          </button>
-          <button class="tab-btn" onclick="switchDemoTab(this, 'demo-panel-5')">
-            <span class="tab-icon">&#128268;</span>
-            Integrations
-          </button>
-        </div>
-        <!-- Content panel -->
-        <div class="tab-content-demo">
-          <div id="demo-panel-1" class="tab-panel tab-panel--active">Startup settings content area</div>
-          <div id="demo-panel-2" class="tab-panel">Notifications content area</div>
-          <div id="demo-panel-3" class="tab-panel">Agents content area</div>
-          <div id="demo-panel-4" class="tab-panel">API Keys content area</div>
-          <div id="demo-panel-5" class="tab-panel">Integrations content area</div>
-        </div>
-      </div>
-
-      <div style="margin-top: 20px;">
-        <h4>Specs</h4>
-        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.75rem; color: #8f97b7; margin-top: 8px;">
-          <div><strong style="color: #e1e1e1;">Component:</strong> v-btn-toggle &mdash; variant="outlined", divided, rounded="t-lg", color="primary"</div>
-          <div><strong style="color: #e1e1e1;">Active tab bg:</strong> #182739 (surface)</div>
-          <div><strong style="color: #e1e1e1;">Active tab text:</strong> #ffffff</div>
-          <div><strong style="color: #e1e1e1;">Inactive tab text:</strong> rgba(255,255,255,0.7)</div>
-          <div><strong style="color: #e1e1e1;">Content border:</strong> 1px solid rgba(var(--v-border-color), var(--v-border-opacity)), top edge removed</div>
-          <div><strong style="color: #e1e1e1;">Content radius:</strong> 0 8px 8px 8px (flat top-left, rounded elsewhere)</div>
-          <div><strong style="color: #e1e1e1;">Content bg:</strong> rgb(var(--v-theme-surface))</div>
-          <div><strong style="color: #e1e1e1;">Transition:</strong> fade-in 0.2s ease-in on panel switch</div>
-        </div>
-      </div>
+      <div class="type-sample"><div class="type-label">Outfit 700 — Page titles</div><span style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:700;">Project Management</span></div>
+      <div class="type-sample"><div class="type-label">Outfit 600 — Section headers, card titles</div><span style="font-family:'Outfit',sans-serif;font-size:1rem;font-weight:600;">Project List for TinyTask</span></div>
+      <div class="type-sample"><div class="type-label">Roboto 500 — Table headers, labels</div><span style="font-size:0.82rem;font-weight:500;color:#a3aac4;">AGENT NAME</span></div>
+      <div class="type-sample"><div class="type-label">Roboto 400 — Body text</div><span style="font-size:0.82rem;">Cart Redesign — Checkout Flow Overhaul</span></div>
+      <div class="type-sample"><div class="type-label">IBM Plex Mono 400 — Data values, IDs, timestamps</div><span style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#a3aac4;">TST-2001 · 20m 3s · ff8e9236</span></div>
+      <div class="type-sample"><div class="type-label">IBM Plex Mono 600 — Badge text</div><span style="font-family:'IBM Plex Mono',monospace;font-size:0.68rem;font-weight:600;background:rgba(255,195,0,0.1);color:#ffc300;padding:2px 8px;border-radius:4px;">TST-0006</span></div>
     </div>
-  </section>
+  </div>
 
-  <!-- ============================================
-       11. SCROLLBAR STYLING
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title">Scrollbar Styling</h2>
-    <p class="section-subtitle">Custom WebKit scrollbar applied globally</p>
-
+  <!-- 10. NAV ICON ALIGNMENT -->
+  <div class="section">
+    <div class="section-title">10. Navigation Icon Alignment</div>
+    <div class="section-sub">Giljo SVG fill must use #8f97b7 (nav-icon-color), NOT #A5AAAF from original SVG. Opacity 0.85 compensates for solid fill vs MDI line weight.</div>
     <div class="card">
-      <div class="scrollbar-demo">
-        <div class="scrollbar-piece">
-          <div class="scrollbar-sample" style="background: #182739;"></div>
-          <div>
-            <span class="token-name">Track</span>
-            <span class="token-label">#182739</span>
-          </div>
+      <div class="flex-row" style="gap:20px;">
+        <div style="text-align:center;">
+          <span class="mdi mdi-home" style="font-size:22px;color:#8f97b7;"></span>
+          <div class="token-value">MDI icon</div>
+          <div class="token-value">#8f97b7</div>
         </div>
-        <div class="scrollbar-piece">
-          <div class="scrollbar-sample" style="background: #315074;"></div>
-          <div>
-            <span class="token-name">Thumb</span>
-            <span class="token-label">#315074</span>
-          </div>
+        <div style="text-align:center;">
+          <svg width="22" height="22" viewBox="0 0 250 250" style="opacity:0.85;">
+            <path fill="#8f97b7" d="M226.87,73.06c-2.29-7.5-5.95-14.44-10.99-20.83-5.04-6.39-11.66-11.69-19.86-15.91s-18.17-6.33-29.88-6.33h-82.44c-6.33,0-13.24,1.12-20.74,3.34-7.5,2.23-14.44,5.89-20.83,10.99-6.39,5.1-11.72,11.72-16,19.86-4.28,8.15-6.42,18.08-6.42,29.79v61.88c0,11.84,2.14,21.83,6.42,29.97,4.28,8.15,9.61,14.77,16,19.86,6.39,5.1,13.33,8.76,20.83,10.99,7.5,2.23,14.41,3.34,20.74,3.34h82.44c4.33,0,8.93-.5,13.8-1.49,4.86-.99,9.67-2.55,14.41-4.66s9.29-4.83,13.62-8.17,8.14-7.38,11.43-12.13c3.28-4.75,5.92-10.25,7.91-16.52s2.99-13.33,2.99-21.18v-61.88c0-6.44-1.14-13.42-3.43-20.92h0ZM184.59,155.85c0,5.98-1.52,10.55-4.57,13.71s-7.68,4.75-13.89,4.75h-82.09c-6.09,0-10.72-1.58-13.89-4.75s-4.75-7.73-4.75-13.71v-61.88c0-5.98,1.58-10.52,4.75-13.62,3.16-3.1,7.79-4.66,13.89-4.66h82.09c5.98,0,10.55,1.52,13.71,4.57s4.75,7.73,4.75,14.06v61.52h0Z"/>
+            <circle fill="#8f97b7" cx="93.87" cy="148.51" r="19.5"/>
+            <circle fill="#8f97b7" cx="138.37" cy="148.51" r="19.5"/>
+          </svg>
+          <div class="token-value">Giljo SVG</div>
+          <div class="token-value">#8f97b7 · 0.85</div>
         </div>
-        <div class="scrollbar-piece">
-          <div class="scrollbar-sample" style="background: #8f97b7;"></div>
-          <div>
-            <span class="token-name">Thumb :hover</span>
-            <span class="token-label">#8f97b7</span>
-          </div>
+        <div style="text-align:center;">
+          <span class="mdi mdi-home" style="font-size:22px;color:#ffc300;"></span>
+          <div class="token-value">MDI active</div>
+          <div class="token-value">#ffc300</div>
         </div>
-        <div class="scrollbar-piece">
-          <div style="width: 8px; height: 32px; background: #315074; border-radius: 4px; border: 1px dashed #8f97b7;"></div>
-          <div>
-            <span class="token-name">Width</span>
-            <span class="token-label">8px</span>
-          </div>
+        <div style="text-align:center;">
+          <svg width="22" height="22" viewBox="0 0 250 250">
+            <path fill="#ffc300" d="M226.87,73.06c-2.29-7.5-5.95-14.44-10.99-20.83-5.04-6.39-11.66-11.69-19.86-15.91s-18.17-6.33-29.88-6.33h-82.44c-6.33,0-13.24,1.12-20.74,3.34-7.5,2.23-14.44,5.89-20.83,10.99-6.39,5.1-11.72,11.72-16,19.86-4.28,8.15-6.42,18.08-6.42,29.79v61.88c0,11.84,2.14,21.83,6.42,29.97,4.28,8.15,9.61,14.77,16,19.86,6.39,5.1,13.33,8.76,20.83,10.99,7.5,2.23,14.41,3.34,20.74,3.34h82.44c4.33,0,8.93-.5,13.8-1.49,4.86-.99,9.67-2.55,14.41-4.66s9.29-4.83,13.62-8.17,8.14-7.38,11.43-12.13c3.28-4.75,5.92-10.25,7.91-16.52s2.99-13.33,2.99-21.18v-61.88c0-6.44-1.14-13.42-3.43-20.92h0ZM184.59,155.85c0,5.98-1.52,10.55-4.57,13.71s-7.68,4.75-13.89,4.75h-82.09c-6.09,0-10.72-1.58-13.89-4.75s-4.75-7.73-4.75-13.71v-61.88c0-5.98,1.58-10.52,4.75-13.62,3.16-3.1,7.79-4.66,13.89-4.66h82.09c5.98,0,10.55,1.52,13.71,4.57s4.75,7.73,4.75,14.06v61.52h0Z"/>
+            <circle fill="#e1e1e1" cx="93.87" cy="148.51" r="19.5"/>
+            <circle fill="#e1e1e1" cx="138.37" cy="148.51" r="19.5"/>
+          </svg>
+          <div class="token-value">Giljo active</div>
+          <div class="token-value">#ffc300 + #e1e1e1</div>
         </div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- ============================================
-       12. DISCREPANCIES
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title" style="color: #6bcf7f; border-bottom-color: rgba(107,207,127,0.4);">Discrepancies &mdash; All Resolved</h2>
-    <p class="section-subtitle">Previously found mismatches between design-tokens.scss, agent-colors.scss, agentColors.js, theme.js, and main.scss. All resolved in 0769d sprint (2026-03-30).</p>
-
-    <div class="disc-section">
-
-      <div style="background: rgba(107,207,127,0.1); border-radius: 8px; padding: 16px; margin-bottom: 24px; box-shadow: inset 0 0 0 1px rgba(107,207,127,0.3);">
-        <p style="color: #6bcf7f; font-size: 0.875rem; margin: 0;"><strong>All 4 discrepancies resolved.</strong> Agent colors, status colors, font family, and primary text color are now fully synchronized across design-tokens.scss, agent-colors.scss, agentColors.js, theme.js, and main.scss.</p>
+  <!-- 11. BRAND -->
+  <div class="section">
+    <div class="section-title">11. Brand</div>
+    <div class="card">
+      <div class="flex-row" style="gap:24px;align-items:flex-start;">
+        <div>
+          <div style="font-size:0.68rem;color:#8895a8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Primary accent</div>
+          <div class="swatch"><div class="swatch-color" style="background:#ffc300;"></div><div class="swatch-hex">#ffc300</div><div class="swatch-name">brand-yellow</div></div>
+        </div>
+        <div>
+          <div style="font-size:0.68rem;color:#8895a8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Brand gradient</div>
+          <div class="swatch"><div class="swatch-color" style="background:linear-gradient(45deg,#ffd93d,#6bcf7f);"></div><div class="swatch-hex">45deg</div><div class="swatch-name">#ffd93d → #6bcf7f</div></div>
+        </div>
+        <div>
+          <div style="font-size:0.68rem;color:#8895a8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Error/danger</div>
+          <div class="swatch"><div class="swatch-color" style="background:#c6298c;"></div><div class="swatch-hex">#c6298c</div><div class="swatch-name">error</div></div>
+        </div>
+        <div>
+          <div style="font-size:0.68rem;color:#8895a8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Tagline</div>
+          <div style="font-size:0.82rem;color:#a3aac4;max-width:280px;line-height:1.45;font-style:italic;">"The context engineering platform for AI-assisted development."</div>
+        </div>
       </div>
-
-      <!-- A. Agent Colors -->
-      <div class="disc-subtitle">A. Agent Colors &mdash; <span style="color: #6bcf7f;">RESOLVED</span></div>
-      <p class="disc-text">Analyzer (#e74c3c), Implementor (#3498db), Tester (#ffc300) &mdash; all synchronized across all 3 sources.</p>
-
-      <!-- B. Status Colors -->
-      <div class="disc-subtitle">B. Status Colors &mdash; <span style="color: #6bcf7f;">RESOLVED</span></div>
-      <p class="disc-text">waiting (#ffd700), working (#ffffff), complete (#67bd6d), failed (#c6298c) &mdash; design-tokens.scss and agent-colors.scss now match.</p>
-
-      <!-- C. Font Family -->
-      <div class="disc-subtitle">C. Font Family &mdash; <span style="color: #6bcf7f;">RESOLVED</span></div>
-      <p class="disc-text">Both design-tokens.scss and main.scss now use <code>"Roboto", sans-serif</code>. The "Cairo" reference has been removed.</p>
-
-      <!-- D. Primary Text Color -->
-      <div class="disc-subtitle">D. Primary Text Color &mdash; <span style="color: #6bcf7f;">RESOLVED</span></div>
-      <p class="disc-text">All sources now use <code>#e1e1e1</code>. The #e0e0e0 variant has been removed from design-tokens.scss.</p>
-      </p>
-
-      <!-- E. Duplicate Radius Systems — RESOLVED (0277) -->
-      <div class="disc-subtitle">E. Duplicate Radius Systems — <span style="color: #67bd6d;">RESOLVED</span> (Handover 0277)</div>
-      <p style="font-size: 0.8rem; color: #8f97b7; margin: 8px 0;">Consolidated to 4 canonical tokens in design-tokens.scss: <code>$border-radius-sharp</code> (4px), <code>$border-radius-default</code> (8px), <code>$border-radius-rounded</code> (16px), <code>$border-radius-pill</code> (9999px). All aliases and variables.scss duplicates removed.</p>
-
-      <!-- F. Duplicate Shadow Systems — RESOLVED (0277) -->
-      <div class="disc-subtitle">F. Duplicate Shadow Systems — <span style="color: #67bd6d;">RESOLVED</span> (Handover 0277)</div>
-      <p style="font-size: 0.8rem; color: #8f97b7; margin: 8px 0;">Consolidated to 4 semantic tokens in design-tokens.scss: <code>$shadow-subtle</code>, <code>$shadow-default</code>, <code>$shadow-strong</code>, <code>$shadow-dramatic</code>. Old <code>$shadow-sm/md/lg/xl</code> from variables.scss removed.</p>
-
     </div>
-  </section>
-
-  </div> <!-- /tab-design-tokens -->
-
-  <!-- ============================================
-       TAB 2: ICONS & LOGOS
-       ============================================ -->
-  <div id="tab-icons-logos" style="display: none;">
-
-    <!-- ICON LIBRARY -->
-    <section class="section">
-      <h2 class="section-title">Icon Library</h2>
-      <p class="section-subtitle">Material Design Icons (MDI) v7.3 via @mdi/font — configured as Vuetify default icon set</p>
-
-      <div class="card" style="margin-bottom: 24px;">
-        <h4>Configuration</h4>
-        <div style="background: #0e1c2d; border-radius: 8px; padding: 16px; font-family: 'Roboto Mono', monospace; font-size: 0.8rem; color: #8f97b7; margin-bottom: 16px;">
-          <span style="color: #8f97b7;">// frontend/src/main.js</span><br>
-          <span style="color: #e1e1e1;">import</span> <span style="color: #ffc300;">'@mdi/font/css/materialdesignicons.css'</span><br>
-          <span style="color: #e1e1e1;">icons:</span> { <span style="color: #6bcf7f;">defaultSet</span>: <span style="color: #ffc300;">'mdi'</span> }
-        </div>
-        <p style="font-size: 0.8rem; color: #8f97b7;">Usage: <code style="color: #ffc300;">&lt;v-icon&gt;mdi-icon-name&lt;/v-icon&gt;</code> or <code style="color: #ffc300;">icon="mdi-icon-name"</code> prop. Full reference: <span style="color: #6bcf7f;">https://pictogrammers.com/library/mdi/</span></p>
-      </div>
-
-      <div class="card" style="margin-bottom: 24px;">
-        <h4>Most Used MDI Icons (Top 30 by frequency)</h4>
-        <div class="grid-6" style="gap: 12px;">
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #6bcf7f;">&#x2714;</span><br><span class="token-label">mdi-check-circle</span><span class="token-value">35 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x2715;</span><br><span class="token-label">mdi-close</span><span class="token-value">33 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x2398;</span><br><span class="token-label">mdi-content-copy</span><span class="token-value">23 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #ff9800;">&#x26A0;</span><br><span class="token-label">mdi-alert</span><span class="token-value">23 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x1F441;</span><br><span class="token-label">mdi-eye</span><span class="token-value">20 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #2196f3;">&#x21BB;</span><br><span class="token-label">mdi-refresh</span><span class="token-value">16 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #2196f3;">&#x2139;</span><br><span class="token-label">mdi-information-outline</span><span class="token-value">15 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x270E;</span><br><span class="token-label">mdi-pencil</span><span class="token-value">14 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #ff9800;">&#x1F512;</span><br><span class="token-label">mdi-lock</span><span class="token-value">14 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #f44336;">&#x26A0;</span><br><span class="token-label">mdi-alert-circle</span><span class="token-value">12 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #6bcf7f;">&#x2713;</span><br><span class="token-label">mdi-check</span><span class="token-value">11 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x1F464;</span><br><span class="token-label">mdi-account</span><span class="token-value">11 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #f44336;">&#x1F5D1;</span><br><span class="token-label">mdi-delete</span><span class="token-value">10 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #8f97b7;">&#x2753;</span><br><span class="token-label">mdi-help-circle</span><span class="token-value">9 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #6bcf7f;">&#x2795;</span><br><span class="token-label">mdi-plus</span><span class="token-value">8 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #ffc300;">&#x1F680;</span><br><span class="token-label">mdi-rocket-launch</span><span class="token-value">7 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x22EE;</span><br><span class="token-label">mdi-dots-vertical</span><span class="token-value">7 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x1F4E6;</span><br><span class="token-label">mdi-package-variant</span><span class="token-value">5 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #2196f3;">&#x1F4BE;</span><br><span class="token-label">mdi-database</span><span class="token-value">5 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #8f97b7;">&#x1F552;</span><br><span class="token-label">mdi-clock-outline</span><span class="token-value">5 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x1F4C1;</span><br><span class="token-label">mdi-folder-outline</span><span class="token-value">4 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x1F5A5;</span><br><span class="token-label">mdi-monitor-multiple</span><span class="token-value">4 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #6bcf7f;">&#x25B6;</span><br><span class="token-label">mdi-play</span><span class="token-value">4 uses</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px 8px;"><span style="font-size: 1.5rem; color: #e1e1e1;">&#x2699;</span><br><span class="token-label">mdi-cog</span><span class="token-value">6 uses</span></div>
-        </div>
-        <p style="font-size: 0.75rem; color: #8f97b7; margin-top: 16px;">217 unique MDI icons used across the application. Full list: <code>grep -roh "mdi-[a-z-]*" frontend/src/ | sort -u</code></p>
-      </div>
-    </section>
-
-    <!-- BRAND LOGOS -->
-    <section class="section">
-      <h2 class="section-title">Brand Logos</h2>
-      <p class="section-subtitle">Located in /frontend/public/ — primary brand assets and mascot variants</p>
-
-      <div class="card" style="margin-bottom: 24px;">
-        <h4>Primary Logos</h4>
-        <div class="grid-3" style="gap: 24px; align-items: center;">
-          <div class="card-elevated" style="text-align: center; padding: 24px;">
-            <img src="./public/Giljo_YW.svg" alt="GiljoAI Yellow/White" style="height: 64px; margin-bottom: 12px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-            <div style="display: none; color: #f44336; font-size: 0.75rem;">[image not found]</div>
-            <span class="token-label">Giljo_YW.svg</span>
-            <span class="token-value">Primary — yellow + white</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 24px;">
-            <img src="./public/giljologo_full.png" alt="GiljoAI Full Logo" style="height: 64px; margin-bottom: 12px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-            <div style="display: none; color: #f44336; font-size: 0.75rem;">[image not found]</div>
-            <span class="token-label">giljologo_full.png</span>
-            <span class="token-value">Full logo with text</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 24px;">
-            <img src="./public/giljo_logo.png" alt="GiljoAI Logo" style="height: 64px; margin-bottom: 12px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-            <div style="display: none; color: #f44336; font-size: 0.75rem;">[image not found]</div>
-            <span class="token-label">giljo_logo.png</span>
-            <span class="token-value">Compact logo</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom: 24px;">
-        <h4>Mascot Face Variants</h4>
-        <p style="font-size: 0.8rem; color: #8f97b7; margin-bottom: 16px;">Used for status indicators, loading states, and branding. Custom component: <code>GiljoFaceIcon.vue</code> and <code>GilMascot.vue</code> (animated SVG with blinking eyes).</p>
-        <div class="grid-6" style="gap: 16px;">
-          <div class="card-elevated" style="text-align: center; padding: 16px;">
-            <img src="./public/icons/Giljo_YW_Face.svg" alt="YW Face" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Giljo_YW_Face.svg</span>
-            <span class="token-value">Active state</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 16px;">
-            <img src="./public/icons/Giljo_YW_Face_closed.svg" alt="YW Face Closed" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Giljo_YW_Face_closed.svg</span>
-            <span class="token-value">Blinking / closed</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 16px;">
-            <img src="./public/icons/Giljo_gray_Face.svg" alt="Gray Face" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Giljo_gray_Face.svg</span>
-            <span class="token-value">Inactive / idle</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 16px;">
-            <img src="./public/icons/Giljo_gray_Face_happy.svg" alt="Gray Happy" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Giljo_gray_Face_happy.svg</span>
-            <span class="token-value">Happy expression</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 16px;">
-            <img src="./public/icons/Giljo_gray_Face_sleeping.svg" alt="Gray Sleeping" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Giljo_gray_Face_sleeping.svg</span>
-            <span class="token-value">Sleeping / offline</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 16px;">
-            <img src="./public/icons/Giljo_Inactive_Dark.svg" alt="Inactive Dark" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Giljo_Inactive_Dark.svg</span>
-            <span class="token-value">Disabled / dark</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom: 24px;">
-        <h4>Color Scheme Variants (full body)</h4>
-        <p style="font-size: 0.8rem; color: #8f97b7; margin-bottom: 16px;">Two-letter code: first = body, second = face. Y=Yellow, W=White, B=Black/Blue.</p>
-        <div class="grid-6" style="gap: 16px;">
-          <div class="card-elevated" style="text-align: center; padding: 16px;">
-            <img src="./public/icons/Giljo_YW.svg" alt="YW" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Giljo_YW.svg</span>
-            <span class="token-value">Yellow body, White face</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 16px;">
-            <img src="./public/icons/Giljo_BY.svg" alt="BY" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Giljo_BY.svg</span>
-            <span class="token-value">Blue body, Yellow face</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 16px;">
-            <img src="./public/icons/Giljo_BB.svg" alt="BB" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Giljo_BB.svg</span>
-            <span class="token-value">Blue body, Blue face</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 16px;">
-            <img src="./public/icons/Giljo_WB.svg" alt="WB" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Giljo_WB.svg</span>
-            <span class="token-value">White body, Blue face</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 16px;">
-            <img src="./public/icons/Giljo_YY.svg" alt="YY" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Giljo_YY.svg</span>
-            <span class="token-value">Yellow body, Yellow face</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 16px;">
-            <img src="./public/icons/Giljo_W.svg" alt="W" style="height: 48px; margin-bottom: 8px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Giljo_W.svg</span>
-            <span class="token-value">White mono</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- AI PROVIDER LOGOS -->
-    <section class="section">
-      <h2 class="section-title">AI Provider Logos</h2>
-      <p class="section-subtitle">Used in execution mode selectors, agent templates, and integration cards</p>
-
-      <div class="card" style="margin-bottom: 24px;">
-        <div class="grid-3" style="gap: 24px; align-items: center;">
-          <div class="card-elevated" style="text-align: center; padding: 24px;">
-            <img src="./public/Claude_AI_symbol.svg" alt="Claude" style="height: 48px; margin-bottom: 12px;" onerror="this.alt='[missing]'">
-            <span class="token-label">Claude_AI_symbol.svg</span>
-            <span class="token-value">Anthropic Claude</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 24px;">
-            <img src="./public/codex_logo.svg" alt="Codex" style="height: 48px; margin-bottom: 12px;" onerror="this.alt='[missing]'">
-            <span class="token-label">codex_logo.svg</span>
-            <span class="token-value">OpenAI Codex</span>
-          </div>
-          <div class="card-elevated" style="text-align: center; padding: 24px;">
-            <img src="./public/gemini-icon.svg" alt="Gemini" style="height: 48px; margin-bottom: 12px;" onerror="this.alt='[missing]'">
-            <span class="token-label">gemini-icon.svg</span>
-            <span class="token-value">Google Gemini</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- CUSTOM SVG ICONS -->
-    <section class="section">
-      <h2 class="section-title">Custom SVG Icons</h2>
-      <p class="section-subtitle">86 custom icons in /frontend/public/icons/ — used alongside MDI for app-specific actions</p>
-
-      <div class="card" style="margin-bottom: 24px;">
-        <h4>UI Action Icons</h4>
-        <div class="grid-6" style="gap: 12px;">
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/add.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">add.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/close.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">close.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/edit.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">edit.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/delete.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">delete.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/copy.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">copy.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/save.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">save.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/search.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">search.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/refresh.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">refresh.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/download.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">download.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/settings.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">settings.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/view.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">view.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/lock.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">lock.svg</span></div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom: 24px;">
-        <h4>Domain Icons</h4>
-        <div class="grid-6" style="gap: 12px;">
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/Home.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">Home.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/chart.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">chart.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/chat.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">chat.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/code.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">code.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/context.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">context.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/document.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">document.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/data.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">data.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/rocket.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">rocket.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/bell.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">bell.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/user.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">user.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/research.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">research.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/model.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">model.svg</span></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h4>User Management Icons</h4>
-        <div class="grid-6" style="gap: 12px;">
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/user.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">user.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/users.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">users.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/useradd.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">useradd.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/useredit.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">useredit.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/userdelete.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">userdelete.svg</span></div>
-          <div class="card-elevated" style="text-align: center; padding: 12px;"><img src="./public/icons/userinvite.svg" style="height: 28px; filter: brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">userinvite.svg</span></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- CARD FRAMING STANDARD -->
-    <section class="section">
-      <h2 class="section-title">Card Framing Standard</h2>
-      <p class="section-subtitle">All rounded cards use box-shadow: inset (smooth-border) — NEVER CSS border. See CLAUDE.md.</p>
-
-      <div class="grid-2">
-        <div class="card">
-          <h4>Standard Card (smooth-border-2 white)</h4>
-          <p style="font-size: 0.8rem; color: #8f97b7; margin-bottom: 12px;">2px bright white, anti-aliased via box-shadow inset.</p>
-          <div style="background: #0e1c2d; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.75rem; color: #8f97b7;">
-            border: none;<br>
-            border-radius: 12px;<br>
-            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.85);
-          </div>
-        </div>
-        <div style="background: #182739; border: none; border-radius: 12px; padding: 24px; box-shadow: inset 0 0 0 2px #ffc300, 0 4px 6px -1px rgba(0,0,0,0.1);">
-          <h4 style="font-size: 1.125rem; font-weight: 700; color: #e1e1e1; margin-bottom: 16px;">Accent Card (smooth-border-accent)</h4>
-          <p style="font-size: 0.8rem; color: #8f97b7; margin-bottom: 12px;">2px brand yellow for emphasis.</p>
-          <div style="background: #0e1c2d; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.75rem; color: #8f97b7;">
-            border: none;<br>
-            border-radius: 12px;<br>
-            box-shadow: inset 0 0 0 2px var(--smooth-border-color, #ffc300);
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top: 24px;">
-        <h4>Smooth Border Classes (main.scss)</h4>
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
-          <thead>
-            <tr style="border-bottom: 1px solid #315074;">
-              <th style="text-align: left; padding: 8px; color: #ffc300;">Class</th>
-              <th style="text-align: left; padding: 8px; color: #ffc300;">Width</th>
-              <th style="text-align: left; padding: 8px; color: #ffc300;">Default Color</th>
-              <th style="text-align: left; padding: 8px; color: #ffc300;">Usage</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="border-bottom: 1px solid rgba(49,80,116,0.5);">
-              <td style="padding: 8px;"><code>.smooth-border</code></td>
-              <td style="padding: 8px;">1px</td>
-              <td style="padding: 8px;">$med-blue (#315074)</td>
-              <td style="padding: 8px;">Subtle card outlines</td>
-            </tr>
-            <tr style="border-bottom: 1px solid rgba(49,80,116,0.5);">
-              <td style="padding: 8px;"><code>.smooth-border-2</code></td>
-              <td style="padding: 8px;">2px</td>
-              <td style="padding: 8px;">$med-blue (#315074)</td>
-              <td style="padding: 8px;">Primary card framing</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px;"><code>.smooth-border-accent</code></td>
-              <td style="padding: 8px;">2px</td>
-              <td style="padding: 8px;">$yellow (#ffc300)</td>
-              <td style="padding: 8px;">Featured / active cards</td>
-            </tr>
-          </tbody>
-        </table>
-        <p style="font-size: 0.75rem; color: #8f97b7; margin-top: 12px;">Custom color: <code>style="--smooth-border-color: #hex"</code></p>
-      </div>
-    </section>
-
-  </div> <!-- /tab-icons-logos -->
+  </div>
 
 </div>
-
-<script>
-function switchPageTab(btn, tabId) {
-  // Deactivate all page tabs
-  document.querySelectorAll('.page-tab').forEach(function(b) {
-    b.style.background = 'transparent';
-    b.style.color = '#8f97b7';
-    b.style.borderBottomColor = 'transparent';
-    b.classList.remove('page-tab--active');
-  });
-  // Activate clicked
-  btn.style.background = '#182739';
-  btn.style.color = '#fff';
-  btn.style.borderBottomColor = '#ffc300';
-  btn.classList.add('page-tab--active');
-  // Hide all tab content
-  document.getElementById('tab-design-tokens').style.display = 'none';
-  document.getElementById('tab-icons-logos').style.display = 'none';
-  // Show target
-  document.getElementById(tabId).style.display = 'block';
-}
-
-function switchDemoTab(btn, panelId) {
-  // Deactivate all tabs
-  btn.parentElement.querySelectorAll('.tab-btn').forEach(function(b) {
-    b.classList.remove('tab-btn--active');
-  });
-  // Activate clicked tab
-  btn.classList.add('tab-btn--active');
-  // Hide all panels
-  var panels = btn.closest('.card').querySelectorAll('.tab-panel');
-  panels.forEach(function(p) { p.classList.remove('tab-panel--active'); });
-  // Show target panel
-  document.getElementById(panelId).classList.add('tab-panel--active');
-}
-</script>
-
 </body>
 </html>
