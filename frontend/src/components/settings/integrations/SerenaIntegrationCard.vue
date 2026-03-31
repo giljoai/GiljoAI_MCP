@@ -30,7 +30,7 @@
           </div>
         </div>
       </div>
-      <p class="text-body-2 serena-text-muted mb-4">
+      <p class="text-body-2 text-muted-a11y mb-4">
         Add Serena MCP tool instructions to agent prompts.
       </p>
 
@@ -45,7 +45,7 @@
           <v-icon start>mdi-github</v-icon>
           GitHub Repository
         </v-btn>
-        <span class="text-caption serena-text-muted ml-3"> Credit: Oraios </span>
+        <span class="text-caption text-muted-a11y ml-3"> Credit: Oraios </span>
       </div>
 
       <!-- Serena Controls (Handover 0277: Simplified to toggle only) -->
@@ -88,10 +88,6 @@ defineEmits(['update:enabled'])
 .integration-card {
   background: var(--bg-raised, #1e3147);
   border-radius: 16px;
-}
-
-.serena-text-muted {
-  color: #8895a8;
 }
 
 /* Make Serena toggle inline */

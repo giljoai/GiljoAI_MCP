@@ -209,7 +209,7 @@ import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import AgentMissionEditModal from '@/components/projects/AgentMissionEditModal.vue'
 import AgentTipsDialog from '@/components/common/AgentTipsDialog.vue'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
-import { hexToRgba } from '@/utils/colorUtils'
+import { hexToRgba, getAgentBadgeStyle } from '@/utils/colorUtils'
 
 /**
  * LaunchTab Component - Complete Rewrite (Handover 0241)
@@ -280,20 +280,6 @@ const agenticTool = computed(() => {
  */
 const getAgentColor = (displayName) => {
   return getAgentColorConfig(displayName).hex
-}
-
-// hexToRgba imported from @/utils/colorUtils
-
-/**
- * Get tinted square badge style for agent
- * 0870j: rgba(color, 0.15) background + bright text, border-radius 8px
- */
-const getAgentBadgeStyle = (displayName) => {
-  const hex = getAgentColor(displayName)
-  return {
-    background: hexToRgba(hex, 0.15),
-    color: hex,
-  }
 }
 
 /**

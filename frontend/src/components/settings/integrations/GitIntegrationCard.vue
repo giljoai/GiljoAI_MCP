@@ -30,7 +30,7 @@
         </div>
       </div>
 
-      <p class="text-body-2 git-text-muted mb-3">
+      <p class="text-body-2 text-muted-a11y mb-3">
         Enable to automatically include git commit history in project summaries.
       </p>
 
@@ -95,10 +95,6 @@ defineEmits(['update:enabled'])
 .integration-card {
   background: var(--bg-raised, #1e3147);
   border-radius: 16px;
-}
-
-.git-text-muted {
-  color: #8895a8;
 }
 
 /* Make Git toggle inline */

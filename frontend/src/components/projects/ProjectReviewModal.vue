@@ -27,7 +27,7 @@
         <v-spacer />
         <v-btn icon="mdi-close" variant="text" aria-label="Close dialog" @click="$emit('close')" />
       </v-card-title>
-      <div class="text-caption review-text-muted px-6 pb-2">
+      <div class="text-caption text-muted-a11y px-6 pb-2">
         <v-tooltip location="bottom">
           <template #activator="{ props: tp }">
             <span
@@ -54,7 +54,7 @@
           <div class="mb-6">
             <h3 class="text-h6 mb-2">Overview</h3>
             <v-chip :color="statusColor" :style="statusTextStyle" variant="flat" size="small" class="mr-2">{{ projectData.status }}</v-chip>
-            <span class="text-caption review-text-muted">
+            <span class="text-caption text-muted-a11y">
               Created {{ formatDateTime(projectData.created_at) }}
               <template v-if="projectData.completed_at"> | Completed {{ formatDateTime(projectData.completed_at) }}</template>
             </span>
@@ -66,7 +66,7 @@
             <h3 class="text-h6 mb-2">Mission</h3>
             <v-card variant="flat" class="pa-3 smooth-border">
               <pre v-if="missionText" class="text-body-2" style="white-space: pre-wrap;">{{ missionText }}</pre>
-              <p v-else class="text-caption review-text-muted">No data</p>
+              <p v-else class="text-caption text-muted-a11y">No data</p>
             </v-card>
           </div>
 
@@ -80,7 +80,7 @@
                 {{ executionModeLabel }}
               </v-chip>
             </h3>
-            <p v-if="!agents.length" class="text-caption review-text-muted">No data</p>
+            <p v-if="!agents.length" class="text-caption text-muted-a11y">No data</p>
             <v-table v-else density="compact">
               <thead>
                 <tr>
@@ -98,7 +98,7 @@
                       class="agent-tinted-chip"
                       :style="{ backgroundColor: hexToRgba(agentTypeColor(agent.agent_name), 0.15), color: agentTypeColor(agent.agent_name) }"
                     >{{ agent.agent_name }}</span>
-                    <span v-else class="review-text-muted">-</span>
+                    <span v-else class="text-muted-a11y">-</span>
                   </td>
                   <td><v-chip :color="agentStatusColor(agent.status)" size="x-small" variant="flat">{{ agent.status }}</v-chip></td>
                 </tr>
@@ -141,12 +141,12 @@
                           <span class="text-caption font-weight-bold">{{ msg.from }}</span>
                           <v-chip v-if="msg.direction" size="x-small" :color="msg.direction === 'outbound' ? 'primary' : 'default'" class="ml-2">{{ msg.direction }}</v-chip>
                         </div>
-                        <span class="text-caption review-text-muted">{{ formatDateTime(msg.created_at) }}</span>
+                        <span class="text-caption text-muted-a11y">{{ formatDateTime(msg.created_at) }}</span>
                       </div>
                       <p class="text-body-2 mt-1">{{ truncate(msg.content, 300) }}</p>
                     </div>
                   </div>
-                  <p v-else class="text-caption review-text-muted">No messages recorded.</p>
+                  <p v-else class="text-caption text-muted-a11y">No messages recorded.</p>
                 </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
@@ -155,7 +155,7 @@
           <!-- Section 5: 360 Memory -->
           <div class="mb-6">
             <h3 class="text-h6 mb-2">360 Memory ({{ memoryEntries.length }} entries)</h3>
-            <p v-if="!memoryEntries.length" class="text-caption review-text-muted">No data</p>
+            <p v-if="!memoryEntries.length" class="text-caption text-muted-a11y">No data</p>
             <v-expansion-panels v-else variant="accordion">
               <v-expansion-panel v-for="(entry, i) in memoryEntries" :key="i" :value="i">
                 <v-expansion-panel-title>
@@ -165,7 +165,7 @@
                       #{{ entry.sequence ?? i + 1 }} - {{ entry.project_name || 'Memory Entry' }}
                     </span>
                     <v-spacer />
-                    <span v-if="entry.timestamp" class="text-caption review-text-muted">{{ formatDateTime(entry.timestamp) }}</span>
+                    <span v-if="entry.timestamp" class="text-caption text-muted-a11y">{{ formatDateTime(entry.timestamp) }}</span>
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
@@ -196,10 +196,10 @@
                     </v-list>
                   </div>
                   <div v-if="!entry.summary && !entry.key_outcomes?.length && !entry.decisions_made?.length">
-                    <p class="text-caption review-text-muted">No detailed content available.</p>
+                    <p class="text-caption text-muted-a11y">No detailed content available.</p>
                   </div>
                   <div v-if="entry.entry_type" class="mt-3 pt-2" style="border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);">
-                    <span class="text-caption review-text-muted">
+                    <span class="text-caption text-muted-a11y">
                       <strong>Type:</strong> {{ entry.entry_type }}
                       <template v-if="entry.source"> | <strong>Source:</strong> {{ entry.source }}</template>
                     </span>
@@ -400,10 +400,6 @@ function truncate(text, maxLen) {
 }
 .review-project-id:hover {
   text-decoration: underline;
-}
-
-.review-text-muted {
-  color: #8895a8;
 }
 
 .agent-tinted-badge {

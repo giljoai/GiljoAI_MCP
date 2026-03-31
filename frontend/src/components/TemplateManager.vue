@@ -119,7 +119,7 @@
               <template v-slot:activator="{ props }">
                 <span
                   v-bind="props"
-                  class="text-caption template-text-muted"
+                  class="text-caption text-muted-a11y"
                   :class="{ 'text-warning': item.may_be_stale }"
                 >
                   {{ item.last_exported_at ? formatDate(item.last_exported_at) : 'Never exported' }}
@@ -321,7 +321,7 @@
                       <div class="d-flex align-center">
                         <v-icon start size="small" color="primary">mdi-eye</v-icon>
                         <span class="font-weight-medium">Template Preview</span>
-                        <span class="text-caption template-text-muted ml-2">(includes orchestration protocols)</span>
+                        <span class="text-caption text-muted-a11y ml-2">(includes orchestration protocols)</span>
                       </div>
                     </v-expansion-panel-title>
                     <v-expansion-panel-text>
@@ -363,7 +363,7 @@
             Are you sure you want to permanently delete the template
             "<strong>{{ deletingTemplate?.name }}</strong>"?
           </p>
-          <p class="text-caption template-text-muted mt-2">
+          <p class="text-caption text-muted-a11y mt-2">
             This will remove the template and all its version history.
           </p>
         </v-card-text>
@@ -395,7 +395,7 @@
             This will overwrite your customizations with the latest system template. Your current
             version will be archived and can be restored later from the version history.
           </v-alert>
-          <p class="text-caption template-text-muted">
+          <p class="text-caption text-muted-a11y">
             This action creates a backup in version history before resetting.
           </p>
         </v-card-text>
@@ -894,10 +894,6 @@ watch(
   border-radius: 8px;
   font-size: 0.75rem;
   font-weight: 600;
-}
-
-.template-text-muted {
-  color: #8895a8;
 }
 
 .template-manager {

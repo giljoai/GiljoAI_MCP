@@ -44,7 +44,7 @@
       <!-- Email column -->
       <template #item.email="{ item }">
         <div class="d-flex align-center">
-          <v-icon size="small" class="mr-2 usermgr-text-muted">mdi-email</v-icon>
+          <v-icon size="small" class="mr-2 text-muted-a11y">mdi-email</v-icon>
           <span class="text-caption">{{ item.email || 'No email' }}</span>
         </div>
       </template>
@@ -70,7 +70,7 @@
       <!-- Created date column -->
       <template #item.created_at="{ item }">
         <div class="d-flex align-center">
-          <v-icon size="small" class="mr-2 usermgr-text-muted">mdi-calendar-plus</v-icon>
+          <v-icon size="small" class="mr-2 text-muted-a11y">mdi-calendar-plus</v-icon>
           <span class="text-caption">{{ formatDate(item.created_at) }}</span>
         </div>
       </template>
@@ -626,9 +626,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.usermgr-text-muted {
-  color: #8895a8;
-}
 
 .v-data-table {
   border-radius: 8px;
