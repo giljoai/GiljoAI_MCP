@@ -29,53 +29,52 @@
       </v-col>
     </v-row>
 
-    <!-- Filters Row -->
-    <v-row class="mb-4" align="center">
-      <v-col cols="12" md="4">
-        <v-text-field
-          v-model="search"
-          prepend-inner-icon="mdi-magnify"
-          label="Search tasks"
-          variant="outlined"
-          density="compact"
-          clearable
-          hide-details
-          aria-label="Search tasks by title"
-          data-search-input
-        />
-      </v-col>
-      <v-col cols="12" md="3">
-        <v-select
-          v-model="statusFilter"
-          :items="statusOptions"
-          label="Status"
-          variant="outlined"
-          density="compact"
-          clearable
-          hide-details
-        />
-      </v-col>
-      <v-col cols="12" md="3">
-        <v-select
-          v-model="priorityFilter"
-          :items="priorityOptions"
-          label="Priority"
-          variant="outlined"
-          density="compact"
-          clearable
-          hide-details
-        />
-      </v-col>
-      <v-col cols="12" md="2">
-        <v-btn variant="outlined" block @click="clearFilters"> Clear Filters </v-btn>
-      </v-col>
-    </v-row>
+    <!-- Filters Row (0870h: restyled filter bar) -->
+    <div class="filter-bar">
+      <v-text-field
+        v-model="search"
+        prepend-inner-icon="mdi-magnify"
+        placeholder="Search tasks..."
+        variant="solo"
+        density="compact"
+        clearable
+        hide-details
+        flat
+        aria-label="Search tasks by title"
+        data-search-input
+        class="filter-search"
+      />
+      <v-select
+        v-model="statusFilter"
+        :items="statusOptions"
+        placeholder="Status"
+        variant="solo"
+        density="compact"
+        clearable
+        hide-details
+        flat
+        class="filter-select"
+      />
+      <v-select
+        v-model="priorityFilter"
+        :items="priorityOptions"
+        placeholder="Priority"
+        variant="solo"
+        density="compact"
+        clearable
+        hide-details
+        flat
+        class="filter-select"
+      />
+      <v-btn variant="text" class="filter-clear-btn" @click="clearFilters">Clear Filters</v-btn>
+    </div>
 
-    <!-- Tasks Table -->
+    <!-- Tasks Table (0870h: smooth-border panel) -->
     <v-card class="task-table-card">
       <!-- Table Controls -->
-      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
-        <span class="text-h6">Task List</span>
+      <v-card-title class="table-header">
+        <span class="table-title">Task List</span>
+        <v-spacer />
         <v-btn
           color="primary"
           variant="flat"
@@ -106,7 +105,7 @@
             </div>
           </template>
 
-          <!-- Status Column - Inline Dropdown -->
+          <!-- Status Column - Inline Dropdown (0870h: tinted chips) -->
           <template v-slot:item.status="{ item }">
             <div class="d-flex justify-center">
               <v-select
@@ -119,16 +118,13 @@
                 @update:model-value="(newStatus) => updateTaskField(item, 'status', newStatus)"
               >
                 <template v-slot:selection="{ item: statusItem }">
-                  <v-chip
-                    :color="getStatusColor(statusItem.value)"
-                    :style="getStatusTextStyle(statusItem.value)"
-                    size="small"
-                    variant="flat"
-                    class="status-chip"
+                  <span
+                    class="tinted-chip"
+                    :class="'tinted-status-' + statusItem.value"
                   >
-                    <v-icon start size="x-small">{{ getStatusIcon(statusItem.value) }}</v-icon>
+                    <v-icon size="12">{{ getStatusIcon(statusItem.value) }}</v-icon>
                     {{ statusItem.value }}
-                  </v-chip>
+                  </span>
                 </template>
                 <template v-slot:item="{ props, item: statusItem }">
                   <v-list-item v-bind="props">
@@ -143,7 +139,7 @@
             </div>
           </template>
 
-          <!-- Priority Column - Inline Dropdown -->
+          <!-- Priority Column - Inline Dropdown (0870h: tinted pills) -->
           <template v-slot:item.priority="{ item }">
             <v-select
               :model-value="item.priority"
@@ -155,34 +151,38 @@
               @update:model-value="(newPriority) => updateTaskField(item, 'priority', newPriority)"
             >
               <template v-slot:selection="{ item: priorityItem }">
-                <v-chip :color="getPriorityColor(priorityItem.value)" size="small" label>
+                <span
+                  class="priority-pill"
+                  :class="'priority-' + priorityItem.value"
+                >
                   {{ priorityItem.value }}
-                </v-chip>
+                </span>
               </template>
               <template v-slot:item="{ props, item: priorityItem }">
                 <v-list-item v-bind="props">
                   <template v-slot:prepend>
-                    <v-chip :color="getPriorityColor(priorityItem.value)" size="x-small" label />
+                    <span
+                      class="priority-pill"
+                      :class="'priority-' + priorityItem.value"
+                    >
+                      {{ priorityItem.value }}
+                    </span>
                   </template>
                 </v-list-item>
               </template>
             </v-select>
           </template>
 
-          <!-- Title Column with Hierarchy and Drag Support -->
+          <!-- Title Column (0870h: brand-colored title, muted description) -->
           <template v-slot:item.title="{ item }">
             <div
               class="task-row-content"
               :data-test="`task-row-${item.id}`"
-              style="cursor: pointer"
               @click="editTask(item)"
             >
-              <!-- Task Content -->
               <div class="task-content flex-grow-1">
-                <div class="d-flex align-center">
-                  <span class="font-weight-medium">{{ item.title }}</span>
-                </div>
-                <div class="text-caption text-medium-emphasis description-truncate">
+                <div class="task-title">{{ item.title }}</div>
+                <div class="task-desc">
                   {{ item.description }}
                 </div>
               </div>
@@ -204,7 +204,7 @@
                 "
               >
                 <template v-slot:selection="{ item: categoryItem }">
-                  <span class="category-text">{{ categoryItem.value }}</span>
+                  <span class="category-pill">{{ categoryItem.value }}</span>
                 </template>
               </v-select>
             </div>
@@ -255,22 +255,19 @@
             </v-menu>
           </template>
 
-          <!-- Convert Column -->
+          <!-- Convert Column (0870h: styled convert action) -->
           <template v-slot:item.convert="{ item }">
             <div class="d-flex justify-center">
-              <v-btn
+              <button
                 v-if="item.status !== 'completed' && !item.converted_project_id"
-                icon
-                size="small"
-                variant="text"
-                color="primary"
+                class="row-action convert-action"
                 aria-label="Convert to project"
                 @click.stop="convertTaskToProject(item)"
               >
-                <v-icon>mdi-folder-arrow-up</v-icon>
+                <v-icon size="16">mdi-folder-arrow-right</v-icon>
                 <v-tooltip activator="parent" location="top"> Convert to Project </v-tooltip>
-              </v-btn>
-              <span v-else class="text-medium-emphasis">—</span>
+              </button>
+              <span v-else class="date-cell--empty">—</span>
             </div>
           </template>
 
@@ -604,11 +601,6 @@ function getStatusColor(status) {
   return colors[status] || 'grey'
 }
 
-function getStatusTextStyle(status) {
-  if (status === 'in_progress') return { color: '#333' } // exempt: dynamic inline style ($color-text-dark)
-  return {}
-}
-
 function getStatusIcon(status) {
   const icons = {
     pending: 'mdi-clock-outline',
@@ -617,16 +609,6 @@ function getStatusIcon(status) {
     cancelled: 'mdi-cancel',
   }
   return icons[status] || 'mdi-help'
-}
-
-function getPriorityColor(priority) {
-  const colors = {
-    low: 'grey',
-    medium: 'info',
-    high: 'warning',
-    critical: 'error',
-  }
-  return colors[priority] || 'grey'
 }
 
 function formatDate(date) {
@@ -837,13 +819,71 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-/* Scrollable Table Styles */
+<style lang="scss" scoped>
+@use '../styles/variables' as *;
+@use '../styles/design-tokens' as *;
+
+/* 0870h: smooth-border table panel */
 .task-table-card {
   max-height: calc(100vh - 450px);
   min-height: 600px;
   display: flex;
   flex-direction: column;
+  box-shadow: inset 0 0 0 1px $color-border-subtle !important;
+  border: none !important;
+  border-radius: 16px !important;
+}
+
+/* 0870h: filter bar layout */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.filter-search {
+  flex: 1;
+  max-width: 400px;
+}
+
+.filter-search :deep(.v-field) {
+  box-shadow: inset 0 0 0 1px $color-border-subtle;
+  border-radius: 8px;
+}
+
+.filter-search :deep(.v-field:focus-within) {
+  box-shadow: inset 0 0 0 1px rgba($color-brand-yellow, 0.3);
+}
+
+.filter-select {
+  max-width: 160px;
+}
+
+.filter-select :deep(.v-field) {
+  box-shadow: inset 0 0 0 1px $color-border-subtle;
+  border-radius: 8px;
+}
+
+.filter-clear-btn {
+  color: $color-text-muted !important;
+  font-size: 0.72rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* 0870h: table header */
+.table-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid $color-border-subtle;
+}
+
+.table-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .table-wrapper {
@@ -861,6 +901,166 @@ onMounted(async () => {
   max-height: 600px;
 }
 
+/* 0870h: table header cells */
+:deep(.v-data-table__thead th) {
+  font-size: 0.6rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $color-text-muted !important;
+  font-weight: 500 !important;
+  border-bottom: 1px solid $color-border-subtle !important;
+}
+
+/* 0870h: row hover and separators */
+:deep(.v-data-table__tr) {
+  transition: background 0.15s;
+  cursor: pointer;
+}
+
+:deep(.v-data-table__tr:hover) {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+:deep(.v-data-table__td) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  font-size: 0.8rem;
+}
+
+:deep(.v-data-table__tr:last-child .v-data-table__td) {
+  border-bottom: none !important;
+}
+
+/* 0870h: tinted status chips */
+.tinted-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  min-width: 100px;
+  justify-content: center;
+}
+
+.tinted-status-pending {
+  background: rgba($color-brand-yellow, 0.12);
+  color: $color-brand-yellow;
+}
+
+.tinted-status-in_progress {
+  background: rgba($color-agent-implementor, 0.12);
+  color: $color-agent-implementor;
+}
+
+.tinted-status-completed {
+  background: rgba($color-status-success, 0.15);
+  color: $color-status-success;
+}
+
+.tinted-status-cancelled {
+  background: rgba(#c6298c, 0.12);
+  color: #c6298c; /* design-token-exempt: status semantic color */
+}
+
+/* 0870h: tinted priority pills */
+.priority-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 500;
+}
+
+.priority-critical {
+  background: rgba($color-agent-analyzer, 0.15);
+  color: $color-agent-analyzer;
+}
+
+.priority-high {
+  background: rgba($color-agent-analyzer, 0.1);
+  color: $color-agent-analyzer;
+}
+
+.priority-medium {
+  background: rgba(255, 255, 255, 0.05);
+  color: $color-text-secondary;
+}
+
+.priority-low {
+  background: rgba(255, 255, 255, 0.03);
+  color: $color-text-muted;
+}
+
+/* 0870h: task title — brand yellow */
+.task-title {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: $color-brand-yellow;
+  margin-bottom: 2px;
+}
+
+/* 0870h: task description — muted text, clamped */
+.task-desc {
+  font-size: 0.72rem;
+  color: $color-text-muted;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 0870h: category pill */
+.category-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.62rem;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.05);
+  color: $color-text-secondary;
+  cursor: pointer;
+}
+
+.category-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 0870h: row action buttons */
+.row-action {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: $color-text-muted;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  font-size: 16px;
+  transition: all 0.15s;
+}
+
+.row-action:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: $color-brand-yellow;
+}
+
+.convert-action {
+  color: $color-brand-yellow;
+  opacity: 0.6;
+}
+
+.convert-action:hover {
+  opacity: 1;
+}
+
+/* 0870h: date cell & empty state */
+.date-cell--empty {
+  color: $color-text-muted;
+}
+
 /* Inline editing styles */
 .inline-select :deep(.v-field) {
   border: none;
@@ -870,11 +1070,20 @@ onMounted(async () => {
 .inline-select :deep(.v-field__input) {
   padding: 0;
   min-height: auto;
+  overflow: visible;
 }
 
 .inline-select:hover :deep(.v-field) {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: rgba(255, 255, 255, 0.03);
   border-radius: 4px;
+}
+
+.inline-select :deep(.v-input__control) {
+  overflow: visible;
+}
+
+.inline-select :deep(.v-field__field) {
+  overflow: visible;
 }
 
 /* Compact date picker styling */
@@ -895,27 +1104,18 @@ onMounted(async () => {
   display: none;
 }
 
-.category-text {
-  cursor: pointer;
-  padding: 4px 8px;
-  display: inline-block;
-}
-
-.category-text:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-  border-radius: 4px;
-}
-
 /* Date text clickable styling */
 .date-text-clickable {
   padding: 4px 8px;
   border-radius: 4px;
   display: inline-block;
   transition: background-color 0.2s ease;
+  font-size: 0.72rem;
+  color: $color-text-secondary;
 }
 
 .date-text-clickable:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .task-row-content {
@@ -925,64 +1125,11 @@ onMounted(async () => {
   border-radius: 4px;
   transition: all 0.2s ease;
   min-height: 48px;
+  cursor: pointer;
 }
 
 .task-row-content:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-
-/* Hierarchy CSS removed - feature not used */
-
-.stats-card {
-  transition: transform 0.2s ease;
-}
-
-.stats-card:hover {
-  transform: translateY(-2px);
-}
-
-/* Truncate description to 2 lines */
-.description-truncate {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.4;
-  max-height: 2.8em; /* 2 lines × 1.4 line-height */
-}
-
-/* Status chip centered text with compact sizing */
-.status-chip {
-  justify-content: center;
-  padding: 4px 10px;
-  min-width: 100px;
-  max-width: 100px;
-}
-
-.status-chip :deep(.v-chip__content) {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-}
-
-.status-chip :deep(.v-icon) {
-  margin: 0;
-  flex-shrink: 0;
-}
-
-/* Status column - allow badge overflow and remove constraints */
-.inline-select :deep(.v-field__input) {
-  overflow: visible;
-}
-
-.inline-select :deep(.v-input__control) {
-  overflow: visible;
-}
-
-.inline-select :deep(.v-field__field) {
-  overflow: visible;
+  background-color: rgba(255, 255, 255, 0.03);
 }
 
 /* Fix dropdown menu icons being cut off */
@@ -997,5 +1144,15 @@ onMounted(async () => {
 
 .inline-select :deep(.v-list-item__prepend .v-icon) {
   margin: 0;
+}
+
+/* 0870h: responsive */
+@media (max-width: 960px) {
+  .filter-bar {
+    flex-wrap: wrap;
+  }
+  .filter-search {
+    max-width: 100%;
+  }
 }
 </style>
