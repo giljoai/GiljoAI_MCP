@@ -116,18 +116,18 @@ async def create_project(
     name: str,
     description: str,
     project_type: str = "",
+    series_number: int = 0,
     ctx: Context = None,
 ) -> dict:
     """Create a new project bound to the active product."""
-    return await _call_tool(
-        ctx,
-        "create_project",
-        {
-            "name": name,
-            "description": description,
-            "project_type": project_type,
-        },
-    )
+    params = {
+        "name": name,
+        "description": description,
+        "project_type": project_type,
+    }
+    if series_number > 0:
+        params["series_number"] = series_number
+    return await _call_tool(ctx, "create_project", params)
 
 
 @mcp.tool(

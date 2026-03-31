@@ -312,20 +312,35 @@ class ProjectService:
             ) from e
 
     async def get_project_type_by_label(self, label: str, tenant_key: str) -> ProjectType | None:
-        """Resolve a project type by its human-readable label (case-insensitive).
+        """Resolve a project type by label or abbreviation (case-insensitive).
+
+        Tries label first, then abbreviation. This allows agents to use either
+        "MCP test" (label) or "TST" (abbreviation) when creating projects.
 
         Args:
-            label: Human-readable type label (e.g. 'Frontend', 'backend')
+            label: Human-readable label (e.g. 'Frontend') or abbreviation (e.g. 'FE', 'TST')
             tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
             ProjectType if found, None otherwise
         """
         async with self._get_session() as session:
+            # Try label match first (Handover 0837b)
             result = await session.execute(
                 select(ProjectType).where(
                     ProjectType.tenant_key == tenant_key,
                     func.lower(ProjectType.label) == label.lower(),
+                )
+            )
+            match = result.scalar_one_or_none()
+            if match:
+                return match
+
+            # Fall back to abbreviation match (Handover 0841)
+            result = await session.execute(
+                select(ProjectType).where(
+                    ProjectType.tenant_key == tenant_key,
+                    func.upper(ProjectType.abbreviation) == label.upper(),
                 )
             )
             return result.scalar_one_or_none()
