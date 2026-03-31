@@ -47,7 +47,11 @@
             :src="item.customIcon"
             width="28"
             height="28"
-            style="margin-left: -2px; margin-right: 30px"
+            :style="{
+              marginLeft: '-2px',
+              marginRight: '30px',
+              opacity: isJobsActive(item) ? 1 : 0.85,
+            }"
           ></v-img>
           <v-icon v-else>{{ item.icon }}</v-icon>
         </template>
@@ -117,12 +121,17 @@ const jobsIcon = computed(() => {
   const isJobsRoute = route.path.includes('/projects/')
 
   if (isJobsRoute) {
-    // Active state: Yellow/White for dark theme
+    // Active state: Yellow/White for dark theme (#ffc300 body, #e1e1e1 eyes)
     return '/icons/Giljo_YW_Face.svg'
   }
-  // Inactive state: Light gray for dark theme
+  // Inactive state: #8f97b7 fill matching MDI icon color
   return '/icons/Giljo_Inactive_Dark.svg'
 })
+
+// Check if Jobs nav item is in active state (for opacity control)
+const isJobsActive = (item) => {
+  return item.name === 'Jobs' && route.path.includes('/projects/')
+}
 
 // Navigation items
 const navigationItems = computed(() => {
