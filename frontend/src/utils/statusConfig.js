@@ -31,6 +31,19 @@ const statusConfig = {
     italic: false,
     chipColor: 'success',
   },
+  // Handover 0880: Agent resting states
+  idle: {
+    label: 'Monitoring',
+    color: '#7a9bb5', // Muted blue-grey
+    italic: true,
+    chipColor: 'default',
+  },
+  sleeping: {
+    label: 'Sleeping',
+    color: '#9b89b3', // Soft indigo
+    italic: true,
+    chipColor: 'default',
+  },
   silent: {
     label: 'Silent',
     color: '#ff9800', // Amber/Orange (warning, not error)
@@ -106,6 +119,19 @@ const STATUS_CONFIG = {
     label: 'Complete',
     description: 'Agent has completed successfully',
   },
+  // Handover 0880: Agent resting states
+  idle: {
+    icon: 'mdi-eye-outline',
+    color: 'blue-grey',
+    label: 'Monitoring',
+    description: 'Agent is idle, monitoring for activity',
+  },
+  sleeping: {
+    icon: 'mdi-sleep',
+    color: 'deep-purple-lighten-2',
+    label: 'Sleeping',
+    description: 'Agent is sleeping, will auto-check in',
+  },
   silent: {
     icon: 'mdi-clock-alert',
     color: 'amber-darken-2',
@@ -178,7 +204,7 @@ export function getHealthConfig(healthStatus) {
 export function isJobStale(lastProgressAt, status) {
   if (!lastProgressAt) return false
 
-  const terminalStates = ['complete', 'silent', 'decommissioned', 'handed_over']
+  const terminalStates = ['complete', 'silent', 'decommissioned', 'handed_over', 'idle', 'sleeping']
   if (terminalStates.includes(status)) return false
 
   const now = new Date()

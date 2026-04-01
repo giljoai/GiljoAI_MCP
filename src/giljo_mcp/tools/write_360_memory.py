@@ -212,7 +212,7 @@ async def _check_closeout_readiness(
             "blockers": blockers,
             "summary": summary,
             "message": f"Closeout blocked: {len(blockers)} unresolved blocker(s) found",
-            "action_required": "Resolve all blockers before closeout. Use report_error() if unable to resolve.",
+            "action_required": "Resolve all blockers before closeout. Use set_agent_status(status='blocked') if unable to resolve.",
         }
 
     return True, {

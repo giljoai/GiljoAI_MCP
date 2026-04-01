@@ -241,7 +241,7 @@ class AgentStatusChangedData(BaseModel):
         Raises:
             ValueError: If status is not recognized
         """
-        valid_statuses = {"waiting", "working", "blocked", "complete", "silent", "decommissioned"}
+        valid_statuses = {"waiting", "working", "blocked", "complete", "silent", "decommissioned", "idle", "sleeping"}
         if v not in valid_statuses:
             raise ValueError(f"Invalid agent status: {v}. Must be one of {valid_statuses}")
         return v
