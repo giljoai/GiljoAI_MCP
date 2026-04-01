@@ -14,7 +14,7 @@
           </v-card-text>
         </v-card>
 
-        <v-card v-else-if="product" class="smooth-border" style="border-radius: 12px">
+        <v-card v-else-if="product" class="smooth-border product-detail-card">
           <v-card-text>
             <v-row>
               <v-col cols="12" md="6">
@@ -64,3 +64,11 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
+
+.product-detail-card {
+  border-radius: $border-radius-md;
+}
+</style>

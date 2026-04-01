@@ -231,12 +231,12 @@ async function downloadZip(contentType, platform) {
 }
 </script>
 
-<style scoped>
-
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 code {
   background-color: rgba(var(--v-theme-on-surface), 0.05);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   font-family: 'Courier New', monospace;
   font-size: 0.875em;
 }
@@ -253,7 +253,7 @@ code {
 .export-pill {
   display: inline-flex;
   align-items: center;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   padding: 6px 16px;
   font-size: 0.78rem;
   font-weight: 500;

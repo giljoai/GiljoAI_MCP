@@ -329,7 +329,8 @@ defineExpose({
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 .tool-radios :deep(.v-selection-control-group) {
   gap: 0;
   justify-content: center;
@@ -357,7 +358,7 @@ defineExpose({
 .configurator-pill {
   display: inline-flex;
   align-items: center;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   padding: 6px 16px;
   font-size: 0.78rem;
   font-weight: 500;

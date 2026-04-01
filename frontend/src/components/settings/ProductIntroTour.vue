@@ -333,7 +333,9 @@ function runAction(action) {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
+
 .intro-slide-header {
   text-align: center;
   max-width: 820px;
@@ -371,7 +373,7 @@ function runAction(action) {
 }
 
 .intro-panel-card {
-  border-radius: 18px;
+  border-radius: $border-radius-rounded;
   position: relative;
   background: rgb(var(--v-theme-surface));
 }

@@ -338,7 +338,8 @@ function getMessagePreview(message) {
 
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .message-audit-modal {
   z-index: 2100;
 }
@@ -389,7 +390,7 @@ function getMessagePreview(message) {
 .message-item-wrapper {
   padding: 12px 16px;
   margin: 4px 8px;
-  border-radius: 6px;
+  border-radius: $border-radius-sharp;
   transition: background-color 0.2s ease;
 }
 
@@ -498,7 +499,7 @@ function getMessagePreview(message) {
   margin-top: 8px;
   padding: 12px;
   background-color: rgba(var(--v-theme-primary), 0.08);
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   border-left: 3px solid rgb(var(--v-theme-primary));
 }
 

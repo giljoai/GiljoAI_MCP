@@ -864,7 +864,7 @@ async function handleContinueWorking() {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   padding: 8px 18px;
   font-size: 0.78rem;
   font-weight: 500;
@@ -904,7 +904,7 @@ async function handleContinueWorking() {
   flex-direction: column;
   border: none !important;
   box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   background: rgb(var(--v-theme-surface));
   overflow: hidden;
 }
@@ -961,7 +961,7 @@ async function handleContinueWorking() {
 
   kbd {
     background: rgba(var(--v-theme-on-surface), 0.08);
-    border-radius: 4px;
+    border-radius: $border-radius-sharp;
     padding: 1px 6px;
     font-family: monospace;
     font-size: 13px;

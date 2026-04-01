@@ -261,7 +261,7 @@ function canCopyPrompt(agent) {
 
 /* Table panel styling (0870j) */
 .agent-table-view {
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
   overflow: hidden;
 }
@@ -300,7 +300,7 @@ function canCopyPrompt(agent) {
 .agent-badge {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   display: grid;
   place-items: center;
   font-size: 0.62rem;
@@ -366,7 +366,7 @@ function canCopyPrompt(agent) {
   font-size: 0.72rem;
   background: rgba(255, 255, 255, 0.05);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   color: $color-text-secondary;
 }
 </style>

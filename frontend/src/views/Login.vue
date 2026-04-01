@@ -323,7 +323,8 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 .login-container {
   background: linear-gradient(135deg, rgb(30, 49, 71) 0%, rgb(18, 29, 42) 100%);
   min-height: 100vh;
@@ -337,7 +338,7 @@ onMounted(async () => {
 }
 
 .login-card {
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
@@ -351,7 +352,7 @@ onMounted(async () => {
 .edition-badge {
   display: inline-block;
   padding: 2px 10px;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   background: rgba(136, 149, 168, 0.15);
   color: #8895a8;
   font-weight: 500;
@@ -361,6 +362,6 @@ onMounted(async () => {
 .v-text-field:focus-within {
   outline: 2px solid rgba(var(--v-theme-primary), 0.5);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
 }
 </style>

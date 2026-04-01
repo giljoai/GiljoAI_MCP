@@ -170,7 +170,8 @@ function handleClose() {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .modal-title {
   position: sticky;
   top: 0;
@@ -181,7 +182,7 @@ function handleClose() {
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   background: rgba(255, 255, 255, 0.04);
 }
 
