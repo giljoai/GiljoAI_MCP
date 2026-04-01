@@ -6,7 +6,9 @@
   "branch": "feature/0873-style-centralization",
   "total_sessions": 15,
   "orchestrator_notes": "AGENTS: Read this file BEFORE starting. Check orchestrator_directives first — if it contains STOP, halt immediately. Review previous session notes_for_next. This is a CSS token/class centralization sweep — every change must produce ZERO visual difference except 0873n (EmptyState) and 0873o (new toasts). Run full Vitest suite after EVERY file change. Commit after your session completes. Then STOP — do not spawn the next terminal.",
-  "orchestrator_directives": [],
+  "orchestrator_directives": [
+    "UNSTAGED WORK WARNING (2026-03-31): design-tokens.scss has transition tokens already added (unstaged, 0873e work). main.scss has .dialog-body-scroll + .dialog-card already added (unstaged, 0873d work). scripts/fix_transitions.py exists untracked. Sessions 0873d and 0873e must run 'git diff frontend/src/styles/' BEFORE adding anything to those files — partial work already exists. Stage and commit it as part of that session, do NOT add duplicate definitions."
+  ],
   "sessions": [
     {
       "session_id": "0873a",
@@ -38,7 +40,10 @@
         "ProjectsView blanket :deep(.v-card) rule: not found — already handled by prior sessions",
         "Verification grep: 10 remaining hits all use var(--smooth-border-color, ...) token — zero hardcoded hex/rgba remaining",
         "All 1916 Vitest tests passed",
-        "Commit f50f3a4e: 7 files, 177 insertions, 33 deletions"
+        "Commit f50f3a4e: 7 files, 177 insertions, 33 deletions",
+        "SECOND PASS (0873a re-run 2026-03-31): found 1 remaining hardcoded value — JobsTab.vue .v-field--focused used rgba(255,195,0,0.3) instead of rgba($color-brand-yellow,0.3)",
+        "Fixed JobsTab.vue:1396 — replaced hardcoded rgb with $color-brand-yellow SCSS token",
+        "All 1916 tests passed. Commit 4399337d."
       ],
       "deviations": [
         "Session ran after 0873b/0873g (out-of-order) — many target files were already updated by later sessions",
@@ -51,12 +56,12 @@
       "blockers_encountered": [
         "Pre-commit mixed-line-ending hook fired on first commit attempt — re-staged and committed successfully on second attempt"
       ],
-      "notes_for_next": "0873c (Table Header Pattern Extraction): smooth-border enforcement is complete. All remaining box-shadow hits use var(--smooth-border-color, ...) token. The verification grep shows 10 token-based hits (not hardcoded). Files with scoped pill buttons now set --smooth-border-color as CSS variable and rely on smooth-border class for the box-shadow rule itself.",
+      "notes_for_next": "0873c (Table Header Pattern Extraction): smooth-border enforcement is complete. All remaining box-shadow hits use var(--smooth-border-color, ...) token. IMPORTANT — UNSTAGED WORK EXISTS IN THE WORKING TREE: (1) frontend/src/styles/design-tokens.scss has transition tokens ($transition-fast/normal/slow, $transition-hover, $transition-transform, $transition-all-fast) already added but not committed — this is 0873e work; (2) frontend/src/styles/main.scss has .dialog-body-scroll and .dialog-card classes already added but not committed — this is 0873d work; (3) scripts/fix_transitions.py is an untracked file. Sessions 0873d and 0873e MUST check git diff on their target files BEFORE adding anything — these partial changes are already there. Do NOT overwrite them, stage and commit them as part of that session's work.",
       "cascading_impacts": [
         "smooth-border class is now the canonical pattern for all pill buttons and container panels",
         "--smooth-border-color CSS variable used on pill-filter, pill-btn, pill-toggle classes to pass custom colors to the smooth-border utility"
       ],
-      "summary": "smooth-border enforcement complete across all target files. 31 hardcoded occurrences reduced to 10 token-based uses of var(--smooth-border-color). All 1916 tests pass."
+      "summary": "smooth-border enforcement complete across all target files. 31 hardcoded occurrences reduced to 10 token-based uses of var(--smooth-border-color). Final stray hardcoded rgba(255,195,0,0.3) in JobsTab focused state replaced with $color-brand-yellow token. All 1916 tests pass. NOTE: unstaged partial work for 0873d/0873e found in working tree — see notes_for_next."
     },
     {
       "session_id": "0873b",
