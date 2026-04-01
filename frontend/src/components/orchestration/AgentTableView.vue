@@ -276,18 +276,14 @@ function canCopyPrompt(agent) {
 }
 
 .agent-table-view :deep(.v-data-table__th) {
-  font-size: 0.6rem !important;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: $color-text-muted !important;
-  font-weight: 500 !important;
+  @include table-header-label;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 .agent-table-view :deep(.v-data-table__td) {
   padding: 12px 14px;
   font-size: 0.78rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  @include table-row-separator;
 }
 
 /* Agent cell — tinted badge + name (0870j) */
