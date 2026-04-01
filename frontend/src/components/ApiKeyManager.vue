@@ -1,20 +1,17 @@
 <template>
-  <v-card class="apikey-card smooth-border">
-    <v-card-title class="d-flex align-center">
-      API Keys
+  <div>
+    <div class="tab-header mb-4 d-flex align-center">
+      <h2 class="text-h6">API Keys</h2>
       <v-tooltip location="right" max-width="300">
         <template #activator="{ props }">
           <v-icon v-bind="props" size="18" color="medium-emphasis" class="ml-2">mdi-help-circle-outline</v-icon>
         </template>
         Keys are automatically generated when you copy an MCP connection command from the Integrations tab.
       </v-tooltip>
-    </v-card-title>
+    </div>
+    <p class="text-body-2 text-muted-a11y mb-4">View and revoke API keys used by AI coding agent integrations</p>
 
-    <v-card-subtitle class="mt-2">
-      View and revoke API keys used by AI coding agent integrations
-    </v-card-subtitle>
-
-    <v-divider class="mt-4" />
+    <v-card class="apikey-card smooth-border">
 
     <v-chip
       v-if="apiKeys.length > 0"
@@ -122,6 +119,7 @@
       </v-alert>
     </BaseDialog>
   </v-card>
+  </div>
 </template>
 
 <script setup>

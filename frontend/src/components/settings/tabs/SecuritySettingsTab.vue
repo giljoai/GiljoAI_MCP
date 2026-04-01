@@ -1,8 +1,10 @@
 <template>
-  <v-card variant="flat" class="smooth-border security-card">
-    <v-card-title>Security Settings</v-card-title>
-    <v-card-subtitle class="security-subtitle">Manage authentication and cross-origin security</v-card-subtitle>
-
+  <div>
+    <div class="tab-header mb-4">
+      <h2 class="text-h6">Security Settings</h2>
+      <p class="text-body-2 text-muted-a11y mt-1">Manage authentication and cross-origin security</p>
+    </div>
+    <v-card variant="flat" class="smooth-border security-card">
     <v-card-text>
       <!-- Loading Indicator -->
       <v-progress-linear
@@ -103,6 +105,7 @@
       </v-btn>
     </v-card-actions>
   </v-card>
+  </div>
 </template>
 
 <script setup>
@@ -210,9 +213,5 @@ function clearFeedback() {
 .security-card {
   background: $elevation-raised;
   border-radius: $border-radius-rounded;
-}
-
-.security-subtitle {
-  color: var(--text-muted);
 }
 </style>
