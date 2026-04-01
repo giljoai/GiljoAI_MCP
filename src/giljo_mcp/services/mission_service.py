@@ -950,7 +950,7 @@ class MissionService:
                 "project_name": project.name,
                 "tenant_key": tenant_key,
                 "id_glossary": {
-                    "job_id": "Use for: report_progress, complete_job, report_error",
+                    "job_id": "Use for: report_progress, complete_job, set_agent_status",
                     "agent_id": "Use for: send_message(from_agent), receive_messages",
                 },
             },

@@ -468,13 +468,13 @@ class DismissResult(BaseModel):
 
 
 class ErrorReportResult(BaseModel):
-    """Error report result.
+    """Agent status change result (Handover 0880: expanded from report_error).
 
-    Fields match OrchestrationService.report_error() output.
+    Returned by OrchestrationService.set_agent_status() for blocked/idle/sleeping states.
     """
 
     job_id: str
-    message: str = "Error reported"
+    message: str = "Status updated"
     status: str = "blocked"
     block_reason: Optional[str] = None
     guidance: str = "To resume, call report_progress() with updated todo_items."

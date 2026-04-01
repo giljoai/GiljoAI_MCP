@@ -138,9 +138,10 @@ class TestReportJobError:
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.report_error.return_value = ErrorReportResult(
+        mock_service.set_agent_status.return_value = ErrorReportResult(
             job_id="job-123",
-            message="Error reported",
+            message="Status set to Needs Input",
+            status="blocked",
         )
 
         request = JobErrorRequest(error="Test error message")
@@ -151,4 +152,4 @@ class TestReportJobError:
 
         assert response.job_id == "job-123"
         assert response.status == "blocked"
-        mock_service.report_error.assert_called_once()
+        mock_service.set_agent_status.assert_called_once()
