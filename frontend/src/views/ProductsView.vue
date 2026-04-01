@@ -1133,7 +1133,7 @@ onMounted(async () => {
 }
 
 .product-text-secondary {
-  color: #a3aac4 !important;
+  color: var(--text-secondary) !important;
 }
 
 /* Vision doc tinted chips */
