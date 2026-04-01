@@ -176,79 +176,71 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
   // SUITE 2: LaunchTab Unified Container Structure Tests
   // =========================================================================
 
-  describe('LaunchTab Unified Container Specifications', () => {
-    it('main container has 2px border with rgba(255, 255, 255, 0.2)', () => {
-      const mainContainer = wrapper.find('.main-container')
-      expect(mainContainer.exists()).toBe(true)
-      expect(mainContainer.classes()).toContain('main-container')
+  describe('LaunchTab Flattened Layout Specifications', () => {
+    it('content grid exists for two-column card layout', () => {
+      const contentGrid = wrapper.find('.content-grid')
+      expect(contentGrid.exists()).toBe(true)
     })
 
-    it('main container has border-radius of 16px', () => {
-      const mainContainer = wrapper.find('.main-container')
-      expect(mainContainer.exists()).toBe(true)
-      expect(mainContainer.classes()).toContain('main-container')
+    it('two content cards are rendered (description + mission)', () => {
+      const cards = wrapper.findAll('.content-card')
+      expect(cards.length).toBe(2)
     })
 
-    it('main container has padding of 30px', () => {
-      const mainContainer = wrapper.find('.main-container')
-      expect(mainContainer.exists()).toBe(true)
-      expect(mainContainer.classes()).toContain('main-container')
-    })
-
-    it('main container has background rgba(14, 28, 45, 0.5)', () => {
-      const mainContainer = wrapper.find('.main-container')
-      expect(mainContainer.exists()).toBe(true)
-      expect(mainContainer.classes()).toContain('main-container')
-    })
-
-    it('three panels are rendered with 24px gap', () => {
-      const threePanels = wrapper.find('.three-panels')
-      expect(threePanels.exists()).toBe(true)
-      const panels = threePanels.findAll('.panel')
-      expect(panels.length).toBe(3)
-      expect(threePanels.classes()).toContain('three-panels')
-    })
-
-    it('panel headers use font-size 1.125rem (18px equivalent)', () => {
-      const panelHeaders = wrapper.findAll('.panel-header')
-      expect(panelHeaders.length).toBeGreaterThan(0)
-      panelHeaders.forEach((header) => {
-        expect(header.exists()).toBe(true)
+    it('content cards have smooth-border class', () => {
+      const cards = wrapper.findAll('.content-card')
+      cards.forEach((card) => {
+        expect(card.classes()).toContain('smooth-border')
       })
     })
 
-    it('panel content has min-height of 450px', () => {
-      const panelContent = wrapper.findAll('.panel-content')
-      expect(panelContent.length).toBe(3)
-      panelContent.forEach((content) => {
-        expect(content.exists()).toBe(true)
+    it('section labels use IBM Plex Mono uppercase pattern', () => {
+      const labels = wrapper.findAll('.section-label')
+      expect(labels.length).toBeGreaterThan(0)
+      labels.forEach((label) => {
+        expect(label.exists()).toBe(true)
       })
     })
 
-    it('panel content has background rgba(20, 35, 50, 0.8)', () => {
-      const panelContent = wrapper.findAll('.panel-content')
-      expect(panelContent.length).toBeGreaterThan(0)
-      panelContent.forEach((content) => {
-        expect(content.exists()).toBe(true)
+    it('card body sections exist within content cards', () => {
+      const cardBodies = wrapper.findAll('.card-body')
+      expect(cardBodies.length).toBe(2)
+      cardBodies.forEach((body) => {
+        expect(body.exists()).toBe(true)
       })
     })
 
-    it('all three panels are visible and properly structured', () => {
-      const projectDescPanel = wrapper.find('.project-description-panel')
-      const missionPanel = wrapper.find('.mission-panel')
-      const agentPanel = wrapper.find('.agents-panel')
+    it('integrations row is rendered as a bare row', () => {
+      const integrationsRow = wrapper.find('.integrations-row')
+      expect(integrationsRow.exists()).toBe(true)
+    })
 
-      expect(projectDescPanel.exists()).toBe(true)
+    it('agents list is rendered without a card wrapper', () => {
+      const agentsList = wrapper.find('.agents-list')
+      expect(agentsList.exists()).toBe(true)
+      // agents-list should NOT be inside a smooth-border card
+      const parent = agentsList.element.parentElement
+      expect(parent.classList.contains('smooth-border')).toBe(false)
+    })
+
+    it('description and mission panels are accessible via data-testid', () => {
+      const descPanel = wrapper.find('[data-testid="description-panel"]')
+      const missionPanel = wrapper.find('[data-testid="mission-panel"]')
+
+      expect(descPanel.exists()).toBe(true)
       expect(missionPanel.exists()).toBe(true)
-      expect(agentPanel.exists()).toBe(true)
 
-      expect(projectDescPanel.find('.panel-header').exists()).toBe(true)
-      expect(missionPanel.find('.panel-header').exists()).toBe(true)
-      expect(agentPanel.find('.panel-header').exists()).toBe(true)
+      expect(descPanel.find('.section-label').exists()).toBe(true)
+      expect(missionPanel.find('.section-label').exists()).toBe(true)
 
-      expect(projectDescPanel.find('.panel-content').exists()).toBe(true)
-      expect(missionPanel.find('.panel-content').exists()).toBe(true)
-      expect(agentPanel.find('.panel-content').exists()).toBe(true)
+      expect(descPanel.find('.card-body').exists()).toBe(true)
+      expect(missionPanel.find('.card-body').exists()).toBe(true)
+    })
+
+    it('standalone agents section label exists', () => {
+      const standaloneLabel = wrapper.find('.section-label--standalone')
+      expect(standaloneLabel.exists()).toBe(true)
+      expect(standaloneLabel.text()).toContain('Agents')
     })
   })
 
@@ -285,14 +277,14 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
       }
     })
 
-    it('LaunchTab.vue uses design tokens for all spacing values', () => {
+    it('LaunchTab.vue uses design tokens for styling values', () => {
       const componentPath = getLaunchTabPath()
       const content = fs.readFileSync(componentPath, 'utf-8')
 
       const styleMatch = content.match(/<style[^>]*>([\s\S]*?)<\/style>/)
       if (styleMatch) {
         const styleContent = styleMatch[1]
-        expect(styleContent).toContain('$spacing')
+        expect(styleContent).toContain('$elevation-raised')
       }
     })
 
@@ -364,24 +356,24 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
   // =========================================================================
 
   describe('Component Integration with Design Tokens', () => {
-    it('renders LaunchTab with unified container structure', () => {
+    it('renders LaunchTab with flattened layout structure', () => {
       const launchTabWrapper = wrapper.find('.launch-tab-wrapper')
-      const mainContainer = wrapper.find('.main-container')
+      const contentGrid = wrapper.find('.content-grid')
 
       expect(launchTabWrapper.exists()).toBe(true)
-      expect(mainContainer.exists()).toBe(true)
+      expect(contentGrid.exists()).toBe(true)
     })
 
-    it('has consistent styling throughout all three panels', () => {
-      const panels = wrapper.findAll('.panel')
-      expect(panels.length).toBe(3)
+    it('has consistent styling throughout content cards', () => {
+      const cards = wrapper.findAll('.content-card')
+      expect(cards.length).toBe(2)
 
-      panels.forEach((panel) => {
-        const header = panel.find('.panel-header')
-        const content = panel.find('.panel-content')
+      cards.forEach((card) => {
+        const label = card.find('.section-label')
+        const body = card.find('.card-body')
 
-        expect(header.exists()).toBe(true)
-        expect(content.exists()).toBe(true)
+        expect(label.exists()).toBe(true)
+        expect(body.exists()).toBe(true)
       })
     })
 
