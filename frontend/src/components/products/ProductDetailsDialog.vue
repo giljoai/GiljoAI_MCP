@@ -453,10 +453,12 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import api from '@/services/api'
 import { useFormatDate } from '@/composables/useFormatDate'
+import { useToast } from '@/composables/useToast'
 import ProductTuningMenu from './ProductTuningMenu.vue'
 import ProductTuningReview from './ProductTuningReview.vue'
 
 const { formatDate } = useFormatDate()
+const { showToast } = useToast()
 
 const props = defineProps({
   modelValue: {
@@ -718,8 +720,8 @@ async function regenerateConsolidation() {
     // Success — parent refreshes via the refresh-product event above
   } catch (error) {
     console.error('Failed to regenerate summaries:', error)
-    const message = error.response?.data?.detail || 'Failed to regenerate summaries'
-    console.error(message)
+    const message = error.response?.data?.detail || 'Failed to regenerate summaries. Please try again.'
+    showToast({ message, type: 'error' })
   } finally {
     regeneratingConsolidation.value = false
   }

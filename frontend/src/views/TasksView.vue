@@ -483,11 +483,13 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import { format, isAfter } from 'date-fns'
 import api from '@/services/api'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import { useToast } from '@/composables/useToast'
 
 // Stores
 const taskStore = useTaskStore()
 const productStore = useProductStore()
 const userStore = useUserStore()
+const { showToast } = useToast()
 
 // State
 const search = ref('')
@@ -633,6 +635,7 @@ async function completeTask(task) {
     await taskStore.updateTask(task.id, { status: 'completed' })
   } catch (error) {
     console.error('Failed to complete task:', error)
+    showToast({ message: 'Failed to complete task. Please try again.', type: 'error' })
   }
 }
 
@@ -642,7 +645,7 @@ async function updateTaskField(task, field, value) {
     await taskStore.updateTask(task.id, { [field]: value })
   } catch (error) {
     console.error(`Failed to update task ${field}:`, error)
-    errorMessage.value = `Failed to update ${field}`
+    errorMessage.value = `Failed to update ${field}. Please try again.`
     showErrorDialog.value = true
   }
 }
@@ -654,7 +657,7 @@ async function updateTaskDueDate(task, newDate) {
     await taskStore.updateTask(task.id, { due_date: formattedDate })
   } catch (error) {
     console.error('Failed to update due date:', error)
-    errorMessage.value = 'Failed to update due date'
+    errorMessage.value = 'Failed to update due date. Please try again.'
     showErrorDialog.value = true
   }
 }
@@ -716,7 +719,7 @@ async function confirmDelete() {
     showSuccessDialog.value = true
   } catch (error) {
     console.error('Failed to delete task:', error)
-    errorMessage.value = 'Failed to delete task'
+    errorMessage.value = 'Failed to delete task. Please try again.'
     showErrorDialog.value = true
   }
 
@@ -770,6 +773,7 @@ async function saveTask() {
     await fetchTasks()
   } catch (error) {
     console.error('Failed to save task:', error)
+    showToast({ message: 'Failed to save task. Please try again.', type: 'error' })
   } finally {
     saving.value = false
   }
