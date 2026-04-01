@@ -85,17 +85,16 @@
         </v-btn>
       </v-card-title>
 
-      <div class="table-wrapper">
-        <v-data-table
-          :headers="headers"
-          :items="hierarchicalTasks"
-          :search="search"
-          :loading="loading"
-          :items-per-page="25"
-          class="elevation-0 scrollable-table"
-          data-table
-          item-value="id"
-        >
+      <v-data-table
+        :headers="headers"
+        :items="hierarchicalTasks"
+        :search="search"
+        :loading="loading"
+        :items-per-page="25"
+        class="elevation-0 scrollable-table"
+        data-table
+        item-value="id"
+      >
           <!-- Loading State -->
           <template v-slot:loading>
             <div class="text-center pa-4">
@@ -324,8 +323,7 @@
               </p>
             </div>
           </template>
-        </v-data-table>
-      </div>
+      </v-data-table>
     </v-card>
 
     <!-- Create/Edit Task Dialog -->
@@ -824,10 +822,6 @@ onMounted(async () => {
 
 /* 0870h: smooth-border table panel */
 .task-table-card {
-  max-height: calc(100vh - 450px);
-  min-height: 600px;
-  display: flex;
-  flex-direction: column;
   border: none !important;
   border-radius: $border-radius-rounded !important;
 }
@@ -884,13 +878,35 @@ onMounted(async () => {
   font-weight: 600;
 }
 
-.table-wrapper {
-  flex: 1;
+/* Table body scrolls, footer (pagination) stays pinned below */
+.scrollable-table :deep(.v-table__wrapper) {
+  max-height: calc(100vh - 340px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: $color-scrollbar-thumb-background $color-scrollbar-track-background;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $color-scrollbar-track-background;
+    border-radius: $border-radius-sharp;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $color-scrollbar-thumb-background;
+    border-radius: $border-radius-sharp;
+
+    &:hover {
+      background: $color-scrollbar-thumb-hover-background;
+    }
+  }
 }
 
-.scrollable-table :deep(.v-table__wrapper) {
-  max-height: calc(100vh - 370px);
-  overflow-y: auto;
+/* Pagination footer: always visible below scroll area */
+.scrollable-table :deep(.v-data-table-footer) {
+  border-top: 1px solid $color-border-subtle;
 }
 
 /* 0870h: table header cells */
