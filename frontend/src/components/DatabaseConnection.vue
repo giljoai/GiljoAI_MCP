@@ -3,17 +3,11 @@
     <!-- Title -->
     <div v-if="showTitle" class="tab-header mb-4">
       <h2 class="text-h6">{{ title }}</h2>
+      <p v-if="showInfoBanner" class="text-body-2 text-muted-a11y mt-1">{{ infoBannerText }}</p>
     </div>
 
     <v-card class="db-card smooth-border">
     <v-card-text>
-      <!-- Info Alert Banner -->
-      <v-alert v-if="showInfoBanner" type="info" variant="tonal" class="mb-4">
-        <strong>{{ infoBannerText }}</strong>
-        <div class="text-caption mt-1">
-          {{ readonly ? 'Settings are read-only and locked' : 'Future - Configurable settings' }}
-        </div>
-      </v-alert>
 
       <!-- Database Configuration Fields -->
       <v-row>
