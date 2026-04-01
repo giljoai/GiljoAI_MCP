@@ -200,6 +200,8 @@ import { useToast } from '@/composables/useToast'
 import { useFormatDate } from '@/composables/useFormatDate'
 import api from '@/services/api'
 import { hexToRgba } from '@/utils/colorUtils'
+import { getAgentColor } from '@/config/agentColors'
+import { getStatusColor } from '@/utils/statusConfig'
 import type { BroadcastTemplate, MessagePriority } from '@/types/message'
 
 interface BroadcastHistoryItem {
@@ -391,10 +393,10 @@ const formatTime = (timestamp: string): string => {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  delivered: '#67bd6d',
-  completed: '#67bd6d',
-  failed: '#E07872',
-  pending: '#EDBA4A',
+  delivered: getStatusColor('complete'),
+  completed: getStatusColor('complete'),
+  failed: getAgentColor('analyzer').hex,
+  pending: getAgentColor('tester').hex,
 }
 
 const getStatusHex = (status: string): string => {
@@ -429,9 +431,7 @@ const getStatusChipStyle = (status: string) => {
   }
 }
 
-// hexToRgba imported from @/utils/colorUtils
-
-const getStatusColor = (status: string): string => {
+const getStatusVuetifyColor = (status: string): string => {
   switch (status) {
     case 'delivered':
     case 'completed':
@@ -524,8 +524,8 @@ onMounted(() => {
   border-radius: $border-radius-default;
   font-size: 0.68rem;
   font-weight: 600;
-  background: rgba(109, 179, 228, 0.15);
-  color: #6DB3E4;
+  background: rgba($color-agent-implementor, 0.15);
+  color: $color-agent-implementor;
 }
 
 .markdown-preview {

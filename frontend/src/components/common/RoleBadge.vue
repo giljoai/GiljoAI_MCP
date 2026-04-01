@@ -6,6 +6,8 @@
 
 <script setup>
 import { computed } from 'vue'
+import { hexToRgba } from '@/utils/colorUtils'
+import { getAgentColor } from '@/config/agentColors'
 
 const props = defineProps({
   role: {
@@ -19,9 +21,9 @@ const props = defineProps({
 })
 
 const ROLE_COLORS = {
-  owner: '#AC80CC',
-  admin: '#6DB3E4',
-  member: '#5EC48E',
+  owner: getAgentColor('reviewer').hex,
+  admin: getAgentColor('implementer').hex,
+  member: getAgentColor('documenter').hex,
   viewer: '#8895a8',
 }
 
@@ -29,13 +31,6 @@ const SIZE_CONFIG = {
   'x-small': { fontSize: '0.6rem', padding: '2px 6px' },
   small: { fontSize: '0.68rem', padding: '3px 10px' },
   default: { fontSize: '0.78rem', padding: '4px 12px' },
-}
-
-function hexToRgb(hex) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `${r}, ${g}, ${b}`
 }
 
 const roleColor = computed(() => {
@@ -47,7 +42,7 @@ const badgeStyle = computed(() => {
   const color = roleColor.value
   const sizeConf = SIZE_CONFIG[props.size] || SIZE_CONFIG.small
   return {
-    background: `rgba(${hexToRgb(color)}, 0.15)`,
+    background: hexToRgba(color, 0.15),
     color,
     fontSize: sizeConf.fontSize,
     padding: sizeConf.padding,

@@ -65,6 +65,8 @@ import { computed } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { hexToRgba } from '@/utils/colorUtils'
+import { getAgentColor } from '@/config/agentColors'
+import { getStatusColor } from '@/utils/statusConfig'
 import { useFormatDate } from '@/composables/useFormatDate'
 import type { Message } from '@/types/message'
 
@@ -99,15 +101,13 @@ const isSystem = computed(() => messageType.value === 'system' || displaySender.
 const isUser = computed(() => displaySender.value === 'User')
 const isOrchestrator = computed(() => displaySender.value === 'Orchestrator')
 
-// hexToRgba imported from @/utils/colorUtils
-
-// Sender appearance
+// Sender appearance — agent color tokens
 const senderHex = computed(() => {
-  if (isBroadcast.value) return '#EDBA4A'
+  if (isBroadcast.value) return getAgentColor('tester').hex
   if (isSystem.value) return '#8895a8'
-  if (isUser.value) return '#AC80CC'
-  if (isOrchestrator.value) return '#D4B08A'
-  return '#6DB3E4'
+  if (isUser.value) return getAgentColor('reviewer').hex
+  if (isOrchestrator.value) return getAgentColor('orchestrator').hex
+  return getAgentColor('implementer').hex
 })
 
 const senderBadgeStyle = computed(() => ({
@@ -138,10 +138,10 @@ const senderIcon = computed(() => {
   return 'mdi-chat'
 })
 
-// Priority styling
+// Priority styling — agent color tokens
 const PRIORITY_COLORS: Record<string, string> = {
-  urgent: '#E07872',
-  high: '#EDBA4A',
+  urgent: getAgentColor('analyzer').hex,
+  high: getAgentColor('tester').hex,
 }
 
 const priorityChipStyle = computed(() => {
@@ -152,13 +152,13 @@ const priorityChipStyle = computed(() => {
   }
 })
 
-// Status styling
+// Status styling — status/agent color tokens
 const STATUS_COLORS: Record<string, string> = {
-  completed: '#67bd6d',
-  failed: '#E07872',
-  acknowledged: '#6DB3E4',
-  delivered: '#6DB3E4',
-  pending: '#EDBA4A',
+  completed: getStatusColor('complete'),
+  failed: getAgentColor('analyzer').hex,
+  acknowledged: getAgentColor('implementer').hex,
+  delivered: getAgentColor('implementer').hex,
+  pending: getAgentColor('tester').hex,
 }
 
 const statusChipStyle = computed(() => {
