@@ -20,7 +20,7 @@
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE, **0769a-g sprint COMPLETE (2026-03-30)**. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
 | 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 NOT STARTED.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
-| 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE.** Luminous Pastels palette, WCAG AA compliance, tinted badges, pill tabs, shared components, interactive icon polish. All on branch feature/0870-design-harmonization. **0880 NOT STARTED.** |
+| 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE.** Luminous Pastels palette, WCAG AA compliance, tinted badges, pill tabs, shared components, interactive icon polish. **0873a-o NOT STARTED** — Style Centralization Sweep + UX Heuristics (15 sessions). All on branch feature/0870-design-harmonization. **0880 NOT STARTED.** |
 
 ---
 
@@ -40,6 +40,7 @@
 | 0844b | Tenant Import Service + Schema Diff | Not Started | Medium | Backend import: schema compatibility analysis, UPSERT pipeline, topological sort, vision file extraction, TSVECTOR regen. Heaviest phase, 2-3 sessions. Depends on 0844a. |
 | 0844c | Tenant Data Frontend | Not Started | Medium | Vue component in Database tab: export/import UI, compatibility report dialog, stale backup warning, WebSocket progress. 1 session. Depends on 0844a+b. |
 | 0847 | Tool-Aware Orchestrator Protocol | Not Started | High | Make orchestrator protocol (CH1-CH5 + identity) fully tool-aware. Codex/Gemini get native-only language, no Claude refs. Multi-terminal → "Any Coding Agent". 2-3h. |
+| 0873a-o | Style Centralization Sweep + UX Heuristics (15 sessions) | Not Started | High | 0873a-m: Replace all hardcoded CSS with tokens/classes (~66 files, zero visual change). 0873n: H4 terminology/icon consistency + EmptyState component. 0873o: H9 silent error elimination + message quality. Branch: feature/0870-design-harmonization. |
 | 0880 | Agent Resting States (idle + sleeping) | Not Started | High | Rename report_error → set_agent_status. Add idle ("Monitoring") and sleeping ("Sleeping") states for orchestrators. Protocol injection only — no template changes. 1 session. |
 | ~~0870~~ | ~~Design System Harmonization (16 sessions)~~ | **COMPLETE** | - | 2026-03-31. Branch: feature/0870-design-harmonization. |
 | ~~0871~~ | ~~Design Remediation & Polish (8 sessions)~~ | **COMPLETE** | - | 2026-03-31. Shared components, tab-to-pill, smooth-border sweep, design system sample v2. |
