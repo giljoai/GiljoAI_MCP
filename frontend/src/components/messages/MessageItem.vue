@@ -226,7 +226,7 @@ const handleReply = () => {
 <style lang="scss" scoped>
 @use '../../styles/design-tokens' as *;
 .message-item {
-  background: var(--bg-raised, #1a2a3c);
+  background: $elevation-raised;
   border-radius: $border-radius-md;
   transition: all $transition-normal ease;
 }
