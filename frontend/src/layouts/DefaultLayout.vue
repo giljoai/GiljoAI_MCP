@@ -31,6 +31,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useProductStore } from '@/stores/products'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useMessageStore } from '@/stores/messages'
 import { initWebsocketEventRouter } from '@/stores/websocketEventRouter'
@@ -43,6 +44,7 @@ import setupService from '@/services/setupService'
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const productStore = useProductStore()
 const wsStore = useWebSocketStore()
 const messageStore = useMessageStore()
 
@@ -97,6 +99,11 @@ onMounted(async () => {
 
   // Normal operation: load current user
   const userLoaded = await loadCurrentUser()
+
+  // Restore active product state from localStorage + backend
+  if (userLoaded && currentUser.value) {
+    await productStore.initializeFromStorage()
+  }
 
   // Initialize WebSocket and data polling only if user is authenticated
   if (userLoaded && currentUser.value) {
