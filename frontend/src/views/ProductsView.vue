@@ -1094,10 +1094,12 @@ onMounted(async () => {
 
 .product-card {
   transition: all 0.3s ease;
+  --smooth-border-color: rgba(255, 255, 255, 0.18);
 }
 
 .product-card:hover {
   transform: translateY(-2px);
+  --smooth-border-color: rgba(255, 255, 255, 0.28);
 }
 
 /* Lighter divider line (25% closer to white) */
