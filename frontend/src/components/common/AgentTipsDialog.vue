@@ -295,7 +295,7 @@ function downloadTemplate() {
 .tip-box {
   position: relative;
   background: rgba(var(--v-theme-on-surface), 0.06);
-  border-radius: 6px;
+  border-radius: $border-radius-sharp;
   padding: 10px 12px;
   padding-right: 36px;
 
@@ -349,7 +349,7 @@ function downloadTemplate() {
     font-size: 0.75rem;
     background: rgba(var(--v-theme-on-surface), 0.08);
     padding: 1px 4px;
-    border-radius: 3px;
+    border-radius: $border-radius-sharp;
   }
 }
 
@@ -360,7 +360,7 @@ function downloadTemplate() {
 
   .color-chip {
     padding: 3px 10px;
-    border-radius: 12px;
+    border-radius: $border-radius-md;
     font-size: 0.7rem;
     font-weight: 600;
     color: white;

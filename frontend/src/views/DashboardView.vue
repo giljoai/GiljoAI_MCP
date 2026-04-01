@@ -657,7 +657,7 @@ onUnmounted(() => {
 .micro-bar {
   display: flex;
   height: 6px;
-  border-radius: 3px;
+  border-radius: $border-radius-sharp;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.04);
   margin-bottom: 10px;
@@ -689,7 +689,7 @@ onUnmounted(() => {
 .micro-legend-dot {
   width: 5px;
   height: 5px;
-  border-radius: 2px;
+  border-radius: $border-radius-sharp;
   flex-shrink: 0;
 }
 

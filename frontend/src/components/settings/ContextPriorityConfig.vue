@@ -573,10 +573,11 @@ defineExpose({
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .context-card {
   background: var(--bg-raised, #1e3147);
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
 }
 
 .context-row {
@@ -602,7 +603,7 @@ defineExpose({
 
 .locked-row {
   background-color: rgba(var(--v-theme-primary), 0.05);
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   padding-left: 12px;
   padding-right: 12px;
 }

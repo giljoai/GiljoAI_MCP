@@ -220,7 +220,8 @@ function getAgentAbbr(agentName) {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .tab-pills {
   display: flex;
   align-items: center;
@@ -231,7 +232,7 @@ function getAgentAbbr(agentName) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   padding: 8px 18px;
   font-size: 0.78rem;
   font-weight: 500;
@@ -257,7 +258,7 @@ function getAgentAbbr(agentName) {
 .agent-tinted-badge {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -301,7 +302,7 @@ function getAgentAbbr(agentName) {
   display: flex;
   align-items: center;
   padding: 8px 12px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   transition: background-color 0.2s ease;
 }
 

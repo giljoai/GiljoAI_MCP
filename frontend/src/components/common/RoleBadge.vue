@@ -60,11 +60,12 @@ const roleLabel = computed(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .role-badge {
   display: inline-flex;
   align-items: center;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   font-weight: 600;
   text-transform: capitalize;
   white-space: nowrap;

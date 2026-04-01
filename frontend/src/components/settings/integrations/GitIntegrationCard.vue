@@ -91,10 +91,11 @@ defineProps({
 defineEmits(['update:enabled'])
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../../styles/design-tokens' as *;
 .integration-card {
   background: var(--bg-raised, #1e3147);
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
 }
 
 /* Make Git toggle inline */
