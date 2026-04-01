@@ -233,7 +233,7 @@ const slides = computed(() => [
   },
   {
     id: 'advanced',
-    icon: 'mdi-cog-outline',
+    icon: 'mdi-cog',
     title: 'Optional power-ups',
     body:
       'Integrations like Git and Serena can improve ergonomics and help agents stay aligned. You can enable these when you’re ready.',

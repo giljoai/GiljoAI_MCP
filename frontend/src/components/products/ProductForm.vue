@@ -23,7 +23,7 @@
           class="mb-0"
         >
           <v-btn value="setup">
-            <v-icon start size="small">mdi-cog-outline</v-icon>
+            <v-icon start size="small">mdi-cog</v-icon>
             Product Setup
           </v-btn>
           <v-btn value="info" :disabled="analysisInProgress">

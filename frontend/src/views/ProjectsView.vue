@@ -656,7 +656,7 @@
               <template v-slot:append>
                 <div class="d-flex align-center ga-1">
                   <v-btn
-                    icon="mdi-restore"
+                    icon="mdi-delete-restore"
                     size="small"
                     variant="text"
                     :disabled="purgingProjectId === project.id || purgingAllDeleted"
@@ -665,7 +665,7 @@
                     @click="restoreFromDelete(project)"
                   ></v-btn>
                   <v-btn
-                    icon="mdi-trash-can"
+                    icon="mdi-delete-forever"
                     size="small"
                     variant="text"
                     color="error"
