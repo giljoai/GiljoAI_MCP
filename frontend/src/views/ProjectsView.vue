@@ -37,7 +37,7 @@
     </v-alert>
 
     <!-- Filters & Search Section -->
-    <v-card v-if="activeProduct" class="mb-4">
+    <v-card v-if="activeProduct" class="mb-4 smooth-border">
       <v-card-text class="pb-2">
         <!-- Search Bar + Filter Toggle -->
         <div class="d-flex align-center ga-3">
@@ -111,7 +111,7 @@
     </v-card>
 
     <!-- Projects Table -->
-    <v-card v-if="activeProduct">
+    <v-card v-if="activeProduct" class="smooth-border">
       <!-- Project List Header Bar -->
       <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
         <span class="text-h6">Project List for {{ activeProduct?.name || 'No Active Product' }}</span>
@@ -640,7 +640,7 @@
             be undone.
           </v-alert>
 
-          <v-list v-if="deletedProjects.length > 0" class="border rounded">
+          <v-list v-if="deletedProjects.length > 0" class="smooth-border rounded">
             <v-list-item v-for="(project, index) in deletedProjects" :key="project.id">
               <template v-slot:prepend>
                 <v-icon icon="mdi-folder-minus"></v-icon>
@@ -723,7 +723,7 @@
 
         <v-card-text>
           <v-sheet
-            class="pa-4 rounded border"
+            class="pa-4 rounded smooth-border"
             color="grey-lighten-5"
             style="
               max-height: 500px;
@@ -1530,10 +1530,6 @@ onBeforeUnmount(() => {
   gap: 0.5rem;
 }
 
-.border {
-  border: none !important;
-  box-shadow: inset 0 0 0 1px $color-border-subtle;
-}
 
 .border-b {
   border-bottom: 1px solid $color-border-subtle;
@@ -1543,12 +1539,6 @@ onBeforeUnmount(() => {
   border-radius: $border-radius-sharp;
 }
 
-/* 0870h: smooth-border table panel */
-:deep(.v-card) {
-  box-shadow: inset 0 0 0 1px $color-border-subtle;
-  border: none !important;
-  border-radius: $border-radius-rounded;
-}
 
 /* Clickable rows — entire row opens edit/review */
 :deep(.v-data-table__tr) {
@@ -1562,17 +1552,13 @@ onBeforeUnmount(() => {
 
 /* 0870h: table header styling */
 :deep(.v-data-table__thead th) {
-  font-size: 0.6rem !important;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: $color-text-muted !important;
-  font-weight: 500 !important;
+  @include table-header-label;
   border-bottom: 1px solid $color-border-subtle !important;
 }
 
 /* 0870h: table cell row separators */
 :deep(.v-data-table__td) {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  @include table-row-separator;
 }
 
 :deep(.v-data-table__tr:last-child .v-data-table__td) {
