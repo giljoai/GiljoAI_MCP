@@ -5,6 +5,8 @@
       <v-btn
         variant="text"
         size="small"
+        :loading="saving"
+        :disabled="saving || loading"
         @click="resetToDefaults"
         data-testid="reset-context-config-btn"
         style="width: 140px; margin-right: 16px;"
@@ -12,6 +14,7 @@
         Reset
       </v-btn>
     </v-card-title>
+    <v-progress-linear v-if="loading || saving" indeterminate color="primary" height="2" />
     <v-card-text>
       <!-- Git Integration Alert -->
       <v-alert
