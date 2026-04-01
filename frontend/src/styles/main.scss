@@ -98,6 +98,39 @@ body {
 }
 
 // =========================================================================
+// Interactive Icon Utilities
+// =========================================================================
+// Standard hover pattern for clickable icons: muted default → yellow on hover.
+// Usage: <v-icon class="icon-interactive"> or <v-btn class="icon-interactive">
+.icon-interactive {
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-radius: 6px;
+  padding: 4px;
+
+  &:hover {
+    color: #ffc300;
+    background: rgba(255, 195, 0, 0.08);
+  }
+}
+
+// Prominent play/start button variant — yellow with glow on hover.
+.icon-interactive-play {
+  color: #ffc300;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 50%;
+  background: rgba(255, 195, 0, 0.1);
+
+  &:hover {
+    background: rgba(255, 195, 0, 0.25);
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(255, 195, 0, 0.2);
+  }
+}
+
+// =========================================================================
 // Smooth Border Utilities (box-shadow inset)
 // =========================================================================
 // Use these instead of CSS `border` on rounded elements. Box-shadow inset

@@ -50,7 +50,7 @@
                     <button
                       v-bind="tooltipProps"
                       type="button"
-                      class="play-circle-btn"
+                      class="play-circle-btn icon-interactive-play"
                       :class="{ 'play-btn-faded': isPlayButtonFaded(agent) }"
                       :disabled="isPlayButtonFaded(agent)"
                       aria-label="Copy agent prompt"
@@ -157,7 +157,7 @@
                       icon="mdi-message-outline"
                       size="small"
                       variant="text"
-                      :color="actionIconColor"
+                      class="icon-interactive"
                       aria-label="View messages"
                       data-testid="jobs-messages-btn"
                       @click="handleMessages(agent)"
@@ -171,6 +171,7 @@
                       v-bind="tooltipProps"
                       size="small"
                       variant="text"
+                      class="icon-interactive"
                       aria-label="View agent role"
                       data-testid="jobs-role-btn"
                       @click="handleAgentRole(agent)"
@@ -191,7 +192,7 @@
                       icon="mdi-briefcase-outline"
                       size="small"
                       variant="text"
-                      :color="actionIconColor"
+                      class="icon-interactive"
                       aria-label="View assigned job"
                       data-testid="jobs-info-btn"
                       @click="handleAgentJob(agent)"
@@ -209,7 +210,7 @@
                       icon="mdi-refresh"
                       size="small"
                       variant="text"
-                      :color="actionIconColor"
+                      class="icon-interactive"
                       aria-label="Hand over session"
                       @click="handleHandOver(agent)"
                     />
@@ -244,7 +245,7 @@
                       icon="mdi-dots-vertical"
                       size="small"
                       variant="text"
-                      :color="actionIconColor"
+                      class="icon-interactive"
                       aria-label="Agent actions"
                     />
                   </template>
@@ -487,11 +488,6 @@ const phaseSortedAgents = computed(() => {
  * GiljoAI face icon (dark theme only)
  */
 const giljoFaceIcon = '/giljo_YW_Face.svg'
-
-/**
- * Action icon color (dark theme only)
- */
-const actionIconColor = 'warning'
 
 function isOrchestrator(agent) {
   return agent?.agent_name === 'orchestrator' || agent?.agent_display_name === 'orchestrator'
@@ -1130,22 +1126,13 @@ async function copyToClipboard(text) {
           .play-circle-btn {
             width: 30px;
             height: 30px;
-            border-radius: 50%;
             border: none;
-            background: rgba(255, 195, 0, 0.12);
-            color: $color-brand-yellow;
-            cursor: pointer;
             display: grid;
             place-items: center;
             padding: 0;
-            transition: all 0.2s ease;
 
             .v-icon {
               color: $color-brand-yellow;
-            }
-
-            &:hover:not(:disabled) {
-              background: rgba(255, 195, 0, 0.2);
             }
 
             &.play-btn-faded {
@@ -1297,11 +1284,6 @@ async function copyToClipboard(text) {
               width: 30px;
               height: 30px;
               padding: 0;
-              color: $color-text-muted;
-
-              &:hover {
-                color: $color-brand-yellow;
-              }
             }
           }
 
