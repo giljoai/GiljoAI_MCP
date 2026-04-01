@@ -225,26 +225,8 @@ export const useProductStore = defineStore('products', () => {
 
   async function initializeFromStorage() {
     try {
-      const authToken = localStorage.getItem('auth_token')
-      if (!authToken) {
-        return
-      }
-
-      try {
-        const response = await api.setup.status()
-        const setupStatus = response.data
-
-        if (setupStatus.default_password_active || !setupStatus.database_initialized) {
-          localStorage.removeItem('currentProductId')
-          return
-        }
-      } catch (error) {
-        console.warn(
-          '[PRODUCTS] Setup status check failed - skipping product initialization:',
-          error,
-        )
-        return
-      }
+      // Auth guard removed — caller (DefaultLayout) already verified user is authenticated.
+      // Previous guard checked localStorage('auth_token') which is always null (httpOnly cookies).
 
       await fetchProducts()
 
