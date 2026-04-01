@@ -118,7 +118,7 @@ describe('TasksView - Task Statistics', () => {
     vi.clearAllMocks()
   })
 
-  it('displays task list section', async () => {
+  it('displays task page with new task button', async () => {
     const wrapper = mount(TasksView, {
       global: {
         plugins: [vuetify],
@@ -126,7 +126,7 @@ describe('TasksView - Task Statistics', () => {
     })
 
     await flushPromises()
-    expect(wrapper.text()).toContain('Task List')
+    expect(wrapper.text()).toContain('Tasks')
     expect(wrapper.text()).toContain('New Task')
   })
 })
