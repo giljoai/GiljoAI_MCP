@@ -212,7 +212,7 @@
                 <button
                   v-bind="ttProps"
                   type="button"
-                  class="play-circle-btn"
+                  class="play-circle-btn icon-interactive-play"
                   aria-label="Activate project"
                   @click.stop="activateAndLaunch(item.id)"
                 >
@@ -1657,30 +1657,19 @@ onBeforeUnmount(() => {
   color: $color-agent-analyzer;
 }
 
-/* Play-circle activate button — matches JobsTab styling */
+/* Play-circle activate button — uses global .icon-interactive-play */
 .play-circle-btn {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
   border: none !important;
-  box-shadow: inset 0 0 0 2px $color-brand-yellow;
-  background: transparent;
-  color: $color-brand-yellow;
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: all 0.2s ease;
 }
 
 .play-circle-btn :deep(.v-icon) {
   color: $color-brand-yellow;
-}
-
-.play-circle-btn:hover {
-  background: rgba($color-brand-yellow, 0.15);
-  box-shadow: inset 0 0 0 2px $color-brand-yellow;
 }
 
 /* ── Responsive compact elements (hidden by default, shown via media queries) ── */

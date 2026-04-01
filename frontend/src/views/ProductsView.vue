@@ -173,10 +173,8 @@
                             size="small"
                             variant="text"
                             v-bind="props"
+                            class="icon-interactive"
                             aria-label="View product details"
-                            :style="
-                              product.id === productStore.currentProductId ? 'color: rgb(var(--v-theme-on-surface))' : ''
-                            "
                             @click="showProductDetails(product)"
                           >
                             <v-icon>mdi-information-outline</v-icon>
@@ -198,6 +196,7 @@
                               size="small"
                               variant="text"
                               v-bind="props"
+                              class="icon-interactive"
                               aria-label="Tune context"
                               @click="showProductTuning(product)"
                             >
@@ -214,8 +213,8 @@
                             size="small"
                             variant="text"
                             v-bind="props"
+                            class="icon-interactive-play"
                             :aria-label="isProductActive(product) ? 'Deactivate product' : 'Activate product'"
-                            :class="{ 'text-primary': isProductActive(product) }"
                             @click="toggleProductActivation(product)"
                           >
                             <v-icon>{{
@@ -234,10 +233,8 @@
                             size="small"
                             variant="text"
                             v-bind="props"
+                            class="icon-interactive"
                             aria-label="Edit product"
-                            :style="
-                              product.id === productStore.currentProductId ? 'color: rgb(var(--v-theme-on-surface))' : ''
-                            "
                             @click="editProduct(product)"
                           >
                             <v-icon>mdi-pencil</v-icon>
