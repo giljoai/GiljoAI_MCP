@@ -52,7 +52,7 @@
                 v-model="color"
                 density="compact"
                 variant="outlined"
-                style="max-width: 120px"
+                class="color-input-field"
                 :rules="colorRules"
                 hide-details
                 aria-label="Custom hex color"
@@ -167,4 +167,7 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
+.color-input-field {
+  max-width: 120px;
+}
 </style>
