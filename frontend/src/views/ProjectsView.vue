@@ -471,7 +471,7 @@
             <v-text-field
               v-model="projectData.name"
               label="Project Name"
-              :rules="[(v) => !!v || 'Name is required']"
+              :rules="[(v) => !!v || 'Project name is required']"
               required
               density="compact"
               variant="outlined"
@@ -1283,6 +1283,7 @@ async function deleteProject() {
       projectToDelete.value = null
     } catch (error) {
       console.error('Failed to delete project:', error)
+      showToast({ message: 'Failed to delete project. Please try again.', type: 'error' })
     }
   }
 }
@@ -1293,6 +1294,7 @@ async function restoreFromDelete(project) {
     showDeletedDialog.value = false
   } catch (error) {
     console.error('Failed to restore project:', error)
+    showToast({ message: 'Failed to restore project. Please try again.', type: 'error' })
   }
 }
 
@@ -1332,6 +1334,7 @@ async function executePurgeAll() {
     showDeletedDialog.value = false
   } catch (error) {
     console.error('Failed to purge all deleted projects:', error)
+    showToast({ message: 'Failed to purge deleted projects. Please try again.', type: 'error' })
   } finally {
     purgingAllDeleted.value = false
     purgingProjectId.value = null
@@ -1384,6 +1387,7 @@ async function handleStatusAction({ action, projectId }) {
     await projectStore.fetchProjects()
   } catch (error) {
     console.error('Failed to perform action:', error)
+    showToast({ message: 'Failed to update project status. Try refreshing the page to get the latest state.', type: 'error' })
     // Refresh even on error to show true server state
     await projectStore.fetchProjects()
   }

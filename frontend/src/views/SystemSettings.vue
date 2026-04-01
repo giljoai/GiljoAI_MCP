@@ -118,6 +118,7 @@
 import { ref, onMounted } from 'vue'
 import { getApiBaseURL } from '@/config/api'
 import api from '@/services/api'
+import { useToast } from '@/composables/useToast'
 
 // Components
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
@@ -125,6 +126,8 @@ import IdentityTab from '@/components/settings/tabs/IdentityTab.vue'
 import NetworkSettingsTab from '@/components/settings/tabs/NetworkSettingsTab.vue'
 import SecuritySettingsTab from '@/components/settings/tabs/SecuritySettingsTab.vue'
 import SystemPromptTab from '@/components/settings/tabs/SystemPromptTab.vue'
+
+const { showToast } = useToast()
 
 // State
 const activeTab = ref('identity')
@@ -215,6 +218,7 @@ async function saveNetworkSettings() {
 
   } catch (error) {
     console.error('Failed to save network settings:', error)
+    showToast({ message: 'Failed to save network settings. Check your connection and try again.', type: 'error' })
   }
 }
 
@@ -228,6 +232,7 @@ async function loadDatabaseSettings() {
     await response.json()
   } catch (error) {
     console.error('Failed to load database settings:', error)
+    showToast({ message: 'Failed to load database settings. Check your connection and refresh the page.', type: 'error' })
   }
 }
 
