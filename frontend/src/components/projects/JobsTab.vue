@@ -1393,7 +1393,7 @@ async function copyToClipboard(text) {
         }
 
         &.v-field--focused {
-          box-shadow: inset 0 0 0 1px rgba(255, 195, 0, 0.3);
+          box-shadow: inset 0 0 0 1px rgba($color-brand-yellow, 0.3);
         }
       }
     }
