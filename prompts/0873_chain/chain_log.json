@@ -109,12 +109,14 @@
         "Added @mixin table-header-label (5-line pattern) to design-tokens.scss section 12",
         "Added @mixin table-row-separator to design-tokens.scss section 12",
         "Added .table-header-label utility class to main.scss (after smooth-border section)",
+        "Added .table-row-separator utility class to main.scss (supplementary — missed in first pass)",
         "Baseline: 10 occurrences of font-size: 0.6rem across 9 files",
         "Replaced table-header pattern in 4 files: TasksView.vue, ProjectsView.vue, AgentTableView.vue, JobsTab.vue",
         "Also replaced rgba(255,255,255,0.04) row separators with @include table-row-separator in same 4 files",
         "Mixin placed in design-tokens.scss (not main.scss) — components already import design-tokens, importing main.scss would duplicate CSS output",
         "Tests: 1916/1916 passed",
-        "Commit: 972a21b7 (6 files, 46 insertions, 42 deletions)"
+        "Commit: 972a21b7 (6 files, 46 insertions, 42 deletions)",
+        "Follow-up commit: de6ee8ae — add .table-row-separator utility class to main.scss"
       ],
       "deviations": [
         "Mixin defined in design-tokens.scss instead of main.scss — main.scss has CSS output, importing it in components would duplicate global styles; design-tokens.scss is pure variables/mixins, safe to @use in components",
@@ -125,7 +127,7 @@
       "cascading_impacts": [
         "@mixin table-header-label and @mixin table-row-separator added to design-tokens.scss — available for future sessions via @use '../styles/design-tokens' as *"
       ],
-      "summary": "Table header pattern extraction complete. Mixins added to design-tokens.scss, utility class in main.scss. The 5-line uppercase label pattern replaced in 4 files (TasksView, ProjectsView, AgentTableView, JobsTab) with @include table-header-label. Row separators replaced with @include table-row-separator in same files. 6 non-table-header font-size: 0.6rem hits remain intentionally. All 1916 tests pass."
+      "summary": "Table header pattern extraction complete. Mixins added to design-tokens.scss, both utility classes (.table-header-label and .table-row-separator) in main.scss. The 5-line uppercase label pattern replaced in 4 files (TasksView, ProjectsView, AgentTableView, JobsTab) with @include table-header-label. Row separators replaced with @include table-row-separator in same files. 6 non-table-header font-size: 0.6rem hits remain intentionally. All 1916 tests pass."
     },
     {
       "session_id": "0873d",
