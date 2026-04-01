@@ -76,7 +76,11 @@
         "compound '0 8px 8px 8px': 1 grep hit remains (leading 0 cannot be tokenized)"
       ],
       "blockers_encountered": [],
-      "notes_for_next": "0873c (Table Header Pattern Extraction): All style blocks in views/components now use SCSS with @use imports. Pre-commit hook auto-fixed mixed line endings on all 64 files. The $border-radius-md token is now available for 0873c+ sessions.",
+      "blockers_encountered": [
+        "Python heredoc syntax error: backslash in filepath.replace('\\\\', '/') broke bash heredoc escaping — worked around by writing script via Write tool to a .py file instead",
+        "Pre-commit mixed-line-ending hook: Python script wrote LF endings; repo uses CRLF on Windows. First commit attempt failed, hook auto-fixed all 64 files, required re-stage and second commit. Subsequent bulk-edit sessions using Python/scripts will hit the same hook."
+      ],
+      "notes_for_next": "0873c (Table Header Pattern Extraction): All style blocks in views/components now use SCSS with @use imports. The $border-radius-md token is now available for 0873c+ sessions. WARNING: bulk Python scripts write LF endings — pre-commit mixed-line-ending hook will fire; plan for re-stage after first commit attempt.",
       "cascading_impacts": [
         "$border-radius-md: 12px added to design-tokens.scss — available to all subsequent sessions"
       ],
