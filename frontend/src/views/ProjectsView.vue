@@ -36,82 +36,48 @@
       No active product selected. Please activate a product to view and manage its projects.
     </v-alert>
 
-    <!-- Filters & Search Section -->
-    <v-card v-if="activeProduct" class="mb-4 smooth-border">
-      <v-card-text class="pb-2">
-        <!-- Search Bar + Filter Toggle -->
-        <div class="d-flex align-center ga-3">
-          <v-text-field
-            v-model="searchQuery"
-            prepend-inner-icon="mdi-magnify"
-            label="Search Projects..."
-            single-line
-            hide-details
-            density="compact"
-            variant="outlined"
-            clearable
-            class="flex-grow-1"
-            aria-label="Search projects by name"
-          ></v-text-field>
-        </div>
-
-        <!-- Collapsible Filter Pills -->
-        <v-expand-transition>
-          <div v-if="showFilterRow" class="mt-3">
-            <!-- Status Pills -->
-            <div class="d-flex gap-2 flex-wrap justify-center">
-              <v-chip
-                v-for="status in statusFilterOptions"
-                :key="status.value"
-                :color="filterStatus === status.value ? 'primary' : 'default'"
-                :variant="filterStatus === status.value ? 'tonal' : 'outlined'"
-                size="small"
-                class="cursor-pointer"
-                @click="filterStatus = status.value"
-              >
-                {{ status.label }} ({{ status.count }})
-              </v-chip>
-            </div>
-
-            <!-- Type Pills -->
-            <div v-if="projectTypes.length > 0" class="d-flex gap-2 flex-wrap justify-center mt-2">
-              <v-chip
-                :color="filterType === 'all' ? 'primary' : 'default'"
-                :variant="filterType === 'all' ? 'tonal' : 'outlined'"
-                size="small"
-                class="cursor-pointer"
-                @click="filterType = 'all'"
-              >
-                All Types
-              </v-chip>
-              <v-chip
-                v-for="ptype in projectTypes"
-                :key="ptype.id"
-                :color="filterType === ptype.id ? ptype.color : 'default'"
-                :variant="filterType === ptype.id ? 'flat' : 'outlined'"
-                size="small"
-                class="cursor-pointer"
-                @click="filterType = ptype.id"
-              >
-                {{ ptype.abbreviation }}
-              </v-chip>
-              <v-chip
-                :color="filterType === 'none' ? 'grey' : 'default'"
-                :variant="filterType === 'none' ? 'tonal' : 'outlined'"
-                size="small"
-                class="cursor-pointer"
-                @click="filterType = 'none'"
-              >
-                No Type
-              </v-chip>
-            </div>
-          </div>
-        </v-expand-transition>
-      </v-card-text>
-    </v-card>
+    <!-- Filter Bar (0873: restyled to match TasksView pattern) -->
+    <div v-if="activeProduct" class="filter-bar">
+      <v-text-field
+        v-model="searchQuery"
+        prepend-inner-icon="mdi-magnify"
+        placeholder="Search projects..."
+        variant="solo"
+        density="compact"
+        clearable
+        hide-details
+        flat
+        aria-label="Search projects by name"
+        class="filter-search"
+      />
+      <v-select
+        v-model="filterStatus"
+        :items="statusSelectOptions"
+        placeholder="Status"
+        variant="solo"
+        density="compact"
+        clearable
+        hide-details
+        flat
+        class="filter-select"
+      />
+      <v-select
+        v-if="projectTypes.length > 0"
+        v-model="filterType"
+        :items="typeSelectOptions"
+        placeholder="Type"
+        variant="solo"
+        density="compact"
+        clearable
+        hide-details
+        flat
+        class="filter-select"
+      />
+      <v-btn variant="text" class="filter-clear-btn" @click="clearFilters">Clear Filters</v-btn>
+    </div>
 
     <!-- Projects Table -->
-    <v-card v-if="activeProduct" class="smooth-border">
+    <v-card v-if="activeProduct" class="project-table-card smooth-border">
       <!-- Project List Header Bar -->
       <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
         <span class="text-h6">Project List for {{ activeProduct?.name || 'No Active Product' }}</span>
@@ -139,20 +105,6 @@
           >
             Deleted ({{ deletedCount }})
           </v-btn>
-
-          <v-btn
-            v-if="projectTypes.length > 0"
-            variant="outlined"
-            :color="showFilterRow || filterType !== 'all' || filterStatus !== 'all' ? 'primary' : undefined"
-            aria-label="Toggle filters"
-            style="min-width: 0; padding: 0 12px"
-            @click="showFilterRow = !showFilterRow"
-          >
-            <v-icon>mdi-filter-variant</v-icon>
-          </v-btn>
-
-          <v-divider vertical class="mx-1" style="height: 24px" />
-
         </div>
       </v-card-title>
 
@@ -791,9 +743,8 @@ const { showToast } = useToast()
 
 // Reactive state
 const searchQuery = ref('')
-const filterType = ref('all')
-const filterStatus = ref('all')
-const showFilterRow = ref(false)
+const filterType = ref(null)
+const filterStatus = ref(null)
 const projectTypes = ref([])
 const showCreateDialog = ref(false)
 const showDeleteDialog = ref(false)
@@ -864,6 +815,23 @@ const statusFilterOptions = computed(() => [
   { label: 'Cancelled', value: 'cancelled', count: statusCounts.value.cancelled },
   { label: 'Terminated', value: 'terminated', count: statusCounts.value.terminated },
 ])
+
+// 0873: v-select items for filter bar dropdowns
+const statusSelectOptions = ['active', 'inactive', 'completed', 'cancelled', 'terminated']
+const typeSelectOptions = computed(() => {
+  const items = projectTypes.value.map((t) => ({
+    title: t.abbreviation,
+    value: t.id,
+  }))
+  items.push({ title: 'No Type', value: 'none' })
+  return items
+})
+
+function clearFilters() {
+  searchQuery.value = ''
+  filterStatus.value = null
+  filterType.value = null
+}
 
 // Table headers
 const headers = [
@@ -1056,7 +1024,7 @@ const filteredBySearch = computed(() => {
   }
 
   // Type filter (Handover 0440c)
-  if (filterType.value !== 'all') {
+  if (filterType.value && filterType.value !== 'all') {
     if (filterType.value === 'none') {
       results = results.filter((p) => !p.project_type_id)
     } else {
@@ -1069,7 +1037,7 @@ const filteredBySearch = computed(() => {
 
 // Filter by status
 const filteredProjects = computed(() => {
-  if (filterStatus.value === 'all') return filteredBySearch.value
+  if (!filterStatus.value || filterStatus.value === 'all') return filteredBySearch.value
   return filteredBySearch.value.filter((p) => p.status === filterStatus.value)
 })
 
@@ -1528,6 +1496,55 @@ onBeforeUnmount(() => {
   --color-text-muted: #{$color-text-muted};
 }
 
+/* 0873: smooth-border table panel */
+.project-table-card {
+  border: none !important;
+  border-radius: $border-radius-rounded !important;
+  overflow: hidden;
+
+  :deep(.v-table) {
+    background: transparent;
+  }
+}
+
+/* 0873: filter bar layout (matches TasksView pattern) */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.filter-search {
+  flex: 1;
+  max-width: 400px;
+}
+
+.filter-search :deep(.v-field) {
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
+  border-radius: $border-radius-default;
+}
+
+.filter-search :deep(.v-field:focus-within) {
+  box-shadow: inset 0 0 0 1px rgba($color-brand-yellow, 0.3);
+}
+
+.filter-select {
+  max-width: 160px;
+}
+
+.filter-select :deep(.v-field) {
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
+  border-radius: $border-radius-default;
+}
+
+.filter-clear-btn {
+  color: $color-text-muted !important;
+  font-size: 0.72rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .cursor-pointer {
   cursor: pointer;
 }
@@ -1535,7 +1552,6 @@ onBeforeUnmount(() => {
 .gap-2 {
   gap: 0.5rem;
 }
-
 
 .border-b {
   border-bottom: 1px solid $color-border-subtle;
@@ -1731,6 +1747,16 @@ onBeforeUnmount(() => {
 @media (max-width: 600px) {
   .project-id-text {
     display: none;
+  }
+}
+
+/* 0873: responsive filter bar */
+@media (max-width: 960px) {
+  .filter-bar {
+    flex-wrap: wrap;
+  }
+  .filter-search {
+    max-width: 100%;
   }
 }
 </style>

@@ -650,9 +650,9 @@ describe('ApiKeyManager.vue - Handover 0028 Simplified Interface', () => {
       await wrapper.vm.$nextTick()
     })
 
-    it('applies elevation to data table', () => {
+    it('applies smooth-border to card', () => {
       const html = wrapper.html()
-      expect(html).toContain('elevation-1')
+      expect(html).toContain('smooth-border')
     })
 
     it('uses code styling for key prefix', () => {
