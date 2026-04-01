@@ -48,7 +48,7 @@
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
             <div class="text-caption">
               <strong>Project ID:</strong>
-              <span class="ml-2" style="font-family: monospace">{{ project?.id }}</span>
+              <span class="ml-2 font-mono">{{ project?.id }}</span>
             </div>
           </v-alert>
 

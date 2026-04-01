@@ -43,7 +43,7 @@
       <!-- YOUR TEAM -->
       <div class="team-section">
         <div class="team-header">
-          <div class="section-label" style="margin-bottom:0;">Your Team</div>
+          <div class="section-label mb-0">Your Team</div>
           <div class="d-flex align-center ga-2">
             <span class="team-slots smooth-border">{{ activeTemplates.length }} / {{ totalSlots }} slots</span>
             <router-link to="/Settings" class="team-manage">
