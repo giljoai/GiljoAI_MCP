@@ -254,7 +254,7 @@ class ToolUsageBestPracticesRule(ValidationRule):
     WARNING_001: Check tool usage best practices.
 
     Non-critical warnings for recommended practices:
-    - Error handling mentions (report_error)
+    - Error handling mentions (set_agent_status)
     - Progress reporting frequency guidance
     - Message acknowledgment best practices
     """
@@ -263,7 +263,13 @@ class ToolUsageBestPracticesRule(ValidationRule):
     name = "Tool Usage Best Practices"
     severity = "warning"
 
-    BEST_PRACTICE_KEYWORDS: ClassVar[list[str]] = ["error", "report_error", "handle errors", "gracefully"]
+    BEST_PRACTICE_KEYWORDS: ClassVar[list[str]] = [
+        "error",
+        "set_agent_status",
+        "report_error",
+        "handle errors",
+        "gracefully",
+    ]
 
     def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check for best practice mentions."""
@@ -275,7 +281,7 @@ class ToolUsageBestPracticesRule(ValidationRule):
                 rule_id=self.rule_id,
                 severity=self.severity,
                 message="Template does not mention error handling best practices",
-                remediation="Consider adding guidance on using report_error() and handling failures gracefully",
+                remediation="Consider adding guidance on using set_agent_status() and handling failures gracefully",
             )
 
         return None

@@ -320,6 +320,25 @@ completing, an unblock event, or any other trigger — execute this loop:
   → **NEVER** use `todo_items` — it will wipe your pre-planned coordination TODOs
   → The dashboard displays your TODO list — keep it current
 
+### RESTING STATES (between coordination loops)
+
+After completing a coordination loop with no actionable work remaining:
+
+**If waiting for user to start agents (multi-terminal):**
+  → `mcp__giljo_mcp__set_agent_status(job_id="{job_id}", status="idle", reason="Monitoring — waiting for agents to start")`
+  → Dashboard shows "Monitoring" — user knows you're available but not burning tokens
+
+**If you want periodic auto-check-in:**
+  → Ask the user: "Would you like me to periodically check on agents? I can sleep and re-check every N minutes. Note: this increases token consumption."
+  → If yes: `mcp__giljo_mcp__set_agent_status(job_id="{job_id}", status="sleeping", wake_in_minutes=15, reason="Auto-monitoring")`
+  → Then sleep for the specified interval, wake, run the coordination loop, repeat
+  → Any MCP call after waking auto-transitions you back to "working"
+
+**Blocked vs Idle vs Sleeping:**
+  - `blocked` = I need human help to continue (shows "Needs Input")
+  - `idle` = I'm done dispatching, nothing to do right now (shows "Monitoring")
+  - `sleeping` = I'll check back in N minutes automatically (shows "Sleeping")
+
 ### PHASE 3 — CLOSEOUT (all agents complete or decommissioned)
 
 **Pre-closeout verification:**
@@ -549,7 +568,7 @@ If you call `complete_job()` without meeting these requirements:
 ### Phase 5: ERROR HANDLING & BLOCKED STATUS
 
 **To mark yourself BLOCKED** (unclear requirements, waiting for clarification):
-1. Call `mcp__giljo_mcp__report_error(job_id="{job_id}", error="BLOCKED: <reason>")`
+1. Call `mcp__giljo_mcp__set_agent_status(job_id="{job_id}", status="blocked", reason="BLOCKED: <reason>")`
    - Sets status to "blocked" and stores block_reason
 2. Send message to orchestrator explaining what you need (use orchestrator's agent_id UUID from YOUR TEAM table):
    - `mcp__giljo_mcp__send_message(to_agents=["<orchestrator-agent-id-uuid>"], content="BLOCKER: <details>", from_agent="{executor_id}", project_id="...", message_type="direct")`
@@ -1268,7 +1287,7 @@ COMMON ERRORS AND RESPONSES:
 ── MCP Connection Lost ─────────────────────────────────────────────────────
 Symptom: Tools not responding, timeouts
 Action: Abort staging immediately
-Notify: Call report_error(job_id, "MCP connection lost", tenant_key)
+Notify: Call set_agent_status(job_id, status="blocked", reason="MCP connection lost")
 Do NOT: Attempt to continue spawning agents
 
 ── Invalid Agent Name ──────────────────────────────────────────────────────
@@ -1279,7 +1298,7 @@ Fix: Use exact agent_name from discovery response
 
 ── Spawn Failure ───────────────────────────────────────────────────────────
 Symptom: spawn_agent_job() fails for any reason
-Action: Log via report_error(), do NOT continue spawning
+Action: Log via set_agent_status(status="blocked"), do NOT continue spawning
 Why: Partial spawns create incomplete agent teams
 Recovery: User must fix issue and restart staging
 
@@ -1296,19 +1315,24 @@ Action: Report to user - template configuration required
 Fix: User must activate templates in My Settings → Agent Templates
 
 ── STATUS TRANSITIONS ──────────────────────────────────────────────────────
-waiting ─[get_agent_mission()]─→ working (auto-transition on first fetch)
-working ─[report_progress()]─→ working (updates progress/todos)
-working ─[complete_job()]─→ complete
-working ─[report_error()]─→ blocked
-blocked ─[complete_job()]─→ complete (orchestrator force-completes blocked agent)
+waiting  ─[get_agent_mission()]──────────────→ working (auto on first fetch)
+working  ─[report_progress()]────────────────→ working (updates progress/todos)
+working  ─[complete_job()]───────────────────→ complete
+working  ─[set_agent_status("blocked")]──────→ blocked
+working  ─[set_agent_status("idle")]─────────→ idle
+working  ─[set_agent_status("sleeping")]─────→ sleeping
+idle     ─[report_progress()/any active MCP]─→ working (auto-wake)
+sleeping ─[report_progress()/any active MCP]─→ working (auto-wake)
+blocked  ─[report_progress()]────────────────→ working (auto-wake)
+blocked  ─[complete_job()]───────────────────→ complete
 
-Note: All report_error() calls set status to "blocked". Use "BLOCKED: <reason>"
-message format when asking for clarification vs actual errors.
+Note: Use set_agent_status(status="blocked", reason="BLOCKED: <reason>")
+when asking for clarification vs actual errors.
 
 GENERAL ERROR PROTOCOL:
 
 1. Log error with context (agent_id, job_id, tenant_key)
-2. Call report_error() to persist error state
+2. Call set_agent_status(status="blocked", reason="...") to persist error state
 3. Send broadcast message to notify user
 4. Do NOT attempt to continue workflow after critical errors
 5. Wait for user intervention
@@ -1347,7 +1371,9 @@ When you (or a fresh orchestrator instance) enters implementation phase:
 1. Retrieve execution plan via get_agent_mission(job_id, tenant_key)
 2. Follow coordination strategy you defined in Step 7
 3. Coordinate handoffs between dependent agents
-4. Ask user if they want you to auto-monitor agents (sleep and periodically check progress and message queues). Warn user this can drastically increase token consumption.
+4. After dispatching agents: set_agent_status(job_id, status="idle", reason="Agents dispatched, monitoring")
+5. If user wants auto-monitoring: set_agent_status(job_id, status="sleeping", wake_in_minutes=15)
+   Warn user this increases token consumption. Sleep locally, then wake and run coordination loop.
 
 COORDINATION PATTERNS:
 

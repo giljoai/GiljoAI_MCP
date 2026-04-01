@@ -190,7 +190,7 @@ Before EVERY commit, verify:
 2. **No dict return regression**: All Python layers raise exceptions (post-0480/0730) — services, tools, orchestration, helpers, and context management. NOT `return {"success": False, ...}`
 3. **Tenant isolation**: Every new DB query filters by `tenant_key` (security-critical)
 4. **No dead code introduced**: If you add a method, it must be called. If you remove a caller, remove the method.
-5. **Valid agent statuses only**: `waiting`, `working`, `blocked`, `complete`, `silent`, `decommissioned` (post-0491)
+5. **Valid agent statuses only**: `waiting`, `working`, `blocked`, `idle`, `sleeping`, `complete`, `silent`, `decommissioned` (post-0491, 0880)
 6. **No bare expressions**: Every computed value must be assigned or used
 7. **No commented-out code**: Delete it. Git has the history.
 8. **Pre-commit hooks must pass**: Do NOT use `--no-verify` without explicit user approval

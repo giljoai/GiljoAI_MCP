@@ -193,7 +193,7 @@ class TestProtocolRegression:
         """Phase 5 ERROR HANDLING is always present regardless of toggles."""
         protocol = _gen_protocol(execution_mode=execution_mode, git_integration_enabled=git_enabled)
         assert "Phase 5: ERROR HANDLING" in protocol
-        assert "report_error" in protocol
+        assert "set_agent_status" in protocol
 
 
 # ============================================================================

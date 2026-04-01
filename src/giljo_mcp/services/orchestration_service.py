@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 
 # Import MessageService for WebSocket-enabled messaging (Handover fix: message counter WebSocket)
 # Using TYPE_CHECKING to document the type without circular import risk
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1249,41 +1249,70 @@ class OrchestrationService:
                 message="Failed to dismiss reactivation", context={"job_id": job_id, "error": str(e)}
             ) from e
 
-    async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> ErrorReportResult:
-        """
-        Report job error (AgentExecution, async safe).
+    # Handover 0880: Valid statuses for set_agent_status (agent-settable resting/blocked states)
+    _AGENT_SETTABLE_STATUSES: ClassVar[set[str]] = {"blocked", "idle", "sleeping"}
 
-        Handover 0491: Simplified - severity parameter removed.
-        All errors set status to 'blocked' with block_reason.
-        Agents can recover from blocked state.
+    async def set_agent_status(
+        self,
+        job_id: str,
+        status: str,
+        reason: str = "",
+        wake_in_minutes: int | None = None,
+        tenant_key: Optional[str] = None,
+    ) -> ErrorReportResult:
+        """
+        Set agent resting or blocked status (Handover 0880: expanded from report_error).
+
+        Handles three agent-settable states:
+        - blocked: agent needs human help (shows "Needs Input")
+        - idle: agent dispatched work, resting (shows "Monitoring")
+        - sleeping: agent will auto-check in N minutes (shows "Sleeping")
+
+        Auto-wake: report_progress() transitions idle/sleeping/blocked → working.
 
         Args:
             job_id: Job UUID (looks up latest active execution)
-            error: Error message
+            status: Target status — "blocked", "idle", or "sleeping"
+            reason: Human-readable reason (displayed in dashboard)
+            wake_in_minutes: Sleep interval hint for "sleeping" status
             tenant_key: Optional tenant key (uses current if not provided)
 
         Returns:
-            Dict with success status
+            ErrorReportResult with status and reason
 
         """
         try:
-            # Use provided tenant_key or get from context
             if not tenant_key:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                raise ValidationError(message="No tenant context available", context={"method": "report_error"})
+                raise ValidationError(message="No tenant context available", context={"method": "set_agent_status"})
 
             if not job_id or not job_id.strip():
-                raise ValidationError(message="job_id cannot be empty", context={"method": "report_error"})
-            if not error or not error.strip():
+                raise ValidationError(message="job_id cannot be empty", context={"method": "set_agent_status"})
+
+            if status not in self._AGENT_SETTABLE_STATUSES:
                 raise ValidationError(
-                    message="error message cannot be empty", context={"method": "report_error", "job_id": job_id}
+                    message=f"Invalid status: {status}. Must be one of {sorted(self._AGENT_SETTABLE_STATUSES)}",
+                    context={"method": "set_agent_status", "job_id": job_id},
+                )
+
+            # For blocked status, reason is required (backward compat with report_error)
+            if status == "blocked" and not reason.strip():
+                raise ValidationError(
+                    message="reason is required for blocked status",
+                    context={"method": "set_agent_status", "job_id": job_id},
+                )
+
+            # Build block_reason string (stores reason + optional wake metadata)
+            block_reason = reason
+            if status == "sleeping" and wake_in_minutes:
+                block_reason = (
+                    f"{reason} | wake_in_minutes={wake_in_minutes}" if reason else f"wake_in_minutes={wake_in_minutes}"
                 )
 
             job = None
             async with self._get_session() as session:
-                # Get latest active execution
                 exec_stmt = (
                     select(AgentExecution)
                     .where(
@@ -1300,26 +1329,22 @@ class OrchestrationService:
                 if not execution:
                     raise ResourceNotFoundError(
                         message=f"No active execution found for job {job_id}",
-                        context={"job_id": job_id, "method": "report_error"},
+                        context={"job_id": job_id, "method": "set_agent_status"},
                     )
 
-                # Get job for project_id (needed for WebSocket event filtering)
-                # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
+                # TENANT ISOLATION: Filter by tenant_key
                 job_res = await session.execute(
                     select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
                 )
                 job = job_res.scalar_one_or_none()
 
-                # Capture old status before updating
                 old_status = execution.status
-
-                # Handover 0491: Always set to blocked with block_reason
-                execution.status = "blocked"
-                execution.block_reason = error
+                execution.status = status
+                execution.block_reason = block_reason if block_reason else None
 
                 await session.commit()
 
-            # WebSocket emission for real-time UI updates (after session closed)
+            # WebSocket broadcast for real-time UI updates
             try:
                 if self._websocket_manager:
                     ws_data = {
@@ -1328,25 +1353,31 @@ class OrchestrationService:
                         "agent_display_name": execution.agent_display_name,
                         "agent_name": execution.agent_name,
                         "old_status": old_status,
-                        "status": "blocked",
-                        "block_reason": error,
+                        "status": status,
+                        "block_reason": block_reason,
                     }
                     await self._websocket_manager.broadcast_to_tenant(
                         tenant_key=tenant_key,
                         event_type="agent:status_changed",
                         data=ws_data,
                     )
-                    self._logger.info(f"[WEBSOCKET] Broadcasted report_error status change for {job_id}")
+                    self._logger.info(f"[WEBSOCKET] Broadcasted set_agent_status ({status}) for {job_id}")
             except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
-                self._logger.warning(f"[WEBSOCKET] Failed to broadcast report_error: {ws_error}")
+                self._logger.warning(f"[WEBSOCKET] Failed to broadcast set_agent_status: {ws_error}")
 
-            return ErrorReportResult(job_id=job_id, message="Error reported", status="blocked", block_reason=error)
+            status_labels = {"blocked": "Needs Input", "idle": "Monitoring", "sleeping": "Sleeping"}
+            return ErrorReportResult(
+                job_id=job_id,
+                message=f"Status set to {status_labels.get(status, status)}",
+                status=status,
+                block_reason=block_reason or reason,
+            )
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
-            self._logger.exception("Failed to report error")
+            self._logger.exception("Failed to set agent status")
             raise OrchestrationError(
-                message="Failed to report error", context={"job_id": job_id, "error": str(e)}
+                message="Failed to set agent status", context={"job_id": job_id, "error": str(e)}
             ) from e
 
     async def list_jobs(
