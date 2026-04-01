@@ -20,7 +20,7 @@
               <AgentTipsDialog />
             </div>
           </div>
-          <div class="panel-content">
+          <div class="panel-content scrollbar-standard">
             <p class="description-text">{{ project.description || 'No description available' }}</p>
           </div>
         </div>
@@ -28,7 +28,7 @@
         <!-- Panel 2: Orchestrator Mission -->
         <div class="panel mission-panel smooth-border" data-testid="mission-panel">
           <div class="panel-header">Orchestrator Generated Mission</div>
-          <div class="panel-content">
+          <div class="panel-content scrollbar-standard">
             <div v-if="!missionText" class="empty-state">
               <v-icon size="80" class="empty-icon">mdi-file-document-outline</v-icon>
             </div>
@@ -113,7 +113,7 @@
               </v-tooltip>
             </div>
           </div>
-          <div class="panel-content">
+          <div class="panel-content scrollbar-standard">
             <div class="agents-list">
               <!-- All agents shown together -->
               <div
@@ -468,28 +468,6 @@ watch(missionText, (next, previous) => {
           font-size: 0.8rem;
           line-height: 1.5;
           color: $color-text-primary;
-
-          /* Custom Scrollbar */
-          &::-webkit-scrollbar {
-            width: 8px;
-          }
-
-          &::-webkit-scrollbar-track {
-            background: $color-scrollbar-track-background;
-            border-radius: $border-radius-sharp;
-          }
-
-          &::-webkit-scrollbar-thumb {
-            background: $color-scrollbar-thumb-background;
-            border-radius: $border-radius-sharp;
-
-            &:hover {
-              background: $color-scrollbar-thumb-hover-background;
-            }
-          }
-
-          scrollbar-color: $color-scrollbar-thumb-background $color-scrollbar-track-background;
-          scrollbar-width: thin;
 
           .empty-state {
             position: absolute;
