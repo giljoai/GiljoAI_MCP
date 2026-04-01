@@ -14,9 +14,9 @@
       "handover": "handovers/0873_style_centralization_sweep.md",
       "handover_section": "### 0873a",
       "color": "#4CAF50",
-      "status": "in_progress",
+      "status": "completed",
       "started_at": "2026-03-31",
-      "completed_at": null,
+      "completed_at": "2026-03-31",
       "agent_types": ["frontend-tester"],
       "planned_tasks": [
         "Run grep to count hardcoded box-shadow: inset occurrences (baseline)",
@@ -27,12 +27,36 @@
         "Run full Vitest suite",
         "Commit"
       ],
-      "tasks_completed": [],
-      "deviations": [],
-      "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "tasks_completed": [
+        "Baseline: 31 hardcoded box-shadow: inset 0 0 0 1px occurrences across views/components",
+        "Discovered many files already updated by sessions 0873b/0873g running out-of-order",
+        "6 files had pending changes: ProductSelector, BroadcastPanel, AgentJobModal, JobsTab, LaunchTab, ProjectTabs",
+        "Added smooth-border class to template elements for all container/panel/pill-button elements",
+        "Pill buttons (pill-filter, pill-btn, pill-toggle): added smooth-border class + replaced box-shadow with --smooth-border-color CSS variable",
+        "Hover states with combined drop+inset shadows: replaced hardcoded rgba with var(--smooth-border-color, rgba(...))",
+        "::v-deep(.v-field) input overrides: replaced with var(--smooth-border-color, rgba(...))",
+        "ProjectsView blanket :deep(.v-card) rule: not found — already handled by prior sessions",
+        "Verification grep: 10 remaining hits all use var(--smooth-border-color, ...) token — zero hardcoded hex/rgba remaining",
+        "All 1916 Vitest tests passed",
+        "Commit f50f3a4e: 7 files, 177 insertions, 33 deletions"
+      ],
+      "deviations": [
+        "Session ran after 0873b/0873g (out-of-order) — many target files were already updated by later sessions",
+        "ProjectsView blanket :deep(.v-card) SPECIAL CASE: not found — already resolved by prior sessions",
+        "WelcomeView hover states (3 occurrences): can't use utility class on :hover pseudo-states — replaced with var(--smooth-border-color, ...) in CSS, combined drop shadow preserved",
+        "NavigationDrawer edge-toggle-tab hover: uses primary theme color — replaced with var(--smooth-border-color, rgb(var(--v-theme-primary)))",
+        "Verification target was ZERO hardcoded hits — achieved; 10 remaining hits all use the token pattern (not hardcoded)",
+        "TasksView :deep(.v-field) lines 850/863: already token-based from prior work — 2 token-based hits remain in grep (inside :deep() selectors, line content doesn't include :deep())"
+      ],
+      "blockers_encountered": [
+        "Pre-commit mixed-line-ending hook fired on first commit attempt — re-staged and committed successfully on second attempt"
+      ],
+      "notes_for_next": "0873c (Table Header Pattern Extraction): smooth-border enforcement is complete. All remaining box-shadow hits use var(--smooth-border-color, ...) token. The verification grep shows 10 token-based hits (not hardcoded). Files with scoped pill buttons now set --smooth-border-color as CSS variable and rely on smooth-border class for the box-shadow rule itself.",
+      "cascading_impacts": [
+        "smooth-border class is now the canonical pattern for all pill buttons and container panels",
+        "--smooth-border-color CSS variable used on pill-filter, pill-btn, pill-toggle classes to pass custom colors to the smooth-border utility"
+      ],
+      "summary": "smooth-border enforcement complete across all target files. 31 hardcoded occurrences reduced to 10 token-based uses of var(--smooth-border-color). All 1916 tests pass."
     },
     {
       "session_id": "0873b",
@@ -135,8 +159,8 @@
       "handover": "handovers/0873_style_centralization_sweep.md",
       "handover_section": "### 0873d",
       "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-03-31",
       "completed_at": null,
       "agent_types": ["frontend-tester"],
       "planned_tasks": [
@@ -162,8 +186,8 @@
       "handover": "handovers/0873_style_centralization_sweep.md",
       "handover_section": "### 0873e",
       "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-03-31",
       "completed_at": null,
       "agent_types": ["frontend-tester"],
       "planned_tasks": [
@@ -188,8 +212,8 @@
       "handover": "handovers/0873_style_centralization_sweep.md",
       "handover_section": "### 0873f",
       "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-03-31",
       "completed_at": null,
       "agent_types": ["frontend-tester"],
       "planned_tasks": [
