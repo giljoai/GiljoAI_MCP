@@ -314,7 +314,7 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 @use '../../styles/design-tokens' as *;
 .panel-card {
-  background: var(--bg-raised, #1a2a3c);
+  background: $elevation-raised;
   border-radius: $border-radius-rounded;
 }
 

@@ -480,7 +480,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 @use '../../styles/design-tokens' as *;
 .broadcast-panel-card {
-  background: var(--bg-raised, #1a2a3c);
+  background: $elevation-raised;
   border-radius: $border-radius-rounded;
 }
 
