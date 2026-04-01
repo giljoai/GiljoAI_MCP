@@ -1,7 +1,7 @@
 <template>
-  <v-card data-test="workspace-card">
+  <v-card variant="flat" class="smooth-border identity-card" data-test="workspace-card">
     <v-card-title>Identity</v-card-title>
-    <v-card-subtitle>Workspace and user management</v-card-subtitle>
+    <v-card-subtitle class="identity-subtitle">Workspace and user management</v-card-subtitle>
 
     <v-card-text>
       <!-- Loading State -->
@@ -160,3 +160,14 @@ function resetForm() {
   }
 }
 </script>
+
+<style scoped>
+.identity-card {
+  background: var(--bg-raised, #1e3147);
+  border-radius: 16px;
+}
+
+.identity-subtitle {
+  color: #8895a8;
+}
+</style>

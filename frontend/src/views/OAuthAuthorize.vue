@@ -2,7 +2,7 @@
   <v-container fluid class="fill-height oauth-container">
     <v-row align="center" justify="center">
       <v-col cols="12" sm="8" md="5" lg="4">
-        <v-card elevation="8" class="oauth-card">
+        <v-card elevation="8" class="oauth-card smooth-border">
           <!-- Header -->
           <v-card-title class="text-center pa-6">
             <div class="d-flex flex-column align-center w-100">
@@ -17,7 +17,7 @@
               <h1 class="text-h5 font-weight-bold">
                 {{ isAuthenticated ? 'Authorize Application' : 'Sign In to Continue' }}
               </h1>
-              <p class="text-body-2 text-medium-emphasis mt-2">
+              <p class="text-body-2 text-muted-a11y mt-2">
                 {{ isAuthenticated
                   ? 'An application is requesting access to your account'
                   : 'Authentication is required to authorize this application'
@@ -124,7 +124,7 @@
               </v-avatar>
               <div>
                 <p class="text-subtitle-1 font-weight-medium">{{ clientDisplayName }}</p>
-                <p class="text-caption text-medium-emphasis">wants to access your account</p>
+                <p class="text-caption text-muted-a11y">wants to access your account</p>
               </div>
             </div>
 
@@ -154,8 +154,8 @@
 
             <!-- User identity -->
             <div class="d-flex align-center mb-4">
-              <v-icon size="18" color="text-medium-emphasis" class="mr-2">mdi-account-circle</v-icon>
-              <span class="text-body-2 text-medium-emphasis">
+              <v-icon size="18" class="mr-2 text-muted-a11y">mdi-account-circle</v-icon>
+              <span class="text-body-2 text-muted-a11y">
                 Signed in as <strong>{{ currentUser?.username }}</strong>
               </span>
             </div>
@@ -191,7 +191,7 @@
 
           <!-- Footer -->
           <v-card-text class="text-center pa-4">
-            <p class="text-caption text-medium-emphasis">
+            <p class="text-caption text-muted-a11y">
               <v-icon size="small" class="mr-1">mdi-shield-lock</v-icon>
               You will be redirected back to the application after authorization
             </p>

@@ -14,7 +14,7 @@
 
     <!-- Section Selection Panel -->
     <v-expand-transition>
-      <v-card v-if="panelOpen" variant="outlined" class="mt-3">
+      <v-card v-if="panelOpen" variant="flat" class="mt-3 smooth-border" style="border-radius: 12px">
         <v-card-title class="text-subtitle-1 d-flex align-center">
           <v-icon start size="20">mdi-format-list-checks</v-icon>
           Select Sections to Tune
@@ -108,7 +108,7 @@
 
     <!-- Generated Prompt Display -->
     <v-expand-transition>
-      <v-card v-if="generatedPrompt" variant="outlined" class="mt-3">
+      <v-card v-if="generatedPrompt" variant="flat" class="mt-3 smooth-border" style="border-radius: 12px">
         <v-card-title class="text-subtitle-1 d-flex align-center">
           <v-icon start size="20">mdi-text-box-outline</v-icon>
           Generated Tuning Prompt

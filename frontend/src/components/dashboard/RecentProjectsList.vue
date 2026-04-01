@@ -1,45 +1,28 @@
 <template>
   <div class="recent-projects-list">
-    <div v-if="projects.length === 0" class="text-caption text-disabled pa-3 text-center">
+    <div v-if="projects.length === 0" class="no-data-text">
       No completed projects yet
     </div>
-    <v-list
-      v-else
-      density="compact"
-      bg-color="transparent"
-      class="pa-0 projects-scroll"
-    >
-      <v-list-item
+    <div v-else class="projects-scroll">
+      <div
         v-for="project in projects"
         :key="project.id"
-        class="px-2 py-1 project-row clickable-row"
+        class="project-row"
         @click="emit('review-project', project)"
       >
-        <template v-slot:prepend>
-          <!-- project_type_color fallback: design-token-exempt (Vuetify color prop, $color-text-muted) -->
-          <v-chip
-            v-if="project.taxonomy_alias"
-            size="x-small"
-            variant="flat"
-            :color="project.project_type_color || '#9e9e9e'"
-            class="mr-2 taxonomy-chip"
-          >
-            {{ project.taxonomy_alias }}
-          </v-chip>
-        </template>
-
-        <v-list-item-title class="text-body-2">
+        <span v-if="project.taxonomy_alias" class="project-taxonomy" :style="taxonomyStyle(project)">
+          {{ project.taxonomy_alias }}
+        </span>
+        <span class="project-name">
           {{ project.name }}
-          <span v-if="project.product_name" class="text-caption text-medium-emphasis ml-2">({{ project.product_name }})</span>
-        </v-list-item-title>
-
-        <template v-slot:append>
-          <span class="text-caption text-medium-emphasis completion-date">
-            {{ formatDateTime(project.completed_at) }}
-          </span>
-        </template>
-      </v-list-item>
-    </v-list>
+          <span v-if="project.product_name" class="project-product">({{ project.product_name }})</span>
+        </span>
+        <span class="project-time">{{ formatDateTime(project.completed_at) }}</span>
+        <span class="project-status" :class="statusClass(project.status)">
+          {{ capitalize(project.status) }}
+        </span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -56,6 +39,28 @@ defineProps({
 })
 
 const emit = defineEmits(['review-project'])
+
+function hexToRgb(hex) {
+  const h = hex.replace('#', '')
+  return `${parseInt(h.substring(0, 2), 16)}, ${parseInt(h.substring(2, 4), 16)}, ${parseInt(h.substring(4, 6), 16)}`
+}
+
+function taxonomyStyle(project) {
+  const color = project.project_type_color || '#9e9e9e' /* design-token-exempt: dynamic taxonomy color */
+  return {
+    background: `rgba(${hexToRgb(color)}, 0.15)`,
+    color,
+  }
+}
+
+function statusClass(status) {
+  return status ? status.toLowerCase() : ''
+}
+
+function capitalize(str) {
+  if (!str) return ''
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
 </script>
 
 <style scoped lang="scss">
@@ -67,30 +72,84 @@ const emit = defineEmits(['review-project'])
 }
 
 .project-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
   border-bottom: 1px solid $color-border-tertiary;
-  min-height: 36px;
-}
-
-.project-row:last-child {
-  border-bottom: none;
-}
-
-.taxonomy-chip {
-  font-size: 0.65rem;
-  font-weight: 600;
-  min-width: 40px;
-  justify-content: center;
-}
-
-.completion-date {
-  white-space: nowrap;
-}
-
-.clickable-row {
+  transition: background 0.15s;
   cursor: pointer;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.02);
+    margin: 0 -18px;
+    padding: 10px 18px;
+  }
 }
 
-.clickable-row:hover {
-  background: rgba(255, 255, 255, 0.04);
+.project-taxonomy {
+  padding: 2px 8px;
+  border-radius: $border-radius-sharp;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+  min-width: 48px;
+  text-align: center;
+}
+
+.project-name {
+  flex: 1;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: $color-text-primary;
+}
+
+.project-product {
+  font-size: 0.68rem;
+  color: var(--text-muted, #8895a8);
+  margin-left: 4px;
+}
+
+.project-time {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.58rem;
+  color: var(--text-muted, #8895a8);
+  flex-shrink: 0;
+  min-width: 56px;
+  text-align: right;
+}
+
+.project-status {
+  padding: 2px 8px;
+  border-radius: $border-radius-pill;
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  flex-shrink: 0;
+  min-width: 68px;
+  text-align: center;
+
+  /* design-token-exempt: status chip colors — functional semantic colors */
+  &.active { background: #ffffff; color: #333333; }
+  &.inactive { background: #9e9e9e; color: #1a237e; }
+  &.completed { background: #67bd6d; color: $color-background-primary; }
+  &.cancelled { background: $color-brand-yellow; color: $color-background-primary; }
+  &.terminated { background: #c6298c; color: $color-text-primary; }
+  &.staged { background: #ffc107; color: $color-background-primary; }
+}
+
+.no-data-text {
+  font-size: 0.75rem;
+  color: var(--text-muted, #8895a8);
+  padding: 8px 0;
+  text-align: center;
 }
 </style>

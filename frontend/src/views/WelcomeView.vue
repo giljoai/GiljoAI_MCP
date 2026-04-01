@@ -1,87 +1,123 @@
 <template>
-  <v-container fluid class="fill-height welcome-container">
-    <v-row align="center" justify="center">
-      <v-col cols="12" md="8" lg="6">
-        <v-card elevation="0" class="text-center pa-8">
-          <!-- Gil mascot (blinking) on top -->
-          <div class="mascot-wrapper mb-4">
-            <GilMascot :size="150" :dark-eyes="false" />
+  <div class="welcome-wrapper">
+    <div class="welcome-atmosphere"></div>
+    <div class="welcome-page">
+
+      <!-- HERO -->
+      <div class="hero">
+        <div class="hero-mascot">
+          <div class="hero-mascot-glow"></div>
+          <div class="hero-mascot-inner">
+            <GilMascot :size="88" :dark-eyes="false" />
           </div>
+        </div>
+        <h1 class="hero-greeting">{{ fullGreeting }}</h1>
+        <p class="hero-subtitle">
+          The context engineering platform for AI-assisted development.<br>
+          <span class="hero-subtitle-dim">Define your product once — every agent starts with the full picture.</span>
+        </p>
+      </div>
 
-          <!-- Friendly greeting with user's first name -->
-          <h1 class="text-h4 mb-2 font-weight-bold">
-            {{ fullGreeting }}
-          </h1>
-          <p class="text-subtitle-1 text-medium-emphasis mb-6">
-            Intelligent multi-agent coordination for complex software development
-          </p>
-
-          <!-- Setup wizard CTA -->
-          <div class="mb-6">
-            <v-btn
-              v-if="!setupComplete"
-              color="primary"
-              size="large"
-              prepend-icon="mdi-rocket-launch"
-              @click="showSetupOverlay = true"
-            >
-              {{ setupCtaLabel }}
-            </v-btn>
-            <v-btn
-              v-else
-              color="primary"
-              variant="outlined"
-              size="large"
-              prepend-icon="mdi-book-open-variant"
-              @click="showSetupOverlay = true"
-            >
-              How to Use GiljoAI MCP
-            </v-btn>
+      <!-- QUICK LAUNCH -->
+      <div class="section-label">Quick Launch</div>
+      <div class="quick-grid">
+        <div
+          v-for="(card, i) in quickCards"
+          :key="card.title"
+          class="quick-card smooth-border"
+          :style="{ '--card-accent': card.accent, animationDelay: (0.15 + i * 0.07) + 's' }"
+          @click="$router.push(card.to)"
+        >
+          <div
+            class="quick-card-icon"
+            :style="{ background: card.iconBg, color: card.iconColor }"
+          >
+            <v-icon size="20">{{ card.icon }}</v-icon>
           </div>
+          <div class="quick-card-title">{{ card.title }}</div>
+          <div class="quick-card-desc">{{ card.description }}</div>
+          <span v-if="card.badge" class="quick-card-badge">{{ card.badge }}</span>
+        </div>
+      </div>
 
-          <v-divider class="my-6"></v-divider>
+      <!-- YOUR TEAM -->
+      <div class="team-section">
+        <div class="team-header">
+          <div class="section-label" style="margin-bottom:0;">Your Team</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="team-slots">{{ activeTemplates.length }} / {{ totalSlots }} slots</span>
+            <router-link to="/Settings" class="team-manage">
+              <v-icon size="14">mdi-cog-outline</v-icon> Manage
+            </router-link>
+          </div>
+        </div>
+        <div class="team-grid">
+          <div
+            v-for="tmpl in activeTemplates"
+            :key="tmpl.id"
+            class="team-card smooth-border"
+          >
+            <div class="team-avatar-wrap">
+              <div
+                class="team-avatar"
+                :style="{
+                  background: tintedBg(tmpl.color),
+                  color: tmpl.color,
+                }"
+              >
+                {{ tmpl.badge }}
+              </div>
+            </div>
+            <div class="team-name">{{ tmpl.name }}</div>
+            <div class="team-desc">{{ tmpl.description }}</div>
+          </div>
+          <div
+            v-for="n in emptySlots"
+            :key="'empty-' + n"
+            class="team-card empty-slot"
+          >
+            <div class="team-avatar-wrap">
+              <div class="team-avatar empty-avatar">
+                <v-icon size="16">mdi-plus</v-icon>
+              </div>
+            </div>
+            <div class="team-name" style="color:var(--text-muted);">Empty Slot</div>
+            <div class="team-desc">Add an agent</div>
+          </div>
+        </div>
+      </div>
 
-          <!-- Quick navigation -->
-          <v-row class="mt-2">
-            <v-col cols="12" md="4">
-              <v-btn
-                to="/Dashboard"
-                color="primary"
-                size="large"
-                block
-                prepend-icon="mdi-view-dashboard"
-              >
-                Dashboard
-              </v-btn>
-            </v-col>
-            <v-col cols="12" md="4">
-              <v-btn
-                to="/Products"
-                color="primary"
-                variant="outlined"
-                size="large"
-                block
-                prepend-icon="mdi-package-variant"
-              >
-                Products
-              </v-btn>
-            </v-col>
-            <v-col cols="12" md="4">
-              <v-btn
-                to="/Projects"
-                color="primary"
-                variant="outlined"
-                size="large"
-                block
-                prepend-icon="mdi-folder-multiple"
-              >
-                Projects
-              </v-btn>
-            </v-col>
-          </v-row>
-        </v-card>
-      </v-col>
-    </v-row>
+      <!-- CONDITIONAL SECTION: Setup or Recent Projects -->
+      <div v-if="!setupComplete" class="setup-cta-section">
+        <div class="setup-cta smooth-border" @click="showSetupOverlay = true">
+          <v-icon size="24" color="#ffc300">mdi-rocket-launch</v-icon>
+          <div class="setup-cta-text">
+            <div class="setup-cta-title">{{ setupCtaLabel }}</div>
+            <div class="setup-cta-desc">Configure AI tools, connect integrations, and learn the basics.</div>
+          </div>
+          <v-icon size="18" style="color:var(--text-muted);">mdi-chevron-right</v-icon>
+        </div>
+      </div>
+      <div v-else-if="recentProjects.length > 0" class="recent-projects-section">
+        <div class="recent-projects-panel smooth-border">
+          <div class="rp-header">
+            <span class="rp-title">Recent Projects</span>
+            <router-link to="/Projects" class="rp-link">All Projects →</router-link>
+          </div>
+          <RecentProjectsList
+            :projects="recentProjects"
+            @review-project="handleReviewProject"
+          />
+        </div>
+      </div>
+
+      <!-- FOOTER -->
+      <div class="page-footer">
+        <span class="footer-item">Community Edition</span>
+        <span class="footer-dot"></span>
+        <span class="footer-item mono">{{ appVersion }}</span>
+      </div>
+    </div>
 
     <!-- Setup wizard overlay -->
     <SetupWizardOverlay
@@ -93,7 +129,7 @@
       @step-complete="handleStepComplete"
       @dismiss="handleDismiss"
     />
-  </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -101,13 +137,18 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useProductStore } from '@/stores/products'
+import { useProjectStore } from '@/stores/projects'
+import { getAgentColor } from '@/config/agentColors'
+import api from '@/services/api'
 import GilMascot from '@/components/GilMascot.vue'
 import SetupWizardOverlay from '@/components/setup/SetupWizardOverlay.vue'
+import RecentProjectsList from '@/components/dashboard/RecentProjectsList.vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const productStore = useProductStore()
+const projectStore = useProjectStore()
 
 // Setup wizard state
 const showSetupOverlay = ref(false)
@@ -119,7 +160,7 @@ const setupSelectedTools = computed(() => userStore.currentUser?.setup_selected_
 
 const setupCtaLabel = computed(() => {
   if (setupStepCompleted.value > 0) return 'Resume Setup'
-  return 'Begin Setup'
+  return 'Getting Started'
 })
 
 async function handleStepComplete({ step, data }) {
@@ -151,6 +192,114 @@ async function handleStepComplete({ step, data }) {
 function handleDismiss() {
   showSetupOverlay.value = false
 }
+
+// Template data
+const templates = ref([])
+const totalSlots = ref(8)
+
+const activeTemplates = computed(() =>
+  templates.value
+    .filter(t => t.is_active)
+    .map(t => {
+      const color = getAgentColor(t.agent_type || t.name)
+      return {
+        id: t.id,
+        name: t.display_name || t.name,
+        description: t.short_description || color.description,
+        badge: color.badge,
+        color: color.hex,
+      }
+    })
+)
+
+const emptySlots = computed(() => Math.max(0, totalSlots.value - activeTemplates.value.length))
+
+function tintedBg(hex) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},0.15)`
+}
+
+// Quick-launch cards — adapt to product state
+const hasActiveProduct = computed(() => !!productStore.activeProduct)
+const activeProjectCount = computed(() => projectStore.activeProjects?.length ?? 0)
+
+const quickCards = computed(() => {
+  if (hasActiveProduct.value) {
+    const productName = productStore.activeProduct?.name || 'your product'
+    return [
+      {
+        title: 'New Project',
+        description: `Launch an orchestrated project with AI agents for ${productName}.`,
+        icon: 'mdi-plus-circle-outline',
+        iconBg: 'rgba(255,195,0,0.1)',
+        iconColor: 'var(--brand-yellow, #ffc300)',
+        accent: 'var(--brand-yellow, #ffc300)',
+        badge: '/gil_add project',
+        to: '/Projects',
+      },
+      {
+        title: 'Active Projects',
+        description: 'Monitor running orchestrations, agent status, and real-time progress.',
+        icon: 'mdi-play-circle-outline',
+        iconBg: 'rgba(109,179,228,0.12)',
+        iconColor: '#6DB3E4',
+        accent: '#6DB3E4',
+        badge: activeProjectCount.value > 0 ? `${activeProjectCount.value} active` : null,
+        to: '/Projects',
+      },
+      {
+        title: 'Task Board',
+        description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
+        icon: 'mdi-clipboard-check-outline',
+        iconBg: 'rgba(172,128,204,0.12)',
+        iconColor: '#AC80CC',
+        accent: '#AC80CC',
+        to: '/Tasks',
+      },
+    ]
+  }
+  return [
+    {
+      title: 'New Product',
+      description: 'Define a product to give your AI agents full context about what they\'re building.',
+      icon: 'mdi-package-variant-closed',
+      iconBg: 'rgba(255,195,0,0.1)',
+      iconColor: 'var(--brand-yellow, #ffc300)',
+      accent: 'var(--brand-yellow, #ffc300)',
+      to: '/Products',
+    },
+    {
+      title: 'Dashboard',
+      description: 'View system stats, recent activity, and orchestration metrics at a glance.',
+      icon: 'mdi-view-dashboard-outline',
+      iconBg: 'rgba(109,179,228,0.12)',
+      iconColor: '#6DB3E4',
+      accent: '#6DB3E4',
+      to: '/Dashboard',
+    },
+    {
+      title: 'Task Board',
+      description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
+      icon: 'mdi-clipboard-check-outline',
+      iconBg: 'rgba(172,128,204,0.12)',
+      iconColor: '#AC80CC',
+      accent: '#AC80CC',
+      to: '/Tasks',
+    },
+  ]
+})
+
+// Recent projects (from dashboard API)
+const recentProjects = ref([])
+
+function handleReviewProject(project) {
+  router.push(`/Projects/${project.id}`)
+}
+
+// Version
+const appVersion = ref('')
 
 // User name and greeting
 const firstName = computed(() => {
@@ -260,8 +409,40 @@ const fullGreeting = computed(() => {
 onMounted(async () => {
   try {
     await productStore.fetchProducts()
+  } catch { /* ignore */ }
+
+  try {
+    await projectStore.fetchProjects()
+  } catch { /* ignore */ }
+
+  // Fetch templates
+  try {
+    const response = await api.templates.list()
+    templates.value = response.data || []
+  } catch { /* ignore */ }
+
+  // Fetch active count for total slots
+  try {
+    const response = await api.templates.activeCount()
+    if (response.data?.max_slots) {
+      totalSlots.value = response.data.max_slots
+    }
+  } catch { /* ignore */ }
+
+  // Fetch recent projects for the bottom section
+  if (setupComplete.value && productStore.effectiveProductId) {
+    try {
+      const response = await api.stats.getDashboard(productStore.effectiveProductId)
+      recentProjects.value = response.data?.recent_projects || []
+    } catch { /* ignore */ }
+  }
+
+  // Get version from meta or package
+  try {
+    const response = await api.stats.getSystem()
+    appVersion.value = response.data?.version || ''
   } catch {
-    // ignore
+    appVersion.value = ''
   }
 
   // Auto-launch overlay on first login or when directed from UserSettings
@@ -277,18 +458,404 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.welcome-container {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--v-theme-primary), 0.05) 0%,
-    rgba(var(--v-theme-surface), 1) 100%
-  );
+.welcome-wrapper {
+  position: relative;
+  min-height: 100%;
 }
-.mascot-wrapper {
+
+.welcome-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 700px 500px at 50% 15%, rgba(255,195,0,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 500px 500px at 80% 60%, rgba(109,179,228,0.03) 0%, transparent 60%);
+}
+
+.welcome-page {
+  position: relative;
+  z-index: 1;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 32px 48px;
+}
+
+/* ═══ HERO ═══ */
+.hero {
+  text-align: center;
+  margin-bottom: 36px;
+  animation: fadeSlideDown 0.6s ease-out;
+}
+
+.hero-mascot {
+  position: relative;
+  display: inline-block;
+  width: 88px;
+  height: 100px;
+  margin-bottom: 20px;
+}
+
+.hero-mascot-inner {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 14px rgba(255,195,0,0.35)) drop-shadow(0 0 36px rgba(107,207,127,0.15));
+  animation: mascotFloat 4s ease-in-out infinite;
+}
+
+.hero-mascot-glow {
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,217,61,0.14) 0%, rgba(107,207,127,0.06) 50%, transparent 70%);
+  z-index: 0;
+  animation: glowPulse 4s ease-in-out infinite;
+}
+
+.hero-greeting {
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  color: var(--color-text-primary, #e1e1e1);
+}
+
+.hero-subtitle {
+  font-size: 0.88rem;
+  color: var(--text-secondary, #a3aac4);
+  font-weight: 300;
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.55;
+}
+
+.hero-subtitle-dim {
+  opacity: 0.7;
+}
+
+/* ═══ SECTION LABEL ═══ */
+.section-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #8895a8);
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+/* ═══ QUICK LAUNCH ═══ */
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 36px;
+}
+
+.quick-card {
+  background: rgb(var(--v-theme-surface));
+  border-radius: 16px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+  animation: fadeSlideUp 0.45s ease-out both;
+}
+
+.quick-card:hover {
+  transform: translateY(-3px);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10), 0 10px 20px -6px rgba(0,0,0,0.25);
+}
+
+.quick-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--card-accent, rgba(255,255,255,0.10));
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.quick-card:hover::before {
+  opacity: 1;
+}
+
+.quick-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+}
+
+.quick-card-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.quick-card-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #a3aac4);
+  line-height: 1.4;
+}
+
+.quick-card-badge {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 2px 8px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--text-muted, #8895a8);
+}
+
+/* ═══ YOUR TEAM ═══ */
+.team-section {
+  margin-bottom: 36px;
+  animation: fadeSlideUp 0.45s ease-out 0.35s both;
+}
+
+.team-header {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
-.mascot-frame {
+
+.team-slots {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--text-muted, #8895a8);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+}
+
+.team-manage {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: #ffc300;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  text-decoration: none;
+}
+
+.team-manage:hover {
+  opacity: 1;
+}
+
+.team-grid {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.team-card {
+  background: rgb(var(--v-theme-surface));
+  border-radius: 16px;
+  padding: 16px 14px 20px;
+  cursor: pointer;
+  transition: all 0.25s;
+  text-align: center;
+  flex: 1;
+  min-width: 120px;
+  max-width: 160px;
+}
+
+.team-card:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10), 0 6px 16px -4px rgba(0,0,0,0.25);
+}
+
+.team-avatar-wrap {
+  width: 44px;
+  margin: 0 auto 8px;
+}
+
+.team-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  transition: box-shadow 0.25s;
+}
+
+.empty-avatar {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted, #8895a8);
+}
+
+.team-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.team-desc {
+  font-size: 0.62rem;
+  color: var(--text-muted, #8895a8);
+  line-height: 1.3;
+}
+
+.team-card.empty-slot {
+  border: 1px dashed rgba(255,255,255,0.1);
+  box-shadow: none;
   background: transparent;
+  opacity: 0.4;
+}
+
+.team-card.empty-slot:hover {
+  opacity: 0.6;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ═══ SETUP CTA ═══ */
+.setup-cta-section {
+  margin-bottom: 36px;
+  animation: fadeSlideUp 0.45s ease-out 0.42s both;
+}
+
+.setup-cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.setup-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10), 0 6px 16px -4px rgba(0,0,0,0.25);
+}
+
+.setup-cta-text {
+  flex: 1;
+}
+
+.setup-cta-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.setup-cta-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #a3aac4);
+}
+
+/* ═══ RECENT PROJECTS ═══ */
+.recent-projects-section {
+  margin-bottom: 36px;
+  animation: fadeSlideUp 0.45s ease-out 0.42s both;
+}
+
+.recent-projects-panel {
+  background: rgb(var(--v-theme-surface));
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.rp-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rp-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.rp-link {
+  font-size: 0.68rem;
+  color: #ffc300;
+  cursor: pointer;
+  font-weight: 500;
+  opacity: 0.7;
+  text-decoration: none;
+}
+
+.rp-link:hover {
+  opacity: 1;
+}
+
+/* ═══ FOOTER ═══ */
+.page-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  animation: fadeSlideUp 0.45s ease-out 0.55s both;
+}
+
+.footer-item {
+  font-size: 0.68rem;
+  color: var(--text-muted, #8895a8);
+}
+
+.footer-item.mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.footer-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-muted, #8895a8);
+  opacity: 0.5;
+}
+
+/* ═══ ANIMATIONS ═══ */
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mascotFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+/* ═══ RESPONSIVE ═══ */
+@media (max-width: 960px) {
+  .welcome-page {
+    padding: 32px 20px 40px;
+  }
+  .quick-grid {
+    grid-template-columns: 1fr;
+  }
+  .team-card {
+    min-width: 100px;
+  }
 }
 </style>

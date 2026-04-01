@@ -4,15 +4,15 @@
  * Tests for consistent tab styling across the application.
  *
  * Post-refactor notes:
- * - All tab components now use v-btn-toggle (not v-tabs)
- * - global-tabs class is no longer used on v-tabs
+ * - ProductForm uses v-btn-toggle for tab navigation
+ * - ProjectTabs uses pill-button toggles (0871c)
+ * - UserSettings and SystemSettings use pill-button toggles (0871b)
  * - global-tabs-window class is used on v-window for tab content
- * - Opacity and transitions handled via v-btn-toggle CSS
  *
  * Components tested:
- * - ProjectTabs.vue (v-btn-toggle)
- * - UserSettings.vue (v-btn-toggle)
- * - SystemSettings.vue (v-btn-toggle)
+ * - ProjectTabs.vue (pill-toggle buttons)
+ * - UserSettings.vue (pill-toggle buttons)
+ * - SystemSettings.vue (pill-toggle buttons)
  * - ProductForm.vue (v-btn-toggle)
  *
  * Note on testing strategy:
@@ -106,7 +106,7 @@ const globalStubs = {
 
 describe('Global Tab Styles', () => {
   describe('Tab Implementation Standard', () => {
-    it('ProjectTabs uses v-btn-toggle for tab navigation', async () => {
+    it('ProjectTabs uses pill-button toggles for tab navigation', async () => {
       const pinia = createPinia()
       const wrapper = mount(ProjectTabs, {
         props: {
@@ -123,15 +123,14 @@ describe('Global Tab Styles', () => {
 
       await wrapper.vm.$nextTick()
 
-      // In the mocked Vuetify environment, v-btn-toggle renders as a
-      // custom element tag since it is not in the global stubs list.
-      const html = wrapper.html()
-      expect(html).toContain('v-btn-toggle')
+      const pills = wrapper.findAll('.pill-btn')
+      expect(pills.length).toBeGreaterThanOrEqual(2)
+      expect(wrapper.find('.tab-pills').exists()).toBe(true)
     })
   })
 
   describe('UserSettings Component', () => {
-    it('uses v-btn-toggle for tab navigation', async () => {
+    it('uses pill-toggle buttons for tab navigation', async () => {
       const pinia = createPinia()
       const wrapper = mount(UserSettings, {
         global: {
@@ -142,8 +141,9 @@ describe('Global Tab Styles', () => {
 
       await wrapper.vm.$nextTick()
 
-      const html = wrapper.html()
-      expect(html).toContain('v-btn-toggle')
+      const pills = wrapper.findAll('.pill-toggle')
+      expect(pills.length).toBe(6)
+      expect(wrapper.find('.pill-toggle-row').exists()).toBe(true)
     })
 
     it('uses global-tabs-window class on v-window', () => {
@@ -157,7 +157,7 @@ describe('Global Tab Styles', () => {
   })
 
   describe('SystemSettings Component', () => {
-    it('uses v-btn-toggle for tab navigation', async () => {
+    it('uses pill-toggle buttons for tab navigation', async () => {
       const pinia = createPinia()
       const wrapper = mount(SystemSettings, {
         global: {
@@ -168,8 +168,9 @@ describe('Global Tab Styles', () => {
 
       await wrapper.vm.$nextTick()
 
-      const html = wrapper.html()
-      expect(html).toContain('v-btn-toggle')
+      const pills = wrapper.findAll('.pill-toggle')
+      expect(pills.length).toBe(5)
+      expect(wrapper.find('.pill-toggle-row').exists()).toBe(true)
     })
 
     it('uses global-tabs-window class on v-window', () => {
@@ -212,30 +213,46 @@ describe('Global Tab Styles', () => {
   })
 
   describe('Tab Class Consistency', () => {
-    it('all tab components use v-btn-toggle consistently', async () => {
+    it('ProductForm uses v-btn-toggle', async () => {
+      const pinia = createPinia()
+
+      const wrapper = mount(ProductForm, {
+        props: { modelValue: true, product: null, isEdit: false },
+        global: {
+          plugins: [pinia, vuetify],
+          stubs: globalStubs,
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      const html = wrapper.html()
+      expect(html).toContain('v-btn-toggle')
+    })
+
+    it('ProjectTabs uses pill-button toggles', async () => {
+      const pinia = createPinia()
+
+      const wrapper = mount(ProjectTabs, {
+        props: { project: { id: 'test', name: 'Test' } },
+        global: {
+          plugins: [pinia, vuetify],
+          stubs: globalStubs,
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      const pills = wrapper.findAll('.pill-btn')
+      expect(pills.length).toBeGreaterThanOrEqual(2)
+    })
+
+    it('UserSettings and SystemSettings use pill-toggle buttons', async () => {
       const pinia = createPinia()
 
       const configs = [
-        {
-          name: 'ProjectTabs',
-          component: ProjectTabs,
-          props: { project: { id: 'test', name: 'Test' } },
-        },
-        {
-          name: 'UserSettings',
-          component: UserSettings,
-          props: {},
-        },
-        {
-          name: 'SystemSettings',
-          component: SystemSettings,
-          props: {},
-        },
-        {
-          name: 'ProductForm',
-          component: ProductForm,
-          props: { modelValue: true, product: null, isEdit: false },
-        },
+        { name: 'UserSettings', component: UserSettings, props: {}, expectedPills: 6 },
+        { name: 'SystemSettings', component: SystemSettings, props: {}, expectedPills: 5 },
       ]
 
       for (const config of configs) {
@@ -249,8 +266,8 @@ describe('Global Tab Styles', () => {
 
         await wrapper.vm.$nextTick()
 
-        const html = wrapper.html()
-        expect(html).toContain('v-btn-toggle')
+        const pills = wrapper.findAll('.pill-toggle')
+        expect(pills.length).toBe(config.expectedPills)
       }
     })
   })

@@ -1,5 +1,5 @@
 <template>
-  <v-card variant="outlined" class="mb-4">
+  <v-card variant="flat" class="mb-4 smooth-border">
     <v-card-text>
       <div class="d-flex align-center mb-3">
         <v-icon size="28" class="mr-2" color="primary">mdi-export</v-icon>
@@ -13,27 +13,33 @@
       </div>
 
       <div class="mb-5">
-        <p class="text-body-2 text-medium-emphasis mb-4">
+        <p class="text-body-2 text-muted-a11y mb-4">
           Generate a setup prompt for your AI coding agents.
         </p>
 
-        <v-card variant="tonal" class="mb-0">
+        <v-card variant="flat" class="mb-0 smooth-border">
           <v-card-text class="pa-3">
             <div class="d-flex flex-wrap justify-center" style="gap: 25px;">
               <div v-for="p in platforms" :key="p.id" class="d-flex align-center gap-2">
-                <v-avatar size="24" rounded="0">
-                  <v-img :src="p.icon" :alt="p.label" />
-                </v-avatar>
-                <v-btn
-                  variant="flat"
-                  color="primary"
-                  :loading="setupLoading[p.id]"
+                <button
+                  class="export-pill"
+                  :class="{ 'export-pill--loading': setupLoading[p.id] }"
                   :disabled="setupLoading[p.id]"
                   :data-testid="`setup-${p.id}`"
                   @click="generateBootstrapPrompt(p.id)"
                 >
-                  {{ p.buttonLabel }}
-                </v-btn>
+                  <v-avatar size="20" rounded="0" class="mr-1">
+                    <v-img :src="p.icon" :alt="p.label" />
+                  </v-avatar>
+                  <span>{{ p.buttonLabel }}</span>
+                  <v-progress-circular
+                    v-if="setupLoading[p.id]"
+                    size="14"
+                    width="2"
+                    indeterminate
+                    class="ml-1"
+                  />
+                </button>
                 <v-tooltip v-if="p.experimental" location="top">
                   <template #activator="{ props: ttProps }">
                     <v-icon v-bind="ttProps" size="small" color="warning">mdi-alert</v-icon>
@@ -53,7 +59,7 @@
             <div class="d-flex align-center text-light-blue" style="font-size: 0.8125rem;">
               <v-icon start size="small">mdi-download</v-icon>
               Manual Downloads
-              <span class="text-caption text-medium-emphasis ml-2">(advanced)</span>
+              <span class="text-caption text-muted-a11y ml-2">(advanced)</span>
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
@@ -226,6 +232,7 @@ async function downloadZip(contentType, platform) {
 </script>
 
 <style scoped>
+
 code {
   background-color: rgba(var(--v-theme-on-surface), 0.05);
   padding: 2px 6px;
@@ -241,5 +248,33 @@ code {
 .manual-downloads-title {
   padding: 8px 0 !important;
   min-height: unset !important;
+}
+
+.export-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 6px 16px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: rgba(255, 195, 0, 0.12);
+  color: #ffc300;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+
+.export-pill:hover {
+  background: rgba(255, 195, 0, 0.2);
+}
+
+.export-pill--loading {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.export-pill:disabled {
+  cursor: wait;
 }
 </style>

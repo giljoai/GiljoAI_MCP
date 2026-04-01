@@ -43,6 +43,9 @@ Every handover MUST include: `**Edition Scope:** CE | SaaS | Both`
 - Handover numbering: check `handovers/handover_catalogue.md` for the catalogue and available gaps
 - Database migrations: incremental migrations must include idempotency guards; baseline is squashed periodically (see `handovers/HANDOVER_INSTRUCTIONS.md` Migration Protocol)
 - **Smooth borders on rounded elements:** Never use CSS `border` on rounded cards, chips, or pill buttons. Use the global `smooth-border` class from `main.scss` which applies `box-shadow: inset` instead. This renders anti-aliased curves on all zoom levels and Windows display scaling. Variants: `.smooth-border` (1px theme), `.smooth-border-2` (2px theme), `.smooth-border-accent` (2px brand yellow). Custom color: `style="--smooth-border-color: #hex"`.
+- **Agent color palette (Luminous Pastels):** Orchestrator `#D4B08A`, Analyzer `#E07872`, Implementer `#6DB3E4`, Documenter `#5EC48E`, Reviewer `#AC80CC`, Tester `#EDBA4A`. All pass WCAG AA contrast on `#182739` background. Colors are defined in `design-tokens.scss` (SCSS) and `agentColors.js` (JS). Use `getAgentColor()` or CSS `var(--agent-*-primary)` — never hardcode hex values.
+- **Tinted badge style:** Agent badges use `rgba(agent_color, 0.15)` background + full-brightness agent color text, with `border-radius: 8px` (square, not round). Use `hexToRgba()` from `@/utils/colorUtils` for inline styles.
+- **WCAG AA text accessibility:** `--text-muted` is `#8895a8` (4.98:1 on `#182739`). Never use Vuetify's `text-medium-emphasis` class — use a scoped CSS class with `color: #8895a8` instead. `--text-secondary` is `#a3aac4` (6.56:1).
 
 ## Key Documents
 
