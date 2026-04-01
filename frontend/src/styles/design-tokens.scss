@@ -158,6 +158,7 @@ $border-width-thick: 3px; // Active tab borders
 // Border radius (canonical — DO NOT add duplicates to variables.scss)
 $border-radius-sharp: 4px; // Tight corners, scrollbars, inputs
 $border-radius-default: 8px; // Panels, buttons, standard elements
+$border-radius-md: 12px; // Medium — dialogs, cards, product tiles (10+ files)
 $border-radius-rounded: 16px; // Cards, containers
 $border-radius-pill: 9999px; // Pills, tags, chips
 

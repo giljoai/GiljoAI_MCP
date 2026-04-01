@@ -251,15 +251,16 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 .v-data-table {
-  border-radius: 8px;
+  border-radius: $border-radius-default;
 }
 
 code {
   background-color: rgba(var(--v-theme-surface-variant), 0.5);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   font-family: 'Courier New', monospace;
 }
 

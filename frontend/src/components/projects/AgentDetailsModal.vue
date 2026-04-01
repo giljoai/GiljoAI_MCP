@@ -229,7 +229,8 @@ watch(
 )
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .template-content-card {
   max-height: 500px;
   overflow-y: auto;
@@ -254,7 +255,7 @@ watch(
 .agent-tinted-badge {
   display: inline-block;
   padding: 2px 10px;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   font-size: 0.75rem;
   font-weight: 600;
 }

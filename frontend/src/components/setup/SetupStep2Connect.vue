@@ -451,7 +451,7 @@ onUnmounted(() => {
   padding: 8px 16px;
   background: $elevation-elevated;
   border: none;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   color: $lightest-blue;
   cursor: pointer;
   font-size: 0.8125rem;
@@ -576,7 +576,7 @@ onUnmounted(() => {
 .config-block {
   position: relative;
   background: $color-background-primary;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   padding: 0;
   margin-bottom: 12px;
   overflow: hidden;

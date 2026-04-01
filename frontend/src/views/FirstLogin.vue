@@ -366,7 +366,8 @@ async function handleSubmit() {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 .first-login-container {
   background: linear-gradient(135deg, rgb(30, 49, 71) 0%, rgb(18, 29, 42) 100%);
   min-height: 100vh;
@@ -380,14 +381,14 @@ async function handleSubmit() {
 }
 
 .first-login-card {
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .requirement-list {
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   padding: 12px;
 }
 
@@ -400,7 +401,7 @@ async function handleSubmit() {
 .v-text-field:focus-within {
   outline: 2px solid rgba(var(--v-theme-primary), 0.5);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
 }
 
 .v-btn:focus-visible {

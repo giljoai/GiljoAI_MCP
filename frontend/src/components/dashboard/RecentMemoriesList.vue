@@ -179,7 +179,7 @@ function relativeTime(timestamp) {
 .memory-icon {
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: $border-radius-sharp;
   display: grid;
   place-items: center;
   font-size: 12px;

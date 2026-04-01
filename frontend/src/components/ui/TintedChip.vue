@@ -25,7 +25,8 @@ const chipStyle = computed(() => ({
 }))
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .tinted-chip {
   display: inline-flex;
   align-items: center;
@@ -34,11 +35,11 @@ const chipStyle = computed(() => ({
   font-weight: 600;
   line-height: 1.4;
   white-space: nowrap;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
 }
 
 .tinted-chip--pill {
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
 }
 
 .tinted-chip--sm {

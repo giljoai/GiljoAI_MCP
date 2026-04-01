@@ -831,7 +831,7 @@ onMounted(async () => {
   flex-direction: column;
   box-shadow: inset 0 0 0 1px $color-border-subtle !important;
   border: none !important;
-  border-radius: 16px !important;
+  border-radius: $border-radius-rounded !important;
 }
 
 /* 0870h: filter bar layout */
@@ -849,7 +849,7 @@ onMounted(async () => {
 
 .filter-search :deep(.v-field) {
   box-shadow: inset 0 0 0 1px $color-border-subtle;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
 }
 
 .filter-search :deep(.v-field:focus-within) {
@@ -862,7 +862,7 @@ onMounted(async () => {
 
 .filter-select :deep(.v-field) {
   box-shadow: inset 0 0 0 1px $color-border-subtle;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
 }
 
 .filter-clear-btn {
@@ -936,7 +936,7 @@ onMounted(async () => {
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   font-size: 0.65rem;
   font-weight: 600;
   min-width: 100px;
@@ -967,7 +967,7 @@ onMounted(async () => {
 .priority-pill {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   font-size: 0.62rem;
   font-weight: 500;
 }
@@ -1015,7 +1015,7 @@ onMounted(async () => {
 .category-pill {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   font-size: 0.62rem;
   font-weight: 500;
   background: rgba(255, 255, 255, 0.05);
@@ -1066,7 +1066,7 @@ onMounted(async () => {
 
 .inline-select:hover :deep(.v-field) {
   background-color: rgba(255, 255, 255, 0.03);
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
 }
 
 .inline-select :deep(.v-input__control) {
@@ -1098,7 +1098,7 @@ onMounted(async () => {
 /* Date text clickable styling */
 .date-text-clickable {
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   display: inline-block;
   transition: background-color 0.2s ease;
   font-size: 0.72rem;
@@ -1113,7 +1113,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   padding: 8px 4px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   transition: all 0.2s ease;
   min-height: 48px;
   cursor: pointer;

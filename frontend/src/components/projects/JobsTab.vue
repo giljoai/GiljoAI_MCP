@@ -962,7 +962,7 @@ async function copyToClipboard(text) {
 
   .table-container {
     background: $elevation-raised;
-    border-radius: 16px;
+    border-radius: $border-radius-rounded;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
     margin-bottom: 16px;
     overflow: hidden;
@@ -1015,7 +1015,7 @@ async function copyToClipboard(text) {
             .agent-pill {
               display: inline-block;
               padding: 2px 10px;
-              border-radius: 12px;
+              border-radius: $border-radius-md;
               font-size: 0.68rem;
               font-weight: 600;
               white-space: nowrap;
@@ -1098,7 +1098,7 @@ async function copyToClipboard(text) {
             font-size: 0.68rem;
             font-weight: 600;
             padding: 2px 8px;
-            border-radius: 10px;
+            border-radius: $border-radius-default;
             background-color: rgba(251, 192, 45, 0.15); // design-token-exempt: tinted amber phase badge
             color: #FBC02D; // design-token-exempt: amber phase text
             white-space: nowrap;
@@ -1164,7 +1164,7 @@ async function copyToClipboard(text) {
           .agent-badge {
             width: 32px;
             height: 32px;
-            border-radius: 8px;
+            border-radius: $border-radius-default;
             display: grid;
             place-items: center;
             font-size: 0.62rem;
@@ -1313,7 +1313,7 @@ async function copyToClipboard(text) {
     gap: 8px;
     padding: 12px 18px;
     background: $elevation-raised;
-    border-radius: 16px;
+    border-radius: $border-radius-rounded;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
     margin-bottom: 20px;
 
@@ -1351,7 +1351,7 @@ async function copyToClipboard(text) {
     .recipient-btn,
     .broadcast-btn {
       border: none !important;
-      border-radius: 9999px;
+      border-radius: $border-radius-pill;
       text-transform: none;
       font-size: 0.72rem;
       font-weight: 500;
@@ -1383,7 +1383,7 @@ async function copyToClipboard(text) {
         background: $elevation-elevated;
         border: none !important;
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
-        border-radius: 8px;
+        border-radius: $border-radius-default;
 
         input {
           color: $color-text-primary;
@@ -1409,7 +1409,7 @@ async function copyToClipboard(text) {
       min-width: auto;
       width: 36px;
       height: 36px;
-      border-radius: 8px;
+      border-radius: $border-radius-default;
 
       &:disabled {
         opacity: 0.4;

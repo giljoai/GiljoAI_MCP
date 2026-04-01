@@ -550,12 +550,13 @@ function showSnackbar(message, type = 'success') {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 /* Professional code block styling */
 .config-block {
   background-color: rgb(var(--v-theme-surface-variant));
   padding: 16px;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   overflow-x: auto;
   font-family: 'Courier New', monospace;
   font-size: 0.875rem;

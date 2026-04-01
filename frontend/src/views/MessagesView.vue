@@ -82,6 +82,7 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+@use '../styles/design-tokens' as *;
 .tab-pills {
   display: flex;
   align-items: center;
@@ -92,7 +93,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   padding: 8px 18px;
   font-size: 0.78rem;
   font-weight: 500;

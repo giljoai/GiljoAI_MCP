@@ -49,11 +49,12 @@ const badgeStyle = computed(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 .status-badge {
   display: inline-flex;
   align-items: center;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   font-size: 0.68rem;
   font-weight: 600;
   padding: 3px 10px;

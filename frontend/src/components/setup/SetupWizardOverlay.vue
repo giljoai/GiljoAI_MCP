@@ -462,7 +462,7 @@ function handleDismiss() {
   max-height: calc(100vh - 48px);
   overflow-y: auto;
   background: $elevation-raised;
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
   display: flex;
   flex-direction: column;
 }
@@ -575,7 +575,7 @@ function handleDismiss() {
   flex: 1;
   height: 4px;
   background: $med-blue;
-  border-radius: 2px;
+  border-radius: $border-radius-sharp;
   margin: 0 8px;
   margin-bottom: 22px;
   overflow: hidden;
@@ -584,7 +584,7 @@ function handleDismiss() {
 .step-connector-fill {
   height: 100%;
   width: 0;
-  border-radius: 2px;
+  border-radius: $border-radius-sharp;
   background: $color-brand-yellow;
   transition: width 250ms ease-out;
 }
@@ -627,7 +627,7 @@ function handleDismiss() {
   max-width: 220px;
   flex: 1;
   background: $elevation-elevated;
-  border-radius: 12px;
+  border-radius: $border-radius-md;
   cursor: pointer;
   user-select: none;
   transition: box-shadow 250ms ease-out, transform 150ms ease-out;
@@ -686,13 +686,13 @@ function handleDismiss() {
 }
 
 .footer-btn-next {
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   min-width: 100px;
   font-weight: 600;
 }
 
 .footer-btn-gotit {
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   min-width: 120px;
   font-weight: 600;
 }
@@ -710,7 +710,7 @@ function handleDismiss() {
 
 .learning-section {
   background: $elevation-elevated;
-  border-radius: 10px;
+  border-radius: $border-radius-default;
   overflow: hidden;
 }
 
