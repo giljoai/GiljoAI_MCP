@@ -236,7 +236,8 @@ const dismissHandover = () => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 /* ============================================================
    PHASE 4: VISUAL POLISH & HOVER STATES
    Enhanced styling with smooth animations and transitions
@@ -357,7 +358,7 @@ const dismissHandover = () => {
   background-color: rgba(0, 0, 0, 0.87);
   color: white;
   padding: 8px 12px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   max-width: 200px;
 }
 </style>

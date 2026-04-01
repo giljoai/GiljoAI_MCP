@@ -38,7 +38,8 @@ defineProps({
 defineEmits(['select'])
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .product-selector {
   min-height: 40px;
 }
@@ -46,7 +47,7 @@ defineEmits(['select'])
 .pill-filter {
   display: inline-flex;
   align-items: center;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   padding: 8px 18px;
   font-size: 0.78rem;
   font-weight: 500;

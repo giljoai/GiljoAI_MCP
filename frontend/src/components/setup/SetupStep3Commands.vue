@@ -328,7 +328,7 @@ onUnmounted(() => {
   padding: 8px 16px;
   background: $elevation-elevated;
   border: none;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   color: $lightest-blue;
   cursor: pointer;
   font-size: 0.8125rem;
@@ -395,7 +395,7 @@ onUnmounted(() => {
   background: rgba($color-brand-yellow, 0.1);
   color: $color-brand-yellow;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
 }
 
 /* Copy prompt row */
@@ -426,7 +426,7 @@ onUnmounted(() => {
   gap: 8px;
   padding: 12px 16px;
   background: rgba(229, 115, 115, 0.08); /* design-token-exempt: error background tint, no exact token */
-  border-radius: 8px;
+  border-radius: $border-radius-default;
 }
 
 .prompt-error-text {
@@ -508,7 +508,7 @@ onUnmounted(() => {
 .skip-link:focus-visible {
   outline: 2px solid $color-brand-yellow;
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: $border-radius-sharp;
 }
 
 /* Transition for post-install command */

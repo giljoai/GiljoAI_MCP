@@ -91,7 +91,7 @@
                   md="4"
                   lg="3"
                 >
-                  <v-card variant="flat" class="product-card h-100 smooth-border" style="border-radius: 12px">
+                  <v-card variant="flat" class="product-card h-100 smooth-border">
                     <v-card-text>
                       <div class="d-flex align-center justify-space-between mb-2">
                         <div
@@ -1067,7 +1067,8 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 /* Fixed header and scrollable content layout */
 .products-container {
   display: flex;
@@ -1094,6 +1095,7 @@ onMounted(async () => {
 
 .product-card {
   transition: all 0.3s ease;
+  border-radius: $border-radius-md;
   --smooth-border-color: rgba(255, 255, 255, 0.18);
 }
 
@@ -1120,7 +1122,7 @@ onMounted(async () => {
   font-size: 0.7rem;
   font-weight: 600;
   padding: 2px 10px;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   line-height: 1.4;
   letter-spacing: 0.02em;
 }
@@ -1141,7 +1143,7 @@ onMounted(async () => {
   font-size: 0.65rem;
   font-weight: 600;
   padding: 1px 8px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   line-height: 1.5;
 }
 
@@ -1170,7 +1172,8 @@ onMounted(async () => {
 }
 </style>
 
-<style>
+<style lang="scss">
+@use '../styles/design-tokens' as *;
 /* Global branded tooltips - must be unscoped to affect tooltip overlays */
 .branded-tooltip {
   background-color: rgba(255, 195, 0, 0.95) !important;
@@ -1178,6 +1181,6 @@ onMounted(async () => {
   font-weight: 500;
   font-size: 0.875rem;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: $border-radius-sharp;
 }
 </style>

@@ -302,7 +302,9 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
+
 /* Pulsing glow animation for error notifications (connection lost, system alerts) */
 @keyframes notification-pulse-error {
   0%, 100% {
@@ -420,7 +422,7 @@ onUnmounted(() => {
 
 .notification-list::-webkit-scrollbar-thumb {
   background-color: rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: 3px;
+  border-radius: $border-radius-sharp;
 }
 
 .notification-list::-webkit-scrollbar-thumb:hover {

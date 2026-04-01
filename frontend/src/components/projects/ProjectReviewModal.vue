@@ -405,7 +405,7 @@ function truncate(text, maxLen) {
 .agent-tinted-badge {
   width: 24px;
   height: 24px;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -417,7 +417,7 @@ function truncate(text, maxLen) {
 .agent-tinted-chip {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   font-size: 0.7rem;
   font-weight: 600;
 }

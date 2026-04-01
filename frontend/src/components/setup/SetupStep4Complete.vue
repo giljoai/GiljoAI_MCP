@@ -135,7 +135,7 @@ function handleDashboard() {
 
 .launchpad-card {
   background: $elevation-elevated;
-  border-radius: 12px;
+  border-radius: $border-radius-md;
   padding: 24px 20px;
   display: flex;
   flex-direction: column;
@@ -187,7 +187,7 @@ function handleDashboard() {
   font-weight: 600;
   font-size: 0.8125rem;
   letter-spacing: 0.04em;
-  border-radius: 6px;
+  border-radius: $border-radius-sharp;
   min-width: 140px;
 }
 
@@ -215,7 +215,7 @@ function handleDashboard() {
 .dashboard-link:focus-visible {
   outline: 2px solid $color-brand-yellow;
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: $border-radius-sharp;
 }
 
 /* Responsive: stack on mobile */

@@ -625,10 +625,10 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 .v-data-table {
-  border-radius: 8px;
+  border-radius: $border-radius-default;
 }
 
 /* Accessibility: Focus indicators */

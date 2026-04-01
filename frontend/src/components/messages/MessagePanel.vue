@@ -308,10 +308,11 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .panel-card {
   background: var(--bg-raised, #1a2a3c);
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
 }
 
 .count-chip {
@@ -319,7 +320,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 1px 8px;
-  border-radius: 10px;
+  border-radius: $border-radius-default;
   font-size: 0.72rem;
   font-weight: 600;
   background: rgba(109, 179, 228, 0.15);
@@ -331,7 +332,7 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   padding: 2px 10px;
-  border-radius: 12px;
+  border-radius: $border-radius-md;
   font-size: 0.72rem;
   font-weight: 600;
 }
