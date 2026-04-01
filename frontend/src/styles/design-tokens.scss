@@ -173,10 +173,10 @@ $border-container: 2px solid rgba(255, 255, 255, 0.2);
 $color-orchestrator-card-background: rgba(255, 255, 255, 0.05); // Light overlay background
 $color-orchestrator-card-border: rgba(255, 255, 255, 0.1); // Light border
 
-// Scrollbar colors
-$color-scrollbar-track-background: rgba(0, 0, 0, 0.2); // Scrollbar track
-$color-scrollbar-thumb-background: rgba(255, 255, 255, 0.2); // Scrollbar thumb
-$color-scrollbar-thumb-hover-background: rgba(255, 255, 255, 0.3); // Scrollbar thumb on hover
+// Scrollbar colors (V1 palette — intentional hex, not faded rgba)
+$color-scrollbar-track-background: #182739; // bg-raised
+$color-scrollbar-thumb-background: #315074; // matches border-subtle palette
+$color-scrollbar-thumb-hover-background: #8f97b7; // bright on hover
 
 // =========================================================================
 // 10. ELEVATION TOKENS (surface lightening, not shadows)
