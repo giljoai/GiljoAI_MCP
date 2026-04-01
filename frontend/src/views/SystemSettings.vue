@@ -356,7 +356,8 @@ onMounted(async () => {
   color: #b0bec5;
 }
 
-.pill-toggle--active {
+.pill-toggle--active,
+.pill-toggle--active:hover {
   background: rgba(255, 195, 0, 0.12);
   color: #ffc300;
   box-shadow: none;

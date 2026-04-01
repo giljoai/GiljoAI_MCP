@@ -48,7 +48,7 @@
       </div>
 
       <!-- Git Integration Controls -->
-      <v-card variant="tonal" class="mb-0">
+      <v-card variant="flat" class="mb-0 smooth-border">
         <v-card-text class="pa-3">
           <div class="d-flex align-center justify-between">
             <div class="flex-grow-1 d-flex align-center">

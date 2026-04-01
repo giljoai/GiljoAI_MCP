@@ -1,6 +1,32 @@
 <template>
   <div>
-    <!-- 0873: Filter bar outside card (matches TasksView pattern) -->
+    <!-- Title (above filter bar) -->
+    <div class="tab-header mb-4 d-flex align-center">
+      <h2 class="text-h6">Agent Template Manager</h2>
+      <v-tooltip location="bottom" max-width="360">
+        <template #activator="{ props }">
+          <v-icon v-bind="props" size="small" class="ml-2" color="medium-emphasis"
+            >mdi-information-outline</v-icon
+          >
+        </template>
+        <span
+          >Each active agent template consumes context tokens during orchestration. The 8-slot limit
+          keeps prompt budgets manageable. 1 slot is reserved for the Orchestrator (managed in Admin
+          Settings), leaving 7 for your custom agents.</span
+        >
+      </v-tooltip>
+      <v-chip
+        v-if="totalActiveAgents !== null"
+        :color="remainingUserSlots === 0 ? 'warning' : 'default'"
+        size="small"
+        variant="tonal"
+        class="ml-4"
+      >
+        {{ totalActiveAgents }} / {{ totalCapacity }}
+      </v-chip>
+    </div>
+
+    <!-- Filter bar with New Template button right-aligned -->
     <div class="filter-bar">
       <v-text-field
         v-model="search"
@@ -35,36 +61,11 @@
         hide-details
         class="filter-select"
       />
-      <v-btn variant="text" class="filter-clear-btn" @click="clearFilters">Clear Filters</v-btn>
-    </div>
-
-    <div class="tab-header mb-4 d-flex align-center">
-      <h2 class="text-h6">Agent Template Manager</h2>
-      <v-tooltip location="bottom" max-width="360">
-        <template #activator="{ props }">
-          <v-icon v-bind="props" size="small" class="ml-2" color="medium-emphasis"
-            >mdi-information-outline</v-icon
-          >
-        </template>
-        <span
-          >Each active agent template consumes context tokens during orchestration. The 8-slot limit
-          keeps prompt budgets manageable. 1 slot is reserved for the Orchestrator (managed in Admin
-          Settings), leaving 7 for your custom agents.</span
-        >
-      </v-tooltip>
-      <v-chip
-        v-if="totalActiveAgents !== null"
-        :color="remainingUserSlots === 0 ? 'warning' : 'default'"
-        size="small"
-        variant="tonal"
-        class="ml-4"
-      >
-        {{ totalActiveAgents }} / {{ totalCapacity }}
-      </v-chip>
       <v-spacer />
       <v-btn
         color="primary"
         prepend-icon="mdi-plus"
+        class="btn-pill"
         aria-label="Create new template"
         @click="openCreateDialog"
       >

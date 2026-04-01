@@ -64,7 +64,8 @@ defineEmits(['select'])
   --smooth-border-color: rgba(var(--v-theme-on-surface), 0.25);
 }
 
-.pill-filter.active {
+.pill-filter.active,
+.pill-filter.active:hover {
   background: rgba(255, 195, 0, 0.12);
   color: #ffc300;
   box-shadow: none;
