@@ -1,6 +1,6 @@
 <template>
   <v-dialog :model-value="modelValue" max-width="500" persistent @update:model-value="$emit('update:modelValue', $event)">
-    <v-card>
+    <v-card class="smooth-border">
       <v-card-title class="d-flex align-center">
         <span>Add Project Type</span>
         <v-spacer />
@@ -33,7 +33,7 @@
           />
 
           <div class="mb-3">
-            <label class="text-caption text-medium-emphasis d-block mb-1">Color</label>
+            <label class="text-caption text-muted-a11y d-block mb-1">Color</label>
             <div class="d-flex align-center ga-2 flex-wrap">
               <v-btn
                 v-for="swatch in colorSwatches"
@@ -165,3 +165,6 @@ async function handleSubmit() {
   }
 }
 </script>
+
+<style scoped>
+</style>

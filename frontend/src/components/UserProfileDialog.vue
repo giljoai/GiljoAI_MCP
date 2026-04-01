@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="internalModel" max-width="560" persistent>
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-account</v-icon>
         Edit Profile
@@ -21,7 +21,7 @@
 
           <!-- Workspace/Organization (read-only) - Handover 0424o -->
           <div v-if="userStore.currentOrg" class="mb-4 pa-3 bg-surface-variant rounded">
-            <div class="text-caption text-medium-emphasis mb-1">Workspace</div>
+            <div class="text-caption text-muted-a11y mb-1">Workspace</div>
             <div class="d-flex align-center gap-2">
               <v-icon size="small" color="primary">mdi-office-building</v-icon>
               <span class="font-weight-medium">{{ userStore.currentOrg.name }}</span>
@@ -199,4 +199,5 @@ async function save() {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+</style>

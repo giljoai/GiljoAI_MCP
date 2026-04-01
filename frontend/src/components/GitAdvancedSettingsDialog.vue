@@ -4,7 +4,7 @@
     max-width="560"
     @update:model-value="$emit('update:model-value', $event)"
   >
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-github</v-icon>
         Git Integration – Advanced Settings
@@ -16,7 +16,7 @@
 
       <v-card-text>
         <v-form ref="form" v-model="valid">
-          <div class="mb-4 text-medium-emphasis">
+          <div class="mb-4 text-muted-a11y">
             Configure how Git integration works with 360 Memory and agent prompts.
           </div>
 
@@ -128,4 +128,5 @@ function handleSave() {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+</style>

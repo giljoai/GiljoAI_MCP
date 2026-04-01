@@ -87,16 +87,16 @@
         </template>
 
         <template v-slot:item.role="{ item }">
-          <v-chip
-            size="small"
+          <span
+            class="template-role-badge"
             :style="{
-              backgroundColor: getCategoryColor(item.role),
-              color: 'rgb(var(--v-theme-background))',
+              backgroundColor: hexToRgba(getCategoryColor(item.role), 0.15),
+              color: getCategoryColor(item.role),
               opacity: item.is_active ? 1 : 0.4,
             }"
           >
             {{ item.role }}
-          </v-chip>
+          </span>
         </template>
 
         <template v-slot:item.updated_at="{ item }">
@@ -119,7 +119,7 @@
               <template v-slot:activator="{ props }">
                 <span
                   v-bind="props"
-                  class="text-caption text-grey"
+                  class="text-caption text-muted-a11y"
                   :class="{ 'text-warning': item.may_be_stale }"
                 >
                   {{ item.last_exported_at ? formatDate(item.last_exported_at) : 'Never exported' }}
@@ -174,6 +174,7 @@
                   icon="mdi-dots-vertical"
                   size="small"
                   variant="text"
+                  class="icon-interactive"
                   v-bind="props"
                   aria-label="Template actions"
                 ></v-btn>
@@ -210,7 +211,7 @@
 
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="editDialog" max-width="900px" persistent retain-focus>
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <span class="text-h5">{{ editingTemplate.id ? 'Edit' : 'Create' }} Template</span>
           <v-spacer />
@@ -321,11 +322,11 @@
                       <div class="d-flex align-center">
                         <v-icon start size="small" color="primary">mdi-eye</v-icon>
                         <span class="font-weight-medium">Template Preview</span>
-                        <span class="text-caption text-medium-emphasis ml-2">(includes orchestration protocols)</span>
+                        <span class="text-caption text-muted-a11y ml-2">(includes orchestration protocols)</span>
                       </div>
                     </v-expansion-panel-title>
                     <v-expansion-panel-text>
-                      <v-card variant="outlined" class="preview-card">
+                      <v-card variant="flat" class="preview-card smooth-border">
                         <pre class="preview-content">{{ previewContent }}</pre>
                       </v-card>
                     </v-expansion-panel-text>
@@ -348,7 +349,7 @@
 
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteDialog" max-width="500px" persistent retain-focus>
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <v-icon color="error" class="mr-2">mdi-alert</v-icon>
           <span class="text-h5">Permanently Delete Template</span>
@@ -363,7 +364,7 @@
             Are you sure you want to permanently delete the template
             "<strong>{{ deletingTemplate?.name }}</strong>"?
           </p>
-          <p class="text-caption text-grey mt-2">
+          <p class="text-caption text-muted-a11y mt-2">
             This will remove the template and all its version history.
           </p>
         </v-card-text>
@@ -379,7 +380,7 @@
 
     <!-- Reset Confirmation Dialog -->
     <v-dialog v-model="resetDialog" max-width="600px" persistent retain-focus>
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <v-icon color="warning" class="mr-2">mdi-alert</v-icon>
           <span class="text-h5">Confirm Reset to Default</span>
@@ -395,7 +396,7 @@
             This will overwrite your customizations with the latest system template. Your current
             version will be archived and can be restored later from the version history.
           </v-alert>
-          <p class="text-caption text-grey">
+          <p class="text-caption text-muted-a11y">
             This action creates a backup in version history before resetting.
           </p>
         </v-card-text>
@@ -420,6 +421,7 @@ import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
+import { hexToRgba } from '@/utils/colorUtils'
 
 // Handover 0335: WebSocket setup for real-time export status updates
 const { on, off } = useWebSocketV2()
@@ -887,6 +889,14 @@ watch(
 </script>
 
 <style scoped lang="scss">
+.template-role-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .template-manager {
   background: var(--v-theme-surface-variant);
 

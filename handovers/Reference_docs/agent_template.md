@@ -138,12 +138,12 @@ Six canonical roles with locked colors (`frontend/src/config/agentColors.js`):
 
 | Role | Hex | Usage |
 |---|---|---|
-| orchestrator | #D4A574 | System-managed, hidden from UI |
-| implementer | #3498DB | Blue |
-| tester | #FFC300 | Yellow |
-| analyzer | #E74C3C | Red |
-| reviewer | #9B59B6 | Purple |
-| documenter | #27AE60 | Green |
+| orchestrator | #D4B08A | System-managed, hidden from UI |
+| implementer | #6DB3E4 | Blue |
+| tester | #EDBA4A | Yellow |
+| analyzer | #E07872 | Red |
+| reviewer | #AC80CC | Purple |
+| documenter | #5EC48E | Green |
 
 ### Naming Convention
 

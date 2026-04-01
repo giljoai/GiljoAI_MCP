@@ -1,5 +1,5 @@
 <template>
-  <v-card variant="outlined" class="mb-4">
+  <v-card variant="flat" class="smooth-border mb-4 integration-card">
     <v-card-text>
       <div class="d-flex align-center mb-3">
         <v-icon size="40" class="mr-2" color="white">mdi-github</v-icon>
@@ -30,7 +30,7 @@
         </div>
       </div>
 
-      <p class="text-body-2 text-medium-emphasis mb-3">
+      <p class="text-body-2 text-muted-a11y mb-3">
         Enable to automatically include git commit history in project summaries.
       </p>
 
@@ -92,6 +92,11 @@ defineEmits(['update:enabled'])
 </script>
 
 <style scoped>
+.integration-card {
+  background: var(--bg-raised, #1e3147);
+  border-radius: 16px;
+}
+
 /* Make Git toggle inline */
 .git-toggle-inline {
   flex: 0 0 auto;

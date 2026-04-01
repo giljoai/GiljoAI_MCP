@@ -9,7 +9,7 @@
               <v-icon icon="mdi-message-text" size="32" class="mr-2" />
               Messages
             </h1>
-            <p class="text-body-1 text-medium-emphasis">
+            <p class="text-body-1 text-muted-a11y">
               View agent communications and send broadcast messages
             </p>
           </div>
@@ -17,19 +17,27 @@
       </v-col>
     </v-row>
 
-    <!-- Tabs for Message Panel and Broadcast -->
+    <!-- Tab Pills for Message Panel and Broadcast -->
     <v-row>
       <v-col cols="12">
-        <v-tabs v-model="activeTab" color="primary" class="mb-4">
-          <v-tab value="timeline">
-            <v-icon icon="mdi-timeline-text" start />
+        <div class="tab-pills mb-4">
+          <button
+            class="pill-btn"
+            :class="{ active: activeTab === 'timeline' }"
+            @click="activeTab = 'timeline'"
+          >
+            <v-icon size="18">mdi-timeline-text</v-icon>
             Message Timeline
-          </v-tab>
-          <v-tab value="broadcast">
-            <v-icon icon="mdi-bullhorn" start />
+          </button>
+          <button
+            class="pill-btn"
+            :class="{ active: activeTab === 'broadcast' }"
+            @click="activeTab = 'broadcast'"
+          >
+            <v-icon size="18">mdi-bullhorn</v-icon>
             Send Broadcast
-          </v-tab>
-        </v-tabs>
+          </button>
+        </div>
 
         <v-window v-model="activeTab">
           <!-- Message Timeline Tab -->
@@ -73,6 +81,37 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-/* Component-specific styles */
+<style scoped lang="scss">
+.tab-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  color: #8895a8;
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.15);
+
+  &:hover {
+    color: #a3aac4;
+    box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.25);
+  }
+
+  &.active {
+    background: rgba(255, 195, 0, 0.12);
+    color: #ffc300;
+    box-shadow: none;
+  }
+}
 </style>

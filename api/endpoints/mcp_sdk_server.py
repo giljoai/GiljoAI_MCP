@@ -445,14 +445,30 @@ async def dismiss_reactivation(
     return await _call_tool(ctx, "dismiss_reactivation", kwargs)
 
 
-@mcp.tool(description="Report error and pause job for orchestrator review")
-async def report_error(
+@mcp.tool(
+    description=(
+        "Set agent status — blocked (need help), idle (monitoring agents), "
+        "or sleeping (periodic check-in). Replaces report_error."
+    ),
+)
+async def set_agent_status(
     job_id: str,
-    error: str,
+    status: str,
+    reason: str = "",
+    wake_in_minutes: int | None = None,
     ctx: Context = None,
 ) -> dict:
-    """Report error and pause job for orchestrator review."""
-    return await _call_tool(ctx, "report_error", {"job_id": job_id, "error": error})
+    """Set agent resting/blocked status. Handover 0880: expanded from report_error."""
+    return await _call_tool(
+        ctx,
+        "set_agent_status",
+        {
+            "job_id": job_id,
+            "status": status,
+            "reason": reason,
+            "wake_in_minutes": wake_in_minutes,
+        },
+    )
 
 
 # ---------------------------------------------------------------------------

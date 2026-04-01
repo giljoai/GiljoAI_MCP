@@ -1,7 +1,7 @@
 <template>
-  <v-card>
+  <v-card variant="flat" class="smooth-border security-card">
     <v-card-title>Security Settings</v-card-title>
-    <v-card-subtitle>Manage authentication and cross-origin security</v-card-subtitle>
+    <v-card-subtitle class="security-subtitle">Manage authentication and cross-origin security</v-card-subtitle>
 
     <v-card-text>
       <!-- Loading Indicator -->
@@ -204,3 +204,14 @@ function clearFeedback() {
   emit('clear-feedback')
 }
 </script>
+
+<style scoped>
+.security-card {
+  background: var(--bg-raised, #1e3147);
+  border-radius: 16px;
+}
+
+.security-subtitle {
+  color: #8895a8;
+}
+</style>

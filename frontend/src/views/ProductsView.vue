@@ -64,15 +64,15 @@
               <v-row v-if="loading">
                 <v-col cols="12" class="text-center py-8">
                   <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                  <div class="text-medium-emphasis mt-4">Loading products...</div>
+                  <div class="text-muted-a11y mt-4">Loading products...</div>
                 </v-col>
               </v-row>
 
               <v-row v-else-if="filteredProducts.length === 0">
                 <v-col cols="12" class="text-center py-8">
                   <v-icon size="64" color="grey-lighten-2">mdi-package-variant-remove</v-icon>
-                  <div class="text-h6 text-medium-emphasis mt-4">No products found</div>
-                  <div class="text-body-2 text-medium-emphasis">
+                  <div class="text-h6 product-text-secondary mt-4">No products found</div>
+                  <div class="text-body-2 text-muted-a11y">
                     {{
                       search
                         ? 'Try adjusting your search'
@@ -91,7 +91,7 @@
                   md="4"
                   lg="3"
                 >
-                  <v-card :elevation="0" class="product-card h-100">
+                  <v-card variant="flat" class="product-card h-100 smooth-border" style="border-radius: 12px">
                     <v-card-text>
                       <div class="d-flex align-center justify-space-between mb-2">
                         <div
@@ -100,24 +100,22 @@
                         >
                           {{ product.name }}
                         </div>
-                        <v-chip
+                        <span
                           v-if="isProductActive(product)"
-                          color="success"
-                          size="small"
-                          variant="flat"
+                          class="product-status-chip product-status-active"
                         >
                           Active
-                        </v-chip>
+                        </span>
                       </div>
 
-                      <div class="text-caption text-medium-emphasis mb-3">
+                      <div class="text-caption text-muted-a11y mb-3">
                         Created: {{ formatDate(product.created_at) }}
                       </div>
 
                       <div class="mb-3">
-                        <div class="text-caption text-medium-emphasis">Product ID:</div>
+                        <div class="text-caption text-muted-a11y">Product ID:</div>
                         <div
-                          class="font-monospace"
+                          class="font-monospace text-muted-a11y"
                           style="font-size: 0.65rem; word-break: break-all; line-height: 1.3"
                         >
                           {{ product.id }}
@@ -128,45 +126,42 @@
                       <v-divider class="my-3 product-divider"></v-divider>
                       <v-row dense>
                         <v-col cols="4" class="text-center">
-                          <div class="text-caption text-medium-emphasis">Tasks</div>
-                          <div class="text-h6 text-primary">
+                          <div class="text-caption text-muted-a11y">Tasks</div>
+                          <div class="text-h6 product-text-secondary">
                             {{ product.task_count || 0 }}
                           </div>
                         </v-col>
                         <v-col cols="4" class="text-center">
-                          <div class="text-caption text-medium-emphasis">Projects</div>
-                          <div class="text-h6 text-primary">
+                          <div class="text-caption text-muted-a11y">Projects</div>
+                          <div class="text-h6 product-text-secondary">
                             {{ product.project_count || 0 }}
                           </div>
                         </v-col>
                         <v-col cols="4" class="text-center">
-                          <div class="text-caption text-medium-emphasis">Completed</div>
-                          <div class="text-h6 text-primary">
+                          <div class="text-caption text-muted-a11y">Completed</div>
+                          <div class="text-h6 product-text-secondary">
                             {{ getCompletedProjectsCount(product) }}
                           </div>
                         </v-col>
                       </v-row>
 
                       <!-- Vision Document Status (Handover 0347) -->
-                      <div v-if="product.vision_documents?.length > 0" class="mt-2">
-                        <v-chip
-                          size="x-small"
-                          variant="tonal"
-                          :color="getVisionChunkedCount(product) > 0 ? 'success' : 'warning'"
-                          class="mr-1"
+                      <div v-if="product.vision_documents?.length > 0" class="mt-2 d-flex ga-1 flex-wrap">
+                        <span
+                          class="vision-chip"
+                          :style="getVisionChunkedCount(product) > 0 ? 'background: rgba(103,189,109,0.15); color: #67bd6d' : 'background: rgba(255,152,0,0.15); color: #ff9800'"
                         >
-                          <v-icon start size="12">mdi-file-document</v-icon>
+                          <v-icon size="12" class="mr-1">mdi-file-document</v-icon>
                           {{ product.vision_documents.length }} docs
-                        </v-chip>
-                        <v-chip
+                        </span>
+                        <span
                           v-if="getVisionChunkedCount(product) > 0"
-                          size="x-small"
-                          variant="tonal"
-                          color="primary"
+                          class="vision-chip"
+                          style="background: rgba(109,179,228,0.15); color: #6DB3E4"
                         >
-                          <v-icon start size="12">mdi-database</v-icon>
+                          <v-icon size="12" class="mr-1">mdi-database</v-icon>
                           {{ getVisionTotalChunks(product) }} chunks
-                        </v-chip>
+                        </span>
                       </div>
                     </v-card-text>
 
@@ -178,10 +173,8 @@
                             size="small"
                             variant="text"
                             v-bind="props"
+                            class="icon-interactive"
                             aria-label="View product details"
-                            :style="
-                              product.id === productStore.currentProductId ? 'color: rgb(var(--v-theme-on-surface))' : ''
-                            "
                             @click="showProductDetails(product)"
                           >
                             <v-icon>mdi-information-outline</v-icon>
@@ -203,6 +196,7 @@
                               size="small"
                               variant="text"
                               v-bind="props"
+                              class="icon-interactive"
                               aria-label="Tune context"
                               @click="showProductTuning(product)"
                             >
@@ -219,8 +213,8 @@
                             size="small"
                             variant="text"
                             v-bind="props"
+                            class="icon-interactive-play"
                             :aria-label="isProductActive(product) ? 'Deactivate product' : 'Activate product'"
-                            :class="{ 'text-primary': isProductActive(product) }"
                             @click="toggleProductActivation(product)"
                           >
                             <v-icon>{{
@@ -239,10 +233,8 @@
                             size="small"
                             variant="text"
                             v-bind="props"
+                            class="icon-interactive"
                             aria-label="Edit product"
-                            :style="
-                              product.id === productStore.currentProductId ? 'color: rgb(var(--v-theme-on-surface))' : ''
-                            "
                             @click="editProduct(product)"
                           >
                             <v-icon>mdi-pencil</v-icon>
@@ -1102,13 +1094,12 @@ onMounted(async () => {
 
 .product-card {
   transition: all 0.3s ease;
-  border: none !important;
-  box-shadow: inset 0 0 0 2px white !important; /* !important needed to override Vuetify :elevation="0" */
-  border-radius: 12px;
+  --smooth-border-color: rgba(255, 255, 255, 0.18);
 }
 
 .product-card:hover {
   transform: translateY(-2px);
+  --smooth-border-color: rgba(255, 255, 255, 0.28);
 }
 
 /* Lighter divider line (25% closer to white) */
@@ -1120,6 +1111,38 @@ onMounted(async () => {
 /* Reduce spacing above card actions by 50% */
 .product-card :deep(.v-card-actions) {
   padding-top: 4px;
+}
+
+/* Tinted status chip for Active badge */
+.product-status-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+.product-status-active {
+  background: rgba(103, 189, 109, 0.15);
+  color: #67bd6d;
+}
+
+.product-text-secondary {
+  color: #a3aac4 !important;
+}
+
+/* Vision doc tinted chips */
+.vision-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 4px;
+  line-height: 1.5;
 }
 
 /* Handover 0051: Spinning icon animation for save status */

@@ -6,7 +6,7 @@
     z-index="2500"
     @update:model-value="handleDialogChange"
   >
-    <v-card v-draggable class="base-dialog-card" elevation="24">
+    <v-card v-draggable class="base-dialog-card smooth-border" elevation="24">
       <!-- Title Bar -->
       <v-card-title :class="titleClasses">
         <v-icon v-if="showIcon" :class="iconClasses">{{ iconName }}</v-icon>

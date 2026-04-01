@@ -173,22 +173,20 @@
           @update:sort-by="sortConfig = $event"
           @click:row="handleRowClick"
         >
-          <!-- Name Column with ID and Taxonomy Chip (Handover 0440c) -->
+          <!-- Name Column with ID and Taxonomy Chip (Handover 0440c, 0870h) -->
           <template v-slot:item.name="{ item }">
             <div class="py-2">
               <div class="d-flex align-center">
                 <v-tooltip v-if="item.project_type_id || item.series_number" :text="(item.project_type?.label || 'Untyped') + ' — ' + item.taxonomy_alias">
                   <template #activator="{ props: ttProps }">
-                    <!-- Full pill badge: desktop -->
-                    <v-chip
+                    <!-- Square tinted badge: desktop -->
+                    <span
                       v-bind="ttProps"
-                      :color="item.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR"
-                      size="x-small"
-                      variant="flat"
-                      class="mr-2 taxonomy-chip-full"
+                      class="project-id-badge mr-2 taxonomy-chip-full"
+                      :style="projectIdBadgeStyle(item.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR)"
                     >
                       {{ item.taxonomy_alias }}
-                    </v-chip>
+                    </span>
                     <!-- Colored dot: compact viewports -->
                     <span
                       v-bind="ttProps"
@@ -197,11 +195,11 @@
                     ></span>
                   </template>
                 </v-tooltip>
-                <span class="font-weight-bold text-body-2" style="color: rgb(var(--v-theme-primary))">
+                <span class="project-name-text">
                   {{ item.name }}
                 </span>
               </div>
-              <div class="text-caption text-medium-emphasis project-id-text" style="font-family: monospace">
+              <div class="project-uuid-text project-id-text">
                 Project ID: {{ item.id }}
               </div>
             </div>
@@ -214,7 +212,7 @@
                 <button
                   v-bind="ttProps"
                   type="button"
-                  class="play-circle-btn"
+                  class="play-circle-btn icon-interactive-play"
                   aria-label="Activate project"
                   @click.stop="activateAndLaunch(item.id)"
                 >
@@ -224,18 +222,15 @@
             </v-tooltip>
           </template>
 
-          <!-- Staged Column -->
+          <!-- Staged Column (0870h: tinted style) -->
           <template v-slot:item.staging_status="{ item }">
-            <!-- Full pill: desktop -->
-            <v-chip
-              :color="isProjectStaged(item) ? 'success' : 'grey'"
-              :style="isProjectStaged(item) ? {} : { color: '#1a237e' }"
-              size="small"
-              variant="flat"
-              class="staged-full"
+            <!-- Tinted pill: desktop -->
+            <span
+              class="staged-full tinted-chip"
+              :class="isProjectStaged(item) ? 'tinted-yes' : 'tinted-no'"
             >
               {{ isProjectStaged(item) ? 'Yes' : 'No' }}
-            </v-chip>
+            </span>
             <!-- Compact dot: small viewports -->
             <span
               class="staged-dot"
@@ -243,20 +238,20 @@
             >{{ isProjectStaged(item) ? 'Y' : 'N' }}</span>
           </template>
 
-          <!-- Created Date Column -->
+          <!-- Created Date Column (0870h: accessible muted text) -->
           <template v-slot:item.created_at="{ item }">
-            <span class="date-full">{{ formatDate(item.created_at) }}</span>
-            <span class="date-compact">{{ formatDateCompact(item.created_at) }}</span>
+            <span class="date-full date-cell">{{ formatDate(item.created_at) }}</span>
+            <span class="date-compact date-cell">{{ formatDateCompact(item.created_at) }}</span>
           </template>
 
-          <!-- Completed Date Column -->
+          <!-- Completed Date Column (0870h: accessible muted text) -->
           <template v-slot:item.completed_at="{ item }">
             <div class="text-center">
               <template v-if="item.status === 'completed' || item.status === 'cancelled' || item.status === 'terminated'">
-                <span class="date-full">{{ formatDate(item.completed_at || item.updated_at) }}</span>
-                <span class="date-compact">{{ formatDateCompact(item.completed_at || item.updated_at) }}</span>
+                <span class="date-full date-cell">{{ formatDate(item.completed_at || item.updated_at) }}</span>
+                <span class="date-compact date-cell">{{ formatDateCompact(item.completed_at || item.updated_at) }}</span>
               </template>
-              <template v-else>—</template>
+              <template v-else><span class="date-cell date-cell--empty">—</span></template>
             </div>
           </template>
 
@@ -826,6 +821,14 @@ const showPurgeAllDialog = ref(false)
 const sortConfig = ref([{ key: 'created_at', order: 'desc' }])
 
 const { formatDate, formatDateTime, formatDateCompact } = useFormatDate()
+
+/* 0870h: tinted square badge style for project taxonomy IDs */
+function projectIdBadgeStyle(color) {
+  return {
+    backgroundColor: `${color}26`, /* ~15% opacity */
+    color: color,
+  }
+}
 
 /* design-token-exempt: dynamic JS color lookup used in template :style bindings */
 function statusDotColor(status) {
@@ -1540,9 +1543,40 @@ onBeforeUnmount(() => {
   border-radius: 4px;
 }
 
+/* 0870h: smooth-border table panel */
+:deep(.v-card) {
+  box-shadow: inset 0 0 0 1px $color-border-subtle;
+  border: none !important;
+  border-radius: 16px;
+}
+
 /* Clickable rows — entire row opens edit/review */
 :deep(.v-data-table__tr) {
   cursor: pointer;
+  transition: background 0.15s;
+}
+
+:deep(.v-data-table__tr:hover) {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* 0870h: table header styling */
+:deep(.v-data-table__thead th) {
+  font-size: 0.6rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $color-text-muted !important;
+  font-weight: 500 !important;
+  border-bottom: 1px solid $color-border-subtle !important;
+}
+
+/* 0870h: table cell row separators */
+:deep(.v-data-table__td) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+:deep(.v-data-table__tr:last-child .v-data-table__td) {
+  border-bottom: none !important;
 }
 
 /* Scrollable project list container */
@@ -1565,30 +1599,77 @@ onBeforeUnmount(() => {
   overflow: visible;
 }
 
-/* Play-circle activate button — matches JobsTab styling */
+/* 0870h: Square tinted project ID badge */
+.project-id-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+
+/* 0870h: Project name text */
+.project-name-text {
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+/* 0870h: Project UUID text — accessible muted color */
+.project-uuid-text {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.58rem;
+  color: var(--text-muted, #{$color-text-muted});
+  margin-top: 2px;
+}
+
+/* 0870h: Date cell styling */
+.date-cell {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #{$color-text-secondary});
+  white-space: nowrap;
+}
+
+.date-cell--empty {
+  color: var(--text-muted, #{$color-text-muted});
+}
+
+/* 0870h: Tinted chip base */
+.tinted-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+/* 0870h: Tinted Yes/No staged chips */
+.tinted-yes {
+  background: rgba($color-status-success, 0.12);
+  color: $color-status-success;
+}
+
+.tinted-no {
+  background: rgba($color-agent-analyzer, 0.12);
+  color: $color-agent-analyzer;
+}
+
+/* Play-circle activate button — uses global .icon-interactive-play */
 .play-circle-btn {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
   border: none !important;
-  box-shadow: inset 0 0 0 2px $color-brand-yellow;
-  background: transparent;
-  color: $color-brand-yellow;
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: all 0.2s ease;
 }
 
 .play-circle-btn :deep(.v-icon) {
   color: $color-brand-yellow;
-}
-
-.play-circle-btn:hover {
-  background: rgba($color-brand-yellow, 0.15);
-  box-shadow: inset 0 0 0 2px $color-brand-yellow;
 }
 
 /* ── Responsive compact elements (hidden by default, shown via media queries) ── */

@@ -3,7 +3,7 @@
     <v-row>
       <!-- Broadcast Composer -->
       <v-col cols="12" md="6">
-        <v-card variant="outlined">
+        <v-card variant="flat" class="smooth-border broadcast-panel-card">
           <v-card-title class="d-flex align-center">
             <v-icon icon="mdi-bullhorn" size="24" class="mr-2" />
             <span>Send Message</span>
@@ -38,16 +38,24 @@
             />
 
             <!-- Message Composer -->
-            <v-tabs v-model="activeTab" class="mb-4">
-              <v-tab value="edit">
-                <v-icon icon="mdi-pencil" start />
+            <div class="tab-pills mb-4">
+              <button
+                class="pill-btn"
+                :class="{ active: activeTab === 'edit' }"
+                @click="activeTab = 'edit'"
+              >
+                <v-icon size="18">mdi-pencil</v-icon>
                 Edit
-              </v-tab>
-              <v-tab value="preview">
-                <v-icon icon="mdi-eye" start />
+              </button>
+              <button
+                class="pill-btn"
+                :class="{ active: activeTab === 'preview' }"
+                @click="activeTab = 'preview'"
+              >
+                <v-icon size="18">mdi-eye</v-icon>
                 Preview
-              </v-tab>
-            </v-tabs>
+              </button>
+            </div>
 
             <v-window v-model="activeTab">
               <v-window-item value="edit">
@@ -69,7 +77,7 @@
               <v-window-item value="preview">
                 <v-card variant="tonal" class="pa-4" min-height="200">
                   <div v-if="messageContent" v-html="markdownPreview" class="markdown-preview" />
-                  <div v-else class="text-center text-medium-emphasis">
+                  <div v-else class="text-center text-muted-a11y">
                     <v-icon icon="mdi-text-box-outline" size="48" class="mb-2" />
                     <p>No content to preview</p>
                   </div>
@@ -115,7 +123,7 @@
 
       <!-- Broadcast History -->
       <v-col cols="12" md="6">
-        <v-card variant="outlined">
+        <v-card variant="flat" class="smooth-border broadcast-panel-card">
           <v-card-title class="d-flex align-center justify-space-between">
             <div class="d-flex align-center">
               <v-icon icon="mdi-history" size="24" class="mr-2" />
@@ -136,14 +144,14 @@
             <!-- Loading State -->
             <div v-if="loadingHistory && broadcastHistory.length === 0" class="text-center pa-8">
               <v-progress-circular indeterminate color="primary" size="48" />
-              <p class="text-body-2 text-medium-emphasis mt-4">Loading history...</p>
+              <p class="text-body-2 text-muted-a11y mt-4">Loading history...</p>
             </div>
 
             <!-- Empty State -->
             <div v-else-if="broadcastHistory.length === 0" class="text-center pa-8">
               <v-icon icon="mdi-broadcast-off" size="64" color="grey" class="mb-4" />
-              <p class="text-body-1 text-medium-emphasis">No broadcasts sent yet</p>
-              <p class="text-caption text-medium-emphasis">
+              <p class="text-body-1 text-muted-a11y">No broadcasts sent yet</p>
+              <p class="text-caption text-muted-a11y">
                 Send your first broadcast message to see history here
               </p>
             </div>
@@ -152,9 +160,9 @@
             <v-list v-else class="pa-0">
               <v-list-item v-for="broadcast in broadcastHistory" :key="broadcast.id" class="mb-2">
                 <template v-slot:prepend>
-                  <v-avatar :color="getStatusColor(broadcast.status)">
-                    <v-icon :icon="getStatusIcon(broadcast.status)" />
-                  </v-avatar>
+                  <div class="status-badge" :style="getStatusBadgeStyle(broadcast.status)">
+                    <v-icon :icon="getStatusIcon(broadcast.status)" size="20" />
+                  </div>
                 </template>
 
                 <v-list-item-title class="text-wrap">
@@ -163,17 +171,17 @@
 
                 <v-list-item-subtitle>
                   <div class="d-flex align-center mt-1">
-                    <v-chip size="x-small" variant="flat" class="mr-2">
+                    <span class="recipient-chip mr-2">
                       {{ broadcast.recipient_count || 0 }} recipients
-                    </v-chip>
+                    </span>
                     <span class="text-caption">{{ formatTime(broadcast.timestamp) }}</span>
                   </div>
                 </v-list-item-subtitle>
 
                 <template v-slot:append>
-                  <v-chip size="small" :color="getStatusColor(broadcast.status)" variant="flat">
+                  <span class="status-chip" :style="getStatusChipStyle(broadcast.status)">
                     {{ broadcast.status }}
-                  </v-chip>
+                  </span>
                 </template>
               </v-list-item>
             </v-list>
@@ -190,6 +198,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
+import { hexToRgba } from '@/utils/colorUtils'
 import type { BroadcastTemplate, MessagePriority } from '@/types/message'
 
 interface BroadcastHistoryItem {
@@ -379,6 +388,47 @@ const formatTime = (timestamp: string): string => {
   return date.toLocaleDateString()
 }
 
+const STATUS_COLORS: Record<string, string> = {
+  delivered: '#67bd6d',
+  completed: '#67bd6d',
+  failed: '#E07872',
+  pending: '#EDBA4A',
+}
+
+const getStatusHex = (status: string): string => {
+  return STATUS_COLORS[status] || '#8895a8'
+}
+
+const getStatusBadgeStyle = (status: string) => {
+  const hex = getStatusHex(status)
+  return {
+    width: '36px',
+    height: '36px',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: hexToRgba(hex, 0.15),
+    color: hex,
+  }
+}
+
+const getStatusChipStyle = (status: string) => {
+  const hex = getStatusHex(status)
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '2px 10px',
+    borderRadius: '12px',
+    fontSize: '0.72rem',
+    fontWeight: '600',
+    backgroundColor: hexToRgba(hex, 0.15),
+    color: hex,
+  }
+}
+
+// hexToRgba imported from @/utils/colorUtils
+
 const getStatusColor = (status: string): string => {
   switch (status) {
     case 'delivered':
@@ -426,6 +476,55 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.broadcast-panel-card {
+  background: var(--bg-raised, #1a2a3c);
+  border-radius: 16px;
+}
+
+.tab-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  color: #8895a8;
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.15);
+}
+
+.pill-btn:hover {
+  color: #a3aac4;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.25);
+}
+
+.pill-btn.active {
+  background: rgba(255, 195, 0, 0.12);
+  color: #ffc300;
+  box-shadow: none;
+}
+
+.recipient-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: rgba(109, 179, 228, 0.15);
+  color: #6DB3E4;
+}
+
 .markdown-preview {
   word-wrap: break-word;
   overflow-wrap: break-word;

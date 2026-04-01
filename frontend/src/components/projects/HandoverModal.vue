@@ -10,7 +10,7 @@
     data-testid="handover-modal"
     @keydown.esc="handleClose"
   >
-    <v-card v-draggable data-testid="handover-modal-card">
+    <v-card v-draggable data-testid="handover-modal-card" class="smooth-border">
       <!-- Modal header -->
       <v-card-title id="handover-modal-title" class="modal-title bg-primary text-white pa-4">
         <div class="d-flex align-center justify-space-between">
