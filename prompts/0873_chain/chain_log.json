@@ -211,9 +211,9 @@
       "handover": "handovers/0873_style_centralization_sweep.md",
       "handover_section": "### 0873g",
       "color": "#2196F3",
-      "status": "in_progress",
+      "status": "completed",
       "started_at": "2026-03-31",
-      "completed_at": null,
+      "completed_at": "2026-03-31",
       "agent_types": ["frontend-tester"],
       "planned_tasks": [
         "Grep baseline counts for #8895a8 #a3aac4 #e1e1e1 in .vue files",
@@ -224,12 +224,33 @@
         "Run full Vitest suite",
         "Commit"
       ],
-      "tasks_completed": [],
-      "deviations": [],
-      "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "tasks_completed": [
+        "Baseline: #8895a8=58 hits, #a3aac4=16 hits, #e1e1e1=2 hits, #5a6a80=0 hits across 23 files",
+        "Added .text-secondary-a11y { color: var(--text-secondary) !important; } to main.scss after .text-muted-a11y",
+        "Python script bulk-replaced CSS property values in 17 style block files: color: #8895a8 → var(--text-muted), color: #a3aac4 → var(--text-secondary), color: #e1e1e1 → $color-text-primary",
+        "Removed fallback hex values from var(--text-muted, #8895a8) and var(--text-secondary, #a3aac4) patterns",
+        "Fixed inline style= template attributes in ProductDetailView.vue (5 occurrences) → text-muted-a11y / text-secondary-a11y classes",
+        "Fixed inline style= template attributes in ProductDetailsDialog.vue (8 occurrences) → classes; preserved non-color styles",
+        "Fixed inline style= template attributes in ProductTuningReview.vue (6 template occurrences) → classes",
+        "Fixed JS :style return in ProductTuningReview.vue line 326: color: #8895a8 → color: var(--text-muted)",
+        "Verification: 6 remaining hits are all excluded (RoleBadge/BroadcastPanel/MessageItem use hexToRgba(), NavigationDrawer is a code comment)",
+        "#5a6a80 verified at 0",
+        "Tests: 1916/1916 passed",
+        "Commit: 7d2f10c6 (25 files, 126 insertions, 116 deletions)"
+      ],
+      "deviations": [
+        "SCSS vars $color-text-muted (#9e9e9e) and $color-text-secondary (#999) in design-tokens.scss do NOT match the semantic text color values (#8895a8 / #a3aac4). CSS custom properties var(--text-muted) and var(--text-secondary) were used in style blocks instead of SCSS vars to ensure correct rendered values.",
+        "RoleBadge.vue viewer color, BroadcastPanel.vue status fallback, MessageItem.vue sender/priority/status hex values left unchanged — all passed to hexToRgba() per task exclusion rule.",
+        "NavigationDrawer.vue #e1e1e1 in comment left unchanged — it is documentation, not a rendered CSS value."
+      ],
+      "blockers_encountered": [
+        "Pre-commit mixed-line-ending hook fired across 4 iterations as Python script and Edit tool wrote LF files into CRLF repo. Required 4 stage+commit cycles. Expected behavior per 0873b notes."
+      ],
+      "notes_for_next": "0873h (Dropdown & Select Patterns): Text color tokens are now fully centralized. var(--text-muted), var(--text-secondary), $color-text-primary are the canonical tokens. Note: $color-text-muted in design-tokens.scss is #9e9e9e (chart/status color) NOT the UI text token — always use var(--text-muted) for muted text in new code.",
+      "cascading_impacts": [
+        ".text-secondary-a11y class added to main.scss — available to all subsequent sessions and all components globally"
+      ],
+      "summary": "Replaced 76 hardcoded text color hex values with CSS custom properties/SCSS tokens across 23 files. Added .text-secondary-a11y class to main.scss. 6 legitimate exceptions remain (hexToRgba badge color pattern + 1 comment). All 1916 tests pass."
     },
     {
       "session_id": "0873h",
