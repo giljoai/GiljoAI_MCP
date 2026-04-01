@@ -44,10 +44,10 @@
         </v-card-title>
         <v-divider />
         <v-card-text class="pa-4">
-          <div v-if="selectedMemory.product_name" class="text-caption mb-3" style="color: var(--text-muted)">
+          <div v-if="selectedMemory.product_name" class="text-caption mb-3 text-muted-a11y">
             Product: {{ selectedMemory.product_name }}
           </div>
-          <div v-if="selectedMemory.timestamp" class="text-caption mb-4" style="color: var(--text-muted)">
+          <div v-if="selectedMemory.timestamp" class="text-caption mb-4 text-muted-a11y">
             {{ new Date(selectedMemory.timestamp).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) }}
           </div>
           <div class="text-body-2 text-pre-wrap" style="line-height: 1.6;">{{ selectedMemory.summary }}</div>

@@ -15,7 +15,7 @@
       <v-card-text v-if="product">
         <!-- Product Name -->
         <div class="text-h6 mb-2">{{ product.name }}</div>
-        <div class="text-caption mb-2 text-muted-a11y" style="font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem">ID: {{ product.id }}</div>
+        <div class="text-caption mb-2 text-muted-a11y font-mono" style="font-size: 0.65rem">ID: {{ product.id }}</div>
 
         <!-- Context Tuning (Handover 0831) -->
         <div class="d-flex align-center mb-4">
@@ -171,8 +171,7 @@
             <div class="text-body-2">
               AI populated {{ visionAnalysisResult.fields_written }} product fields —
               <span
-                class="text-primary"
-                style="cursor: pointer"
+                class="text-primary cursor-pointer"
                 role="button"
                 tabindex="0"
                 @click="$emit('refresh-product')"
@@ -316,7 +315,7 @@
                 </div>
                 <div v-if="product.architecture.coding_conventions">
                   <div class="text-caption font-weight-bold">Coding Conventions:</div>
-                  <div class="text-body-2" style="white-space: pre-line">{{ product.architecture.coding_conventions }}</div>
+                  <div class="text-body-2 text-pre-line">{{ product.architecture.coding_conventions }}</div>
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -329,7 +328,7 @@
                 Brand & Design Guidelines
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-                <div class="text-body-2" style="white-space: pre-line">{{ product.brand_guidelines }}</div>
+                <div class="text-body-2 text-pre-line">{{ product.brand_guidelines }}</div>
               </v-expansion-panel-text>
             </v-expansion-panel>
 

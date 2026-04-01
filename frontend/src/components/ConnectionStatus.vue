@@ -6,8 +6,7 @@
       :prepend-icon="icon"
       variant="tonal"
       size="small"
-      :class="['connection-status', { reconnecting: wsStore.connectionStatus === 'reconnecting' }]"
-      style="cursor: pointer"
+      :class="['connection-status cursor-pointer', { reconnecting: wsStore.connectionStatus === 'reconnecting' }]"
       aria-label="Connection status, click for details"
       @click="showDebugPanel = !showDebugPanel"
     >
