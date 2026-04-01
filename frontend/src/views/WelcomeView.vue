@@ -457,7 +457,8 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 .welcome-wrapper {
   position: relative;
   min-height: 100%;
@@ -553,7 +554,7 @@ onMounted(async () => {
 
 .quick-card {
   background: rgb(var(--v-theme-surface));
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
   padding: 20px;
   cursor: pointer;
   transition: all 0.25s;
@@ -586,7 +587,7 @@ onMounted(async () => {
 .quick-card-icon {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: $border-radius-default;
   display: grid;
   place-items: center;
   margin-bottom: 12px;
@@ -609,7 +610,7 @@ onMounted(async () => {
   margin-top: 10px;
   padding: 2px 8px;
   background: rgba(255,255,255,0.05);
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.6rem;
   color: var(--text-muted, #8895a8);
@@ -633,7 +634,7 @@ onMounted(async () => {
   font-size: 0.68rem;
   color: var(--text-muted, #8895a8);
   padding: 2px 8px;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
 }
 
@@ -661,7 +662,7 @@ onMounted(async () => {
 
 .team-card {
   background: rgb(var(--v-theme-surface));
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
   padding: 16px 14px 20px;
   cursor: pointer;
   transition: all 0.25s;
@@ -684,7 +685,7 @@ onMounted(async () => {
 .team-avatar {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: $border-radius-md;
   display: grid;
   place-items: center;
   font-size: 0.78rem;
@@ -734,7 +735,7 @@ onMounted(async () => {
   gap: 16px;
   padding: 18px 20px;
   background: rgb(var(--v-theme-surface));
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
   cursor: pointer;
   transition: all 0.25s;
 }
@@ -767,7 +768,7 @@ onMounted(async () => {
 
 .recent-projects-panel {
   background: rgb(var(--v-theme-surface));
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
   overflow: hidden;
 }
 

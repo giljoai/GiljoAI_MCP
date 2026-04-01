@@ -401,7 +401,8 @@ const resetState = () => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .modal-title {
   position: sticky;
   top: 0;
@@ -421,14 +422,14 @@ const resetState = () => {
 
 .git-commits-list {
   background-color: rgba(0, 0, 0, 0.02);
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   padding: 8px 0;
 }
 
 .metadata-section {
   background-color: rgba(0, 0, 0, 0.02);
   padding: 12px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
 }
 
 /* Focus trap for accessibility */

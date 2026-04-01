@@ -1105,7 +1105,9 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
+
 /* Card uses darker background color for layered effect */
 /* Header and footer inherit this dark background, content area is lighter */
 .product-form-card {
@@ -1117,7 +1119,7 @@ onUnmounted(() => {
   border: none;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
   border-top: none;
-  border-radius: 0 8px 8px 8px;
+  border-radius: 0 $border-radius-default $border-radius-default $border-radius-default;
   padding: 16px;
   background: rgb(var(--v-theme-surface));
 }

@@ -407,7 +407,7 @@ watch(missionText, (next, previous) => {
         flex-direction: column;
         min-height: 0;
         background: $elevation-raised;
-        border-radius: 16px;
+        border-radius: $border-radius-rounded;
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
 
         .panel-header {
@@ -550,7 +550,7 @@ watch(missionText, (next, previous) => {
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    border-radius: 8px;
+    border-radius: $border-radius-default;
     background: transparent;
     border: none;
     transition: background 0.15s;
@@ -563,7 +563,7 @@ watch(missionText, (next, previous) => {
     .agent-badge {
       width: 36px;
       height: 36px;
-      border-radius: 8px;
+      border-radius: $border-radius-default;
       display: grid;
       place-items: center;
       font-size: 0.7rem;
@@ -608,7 +608,7 @@ watch(missionText, (next, previous) => {
       font-family: 'IBM Plex Mono', monospace;
       background: rgba(255, 255, 255, 0.05);
       padding: 0 4px;
-      border-radius: 2px;
+      border-radius: $border-radius-sharp;
       text-decoration: none;
 
       &:hover {

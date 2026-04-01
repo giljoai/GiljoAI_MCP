@@ -889,10 +889,11 @@ watch(
 </script>
 
 <style scoped lang="scss">
+@use '../styles/design-tokens' as *;
 .template-role-badge {
   display: inline-block;
   padding: 2px 10px;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   font-size: 0.75rem;
   font-weight: 600;
 }

@@ -442,10 +442,11 @@ watch(
 )
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 .requirement-list {
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   padding: 12px;
 }
 
@@ -453,7 +454,7 @@ watch(
 .v-text-field:focus-within {
   outline: 2px solid rgba(var(--v-theme-primary), 0.5);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
 }
 
 .v-btn:focus-visible {

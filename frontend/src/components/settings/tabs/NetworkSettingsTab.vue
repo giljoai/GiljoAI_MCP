@@ -505,10 +505,11 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../../styles/design-tokens' as *;
 .network-card {
   background: var(--bg-raised, #1e3147);
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
 }
 
 .network-subtitle {

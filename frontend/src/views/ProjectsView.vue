@@ -1540,14 +1540,14 @@ onBeforeUnmount(() => {
 }
 
 .rounded {
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
 }
 
 /* 0870h: smooth-border table panel */
 :deep(.v-card) {
   box-shadow: inset 0 0 0 1px $color-border-subtle;
   border: none !important;
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
 }
 
 /* Clickable rows — entire row opens edit/review */
@@ -1604,7 +1604,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.62rem;
   font-weight: 600;
@@ -1641,7 +1641,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   font-size: 0.65rem;
   font-weight: 600;
 }

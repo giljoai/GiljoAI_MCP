@@ -70,7 +70,7 @@
             <!-- Current Value -->
             <div class="mb-4">
               <div class="text-caption font-weight-bold mb-1" style="color: #8895a8">Current Value</div>
-              <v-card variant="flat" class="pa-3 smooth-border" style="border-radius: 8px">
+              <v-card variant="flat" class="pa-3 smooth-border review-value-card">
                 <div class="text-body-2" style="white-space: pre-wrap;">
                   {{ getSectionData(sectionKey).current_summary || 'No current value' }}
                 </div>
@@ -125,9 +125,9 @@
                 v-else
                 variant="flat"
                 :class="[
-                  'pa-3 smooth-border',
+                  'pa-3 smooth-border review-value-card',
                 ]"
-                :style="hasValueChanged(sectionKey) ? 'border-radius: 8px; --smooth-border-color: #EDBA4A' : 'border-radius: 8px'"
+                :style="hasValueChanged(sectionKey) ? '--smooth-border-color: #EDBA4A' : ''"
               >
                 <div class="text-body-2" style="white-space: pre-wrap;">
                   {{ getSectionData(sectionKey).proposed_value || 'No change proposed' }}
@@ -429,15 +429,20 @@ async function dismissAll() {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .tuning-chip {
   display: inline-flex;
   align-items: center;
   font-size: 0.7rem;
   font-weight: 600;
   padding: 2px 10px;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   line-height: 1.4;
   letter-spacing: 0.02em;
+}
+
+.review-value-card {
+  border-radius: $border-radius-default;
 }
 </style>
