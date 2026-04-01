@@ -15,7 +15,7 @@
       <v-card-text v-if="product">
         <!-- Product Name -->
         <div class="text-h6 mb-2">{{ product.name }}</div>
-        <div class="text-caption mb-2" style="color: #8895a8; font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem">ID: {{ product.id }}</div>
+        <div class="text-caption mb-2 text-muted-a11y" style="font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem">ID: {{ product.id }}</div>
 
         <!-- Context Tuning (Handover 0831) -->
         <div class="d-flex align-center mb-4">
@@ -56,12 +56,12 @@
           <div class="text-subtitle-2 mb-2">Statistics</div>
           <v-row dense>
             <v-col cols="6">
-              <div class="text-caption" style="color: #8895a8">Unresolved Tasks</div>
-              <div class="text-h6" style="color: #a3aac4">{{ product.unresolved_tasks || 0 }}</div>
+              <div class="text-caption text-muted-a11y">Unresolved Tasks</div>
+              <div class="text-h6 text-secondary-a11y">{{ product.unresolved_tasks || 0 }}</div>
             </v-col>
             <v-col cols="6">
-              <div class="text-caption" style="color: #8895a8">Unfinished Projects</div>
-              <div class="text-h6" style="color: #a3aac4">{{ product.unfinished_projects || 0 }}</div>
+              <div class="text-caption text-muted-a11y">Unfinished Projects</div>
+              <div class="text-h6 text-secondary-a11y">{{ product.unfinished_projects || 0 }}</div>
             </v-col>
           </v-row>
         </div>
@@ -87,7 +87,7 @@
 
               <!-- Summary Levels Preview (Handover 0246b: light/medium/full) -->
               <v-card-text v-if="doc.is_summarized || doc.vision_document" class="pt-0 pb-2">
-                <div class="text-caption mb-1" style="color: #8895a8">Summary Previews</div>
+                <div class="text-caption mb-1 text-muted-a11y">Summary Previews</div>
                 <div class="d-flex justify-space-around">
                   <span
                     class="summary-level-chip cursor-pointer"
@@ -146,7 +146,7 @@
                 </div>
               </v-card-text>
               <v-card-text v-else class="pt-0 pb-2">
-                <div class="text-caption" style="color: #8895a8">
+                <div class="text-caption text-muted-a11y">
                   <v-icon size="12" class="mr-1">mdi-information-outline</v-icon>
                   No summaries generated yet
                 </div>
@@ -234,7 +234,7 @@
             </span>
           </div>
 
-          <div v-if="product?.consolidated_at" class="text-caption mb-3" style="color: #8895a8">
+          <div v-if="product?.consolidated_at" class="text-caption mb-3 text-muted-a11y">
             <v-icon size="14" class="mr-1">mdi-clock-outline</v-icon>
             Last consolidated: {{ formatDate(product.consolidated_at) }}
             <span v-if="product?.consolidated_vision_hash" class="ml-2">

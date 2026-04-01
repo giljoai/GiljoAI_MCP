@@ -83,7 +83,7 @@
         <!-- CORS Origins Management -->
         <v-divider class="my-6" />
 
-        <h3 class="text-h6 mb-3" style="color: #a3aac4;">CORS Allowed Origins</h3>
+        <h3 class="text-h6 mb-3" style="color: var(--text-secondary);">CORS Allowed Origins</h3>
 
         <v-alert type="info" variant="tonal" class="mb-4">
           <strong>Foundation implementation exists.</strong> Reserved for future use when frontend
@@ -513,6 +513,6 @@ onMounted(() => {
 }
 
 .network-subtitle {
-  color: #8895a8;
+  color: var(--text-muted);
 }
 </style>

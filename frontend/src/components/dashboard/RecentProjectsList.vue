@@ -114,14 +114,14 @@ function capitalize(str) {
 
 .project-product {
   font-size: 0.68rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   margin-left: 4px;
 }
 
 .project-time {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.58rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   flex-shrink: 0;
   min-width: 56px;
   text-align: right;
@@ -148,7 +148,7 @@ function capitalize(str) {
 
 .no-data-text {
   font-size: 0.75rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   padding: 8px 0;
   text-align: center;
 }

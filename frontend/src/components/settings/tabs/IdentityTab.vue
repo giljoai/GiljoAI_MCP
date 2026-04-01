@@ -169,6 +169,6 @@ function resetForm() {
 }
 
 .identity-subtitle {
-  color: #8895a8;
+  color: var(--text-muted);
 }
 </style>

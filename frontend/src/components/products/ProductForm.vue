@@ -54,7 +54,7 @@
           </div>
         </v-alert>
 
-        <div class="bordered-tabs-content">
+        <div class="bordered-tabs-content smooth-border">
           <v-form ref="formRef" v-model="formValid">
             <v-window v-model="dialogTab" class="global-tabs-window">
             <!-- Product Setup Tab -->
@@ -1117,7 +1117,6 @@ onUnmounted(() => {
 /* Button toggle tabs styling - matches Settings page pattern */
 .bordered-tabs-content {
   border: none;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
   border-top: none;
   border-radius: 0 $border-radius-default $border-radius-default $border-radius-default;
   padding: 16px;
