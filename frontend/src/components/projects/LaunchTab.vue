@@ -1,186 +1,182 @@
 <template>
   <div class="launch-tab-wrapper">
-    <!-- Main Container (unified border) - buttons moved to ProjectTabs -->
-    <div class="main-container">
-      <div class="three-panels">
-        <!-- Panel 1: Project Description -->
-        <div class="panel project-description-panel smooth-border" data-testid="description-panel">
-          <div class="panel-header">
-            <span>Project Description</span>
-            <div class="header-actions">
-              <v-btn
-                icon="mdi-pencil"
-                size="x-small"
-                variant="text"
-                class="header-edit-btn icon-interactive"
-                title="Edit description"
-                aria-label="Edit description"
-                @click="editDescription"
-              />
-              <AgentTipsDialog />
-            </div>
-          </div>
-          <div class="panel-content scrollbar-standard">
-            <p class="description-text">{{ project.description || 'No description available' }}</p>
-          </div>
-        </div>
-
-        <!-- Panel 2: Orchestrator Mission -->
-        <div class="panel mission-panel smooth-border" data-testid="mission-panel">
-          <div class="panel-header">Orchestrator Generated Mission</div>
-          <div class="panel-content scrollbar-standard">
-            <EmptyState
-              v-if="!missionText"
-              icon="mdi-file-document-outline"
-              title="No mission generated"
+    <!-- Two-column grid: Description + Mission cards -->
+    <div class="content-grid">
+      <!-- Description Card -->
+      <div class="content-card smooth-border" data-testid="description-panel">
+        <div class="section-label">
+          <span>Project Description</span>
+          <div class="header-actions">
+            <v-btn
+              icon="mdi-pencil"
+              size="x-small"
+              variant="text"
+              class="header-edit-btn icon-interactive"
+              title="Edit description"
+              aria-label="Edit description"
+              @click="editDescription"
             />
-            <div v-else class="mission-content">
-              {{ missionText }}
-            </div>
+            <AgentTipsDialog />
           </div>
         </div>
+        <div class="card-body scrollbar-standard">
+          <p class="description-text">{{ project.description || 'No description available' }}</p>
+        </div>
+      </div>
 
-        <!-- Panel 3: Agents -->
-        <div class="panel agents-panel smooth-border" data-testid="agents-panel">
-          <div class="panel-header">
-            <span>Agents</span>
-            <div class="integration-icons">
-              <!-- GitHub Integration -->
-              <v-tooltip location="bottom" max-width="300">
-                <template #activator="{ props: tooltipProps }">
-                  <v-icon
-                    v-bind="tooltipProps"
-                    :class="{ 'icon-disabled': !gitEnabled }"
-                    size="36"
-                    color="white"
-                    data-testid="github-status-icon"
-                    class="cursor-pointer"
-                    aria-label="GitHub integration status"
-                    @click="goToIntegrations"
-                  >
-                    mdi-github
-                  </v-icon>
-                </template>
-                <span v-if="gitEnabled">GitHub integration enabled. Commit history will be included in project summaries.</span>
-                <span v-else>GitHub integration disabled. Click to enable in Settings.</span>
-              </v-tooltip>
-              <!-- Serena MCP Integration -->
-              <v-tooltip location="bottom" max-width="300">
-                <template #activator="{ props: tooltipProps }">
-                  <v-img
-                    v-bind="tooltipProps"
-                    src="/Serena.png"
-                    width="36"
-                    height="36"
-                    :class="{ 'icon-disabled': !serenaEnabled }"
-                    data-testid="serena-status-icon"
-                    class="cursor-pointer"
-                    alt="Serena MCP integration status"
-                    aria-label="Serena MCP integration status"
-                    @click="goToIntegrations"
-                  />
-                </template>
-                <span v-if="serenaEnabled">Serena MCP enabled. Agents will use semantic code navigation.</span>
-                <span v-else>Serena MCP disabled. Click to enable in Settings.</span>
-              </v-tooltip>
-              <!-- Agentic Tool Badge -->
-              <v-tooltip v-if="agenticTool" location="bottom" max-width="300">
-                <template #activator="{ props: tooltipProps }">
-                  <v-icon
-                    v-if="agenticTool.type === 'icon'"
-                    v-bind="tooltipProps"
-                    size="36"
-                    color="primary"
-                    data-testid="agentic-tool-icon"
-                    class="cursor-pointer"
-                    :aria-label="agenticTool.alt"
-                    @click="goToIntegrations"
-                  >
-                    {{ agenticTool.icon }}
-                  </v-icon>
-                  <v-img
-                    v-else
-                    v-bind="tooltipProps"
-                    :src="agenticTool.src"
-                    width="36"
-                    height="36"
-                    data-testid="agentic-tool-icon"
-                    class="cursor-pointer"
-                    :alt="agenticTool.alt"
-                    :aria-label="agenticTool.alt"
-                    @click="goToIntegrations"
-                  />
-                </template>
-                <span>{{ agenticTool.label }} mode active.</span>
-              </v-tooltip>
-            </div>
-          </div>
-          <div class="panel-content scrollbar-standard">
-            <div class="agents-list">
-              <!-- All agents shown together -->
-              <div
-                v-for="agent in sortedJobs"
-                :key="agent.job_id || agent.agent_id || agent.id"
-                class="agent-slim-card"
-                data-testid="agent-card"
-                :data-agent-display-name="agent.agent_display_name"
-                @click="handleAgentInfo(agent)"
-              >
-                <div class="agent-badge" :style="getAgentBadgeStyle(agent.agent_name || agent.agent_display_name)">
-                  {{ getAgentInitials(agent.agent_display_name) }}
-                </div>
-                <div class="agent-info">
-                  <span class="agent-name" data-testid="agent-name">{{ agent.agent_display_name?.toUpperCase() || '' }}</span>
-                  <div class="text-caption text-medium-emphasis">
-                    <span class="status-text" :class="'status-' + agent.status">
-                      {{ agent.status }}
-                    </span>
-                    <v-tooltip v-if="agent.agent_id || agent.job_id" location="top">
-                      <template #activator="{ props: tooltipProps }">
-                        <span
-                          v-bind="tooltipProps"
-                          class="agent-id-link"
-                          @click.stop
-                        >
-                          • ID: {{ (agent.agent_id || agent.job_id || '').slice(0, 8) }}...
-                        </span>
-                      </template>
-                      <span>{{ agent.agent_id || agent.job_id }}</span>
-                    </v-tooltip>
-                  </div>
-                </div>
-                <span class="agent-type" data-testid="agent-display-name" style="display: none;">{{ agent.agent_display_name || '' }}</span>
-                <span class="status-chip" data-testid="status-chip" style="display: none;">{{ agent.status || 'pending' }}</span>
-                <v-icon
-                  v-if="agent.agent_display_name !== 'orchestrator'"
-                  size="small"
-                  class="icon-interactive mr-1"
-                  role="button"
-                  tabindex="0"
-                  title="Edit agent configuration"
-                  aria-label="Edit agent configuration"
-                  @click.stop="handleAgentEdit(agent)"
-                  @keydown.enter="handleAgentEdit(agent)"
-                >mdi-pencil</v-icon>
-                <v-icon
-                  size="small"
-                  class="icon-interactive"
-                  role="button"
-                  tabindex="0"
-                  title="View agent details"
-                  aria-label="View agent details"
-                  @click.stop="handleAgentInfo(agent)"
-                  @keydown.enter="handleAgentInfo(agent)"
-                >mdi-eye</v-icon>
-              </div>
-              <!-- Empty state when no agents -->
-              <div v-if="!sortedJobs || sortedJobs.length === 0" class="empty-agents">
-                <v-icon size="48" class="empty-icon">mdi-account-group-outline</v-icon>
-                <p class="text-caption text-medium-emphasis">No agents yet - click Stage Project to begin</p>
-              </div>
-            </div>
+      <!-- Mission Card -->
+      <div class="content-card smooth-border" data-testid="mission-panel">
+        <div class="section-label">Orchestrator Generated Mission</div>
+        <div class="card-body scrollbar-standard">
+          <EmptyState
+            v-if="!missionText"
+            icon="mdi-file-document-outline"
+            title="No mission generated"
+          />
+          <div v-else class="mission-content">
+            {{ missionText }}
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Integration icons row (bare, no frame) -->
+    <div class="integrations-row">
+      <!-- GitHub Integration -->
+      <v-tooltip location="bottom" max-width="300">
+        <template #activator="{ props: tooltipProps }">
+          <v-icon
+            v-bind="tooltipProps"
+            :class="{ 'icon-disabled': !gitEnabled }"
+            size="36"
+            color="white"
+            data-testid="github-status-icon"
+            class="cursor-pointer integration-icon"
+            aria-label="GitHub integration status"
+            @click="goToIntegrations"
+          >
+            mdi-github
+          </v-icon>
+        </template>
+        <span v-if="gitEnabled">GitHub integration enabled. Commit history will be included in project summaries.</span>
+        <span v-else>GitHub integration disabled. Click to enable in Settings.</span>
+      </v-tooltip>
+      <!-- Serena MCP Integration -->
+      <v-tooltip location="bottom" max-width="300">
+        <template #activator="{ props: tooltipProps }">
+          <v-img
+            v-bind="tooltipProps"
+            src="/Serena.png"
+            width="36"
+            height="36"
+            :class="{ 'icon-disabled': !serenaEnabled }"
+            data-testid="serena-status-icon"
+            class="cursor-pointer integration-icon"
+            alt="Serena MCP integration status"
+            aria-label="Serena MCP integration status"
+            @click="goToIntegrations"
+          />
+        </template>
+        <span v-if="serenaEnabled">Serena MCP enabled. Agents will use semantic code navigation.</span>
+        <span v-else>Serena MCP disabled. Click to enable in Settings.</span>
+      </v-tooltip>
+      <!-- Agentic Tool Badge -->
+      <v-tooltip v-if="agenticTool" location="bottom" max-width="300">
+        <template #activator="{ props: tooltipProps }">
+          <v-icon
+            v-if="agenticTool.type === 'icon'"
+            v-bind="tooltipProps"
+            size="36"
+            color="primary"
+            data-testid="agentic-tool-icon"
+            class="cursor-pointer integration-icon"
+            :aria-label="agenticTool.alt"
+            @click="goToIntegrations"
+          >
+            {{ agenticTool.icon }}
+          </v-icon>
+          <v-img
+            v-else
+            v-bind="tooltipProps"
+            :src="agenticTool.src"
+            width="36"
+            height="36"
+            data-testid="agentic-tool-icon"
+            class="cursor-pointer integration-icon"
+            :alt="agenticTool.alt"
+            :aria-label="agenticTool.alt"
+            @click="goToIntegrations"
+          />
+        </template>
+        <span>{{ agenticTool.label }} mode active.</span>
+      </v-tooltip>
+    </div>
+
+    <!-- Agents section label -->
+    <div class="section-label section-label--standalone">Agents</div>
+
+    <!-- Agents list (bare, no card wrapper) -->
+    <div class="agents-list">
+      <!-- All agents shown together -->
+      <div
+        v-for="agent in sortedJobs"
+        :key="agent.job_id || agent.agent_id || agent.id"
+        class="agent-slim-card"
+        data-testid="agent-card"
+        :data-agent-display-name="agent.agent_display_name"
+        @click="handleAgentInfo(agent)"
+      >
+        <div class="agent-badge" :style="getAgentBadgeStyle(agent.agent_name || agent.agent_display_name)">
+          {{ getAgentInitials(agent.agent_display_name) }}
+        </div>
+        <div class="agent-info">
+          <span class="agent-name" data-testid="agent-name">{{ agent.agent_display_name?.toUpperCase() || '' }}</span>
+          <div class="text-caption agent-meta">
+            <span class="status-text" :class="'status-' + agent.status">
+              {{ agent.status }}
+            </span>
+            <v-tooltip v-if="agent.agent_id || agent.job_id" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <span
+                  v-bind="tooltipProps"
+                  class="agent-id-link"
+                  @click.stop
+                >
+                  • ID: {{ (agent.agent_id || agent.job_id || '').slice(0, 8) }}...
+                </span>
+              </template>
+              <span>{{ agent.agent_id || agent.job_id }}</span>
+            </v-tooltip>
+          </div>
+        </div>
+        <span class="agent-type" data-testid="agent-display-name" style="display: none;">{{ agent.agent_display_name || '' }}</span>
+        <span class="status-chip" data-testid="status-chip" style="display: none;">{{ agent.status || 'pending' }}</span>
+        <v-icon
+          v-if="agent.agent_display_name !== 'orchestrator'"
+          size="small"
+          class="icon-interactive mr-1"
+          role="button"
+          tabindex="0"
+          title="Edit agent configuration"
+          aria-label="Edit agent configuration"
+          @click.stop="handleAgentEdit(agent)"
+          @keydown.enter="handleAgentEdit(agent)"
+        >mdi-pencil</v-icon>
+        <v-icon
+          size="small"
+          class="icon-interactive"
+          role="button"
+          tabindex="0"
+          title="View agent details"
+          aria-label="View agent details"
+          @click.stop="handleAgentInfo(agent)"
+          @keydown.enter="handleAgentInfo(agent)"
+        >mdi-eye</v-icon>
+      </div>
+      <!-- Empty state when no agents -->
+      <div v-if="!sortedJobs || sortedJobs.length === 0" class="empty-agents">
+        <v-icon size="48" class="empty-icon">mdi-account-group-outline</v-icon>
+        <p class="text-caption text-muted-a11y">No agents yet - click Stage Project to begin</p>
       </div>
     </div>
 
@@ -217,11 +213,7 @@ import { hexToRgba, getAgentBadgeStyle } from '@/utils/colorUtils'
 /**
  * LaunchTab Component - Complete Rewrite (Handover 0241)
  * Execution Mode Toggle moved to ProjectTabs (Handover 0428)
- *
- * Exact match to screenshot design:
- * - Main container with unified border and rounded corners
- * - Three equal panels: Project Description, Orchestrator Mission, Default Agent
- * - Dark navy background, tan orchestrator avatar, yellow buttons
+ * Flattened layout (Handover 0873): 2-col grid for cards, bare agents list
  */
 
 const props = defineProps({
@@ -288,7 +280,7 @@ const getAgentColor = (displayName) => {
 /**
  * Get agent initials - uses word initials
  * Split by dash, space, or underscore and use first letter of each part
- * e.g., "Backend-Implementer" → "BI", "Backend-Tester" → "BT"
+ * e.g., "Backend-Implementer" -> "BI", "Backend-Tester" -> "BT"
  */
 const getAgentInitials = (displayName) => {
   if (!displayName) return '??'
@@ -297,7 +289,7 @@ const getAgentInitials = (displayName) => {
   const parts = displayName.split(/[-_\s]+/).filter(Boolean)
 
   if (parts.length >= 2) {
-    // Use first letter of first two parts: "Backend-Implementer" → "BI"
+    // Use first letter of first two parts: "Backend-Implementer" -> "BI"
     return (parts[0][0] + parts[1][0]).toUpperCase()
   }
 
@@ -391,210 +383,203 @@ watch(missionText, (next, previous) => {
   flex-direction: column;
   padding: 16px;
   background: transparent;
+}
 
-  .main-container {
+/* Two-column grid for Description + Mission cards */
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+/* Individual content cards (Description, Mission) */
+.content-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: $elevation-raised;
+  border-radius: $border-radius-rounded;
+  padding: 20px;
+
+  .card-body {
     flex: 1;
-    display: flex;
-    flex-direction: column;
     min-height: 0;
+    overflow-y: auto;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: $color-text-primary;
+    margin-top: 12px;
 
-    .three-panels {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: $spacing-panel-gap;
-      min-height: 0;
-
-      .panel {
-        display: flex;
-        flex-direction: column;
-        min-height: 0;
-        background: $elevation-raised;
-        border-radius: $border-radius-rounded;
-
-        .panel-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 14px 16px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          flex-shrink: 0;
-
-          span {
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: $color-text-secondary;
-            font-weight: 500;
-          }
-
-          .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 2px;
-          }
-
-          .header-edit-btn {
-            width: 26px;
-            height: 26px;
-          }
-
-          .integration-icons {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-left: auto;
-
-            .v-icon, .v-img {
-              opacity: 0.7;
-              transition: opacity $transition-normal ease;
-              object-fit: contain;
-              font-size: 16px;
-
-              &:hover {
-                opacity: 1;
-              }
-
-              &.icon-disabled {
-                opacity: 0.3;
-              }
-            }
-          }
-        }
-
-        .panel-content {
-          padding: 14px 16px;
-          flex: 1;
-          min-height: 0;
-          position: relative;
-          overflow-y: auto;
-          font-size: 0.8rem;
-          line-height: 1.5;
-          color: $color-text-primary;
-
-          .mission-content {
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-size: 0.78rem;
-            line-height: 1.5;
-            color: $color-text-secondary;
-            font-style: italic;
-          }
-
-          .description-text {
-            line-height: 1.5;
-            white-space: pre-wrap;
-            word-break: break-word;
-          }
-        }
-      }
-    }
-  }
-
-  /* Agents List */
-  .agents-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 6px 10px;
-
-    .empty-agents {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 32px;
-      text-align: center;
-
-      .empty-icon {
-        color: rgba(var(--v-theme-on-surface), 0.15);
-        margin-bottom: 8px;
-      }
-    }
-  }
-
-  /* Agent card — tinted square badge pattern (0870j) */
-  .agent-slim-card {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: $border-radius-default;
-    background: transparent;
-    border: none;
-    transition: background $transition-fast;
-    cursor: pointer;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    .agent-badge {
-      width: 36px;
-      height: 36px;
-      border-radius: $border-radius-default;
-      display: grid;
-      place-items: center;
-      font-size: 0.7rem;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
-
-    .agent-info {
-      flex: 1;
-      min-width: 0;
-
-      .agent-name {
-        font-size: 0.78rem;
-        font-weight: 500;
-        color: $color-text-primary;
-      }
-    }
-
-    // Meta line: status + id
-    .text-caption {
-      font-size: 0.62rem;
-      color: $color-text-muted;
-      margin-top: 1px;
-    }
-
-    .status-text {
-      text-transform: capitalize;
-      font-size: 0.62rem;
+    .mission-content {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: $color-text-secondary;
       font-style: italic;
-
-      &.status-waiting { color: $color-status-waiting; }
-      &.status-working { color: $color-status-working; font-style: italic; }
-      &.status-complete { color: $color-status-complete; }
-      &.status-handed_over { color: $color-status-handed-over; }
-      &.status-blocked { color: $color-status-blocked; }
-      &.status-silent { color: $color-status-blocked; }
-      &.status-pending { color: $color-status-waiting; }
     }
 
-    .agent-id-link {
-      cursor: pointer;
-      font-family: 'IBM Plex Mono', monospace;
-      background: rgba(255, 255, 255, 0.05);
-      padding: 0 4px;
-      border-radius: $border-radius-sharp;
-      text-decoration: none;
-
-      &:hover {
-        color: $color-brand-yellow;
-      }
-    }
-
-    .icon-interactive {
-      flex-shrink: 0;
-      width: 26px;
-      height: 26px;
+    .description-text {
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
   }
 }
 
+/* Section label — IBM Plex Mono uppercase (matches integrations page) */
+.section-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  color: $color-text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .header-edit-btn {
+    width: 26px;
+    height: 26px;
+  }
+
+  &--standalone {
+    margin-bottom: 8px;
+  }
+}
+
+/* Integration icons row (bare, no frame) */
+.integrations-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+
+  .integration-icon {
+    opacity: 0.7;
+    transition: opacity $transition-normal ease;
+    object-fit: contain;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    &.icon-disabled {
+      opacity: 0.3;
+    }
+  }
+}
+
+/* Agents List — bare, no background/border/shadow */
+.agents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .empty-agents {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    text-align: center;
+
+    .empty-icon {
+      color: rgba(var(--v-theme-on-surface), 0.15);
+      margin-bottom: 8px;
+    }
+  }
+}
+
+/* Agent card — tinted square badge pattern (0870j) */
+.agent-slim-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: $border-radius-default;
+  background: transparent;
+  border: none;
+  transition: background $transition-fast;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .agent-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: $border-radius-default;
+    display: grid;
+    place-items: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .agent-info {
+    flex: 1;
+    min-width: 0;
+
+    .agent-name {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: $color-text-primary;
+    }
+  }
+
+  // Meta line: status + id
+  .agent-meta {
+    font-size: 0.62rem;
+    color: $color-text-muted;
+    margin-top: 1px;
+  }
+
+  .status-text {
+    text-transform: capitalize;
+    font-size: 0.62rem;
+    font-style: italic;
+
+    &.status-waiting { color: $color-status-waiting; }
+    &.status-working { color: $color-status-working; font-style: italic; }
+    &.status-complete { color: $color-status-complete; }
+    &.status-handed_over { color: $color-status-handed-over; }
+    &.status-blocked { color: $color-status-blocked; }
+    &.status-silent { color: $color-status-blocked; }
+    &.status-pending { color: $color-status-waiting; }
+  }
+
+  .agent-id-link {
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0 4px;
+    border-radius: $border-radius-sharp;
+    text-decoration: none;
+
+    &:hover {
+      color: $color-brand-yellow;
+    }
+  }
+
+  .icon-interactive {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+  }
+}
+
 @media (max-width: 1100px) {
-  .launch-tab-wrapper .main-container .three-panels {
+  .content-grid {
     grid-template-columns: 1fr;
   }
 }
