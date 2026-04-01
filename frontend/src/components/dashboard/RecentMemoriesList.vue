@@ -71,6 +71,8 @@
 
 <script setup>
 import { ref } from 'vue'
+import { hexToRgba } from '@/utils/colorUtils'
+import { getAgentColor } from '@/config/agentColors'
 
 defineProps({
   memories: {
@@ -89,19 +91,19 @@ function openMemory(memory) {
   showDetail.value = true
 }
 
-// Tinted type tag colors — mapped to agent colors for visual variety
-const typeColors = {
-  project_closeout: { bg: 'rgba(109, 179, 228, 0.12)', color: '#6DB3E4' },  /* implementer */
-  project_completion: { bg: 'rgba(94, 196, 142, 0.12)', color: '#5EC48E' },  /* documenter */
-  session_handover: { bg: 'rgba(172, 128, 204, 0.12)', color: '#AC80CC' },   /* reviewer */
-  handover_closeout: { bg: 'rgba(224, 120, 114, 0.12)', color: '#E07872' },  /* analyzer */
+// Tinted type tag colors — mapped to agent color tokens
+const typeColorMap = {
+  project_closeout: getAgentColor('implementer').hex,
+  project_completion: getAgentColor('documenter').hex,
+  session_handover: getAgentColor('reviewer').hex,
+  handover_closeout: getAgentColor('analyzer').hex,
 }
 
-const defaultTypeColor = { bg: 'rgba(237, 186, 74, 0.12)', color: '#EDBA4A' } /* tester */
+const defaultTypeHex = getAgentColor('tester').hex
 
 function typeStyle(entryType) {
-  const c = typeColors[entryType] || defaultTypeColor
-  return { background: c.bg, color: c.color }
+  const hex = typeColorMap[entryType] || defaultTypeHex
+  return { background: hexToRgba(hex, 0.12), color: hex }
 }
 
 function typeLabel(entryType) {
