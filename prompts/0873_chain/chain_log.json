@@ -514,28 +514,28 @@
       ],
       "tasks_completed": [
         "Found 90+ showToast calls across 25 Vue files + 1 JS store",
-        "BUG FIX: BroadcastPanel.vue — 4 showToast calls used positional args (string, string) instead of object syntax, causing messages to silently fail",
-        "BUG FIX: ProductsView.vue — 23 showToast calls used `duration` instead of `timeout`, causing custom durations to be silently ignored by ToastManager",
-        "BUG FIX: ProductForm.vue — 2 showToast calls used `duration` instead of `timeout`",
+        "BUG FIX: BroadcastPanel.vue \u00e2\u20ac\u201d 4 showToast calls used positional args (string, string) instead of object syntax, causing messages to silently fail",
+        "BUG FIX: ProductsView.vue \u00e2\u20ac\u201d 23 showToast calls used `duration` instead of `timeout`, causing custom durations to be silently ignored by ToastManager",
+        "BUG FIX: ProductForm.vue \u00e2\u20ac\u201d 2 showToast calls used `duration` instead of `timeout`",
         "Removed exclamation marks from 11 clipboard success messages across 9 files",
         "Standardized copy-success format to '[Thing] copied to clipboard' (no exclamation, consistent phrasing)",
         "HandoverModal: added 'to clipboard' suffix to retirement/continuation prompt messages",
-        "AgentExport: 'Download complete' → 'Agent export downloaded successfully' (more descriptive)",
-        "AgentTableView: 'Session refreshed!' → 'Session refreshed — continuation prompt copied to clipboard'",
+        "AgentExport: 'Download complete' \u00e2\u2020\u2019 'Agent export downloaded successfully' (more descriptive)",
+        "AgentTableView: 'Session refreshed!' \u00e2\u2020\u2019 'Session refreshed \u00e2\u20ac\u201d continuation prompt copied to clipboard'",
         "All 1916 Vitest tests passed",
         "Commit 97860159: 11 files, 41 insertions, 41 deletions"
       ],
       "deviations": [
-        "No deviations from handover spec — audit+fix approach followed as directed"
+        "No deviations from handover spec \u00e2\u20ac\u201d audit+fix approach followed as directed"
       ],
       "blockers_encountered": [],
       "notes_for_next": [
         "FLAGGED FOR HUMAN REVIEW (subjective toast messages):",
-        "TemplateManager.vue: 'Agent activated - re-export required' — terse but functional; could be 'Agent template activated — re-export required to apply changes'",
-        "TemplateManager.vue: 'Agent deactivated' — very terse; could say 'Agent template deactivated'",
-        "ProjectTabs.vue: 'Project resumed - agents ready for work' — uses hyphen; rest of codebase uses em dash (—)",
-        "websocket.js: connection toasts use title+message format (e.g. title: 'Connection Lost', message: 'Attempting to reconnect...') while all other toasts use message-only — this is a different pattern but arguably better for system-level notifications",
-        "Some error messages use generic 'Try again or refresh the page' recovery suggestion — consistent but could be more specific per-context",
+        "TemplateManager.vue: 'Agent activated - re-export required' \u00e2\u20ac\u201d terse but functional; could be 'Agent template activated \u00e2\u20ac\u201d re-export required to apply changes'",
+        "TemplateManager.vue: 'Agent deactivated' \u00e2\u20ac\u201d very terse; could say 'Agent template deactivated'",
+        "ProjectTabs.vue: 'Project resumed - agents ready for work' \u00e2\u20ac\u201d uses hyphen; rest of codebase uses em dash (\u00e2\u20ac\u201d)",
+        "websocket.js: connection toasts use title+message format (e.g. title: 'Connection Lost', message: 'Attempting to reconnect...') while all other toasts use message-only \u00e2\u20ac\u201d this is a different pattern but arguably better for system-level notifications",
+        "Some error messages use generic 'Try again or refresh the page' recovery suggestion \u00e2\u20ac\u201d consistent but could be more specific per-context",
         "0873n (Terminology & Icon Standardization) is next per orchestrator directive"
       ],
       "cascading_impacts": [
@@ -597,22 +597,22 @@
       "planned_tasks": [
         "Run all master verification greps from 0873a-k",
         "Fix any remaining files not caught by previous sessions",
-        "Run full Vitest suite — all tests must pass",
+        "Run full Vitest suite \u00e2\u20ac\u201d all tests must pass",
         "Report final counts in summary",
         "Commit"
       ],
       "tasks_completed": [
-        "Grep 1 — Frames (box-shadow: inset 0 0 0 1px): 10 hits, all use var(--smooth-border-color) or $color-brand-yellow SCSS token — zero hardcoded values",
-        "Grep 2 — Border radius: 20 hits, all are 50% (circles) or $border-radius-default token — zero problematic hits after spec exclusion",
-        "Grep 3 — Table headers (font-size: 0.6rem): 6 hits, all documented as legitimate non-table-header contexts by 0873c (dashboard badges, welcome code block, review modal label)",
-        "Grep 4 — Text colors (#8895a8, #a3aac4, #e1e1e1): 6 hits, all documented as legitimate exceptions by 0873g (hexToRgba badge color pattern in JS + 1 comment)",
-        "Grep 5 — Transitions (0.15s/0.2s/0.3s): 0 hits — fully clean",
-        "No fixes needed — all remaining hits are previously documented legitimate exceptions",
+        "Grep 1 \u00e2\u20ac\u201d Frames (box-shadow: inset 0 0 0 1px): 10 hits, all use var(--smooth-border-color) or $color-brand-yellow SCSS token \u00e2\u20ac\u201d zero hardcoded values",
+        "Grep 2 \u00e2\u20ac\u201d Border radius: 20 hits, all are 50% (circles) or $border-radius-default token \u00e2\u20ac\u201d zero problematic hits after spec exclusion",
+        "Grep 3 \u00e2\u20ac\u201d Table headers (font-size: 0.6rem): 6 hits, all documented as legitimate non-table-header contexts by 0873c (dashboard badges, welcome code block, review modal label)",
+        "Grep 4 \u00e2\u20ac\u201d Text colors (#8895a8, #a3aac4, #e1e1e1): 6 hits, all documented as legitimate exceptions by 0873g (hexToRgba badge color pattern in JS + 1 comment)",
+        "Grep 5 \u00e2\u20ac\u201d Transitions (0.15s/0.2s/0.3s): 0 hits \u00e2\u20ac\u201d fully clean",
+        "No fixes needed \u00e2\u20ac\u201d all remaining hits are previously documented legitimate exceptions",
         "All 1916 Vitest tests passed (99 test files)",
         "Committed"
       ],
       "deviations": [
-        "No fixes were needed — all 5 verification greps returned only previously documented legitimate exceptions"
+        "No fixes were needed \u00e2\u20ac\u201d all 5 verification greps returned only previously documented legitimate exceptions"
       ],
       "blockers_encountered": [],
       "notes_for_next": "Final audit complete. All style centralization targets verified clean. The 0873 chain is ready for merge to master after human review.",
@@ -642,9 +642,9 @@
         "Commit"
       ],
       "tasks_completed": [
-        "Cancel vs Close terminology — verified all 22 dialog instances already correct",
-        "Delete icons — fixed 5 instances: mdi-trash-can→mdi-delete-forever (2), mdi-delete-alert→mdi-delete (1), mdi-restore→mdi-delete-restore (2)",
-        "Edit/Settings icons — fixed 4 instances: mdi-pencil-outline→mdi-pencil (1), mdi-cog-outline→mdi-cog (3)",
+        "Cancel vs Close terminology \u00e2\u20ac\u201d verified all 22 dialog instances already correct",
+        "Delete icons \u00e2\u20ac\u201d fixed 5 instances: mdi-trash-can\u00e2\u2020\u2019mdi-delete-forever (2), mdi-delete-alert\u00e2\u2020\u2019mdi-delete (1), mdi-restore\u00e2\u2020\u2019mdi-delete-restore (2)",
+        "Edit/Settings icons \u00e2\u20ac\u201d fixed 4 instances: mdi-pencil-outline\u00e2\u2020\u2019mdi-pencil (1), mdi-cog-outline\u00e2\u2020\u2019mdi-cog (3)",
         "Created EmptyState.vue shared component in components/common/",
         "Replaced 4 inline empty states with EmptyState component (TasksView, LaunchTab, MessageList, MessageAuditModal)",
         "Fixed date formatting in MessageItem.vue and BroadcastPanel.vue to use useFormatDate composable",
@@ -652,17 +652,17 @@
         "Committed as e8e3b9d7"
       ],
       "deviations": [
-        "Cancel vs Close: all dialogs already had correct terminology — no changes needed",
-        "Handover spec said ProjectsView:668 mdi-trash-can should become mdi-delete-restore but it is a permanent delete button — changed to mdi-delete-forever per the icon rules instead",
-        "Also fixed mdi-restore→mdi-delete-restore on restore buttons in ProjectsView and DeletedProductsRecoveryDialog (not in spec but per the standardized icon rules)",
-        "toLocaleDateString/toLocaleTimeString still present in ServerDownView, ConnectionStatus, CloseoutModal, MessageAuditModal — these use time-only formatting not covered by useFormatDate composable; only the 2 spec-listed files were fixed"
+        "Cancel vs Close: all dialogs already had correct terminology \u00e2\u20ac\u201d no changes needed",
+        "Handover spec said ProjectsView:668 mdi-trash-can should become mdi-delete-restore but it is a permanent delete button \u00e2\u20ac\u201d changed to mdi-delete-forever per the icon rules instead",
+        "Also fixed mdi-restore\u00e2\u2020\u2019mdi-delete-restore on restore buttons in ProjectsView and DeletedProductsRecoveryDialog (not in spec but per the standardized icon rules)",
+        "toLocaleDateString/toLocaleTimeString still present in ServerDownView, ConnectionStatus, CloseoutModal, MessageAuditModal \u00e2\u20ac\u201d these use time-only formatting not covered by useFormatDate composable; only the 2 spec-listed files were fixed"
       ],
       "blockers_encountered": [
-        "Pre-commit mixed-line-ending hook fired on first commit attempt — re-staged and committed successfully on second attempt"
+        "Pre-commit mixed-line-ending hook fired on first commit attempt \u00e2\u20ac\u201d re-staged and committed successfully on second attempt"
       ],
       "notes_for_next": [
-        "EmptyState.vue component is now available at @/components/common/EmptyState.vue — props: icon, title, description, actionLabel, actionIcon; emits: @action",
-        "5 files still use toLocaleTimeString for time-only display (ServerDownView, ConnectionStatus, MessageAuditModal) and toLocaleDateString with custom options (CloseoutModal) — useFormatDate composable would need a formatTime() function to cover these",
+        "EmptyState.vue component is now available at @/components/common/EmptyState.vue \u00e2\u20ac\u201d props: icon, title, description, actionLabel, actionIcon; emits: @action",
+        "5 files still use toLocaleTimeString for time-only display (ServerDownView, ConnectionStatus, MessageAuditModal) and toLocaleDateString with custom options (CloseoutModal) \u00e2\u20ac\u201d useFormatDate composable would need a formatTime() function to cover these",
         "Zero mdi-pencil-outline, mdi-cog-outline, mdi-trash-can remain in .vue files"
       ],
       "cascading_impacts": [
@@ -702,15 +702,15 @@
         "Commit"
       ],
       "deviations": [
-        "alert() calls were already eliminated by 0873k — no instances found, sub-task 2 was a no-op"
+        "alert() calls were already eliminated by 0873k \u00e2\u20ac\u201d no instances found, sub-task 2 was a no-op"
       ],
       "blockers_encountered": [
-        "Pre-commit mixed-line-ending hook fired on first commit attempt — re-staged and committed successfully on second attempt"
+        "Pre-commit mixed-line-ending hook fired on first commit attempt \u00e2\u20ac\u201d re-staged and committed successfully on second attempt"
       ],
       "notes_for_next": [
-        "useToast API is showToast({ message, type }) — no showError/showWarning shorthand exists",
-        "Background fetch catch blocks (ActiveProductDisplay, NotificationDropdown subscribe, DefaultLayout WS init) left as console.warn/error only — these are not user-initiated operations",
-        "AppBar logout catch block left silent — it already handles fallback by clearing state and redirecting to /login"
+        "useToast API is showToast({ message, type }) \u00e2\u20ac\u201d no showError/showWarning shorthand exists",
+        "Background fetch catch blocks (ActiveProductDisplay, NotificationDropdown subscribe, DefaultLayout WS init) left as console.warn/error only \u00e2\u20ac\u201d these are not user-initiated operations",
+        "AppBar logout catch block left silent \u00e2\u20ac\u201d it already handles fallback by clearing state and redirecting to /login"
       ],
       "cascading_impacts": [
         "All user-initiated operations now surface errors via toast notifications",
@@ -719,6 +719,6 @@
       "summary": "Silent error elimination and message quality improvements complete. Added toast notifications to 15+ silent catch blocks across 7 files (DashboardView, ProjectsView, ApiKeyManager, UserSettings, SystemSettings, TasksView, ProductDetailsDialog). Zero browser alert() calls (already clean from 0873k). Replaced all generic 'This field is required' with field-specific messages across 4 files. Added recovery suggestions to bare error messages. Updated 2 test files for new validation messages. All 1916 tests pass."
     }
   ],
-  "chain_summary": null,
-  "final_status": "in_progress"
+  "chain_summary": "All 15 sessions complete. Style centralization sweep replaced hardcoded CSS values with design tokens across 65+ files: box-shadow inset (smooth-border classes), border-radius (token vars), table headers (mixin), text colors (CSS custom properties), transitions (duration tokens), dialog patterns (utility classes), scrollbar styles (global classes). UX heuristics applied: toast audit found 2 functional bugs + standardized 90+ messages, terminology/icon consistency enforced, EmptyState component created, silent catch blocks eliminated (15+ toast notifications added), field-specific form validation. V2 design template expanded from 17 to 24 sections. Final verification greps all pass. 1916/1916 Vitest tests pass throughout.",
+  "final_status": "complete"
 }
