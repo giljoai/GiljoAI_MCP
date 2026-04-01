@@ -4,7 +4,7 @@
     <div class="main-container">
       <div class="three-panels">
         <!-- Panel 1: Project Description -->
-        <div class="panel project-description-panel" data-testid="description-panel">
+        <div class="panel project-description-panel smooth-border" data-testid="description-panel">
           <div class="panel-header">
             <span>Project Description</span>
             <div class="header-actions">
@@ -26,7 +26,7 @@
         </div>
 
         <!-- Panel 2: Orchestrator Mission -->
-        <div class="panel mission-panel" data-testid="mission-panel">
+        <div class="panel mission-panel smooth-border" data-testid="mission-panel">
           <div class="panel-header">Orchestrator Generated Mission</div>
           <div class="panel-content">
             <div v-if="!missionText" class="empty-state">
@@ -39,7 +39,7 @@
         </div>
 
         <!-- Panel 3: Agents -->
-        <div class="panel agents-panel" data-testid="agents-panel">
+        <div class="panel agents-panel smooth-border" data-testid="agents-panel">
           <div class="panel-header">
             <span>Agents</span>
             <div class="integration-icons">
@@ -408,7 +408,6 @@ watch(missionText, (next, previous) => {
         min-height: 0;
         background: $elevation-raised;
         border-radius: $border-radius-rounded;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
 
         .panel-header {
           display: flex;
