@@ -400,10 +400,18 @@ describe('UserManager', () => {
 
   describe('Form Validation', () => {
     it('validates required fields', () => {
-      const requiredRule = wrapper.vm.rules.required
-      expect(requiredRule('test')).toBe(true)
-      expect(requiredRule('')).toBe('This field is required')
-      expect(requiredRule(null)).toBe('This field is required')
+      const usernameRule = wrapper.vm.rules.username
+      expect(usernameRule('test')).toBe(true)
+      expect(usernameRule('')).toBe('Username is required')
+      expect(usernameRule(null)).toBe('Username is required')
+
+      const passwordRule = wrapper.vm.rules.password
+      expect(passwordRule('test')).toBe(true)
+      expect(passwordRule('')).toBe('Password is required')
+
+      const roleRule = wrapper.vm.rules.role
+      expect(roleRule('admin')).toBe(true)
+      expect(roleRule('')).toBe('Role is required')
     })
 
     it('validates minimum password length', () => {

@@ -276,7 +276,7 @@ describe('UserManager.vue - Handover 0028 Email and Created Date Fields', () => 
     it('validates email format', () => {
       const emailRule = wrapper.vm.rules.email
       expect(emailRule('test@example.com')).toBe(true)
-      expect(emailRule('invalid-email')).toBe('Must be a valid email address')
+      expect(emailRule('invalid-email')).toBe('Enter a valid email (e.g. user@company.com)')
       expect(emailRule('')).toBe(true) // Empty is allowed (optional field)
       expect(emailRule(null)).toBe(true) // Null is allowed (optional field)
     })

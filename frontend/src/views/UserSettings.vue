@@ -222,6 +222,7 @@ import { ref, provide, onMounted, onUnmounted, watch } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useRouter } from 'vue-router'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
+import { useToast } from '@/composables/useToast'
 import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import AgentExport from '@/components/AgentExport.vue'
@@ -237,6 +238,7 @@ const router = useRouter()
 
 // WebSocket for real-time Git integration updates
 const { on, off } = useWebSocketV2()
+const { showToast } = useToast()
 
 // State
 const activeTab = ref('startup')
@@ -273,6 +275,7 @@ async function saveNotificationSettings() {
     await settingsStore.updateSettings({ notifications: settings.value.notifications })
   } catch (error) {
     console.error('Failed to save notification settings:', error)
+    showToast({ message: 'Failed to save notification settings. Please try again.', type: 'error' })
   }
 }
 

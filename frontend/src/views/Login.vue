@@ -55,7 +55,7 @@
                 label="Username"
                 prepend-inner-icon="mdi-account"
                 variant="outlined"
-                :rules="[rules.required]"
+                :rules="[rules.username]"
                 :disabled="loading"
                 autofocus
                 autocomplete="username"
@@ -70,7 +70,7 @@
                 prepend-inner-icon="mdi-lock"
                 :type="showPassword ? 'text' : 'password'"
                 variant="outlined"
-                :rules="[rules.required]"
+                :rules="[rules.password]"
                 :disabled="loading"
                 autocomplete="current-password"
                 class="mt-4"
@@ -178,7 +178,8 @@ const loginForm = ref(null)
 
 // Validation rules
 const rules = {
-  required: (value) => !!value || 'This field is required',
+  username: (value) => !!value || 'Username is required',
+  password: (value) => !!value || 'Password is required',
 }
 
 // Methods

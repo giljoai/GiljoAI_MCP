@@ -505,7 +505,7 @@ async function copyToClipboard(text, label) {
   if (success) {
     showSnackbar(`${label} copied to clipboard!`, 'success')
   } else {
-    showSnackbar('Failed to copy to clipboard', 'error')
+    showSnackbar('Failed to copy to clipboard — select the text and press Ctrl+C', 'error')
   }
 }
 
