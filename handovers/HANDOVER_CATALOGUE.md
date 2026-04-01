@@ -20,7 +20,7 @@
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE, **0769a-g sprint COMPLETE (2026-03-30)**. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
 | 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 NOT STARTED.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
-| 0870-0899 | Design System Harmonization | **0870a-p NOT STARTED.** Luminous Pastels palette, WCAG AA compliance, tinted badges, 89 Vue components + 5 SCSS + docs + landing page. Series coordinator: 0870. |
+| 0870-0899 | Design System Harmonization | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE.** Luminous Pastels palette, WCAG AA compliance, tinted badges, pill tabs, shared components, interactive icon polish. All on branch feature/0870-design-harmonization. |
 
 ---
 
@@ -30,7 +30,7 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0277 | Design Token Standardization — Radius & Shadow | Not Started | Medium | Consolidate 3 radius systems + 2 shadow systems into single canonical set in design-tokens.scss. ~15 file edits, 1-2 hours. |
+| ~~0277~~ | ~~Design Token Standardization — Radius & Shadow~~ | **ABSORBED** | - | Absorbed into 0870a (design token update). |
 | 0841 | Slash Command Optimization (/gil_add) | Not Started | Low | Rewrite /gil_add from 343 lines (~3,500 tokens) to ~40 lines (~500 tokens). Keep local, remove verbose templates. |
 | 0842g | Per-Document AI Summary Badges | Not Started | Medium | Add AI summary badge row to vision doc cards (wireframe fidelity). Needs API extension. Follow-up to 0842d deviation. |
 | 0842h | Frontend Tests — Tuning Icon & Vision Analysis Banner | Not Started | Medium | 11 Vitest component tests for 0842d features. Follow-up to 0842d deviation (agent missed existing test framework). |
@@ -40,32 +40,9 @@
 | 0844b | Tenant Import Service + Schema Diff | Not Started | Medium | Backend import: schema compatibility analysis, UPSERT pipeline, topological sort, vision file extraction, TSVECTOR regen. Heaviest phase, 2-3 sessions. Depends on 0844a. |
 | 0844c | Tenant Data Frontend | Not Started | Medium | Vue component in Database tab: export/import UI, compatibility report dialog, stale backup warning, WebSocket progress. 1 session. Depends on 0844a+b. |
 | 0847 | Tool-Aware Orchestrator Protocol | Not Started | High | Make orchestrator protocol (CH1-CH5 + identity) fully tool-aware. Codex/Gemini get native-only language, no Claude refs. Multi-terminal → "Any Coding Agent". 2-3h. |
-| **0870** | **Design System Harmonization (Series Coordinator)** | **Not Started** | **High** | Series of 16 sub-handovers (0870a-p). Luminous Pastels palette, WCAG AA compliance, tinted badges, square badge geometry, stat pills, typography. 89 Vue components + 5 SCSS + docs + landing page. 12-16 sessions. Absorbs 0277 (radius/shadow tokens). |
-| 0870a | Design Token Update & SCSS Foundation | Not Started | High | Update design-tokens.scss, variables.scss, agent-colors.scss, main.scss, global-tabs.scss. New text-muted + text-secondary values. 5 files. |
-| 0870b | agentColors.js + theme.js Config Update | Not Started | High | Update 6 hex values in AGENT_COLORS, verify theme.js + statusConfig.js. 3-4 files. |
-| 0870c | Design System Sample v2 | Not Started | Medium | Rewrite design-system-sample.html with all new tokens. Reference doc. |
-| 0870d | Core Badge Components | Not Started | High | RoleBadge, StatusBadge, GiljoFaceIcon, StatusChip, ActionIcons. Tinted style, square geometry. ~6 files. |
-| 0870e | Navigation & Layout Shell | Not Started | High | NavigationDrawer (Jobs icon fix), AppBar, DefaultLayout, ActiveProductDisplay, ConnectionStatus, NotificationDropdown. ~6 files. |
-| 0870f | Dashboard View Redesign | Not Started | High | Stat pills + micro-bars, projects panel, 360 memories, git commits. Replace donuts. ~6 files. |
-| 0870g | Welcome/Home View Redesign | Not Started | High | Hero + quick-launch + team grid + conditional section. ~2 files. |
-| 0870h | Projects & Tasks Views | Not Started | Medium | Tinted chips, accessible text, table restyling. 2 files. |
-| 0870i | Products View & Dialogs | Not Started | Medium | Card styling, status badges, 8 dialog/form components. ~8 files. |
-| 0870j | Jobs/Orchestration Views | Not Started | Medium | Staging + Implementation tabs, tinted badges, phase pills, composer. ~5 files. |
-| 0870k | Messages View | Not Started | Medium | Messaging UI components. ~5 files. |
-| 0870l | Settings Views | Not Started | Medium | User/System/Org settings, integration cards, settings tabs. ~11 files. |
-| 0870m | All Modals, Dialogs & Utility Components | Not Started | Medium | Every popup/dialog/wizard. BaseDialog cascades. ~24 files. |
-| 0870n | Auth Pages & Setup Wizard | Not Started | Medium | Login, first-login, setup steps, error pages. ~10 files. |
-| 0870o | Documentation Update | Not Started | Medium | design-system-sample, CLAUDE.md, docs/, component READMEs, handover reference docs. 8-12 files. |
-| 0870p | Landing Page Harmonization | Not Started | Medium | giljoai-mcp-landing repo: index.html, getting-started.html, assets. Separate codebase. |
-| **0871** | **Design Remediation & Polish (Series)** | **Not Started** | **High** | 8 sub-handovers (0871a-h). Fixes 0870 audit gaps: tab-to-pill, smooth-border sweep, shared components, Home glow, integration restyling, design system sample rewrite. |
-| 0871a | Shared Component Extraction | Not Started | High | TintedChip, TintedBadge, shared getAgentBadgeStyle, global text-muted-a11y. ~15 files. |
-| 0871b | Tab-to-Pill: User & Admin Settings | Not Started | High | Replace v-tabs with pill toggles. 2 files. |
-| 0871c | Tab-to-Pill: Jobs & Messages | Not Started | High | ProjectTabs + MessagesView pill conversion. 2 files. |
-| 0871d | Home Page Polish | Not Started | Medium | Mascot glow, card borders. 1 file. |
-| 0871e | Smooth-Border Sweep | Not Started | Medium | Remaining outlined cards. 5-10 files. |
-| 0871f | Integration Cards & Export Buttons | Not Started | Medium | Pill-style export buttons, card polish. ~4 files. |
-| 0871g | Messages & Remaining Polish | Not Started | Medium | Sender badges, ProductSelector pills. ~5 files. |
-| 0871h | Design System Sample v2 Comprehensive | Not Started | Medium | Authoritative reference HTML. 1 file. |
+| ~~0870~~ | ~~Design System Harmonization (16 sessions)~~ | **COMPLETE** | - | 2026-03-31. Branch: feature/0870-design-harmonization. |
+| ~~0871~~ | ~~Design Remediation & Polish (8 sessions)~~ | **COMPLETE** | - | 2026-03-31. Shared components, tab-to-pill, smooth-border sweep, design system sample v2. |
+| ~~0872~~ | ~~Interactive Element Polish (4 sessions)~~ | **COMPLETE** | - | 2026-03-31. Global icon-interactive classes, card frames, icon audit. |
 
 ### Deferred (Still in Root Folder)
 
@@ -78,6 +55,9 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0870a-p | Design System Harmonization (16 sessions) | 2026-03-31 | COMPLETE — Luminous Pastels agent colors across 89 Vue components, 5 SCSS files, 3 JS configs, 6 docs. WCAG AA text fix (--text-muted #5a6a80→#8895a8). Tinted square badges. Stat pills replace donuts. 1916 tests pass. Zero stale hex values. Branch: feature/0870-design-harmonization. |
+| 0871a-h | Design Remediation & Polish (8 sessions) | 2026-03-31 | COMPLETE — TintedChip.vue + TintedBadge.vue shared components. Tab-to-pill conversion (4 views, zero v-tabs remain). Smooth-border sweep (zero v-card outlined remain). Global text-muted-a11y class (33 files refactored). hexToRgba consolidated to colorUtils.js. Design system sample v2 comprehensive rewrite (16 sections). 1916 tests pass. |
+| 0872a-d | Interactive Element Polish (4 sessions) | 2026-03-31 | COMPLETE — Global .icon-interactive + .icon-interactive-play classes in main.scss. Refactored 7 Vue files. Product card frames. AgentExport + MCP + Serena integration card consistency. ActionIcons + TemplateManager audit. 1916 tests pass. |
 | 0860a-d | Code Provenance & License Audit (4 sessions) | 2026-03-30 | COMPLETE — ScanCode 32.5.0 + SCANOSS 1.51.0 + pip-licenses + license-checker. 268 Python + 383 npm deps scanned. 494 source files (ScanCode) + 384 source files (SCANOSS). **CE: PASS WITH REVIEW ITEMS** (4 REVIEW: useToast.js 79% SCANOSS match, psycopg2-binary LGPL exception, pycountry LGPL dynamic link, PyGithub LGPL verify-not-shipped). **SaaS: PASS.** Zero AGPL. Zero GPL in shipped deps. Zero copyleft in source. Branch: feature/0860-license-audit. |
 | 0846a-c | MCP SDK Standardization (3 sessions) | 2026-03-29 | COMPLETE — Replaced custom JSON-RPC transport with official MCP SDK (FastMCP + Streamable HTTP). 27 tools registered via @mcp.tool(), MCPAuthMiddleware (JWT + API key), promoted to /mcp, old router removed from app.py. 3 docs updated. mcp_http.py kept on disk for test compat. Branch: feature/0846-mcp-sdk-standardization. |
 | 0855a-g | Setup Wizard Redesign (7 sessions) | 2026-03-29 | COMPLETE — Backend schema (3 User columns + migration + 2 endpoints), 3 WebSocket event types, full-screen overlay with 4-step progress bar, Step 1 tool selection, Step 2 MCP config + live connection status, Step 3 bootstrap prompt + WebSocket checklist, Step 4 launchpad cards, learning mode ("How to Use") overlay, useMcpConfig composable, StartupQuickStart deleted (639 lines). 106 Vitest tests. Branch: feature/0855-setup-wizard. |
