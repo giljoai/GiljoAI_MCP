@@ -227,7 +227,7 @@ watch(
   justify-content: center;
   cursor: pointer;
   z-index: 100;
-  transition: all 0.2s ease;
+  transition: all $transition-normal ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 

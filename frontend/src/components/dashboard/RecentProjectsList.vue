@@ -77,7 +77,7 @@ function capitalize(str) {
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid $color-border-tertiary;
-  transition: background 0.15s;
+  transition: background $transition-fast;
   cursor: pointer;
 
   &:last-child {

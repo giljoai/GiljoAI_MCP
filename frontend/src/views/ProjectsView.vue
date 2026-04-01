@@ -337,7 +337,7 @@
 
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="showCreateDialog" max-width="800" persistent retain-focus>
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <span>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</span>
           <v-spacer />
@@ -616,7 +616,7 @@
 
     <!-- Deleted Projects Modal -->
     <v-dialog v-model="showDeletedDialog" max-width="800" persistent retain-focus>
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <span>Deleted Projects ({{ deletedProjects.length }})</span>
           <v-spacer />
@@ -709,7 +709,7 @@
 
     <!-- Mission Viewer Dialog -->
     <v-dialog v-model="showMissionDialog" max-width="800" persistent retain-focus>
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <span>Full Mission Text</span>
           <v-spacer />
@@ -1543,7 +1543,7 @@ onBeforeUnmount(() => {
 /* Clickable rows — entire row opens edit/review */
 :deep(.v-data-table__tr) {
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background $transition-fast;
 }
 
 :deep(.v-data-table__tr:hover) {

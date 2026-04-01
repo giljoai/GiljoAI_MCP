@@ -215,3 +215,17 @@ $shadow-dramatic: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
 }
 
+// =========================================================================
+// 13. TRANSITION TOKENS
+// =========================================================================
+
+// Duration primitives
+$transition-fast:   0.15s;
+$transition-normal: 0.25s;
+$transition-slow:   0.4s;
+
+// Common transition shorthand tokens
+$transition-hover:     background $transition-fast, color $transition-fast;
+$transition-transform: transform $transition-normal ease;
+$transition-all-fast:  all $transition-fast ease;
+

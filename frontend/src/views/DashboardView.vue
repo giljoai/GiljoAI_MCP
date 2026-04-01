@@ -623,7 +623,7 @@ onUnmounted(() => {
   background: $elevation-raised;
   border-radius: $border-radius-rounded;
   padding: 18px 20px;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform $transition-normal, box-shadow $transition-normal;
 
   &:hover {
     transform: translateY(-2px);

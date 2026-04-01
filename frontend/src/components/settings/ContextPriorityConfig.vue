@@ -626,7 +626,7 @@ defineExpose({
 /* Depth Pill Chip Styles */
 .depth-chip {
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all $transition-normal ease;
   user-select: none;
   width: 140px;
   text-align: center;
@@ -657,7 +657,7 @@ defineExpose({
 
 .depth-menu-list .v-list-item {
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color $transition-normal ease;
 }
 
 .depth-menu-list .v-list-item:hover {
