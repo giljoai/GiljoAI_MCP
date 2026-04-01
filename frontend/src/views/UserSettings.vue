@@ -7,7 +7,7 @@
     <!-- Settings Pills -->
     <div class="pill-toggle-row">
       <button
-        class="pill-toggle"
+        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'startup' }"
         data-testid="startup-settings-tab"
         @click="activeTab = 'startup'"
@@ -16,7 +16,7 @@
         Startup
       </button>
       <button
-        class="pill-toggle"
+        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'notifications' }"
         @click="activeTab = 'notifications'"
       >
@@ -24,7 +24,7 @@
         Notifications
       </button>
       <button
-        class="pill-toggle"
+        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'agents' }"
         data-testid="agent-templates-settings-tab"
         @click="activeTab = 'agents'"
@@ -33,7 +33,7 @@
         Agents
       </button>
       <button
-        class="pill-toggle"
+        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'context' }"
         data-testid="context-settings-tab"
         @click="activeTab = 'context'"
@@ -42,7 +42,7 @@
         Context
       </button>
       <button
-        class="pill-toggle"
+        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'api-keys' }"
         @click="activeTab = 'api-keys'"
       >
@@ -50,7 +50,7 @@
         API Keys
       </button>
       <button
-        class="pill-toggle"
+        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'integrations' }"
         data-testid="integrations-settings-tab"
         @click="activeTab = 'integrations'"
@@ -471,7 +471,7 @@ function openIntroTour() {
 <style lang="scss" scoped>
 @use '../styles/design-tokens' as *;
 .settings-subtitle {
-  color: #8895a8;
+  color: var(--text-muted);
 }
 
 .settings-card {
@@ -480,7 +480,7 @@ function openIntroTour() {
 }
 
 .settings-card-subtitle {
-  color: #8895a8;
+  color: var(--text-muted);
 }
 
 /* Integrations section divider should follow theme */
@@ -520,9 +520,9 @@ function openIntroTour() {
   cursor: pointer;
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
   background: transparent;
-  color: #8895a8;
+  color: var(--text-muted);
   border: none;
-  box-shadow: inset 0 0 0 1px var(--smooth-border-color, #2a4a6b);
+  --smooth-border-color: #2a4a6b;
 }
 
 .pill-toggle:hover {

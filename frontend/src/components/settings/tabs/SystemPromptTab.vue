@@ -226,7 +226,7 @@ onMounted(() => {
 }
 
 .prompt-subtitle {
-  color: #8895a8;
+  color: var(--text-muted);
 }
 
 .mono-textarea :deep(textarea) {

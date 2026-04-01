@@ -7,12 +7,12 @@
         :prepend-icon="statusConfig.icon"
         size="small"
         class="status-chip"
-        :class="{ 'status-chip--stale': isStale }"
+        :class="{ 'status-chip--stale': isStale, 'smooth-border': isStale }"
       >
         <!-- Health indicator overlay -->
         <span
           v-if="healthConfig.showIndicator"
-          class="health-indicator"
+          class="health-indicator smooth-border"
           :class="{ 'pulse-animation': healthConfig.pulse }"
           :style="{ backgroundColor: healthConfig.dotColor }"
         ></span>
@@ -112,7 +112,7 @@ const formattedLastActivity = computed(() => {
 
 .status-chip--stale {
   border: none !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 152, 0, 0.5);
+  --smooth-border-color: rgba(255, 152, 0, 0.5);
 }
 
 .health-indicator {
@@ -123,7 +123,7 @@ const formattedLastActivity = computed(() => {
   height: 8px;
   border-radius: 50%;
   border: none !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+  --smooth-border-color: rgba(255, 255, 255, 0.8);
 }
 
 .pulse-animation {
