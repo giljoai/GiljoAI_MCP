@@ -16,8 +16,10 @@
       <!-- Organization Details -->
       <v-row>
         <v-col cols="12" md="6">
+          <div class="tab-header mb-4">
+            <h2 class="text-h6">Organization Details</h2>
+          </div>
           <v-card variant="flat" class="smooth-border org-card">
-            <v-card-title>Organization Details</v-card-title>
             <v-card-text>
               <v-text-field
                 v-model="orgForm.name"
@@ -47,21 +49,21 @@
 
         <!-- Members Section -->
         <v-col cols="12" md="6">
+          <div class="tab-header mb-4 d-flex align-center">
+            <h2 class="text-h6">Members</h2>
+            <v-spacer />
+            <v-btn
+              v-if="canManageMembers"
+              color="primary"
+              size="small"
+              data-test="invite-btn"
+              @click="showInviteDialog = true"
+            >
+              <v-icon start>mdi-account-plus</v-icon>
+              Invite
+            </v-btn>
+          </div>
           <v-card variant="flat" class="smooth-border org-card">
-            <v-card-title>
-              Members
-              <v-spacer />
-              <v-btn
-                v-if="canManageMembers"
-                color="primary"
-                size="small"
-                data-test="invite-btn"
-                @click="showInviteDialog = true"
-              >
-                <v-icon start>mdi-account-plus</v-icon>
-                Invite
-              </v-btn>
-            </v-card-title>
             <v-card-text>
               <MemberList
                 :members="members"
@@ -79,8 +81,10 @@
       <!-- Danger Zone (Owner only) -->
       <v-row v-if="isOwner">
         <v-col cols="12">
+          <div class="tab-header mb-4">
+            <h2 class="text-h6 text-error">Danger Zone</h2>
+          </div>
           <v-card variant="flat" class="smooth-border org-card" style="--smooth-border-color: rgba(224, 120, 114, 0.3)">
-            <v-card-title class="text-error">Danger Zone</v-card-title>
             <v-card-text>
               <v-btn
                 color="error"
