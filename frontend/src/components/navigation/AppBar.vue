@@ -1,8 +1,8 @@
 <template>
   <v-app-bar color="surface" elevation="0" border>
-    <div style="display: flex; align-items: center; width: 100%; justify-content: space-between">
+    <div class="d-flex align-center w-100 justify-space-between">
       <!-- Left: Logo and Mobile Nav Toggle -->
-      <div style="flex: 0 0 auto; display: flex; align-items: center">
+      <div class="d-flex align-center flex-shrink-0 flex-grow-0">
         <v-app-bar-nav-icon
           v-if="mobile"
           aria-label="Toggle navigation drawer"
@@ -31,7 +31,7 @@
       <v-spacer></v-spacer>
 
       <!-- Right: Product Switcher, Connection Status, User Menu -->
-      <div style="flex: 0 0 auto; display: flex; align-items: center">
+      <div class="d-flex align-center flex-shrink-0 flex-grow-0">
         <ActiveProductDisplay class="mr-3" />
         <ConnectionStatus class="mr-2" />
         <NotificationDropdown class="mr-2" />

@@ -227,6 +227,11 @@ body {
   @include table-row-separator;
 }
 
+// Whitespace utility classes
+.text-pre-wrap {
+  white-space: pre-wrap;
+}
+
 // Dialog / modal patterns
 .dialog-body-scroll {
   max-height: 70vh;
