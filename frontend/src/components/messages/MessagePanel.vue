@@ -8,7 +8,8 @@
           :items="agentOptions"
           label="Filter by Agent"
           clearable
-          variant="outlined"
+          variant="solo"
+          flat
           density="compact"
           prepend-inner-icon="mdi-filter"
         />
@@ -19,7 +20,8 @@
           :items="messageTypeOptions"
           label="Message Type"
           clearable
-          variant="outlined"
+          variant="solo"
+          flat
           density="compact"
           prepend-inner-icon="mdi-tag"
         />
@@ -30,7 +32,8 @@
           :items="statusOptions"
           label="Status"
           clearable
-          variant="outlined"
+          variant="solo"
+          flat
           density="compact"
           prepend-inner-icon="mdi-check-circle"
         />
