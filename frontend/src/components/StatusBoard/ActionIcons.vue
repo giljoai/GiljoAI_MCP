@@ -6,10 +6,10 @@
         <v-btn
           v-bind="props"
           icon="mdi-rocket-launch"
-          :color="handoverPending ? 'success' : getActionColor('launch')"
+          :color="handoverPending ? 'success' : undefined"
           size="small"
           variant="text"
-          :class="{ 'handover-pending-pulse': handoverPending }"
+          :class="{ 'handover-pending-pulse': handoverPending, 'icon-interactive-play': !handoverPending }"
           :loading="loadingStates.launch"
           :disabled="loadingStates.launch"
           data-test="action-launch"
@@ -25,9 +25,9 @@
         <v-btn
           v-bind="props"
           icon="mdi-content-copy"
-          :color="getActionColor('copyPrompt')"
           size="small"
           variant="text"
+          class="icon-interactive"
           :loading="loadingStates.copyPrompt"
           :disabled="loadingStates.copyPrompt"
           data-test="action-copyPrompt"
@@ -43,9 +43,9 @@
         <v-btn
           v-bind="props"
           icon="mdi-message-text"
-          :color="getActionColor('viewMessages')"
           size="small"
           variant="text"
+          class="icon-interactive"
           data-test="action-viewMessages"
           @click="handleViewMessages"
         />
@@ -59,9 +59,10 @@
         <v-btn
           v-bind="props"
           :icon="handoverPending ? 'mdi-check-circle' : 'mdi-refresh'"
-          :color="handoverPending ? 'success' : getActionColor('handOver')"
+          :color="handoverPending ? 'success' : undefined"
           size="small"
           variant="text"
+          :class="{ 'icon-interactive': !handoverPending }"
           :loading="loadingStates.handOver"
           :disabled="loadingStates.handOver || handoverPending"
           data-test="action-handOver"
@@ -135,11 +136,6 @@ const showHandoverSnackbar = ref(false)
 const availableActions = computed(() => {
   return getAvailableActions(props.job, props.claudeCodeCliMode)
 })
-
-const getActionColor = (action) => {
-  const config = getActionConfig(action)
-  return config?.color || 'grey'
-}
 
 const getActionTooltip = (action) => {
   const config = getActionConfig(action)
@@ -251,27 +247,6 @@ const dismissHandover = () => {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-/* ============================================================
-   4.1 HOVER STATES - Enhanced visual feedback
-   ============================================================ */
-
-.action-icons .v-btn {
-  opacity: 0.75;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Hover effect - opacity and scale increase */
-.action-icons .v-btn:hover:not(:disabled) {
-  opacity: 1;
-  transform: scale(1.1);
-  filter: brightness(1.15);
-}
-
-/* Active/click effect - scale down */
-.action-icons .v-btn:active:not(:disabled) {
-  transform: scale(0.95);
 }
 
 /* ============================================================
