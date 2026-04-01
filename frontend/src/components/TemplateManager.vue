@@ -961,7 +961,7 @@ watch(
   border: none !important;
   border-radius: $border-radius-rounded !important;
   overflow: hidden;
-  background: var(--v-theme-surface-variant);
+  background: $elevation-raised;
 
   :deep(.v-table) {
     background: transparent;
