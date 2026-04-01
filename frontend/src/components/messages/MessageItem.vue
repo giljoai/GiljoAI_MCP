@@ -65,6 +65,7 @@ import { computed } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { hexToRgba } from '@/utils/colorUtils'
+import { useFormatDate } from '@/composables/useFormatDate'
 import type { Message } from '@/types/message'
 
 interface Props {
@@ -79,6 +80,8 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   reply: [message: Message]
 }>()
+
+const { formatDate } = useFormatDate()
 
 // Display sender (normalize field names)
 const displaySender = computed(() => {
@@ -195,7 +198,7 @@ const relativeTime = computed(() => {
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
-  return timestamp.toLocaleDateString()
+  return formatDate(timestamp)
 })
 
 // Markdown rendering

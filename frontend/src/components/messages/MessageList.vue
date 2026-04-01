@@ -9,17 +9,17 @@
     </v-virtual-scroll>
 
     <!-- Empty state -->
-    <v-alert v-else type="info" variant="tonal" class="ma-4">
-      <div class="empty-state text-center">
-        <v-icon size="64" class="text-muted-a11y">mdi-message-text-outline</v-icon>
-        <p class="text-muted-a11y mt-4">No messages yet</p>
-      </div>
-    </v-alert>
+    <EmptyState
+      v-else
+      icon="mdi-message-text-outline"
+      title="No messages yet"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import MessageItem from './MessageItem.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import type { Message } from '@/types/message'
 
 interface Props {
@@ -41,11 +41,4 @@ const emit = defineEmits<{
   position: relative;
 }
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 300px;
-}
 </style>
