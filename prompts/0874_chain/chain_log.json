@@ -1,0 +1,63 @@
+{
+  "chain_id": "0874",
+  "chain_name": "Inline Style Final Sweep",
+  "created_at": "2026-04-01",
+  "spec_document": "handovers/0874_inline_style_final_sweep.md",
+  "branch": "feature/0873-style-centralization",
+  "total_sessions": 2,
+  "orchestrator_notes": "AGENTS: Read this file BEFORE starting. Check orchestrator_directives first — if STOP, halt immediately. This is a zero-visual-change sweep replacing remaining hardcoded inline values with existing tokens/classes. Run full Vitest suite after changes. Commit. Then STOP. CRLF WARNING: pre-commit hook fires on first commit — re-stage after hook auto-fix.",
+  "orchestrator_directives": [],
+  "sessions": [
+    {
+      "session_id": "0874a",
+      "title": "Agent/Status Color Tokens in Templates",
+      "handover": "handovers/0874_inline_style_final_sweep.md",
+      "handover_section": "## 0874a",
+      "color": "#FF9800",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["frontend-tester"],
+      "planned_tasks": [
+        "Replace ~45 hardcoded agent/status hex colors in template style= attributes",
+        "Use hexToRgba() + getAgentColor() or CSS var(--agent-*-primary) tokens",
+        "Focus on ProductDetailsDialog, MessageItem, RecentMemoriesList, BroadcastPanel, RoleBadge",
+        "Extract repeated patterns to scoped CSS classes",
+        "Run full Vitest suite",
+        "Commit"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0874b",
+      "title": "Layout Utilities + Whitespace + Final Verification",
+      "handover": "handovers/0874_inline_style_final_sweep.md",
+      "handover_section": "## 0874b",
+      "color": "#F44336",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["frontend-tester"],
+      "planned_tasks": [
+        "Replace ~39 layout inline styles with Vuetify utility classes",
+        "Create whitespace utility classes if 3+ usages, leave 1-2 inline",
+        "Run final inline style count audit",
+        "Run full Vitest suite",
+        "Commit"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    }
+  ],
+  "chain_summary": null,
+  "final_status": "pending"
+}
