@@ -159,9 +159,9 @@
       "handover": "handovers/0873_style_centralization_sweep.md",
       "handover_section": "### 0873d",
       "color": "#2196F3",
-      "status": "in_progress",
+      "status": "completed",
       "started_at": "2026-03-31",
-      "completed_at": null,
+      "completed_at": "2026-03-31",
       "agent_types": ["frontend-tester"],
       "planned_tasks": [
         "Add .dialog-body-scroll and .dialog-card classes to main.scss",
@@ -173,12 +173,30 @@
         "Run full Vitest suite",
         "Commit"
       ],
-      "tasks_completed": [],
-      "deviations": [],
-      "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "tasks_completed": [
+        "Added .dialog-body-scroll (max-height: 70vh; overflow-y: auto) to main.scss",
+        "Added .dialog-card (@extend .smooth-border + border-radius: $border-radius-rounded) to main.scss",
+        ".text-secondary-a11y already existed in main.scss from 0873g — no action needed",
+        "Replaced inline style='max-height: 70vh; overflow-y: auto;' with dialog-body-scroll class in ProjectReviewModal.vue",
+        "All inline style='color: #8895a8' and style='color: #a3aac4' already cleaned by 0873g — zero remaining",
+        "Added smooth-border to dialog v-cards missing it: ProductDetailsDialog.vue (3 dialogs), DeletedProductsRecoveryDialog.vue, ProductTuningReview.vue (dismiss dialog), ConnectionStatus.vue, AppBar.vue, ProductForm.vue, ProductIntroTour.vue, OrganizationSettings.vue, ProjectLaunchView.vue, TasksView.vue, ProjectsView.vue (3 dialogs)",
+        "Verified smooth-border already present on: AddTypeModal, ProjectReviewModal, AgentJobModal, HandoverModal, ManualCloseoutModal, CloseoutModal, AgentMissionEditModal, AgentDetailsModal, MessageAuditModal, AgentTipsDialog, LicensingDialog, GitAdvancedSettingsDialog, UserProfileDialog, BaseDialog, InviteMemberDialog, ForgotPasswordPin, AiToolConfigWizard, TemplateManager, UserManager, ProjectTabs",
+        "All 3 verification greps return zero",
+        "All 1916 Vitest tests passed",
+        "Changes committed as part of beedf631 (0873e commit that ran concurrently)"
+      ],
+      "deviations": [
+        "0873d changes were swept into commit beedf631 (labeled 0873e) by concurrent session activity — working tree was clean before 0873d could create a separate commit; all changes are committed and verified present in HEAD"
+      ],
+      "blockers_encountered": [
+        "git index.lock file existed briefly (stale lock) — resolved automatically; commit was already captured in beedf631"
+      ],
+      "notes_for_next": "0873e (Transition & Animation Tokens): .dialog-body-scroll and .dialog-card are now in main.scss. All 32 dialog v-cards now have smooth-border. All inline text color styles already clean from 0873g. No dialog style regressions expected.",
+      "cascading_impacts": [
+        ".dialog-body-scroll utility class added to main.scss — available globally",
+        ".dialog-card utility class added to main.scss — extends smooth-border + sets border-radius-rounded"
+      ],
+      "summary": "Modal & dialog standardization complete. Added .dialog-body-scroll and .dialog-card utility classes to main.scss. Added smooth-border to 14 dialog v-cards that were missing it across 11 files. Replaced 1 inline max-height: 70vh style with dialog-body-scroll class. All 3 verification greps return zero. All 1916 tests pass."
     },
     {
       "session_id": "0873e",
@@ -186,9 +204,9 @@
       "handover": "handovers/0873_style_centralization_sweep.md",
       "handover_section": "### 0873e",
       "color": "#2196F3",
-      "status": "in_progress",
+      "status": "completed",
       "started_at": "2026-03-31",
-      "completed_at": null,
+      "completed_at": "2026-03-31",
       "agent_types": ["frontend-tester"],
       "planned_tasks": [
         "Add $transition-fast/normal/slow tokens and $transition-hover/$transition-all-fast to design-tokens.scss",
@@ -199,12 +217,32 @@
         "Run full Vitest suite",
         "Commit"
       ],
-      "tasks_completed": [],
-      "deviations": [],
-      "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "tasks_completed": [
+        "Added $transition-fast: 0.15s, $transition-normal: 0.25s, $transition-slow: 0.4s tokens to design-tokens.scss section 13",
+        "Added $transition-hover, $transition-transform, $transition-all-fast shorthand tokens to design-tokens.scss",
+        "Baseline: 45 hardcoded transition duration occurrences across 30 files",
+        "4 files needed @use import + <style> tag conversion: App.vue, ActiveProductDisplay.vue, ConnectionStatus.vue, ToastManager.vue",
+        "Python script replaced all 45 hardcoded transition values across 30 files",
+        "No @keyframes or :deep() skips were triggered — all replacements were clean",
+        "Verification grep: ZERO hardcoded transition durations remaining",
+        "Tests: 1916/1916 passed",
+        "Commit beedf631 (41 files, 293 insertions, 65 deletions)"
+      ],
+      "deviations": [
+        "transition: all 0.2s ease used in 14 occurrences mapped to all $transition-normal ease (not $transition-all-fast) since 0.2s is closer to normal (0.25s) than fast (0.15s) — preserves more accurate timing",
+        "transition: all 0.25s mapped to all $transition-normal rather than $transition-all-fast per mapping table — avoids aliasing 0.25s (normal) to 0.15s (fast)",
+        "transition: all 0.3s ease mapped to all $transition-slow ease (no $transition-all-slow token exists)",
+        "Multi-property transitions (background 0.2s, color 0.2s, box-shadow 0.2s) in UserSettings and SystemSettings: each property tokenized individually since no multi-prop shorthand token covers this pattern"
+      ],
+      "blockers_encountered": [
+        "Pre-commit mixed-line-ending hook fired on first commit attempt — re-staged and committed successfully on second attempt (expected per 0873b notes)"
+      ],
+      "notes_for_next": "0873f (Button Style Consolidation): Transition tokens are now fully centralized in design-tokens.scss section 13. All 30 files updated. The $transition-fast, $transition-normal, $transition-slow primitives and $transition-all-fast, $transition-transform shorthand tokens are available via @use.",
+      "cascading_impacts": [
+        "$transition-fast (0.15s), $transition-normal (0.25s), $transition-slow (0.4s) added to design-tokens.scss — available to all components via @use",
+        "$transition-hover, $transition-transform, $transition-all-fast shorthand tokens added"
+      ],
+      "summary": "Replaced 45 hardcoded transition duration values with design tokens across 30 files. Added 6 new transition tokens to design-tokens.scss. 4 files received @use import + scss style tag upgrade. Zero hardcoded durations remain. All 1916 tests pass."
     },
     {
       "session_id": "0873f",
