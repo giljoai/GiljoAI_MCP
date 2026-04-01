@@ -13,9 +13,9 @@
       "title": "Global Interactive Icon Classes + Refactor",
       "handover": "handovers/0872_interactive_polish.md#0872a",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-31T00:00:00Z",
+      "completed_at": "2026-03-31T00:30:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "Add .icon-interactive class to main.scss (muted → yellow+tinted bg on hover)",
@@ -28,33 +28,54 @@
         "Verify TasksView already correct, align if needed",
         "Check MessagesView, BroadcastPanel for interactive icons"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Added .icon-interactive and .icon-interactive-play global classes to main.scss",
+        "Refactored LaunchTab — edit-icon/info-icon/header-edit-btn → icon-interactive, removed scoped hover styles",
+        "Refactored JobsTab — 5 action v-btn → icon-interactive (removed :color=actionIconColor), play-circle-btn → icon-interactive-play, removed scoped hover styles, deleted unused actionIconColor const",
+        "Refactored ProjectsView — play-circle-btn → icon-interactive-play, removed scoped hover/transition styles",
+        "Refactored ProductsView — info/tune/edit btn → icon-interactive, activate/play btn → icon-interactive-play, removed conditional :style overrides",
+        "Refactored TasksView — row-action convert button → icon-interactive, removed scoped color/hover from .row-action",
+        "AgentTableView skipped — actions delegated to ActionIcons component (no inline icon styles to refactor)",
+        "MessagesView/BroadcastPanel/MessagePanel checked — no interactive icons to refactor (only pill-btn styles)"
+      ],
+      "deviations": [
+        "AgentTableView: no direct icon styles to refactor — all action icons are rendered by the ActionIcons sub-component. Will be picked up in 0872c audit.",
+        "ProductsView: removed conditional :style brightness overrides on icon buttons in favor of uniform icon-interactive behavior"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
+      "notes_for_next": "AgentTableView's ActionIcons component (StatusBoard/ActionIcons.vue) was not touched — 0872c should audit it. The stop-project button in JobsTab intentionally keeps color='error' (not icon-interactive).",
       "cascading_impacts": [],
-      "summary": null
+      "summary": "Added 2 global interactive icon utility classes to main.scss and refactored 5 Vue components to use them, removing 76 lines of scoped CSS and adding 51 lines (net -25). All pre-commit hooks pass."
     },
     {
       "session_id": "0872b",
       "title": "Product Card Frame & AgentExport Layout",
       "handover": "handovers/0872_interactive_polish.md#0872b",
       "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-31T01:00:00Z",
+      "completed_at": "2026-03-31T01:15:00Z",
       "agent_types": ["ux-designer"],
       "planned_tasks": [
         "ProductsView.vue — add smooth-border to product cards",
         "AgentExport.vue — replace variant=tonal with variant=flat + smooth-border",
         "Verify 3 integration cards (MCP, Export, Serena) have consistent framing"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "ProductsView.vue — smooth-border already present on product cards (added in 0872a), no change needed",
+        "AgentExport.vue — inner button container changed from variant=tonal to variant=flat + smooth-border",
+        "McpIntegrationCard.vue — inner card changed from variant=tonal to variant=flat + smooth-border (consistency)",
+        "SerenaIntegrationCard.vue — inner card changed from variant=tonal to variant=flat + smooth-border (consistency)",
+        "Verified all 3 integration cards now have consistent outer (smooth-border) and inner (smooth-border) framing"
+      ],
+      "deviations": [
+        "ProductsView product cards already had smooth-border from 0872a — no change was needed",
+        "Extended scope to also update MCP and Serena inner cards from variant=tonal to variant=flat+smooth-border, since all 3 had the same tonal pattern and changing only AgentExport would have created inconsistency"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
+      "notes_for_next": "GitIntegrationCard.vue still has variant=tonal inner cards (lines 51, 70) — 0872c or 0872d may want to align these too.",
       "cascading_impacts": [],
-      "summary": null
+      "summary": "Replaced variant=tonal with variant=flat+smooth-border on inner cards in all 3 integration components (AgentExport, McpIntegrationCard, SerenaIntegrationCard) for consistent bordered framing. ProductsView already had smooth-border from 0872a."
     },
     {
       "session_id": "0872c",
