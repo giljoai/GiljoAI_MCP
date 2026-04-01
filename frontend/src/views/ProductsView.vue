@@ -41,7 +41,8 @@
                 item-value="value"
                 prepend-inner-icon="mdi-sort"
                 label="Sort by"
-                variant="outlined"
+                variant="solo"
+                flat
                 density="compact"
                 hide-details
                 class="mr-3"

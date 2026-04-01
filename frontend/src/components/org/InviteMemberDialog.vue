@@ -10,7 +10,7 @@
           :error-messages="error"
           data-test="invite-user-id"
         />
-        <v-select v-model="role" :items="roles" label="Role" data-test="invite-role" />
+        <v-select v-model="role" :items="roles" label="Role" variant="outlined" density="compact" data-test="invite-role" />
       </v-card-text>
       <v-card-actions>
         <v-spacer />
