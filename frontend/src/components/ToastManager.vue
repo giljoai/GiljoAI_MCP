@@ -176,7 +176,8 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/design-tokens' as *;
 .toast-manager {
   z-index: 9999;
 }
@@ -189,7 +190,7 @@ onUnmounted(() => {
 /* Slide animation based on position */
 .toast-enter-active,
 .toast-leave-active {
-  transition: all 0.3s ease;
+  transition: all $transition-slow ease;
 }
 
 .toast-enter-from {

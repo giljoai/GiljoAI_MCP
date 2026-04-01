@@ -165,7 +165,7 @@ function relativeTime(timestamp) {
   padding: 9px 0;
   border-bottom: 1px solid $color-border-tertiary;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background $transition-fast;
 
   &:last-child {
     border-bottom: none;

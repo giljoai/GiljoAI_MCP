@@ -366,7 +366,7 @@ defineExpose({
   color: #ffc300;
   border: none;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background $transition-fast;
   white-space: nowrap;
 }
 

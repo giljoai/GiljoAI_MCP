@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="isOpen" max-width="600">
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-information-outline</v-icon>
         Product Details
@@ -379,7 +379,7 @@
 
   <!-- Summary Preview Dialog -->
   <v-dialog v-model="summaryDialog" max-width="800" scrollable>
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <v-card-title class="d-flex align-center">
         <v-icon start :color="summaryLevelColor">mdi-text-box-outline</v-icon>
         {{ summaryTitle }}
@@ -413,7 +413,7 @@
 
   <!-- Consolidated Summary Viewer Dialog (Handover 0377) -->
   <v-dialog v-model="consolidatedSummaryDialog" max-width="800" scrollable>
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <v-card-title class="d-flex align-center">
         <v-icon start color="teal">mdi-database-merge</v-icon>
         {{ consolidatedSummaryTitle }}
@@ -737,7 +737,7 @@ async function regenerateConsolidation() {
   border-radius: $border-radius-default;
   line-height: 1.4;
   letter-spacing: 0.02em;
-  transition: opacity 0.15s ease;
+  transition: opacity $transition-fast ease;
 }
 
 .summary-level-chip:hover {

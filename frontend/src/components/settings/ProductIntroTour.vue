@@ -1,6 +1,6 @@
 <template>
   <v-dialog :model-value="modelValue" max-width="980" @update:model-value="emitModelValue">
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <v-card-title class="d-flex align-center justify-space-between">
         <div class="d-flex align-center ga-2">
           <v-icon color="secondary">mdi-information-outline</v-icon>

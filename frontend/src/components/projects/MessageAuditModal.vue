@@ -391,7 +391,7 @@ function getMessagePreview(message) {
   padding: 12px 16px;
   margin: 4px 8px;
   border-radius: $border-radius-sharp;
-  transition: background-color 0.2s ease;
+  transition: background-color $transition-normal ease;
 }
 
 .message-item-wrapper:hover {
@@ -445,7 +445,7 @@ function getMessagePreview(message) {
   gap: 8px;
   cursor: pointer;
   padding: 4px 0;
-  transition: all 0.2s ease;
+  transition: all $transition-normal ease;
 }
 
 .message-content-line:hover {
@@ -477,7 +477,7 @@ function getMessagePreview(message) {
   border-radius: 50%;
   background-color: rgb(var(--v-theme-primary));
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: all $transition-normal ease;
 }
 
 .v-theme--dark .eye-icon-container {
@@ -487,7 +487,7 @@ function getMessagePreview(message) {
 
 .message-eye-icon {
   color: rgb(var(--v-theme-primary));
-  transition: all 0.2s ease;
+  transition: all $transition-normal ease;
 }
 
 .v-theme--dark .message-eye-icon {
