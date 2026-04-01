@@ -7,7 +7,7 @@
           <div class="d-flex align-center mb-6">
             <h1 class="text-h4">Products</h1>
             <v-spacer></v-spacer>
-            <v-btn color="primary" prepend-icon="mdi-plus" @click="showDialog = true">
+            <v-btn color="primary" prepend-icon="mdi-plus" class="btn-pill" @click="showDialog = true">
               New Product
             </v-btn>
           </div>
@@ -28,7 +28,7 @@
                 :color="deletedProductsCount > 0 ? 'warning' : 'grey'"
                 prepend-icon="mdi-delete-restore"
                 :disabled="deletedProductsCount === 0"
-                class="mr-3"
+                class="mr-3 btn-pill"
                 style="height: 40px"
                 @click="showDeletedProductsDialog = true"
               >

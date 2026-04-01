@@ -29,7 +29,7 @@
         data-testid="agent-templates-settings-tab"
         @click="activeTab = 'agents'"
       >
-        <v-img src="/icons/Giljo_White_Face.svg" width="16" height="16" class="pill-toggle-icon" />
+        <v-img :src="activeTab === 'agents' ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_Inactive_Dark.svg'" width="16" height="16" class="pill-toggle-icon" />
         Agents
       </button>
       <button
@@ -566,7 +566,8 @@ function openIntroTour() {
   color: #b0bec5;
 }
 
-.pill-toggle--active {
+.pill-toggle--active,
+.pill-toggle--active:hover {
   background: rgba(255, 195, 0, 0.12);
   color: #ffc300;
   box-shadow: none;

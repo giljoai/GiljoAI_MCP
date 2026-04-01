@@ -74,40 +74,32 @@
         class="filter-select"
       />
       <v-btn variant="text" class="filter-clear-btn" @click="clearFilters">Clear Filters</v-btn>
+      <v-spacer />
+      <v-btn
+        color="primary"
+        variant="flat"
+        prepend-icon="mdi-plus"
+        class="btn-pill"
+        :disabled="!activeProduct"
+        aria-label="Create new project"
+        @click="showCreateDialog = true"
+      >
+        New Project
+      </v-btn>
+      <v-btn
+        variant="outlined"
+        prepend-icon="mdi-delete-restore"
+        class="btn-pill"
+        :disabled="deletedCount === 0"
+        aria-label="View deleted projects"
+        @click="showDeletedDialog = true"
+      >
+        Deleted ({{ deletedCount }})
+      </v-btn>
     </div>
 
     <!-- Projects Table -->
     <v-card v-if="activeProduct" class="project-table-card smooth-border">
-      <!-- Project List Header Bar -->
-      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
-        <span class="text-h6">Project List for {{ activeProduct?.name || 'No Active Product' }}</span>
-
-        <div class="d-flex align-center ga-2">
-          <!-- New Project Button -->
-          <v-btn
-            color="primary"
-            variant="flat"
-            prepend-icon="mdi-plus"
-            :disabled="!activeProduct"
-            aria-label="Create new project"
-            @click="showCreateDialog = true"
-          >
-            New Project
-          </v-btn>
-
-          <!-- Deleted Projects Button -->
-          <v-btn
-            variant="outlined"
-            prepend-icon="mdi-delete-restore"
-            :disabled="deletedCount === 0"
-            aria-label="View deleted projects"
-            @click="showDeletedDialog = true"
-          >
-            Deleted ({{ deletedCount }})
-          </v-btn>
-        </div>
-      </v-card-title>
-
       <!-- Scrollable Table Container -->
       <div class="project-list-container">
         <v-data-table
@@ -1517,7 +1509,7 @@ onBeforeUnmount(() => {
 
 .filter-search {
   flex: 1;
-  max-width: 400px;
+  max-width: 600px;
 }
 
 .filter-search :deep(.v-field) {
