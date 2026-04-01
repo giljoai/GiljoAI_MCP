@@ -1,8 +1,10 @@
 <template>
-  <v-card variant="flat" class="smooth-border network-card">
-    <v-card-title>Network Configuration</v-card-title>
-    <v-card-subtitle class="network-subtitle">Server network settings (configured during installation)</v-card-subtitle>
-
+  <div>
+    <div class="tab-header mb-4">
+      <h2 class="text-h6">Network Configuration</h2>
+      <p class="text-body-2 text-muted-a11y mt-1">Server network settings (configured during installation)</p>
+    </div>
+    <v-card variant="flat" class="smooth-border network-card">
     <v-card-text>
       <!-- Loading State -->
       <div v-if="loading" class="d-flex justify-center py-8">
@@ -363,6 +365,7 @@
       <v-btn color="primary" disabled data-test="save-button"> Save Changes </v-btn>
     </v-card-actions>
   </v-card>
+  </div>
 </template>
 
 <script setup>
@@ -510,9 +513,5 @@ onMounted(() => {
 .network-card {
   background: $elevation-raised;
   border-radius: $border-radius-rounded;
-}
-
-.network-subtitle {
-  color: var(--text-muted);
 }
 </style>
