@@ -178,15 +178,18 @@ class ProgressService:
                 # Update execution progress fields
                 execution.last_progress_at = datetime.now(timezone.utc)
 
-                # Blocked->working transition: if an agent reports progress while
-                # blocked, it has self-recovered and should resume "working" status.
-                if execution.status == "blocked":
+                # Auto-wake transition: if an agent reports progress while in a
+                # resting state (blocked/idle/sleeping), resume "working" status.
+                # Handover 0880: extended from blocked-only to all resting states.
+                if execution.status in ("blocked", "idle", "sleeping"):
+                    old_resting = execution.status
                     execution.status = "working"
                     execution.block_reason = None
                     blocked_to_working = True
 
                     self._logger.info(
-                        "Agent resumed from blocked: agent_id=%s, job_id=%s",
+                        "Agent resumed from %s: agent_id=%s, job_id=%s",
+                        old_resting,
                         execution.agent_id,
                         job_id,
                     )
