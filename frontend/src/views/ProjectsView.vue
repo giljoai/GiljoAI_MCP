@@ -1494,6 +1494,10 @@ onBeforeUnmount(() => {
   :deep(.v-table) {
     background: transparent;
   }
+
+  :deep(.v-data-table__th) {
+    background: transparent !important;
+  }
 }
 
 /* 0873: filter bar layout (matches TasksView pattern) */
