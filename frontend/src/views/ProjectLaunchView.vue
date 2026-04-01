@@ -57,7 +57,7 @@
             <v-text-field
               v-model="projectData.name"
               label="Project Name"
-              :rules="[(v) => !!v || 'Name is required']"
+              :rules="[(v) => !!v || 'Project name is required']"
               required
               class="mb-3"
             ></v-text-field>

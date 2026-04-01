@@ -223,8 +223,10 @@ import { useProductStore } from '@/stores/products'
 
 import api from '@/services/api'
 import setupService from '@/services/setupService'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
+const { showToast } = useToast()
 
 // Stores
 const productStore = useProductStore()
@@ -396,6 +398,7 @@ const fetchDashboardData = async () => {
     }
   } catch (error) {
     console.error('Failed to fetch dashboard data:', error)
+    showToast({ message: 'Unable to load dashboard data. Try refreshing the page.', type: 'error' })
   }
 }
 
@@ -408,6 +411,7 @@ const fetchCallCounts = async () => {
     }
   } catch (error) {
     console.error('Failed to fetch call counts:', error)
+    showToast({ message: 'Unable to load activity counts.', type: 'error' })
   }
 }
 
@@ -419,6 +423,7 @@ const fetchSystemStats = async () => {
     }
   } catch (error) {
     console.error('Failed to fetch system stats:', error)
+    showToast({ message: 'Unable to load system statistics.', type: 'error' })
   }
 }
 
@@ -437,6 +442,7 @@ const checkSetupStatus = async () => {
     setupStatus.value = status
   } catch (error) {
     console.error('Failed to check setup status:', error)
+    showToast({ message: 'Unable to check setup status.', type: 'warning' })
     setupStatus.value.requires_setup = false
   }
 }

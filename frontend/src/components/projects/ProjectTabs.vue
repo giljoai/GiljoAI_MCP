@@ -671,7 +671,7 @@ async function handleExecutionModeChange(newValue) {
     executionPlatform.value = previousValue
     console.error('Failed to update execution mode:', error)
     showToast({
-      message: 'Failed to save execution mode',
+      message: 'Failed to save execution mode. Please try again.',
       type: 'error',
       timeout: 3000
     })

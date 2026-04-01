@@ -133,7 +133,7 @@
               v-model="userForm.username"
               label="Username"
               variant="outlined"
-              :rules="[rules.required]"
+              :rules="[rules.username]"
               required
               class="mb-3"
             />
@@ -153,7 +153,7 @@
               label="Password"
               variant="outlined"
               type="password"
-              :rules="[rules.required, rules.minLength]"
+              :rules="[rules.password, rules.minLength]"
               hint="Min 8 characters"
               persistent-hint
               required
@@ -167,7 +167,7 @@
               :items="roleOptions"
               item-value="value"
               item-title="title"
-              :rules="[rules.required]"
+              :rules="[rules.role]"
               required
               class="mb-3"
             />
@@ -210,7 +210,7 @@
             label="New Password"
             variant="outlined"
             type="password"
-            :rules="[rules.required, rules.minLength]"
+            :rules="[rules.password, rules.minLength]"
             required
           />
         </v-card-text>
@@ -403,10 +403,12 @@ const roleOptions = [
 
 // Form validation rules
 const rules = {
-  required: (value) => !!value || 'This field is required',
+  username: (value) => !!value || 'Username is required',
+  password: (value) => !!value || 'Password is required',
+  role: (value) => !!value || 'Role is required',
   minLength: (value) => !value || value.length >= 8 || 'Password must be at least 8 characters',
   email: (value) =>
-    !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || 'Must be a valid email address',
+    !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || 'Enter a valid email (e.g. user@company.com)',
 }
 
 // Computed

@@ -130,8 +130,10 @@ import { formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { useFormatDate } from '@/composables/useFormatDate'
+import { useToast } from '@/composables/useToast'
 
 const { formatDateTime } = useFormatDate()
+const { showToast } = useToast()
 
 // State
 const apiKeys = ref([])
@@ -192,9 +194,8 @@ async function loadKeys() {
     apiKeys.value = response.data
   } catch (err) {
     console.error('[API Keys] Failed to load:', err)
-    // Don't show error if it's just a 401 (not authenticated)
     if (err.response?.status !== 401) {
-      // Could show a toast notification here
+      showToast({ message: 'Unable to load API keys. Try refreshing the page.', type: 'error' })
     }
   } finally {
     loading.value = false
@@ -232,7 +233,7 @@ async function revokeKey() {
     keyToRevoke.value = null
   } catch (err) {
     console.error('[API Keys] Failed to revoke:', err)
-    // Could show error toast here
+    showToast({ message: 'Failed to revoke API key. Please try again.', type: 'error' })
   } finally {
     revoking.value = false
   }
