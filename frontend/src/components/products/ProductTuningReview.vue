@@ -197,7 +197,7 @@
 
     <!-- Confirm Dismiss All Dialog -->
     <v-dialog v-model="dismissAllDialog" max-width="400">
-      <v-card>
+      <v-card class="smooth-border">
         <v-card-title class="text-subtitle-1">Dismiss All Proposals</v-card-title>
         <v-card-text>
           Are you sure you want to dismiss all {{ sectionKeys.length }} pending proposals?

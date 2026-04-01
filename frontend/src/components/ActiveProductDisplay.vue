@@ -105,10 +105,11 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/design-tokens' as *;
 .active-product-chip {
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all $transition-normal ease;
   white-space: nowrap;
 }
 

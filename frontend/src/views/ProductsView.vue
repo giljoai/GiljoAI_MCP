@@ -1094,7 +1094,7 @@ onMounted(async () => {
 }
 
 .product-card {
-  transition: all 0.3s ease;
+  transition: all $transition-slow ease;
   border-radius: $border-radius-md;
   --smooth-border-color: rgba(255, 255, 255, 0.18);
 }

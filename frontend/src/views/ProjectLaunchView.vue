@@ -36,7 +36,7 @@
 
     <!-- Edit Project Dialog -->
     <v-dialog v-model="showEditDialog" max-width="800" persistent>
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <span>Edit Project</span>
           <v-spacer />

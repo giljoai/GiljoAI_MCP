@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="isOpen" max-width="800" persistent retain-focus>
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <v-card-title class="d-flex align-center">
         <span>Deleted Products ({{ deletedProducts.length }})</span>
         <v-spacer />

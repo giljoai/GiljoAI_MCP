@@ -237,7 +237,7 @@ function getAgentAbbr(agentName) {
   font-size: 0.78rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: $transition-all-fast;
   background: transparent;
   color: var(--text-muted);
   border: none;
@@ -303,7 +303,7 @@ function getAgentAbbr(agentName) {
   align-items: center;
   padding: 8px 12px;
   border-radius: $border-radius-sharp;
-  transition: background-color 0.2s ease;
+  transition: background-color $transition-normal ease;
 }
 
 .todo-item-row:hover {
