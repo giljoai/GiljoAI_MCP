@@ -5,9 +5,10 @@
   "spec_document": "handovers/0873_style_centralization_sweep.md",
   "branch": "feature/0873-style-centralization",
   "total_sessions": 15,
-  "orchestrator_notes": "AGENTS: Read this file BEFORE starting. Check orchestrator_directives first — if it contains STOP, halt immediately. Review previous session notes_for_next. This is a CSS token/class centralization sweep — every change must produce ZERO visual difference except 0873n (EmptyState) and 0873o (new toasts). Run full Vitest suite after EVERY file change. Commit after your session completes. Then STOP — do not spawn the next terminal.",
+  "orchestrator_notes": "AGENTS: Read this file BEFORE starting. Check orchestrator_directives first — if it contains STOP, halt immediately. Review previous session notes_for_next. This is a CSS token/class centralization sweep — every change must produce ZERO visual difference except 0873n (EmptyState) and 0873o (new toasts). Run full Vitest suite after EVERY file change. Commit after your session completes. Then STOP — do not spawn the next terminal. CRLF WARNING: pre-commit mixed-line-ending hook fires on first commit when Python scripts or Edit tool writes LF files into this CRLF repo — always plan for re-stage + second commit attempt.",
   "orchestrator_directives": [
-    "STATUS (2026-03-31 22:52): Sessions 0873a–0873g all completed and committed. All 1916 Vitest tests pass. Working tree is clean. Next pending session is 0873h (Dropdown & Select Patterns). Inherited pattern: pre-commit mixed-line-ending hook fires on first commit when Python scripts or Edit tool writes LF files — always plan for re-stage + second commit attempt."
+    "STATUS (2026-03-31 22:52): Sessions 0873a–0873g all completed and committed. All 1916 Vitest tests pass. Working tree is clean. Next pending session is 0873h (Dropdown & Select Patterns). Inherited pattern: pre-commit mixed-line-ending hook fires on first commit when Python scripts or Edit tool writes LF files — always plan for re-stage + second commit attempt.",
+    "HOTFIX REQUIRED (0873e regression — site broken): 0873e added $transition-fast/$transition-normal/$transition-slow to design-tokens.scss, but variables.scss ALREADY defines $transition-fast: 150ms ease and $transition-slow: 350ms ease. main.scss @use both files as *, causing SCSS 'variable available from multiple global modules' error. FIX: Remove lines 24 and 26 from frontend/src/styles/variables.scss (the $transition-fast and $transition-slow lines). Keep $transition-base: 250ms ease (line 25) — it has no conflict. design-tokens.scss values ($transition-fast: 0.15s, $transition-slow: 0.4s) become authoritative. Commit as hotfix(0873e): remove duplicate transition vars from variables.scss. WHOEVER READS THIS FIRST: fix this before continuing your session."
   ],
   "sessions": [
     {
@@ -19,7 +20,9 @@
       "status": "completed",
       "started_at": "2026-03-31",
       "completed_at": "2026-03-31",
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Run grep to count hardcoded box-shadow: inset occurrences (baseline)",
         "Replace hardcoded box-shadow: inset 0 0 0 1px in 18 files with smooth-border class on template element",
@@ -72,7 +75,9 @@
       "status": "completed",
       "started_at": "2026-03-31",
       "completed_at": "2026-03-31",
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Run grep to count hardcoded border-radius pixel values (baseline)",
         "Check if $border-radius-md: 12px token needed (count 12px usages)",
@@ -123,7 +128,9 @@
       "status": "completed",
       "started_at": "2026-03-31",
       "completed_at": "2026-03-31",
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Add @mixin table-header-label and .table-header-label class to main.scss",
         "Add @mixin table-row-separator to main.scss",
@@ -166,7 +173,9 @@
       "status": "completed",
       "started_at": "2026-03-31",
       "completed_at": "2026-03-31",
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Add .dialog-body-scroll and .dialog-card classes to main.scss",
         "Add .text-secondary-a11y class to main.scss if not exists",
@@ -211,7 +220,9 @@
       "status": "completed",
       "started_at": "2026-03-31",
       "completed_at": "2026-03-31",
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Add $transition-fast/normal/slow tokens and $transition-hover/$transition-all-fast to design-tokens.scss",
         "Find all 27 files with hardcoded transition durations",
@@ -257,7 +268,9 @@
       "status": "completed",
       "started_at": "2026-03-31",
       "completed_at": "2026-03-31",
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Extract color swatch picker styles in AddTypeModal.vue to .color-swatch-btn class",
         "Audit all v-btn with inline style= for static properties",
@@ -296,7 +309,9 @@
       "status": "completed",
       "started_at": "2026-03-31",
       "completed_at": "2026-03-31",
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Grep baseline counts for #8895a8 #a3aac4 #e1e1e1 in .vue files",
         "Replace hex values in <style> blocks with SCSS variables",
@@ -343,7 +358,9 @@
       "status": "pending",
       "started_at": null,
       "completed_at": null,
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Audit all v-select/v-menu/v-autocomplete for consistent variant and density props",
         "Ensure filter selects use variant=solo + flat across all views",
@@ -365,10 +382,12 @@
       "handover": "handovers/0873_style_centralization_sweep.md",
       "handover_section": "### 0873i",
       "color": "#FF9800",
-      "status": "in_progress",
+      "status": "completed",
       "started_at": "2026-03-31",
-      "completed_at": null,
-      "agent_types": ["frontend-tester"],
+      "completed_at": "2026-03-31",
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Find all ::-webkit-scrollbar in .vue and .scss files",
         "Remove component-level duplicates of global scrollbar style",
@@ -376,12 +395,28 @@
         "Run full Vitest suite",
         "Commit"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Grepped all .vue and .scss files for scrollbar styles",
+        "Checked global scrollbar definition in main.scss (8px, $almost-dark-blue track, $med-blue thumb)",
+        "Identified two variant scrollbars in LaunchTab.vue and NotificationDropdown.vue",
+        "Added .scrollbar-standard class to main.scss (design-token rgba colors, 8px, Firefox scrollbar-width/color)",
+        "Added .scrollbar-thin class to main.scss (6px, transparent track, Vuetify --v-theme-on-surface tinted thumb)",
+        "Applied .scrollbar-standard to .panel-content elements in LaunchTab.vue template",
+        "Applied .scrollbar-thin to .notification-list in NotificationDropdown.vue template",
+        "Removed all scoped ::-webkit-scrollbar CSS blocks from both Vue components",
+        "Verified grep returns zero scrollbar CSS definitions in .vue files",
+        "Ran Vitest suite — 1916/1916 tests pass",
+        "Committed style(0873i)"
+      ],
+      "deviations": [
+        "Both component scrollbar styles were variants (not identical to global) — extracted to two named classes (.scrollbar-standard, .scrollbar-thin) rather than deleting"
+      ],
       "blockers_encountered": [],
       "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "cascading_impacts": [
+        ".scrollbar-standard and .scrollbar-thin classes added to main.scss — available globally for future components"
+      ],
+      "summary": "Extracted component-level scrollbar variants from LaunchTab.vue and NotificationDropdown.vue into named global classes (.scrollbar-standard, .scrollbar-thin) in main.scss; all .vue files are now free of scrollbar CSS definitions."
     },
     {
       "session_id": "0873j",
@@ -392,7 +427,9 @@
       "status": "pending",
       "started_at": null,
       "completed_at": null,
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Find all files with v-progress-circular/v-progress-linear/loading",
         "Find all files making API calls",
@@ -418,7 +455,9 @@
       "status": "pending",
       "started_at": null,
       "completed_at": null,
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Find all useToast/showSuccess/showError/showWarning calls",
         "Audit each for: plain language, consistent format, recovery suggestion on errors",
@@ -443,7 +482,9 @@
       "status": "pending",
       "started_at": null,
       "completed_at": null,
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Add Modal/Dialog patterns section to design-system-sample-v2.html",
         "Add Transition/animation tokens section with live demo",
@@ -471,7 +512,9 @@
       "status": "pending",
       "started_at": null,
       "completed_at": null,
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Run all master verification greps from 0873a-k",
         "Fix any remaining files not caught by previous sessions",
@@ -495,7 +538,9 @@
       "status": "pending",
       "started_at": null,
       "completed_at": null,
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Apply Cancel vs Close terminology rules to all 22 dialog instances",
         "Standardize delete icons to mdi-delete/mdi-delete-forever/mdi-delete-restore",
@@ -522,7 +567,9 @@
       "status": "pending",
       "started_at": null,
       "completed_at": null,
-      "agent_types": ["frontend-tester"],
+      "agent_types": [
+        "frontend-tester"
+      ],
       "planned_tasks": [
         "Add showError toast to all 10+ silent catch blocks in DashboardView, ProjectsView, ApiKeyManager",
         "Replace alert() calls with showError() in ProjectsView",
