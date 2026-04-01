@@ -91,7 +91,7 @@
                   md="4"
                   lg="3"
                 >
-                  <v-card :elevation="0" class="product-card h-100 smooth-border" style="border-radius: 12px">
+                  <v-card variant="flat" class="product-card h-100 smooth-border" style="border-radius: 12px">
                     <v-card-text>
                       <div class="d-flex align-center justify-space-between mb-2">
                         <div
