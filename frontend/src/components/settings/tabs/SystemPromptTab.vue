@@ -1,10 +1,10 @@
 <template>
-  <v-card variant="flat" class="smooth-border prompt-card">
-    <v-card-title>System Orchestrator Prompt</v-card-title>
-    <v-card-subtitle class="prompt-subtitle"
-      >Core instructions for the Giljo Orchestrator (admin override only)</v-card-subtitle
-    >
-
+  <div>
+    <div class="tab-header mb-4">
+      <h2 class="text-h6">System Orchestrator Prompt</h2>
+      <p class="text-body-2 text-muted-a11y mt-1">Core instructions for the Giljo Orchestrator (admin override only)</p>
+    </div>
+    <v-card variant="flat" class="smooth-border prompt-card">
     <v-card-text>
       <v-alert type="info" variant="tonal" class="mb-6">
         <p class="mb-3">
@@ -101,6 +101,7 @@
       </v-btn>
     </v-card-actions>
   </v-card>
+  </div>
 </template>
 
 <script setup>
@@ -223,10 +224,6 @@ onMounted(() => {
 .prompt-card {
   background: $elevation-raised;
   border-radius: $border-radius-rounded;
-}
-
-.prompt-subtitle {
-  color: var(--text-muted);
 }
 
 .mono-textarea :deep(textarea) {

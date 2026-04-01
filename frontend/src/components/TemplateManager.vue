@@ -38,41 +38,41 @@
       <v-btn variant="text" class="filter-clear-btn" @click="clearFilters">Clear Filters</v-btn>
     </div>
 
-    <v-card class="template-manager smooth-border">
-      <v-card-title class="d-flex align-center">
-        Agent Template Manager
-        <v-tooltip location="bottom" max-width="360">
-          <template #activator="{ props }">
-            <v-icon v-bind="props" size="small" class="ml-2" color="medium-emphasis"
-              >mdi-information-outline</v-icon
-            >
-          </template>
-          <span
-            >Each active agent template consumes context tokens during orchestration. The 8-slot limit
-            keeps prompt budgets manageable. 1 slot is reserved for the Orchestrator (managed in Admin
-            Settings), leaving 7 for your custom agents.</span
+    <div class="tab-header mb-4 d-flex align-center">
+      <h2 class="text-h6">Agent Template Manager</h2>
+      <v-tooltip location="bottom" max-width="360">
+        <template #activator="{ props }">
+          <v-icon v-bind="props" size="small" class="ml-2" color="medium-emphasis"
+            >mdi-information-outline</v-icon
           >
-        </v-tooltip>
-        <v-chip
-          v-if="totalActiveAgents !== null"
-          :color="remainingUserSlots === 0 ? 'warning' : 'default'"
-          size="small"
-          variant="tonal"
-          class="ml-4"
+        </template>
+        <span
+          >Each active agent template consumes context tokens during orchestration. The 8-slot limit
+          keeps prompt budgets manageable. 1 slot is reserved for the Orchestrator (managed in Admin
+          Settings), leaving 7 for your custom agents.</span
         >
-          {{ totalActiveAgents }} / {{ totalCapacity }}
-        </v-chip>
-        <v-spacer />
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-plus"
-          aria-label="Create new template"
-          @click="openCreateDialog"
-        >
-          New Template
-        </v-btn>
-      </v-card-title>
+      </v-tooltip>
+      <v-chip
+        v-if="totalActiveAgents !== null"
+        :color="remainingUserSlots === 0 ? 'warning' : 'default'"
+        size="small"
+        variant="tonal"
+        class="ml-4"
+      >
+        {{ totalActiveAgents }} / {{ totalCapacity }}
+      </v-chip>
+      <v-spacer />
+      <v-btn
+        color="primary"
+        prepend-icon="mdi-plus"
+        aria-label="Create new template"
+        @click="openCreateDialog"
+      >
+        New Template
+      </v-btn>
+    </div>
 
+    <v-card class="template-manager smooth-border">
       <v-card-text>
         <!-- Templates Table -->
       <v-data-table
