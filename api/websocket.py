@@ -526,7 +526,7 @@ class WebSocketManager:
             "update_time": datetime.now(timezone.utc).isoformat(),
         }
 
-        if status in ("blocked", "silent") and block_reason:
+        if status in ("blocked", "silent", "idle", "sleeping") and block_reason:
             data["block_reason"] = block_reason
 
         event = EventFactory.tenant_envelope(

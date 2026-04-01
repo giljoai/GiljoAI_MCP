@@ -28,7 +28,7 @@ describe('Claude Code Agent Template Color Mappings', () => {
     it('maps tdd-implementor to implementer color (blue)', () => {
       const color = getAgentColor('tdd-implementor')
       expect(color).toEqual(AGENT_COLORS.implementer)
-      expect(color.hex).toBe('#3498DB')
+      expect(color.hex).toBe('#6DB3E4')
       expect(color.name).toBe('IMPLEMENTER')
     })
 
@@ -42,7 +42,7 @@ describe('Claude Code Agent Template Color Mappings', () => {
     it('maps backend-integration-tester to tester color (yellow)', () => {
       const color = getAgentColor('backend-integration-tester')
       expect(color).toEqual(AGENT_COLORS.tester)
-      expect(color.hex).toBe('#FFC300')
+      expect(color.hex).toBe('#EDBA4A')
       expect(color.name).toBe('TESTER')
     })
   })
@@ -51,7 +51,7 @@ describe('Claude Code Agent Template Color Mappings', () => {
     it('maps frontend-tester to tester color (yellow)', () => {
       const color = getAgentColor('frontend-tester')
       expect(color).toEqual(AGENT_COLORS.tester)
-      expect(color.hex).toBe('#FFC300')
+      expect(color.hex).toBe('#EDBA4A')
     })
   })
 
@@ -59,7 +59,7 @@ describe('Claude Code Agent Template Color Mappings', () => {
     it('maps database-expert to analyzer color (red)', () => {
       const color = getAgentColor('database-expert')
       expect(color).toEqual(AGENT_COLORS.analyzer)
-      expect(color.hex).toBe('#E74C3C')
+      expect(color.hex).toBe('#E07872')
       expect(color.name).toBe('ANALYZER')
     })
   })
@@ -68,7 +68,7 @@ describe('Claude Code Agent Template Color Mappings', () => {
     it('maps deep-researcher to analyzer color (red)', () => {
       const color = getAgentColor('deep-researcher')
       expect(color).toEqual(AGENT_COLORS.analyzer)
-      expect(color.hex).toBe('#E74C3C')
+      expect(color.hex).toBe('#E07872')
     })
   })
 
@@ -76,7 +76,7 @@ describe('Claude Code Agent Template Color Mappings', () => {
     it('maps system-architect to analyzer color (red)', () => {
       const color = getAgentColor('system-architect')
       expect(color).toEqual(AGENT_COLORS.analyzer)
-      expect(color.hex).toBe('#E74C3C')
+      expect(color.hex).toBe('#E07872')
     })
   })
 
@@ -84,7 +84,7 @@ describe('Claude Code Agent Template Color Mappings', () => {
     it('maps documentation-manager to documenter color (green)', () => {
       const color = getAgentColor('documentation-manager')
       expect(color).toEqual(AGENT_COLORS.documenter)
-      expect(color.hex).toBe('#27AE60')
+      expect(color.hex).toBe('#5EC48E')
       expect(color.name).toBe('DOCUMENTER')
     })
   })
@@ -93,7 +93,7 @@ describe('Claude Code Agent Template Color Mappings', () => {
     it('maps network-security-engineer to reviewer color (purple)', () => {
       const color = getAgentColor('network-security-engineer')
       expect(color).toEqual(AGENT_COLORS.reviewer)
-      expect(color.hex).toBe('#9B59B6')
+      expect(color.hex).toBe('#AC80CC')
       expect(color.name).toBe('REVIEWER')
     })
   })
@@ -102,7 +102,7 @@ describe('Claude Code Agent Template Color Mappings', () => {
     it('maps ux-designer to implementer color (blue)', () => {
       const color = getAgentColor('ux-designer')
       expect(color).toEqual(AGENT_COLORS.implementer)
-      expect(color.hex).toBe('#3498DB')
+      expect(color.hex).toBe('#6DB3E4')
     })
   })
 
@@ -110,7 +110,7 @@ describe('Claude Code Agent Template Color Mappings', () => {
     it('maps version-manager to reviewer color (purple)', () => {
       const color = getAgentColor('version-manager')
       expect(color).toEqual(AGENT_COLORS.reviewer)
-      expect(color.hex).toBe('#9B59B6')
+      expect(color.hex).toBe('#AC80CC')
     })
   })
 
@@ -118,7 +118,7 @@ describe('Claude Code Agent Template Color Mappings', () => {
     it('maps installation-flow-agent to implementer color (blue)', () => {
       const color = getAgentColor('installation-flow-agent')
       expect(color).toEqual(AGENT_COLORS.implementer)
-      expect(color.hex).toBe('#3498DB')
+      expect(color.hex).toBe('#6DB3E4')
     })
   })
 
@@ -126,7 +126,7 @@ describe('Claude Code Agent Template Color Mappings', () => {
     it('maps orchestrator-coordinator to orchestrator color (tan)', () => {
       const color = getAgentColor('orchestrator-coordinator')
       expect(color).toEqual(AGENT_COLORS.orchestrator)
-      expect(color.hex).toBe('#D4A574')
+      expect(color.hex).toBe('#D4B08A')
       expect(color.name).toBe('ORCHESTRATOR')
     })
   })

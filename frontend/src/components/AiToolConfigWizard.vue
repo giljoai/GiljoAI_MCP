@@ -1,12 +1,13 @@
 <template>
   <v-dialog v-model="showWizard" max-width="720" persistent>
     <template #activator="{ props }">
-      <v-btn v-bind="props" color="primary" variant="flat">
+      <button v-bind="props" class="configurator-pill">
+        <v-icon size="16" class="mr-1">mdi-wrench-outline</v-icon>
         Configurator
-      </v-btn>
+      </button>
     </template>
 
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <v-card-title class="d-flex align-center justify-space-between">
         <div class="d-flex align-center">
           <v-img src="/giljo_YW_Face.svg" width="32" height="32" class="mr-2" />
@@ -351,5 +352,24 @@ defineExpose({
 .platform-radios :deep(.v-selection-control-group) {
   gap: 10px;
   justify-content: center;
+}
+
+.configurator-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 6px 16px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: rgba(255, 195, 0, 0.12);
+  color: #ffc300;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.configurator-pill:hover {
+  background: rgba(255, 195, 0, 0.2);
 }
 </style>

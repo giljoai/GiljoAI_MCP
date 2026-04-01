@@ -17,17 +17,22 @@ stateDiagram-v2
     working --> review: Work Complete
     working --> complete: Direct Complete
     working --> failed: Execution Error
-    working --> blocked: Needs Input
+    working --> blocked: set_agent_status(blocked)
+    working --> idle: set_agent_status(idle)
+    working --> sleeping: set_agent_status(sleeping)
     working --> cancelled: User Cancels
-    
+
     review --> complete: Review Approved
     review --> working: Revisions Needed
     review --> failed: Review Rejected
-    
+
     blocked --> working: report_progress()
     blocked --> cancelled: User Cancels
     blocked --> failed: Cannot Unblock
-    
+
+    idle --> working: report_progress() (auto-wake)
+    sleeping --> working: report_progress() (auto-wake)
+
     complete --> [*]: Terminal
     failed --> [*]: Terminal
     cancelled --> [*]: Terminal
@@ -56,6 +61,16 @@ stateDiagram-v2
     note right of blocked
         Agent needs human decision
         or additional input
+    end note
+
+    note right of idle
+        Agent resting, monitoring
+        Auto-wakes on any active MCP call
+    end note
+
+    note right of sleeping
+        Agent sleeping N minutes
+        Auto-wakes on any active MCP call
     end note
 
     note right of complete
@@ -101,7 +116,11 @@ stateDiagram-v2
 | preparing | working | Agent ready | update_job_status() |
 | working | review | Agent completes work | update_job_status() |
 | working | complete | Agent finishes | complete_job() |
-| working | blocked | Agent needs help | update_job_status() |
+| working | blocked | Agent needs help | set_agent_status("blocked") |
+| working | idle | Agent resting/monitoring | set_agent_status("idle") |
+| working | sleeping | Agent periodic check-in | set_agent_status("sleeping") |
+| idle | working | Agent resumes activity | report_progress() (auto-wake) |
+| sleeping | working | Agent resumes activity | report_progress() (auto-wake) |
 | working | failed | Agent encounters error | fail_job() |
 
 ### System Events
@@ -131,7 +150,7 @@ stateDiagram-v2
 **working**
 - Messages: Delivered immediately
 - Progress: 10-99%
-- Can transition to: review, complete, failed, blocked, cancelled
+- Can transition to: review, complete, failed, blocked, idle, sleeping, cancelled
 - Timeout: 10 minutes of no progress (configurable)
 
 **review**
@@ -139,6 +158,18 @@ stateDiagram-v2
 - Progress: 100%
 - Can transition to: complete, working, failed
 - No timeout (human review pending)
+
+**idle**
+- Messages: Delivered (agent monitoring)
+- Progress: Frozen at current value
+- Can transition to: working (auto-wake on report_progress)
+- No timeout (intentional resting state)
+
+**sleeping**
+- Messages: Delivered (agent will check on wake)
+- Progress: Frozen at current value
+- Can transition to: working (auto-wake on report_progress)
+- No timeout (agent manages own sleep timer locally)
 
 **blocked**
 - Messages: Delivered with flag indicating blocked state

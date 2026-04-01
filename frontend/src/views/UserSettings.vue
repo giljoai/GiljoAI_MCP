@@ -2,51 +2,66 @@
   <v-container>
     <!-- Page Header -->
     <h1 class="text-h4 mb-2">My Settings</h1>
-    <p class="text-subtitle-1 mb-4">Manage your personal preferences</p>
+    <p class="text-subtitle-1 mb-4 settings-subtitle">Manage your personal preferences</p>
 
-    <!-- Settings Tabs (v-btn-toggle - native Vuetify) -->
-    <v-btn-toggle
-      v-model="activeTab"
-      mandatory
-      variant="outlined"
-      divided
-      rounded="t-lg"
-      color="primary"
-      class="mb-0"
-    >
-      <v-btn value="startup" data-testid="startup-settings-tab">
-        <v-icon start>mdi-rocket-launch</v-icon>
+    <!-- Settings Pills -->
+    <div class="pill-toggle-row">
+      <button
+        class="pill-toggle"
+        :class="{ 'pill-toggle--active': activeTab === 'startup' }"
+        data-testid="startup-settings-tab"
+        @click="activeTab = 'startup'"
+      >
+        <v-icon size="16" class="pill-toggle-icon">mdi-rocket-launch</v-icon>
         Startup
-      </v-btn>
-      <v-btn value="notifications">
-        <v-icon start>mdi-bell</v-icon>
+      </button>
+      <button
+        class="pill-toggle"
+        :class="{ 'pill-toggle--active': activeTab === 'notifications' }"
+        @click="activeTab = 'notifications'"
+      >
+        <v-icon size="16" class="pill-toggle-icon">mdi-bell</v-icon>
         Notifications
-      </v-btn>
-      <v-btn value="agents" data-testid="agent-templates-settings-tab">
-        <v-img
-          src="/icons/Giljo_White_Face.svg"
-          width="20"
-          height="20"
-          class="mr-1"
-        />
+      </button>
+      <button
+        class="pill-toggle"
+        :class="{ 'pill-toggle--active': activeTab === 'agents' }"
+        data-testid="agent-templates-settings-tab"
+        @click="activeTab = 'agents'"
+      >
+        <v-img src="/icons/Giljo_White_Face.svg" width="16" height="16" class="pill-toggle-icon" />
         Agents
-      </v-btn>
-      <v-btn value="context" data-testid="context-settings-tab">
-        <v-icon start>mdi-layers-triple</v-icon>
+      </button>
+      <button
+        class="pill-toggle"
+        :class="{ 'pill-toggle--active': activeTab === 'context' }"
+        data-testid="context-settings-tab"
+        @click="activeTab = 'context'"
+      >
+        <v-icon size="16" class="pill-toggle-icon">mdi-layers-triple</v-icon>
         Context
-      </v-btn>
-      <v-btn value="api-keys">
-        <v-icon start>mdi-key-variant</v-icon>
+      </button>
+      <button
+        class="pill-toggle"
+        :class="{ 'pill-toggle--active': activeTab === 'api-keys' }"
+        @click="activeTab = 'api-keys'"
+      >
+        <v-icon size="16" class="pill-toggle-icon">mdi-key-variant</v-icon>
         API Keys
-      </v-btn>
-      <v-btn value="integrations" data-testid="integrations-settings-tab">
-        <v-icon start>mdi-puzzle</v-icon>
+      </button>
+      <button
+        class="pill-toggle"
+        :class="{ 'pill-toggle--active': activeTab === 'integrations' }"
+        data-testid="integrations-settings-tab"
+        @click="activeTab = 'integrations'"
+      >
+        <v-icon size="16" class="pill-toggle-icon">mdi-puzzle</v-icon>
         Integrations
-      </v-btn>
-    </v-btn-toggle>
+      </button>
+    </div>
 
     <!-- Tab Content -->
-    <div class="bordered-tabs-content">
+    <div class="pill-tabs-content">
       <v-window v-model="activeTab" :touch="false" :reverse="false" class="global-tabs-window">
       <!-- Context Settings -->
       <v-window-item value="context">
@@ -60,9 +75,9 @@
 
       <!-- Setup Settings -->
       <v-window-item value="startup">
-        <v-card data-test="startup-settings">
+        <v-card variant="flat" class="smooth-border settings-card" data-test="startup-settings">
           <v-card-title>Startup</v-card-title>
-          <v-card-subtitle>Setup wizard and getting started</v-card-subtitle>
+          <v-card-subtitle class="settings-card-subtitle">Setup wizard and getting started</v-card-subtitle>
           <v-card-text>
             <p class="text-body-2 mb-4" style="color: var(--color-text-secondary);">
               The setup wizard guides you through connecting AI coding tools and configuring GiljoAI MCP.
@@ -90,9 +105,9 @@
 
       <!-- Notification Settings -->
       <v-window-item value="notifications">
-        <v-card data-test="notification-settings">
+        <v-card variant="flat" class="smooth-border settings-card" data-test="notification-settings">
           <v-card-title>Notification Display</v-card-title>
-          <v-card-subtitle>Configure where and how long notifications appear</v-card-subtitle>
+          <v-card-subtitle class="settings-card-subtitle">Configure where and how long notifications appear</v-card-subtitle>
           <v-card-text>
             <v-select
               v-model="settings.notifications.position"
@@ -167,9 +182,9 @@
 
       <!-- Integrations -->
       <v-window-item value="integrations">
-        <v-card>
+        <v-card variant="flat" class="smooth-border settings-card">
           <v-card-title>Integrations</v-card-title>
-          <v-card-subtitle>Configure MCP tools and integrations</v-card-subtitle>
+          <v-card-subtitle class="settings-card-subtitle">Configure MCP tools and integrations</v-card-subtitle>
           <v-card-text>
             <!-- GiljoAI MCP Integration -->
             <McpIntegrationCard />
@@ -454,14 +469,25 @@ function openIntroTour() {
 </script>
 
 <style scoped>
+.settings-subtitle {
+  color: #8895a8;
+}
+
+.settings-card {
+  background: var(--bg-raised, #1e3147);
+  border-radius: 16px;
+}
+
+.settings-card-subtitle {
+  color: #8895a8;
+}
+
 /* Integrations section divider should follow theme */
 .integrations-divider {
   --v-theme-overlay-multiplier: 1; /* ensure visibility */
   border-color: var(--v-theme-on-surface);
   opacity: 0.3;
 }
-
-/* Tab animations are handled by global-tabs-window class */
 
 .startup-help-icon {
   cursor: pointer;
@@ -471,5 +497,48 @@ function openIntroTour() {
 
 .startup-help-icon:hover {
   opacity: 1;
+}
+
+/* Pill toggle row */
+.pill-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  background: transparent;
+  color: #8895a8;
+  border: none;
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, #2a4a6b);
+}
+
+.pill-toggle:hover {
+  color: #b0bec5;
+}
+
+.pill-toggle--active {
+  background: rgba(255, 195, 0, 0.12);
+  color: #ffc300;
+  box-shadow: none;
+}
+
+.pill-toggle-icon {
+  flex-shrink: 0;
+}
+
+.pill-tabs-content {
+  padding: 16px 0;
 }
 </style>
