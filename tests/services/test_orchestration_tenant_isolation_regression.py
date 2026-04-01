@@ -324,32 +324,34 @@ async def test_report_error_blocks_cross_tenant(db_session, two_tenant_orchestra
     service = two_tenant_orchestration["service"]
 
     with pytest.raises(ResourceNotFoundError):
-        await service.report_error(
+        await service.set_agent_status(
             job_id=job_b.job_id,
-            error="Cross-tenant error report",
+            status="blocked",
+            reason="Cross-tenant error report",
             tenant_key=tenant_a,
         )
 
     # Verify tenant B's execution was NOT modified
     await db_session.refresh(exec_b)
     assert exec_b.status == "working", (
-        "Cross-tenant report_error modified another tenant's execution!"
+        "Cross-tenant set_agent_status modified another tenant's execution!"
     )
 
 
 @pytest.mark.tenant_isolation
 @pytest.mark.asyncio
-async def test_report_error_same_tenant_succeeds(db_session, two_tenant_orchestration):
+async def test_set_agent_status_same_tenant_succeeds(db_session, two_tenant_orchestration):
     """
-    Verify that same-tenant report_error still works correctly.
+    Verify that same-tenant set_agent_status still works correctly.
     """
     tenant_a = two_tenant_orchestration["tenant_a"]
     job_a = two_tenant_orchestration["job_a"]
     service = two_tenant_orchestration["service"]
 
-    result = await service.report_error(
+    result = await service.set_agent_status(
         job_id=job_a.job_id,
-        error="Same-tenant error report",
+        status="blocked",
+        reason="Same-tenant error report",
         tenant_key=tenant_a,
     )
 
@@ -407,14 +409,15 @@ async def test_orchestration_service_cross_tenant_audit(db_session, two_tenant_o
     except (ResourceNotFoundError, ValidationError):
         pass
 
-    # 4. report_error cross-tenant
+    # 4. set_agent_status cross-tenant
     try:
-        await service.report_error(
+        await service.set_agent_status(
             job_id=job_b.job_id,
-            error="Cross-tenant error",
+            status="blocked",
+            reason="Cross-tenant error",
             tenant_key=tenant_a,
         )
-        violations.append("report_error() allowed cross-tenant error report")
+        violations.append("set_agent_status() allowed cross-tenant status change")
     except (ResourceNotFoundError, ValidationError):
         pass
 

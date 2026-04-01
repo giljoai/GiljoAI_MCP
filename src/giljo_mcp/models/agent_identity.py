@@ -176,7 +176,7 @@ class AgentExecution(Base):
         String(50),
         default="waiting",
         nullable=False,
-        comment="Execution status: waiting, working, blocked, complete, silent, decommissioned",
+        comment="Execution status: waiting, working, blocked, idle, sleeping, complete, silent, decommissioned",
     )
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
