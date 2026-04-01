@@ -55,6 +55,8 @@
             :items="categories"
             label="Category"
             clearable
+            variant="solo"
+            flat
             density="compact"
             hide-details
           />
@@ -65,6 +67,8 @@
             :items="statusOptions"
             label="Status"
             clearable
+            variant="solo"
+            flat
             density="compact"
             hide-details
           />
@@ -228,6 +232,7 @@
                   :items="roleOptions"
                   label="Role"
                   :rules="[(v) => !!v || 'Role is required']"
+                  variant="outlined"
                   density="compact"
                   aria-label="Select agent role"
                   @update:model-value="onRoleChange"
