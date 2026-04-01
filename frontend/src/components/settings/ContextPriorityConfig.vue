@@ -1,7 +1,7 @@
 <template>
-  <v-card variant="flat" class="smooth-border context-card">
-    <v-card-title class="d-flex justify-space-between align-center">
-      <span>Context Configuration</span>
+  <div>
+    <div class="tab-header mb-4 d-flex justify-space-between align-center">
+      <h2 class="text-h6">Context Configuration</h2>
       <v-btn
         variant="text"
         size="small"
@@ -9,11 +9,12 @@
         :disabled="saving || loading"
         @click="resetToDefaults"
         data-testid="reset-context-config-btn"
-        style="width: 140px; margin-right: 16px;"
+        class="reset-btn"
       >
         Reset
       </v-btn>
-    </v-card-title>
+    </div>
+    <v-card variant="flat" class="smooth-border context-card">
     <v-progress-linear v-if="loading || saving" indeterminate color="primary" height="2" />
     <v-card-text>
       <!-- Git Integration Alert -->
@@ -181,6 +182,7 @@
       </div>
     </v-card-text>
   </v-card>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -580,6 +582,10 @@ defineExpose({
 .context-card {
   background: $elevation-raised;
   border-radius: $border-radius-rounded;
+}
+
+.reset-btn {
+  width: 140px;
 }
 
 .context-row {
