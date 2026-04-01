@@ -2,7 +2,6 @@
   <div>
     <div class="tab-header mb-4">
       <h2 class="text-h6">Network Configuration</h2>
-      <p class="text-body-2 text-muted-a11y mt-1">Server network settings (configured during installation)</p>
     </div>
     <v-card variant="flat" class="smooth-border network-card">
     <v-card-text>
@@ -12,42 +11,9 @@
       </div>
 
       <template v-else>
-        <!-- Unified Architecture Info -->
-        <v-alert
-          type="info"
-          variant="tonal"
-          class="mb-4"
-          data-test="v3-unified-alert"
-          :icon="false"
-        >
-          <div class="d-flex align-center">
-            <v-icon start>mdi-information</v-icon>
-            <div>
-              <strong>Unified Architecture:</strong> Server binds to all interfaces with
-              authentication always enabled. OS firewall controls network access (defense in depth).
-            </div>
-          </div>
-        </v-alert>
-
         <!-- Server Configuration -->
-        <h3 class="text-h6 mb-3">Server Configuration from Installation</h3>
-
-        <!-- Plugin Integration Reminder (Handover 0334) -->
-        <v-alert
-          type="warning"
-          variant="tonal"
-          class="mb-4"
-          data-test="plugin-integration-reminder"
-        >
-          <div class="d-flex align-center">
-            <v-icon start>mdi-puzzle-outline</v-icon>
-            <div>
-              <strong>Claude Code Plugin Integration:</strong> The External Host below is used by
-              the Claude Code plugin to connect to this server. Ensure this IP/hostname is
-              accessible from machines running Claude Code. See Handover 0334 for plugin setup.
-            </div>
-          </div>
-        </v-alert>
+        <h3 class="text-h6 mb-1">Server Configuration from Installation</h3>
+        <p class="text-body-2 mb-4">Network settings are configured during installation. To modify the external host or ports, update config.yaml and restart the server. Authentication is always enabled for all connections (local and remote). Use OS firewall to control network access.</p>
 
         <v-text-field
           :model-value="config.externalHost"
@@ -81,65 +47,6 @@
           class="mb-4"
           data-test="frontend-port-field"
         />
-
-        <!-- CORS Origins Management -->
-        <v-divider class="my-6" />
-
-        <h3 class="text-h6 mb-3" style="color: var(--text-secondary);">CORS Allowed Origins</h3>
-
-        <v-alert type="info" variant="tonal" class="mb-4">
-          <strong>Foundation implementation exists.</strong> Reserved for future use when frontend
-          and backend are hosted on separate domains (e.g., SaaS deployments). Not needed for
-          current single-server installations where frontend and backend run together.
-        </v-alert>
-
-        <div data-test="cors-origins-section" class="disabled-section">
-          <v-list v-if="corsOrigins.length > 0" density="compact" class="mb-4" disabled>
-            <v-list-item v-for="(origin, index) in corsOrigins" :key="index" disabled>
-              <v-list-item-title class="text-muted-a11y">{{ origin }}</v-list-item-title>
-
-              <template v-slot:append>
-                <v-btn
-                  icon="mdi-content-copy"
-                  size="small"
-                  variant="text"
-                  title="Copy Origin"
-                  disabled
-                  @click="copyOrigin(origin)"
-                />
-                <v-btn
-                  v-if="!isDefaultOrigin(origin)"
-                  icon="mdi-delete"
-                  size="small"
-                  variant="text"
-                  color="error"
-                  title="Remove Origin"
-                  disabled
-                  @click="removeOrigin(index)"
-                />
-              </template>
-            </v-list-item>
-          </v-list>
-
-          <v-alert v-else type="info" variant="outlined" class="mb-4">
-            <span class="text-muted-a11y"
-              >No CORS origins configured. Foundation ready for future SaaS deployments.</span
-            >
-          </v-alert>
-
-          <v-text-field
-            v-model="newOrigin"
-            label="Add New Origin"
-            variant="outlined"
-            placeholder="https://192.168.1.100:7274"
-            hint="Disabled for single-server installations"
-            persistent-hint
-            :append-icon="'mdi-plus'"
-            disabled
-            @click:append="addOrigin"
-            @keyup.enter="addOrigin"
-          />
-        </div>
 
         <!-- HTTPS Configuration -->
         <v-divider class="my-6" />
@@ -338,21 +245,65 @@
 
         </div>
 
-        <!-- Network Configuration Info -->
+
+        <!-- CORS Origins Management -->
         <v-divider class="my-6" />
 
-        <h3 class="text-h6 mb-3">Configuration Notes</h3>
+        <h3 class="text-h6 mb-3">CORS Allowed Origins</h3>
 
-        <v-alert type="info" variant="tonal" class="mb-0">
-          <div class="mb-2">
-            <strong>Network settings are configured during installation.</strong>
-          </div>
-          <div class="text-body-2">
-            To modify the external host or ports, update <code>config.yaml</code> and restart the
-            server. Authentication is always enabled for all connections (local and remote). Use OS
-            firewall to control network access.
-          </div>
+        <v-alert type="info" variant="tonal" class="mb-4">
+          <strong>Foundation implementation exists.</strong> Reserved for future use when frontend
+          and backend are hosted on separate domains (e.g., SaaS deployments). Not needed for
+          current single-server installations where frontend and backend run together.
         </v-alert>
+
+        <div data-test="cors-origins-section" class="disabled-section">
+          <v-list v-if="corsOrigins.length > 0" density="compact" class="mb-4" disabled>
+            <v-list-item v-for="(origin, index) in corsOrigins" :key="index" disabled>
+              <v-list-item-title class="text-muted-a11y">{{ origin }}</v-list-item-title>
+
+              <template v-slot:append>
+                <v-btn
+                  icon="mdi-content-copy"
+                  size="small"
+                  variant="text"
+                  title="Copy Origin"
+                  disabled
+                  @click="copyOrigin(origin)"
+                />
+                <v-btn
+                  v-if="!isDefaultOrigin(origin)"
+                  icon="mdi-delete"
+                  size="small"
+                  variant="text"
+                  color="error"
+                  title="Remove Origin"
+                  disabled
+                  @click="removeOrigin(index)"
+                />
+              </template>
+            </v-list-item>
+          </v-list>
+
+          <v-alert v-else type="info" variant="outlined" class="mb-4">
+            <span class="text-muted-a11y"
+              >No CORS origins configured. Foundation ready for future SaaS deployments.</span
+            >
+          </v-alert>
+
+          <v-text-field
+            v-model="newOrigin"
+            label="Add New Origin"
+            variant="outlined"
+            placeholder="https://192.168.1.100:7274"
+            hint="Disabled for single-server installations"
+            persistent-hint
+            :append-icon="'mdi-plus'"
+            disabled
+            @click:append="addOrigin"
+            @keyup.enter="addOrigin"
+          />
+        </div>
       </template>
     </v-card-text>
 
