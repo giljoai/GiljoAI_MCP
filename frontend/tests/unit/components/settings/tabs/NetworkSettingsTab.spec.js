@@ -84,7 +84,7 @@ describe('NetworkSettingsTab.vue', () => {
       expect(wrapper.text()).toContain('Network Configuration')
     })
 
-    it('displays subtitle about server network settings', async () => {
+    it('displays network settings description text', async () => {
       wrapper = mount(NetworkSettingsTab, {
         props: {
           config: defaultConfig,
@@ -97,10 +97,10 @@ describe('NetworkSettingsTab.vue', () => {
       })
 
       await wrapper.vm.$nextTick()
-      expect(wrapper.text()).toContain('Server network settings')
+      expect(wrapper.text()).toContain('Network settings are configured during installation')
     })
 
-    it('displays unified architecture info alert', async () => {
+    it('displays server configuration section', async () => {
       wrapper = mount(NetworkSettingsTab, {
         props: {
           config: defaultConfig,
@@ -113,9 +113,7 @@ describe('NetworkSettingsTab.vue', () => {
       })
 
       await wrapper.vm.$nextTick()
-      const alert = wrapper.find('[data-test="v3-unified-alert"]')
-      expect(alert.exists()).toBe(true)
-      expect(wrapper.text()).toContain('Unified Architecture')
+      expect(wrapper.text()).toContain('Server Configuration from Installation')
     })
   })
 
@@ -322,7 +320,7 @@ describe('NetworkSettingsTab.vue', () => {
       })
 
       await wrapper.vm.$nextTick()
-      expect(wrapper.text()).toContain('Configuration Notes')
+      expect(wrapper.text()).toContain('Network settings are configured during installation')
     })
 
     it('displays info about config.yaml', async () => {
@@ -512,7 +510,6 @@ describe('NetworkSettingsTab.vue', () => {
       // Should have section headings
       expect(wrapper.text()).toContain('Server Configuration')
       expect(wrapper.text()).toContain('CORS Allowed Origins')
-      expect(wrapper.text()).toContain('Configuration Notes')
     })
 
     it('has hints on form fields', async () => {

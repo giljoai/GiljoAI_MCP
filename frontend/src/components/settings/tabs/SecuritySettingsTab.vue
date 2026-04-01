@@ -18,17 +18,11 @@
       <!-- Cookie Domain Whitelist Section -->
       <h3 class="text-h6 mb-3">Cookie Domain Whitelist</h3>
 
-      <p class="text-body-2 mb-3">
+      <p class="text-body-2 mb-4">
         Configure which domain names are allowed for cross-port authentication cookies. This enables
         secure authentication when accessing the dashboard from different ports or subdomains on the
-        same machine.
+        same machine. IP addresses are automatically allowed. Only add domain names here (e.g., app.example.com, localhost).
       </p>
-
-      <v-alert type="info" variant="tonal" class="mb-4" :icon="false">
-        <v-icon start>mdi-information</v-icon>
-        IP addresses are automatically allowed. Only add domain names here (e.g., app.example.com,
-        localhost).
-      </v-alert>
 
       <!-- Domain List -->
       <div v-if="cookieDomains.length > 0" class="mb-4">

@@ -43,16 +43,19 @@ describe('DatabaseConnection Component', () => {
       expect(wrapper.exists()).toBe(true)
     })
 
-    it('should display info banner with database configuration message', () => {
+    it('should display info banner text as subtitle when showInfoBanner is true', () => {
       wrapper = mount(DatabaseConnection, {
+        props: {
+          showTitle: true,
+          showInfoBanner: true,
+          infoBannerText: 'Database settings are configured during installation'
+        },
         global: {
           plugins: [vuetify]
         }
       })
 
-      const alert = wrapper.find('.v-alert')
-      expect(alert.exists()).toBe(true)
-      expect(alert.text()).toContain('Database settings are configured during installation')
+      expect(wrapper.text()).toContain('Database settings are configured during installation')
     })
 
     it('should render all database configuration fields', () => {
@@ -176,10 +179,11 @@ describe('DatabaseConnection Component', () => {
       expect(wrapper.text()).toContain(customTitle)
     })
 
-    it('should display custom info banner text when provided', () => {
+    it('should display custom info banner text as subtitle', () => {
       const customBannerText = 'Custom banner message here'
       wrapper = mount(DatabaseConnection, {
         props: {
+          showTitle: true,
           showInfoBanner: true,
           infoBannerText: customBannerText
         },
