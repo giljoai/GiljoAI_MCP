@@ -7,7 +7,7 @@
   "total_sessions": 15,
   "orchestrator_notes": "AGENTS: Read this file BEFORE starting. Check orchestrator_directives first — if it contains STOP, halt immediately. Review previous session notes_for_next. This is a CSS token/class centralization sweep — every change must produce ZERO visual difference except 0873n (EmptyState) and 0873o (new toasts). Run full Vitest suite after EVERY file change. Commit after your session completes. Then STOP — do not spawn the next terminal. CRLF WARNING: pre-commit mixed-line-ending hook fires on first commit when Python scripts or Edit tool writes LF files into this CRLF repo — always plan for re-stage + second commit attempt.",
   "orchestrator_directives": [
-    "STATUS (2026-03-31 updated): Sessions 0873a-0873g and 0873i completed and committed. 0873h (Dropdown & Select Patterns) is still pending — 0873i ran out of order before it. Hotfix applied — duplicate $transition-fast/$transition-slow removed from variables.scss (dc18b5f4). All 1916 tests pass. Next pending session is 0873h."
+    "STATUS (2026-03-31): Sessions 0873a-0873i all completed and committed. All 1916 Vitest tests pass. Working tree is clean. Next pending session is 0873j (Loading & Skeleton State Audit). CRLF hook warning: pre-commit mixed-line-ending hook fires on first commit attempt — always re-stage after hook auto-fix."
   ],
   "sessions": [
     {
