@@ -44,88 +44,88 @@
       </button>
     </div>
 
-    <!-- Bordered Content Box (tabs connect to this) -->
-    <div class="bordered-tabs-content smooth-border">
-      <!-- Execution Mode Pills (above buttons) - only show on Launch tab -->
-      <div v-if="activeTab === 'launch'" class="execution-mode-row">
-        <div class="execution-mode-pills" :class="{ 'mode-locked': isExecutionModeLocked }">
-          <span class="mode-label">Execution Mode:</span>
-          <div class="mode-pill-group">
-            <button
-              class="pill-btn pill-sm smooth-border"
-              :class="{ active: executionPlatform === 'multi_terminal' }"
-              :disabled="isExecutionModeLocked"
-              data-testid="radio-multi-terminal"
-              @click="!isExecutionModeLocked && handleExecutionModeChange('multi_terminal')"
-            >
-              Multi-Terminal
-            </button>
-            <button
-              class="pill-btn pill-sm smooth-border"
-              :class="{ active: executionPlatform === 'claude_code_cli' }"
-              :disabled="isExecutionModeLocked"
-              data-testid="radio-claude-cli"
-              @click="!isExecutionModeLocked && handleExecutionModeChange('claude_code_cli')"
-            >
-              Subagent: Claude
-            </button>
-            <button
-              class="pill-btn pill-sm smooth-border"
-              :class="{ active: executionPlatform === 'codex_cli' }"
-              :disabled="isExecutionModeLocked"
-              data-testid="radio-codex-cli"
-              @click="!isExecutionModeLocked && handleExecutionModeChange('codex_cli')"
-            >
-              Subagent: Codex
-              <v-icon size="x-small" color="warning" class="ml-1" title="Experimental — limited testing">mdi-alert</v-icon>
-            </button>
-            <button
-              class="pill-btn pill-sm smooth-border"
-              :class="{ active: executionPlatform === 'gemini_cli' }"
-              :disabled="isExecutionModeLocked"
-              data-testid="radio-gemini-cli"
-              @click="!isExecutionModeLocked && handleExecutionModeChange('gemini_cli')"
-            >
-              Subagent: Gemini
-              <v-icon size="x-small" color="warning" class="ml-1" title="Experimental — limited testing">mdi-alert</v-icon>
-            </button>
-          </div>
-          <v-tooltip location="bottom">
-            <template v-slot:activator="{ props: tooltipProps }">
-              <v-icon v-bind="tooltipProps" size="small" class="help-icon" aria-label="Execution mode help">mdi-help-circle-outline</v-icon>
-            </template>
-            <span>Multi-Terminal: Manually launch each agent in separate terminals. Subagent modes: Orchestrator spawns specialists automatically. Codex and Gemini are experimental.</span>
-          </v-tooltip>
-          <v-icon v-if="isExecutionModeLocked" size="small" class="lock-icon" aria-label="Execution mode locked">mdi-lock</v-icon>
+    <!-- Execution Mode + Action Buttons (bare, on background, above framed content) -->
+    <div v-if="activeTab === 'launch'" class="execution-mode-row">
+      <div class="execution-mode-pills" :class="{ 'mode-locked': isExecutionModeLocked }">
+        <span class="mode-label">Execution Mode:</span>
+        <div class="mode-pill-group">
+          <button
+            class="pill-btn pill-sm smooth-border"
+            :class="{ active: executionPlatform === 'multi_terminal' }"
+            :disabled="isExecutionModeLocked"
+            data-testid="radio-multi-terminal"
+            @click="!isExecutionModeLocked && handleExecutionModeChange('multi_terminal')"
+          >
+            Multi-Terminal
+          </button>
+          <button
+            class="pill-btn pill-sm smooth-border"
+            :class="{ active: executionPlatform === 'claude_code_cli' }"
+            :disabled="isExecutionModeLocked"
+            data-testid="radio-claude-cli"
+            @click="!isExecutionModeLocked && handleExecutionModeChange('claude_code_cli')"
+          >
+            Subagent: Claude
+          </button>
+          <button
+            class="pill-btn pill-sm smooth-border"
+            :class="{ active: executionPlatform === 'codex_cli' }"
+            :disabled="isExecutionModeLocked"
+            data-testid="radio-codex-cli"
+            @click="!isExecutionModeLocked && handleExecutionModeChange('codex_cli')"
+          >
+            Subagent: Codex
+            <v-icon size="x-small" color="warning" class="ml-1" title="Experimental — limited testing">mdi-alert</v-icon>
+          </button>
+          <button
+            class="pill-btn pill-sm smooth-border"
+            :class="{ active: executionPlatform === 'gemini_cli' }"
+            :disabled="isExecutionModeLocked"
+            data-testid="radio-gemini-cli"
+            @click="!isExecutionModeLocked && handleExecutionModeChange('gemini_cli')"
+          >
+            Subagent: Gemini
+            <v-icon size="x-small" color="warning" class="ml-1" title="Experimental — limited testing">mdi-alert</v-icon>
+          </button>
         </div>
+        <v-tooltip location="bottom">
+          <template v-slot:activator="{ props: tooltipProps }">
+            <v-icon v-bind="tooltipProps" size="small" class="help-icon" aria-label="Execution mode help">mdi-help-circle-outline</v-icon>
+          </template>
+          <span>Multi-Terminal: Manually launch each agent in separate terminals. Subagent modes: Orchestrator spawns specialists automatically. Codex and Gemini are experimental.</span>
+        </v-tooltip>
+        <v-icon v-if="isExecutionModeLocked" size="small" class="lock-icon" aria-label="Execution mode locked">mdi-lock</v-icon>
       </div>
+    </div>
 
-      <!-- Action Buttons Row (centered) - Launch tab buttons -->
-      <div v-if="activeTab === 'launch'" class="action-buttons-row">
-        <v-btn
-          class="stage-button"
-          variant="outlined"
-          :color="executionModeSelected && !hasActiveOrchestrator ? 'yellow-darken-2' : undefined"
-          :loading="loadingStageProject"
-          :disabled="!executionModeSelected || hasActiveOrchestrator"
-          :title="!executionModeSelected ? 'Select an execution mode first' : (hasActiveOrchestrator ? 'An orchestrator is already active for this project' : 'Generate orchestrator prompt')"
-          data-testid="stage-project-btn"
-          @click="handleStageProject"
-        >
-          Stage Project
-        </v-btn>
+    <div v-if="activeTab === 'launch'" class="action-buttons-row">
+      <v-btn
+        class="stage-button"
+        variant="outlined"
+        :color="executionModeSelected && !hasActiveOrchestrator ? 'yellow-darken-2' : undefined"
+        :loading="loadingStageProject"
+        :disabled="!executionModeSelected || hasActiveOrchestrator"
+        :title="!executionModeSelected ? 'Select an execution mode first' : (hasActiveOrchestrator ? 'An orchestrator is already active for this project' : 'Generate orchestrator prompt')"
+        data-testid="stage-project-btn"
+        @click="handleStageProject"
+      >
+        Stage Project
+      </v-btn>
 
-        <v-btn
-          class="launch-button"
-          :disabled="!executionModeSelected || !readyToLaunch"
-          :color="executionModeSelected && readyToLaunch ? 'yellow-darken-2' : undefined"
-          :variant="executionModeSelected && readyToLaunch ? 'flat' : 'outlined'"
-          data-testid="launch-jobs-btn"
-          @click="handleLaunchJobs"
-        >
-          Implement
-        </v-btn>
-      </div>
+      <v-btn
+        class="launch-button"
+        :disabled="!executionModeSelected || !readyToLaunch"
+        :color="executionModeSelected && readyToLaunch ? 'yellow-darken-2' : undefined"
+        :variant="executionModeSelected && readyToLaunch ? 'flat' : 'outlined'"
+        data-testid="launch-jobs-btn"
+        @click="handleLaunchJobs"
+      >
+        Implement
+      </v-btn>
+    </div>
+
+    <!-- Bordered Content Box (tabs connect to this) -->
+    <div class="bordered-tabs-content">
 
       <!-- Project Status Area (Jobs tab only) - Handover 0819a -->
       <!-- State A: Project is done -> status banner -->
@@ -898,25 +898,20 @@ async function handleContinueWorking() {
   font-size: 0.73rem;
 }
 
-/* Bordered content box */
+/* Tab content container (bare, no frame) */
 .bordered-tabs-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  border: none !important;
-  border-radius: $border-radius-default;
-  background: rgb(var(--v-theme-surface));
   overflow: hidden;
-  --smooth-border-color: rgba(var(--v-theme-on-surface), 0.2);
 }
 
 /* Action buttons row inside the box (centered) */
 .action-buttons-row {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 12px;
-  padding: 8px 16px 8px 16px;
+  margin-bottom: 16px;
   flex-shrink: 0;
 }
 
@@ -972,8 +967,8 @@ async function handleContinueWorking() {
 /* Execution mode row (above buttons, centered) */
 .execution-mode-row {
   display: flex;
-  justify-content: center;
-  padding: 0 16px 12px 16px;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 /* Execution mode pills */
