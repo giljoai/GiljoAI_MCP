@@ -46,7 +46,7 @@
       <!-- Notification List -->
       <v-list
         v-if="notifications.length > 0"
-        class="notification-list pa-0"
+        class="notification-list scrollbar-thin pa-0"
         lines="two"
       >
         <template v-for="(notification, index) in notifications" :key="notification.id">
@@ -411,21 +411,4 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-/* Scrollbar styling */
-.notification-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.notification-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.notification-list::-webkit-scrollbar-thumb {
-  background-color: rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: $border-radius-sharp;
-}
-
-.notification-list::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(var(--v-theme-on-surface), 0.3);
-}
 </style>
