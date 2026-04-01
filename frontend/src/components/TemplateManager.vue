@@ -174,6 +174,7 @@
                   icon="mdi-dots-vertical"
                   size="small"
                   variant="text"
+                  class="icon-interactive"
                   v-bind="props"
                   aria-label="Template actions"
                 ></v-btn>
