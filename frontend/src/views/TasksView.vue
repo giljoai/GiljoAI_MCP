@@ -886,16 +886,11 @@ onMounted(async () => {
 
 .table-wrapper {
   flex: 1;
-  overflow: hidden;
-}
-
-.scrollable-table {
-  height: 100%;
 }
 
 .scrollable-table :deep(.v-table__wrapper) {
+  max-height: calc(100vh - 370px);
   overflow-y: auto;
-  max-height: calc(100vh - 320px);
 }
 
 /* 0870h: table header cells */

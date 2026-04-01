@@ -521,7 +521,7 @@ async function toggleProductActivation(product) {
   } catch (error) {
     console.error('Failed to toggle product activation:', error)
     showToast({
-      message: 'Failed to change product status',
+      message: 'Failed to change product status. Try again or refresh the page.',
       type: 'error',
       duration: 5000,
     })
@@ -550,7 +550,7 @@ async function confirmActivation(_productId) {
   } catch (error) {
     console.error('Failed to confirm activation:', error)
     showToast({
-      message: 'Failed to activate product',
+      message: 'Failed to activate product. Try again or refresh the page.',
       type: 'error',
       duration: 5000,
     })
@@ -585,7 +585,7 @@ async function removeVisionDocument(doc) {
   } catch (error) {
     console.error('Failed to delete vision document:', error)
     showToast({
-      message: 'Failed to delete vision document',
+      message: 'Failed to delete vision document. Try again or refresh the page.',
       type: 'error',
       duration: 5000,
     })
@@ -707,7 +707,7 @@ async function confirmDelete(product) {
     } else {
       console.error('Failed to get cascade impact:', error)
       showToast({
-        message: 'Failed to load deletion impact',
+        message: 'Failed to load deletion impact. Refresh the page and try again.',
         type: 'error',
         duration: 5000,
       })
@@ -755,7 +755,7 @@ async function saveProduct(payload) {
   } catch (error) {
     console.error('Failed to save product:', error)
     showToast({
-      message: 'Failed to save product',
+      message: 'Failed to save product. Check your connection and try again.',
       type: 'error',
       duration: 5000,
     })
@@ -852,7 +852,7 @@ async function uploadVisionFilesOnAttach(payload) {
     console.error('Failed to upload vision files:', error)
     uploadingVision.value = false
     showToast({
-      message: 'Failed to upload files',
+      message: 'Failed to upload files. Check your connection and try again.',
       type: 'error',
       duration: 5000,
     })
@@ -896,7 +896,7 @@ async function confirmDeleteProduct() {
     } else {
       console.error('Failed to delete product:', error)
       showToast({
-        message: 'Failed to move product to trash',
+        message: 'Failed to move product to trash. Try again or refresh the page.',
         type: 'error',
         duration: 5000,
       })
@@ -985,7 +985,7 @@ async function restoreProduct(productId) {
   } catch (error) {
     console.error('Failed to restore product:', error)
     showToast({
-      message: 'Failed to restore product',
+      message: 'Failed to restore product. Try again or refresh the page.',
       type: 'error',
       duration: 5000,
     })
@@ -1017,7 +1017,7 @@ async function purgeDeletedProduct(productId) {
   } catch (error) {
     console.error('Failed to purge product:', error)
     showToast({
-      message: 'Failed to permanently delete product',
+      message: 'Failed to permanently delete product. Try again or refresh the page.',
       type: 'error',
       duration: 5000,
     })
@@ -1048,7 +1048,7 @@ async function purgeAllDeletedProducts() {
   } catch (error) {
     console.error('Failed to purge all products:', error)
     showToast({
-      message: 'Failed to delete all products',
+      message: 'Failed to delete all products. Try again or refresh the page.',
       type: 'error',
       duration: 5000,
     })
