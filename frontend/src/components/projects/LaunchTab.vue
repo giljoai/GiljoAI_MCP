@@ -374,7 +374,7 @@ function handleMissionUpdated({ jobId, mission }) {
  */
 watch(missionText, (next, previous) => {
   if (next && !previous) {
-    showToast({ message: 'Mission generated', type: 'success' })
+    showToast({ message: 'Agent mission generated', type: 'success' })
   }
 })
 </script>

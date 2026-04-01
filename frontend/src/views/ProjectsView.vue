@@ -778,6 +778,7 @@ import AgentTipsDialog from '@/components/common/AgentTipsDialog.vue'
 import { DEFAULT_PROJECT_TYPE_COLOR } from '@/utils/constants'
 import api from '@/services/api'
 import { useFormatDate } from '@/composables/useFormatDate'
+import { useToast } from '@/composables/useToast'
 
 // Router
 const router = useRouter()
@@ -786,6 +787,7 @@ const router = useRouter()
 const projectStore = useProjectStore()
 const productStore = useProductStore()
 const notificationStore = useNotificationStore()
+const { showToast } = useToast()
 
 // Reactive state
 const searchQuery = ref('')
@@ -1311,7 +1313,7 @@ async function purgeDeletedProject(project) {
     }
   } catch (error) {
     console.error('Failed to purge deleted project:', error)
-    alert('Failed to permanently delete the project. Please try again.')
+    showToast({ message: 'Failed to permanently delete the project. Please try again.', type: 'error' })
   } finally {
     purgingProjectId.value = null
   }
