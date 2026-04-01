@@ -40,7 +40,7 @@
             <template v-slot:append>
               <div class="d-flex align-center ga-1">
                 <v-btn
-                  icon="mdi-restore"
+                  icon="mdi-delete-restore"
                   size="small"
                   variant="text"
                   :loading="restoringProductId === product.id"
@@ -50,7 +50,7 @@
                   @click="handleRestore(product.id)"
                 ></v-btn>
                 <v-btn
-                  icon="mdi-trash-can"
+                  icon="mdi-delete-forever"
                   size="small"
                   variant="text"
                   color="error"

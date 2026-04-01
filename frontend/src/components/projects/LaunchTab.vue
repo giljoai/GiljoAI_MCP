@@ -29,9 +29,11 @@
         <div class="panel mission-panel smooth-border" data-testid="mission-panel">
           <div class="panel-header">Orchestrator Generated Mission</div>
           <div class="panel-content scrollbar-standard">
-            <div v-if="!missionText" class="empty-state">
-              <v-icon size="80" class="empty-icon">mdi-file-document-outline</v-icon>
-            </div>
+            <EmptyState
+              v-if="!missionText"
+              icon="mdi-file-document-outline"
+              title="No mission generated"
+            />
             <div v-else class="mission-content">
               {{ missionText }}
             </div>
@@ -208,6 +210,7 @@ import { useProjectStateStore } from '@/stores/projectStateStore'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import AgentMissionEditModal from '@/components/projects/AgentMissionEditModal.vue'
 import AgentTipsDialog from '@/components/common/AgentTipsDialog.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
 import { hexToRgba, getAgentBadgeStyle } from '@/utils/colorUtils'
 
@@ -468,17 +471,6 @@ watch(missionText, (next, previous) => {
           font-size: 0.8rem;
           line-height: 1.5;
           color: $color-text-primary;
-
-          .empty-state {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-
-            .empty-icon {
-              color: rgba(var(--v-theme-on-surface), 0.15);
-            }
-          }
 
           .mission-content {
             white-space: pre-wrap;
