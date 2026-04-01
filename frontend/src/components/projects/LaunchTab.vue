@@ -12,7 +12,7 @@
                 icon="mdi-pencil"
                 size="x-small"
                 variant="text"
-                class="header-edit-btn"
+                class="header-edit-btn icon-interactive"
                 title="Edit description"
                 aria-label="Edit description"
                 @click="editDescription"
@@ -152,7 +152,7 @@
                 <v-icon
                   v-if="agent.agent_display_name !== 'orchestrator'"
                   size="small"
-                  class="edit-icon"
+                  class="icon-interactive mr-1"
                   role="button"
                   tabindex="0"
                   title="Edit agent configuration"
@@ -162,7 +162,7 @@
                 >mdi-pencil</v-icon>
                 <v-icon
                   size="small"
-                  class="info-icon"
+                  class="icon-interactive"
                   role="button"
                   tabindex="0"
                   title="View agent details"
@@ -435,11 +435,6 @@ watch(missionText, (next, previous) => {
           .header-edit-btn {
             width: 26px;
             height: 26px;
-            color: $color-text-muted;
-
-            &:hover {
-              color: $color-text-secondary;
-            }
           }
 
           .integration-icons {
@@ -621,22 +616,10 @@ watch(missionText, (next, previous) => {
       }
     }
 
-    .edit-icon,
-    .info-icon {
-      color: $color-text-muted;
+    .icon-interactive {
       flex-shrink: 0;
-      cursor: pointer;
-      transition: all 0.15s;
       width: 26px;
       height: 26px;
-
-      &:hover {
-        color: $color-text-secondary;
-      }
-    }
-
-    .edit-icon {
-      margin-right: 2px;
     }
   }
 }
