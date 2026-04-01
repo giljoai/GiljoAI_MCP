@@ -105,10 +105,10 @@ describe('McpIntegrationCard.vue', () => {
 
     it('has nested cards in structure', () => {
       const html = wrapper.html()
-      // Should have multiple cards (outer outlined, inner tonal)
+      // Should have multiple cards (outer + inner, both flat with smooth-border)
       // Check for variant attributes which indicate card components
       expect(html).toContain('variant="flat"')
-      expect(html).toContain('variant="tonal"')
+      expect(html).toContain('smooth-border')
     })
 
     it('outer card has mb-4 spacing class', () => {
