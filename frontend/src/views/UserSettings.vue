@@ -75,9 +75,11 @@
 
       <!-- Setup Settings -->
       <v-window-item value="startup">
+        <div class="tab-header mb-4">
+          <h2 class="text-h6">Startup</h2>
+          <p class="text-body-2 text-muted-a11y mt-1">Setup wizard and getting started</p>
+        </div>
         <v-card variant="flat" class="smooth-border settings-card" data-test="startup-settings">
-          <v-card-title>Startup</v-card-title>
-          <v-card-subtitle class="settings-card-subtitle">Setup wizard and getting started</v-card-subtitle>
           <v-card-text>
             <p class="text-body-2 mb-4" style="color: var(--color-text-secondary);">
               The setup wizard guides you through connecting AI coding tools and configuring GiljoAI MCP.
@@ -105,9 +107,11 @@
 
       <!-- Notification Settings -->
       <v-window-item value="notifications">
+        <div class="tab-header mb-4">
+          <h2 class="text-h6">Notification Display</h2>
+          <p class="text-body-2 text-muted-a11y mt-1">Configure where and how long notifications appear</p>
+        </div>
         <v-card variant="flat" class="smooth-border settings-card" data-test="notification-settings">
-          <v-card-title>Notification Display</v-card-title>
-          <v-card-subtitle class="settings-card-subtitle">Configure where and how long notifications appear</v-card-subtitle>
           <v-card-text>
             <v-select
               v-model="settings.notifications.position"
@@ -182,32 +186,33 @@
 
       <!-- Integrations -->
       <v-window-item value="integrations">
-        <v-card variant="flat" class="smooth-border settings-card">
-          <v-card-title>Integrations</v-card-title>
-          <v-card-subtitle class="settings-card-subtitle">Configure MCP tools and integrations</v-card-subtitle>
-          <v-card-text>
-            <!-- GiljoAI MCP Integration -->
-            <McpIntegrationCard />
+        <div class="tab-header mb-4">
+          <h2 class="text-h6">Integrations</h2>
+          <p class="text-body-2 text-muted-a11y mt-1">Connect external tools and services to your GiljoAI workspace</p>
+        </div>
 
-            <!-- Agent Export (multi-platform — includes slash commands/skills) -->
-            <AgentExport />
+        <!-- Section: Primary -->
+        <div class="integration-section-label">Primary</div>
+        <McpIntegrationCard />
 
-            <!-- Serena MCP Integration (Handover 0277: Simplified to toggle only) -->
-            <SerenaIntegrationCard
-              :enabled="serenaEnabled"
-              :loading="toggling"
-              @update:enabled="toggleSerena"
-            />
+        <!-- Section: Skills & Agents Export -->
+        <div class="integration-section-label">Skills &amp; Agents Export</div>
+        <AgentExport />
 
-            <!-- Git + 360 Memory Integration (system-level) -->
-            <GitIntegrationCard
-              :enabled="gitEnabled"
-              :loading="togglingGit"
-              @update:enabled="toggleGit"
-            />
-
-          </v-card-text>
-        </v-card>
+        <!-- Section: Tools (2-column grid) -->
+        <div class="integration-section-label">Tools</div>
+        <div class="tools-grid">
+          <SerenaIntegrationCard
+            :enabled="serenaEnabled"
+            :loading="toggling"
+            @update:enabled="toggleSerena"
+          />
+          <GitIntegrationCard
+            :enabled="gitEnabled"
+            :loading="togglingGit"
+            @update:enabled="toggleGit"
+          />
+        </div>
       </v-window-item>
     </v-window>
     </div>
@@ -482,8 +487,37 @@ function openIntroTour() {
   border-radius: $border-radius-rounded;
 }
 
-.settings-card-subtitle {
-  color: var(--text-muted);
+/* Integration page section labels (IBM Plex Mono uppercase) */
+.integration-section-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  color: $color-text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+  margin-top: 28px;
+}
+
+.integration-section-label:first-of-type {
+  margin-top: 0;
+}
+
+/* Tools 2-column grid (Serena + Git side by side) */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+
+  // Grid gap handles spacing — remove card bottom margin inside grid
+  :deep(.v-card) {
+    margin-bottom: 0 !important;
+  }
+}
+
+@media (max-width: 960px) {
+  .tools-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Integrations section divider should follow theme */

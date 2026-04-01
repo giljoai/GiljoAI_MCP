@@ -1,8 +1,10 @@
 <template>
-  <v-card variant="flat" class="smooth-border identity-card" data-test="workspace-card">
-    <v-card-title>Identity</v-card-title>
-    <v-card-subtitle class="identity-subtitle">Workspace and user management</v-card-subtitle>
-
+  <div>
+    <div class="tab-header mb-4">
+      <h2 class="text-h6">Identity</h2>
+      <p class="text-body-2 text-muted-a11y mt-1">Workspace and user management</p>
+    </div>
+    <v-card variant="flat" class="smooth-border identity-card" data-test="workspace-card">
     <v-card-text>
       <!-- Loading State -->
       <div v-if="loading" class="d-flex justify-center py-8">
@@ -70,7 +72,7 @@
       </v-btn>
     </v-card-actions>
   </v-card>
-
+  </div>
 
 </template>
 
@@ -166,9 +168,5 @@ function resetForm() {
 .identity-card {
   background: $elevation-raised;
   border-radius: $border-radius-rounded;
-}
-
-.identity-subtitle {
-  color: var(--text-muted);
 }
 </style>

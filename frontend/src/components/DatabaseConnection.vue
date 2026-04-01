@@ -1,8 +1,11 @@
 <template>
-  <v-card class="db-card smooth-border">
+  <div>
     <!-- Title -->
-    <v-card-title v-if="showTitle">{{ title }}</v-card-title>
+    <div v-if="showTitle" class="tab-header mb-4">
+      <h2 class="text-h6">{{ title }}</h2>
+    </div>
 
+    <v-card class="db-card smooth-border">
     <v-card-text>
       <!-- Info Alert Banner -->
       <v-alert v-if="showInfoBanner" type="info" variant="tonal" class="mb-4">
@@ -134,6 +137,7 @@
       <slot name="actions"></slot>
     </v-card-actions>
   </v-card>
+  </div>
 </template>
 
 <script setup>
