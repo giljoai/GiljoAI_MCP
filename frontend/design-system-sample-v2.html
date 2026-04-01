@@ -183,8 +183,9 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
       <a href="#s12"><span class="toc-num">12</span> Table Row Patterns</a>
       <a href="#s13"><span class="toc-num">13</span> Card Patterns</a>
       <a href="#s14"><span class="toc-num">14</span> Status Chip Showcase</a>
-      <a href="#s15"><span class="toc-num">15</span> Brand Section</a>
-      <a href="#s16"><span class="toc-num">16</span> Accessibility</a>
+      <a href="#s15"><span class="toc-num">15</span> Brand &amp; Logos</a>
+      <a href="#s16"><span class="toc-num">16</span> Icon Library</a>
+      <a href="#s17"><span class="toc-num">17</span> Accessibility</a>
     </div>
   </div>
 
@@ -880,11 +881,14 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
     </div>
   </div>
 
-  <!-- ═══ 15. BRAND SECTION ═══ -->
+  <!-- ═══ 15. BRAND & LOGOS ═══ -->
   <div class="section" id="s15">
-    <div class="section-title">15. Brand</div>
+    <div class="section-title">15. Brand &amp; Logos</div>
+    <div class="section-sub">Brand identity, logo assets, mascot variants, and AI provider marks. Assets in <code>/frontend/public/</code>.</div>
 
-    <div class="card">
+    <!-- Brand colors & tagline -->
+    <div class="card" style="margin-bottom:24px;">
+      <h4>Brand Identity</h4>
       <div class="flex-row" style="gap:32px;align-items:flex-start;">
         <div>
           <div class="subsection-label" style="margin-top:0;">Logo mark</div>
@@ -918,11 +922,232 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
         <div style="height:4px;background:linear-gradient(45deg,#ffd93d,#6bcf7f);border-radius:2px;max-width:300px;"></div>
       </div>
     </div>
+
+    <!-- Primary Logos -->
+    <div class="card" style="margin-bottom:24px;">
+      <h4>Primary Logos</h4>
+      <div class="grid-3" style="gap:24px;align-items:center;">
+        <div class="card-elevated" style="text-align:center;padding:24px;">
+          <img src="./public/Giljo_YW.svg" alt="GiljoAI Yellow/White" style="height:64px;margin-bottom:12px;" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+          <div style="display:none;color:#E07872;font-size:0.72rem;">[image not found]</div>
+          <span class="token-label">Giljo_YW.svg</span>
+          <span class="token-value">Primary &mdash; yellow + white</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:24px;">
+          <img src="./public/giljologo_full.png" alt="GiljoAI Full Logo" style="height:64px;margin-bottom:12px;" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+          <div style="display:none;color:#E07872;font-size:0.72rem;">[image not found]</div>
+          <span class="token-label">giljologo_full.png</span>
+          <span class="token-value">Full logo with text</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:24px;">
+          <img src="./public/giljo_logo.png" alt="GiljoAI Logo" style="height:64px;margin-bottom:12px;" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+          <div style="display:none;color:#E07872;font-size:0.72rem;">[image not found]</div>
+          <span class="token-label">giljo_logo.png</span>
+          <span class="token-value">Compact logo</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mascot Face Variants -->
+    <div class="card" style="margin-bottom:24px;">
+      <h4>Mascot Face Variants</h4>
+      <div class="section-sub" style="margin-bottom:16px;">Used for status indicators, loading states, and branding. Components: <code>GiljoFaceIcon.vue</code> and <code>GilMascot.vue</code> (animated SVG with blinking eyes).</div>
+      <div class="grid-6" style="gap:16px;">
+        <div class="card-elevated" style="text-align:center;padding:16px;">
+          <img src="./public/icons/Giljo_YW_Face.svg" alt="YW Face" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Giljo_YW_Face.svg</span>
+          <span class="token-value">Active state</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:16px;">
+          <img src="./public/icons/Giljo_YW_Face_closed.svg" alt="YW Face Closed" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Giljo_YW_Face_closed.svg</span>
+          <span class="token-value">Blinking / closed</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:16px;">
+          <img src="./public/icons/Giljo_gray_Face.svg" alt="Gray Face" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Giljo_gray_Face.svg</span>
+          <span class="token-value">Inactive / idle</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:16px;">
+          <img src="./public/icons/Giljo_gray_Face_happy.svg" alt="Gray Happy" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Giljo_gray_Face_happy.svg</span>
+          <span class="token-value">Happy expression</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:16px;">
+          <img src="./public/icons/Giljo_gray_Face_sleeping.svg" alt="Gray Sleeping" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Giljo_gray_Face_sleeping.svg</span>
+          <span class="token-value">Sleeping / offline</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:16px;">
+          <img src="./public/icons/Giljo_Inactive_Dark.svg" alt="Inactive Dark" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Giljo_Inactive_Dark.svg</span>
+          <span class="token-value">Disabled / dark</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Color Scheme Variants -->
+    <div class="card" style="margin-bottom:24px;">
+      <h4>Color Scheme Variants (full body)</h4>
+      <div class="section-sub" style="margin-bottom:16px;">Two-letter code: first = body, second = face. Y=Yellow, W=White, B=Black/Blue.</div>
+      <div class="grid-6" style="gap:16px;">
+        <div class="card-elevated" style="text-align:center;padding:16px;">
+          <img src="./public/icons/Giljo_YW.svg" alt="YW" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Giljo_YW.svg</span>
+          <span class="token-value">Yellow body, White face</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:16px;">
+          <img src="./public/icons/Giljo_BY.svg" alt="BY" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Giljo_BY.svg</span>
+          <span class="token-value">Blue body, Yellow face</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:16px;">
+          <img src="./public/icons/Giljo_BB.svg" alt="BB" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Giljo_BB.svg</span>
+          <span class="token-value">Blue body, Blue face</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:16px;">
+          <img src="./public/icons/Giljo_WB.svg" alt="WB" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Giljo_WB.svg</span>
+          <span class="token-value">White body, Blue face</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:16px;">
+          <img src="./public/icons/Giljo_YY.svg" alt="YY" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Giljo_YY.svg</span>
+          <span class="token-value">Yellow body, Yellow face</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:16px;">
+          <img src="./public/icons/Giljo_W.svg" alt="W" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Giljo_W.svg</span>
+          <span class="token-value">White mono</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Provider Logos -->
+    <div class="card">
+      <h4>AI Provider Logos</h4>
+      <div class="section-sub" style="margin-bottom:16px;">Used in execution mode selectors, agent templates, and integration cards.</div>
+      <div class="grid-3" style="gap:24px;align-items:center;">
+        <div class="card-elevated" style="text-align:center;padding:24px;">
+          <img src="./public/Claude_AI_symbol.svg" alt="Claude" style="height:48px;margin-bottom:12px;" onerror="this.alt='[missing]'">
+          <span class="token-label">Claude_AI_symbol.svg</span>
+          <span class="token-value">Anthropic Claude</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:24px;">
+          <img src="./public/codex_logo.svg" alt="Codex" style="height:48px;margin-bottom:12px;" onerror="this.alt='[missing]'">
+          <span class="token-label">codex_logo.svg</span>
+          <span class="token-value">OpenAI Codex</span>
+        </div>
+        <div class="card-elevated" style="text-align:center;padding:24px;">
+          <img src="./public/gemini-icon.svg" alt="Gemini" style="height:48px;margin-bottom:12px;" onerror="this.alt='[missing]'">
+          <span class="token-label">gemini-icon.svg</span>
+          <span class="token-value">Google Gemini</span>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- ═══ 16. ACCESSIBILITY ═══ -->
+  <!-- ═══ 16. ICON LIBRARY ═══ -->
   <div class="section" id="s16">
-    <div class="section-title">16. Accessibility</div>
+    <div class="section-title">16. Icon Library</div>
+    <div class="section-sub">MDI v7.3 via @mdi/font (Vuetify default) + 86 custom SVGs in <code>/frontend/public/icons/</code>.</div>
+
+    <!-- MDI Configuration -->
+    <div class="card" style="margin-bottom:24px;">
+      <h4>MDI Configuration</h4>
+      <div style="background:#0e1c2d;border-radius:8px;padding:16px;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:#8895a8;margin-bottom:12px;">
+        <span style="color:#8895a8;">// frontend/src/main.js</span><br>
+        <span style="color:#e1e1e1;">import</span> <span style="color:#ffc300;">'@mdi/font/css/materialdesignicons.css'</span><br>
+        <span style="color:#e1e1e1;">icons:</span> { <span style="color:#6bcf7f;">defaultSet</span>: <span style="color:#ffc300;">'mdi'</span> }
+      </div>
+      <div style="font-size:0.72rem;color:#8895a8;">Usage: <code style="color:#ffc300;">&lt;v-icon&gt;mdi-icon-name&lt;/v-icon&gt;</code> or <code style="color:#ffc300;">icon="mdi-icon-name"</code> prop. 217 unique MDI icons used across the app.</div>
+    </div>
+
+    <!-- Top MDI Icons -->
+    <div class="card" style="margin-bottom:24px;">
+      <h4>Most Used MDI Icons (Top 24 by frequency)</h4>
+      <div class="grid-6" style="gap:12px;">
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-check-circle" style="font-size:1.5rem;color:#6bcf7f;"></span><br><span class="token-label">mdi-check-circle</span><span class="token-value">35 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-close" style="font-size:1.5rem;color:#e1e1e1;"></span><br><span class="token-label">mdi-close</span><span class="token-value">33 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-content-copy" style="font-size:1.5rem;color:#e1e1e1;"></span><br><span class="token-label">mdi-content-copy</span><span class="token-value">23 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-alert" style="font-size:1.5rem;color:#ff9800;"></span><br><span class="token-label">mdi-alert</span><span class="token-value">23 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-eye" style="font-size:1.5rem;color:#e1e1e1;"></span><br><span class="token-label">mdi-eye</span><span class="token-value">20 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-refresh" style="font-size:1.5rem;color:#6DB3E4;"></span><br><span class="token-label">mdi-refresh</span><span class="token-value">16 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-information-outline" style="font-size:1.5rem;color:#6DB3E4;"></span><br><span class="token-label">mdi-information-outline</span><span class="token-value">15 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-pencil" style="font-size:1.5rem;color:#e1e1e1;"></span><br><span class="token-label">mdi-pencil</span><span class="token-value">14 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-lock" style="font-size:1.5rem;color:#ff9800;"></span><br><span class="token-label">mdi-lock</span><span class="token-value">14 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-alert-circle" style="font-size:1.5rem;color:#E07872;"></span><br><span class="token-label">mdi-alert-circle</span><span class="token-value">12 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-check" style="font-size:1.5rem;color:#6bcf7f;"></span><br><span class="token-label">mdi-check</span><span class="token-value">11 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-account" style="font-size:1.5rem;color:#e1e1e1;"></span><br><span class="token-label">mdi-account</span><span class="token-value">11 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-delete" style="font-size:1.5rem;color:#E07872;"></span><br><span class="token-label">mdi-delete</span><span class="token-value">10 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-help-circle" style="font-size:1.5rem;color:#8895a8;"></span><br><span class="token-label">mdi-help-circle</span><span class="token-value">9 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-plus" style="font-size:1.5rem;color:#6bcf7f;"></span><br><span class="token-label">mdi-plus</span><span class="token-value">8 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-rocket-launch" style="font-size:1.5rem;color:#ffc300;"></span><br><span class="token-label">mdi-rocket-launch</span><span class="token-value">7 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-dots-vertical" style="font-size:1.5rem;color:#e1e1e1;"></span><br><span class="token-label">mdi-dots-vertical</span><span class="token-value">7 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-cog" style="font-size:1.5rem;color:#e1e1e1;"></span><br><span class="token-label">mdi-cog</span><span class="token-value">6 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-package-variant" style="font-size:1.5rem;color:#e1e1e1;"></span><br><span class="token-label">mdi-package-variant</span><span class="token-value">5 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-database" style="font-size:1.5rem;color:#6DB3E4;"></span><br><span class="token-label">mdi-database</span><span class="token-value">5 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-clock-outline" style="font-size:1.5rem;color:#8895a8;"></span><br><span class="token-label">mdi-clock-outline</span><span class="token-value">5 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-folder-outline" style="font-size:1.5rem;color:#e1e1e1;"></span><br><span class="token-label">mdi-folder-outline</span><span class="token-value">4 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-monitor-multiple" style="font-size:1.5rem;color:#e1e1e1;"></span><br><span class="token-label">mdi-monitor-multiple</span><span class="token-value">4 uses</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px 8px;"><span class="mdi mdi-play" style="font-size:1.5rem;color:#6bcf7f;"></span><br><span class="token-label">mdi-play</span><span class="token-value">4 uses</span></div>
+      </div>
+    </div>
+
+    <!-- Custom SVG Icons -->
+    <div class="card" style="margin-bottom:24px;">
+      <h4>Custom SVG Icons &mdash; UI Actions</h4>
+      <div class="grid-6" style="gap:12px;">
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/add.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">add.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/close.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">close.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/edit.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">edit.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/delete.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">delete.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/copy.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">copy.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/save.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">save.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/search.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">search.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/refresh.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">refresh.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/download.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">download.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/settings.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">settings.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/view.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">view.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/lock.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">lock.svg</span></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px;">
+      <h4>Custom SVG Icons &mdash; Domain</h4>
+      <div class="grid-6" style="gap:12px;">
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/Home.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">Home.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/chart.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">chart.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/chat.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">chat.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/code.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">code.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/context.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">context.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/document.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">document.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/data.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">data.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/rocket.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">rocket.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/bell.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">bell.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/user.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">user.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/research.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">research.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/model.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">model.svg</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h4>Custom SVG Icons &mdash; User Management</h4>
+      <div class="grid-6" style="gap:12px;">
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/user.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">user.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/users.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">users.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/useradd.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">useradd.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/useredit.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">useredit.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/userdelete.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">userdelete.svg</span></div>
+        <div class="card-elevated" style="text-align:center;padding:12px;"><img src="./public/icons/userinvite.svg" style="height:28px;filter:brightness(0.8);" onerror="this.alt='[x]'"><br><span class="token-label">userinvite.svg</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 17. ACCESSIBILITY ═══ -->
+  <div class="section" id="s17">
+    <div class="section-title">17. Accessibility</div>
     <div class="section-sub">WCAG AA compliance rules. All text must meet 4.5:1 contrast on its surface. Touch targets minimum 44px.</div>
 
     <div class="grid-2">
