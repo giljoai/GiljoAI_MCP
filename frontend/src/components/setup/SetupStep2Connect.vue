@@ -310,7 +310,7 @@ async function copyText(text, field) {
     copiedField.value = field
     clearTimeout(copyTimeout)
     copyTimeout = setTimeout(() => { copiedField.value = null }, 3000)
-    showToast({ message: 'Copied to clipboard!', type: 'success' })
+    showToast({ message: 'Copied to clipboard', type: 'success' })
   } else {
     showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
   }

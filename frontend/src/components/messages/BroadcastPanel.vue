@@ -296,7 +296,7 @@ const fetchProjects = async () => {
     }
   } catch (err: any) {
     console.error('[BroadcastPanel] Error fetching projects:', err)
-    showToast('Failed to load projects. Refresh the page or try again.', 'error')
+    showToast({ message: 'Failed to load projects. Refresh the page or try again.', type: 'error' })
   } finally {
     loadingProjects.value = false
   }
@@ -336,7 +336,7 @@ const sendBroadcast = async () => {
     return
   }
   if (!selectedProject.value) {
-    showToast('Please select a project', 'warning')
+    showToast({ message: 'Please select a project', type: 'warning' })
     return
   }
 
@@ -344,7 +344,7 @@ const sendBroadcast = async () => {
   try {
     const response = await api.messages.broadcast(selectedProject.value, messageContent.value)
 
-    showToast(`Broadcast sent to ${response.data.recipient_count} agents`, 'success')
+    showToast({ message: `Broadcast sent to ${response.data.recipient_count} agents`, type: 'success' })
 
     // Clear form
     messageContent.value = ''
@@ -356,7 +356,7 @@ const sendBroadcast = async () => {
   } catch (err: any) {
     console.error('[BroadcastPanel] Error sending broadcast:', err)
     const errorMsg = err.response?.data?.detail || err.message || 'Failed to send broadcast'
-    showToast(errorMsg, 'error')
+    showToast({ message: errorMsg, type: 'error' })
   } finally {
     sending.value = false
   }

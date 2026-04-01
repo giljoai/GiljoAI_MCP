@@ -221,7 +221,7 @@ async function downloadZip(contentType, platform) {
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
 
-    showToast({ message: 'Download complete', type: 'success' })
+    showToast({ message: 'Agent export downloaded successfully', type: 'success' })
   } catch (error) {
     console.error(`[AGENT EXPORT] Download failed:`, error)
     showToast({ message: `Download failed: ${error.message}`, type: 'error' })
