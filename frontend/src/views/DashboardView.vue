@@ -54,137 +54,151 @@
     </AppAlert>
 
     <!-- Header -->
-    <v-row>
-      <v-col cols="12">
-        <h1 class="text-h4 mb-2">Dashboard</h1>
-      </v-col>
-    </v-row>
+    <div class="dash-header">
+      <h1 class="dash-title">
+        Dashboard
+        <span v-if="selectedProductName" class="dash-product-label">/ {{ selectedProductName }}</span>
+      </h1>
+      <span class="dash-time">{{ currentTime }}</span>
+    </div>
 
     <!-- Product Selector -->
     <ProductSelector
       :products="productStore.products"
       :selected-product-id="selectedProductId"
-      class="mb-4"
+      class="mb-5"
       @select="onProductSelect"
     />
 
-    <!-- Stats -->
-    <v-card variant="flat" class="mb-4 pa-4 stats-wrapper smooth-border">
-      <!-- Projects -->
-      <div class="text-caption text-medium-emphasis mb-2">Projects</div>
-      <div class="stats-grid mb-4">
-        <v-card v-for="s in projectStatCards" :key="s.label" variant="flat" class="stat-card smooth-border">
-          <div class="stat-card-inner">
-            <div class="stat-icon-box">
-              <v-icon size="20" color="yellow-darken-2">{{ s.icon }}</v-icon>
-            </div>
-            <span class="stat-label">{{ s.label }}</span>
-            <span class="stat-value">{{ s.value }}</span>
-          </div>
-        </v-card>
-      </div>
-
-      <!-- Tasks -->
-      <div class="text-caption text-medium-emphasis mb-2">Tasks</div>
-      <div class="stats-grid mb-4">
-        <v-card v-for="s in taskStatCards" :key="s.label" variant="flat" class="stat-card smooth-border">
-          <div class="stat-card-inner">
-            <div class="stat-icon-box">
-              <v-icon size="20" color="yellow-darken-2">{{ s.icon }}</v-icon>
-            </div>
-            <span class="stat-label">{{ s.label }}</span>
-            <span class="stat-value">{{ s.value }}</span>
-          </div>
-        </v-card>
-      </div>
-
-      <!-- Execution Modes -->
-      <div class="text-caption text-medium-emphasis mb-2">Execution Modes</div>
-      <div class="stats-grid mb-4">
-        <v-card v-for="s in executionModeCards" :key="s.label" variant="flat" class="stat-card smooth-border">
-          <div class="stat-card-inner">
-            <div class="stat-icon-box">
-              <img v-if="s.img" :src="s.img" :alt="s.label" class="stat-custom-icon" />
-              <v-icon v-else size="20" color="yellow-darken-2">{{ s.icon }}</v-icon>
-            </div>
-            <span class="stat-label">{{ s.label }}</span>
-            <span class="stat-value">{{ s.value }}</span>
-          </div>
-        </v-card>
-      </div>
-
-      <!-- Server (always global) -->
-      <div class="text-caption text-medium-emphasis mb-2">Server</div>
-      <div class="stats-grid">
-        <v-card v-for="s in serverStatCards" :key="s.label" variant="flat" class="stat-card smooth-border">
-          <div class="stat-card-inner">
-            <div class="stat-icon-box">
-              <img v-if="s.img" :src="s.img" :alt="s.label" class="stat-custom-icon" />
-              <v-icon v-else size="20" color="yellow-darken-2">{{ s.icon }}</v-icon>
-            </div>
-            <span class="stat-label">{{ s.label }}</span>
-            <span class="stat-value">{{ s.value }}</span>
-          </div>
-        </v-card>
-      </div>
-    </v-card>
-
-    <!-- Donut Charts -->
-    <v-row class="mb-4">
-      <v-col cols="12" md="4">
-        <v-card variant="flat" class="chart-card smooth-border pa-4">
-          <DonutChart
-            title="Status Distribution"
-            :chart-data="statusChartData"
+    <!-- Stat Pills Row (3 cards: status, taxonomy, agent roles) -->
+    <div class="stat-pills">
+      <div class="stat-pill smooth-border">
+        <div class="stat-pill-label">Status Distribution</div>
+        <div class="stat-pill-value">{{ statusPill.total }}<small>projects</small></div>
+        <div class="micro-bar">
+          <div
+            v-for="seg in statusPill.segments"
+            :key="seg.label"
+            class="micro-seg"
+            :style="{ width: seg.pct + '%', background: seg.color }"
           />
-        </v-card>
-      </v-col>
-      <v-col cols="12" md="4">
-        <v-card variant="flat" class="chart-card smooth-border pa-4">
-          <DonutChart
-            title="Taxonomy Distribution"
-            :chart-data="taxonomyChartData"
+        </div>
+        <div class="micro-legend">
+          <div v-for="seg in statusPill.segments" :key="seg.label" class="micro-legend-item">
+            <div class="micro-legend-dot" :style="{ background: seg.color }" />
+            {{ seg.label }} {{ seg.count }}
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-pill smooth-border">
+        <div class="stat-pill-label">Taxonomy</div>
+        <div class="stat-pill-value">{{ taxonomyPill.total }}<small>types</small></div>
+        <div class="micro-bar">
+          <div
+            v-for="seg in taxonomyPill.segments"
+            :key="seg.label"
+            class="micro-seg"
+            :style="{ width: seg.pct + '%', background: seg.color }"
           />
-        </v-card>
-      </v-col>
-      <v-col cols="12" md="4">
-        <v-card variant="flat" class="chart-card smooth-border pa-4">
-          <DonutChart
-            title="Agent Role Distribution"
-            :chart-data="agentRoleChartData"
+        </div>
+        <div class="micro-legend">
+          <div v-for="seg in taxonomyPill.segments" :key="seg.label" class="micro-legend-item">
+            <div class="micro-legend-dot" :style="{ background: seg.color }" />
+            {{ seg.label }} {{ seg.count }}
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-pill smooth-border">
+        <div class="stat-pill-label">Agent Roles</div>
+        <div class="stat-pill-value">{{ agentRolePill.total }}<small>spawned</small></div>
+        <div class="micro-bar">
+          <div
+            v-for="seg in agentRolePill.segments"
+            :key="seg.label"
+            class="micro-seg"
+            :style="{ width: seg.pct + '%', background: seg.color }"
           />
-        </v-card>
-      </v-col>
-    </v-row>
+        </div>
+        <div class="micro-legend">
+          <div v-for="seg in agentRolePill.segments" :key="seg.label" class="micro-legend-item">
+            <div class="micro-legend-dot" :style="{ background: seg.color }" />
+            {{ seg.label }} {{ seg.count }}
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <!-- Recent Activity Lists (stacked) -->
-    <v-card variant="flat" class="activity-card smooth-border pa-4 mb-4">
-      <div class="text-caption text-medium-emphasis mb-2">Recently Completed Projects</div>
-      <RecentProjectsList :projects="dashboardData.recent_projects" @review-project="openProjectReview" />
-    </v-card>
+    <!-- Mini Stats Row (6 compact counters) -->
+    <div class="mini-stats">
+      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-documenter-primary, #5EC48E)">
+        <div class="mini-stat-label">Active</div>
+        <div class="mini-stat-value">{{ miniStats.active }}</div>
+      </div>
+      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-implementer-primary, #6DB3E4)">
+        <div class="mini-stat-label">Tasks</div>
+        <div class="mini-stat-value">{{ miniStats.tasks }}</div>
+      </div>
+      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-analyzer-primary, #E07872)">
+        <div class="mini-stat-label">API Calls</div>
+        <div class="mini-stat-value">{{ miniStats.apiCalls }}</div>
+      </div>
+      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-reviewer-primary, #AC80CC)">
+        <div class="mini-stat-label">MCP Calls</div>
+        <div class="mini-stat-value">{{ miniStats.mcpCalls }}</div>
+      </div>
+      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-tester-primary, #EDBA4A)">
+        <div class="mini-stat-label">Exec: Auto</div>
+        <div class="mini-stat-value">{{ miniStats.execAuto }}</div>
+      </div>
+      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-orchestrator-primary, #D4B08A)">
+        <div class="mini-stat-label">Exec: Supervised</div>
+        <div class="mini-stat-value">{{ miniStats.execSupervised }}</div>
+      </div>
+    </div>
 
-    <v-card variant="flat" class="activity-card smooth-border pa-4 mb-4">
-      <div class="text-caption text-medium-emphasis mb-2">Recent 360 Memories</div>
-      <RecentMemoriesList :memories="dashboardData.recent_memories" @review-project="openProjectReview" />
-    </v-card>
+    <!-- Projects Panel (full width) -->
+    <div class="panel projects-panel smooth-border">
+      <div class="panel-header">
+        <span class="panel-title">Projects</span>
+        <router-link to="/projects" class="panel-action">All Projects →</router-link>
+      </div>
+      <div class="panel-body">
+        <RecentProjectsList :projects="dashboardData.recent_projects" @review-project="openProjectReview" />
+      </div>
+    </div>
 
-    <v-card variant="flat" class="activity-card smooth-border pa-4">
-      <div class="text-caption text-medium-emphasis mb-2">Recent Git Commits (from 360 Memory)</div>
-      <div v-if="recentCommits.length === 0" class="text-caption text-medium-emphasis pa-2">No commits captured in 360 memory yet</div>
-      <v-list v-else density="compact" class="bg-transparent recent-list">
-        <v-list-item v-for="(c, i) in recentCommits" :key="i" class="px-0">
-          <template #prepend>
-            <v-icon size="16" color="yellow-darken-2" class="mr-2">mdi-source-commit</v-icon>
-          </template>
-          <v-list-item-title class="text-body-2">{{ c.message }}</v-list-item-title>
-          <v-list-item-subtitle class="text-caption">
-            <span style="font-family: monospace; color: var(--color-accent-primary)">{{ c.sha?.substring(0, 8) }}</span>
-            <span v-if="c.author" class="mx-2">|</span>
-            <span v-if="c.author">{{ c.author }}</span>
-          </v-list-item-subtitle>
-        </v-list-item>
-      </v-list>
-    </v-card>
+    <!-- Bottom 2-column grid: 360 Memories + Git Commits -->
+    <div class="bottom-grid">
+      <div class="panel smooth-border">
+        <div class="panel-header">
+          <span class="panel-title">360 Memories</span>
+        </div>
+        <div class="panel-body">
+          <RecentMemoriesList :memories="dashboardData.recent_memories" @review-project="openProjectReview" />
+        </div>
+      </div>
+
+      <div class="panel smooth-border">
+        <div class="panel-header">
+          <span class="panel-title">Recent Commits</span>
+          <span class="panel-subtitle">from 360 memory</span>
+        </div>
+        <div class="panel-body">
+          <div v-if="recentCommits.length === 0" class="no-data-text">No commits captured in 360 memory yet</div>
+          <div v-else>
+            <div v-for="(c, i) in recentCommits" :key="i" class="commit-row">
+              <span class="commit-sha">{{ c.sha?.substring(0, 8) }}</span>
+              <div class="commit-content">
+                <div class="commit-msg">{{ c.message }}</div>
+                <div v-if="c.author" class="commit-meta">{{ c.author }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Project Review Modal (opened from Recently Completed Projects) -->
     <ProjectReviewModal
@@ -201,7 +215,6 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import ProductSelector from '@/components/dashboard/ProductSelector.vue'
-import DonutChart from '@/components/dashboard/DonutChart.vue'
 import RecentProjectsList from '@/components/dashboard/RecentProjectsList.vue'
 import RecentMemoriesList from '@/components/dashboard/RecentMemoriesList.vue'
 import ProjectReviewModal from '@/components/projects/ProjectReviewModal.vue'
@@ -232,6 +245,22 @@ const serverProtocol = computed(() => window.location.protocol === 'https:' ? 'h
 // Product selection
 const selectedProductId = ref(null)
 
+const selectedProductName = computed(() => {
+  if (!selectedProductId.value) return null
+  const product = productStore.products.find(p => p.id === selectedProductId.value)
+  return product ? product.name : null
+})
+
+// Clock
+const currentTime = ref('')
+let clockInterval = null
+
+function updateClock() {
+  const now = new Date()
+  const pad = n => String(n).padStart(2, '0')
+  currentTime.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
+}
+
 // Project Review Modal
 const showReviewModal = ref(false)
 const reviewProjectId = ref(null)
@@ -260,112 +289,86 @@ const mcpCallCount = ref(0)
 const agentsSpawned = ref(0)
 const recentCommits = ref([])
 
-// Status chart colors — harmonized with StatusBadge.vue
+// Status colors — harmonized with StatusBadge.vue
 const statusColors = {
   active: '#ffffff', /* design-token-exempt: chart color — $color-surface */
   inactive: '#9e9e9e', /* design-token-exempt: chart color — $color-text-muted */
-  completed: '#4caf50', /* design-token-exempt: chart color — $color-status-success */
-  cancelled: '#c6298c', /* design-token-exempt: chart color — $color-status-failed */
-  terminated: '#f44336', /* design-token-exempt: chart color — $color-status-error */
+  completed: '#67bd6d', /* design-token-exempt: chart color — $color-status-complete */
+  cancelled: '#ffc300', /* design-token-exempt: chart color — $color-brand-yellow */
+  terminated: '#c6298c', /* design-token-exempt: chart color — $color-status-failed */
   staged: '#ffc107', /* design-token-exempt: chart color — closest $color-brand-yellow */
 }
 
-// Fallback color for agents without a configured background_color
+// Default fallback color
 const defaultAgentColor = '#9e9e9e' /* design-token-exempt: chart color — $color-text-muted */
 
-// Computed stat cards
-const projectStatCards = computed(() => {
+// Helper: build segments array from data
+function buildSegments(entries, total) {
+  if (total === 0) return []
+  return entries
+    .filter(e => e.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .map(e => ({
+      label: e.label,
+      count: e.count,
+      color: e.color,
+      pct: Math.max(1, Math.round((e.count / total) * 100)),
+    }))
+}
+
+// Stat pill computeds
+const statusPill = computed(() => {
   const dist = dashboardData.value.project_status_dist || {}
-  const total = Object.values(dist).reduce((a, b) => a + b, 0)
-  return [
-    { icon: 'mdi-folder-open-outline', label: 'Projects', value: total },
-    { icon: 'mdi-play-circle-outline', label: 'Active', value: dist.active || 0 },
-    { icon: 'mdi-pause-circle-outline', label: 'Inactive', value: dist.inactive || 0 },
-    { icon: 'mdi-rocket-launch-outline', label: 'Staged', value: dist.staged || 0 },
-    { icon: 'mdi-check-circle-outline', label: 'Finished', value: dist.completed || 0 },
-    { icon: 'mdi-close-circle-outline', label: 'Cancelled', value: dist.cancelled || 0 },
-    { icon: 'mdi-stop-circle-outline', label: 'Terminated', value: dist.terminated || 0 },
-  ]
-})
-
-const taskStatCards = computed(() => {
-  const dist = dashboardData.value.task_status_dist || {}
-  const total = Object.values(dist).reduce((a, b) => a + b, 0)
-  return [
-    { icon: 'mdi-clipboard-text-outline', label: 'Tasks', value: total },
-    { icon: 'mdi-clipboard-clock-outline', label: 'Open', value: dist.open || 0 },
-    { icon: 'mdi-clipboard-check-outline', label: 'Completed', value: dist.completed || 0 },
-    { icon: 'mdi-clipboard-play-outline', label: 'In Progress', value: dist.in_progress || 0 },
-    { icon: 'mdi-clipboard-remove-outline', label: 'Blocked', value: dist.blocked || 0 },
-  ]
-})
-
-const serverStatCards = computed(() => [
-  { icon: 'mdi-swap-horizontal', label: 'API Calls', value: apiCallCount.value },
-  { img: '/logo-mcp.svg', label: 'MCP Calls', value: mcpCallCount.value },
-  { img: '/giljo_YW_Face.svg', label: 'Agents Spawned', value: agentsSpawned.value },
-])
-
-const executionModeCards = computed(() => {
-  const dist = dashboardData.value.execution_mode_dist || {}
-  return [
-    { icon: 'mdi-monitor-multiple', label: 'Multi-Terminal', value: dist.multi_terminal || 0 },
-    { img: '/claude_pix.svg', label: 'Claude Subagent', value: dist.claude_code_cli || 0 },
-    { img: '/codex_logo.svg', label: 'Codex Subagent', value: dist.codex_cli || 0 },
-    { img: '/gemini-icon.svg', label: 'Gemini Subagent', value: dist.gemini_cli || 0 },
-  ]
-})
-
-// Chart data computed properties
-const statusChartData = computed(() => {
-  const dist = dashboardData.value.project_status_dist || {}
-  const labels = []
-  const values = []
-  const colors = []
-
+  const entries = []
   for (const [status, count] of Object.entries(dist)) {
-    if (count > 0 && status !== 'deleted') {
-      labels.push(status.charAt(0).toUpperCase() + status.slice(1))
-      values.push(count)
-      colors.push(statusColors[status] || '#9e9e9e') /* design-token-exempt: chart color — $color-text-muted */
-    }
+    if (status === 'deleted') continue
+    entries.push({
+      label: status.charAt(0).toUpperCase() + status.slice(1),
+      count,
+      color: statusColors[status] || '#9e9e9e',
+    })
   }
-
-  return { labels, values, colors }
+  const total = entries.reduce((a, e) => a + e.count, 0)
+  return { total, segments: buildSegments(entries, total) }
 })
 
-const taxonomyChartData = computed(() => {
+const taxonomyPill = computed(() => {
   const dist = dashboardData.value.taxonomy_dist || []
-  const labels = []
-  const values = []
-  const colors = []
-
-  for (const item of dist) {
-    if (item.count > 0) {
-      labels.push(item.label || 'Untyped')
-      values.push(item.count)
-      colors.push(item.color || '#9e9e9e') /* design-token-exempt: chart color — $color-text-muted */
-    }
-  }
-
-  return { labels, values, colors }
+  const entries = dist.map(item => ({
+    label: item.label || 'Untyped',
+    count: item.count || 0,
+    color: item.color || '#9e9e9e',
+  }))
+  const total = entries.reduce((a, e) => a + e.count, 0)
+  return { total, segments: buildSegments(entries, total) }
 })
 
-const agentRoleChartData = computed(() => {
+const agentRolePill = computed(() => {
   const dist = dashboardData.value.agent_role_dist || []
-  const labels = []
-  const values = []
-  const colors = []
-  const allZero = dist.length > 0 && dist.every((item) => !item.count)
+  const entries = dist.map(item => ({
+    label: item.label || 'Unknown',
+    count: item.count || 0,
+    color: item.color || defaultAgentColor,
+  }))
+  const total = entries.reduce((a, e) => a + e.count, 0)
+  return { total, segments: buildSegments(entries, total) }
+})
 
-  for (const item of dist) {
-    labels.push(item.label || 'Unknown')
-    // Show equal slices when no agent has been used yet
-    values.push(allZero ? 1 : item.count || 0)
-    colors.push(item.color || defaultAgentColor)
+// Mini stats
+const miniStats = computed(() => {
+  const dist = dashboardData.value.project_status_dist || {}
+  const taskDist = dashboardData.value.task_status_dist || {}
+  const execDist = dashboardData.value.execution_mode_dist || {}
+  const totalTasks = Object.values(taskDist).reduce((a, b) => a + b, 0)
+  const autoModes = (execDist.multi_terminal || 0) + (execDist.claude_code_cli || 0) + (execDist.codex_cli || 0) + (execDist.gemini_cli || 0)
+  return {
+    active: dist.active || 0,
+    tasks: totalTasks,
+    apiCalls: apiCallCount.value,
+    mcpCalls: mcpCallCount.value,
+    execAuto: autoModes,
+    execSupervised: execDist.supervised || 0,
   }
-
-  return { labels, values, colors }
 })
 
 // Data fetching
@@ -523,6 +526,9 @@ For complete troubleshooting guide, see: docs/LAN_SETUP_GUIDE.md
 
 // Lifecycle
 onMounted(async () => {
+  updateClock()
+  clockInterval = setInterval(updateClock, 60000)
+
   // Check for LAN setup completion flag
   const lanSetupComplete = localStorage.getItem('giljo_lan_setup_complete')
   if (lanSetupComplete === 'true') {
@@ -568,6 +574,9 @@ onUnmounted(() => {
   if (fetchInterval) {
     clearInterval(fetchInterval)
   }
+  if (clockInterval) {
+    clearInterval(clockInterval)
+  }
 })
 </script>
 
@@ -575,74 +584,278 @@ onUnmounted(() => {
 @use '../styles/variables' as *;
 @use '../styles/design-tokens' as *;
 
-.stats-grid {
+/* ═══ HEADER ═══ */
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.dash-title {
+  font-family: 'Outfit', 'Roboto', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: $color-text-primary;
+}
+
+.dash-product-label {
+  color: var(--text-secondary, #a3aac4);
+  font-weight: 400;
+  font-size: 1rem;
+}
+
+.dash-time {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted, #8895a8);
+}
+
+/* ═══ STAT PILLS + MICRO-BARS ═══ */
+.stat-pills {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.stat-pill {
+  background: $elevation-raised;
+  border-radius: $border-radius-rounded;
+  padding: 18px 20px;
+  transition: transform 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.stat-pill-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #8895a8);
+  margin-bottom: 4px;
+}
+
+.stat-pill-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.4rem;
+  font-weight: 500;
+  margin-bottom: 14px;
+  line-height: 1;
+  color: $color-text-primary;
+
+  small {
+    font-size: 0.6rem;
+    color: var(--text-muted, #8895a8);
+    font-weight: 400;
+    margin-left: 4px;
+  }
+}
+
+.micro-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  margin-bottom: 10px;
+}
+
+.micro-seg {
+  height: 100%;
+  transition: width 0.8s ease-out;
+
+  & + & {
+    margin-left: 1px;
+  }
+}
+
+.micro-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 3px 12px;
 }
 
-.stats-wrapper {
-  background: $color-background-primary !important;
-  border-radius: $border-radius-rounded !important;
-}
-
-.stat-card {
-  flex: 0 0 auto;
-  border-radius: $border-radius-default !important;
-  background: $elevation-raised !important;
-}
-
-.stat-card-inner {
+.micro-legend-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
+  gap: 4px;
+  font-size: 0.6rem;
+  color: var(--text-secondary, #a3aac4);
 }
 
-.stat-icon-box {
-  width: 32px;
-  height: 32px;
-  border-radius: $border-radius-default;
-  background: transparent;
-  border: none !important;
-  box-shadow: inset 0 0 0 2px $med-blue;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.micro-legend-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 2px;
   flex-shrink: 0;
 }
 
-.stat-label {
-  font-size: 0.8125rem;
-  color: rgba(255, 255, 255, 0.7);
-  white-space: nowrap;
+/* ═══ MINI STATS ROW ═══ */
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
 }
 
-.stat-value {
+.mini-stat {
+  background: $elevation-raised;
+  border-radius: $border-radius-default;
+  padding: 12px 14px;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--stat-accent, $color-border-secondary);
+    opacity: 0.5;
+  }
+}
+
+.mini-stat-label {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #8895a8);
+  margin-bottom: 2px;
+}
+
+.mini-stat-value {
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 1.1rem;
-  font-weight: 700;
-  color: $color-status-waiting;
-  margin-left: auto;
-  padding-left: 8px;
+  font-weight: 500;
+  color: $color-text-primary;
 }
 
-.stat-custom-icon {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
+/* ═══ PANEL PATTERN ═══ */
+.panel {
+  background: $elevation-raised;
+  border-radius: $border-radius-rounded;
+  overflow: hidden;
 }
 
-.chart-card {
-  background: $elevation-raised !important;
-  border-radius: $border-radius-rounded !important;
+.panel-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 300px;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid $color-border-tertiary;
 }
 
-.activity-card {
-  background: $elevation-raised !important;
-  border-radius: $border-radius-rounded !important;
+.panel-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary, #a3aac4);
+  font-weight: 500;
+}
+
+.panel-subtitle {
+  font-size: 0.62rem;
+  color: var(--text-muted, #8895a8);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.panel-action {
+  font-size: 0.68rem;
+  color: $color-brand-yellow;
+  cursor: pointer;
+  font-weight: 500;
+  opacity: 0.7;
+  text-decoration: none;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.panel-body {
+  padding: 14px 18px;
+}
+
+/* Projects panel — full width with bottom margin */
+.projects-panel {
+  margin-bottom: 20px;
+}
+
+/* ═══ BOTTOM GRID ═══ */
+.bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ═══ COMMIT ROWS ═══ */
+.commit-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid $color-border-tertiary;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.commit-sha {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  color: $color-brand-yellow;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.commit-content {
+  min-width: 0;
+}
+
+.commit-msg {
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: $color-text-primary;
+}
+
+.commit-meta {
+  font-size: 0.58rem;
+  color: var(--text-muted, #8895a8);
+  margin-top: 1px;
+}
+
+.no-data-text {
+  font-size: 0.75rem;
+  color: var(--text-muted, #8895a8);
+  padding: 8px 0;
+}
+
+/* ═══ RESPONSIVE ═══ */
+@media (max-width: 1100px) {
+  .mini-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 960px) {
+  .stat-pills {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .mini-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>

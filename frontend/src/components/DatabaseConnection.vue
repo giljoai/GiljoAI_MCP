@@ -1,5 +1,5 @@
 <template>
-  <v-card>
+  <v-card class="smooth-border">
     <!-- Title -->
     <v-card-title v-if="showTitle">{{ title }}</v-card-title>
 

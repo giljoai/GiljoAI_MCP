@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="showDialog" max-width="520" persistent>
-    <v-card>
+    <v-card class="smooth-border">
       <v-card-title class="d-flex align-center pa-4">
         <v-icon color="warning" class="mr-2">mdi-license</v-icon>
         Commercial License Required
@@ -17,7 +17,7 @@
           The <strong>Community Edition</strong> is licensed for single-user use.
           Multi-user deployments require a Commercial License from GiljoAI LLC.
         </p>
-        <p class="text-body-2 text-medium-emphasis">
+        <p class="text-body-2 text-muted-a11y">
           Commercial Licenses may be obtained at no cost at GiljoAI LLC's discretion.
         </p>
 
@@ -83,3 +83,6 @@ onMounted(() => {
   checkLicensing()
 })
 </script>
+
+<style scoped>
+</style>

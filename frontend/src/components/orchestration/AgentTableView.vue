@@ -8,19 +8,17 @@
     hover
     @click:row="handleRowClick"
   >
-    <!-- Agent Type Column -->
+    <!-- Agent Type Column — tinted square badge (0870j) -->
     <template #item.agent_display_name="{ item }">
-      <div class="d-flex align-center">
-        <v-avatar :color="getAgentDisplayNameColor(item.agent_display_name)" size="32" class="mr-2">
-          <span class="text-caption font-weight-bold white--text">
-            {{ getAgentAbbreviation(item.agent_display_name) }}
-          </span>
-        </v-avatar>
-        <div class="d-flex flex-column">
-          <span class="font-weight-medium text-capitalize">{{ item.agent_name || item.agent_display_name }}</span>
+      <div class="agent-cell">
+        <div class="agent-badge" :style="getAgentBadgeStyle(item.agent_display_name)">
+          {{ getAgentAbbreviation(item.agent_display_name) }}
+        </div>
+        <div class="agent-cell-info">
+          <span class="agent-cell-name">{{ item.agent_name || item.agent_display_name }}</span>
           <span
             v-if="item.agent_name && item.agent_name !== item.agent_display_name"
-            class="text-caption text-grey text-capitalize"
+            class="agent-cell-skills"
           >
             {{ item.agent_display_name }}
           </span>
@@ -64,9 +62,9 @@
       <span class="text-body-2">{{ item.messages_sent_count || 0 }}</span>
     </template>
 
-    <!-- Messages Waiting Column (Handover 0240b) -->
+    <!-- Messages Waiting Column — tinted badge (0870j) -->
     <template #item.messages_waiting_count="{ item }">
-      <span class="text-body-2" :class="{ 'text-warning': item.messages_waiting_count > 0 }">
+      <span class="msg-badge" :class="(item.messages_waiting_count || 0) > 0 ? 'has-msgs' : 'zero'">
         {{ item.messages_waiting_count || 0 }}
       </span>
     </template>
@@ -108,6 +106,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useStalenessMonitor } from '@/composables/useStalenessMonitor'
 import api from '@/services/api'
+import { hexToRgba, getAgentBadgeStyle } from '@/utils/colorUtils'
 import StatusChip from '@/components/StatusBoard/StatusChip.vue'
 import ActionIcons from '@/components/StatusBoard/ActionIcons.vue'
 /**
@@ -151,6 +150,7 @@ const {
   getAgentDisplayNameColor,
   getAgentAbbreviation,
 } = useAgentData(computed(() => props.agents))
+
 
 // Handover 0230: Clipboard functionality
 const { copy } = useClipboard()
@@ -256,52 +256,117 @@ function canCopyPrompt(agent) {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../../styles/design-tokens' as *;
+
+/* Table panel styling (0870j) */
+.agent-table-view {
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+  overflow: hidden;
+}
+
 .agent-table-view :deep(tbody tr) {
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background 0.15s;
 }
 
 .agent-table-view :deep(tbody tr:hover) {
-  background-color: rgba(var(--v-theme-primary), 0.05);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .agent-table-view :deep(.v-data-table__th) {
-  font-weight: 600;
-  background-color: rgba(0, 0, 0, 0.02);
+  font-size: 0.6rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $color-text-muted !important;
+  font-weight: 500 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-/* Ensure proper spacing for action buttons */
 .agent-table-view :deep(.v-data-table__td) {
-  padding: 12px 16px;
+  padding: 12px 14px;
+  font-size: 0.78rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
 }
 
-/* Handover 0229: Visual feedback for disabled rows in Claude Code mode */
+/* Agent cell — tinted badge + name (0870j) */
+.agent-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agent-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.agent-cell-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.agent-cell-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.agent-cell-skills {
+  font-size: 0.62rem;
+  color: $color-text-muted;
+  text-transform: capitalize;
+}
+
+/* Messages waiting badge — tinted (0870j) */
+.msg-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+
+.msg-badge.zero {
+  background: rgba(103, 189, 109, 0.12);
+  color: #67bd6d; /* design-token-exempt: status-complete */
+}
+
+.msg-badge.has-msgs {
+  background: rgba(255, 152, 0, 0.15);
+  color: #ff9800; /* design-token-exempt: status-blocked */
+}
+
+/* Disabled rows in Claude Code mode */
 .agent-table-view :deep(.disabled-agent-row) {
   opacity: 0.6;
-  background-color: rgba(0, 0, 0, 0.02);
 }
 
 .agent-table-view :deep(.disabled-agent-row:hover) {
-  background-color: rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.01);
 }
 
-/* Handover 0229: Disabled action buttons */
 .agent-table-view :deep(.v-btn:disabled) {
   opacity: 0.4;
 }
 
-.agent-table-view :deep(.v-btn:disabled .v-icon) {
-  color: grey;
-}
-
-/* Handover 0240b: Agent ID styling */
+/* Agent ID styling */
 .agent-id {
-  font-family: 'Courier New', monospace;
-  font-size: 0.75rem;
-  background: rgba(0, 0, 0, 0.2);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  background: rgba(255, 255, 255, 0.05);
   padding: 2px 6px;
   border-radius: 4px;
+  color: $color-text-secondary;
 }
-
 </style>

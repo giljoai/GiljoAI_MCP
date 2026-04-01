@@ -2,42 +2,55 @@
   <v-container>
     <!-- Page Header -->
     <h1 class="text-h4 mb-2">Admin Settings</h1>
-    <p class="text-subtitle-1 mb-4">Configure server and system-wide settings (Admin only)</p>
+    <p class="text-subtitle-1 mb-4 settings-subtitle">Configure server and system-wide settings (Admin only)</p>
 
-    <!-- Settings Tabs (v-btn-toggle - native Vuetify) -->
-    <v-btn-toggle
-      v-model="activeTab"
-      mandatory
-      variant="outlined"
-      divided
-      rounded="t-lg"
-      color="primary"
-      class="mb-0"
-    >
-      <v-btn value="identity" min-width="120" data-test="identity-tab">
-        <v-icon start>mdi-account-group</v-icon>
+    <!-- Settings Pills -->
+    <div class="pill-toggle-row">
+      <button
+        class="pill-toggle"
+        :class="{ 'pill-toggle--active': activeTab === 'identity' }"
+        data-test="identity-tab"
+        @click="activeTab = 'identity'"
+      >
+        <v-icon size="16" class="pill-toggle-icon">mdi-account-group</v-icon>
         Identity
-      </v-btn>
-      <v-btn value="network" min-width="120">
-        <v-icon start>mdi-network-outline</v-icon>
+      </button>
+      <button
+        class="pill-toggle"
+        :class="{ 'pill-toggle--active': activeTab === 'network' }"
+        @click="activeTab = 'network'"
+      >
+        <v-icon size="16" class="pill-toggle-icon">mdi-network-outline</v-icon>
         Network
-      </v-btn>
-      <v-btn value="database" min-width="120">
-        <v-icon start>mdi-database</v-icon>
+      </button>
+      <button
+        class="pill-toggle"
+        :class="{ 'pill-toggle--active': activeTab === 'database' }"
+        @click="activeTab = 'database'"
+      >
+        <v-icon size="16" class="pill-toggle-icon">mdi-database</v-icon>
         Database
-      </v-btn>
-      <v-btn value="security" min-width="120">
-        <v-icon start>mdi-shield-lock</v-icon>
+      </button>
+      <button
+        class="pill-toggle"
+        :class="{ 'pill-toggle--active': activeTab === 'security' }"
+        @click="activeTab = 'security'"
+      >
+        <v-icon size="16" class="pill-toggle-icon">mdi-shield-lock</v-icon>
         Security
-      </v-btn>
-      <v-btn value="prompts" min-width="110">
-        <v-icon start>mdi-file-document-edit</v-icon>
+      </button>
+      <button
+        class="pill-toggle"
+        :class="{ 'pill-toggle--active': activeTab === 'prompts' }"
+        @click="activeTab = 'prompts'"
+      >
+        <v-icon size="16" class="pill-toggle-icon">mdi-file-document-edit</v-icon>
         Prompts
-      </v-btn>
-    </v-btn-toggle>
+      </button>
+    </div>
 
     <!-- Tab Content -->
-    <div class="bordered-tabs-content">
+    <div class="pill-tabs-content">
       <v-window v-model="activeTab" class="global-tabs-window">
       <!-- Identity (Workspace + Members) - Handover 0434 -->
       <v-window-item value="identity">
@@ -302,3 +315,52 @@ onMounted(async () => {
   await loadCookieDomains()
 })
 </script>
+
+<style scoped>
+.settings-subtitle {
+  color: #8895a8;
+}
+
+/* Pill toggle row */
+.pill-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  background: transparent;
+  color: #8895a8;
+  border: none;
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, #2a4a6b);
+}
+
+.pill-toggle:hover {
+  color: #b0bec5;
+}
+
+.pill-toggle--active {
+  background: rgba(255, 195, 0, 0.12);
+  color: #ffc300;
+  box-shadow: none;
+}
+
+.pill-toggle-icon {
+  flex-shrink: 0;
+}
+
+.pill-tabs-content {
+  padding: 16px 0;
+}
+</style>

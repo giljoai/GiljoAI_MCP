@@ -376,16 +376,16 @@ describe('ActionIcons.vue - Visual Polish & Hover States (Phase 4)', () => {
       expect(wrapper.html()).toContain('action-');
     });
 
-    it('distinguishes between action button colors for clarity', () => {
+    it('applies global icon-interactive classes for consistent hover styling', () => {
       const wrapper = createWrapper({
         job: { status: 'working', agent_display_name: 'orchestrator' }
       });
 
-      const launchColor = wrapper.vm.getActionColor('launch');
-      const viewMessagesColor = wrapper.vm.getActionColor('viewMessages');
+      const launchBtn = wrapper.find('[data-test="action-launch"]');
+      const viewMessagesBtn = wrapper.find('[data-test="action-viewMessages"]');
 
-      expect(launchColor).toBeTruthy();
-      expect(viewMessagesColor).toBeTruthy();
+      expect(launchBtn.classes()).toContain('icon-interactive-play');
+      expect(viewMessagesBtn.classes()).toContain('icon-interactive');
     });
   });
 

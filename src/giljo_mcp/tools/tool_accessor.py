@@ -601,11 +601,19 @@ class ToolAccessor:
             job_id=job_id, tenant_key=tenant_key, reason=reason
         )
 
-    async def report_error(
-        self, job_id: str, error: str, tenant_key: str | None = None, **kwargs: Any
+    async def set_agent_status(
+        self,
+        job_id: str,
+        status: str,
+        reason: str = "",
+        wake_in_minutes: int | None = None,
+        tenant_key: str | None = None,
+        **kwargs: Any,
     ) -> dict[str, Any]:
-        """Report job error (delegates to OrchestrationService). Handover 0491: severity param removed."""
-        return await self._orchestration_service.report_error(job_id=job_id, error=error, tenant_key=tenant_key)
+        """Set agent resting/blocked status (Handover 0880: expanded from report_error)."""
+        return await self._orchestration_service.set_agent_status(
+            job_id=job_id, status=status, reason=reason, wake_in_minutes=wake_in_minutes, tenant_key=tenant_key
+        )
 
     async def close_project_and_update_memory(
         self,

@@ -17,7 +17,7 @@
     </v-tooltip>
 
     <v-dialog v-model="showDialog" max-width="680" scrollable>
-      <v-card v-draggable class="lab-dialog-card">
+      <v-card v-draggable class="lab-dialog-card smooth-border">
         <v-card-title class="d-flex align-center lab-header">
           <v-icon class="mr-2" size="22" color="primary">mdi-flask-outline</v-icon>
           <span>Agent Lab</span>
@@ -67,7 +67,7 @@
                   Use sparingly for long-running projects.
                 </v-alert>
 
-                <p class="text-caption text-medium-emphasis">
+                <p class="text-caption text-muted-a11y">
                   Works in both single-terminal (subagent) and multi-terminal mode.
                   All major CLI agents (Claude Code, Codex, Gemini) support bash sleep polling.
                 </p>
@@ -129,7 +129,7 @@
                 <div v-if="selectedTool === 'codex'" class="tip-box mb-3">
                   <div class="tip-label">Spawn command (PowerShell):</div>
                   <code class="tip-code">powershell.exe -Command "Start-Process wt -ArgumentList '--title ""TITLE"" --tabColor ""#HEX"" -d ""WORKDIR"" cmd /k codex exec ""PROMPT"" --yolo' -Verb RunAs"</code>
-                  <p class="text-caption text-medium-emphasis mt-2 mb-0">
+                  <p class="text-caption text-muted-a11y mt-2 mb-0">
                     Codex sandbox is experimental on Windows. WSL2 recommended for reliability.
                   </p>
                 </div>
@@ -198,7 +198,7 @@
                   Download Template (.md)
                 </v-btn>
 
-                <p class="text-caption text-medium-emphasis mb-0">
+                <p class="text-caption text-muted-a11y mb-0">
                   Works with any MCP-compatible AI coding tool (Claude Code, Codex CLI, Gemini CLI).
                 </p>
               </v-expansion-panel-text>

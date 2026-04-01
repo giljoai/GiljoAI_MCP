@@ -180,8 +180,8 @@ async def report_job_error(
     """
     logger.debug(f"User {current_user.username} reporting error for job {job_id}")
 
-    result = await orchestration_service.report_error(
-        job_id=job_id, tenant_key=current_user.tenant_key, error=error_request.error
+    result = await orchestration_service.set_agent_status(
+        job_id=job_id, tenant_key=current_user.tenant_key, status="blocked", reason=error_request.error
     )
 
     logger.info(f"Reported error for job {job_id} for tenant {current_user.tenant_key}")

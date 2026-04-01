@@ -218,42 +218,42 @@ describe('useAgentData', () => {
     it('returns color config object for orchestrator', () => {
       const { getAgentDisplayNameColor } = useAgentData(agents)
       const color = getAgentDisplayNameColor('orchestrator')
-      expect(color.hex).toBe('#D4A574')
+      expect(color.hex).toBe('#D4B08A')
       expect(color.name).toBe('ORCHESTRATOR')
     })
 
     it('returns color config object for analyzer', () => {
       const { getAgentDisplayNameColor } = useAgentData(agents)
       const color = getAgentDisplayNameColor('analyzer')
-      expect(color.hex).toBe('#E74C3C')
+      expect(color.hex).toBe('#E07872')
       expect(color.name).toBe('ANALYZER')
     })
 
     it('returns color config object for implementer', () => {
       const { getAgentDisplayNameColor } = useAgentData(agents)
       const color = getAgentDisplayNameColor('implementer')
-      expect(color.hex).toBe('#3498DB')
+      expect(color.hex).toBe('#6DB3E4')
       expect(color.name).toBe('IMPLEMENTER')
     })
 
     it('returns color config object for tester', () => {
       const { getAgentDisplayNameColor } = useAgentData(agents)
       const color = getAgentDisplayNameColor('tester')
-      expect(color.hex).toBe('#FFC300')
+      expect(color.hex).toBe('#EDBA4A')
       expect(color.name).toBe('TESTER')
     })
 
     it('returns color config object for reviewer', () => {
       const { getAgentDisplayNameColor } = useAgentData(agents)
       const color = getAgentDisplayNameColor('reviewer')
-      expect(color.hex).toBe('#9B59B6')
+      expect(color.hex).toBe('#AC80CC')
       expect(color.name).toBe('REVIEWER')
     })
 
     it('returns orchestrator color for unknown agent type', () => {
       const { getAgentDisplayNameColor } = useAgentData(agents)
       const color = getAgentDisplayNameColor('unknown-type')
-      expect(color.hex).toBe('#D4A574')
+      expect(color.hex).toBe('#D4B08A')
     })
   })
 
