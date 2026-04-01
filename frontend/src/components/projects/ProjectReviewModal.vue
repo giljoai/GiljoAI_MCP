@@ -65,7 +65,7 @@
           <div class="mb-6">
             <h3 class="text-h6 mb-2">Mission</h3>
             <v-card variant="flat" class="pa-3 smooth-border">
-              <pre v-if="missionText" class="text-body-2" style="white-space: pre-wrap;">{{ missionText }}</pre>
+              <pre v-if="missionText" class="text-body-2 text-pre-wrap">{{ missionText }}</pre>
               <p v-else class="text-caption text-muted-a11y">No data</p>
             </v-card>
           </div>

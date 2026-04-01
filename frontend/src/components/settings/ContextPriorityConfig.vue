@@ -56,8 +56,8 @@
               </template>
             </v-tooltip>
           </div>
-          <v-chip size="small" color="primary" variant="flat" style="width: 140px; text-align: center; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 0.75rem; font-weight: 600; line-height: 1; position: relative; top: 1px;">ALWAYS ON</span>
+          <v-chip size="small" color="primary" variant="flat" class="d-flex align-center justify-center always-on-chip">
+            <span class="always-on-label">ALWAYS ON</span>
           </v-chip>
         </div>
 
@@ -71,8 +71,8 @@
               </template>
             </v-tooltip>
           </div>
-          <v-chip size="small" color="primary" variant="flat" style="width: 140px; text-align: center; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 0.75rem; font-weight: 600; line-height: 1; position: relative; top: 1px;">ALWAYS ON</span>
+          <v-chip size="small" color="primary" variant="flat" class="d-flex align-center justify-center always-on-chip">
+            <span class="always-on-label">ALWAYS ON</span>
           </v-chip>
         </div>
 
@@ -618,6 +618,19 @@ defineExpose({
 
 .context-label {
   min-width: 140px;
+}
+
+.always-on-chip {
+  width: 140px;
+  text-align: center;
+}
+
+.always-on-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  position: relative;
+  top: 1px;
 }
 
 .pill-text {
