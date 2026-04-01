@@ -1,0 +1,107 @@
+{
+  "chain_id": "0872",
+  "chain_name": "Interactive Element Polish & Card Frame Consistency",
+  "created_at": "2026-03-31",
+  "spec_document": "handovers/0872_interactive_polish.md",
+  "branch": "feature/0870-design-harmonization",
+  "total_sessions": 4,
+  "orchestrator_notes": "Agents: Read this file BEFORE starting. This is the final polish series. Key: create .icon-interactive and .icon-interactive-play global classes in main.scss, then apply everywhere. Play buttons must feel alive (scale + glow on hover). All interactive icons: muted default → yellow on hover with tinted bg.",
+  "orchestrator_directives": [],
+  "sessions": [
+    {
+      "session_id": "0872a",
+      "title": "Global Interactive Icon Classes + Refactor",
+      "handover": "handovers/0872_interactive_polish.md#0872a",
+      "color": "#4CAF50",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["ux-designer"],
+      "planned_tasks": [
+        "Add .icon-interactive class to main.scss (muted → yellow+tinted bg on hover)",
+        "Add .icon-interactive-play class (yellow, tinted bg, scale+glow on hover)",
+        "Refactor LaunchTab — edit/info icons to .icon-interactive",
+        "Refactor JobsTab — action icons to .icon-interactive, play to .icon-interactive-play",
+        "Refactor AgentTableView — same",
+        "Refactor ProjectsView — action icons + play button",
+        "Refactor ProductsView — action icons + activate button",
+        "Verify TasksView already correct, align if needed",
+        "Check MessagesView, BroadcastPanel for interactive icons"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0872b",
+      "title": "Product Card Frame & AgentExport Layout",
+      "handover": "handovers/0872_interactive_polish.md#0872b",
+      "color": "#2196F3",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["ux-designer"],
+      "planned_tasks": [
+        "ProductsView.vue — add smooth-border to product cards",
+        "AgentExport.vue — replace variant=tonal with variant=flat + smooth-border",
+        "Verify 3 integration cards (MCP, Export, Serena) have consistent framing"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0872c",
+      "title": "Action Icon Audit & Sweep",
+      "handover": "handovers/0872_interactive_polish.md#0872c",
+      "color": "#2196F3",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["ux-designer"],
+      "planned_tasks": [
+        "Grep for cursor:pointer in scoped styles to find all clickable elements",
+        "Verify every interactive icon uses .icon-interactive or .icon-interactive-play",
+        "Check modals: AgentDetailsModal, AgentJobModal, MessageAuditModal, TemplateManager",
+        "Check AppBar notification/user icons",
+        "Report coverage"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0872d",
+      "title": "Final Visual Verification",
+      "handover": "handovers/0872_interactive_polish.md#0872d",
+      "color": "#F44336",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["ux-designer"],
+      "planned_tasks": [
+        "Open every main route and verify visually",
+        "Fix any final issues",
+        "Commit with verification note",
+        "Set chain final_status complete"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    }
+  ],
+  "chain_summary": null,
+  "final_status": "pending"
+}
