@@ -17,7 +17,7 @@
           Generate a setup prompt for your AI coding agents.
         </p>
 
-        <v-card variant="tonal" class="mb-0">
+        <v-card variant="flat" class="mb-0 smooth-border">
           <v-card-text class="pa-3">
             <div class="d-flex flex-wrap justify-center" style="gap: 25px;">
               <div v-for="p in platforms" :key="p.id" class="d-flex align-center gap-2">

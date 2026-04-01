@@ -49,7 +49,7 @@
       </div>
 
       <!-- Serena Controls (Handover 0277: Simplified to toggle only) -->
-      <v-card variant="tonal" class="mb-0">
+      <v-card variant="flat" class="mb-0 smooth-border">
         <v-card-text class="pa-3">
           <div class="d-flex align-center">
             <div class="text-subtitle-2 font-weight-medium mr-4">Enable Serena MCP</div>
