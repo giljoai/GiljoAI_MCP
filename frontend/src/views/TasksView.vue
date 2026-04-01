@@ -95,7 +95,6 @@
           class="elevation-0 scrollable-table"
           data-table
           item-value="id"
-          height="600"
         >
           <!-- Loading State -->
           <template v-slot:loading>
@@ -887,8 +886,7 @@ onMounted(async () => {
 
 .table-wrapper {
   flex: 1;
-  overflow: auto;
-  max-height: 600px;
+  overflow: hidden;
 }
 
 .scrollable-table {
@@ -897,7 +895,7 @@ onMounted(async () => {
 
 .scrollable-table :deep(.v-table__wrapper) {
   overflow-y: auto;
-  max-height: 600px;
+  max-height: calc(100vh - 320px);
 }
 
 /* 0870h: table header cells */
