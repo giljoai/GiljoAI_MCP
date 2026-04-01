@@ -1404,7 +1404,7 @@ class MessageService:
     ) -> Optional[dict]:
         """Build reactivation guidance for auto-blocked agents (Handover 0827c)."""
         # Only show for post-completion auto-blocks (completed_at set),
-        # not for mid-work blocks via report_error()
+        # not for mid-work blocks via set_agent_status(status="blocked")
         is_post_completion_block = execution and execution.status == "blocked" and execution.completed_at is not None
         is_mid_work_block = execution and execution.status == "blocked" and execution.completed_at is None
         if is_post_completion_block and messages_list:

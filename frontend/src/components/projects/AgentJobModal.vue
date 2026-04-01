@@ -1,11 +1,11 @@
 <template>
   <v-dialog v-model="isVisible" max-width="700" persistent>
-    <v-card v-draggable>
+    <v-card v-draggable class="smooth-border">
       <!-- Header -->
       <v-card-title class="d-flex align-center">
-        <v-avatar :color="getAgentColor(displayAgent?.agent_name || displayAgent?.agent_display_name)" size="32" class="agent-avatar mr-2">
-          <span class="avatar-text">{{ getAgentAbbr(displayAgent?.agent_name || displayAgent?.agent_display_name) }}</span>
-        </v-avatar>
+        <div class="agent-tinted-badge mr-2" :style="getAgentBadgeStyle(displayAgent?.agent_name || displayAgent?.agent_display_name)">
+          {{ getAgentAbbr(displayAgent?.agent_name || displayAgent?.agent_display_name) }}
+        </div>
         <span style="text-transform: capitalize">{{ displayAgent?.agent_name || displayAgent?.agent_display_name }}</span>&nbsp;- Assigned Job
         <v-spacer></v-spacer>
         <v-btn icon variant="text" aria-label="Close" @click="handleClose">
@@ -17,7 +17,7 @@
 
       <!-- Agent Info -->
       <v-card-text v-if="displayAgent" class="pb-0">
-        <div class="text-caption text-medium-emphasis">
+        <div class="text-caption text-muted-a11y">
           <div><strong>Agent ID:</strong> {{ displayAgent.agent_id }}</div>
           <div><strong>Job ID:</strong> {{ displayAgent.job_id }}</div>
           <div v-if="formattedCreatedAt"><strong>Created:</strong> {{ formattedCreatedAt }}</div>
@@ -25,10 +25,26 @@
       </v-card-text>
 
       <!-- Tabs -->
-      <v-tabs v-model="activeTab" bg-color="transparent" class="px-4">
-        <v-tab value="mission" data-test="job-tab-mission">Mission</v-tab>
-        <v-tab value="plan" data-test="job-tab-plan">Plan ({{ todoItemsCount }})</v-tab>
-      </v-tabs>
+      <div class="tab-pills px-4 py-2">
+        <button
+          class="pill-btn"
+          :class="{ active: activeTab === 'mission' }"
+          data-test="job-tab-mission"
+          @click="activeTab = 'mission'"
+        >
+          <v-icon size="18">mdi-text-box-outline</v-icon>
+          Mission
+        </button>
+        <button
+          class="pill-btn"
+          :class="{ active: activeTab === 'plan' }"
+          data-test="job-tab-plan"
+          @click="activeTab = 'plan'"
+        >
+          <v-icon size="18">mdi-checkbox-marked-outline</v-icon>
+          Plan ({{ todoItemsCount }})
+        </button>
+      </div>
 
       <v-divider />
 
@@ -38,11 +54,11 @@
           <!-- Mission Tab -->
           <v-window-item value="mission">
             <div v-if="displayAgent" class="mission-section">
-              <v-card variant="outlined" class="pa-3">
+              <v-card variant="flat" class="pa-3 smooth-border">
                 <pre class="mission-text">{{ displayAgent.mission || 'No mission assigned yet.' }}</pre>
               </v-card>
             </div>
-            <div v-else class="text-center py-4 text-medium-emphasis">
+            <div v-else class="text-center py-4 text-muted-a11y">
               No agent selected
             </div>
           </v-window-item>
@@ -51,7 +67,7 @@
           <v-window-item value="plan">
             <div v-if="todoItems.length === 0" class="empty-state pa-4 text-center">
               <v-icon icon="mdi-checkbox-blank-outline" size="32" class="mb-2" />
-              <div class="text-body-2 text-medium-emphasis">
+              <div class="text-body-2 text-muted-a11y">
                 No tasks reported yet
               </div>
             </div>
@@ -89,6 +105,7 @@
 <script setup>
 import { computed, ref, toRaw, watch } from 'vue'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
+import { hexToRgba, getAgentBadgeStyle } from '@/utils/colorUtils'
 
 // Props
 const props = defineProps({
@@ -191,10 +208,6 @@ function getStatusColor(status) {
   }
 }
 
-// Agent avatar helpers - uses centralized agentColors config
-function getAgentColor(displayName) {
-  return getAgentColorConfig(displayName).hex
-}
 
 function getAgentAbbr(agentName) {
   if (!agentName) return '?'
@@ -208,15 +221,49 @@ function getAgentAbbr(agentName) {
 </script>
 
 <style scoped>
-.agent-avatar {
-  border: none !important;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2);
+.tab-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.avatar-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: white;
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  color: #8895a8;
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.15);
+}
+
+.pill-btn:hover {
+  color: #a3aac4;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.25);
+}
+
+.pill-btn.active {
+  background: rgba(255, 195, 0, 0.12);
+  color: #ffc300;
+  box-shadow: none;
+}
+
+.agent-tinted-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .mission-section {

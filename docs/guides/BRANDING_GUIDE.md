@@ -71,20 +71,20 @@ All agent roles use **consistent color coding** across the application to ensure
 
 | Agent Role | Primary Color | RGB | Dark Variant | Light Variant | Usage |
 |------------|---------------|-----|--------------|---------------|-------|
-| **Orchestrator** | `#D4A574` | rgb(212, 165, 116) | `#B8905E` | `#E5C9A3` | Tan/Beige - Project coordination |
-| **Analyzer** | `#E74C3C` | rgb(231, 76, 60) | `#C0392B` | `#F1948A` | Red - Analysis & research |
-| **Implementer** | `#3498DB` | rgb(52, 152, 219) | `#2980B9` | `#85C1E9` | Blue - Code implementation |
-| **Tester** | `#FFC300` | rgb(255, 195, 0) | `#E6B000` | `#FFD633` | Yellow - Testing & QA |
-| **Reviewer** | `#9B59B6` | rgb(155, 89, 182) | `#8E44AD` | `#C39BD3` | Purple - Code review |
-| **Documenter** | `#27AE60` | rgb(39, 174, 96) | `#229954` | `#7DCEA0` | Green - Documentation |
-| **Researcher** | `#27AE60` | rgb(39, 174, 96) | `#229954` | `#7DCEA0` | Green - Research (alias) |
+| **Orchestrator** | `#D4B08A` | rgb(212, 176, 138) | `#B8956E` | `#E5CDA7` | Tan/Beige - Project coordination |
+| **Analyzer** | `#E07872` | rgb(224, 120, 114) | `#C45E58` | `#ECA09C` | Red - Analysis & research |
+| **Implementer** | `#6DB3E4` | rgb(109, 179, 228) | `#5199CA` | `#93C9ED` | Blue - Code implementation |
+| **Tester** | `#EDBA4A` | rgb(237, 186, 74) | `#D4A434` | `#F3CE78` | Yellow - Testing & QA |
+| **Reviewer** | `#AC80CC` | rgb(172, 128, 204) | `#9366B2` | `#C4A0DD` | Purple - Code review |
+| **Documenter** | `#5EC48E` | rgb(94, 196, 142) | `#48AC78` | `#80D4AA` | Green - Documentation |
+| **Researcher** | `#5EC48E` | rgb(94, 196, 142) | `#48AC78` | `#80D4AA` | Green - Research (alias) |
 | **Custom** | `#90A4AE` | rgb(144, 164, 174) | `#78909C` | `#B0BEC5` | Gray - Custom agents |
 
 ### Color Aliases
 
 Some agent roles share colors:
-- **Implementer** / **Implementor**: Both use `#3498DB` (Blue)
-- **Documenter** / **Researcher**: Both use `#27AE60` (Green)
+- **Implementer** / **Implementor**: Both use `#6DB3E4` (Blue)
+- **Documenter** / **Researcher**: Both use `#5EC48E` (Green)
 
 ---
 
@@ -176,15 +176,18 @@ Colors for AI coding agent integrations:
 ### Agent Cards
 
 ```vue
-<v-chip
-  size="small"
+<span
   :style="{
-    backgroundColor: '#D4A574',  // Orchestrator tan
-    color: 'white'
+    backgroundColor: 'rgba(212, 176, 138, 0.15)',  // Orchestrator tinted
+    color: '#D4B08A',
+    borderRadius: '8px',
+    padding: '2px 10px',
+    fontSize: '0.8125rem',
+    fontWeight: 500
   }"
 >
   Orchestrator
-</v-chip>
+</span>
 ```
 
 ### Status Badges
@@ -202,20 +205,20 @@ Colors for AI coding agent integrations:
 </v-chip>
 ```
 
-### Chat Head Badges
+### Agent Badges (Tinted Style)
 
 ```scss
-.chat-head--orchestrator {
+.agent-badge--orchestrator {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
-  background-color: #D4A574;  // Orchestrator tan
-  color: white;
+  border-radius: 8px;  // Square, not round
+  background-color: rgba(212, 176, 138, 0.15);  // Tinted at 15% opacity
+  color: #D4B08A;  // Full brightness agent color
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid white;
+  // No border — tinted background provides contrast
 }
 ```
 
@@ -223,11 +226,12 @@ Colors for AI coding agent integrations:
 
 ## Visual Consistency Rules
 
-1. **Agent roles MUST use the defined hex colors** - no custom colors
-2. **Status badges MUST use semi-transparent backgrounds** (20% opacity) with solid border
-3. **Tool icons MUST use solid backgrounds** with white text
-4. **Chat head badges MUST be circular** with 2px white border
+1. **Agent roles MUST use the Luminous Pastels hex colors** — no custom colors, no hardcoded values; use `getAgentColor()` or CSS `var(--agent-*-primary)`
+2. **Agent badges MUST use tinted style** — `rgba(agent_color, 0.15)` background + full-brightness agent color text, `border-radius: 8px` (square geometry)
+3. **Status badges MUST use semi-transparent backgrounds** (20% opacity) with solid border
+4. **Tool icons MUST use solid backgrounds** with white text
 5. **All color implementations MUST sync** across frontend/backend
+6. **Never use Vuetify `text-medium-emphasis`** — use scoped CSS class with `color: #8895a8` for muted text
 
 ---
 
@@ -235,7 +239,9 @@ Colors for AI coding agent integrations:
 
 All color combinations meet **WCAG 2.1 AA standards** for contrast:
 
-- **White text on agent colors**: ✅ 4.5:1 minimum contrast ratio
+- **Agent colors on `#182739` background**: ✅ All pass 4.5:1 minimum (Luminous Pastels palette)
+- **`--text-muted` (`#8895a8`)**: ✅ 4.98:1 on `#182739` (was `#5a6a80` at 2.74:1 — critical fix)
+- **`--text-secondary` (`#a3aac4`)**: ✅ 6.56:1 on `#182739`
 - **Status badge combinations**: ✅ 3:1 minimum contrast ratio (large text)
 - **Dark theme text**: ✅ 7:1 contrast ratio
 

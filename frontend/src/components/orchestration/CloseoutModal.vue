@@ -10,7 +10,7 @@
     data-testid="closeout-modal"
     @keydown.esc="handleClose"
   >
-    <v-card v-draggable data-testid="closeout-modal">
+    <v-card v-draggable data-testid="closeout-modal" class="smooth-border">
       <!-- Modal header -->
       <v-card-title id="closeout-modal-title" class="modal-title bg-primary text-white pa-4">
         <div class="d-flex align-center justify-space-between">
@@ -87,7 +87,7 @@
                     {{ entry.project_name || 'Entry #' + entry.sequence }} - {{ formatEntryType(entry.entry_type) }}
                   </span>
                   <v-spacer />
-                  <span class="text-caption text-grey">
+                  <span class="text-caption text-muted-a11y">
                     {{ formatDateTime(entry.timestamp) }}
                   </span>
                 </div>
@@ -160,7 +160,7 @@
 
                 <!-- Metadata -->
                 <div class="metadata-section mt-4 pt-3" style="border-top: 1px solid rgba(0,0,0,0.12)">
-                  <div class="text-caption text-grey">
+                  <div class="text-caption text-muted-a11y">
                     <strong>Type:</strong> {{ formatEntryType(entry.entry_type) }}
                     <span v-if="entry.sequence" class="ml-3">|</span>
                     <span v-if="entry.sequence" class="ml-3"><strong>Sequence:</strong> #{{ entry.sequence }}</span>

@@ -1,7 +1,7 @@
 <template>
-  <v-card>
+  <v-card variant="flat" class="smooth-border prompt-card">
     <v-card-title>System Orchestrator Prompt</v-card-title>
-    <v-card-subtitle
+    <v-card-subtitle class="prompt-subtitle"
       >Core instructions for the Giljo Orchestrator (admin override only)</v-card-subtitle
     >
 
@@ -219,6 +219,15 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.prompt-card {
+  background: var(--bg-raised, #1e3147);
+  border-radius: 16px;
+}
+
+.prompt-subtitle {
+  color: #8895a8;
+}
+
 .mono-textarea :deep(textarea) {
   font-family: 'Roboto Mono', monospace;
 }

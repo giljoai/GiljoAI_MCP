@@ -32,7 +32,7 @@
 
             <div class="flex-grow-1">
               <div class="font-weight-bold">{{ product.name }}</div>
-              <div class="text-caption text-medium-emphasis">
+              <div class="text-caption text-muted-a11y">
                 {{ product.description || product.id }}
               </div>
             </div>
@@ -67,7 +67,7 @@
           </v-list-item>
         </v-list>
 
-        <div v-else class="text-center py-8 text-medium-emphasis">
+        <div v-else class="text-center py-8 text-muted-a11y">
           <v-icon size="48" class="mb-4">mdi-package-variant</v-icon>
           <p>No deleted products</p>
         </div>
@@ -140,3 +140,6 @@ const handlePurgeAll = () => {
   emit('purge-all')
 }
 </script>
+
+<style scoped>
+</style>
