@@ -22,7 +22,7 @@
       <v-col cols="12">
         <div class="tab-pills mb-4">
           <button
-            class="pill-btn"
+            class="pill-btn smooth-border"
             :class="{ active: activeTab === 'timeline' }"
             @click="activeTab = 'timeline'"
           >
@@ -30,7 +30,7 @@
             Message Timeline
           </button>
           <button
-            class="pill-btn"
+            class="pill-btn smooth-border"
             :class="{ active: activeTab === 'broadcast' }"
             @click="activeTab = 'broadcast'"
           >
@@ -100,13 +100,12 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.15s ease;
   background: transparent;
-  color: #8895a8;
+  color: var(--text-muted);
   border: none;
-  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.15);
 
   &:hover {
-    color: #a3aac4;
-    box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.25);
+    color: var(--text-secondary);
+    --smooth-border-color: rgba(var(--v-theme-on-surface), 0.25);
   }
 
   &.active {

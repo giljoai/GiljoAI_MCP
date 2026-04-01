@@ -14,8 +14,8 @@
       "handover": "handovers/0873_style_centralization_sweep.md",
       "handover_section": "### 0873a",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-03-31",
       "completed_at": null,
       "agent_types": ["frontend-tester"],
       "planned_tasks": [
@@ -92,9 +92,9 @@
       "handover": "handovers/0873_style_centralization_sweep.md",
       "handover_section": "### 0873c",
       "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "completed",
+      "started_at": "2026-03-31",
+      "completed_at": "2026-03-31",
       "agent_types": ["frontend-tester"],
       "planned_tasks": [
         "Add @mixin table-header-label and .table-header-label class to main.scss",
@@ -105,12 +105,27 @@
         "Run full Vitest suite",
         "Commit"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Added @mixin table-header-label (5-line pattern) to design-tokens.scss section 12",
+        "Added @mixin table-row-separator to design-tokens.scss section 12",
+        "Added .table-header-label utility class to main.scss (after smooth-border section)",
+        "Baseline: 10 occurrences of font-size: 0.6rem across 9 files",
+        "Replaced table-header pattern in 4 files: TasksView.vue, ProjectsView.vue, AgentTableView.vue, JobsTab.vue",
+        "Also replaced rgba(255,255,255,0.04) row separators with @include table-row-separator in same 4 files",
+        "Mixin placed in design-tokens.scss (not main.scss) — components already import design-tokens, importing main.scss would duplicate CSS output",
+        "Tests: 1916/1916 passed",
+        "Commit: 972a21b7 (6 files, 46 insertions, 42 deletions)"
+      ],
+      "deviations": [
+        "Mixin defined in design-tokens.scss instead of main.scss — main.scss has CSS output, importing it in components would duplicate global styles; design-tokens.scss is pure variables/mixins, safe to @use in components",
+        "6 remaining font-size: 0.6rem hits are non-table-header contexts: DashboardView (x2, different layout), WelcomeView (code block), RecentProjectsList (badge, font-weight: 600), RecentMemoriesList (badge, no text-transform), ProjectReviewModal (flex label) — not candidates for mixin, verification grep non-zero by design"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "0873d (Modal & Dialog Standardization): @mixin table-header-label and @mixin table-row-separator are now in design-tokens.scss. .table-header-label utility class is in main.scss. All 4 table-header files updated. Pre-commit hook did NOT fire on this session (used Edit tool, no LF line-ending issues). main.scss was modified by linter between sessions — it now contains .text-muted-a11y, .text-secondary-a11y, and .icon-interactive classes already added by a linter or prior session.",
+      "cascading_impacts": [
+        "@mixin table-header-label and @mixin table-row-separator added to design-tokens.scss — available for future sessions via @use '../styles/design-tokens' as *"
+      ],
+      "summary": "Table header pattern extraction complete. Mixins added to design-tokens.scss, utility class in main.scss. The 5-line uppercase label pattern replaced in 4 files (TasksView, ProjectsView, AgentTableView, JobsTab) with @include table-header-label. Row separators replaced with @include table-row-separator in same files. 6 non-table-header font-size: 0.6rem hits remain intentionally. All 1916 tests pass."
     },
     {
       "session_id": "0873d",
@@ -196,8 +211,8 @@
       "handover": "handovers/0873_style_centralization_sweep.md",
       "handover_section": "### 0873g",
       "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-03-31",
       "completed_at": null,
       "agent_types": ["frontend-tester"],
       "planned_tasks": [

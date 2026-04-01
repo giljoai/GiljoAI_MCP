@@ -4,7 +4,7 @@
     :items="agents"
     :sort-by="[{ key: 'status', order: 'asc' }]"
     item-key="job_id"
-    class="agent-table-view"
+    class="agent-table-view smooth-border"
     hover
     @click:row="handleRowClick"
   >
@@ -262,7 +262,6 @@ function canCopyPrompt(agent) {
 /* Table panel styling (0870j) */
 .agent-table-view {
   border-radius: $border-radius-rounded;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
   overflow: hidden;
 }
 

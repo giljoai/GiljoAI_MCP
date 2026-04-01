@@ -871,12 +871,12 @@ async function handleContinueWorking() {
   cursor: pointer;
   transition: all 0.15s ease;
   background: transparent;
-  color: #8895a8;
+  color: var(--text-muted);
   border: none;
   box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.15);
 
   &:hover:not(:disabled) {
-    color: #a3aac4;
+    color: var(--text-secondary);
     box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.25);
   }
 

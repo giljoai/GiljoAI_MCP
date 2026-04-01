@@ -354,7 +354,7 @@ onMounted(async () => {
   padding: 2px 10px;
   border-radius: $border-radius-default;
   background: rgba(136, 149, 168, 0.15);
-  color: #8895a8;
+  color: var(--text-muted);
   font-weight: 500;
 }
 

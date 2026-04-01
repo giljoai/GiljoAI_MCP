@@ -1,7 +1,7 @@
 <template>
   <div class="product-selector d-flex justify-center flex-wrap ga-2 py-2" role="radiogroup" aria-label="Product filter">
     <button
-      :class="['pill-filter', { active: selectedProductId === null }]"
+      :class="['pill-filter', 'smooth-border', { active: selectedProductId === null }]"
       role="radio"
       :aria-checked="selectedProductId === null"
       aria-label="All Products"
@@ -12,7 +12,7 @@
     <button
       v-for="product in products"
       :key="product.id"
-      :class="['pill-filter', { active: selectedProductId === product.id }]"
+      :class="['pill-filter', 'smooth-border', { active: selectedProductId === product.id }]"
       role="radio"
       :aria-checked="selectedProductId === product.id"
       :aria-label="product.name"
@@ -54,13 +54,13 @@ defineEmits(['select'])
   cursor: pointer;
   transition: all 0.15s ease;
   background: transparent;
-  color: #8895a8;
+  color: var(--text-muted);
   border: none;
   box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.15);
 }
 
 .pill-filter:hover {
-  color: #a3aac4;
+  color: var(--text-secondary);
   box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.25);
 }
 
