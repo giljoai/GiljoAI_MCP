@@ -91,7 +91,7 @@
                 <div class="d-flex justify-space-around">
                   <span
                     class="summary-level-chip cursor-pointer"
-                    style="background: rgba(103,189,109,0.15); color: #67bd6d"
+                    :style="docSummaryStyle('light')"
                     role="button"
                     tabindex="0"
                     @click="showSummary(doc, 'light')"
@@ -109,7 +109,7 @@
                   </span>
                   <span
                     class="summary-level-chip cursor-pointer"
-                    style="background: rgba(237,186,74,0.15); color: #EDBA4A"
+                    :style="docSummaryStyle('medium')"
                     role="button"
                     tabindex="0"
                     @click="showSummary(doc, 'medium')"
@@ -127,7 +127,7 @@
                   </span>
                   <span
                     class="summary-level-chip cursor-pointer"
-                    style="background: rgba(109,179,228,0.15); color: #6DB3E4"
+                    :style="docSummaryStyle('full')"
                     role="button"
                     tabindex="0"
                     @click="showSummary(doc, 'full')"
@@ -206,7 +206,7 @@
           <div class="d-flex flex-wrap ga-2 mb-3">
             <span
               class="summary-level-chip cursor-pointer"
-              style="background: rgba(103,189,109,0.15); color: #67bd6d"
+              :style="consolidatedSummaryStyle('light')"
               role="button"
               tabindex="0"
               @click="showConsolidatedSummary('light')"
@@ -221,7 +221,7 @@
             <span
               v-if="product?.consolidated_vision_medium"
               class="summary-level-chip cursor-pointer"
-              style="background: rgba(109,179,228,0.15); color: #6DB3E4"
+              :style="consolidatedSummaryStyle('medium')"
               role="button"
               tabindex="0"
               @click="showConsolidatedSummary('medium')"
@@ -454,11 +454,36 @@ import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import api from '@/services/api'
 import { useFormatDate } from '@/composables/useFormatDate'
 import { useToast } from '@/composables/useToast'
+import { hexToRgba } from '@/utils/colorUtils'
+import { getAgentColor } from '@/config/agentColors'
+import { getStatusColor } from '@/utils/statusConfig'
 import ProductTuningMenu from './ProductTuningMenu.vue'
 import ProductTuningReview from './ProductTuningReview.vue'
 
 const { formatDate } = useFormatDate()
 const { showToast } = useToast()
+
+// Summary level color tokens (status-complete green, tester yellow, implementer blue)
+const DOC_SUMMARY_COLORS = {
+  light: getStatusColor('complete'),
+  medium: getAgentColor('tester').hex,
+  full: getAgentColor('implementer').hex,
+}
+
+const CONSOLIDATED_SUMMARY_COLORS = {
+  light: getStatusColor('complete'),
+  medium: getAgentColor('implementer').hex,
+}
+
+function docSummaryStyle(level) {
+  const hex = DOC_SUMMARY_COLORS[level] || '#8895a8'
+  return { background: hexToRgba(hex, 0.15), color: hex }
+}
+
+function consolidatedSummaryStyle(level) {
+  const hex = CONSOLIDATED_SUMMARY_COLORS[level] || '#8895a8'
+  return { background: hexToRgba(hex, 0.15), color: hex }
+}
 
 const props = defineProps({
   modelValue: {
