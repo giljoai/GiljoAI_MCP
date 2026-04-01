@@ -23,8 +23,7 @@
                   v-bind="tooltipProps"
                   icon="mdi-information-outline"
                   size="small"
-                  class="ml-2"
-                  style="opacity: 0.8"
+                  class="ml-2 opacity-80"
                   aria-label="Handover information"
                 />
               </template>

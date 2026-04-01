@@ -48,7 +48,7 @@
             <v-list-item
               v-if="currentUser"
               prepend-icon="mdi-account"
-              style="cursor: pointer"
+              class="cursor-pointer"
               @click="profileDialog = true"
             >
               <v-list-item-title class="font-weight-medium">

@@ -225,7 +225,7 @@
               location="bottom"
             >
               <template v-slot:activator="{ props }">
-                <div v-bind="props" class="date-text-clickable" style="cursor: pointer">
+                <div v-bind="props" class="date-text-clickable cursor-pointer">
                   <v-icon
                     v-if="item.due_date && isOverdue(item.due_date)"
                     color="error"
