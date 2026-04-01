@@ -1,67 +1,55 @@
 <template>
-  <v-container fluid class="products-container">
-    <!-- Fixed Page Header -->
-    <div class="products-header">
-      <v-row>
-        <v-col cols="12">
-          <div class="d-flex align-center mb-6">
-            <h1 class="text-h4">Products</h1>
-            <v-spacer></v-spacer>
-            <v-btn color="primary" prepend-icon="mdi-plus" class="btn-pill" @click="showDialog = true">
-              New Product
-            </v-btn>
-          </div>
-        </v-col>
-      </v-row>
-    </div>
+  <v-container>
+    <!-- Header (matches Tasks/Projects pattern) -->
+    <v-row align="center" class="mb-4">
+      <v-col>
+        <h1 class="text-h4">Products</h1>
+        <p class="text-body-2 text-muted-a11y mt-1">Manage your product configurations and AI agent workspaces.</p>
+      </v-col>
+    </v-row>
 
-    <!-- Scrollable Products Grid -->
-    <div class="products-content">
-      <v-row>
-        <v-col cols="12">
-          <v-card>
-            <v-card-title class="d-flex align-center">
-              <span>All Products</span>
-              <v-spacer></v-spacer>
-              <v-btn
-                variant="outlined"
-                :color="deletedProductsCount > 0 ? 'warning' : 'grey'"
-                prepend-icon="mdi-delete-restore"
-                :disabled="deletedProductsCount === 0"
-                class="mr-3 btn-pill"
-                style="height: 40px"
-                @click="showDeletedProductsDialog = true"
-              >
-                Deleted ({{ deletedProductsCount }})
-              </v-btn>
-              <v-select
-                v-model="sortBy"
-                :items="sortOptions"
-                item-title="label"
-                item-value="value"
-                prepend-inner-icon="mdi-sort"
-                label="Sort by"
-                variant="solo"
-                flat
-                density="compact"
-                hide-details
-                class="mr-3"
-                style="max-width: 200px"
-              ></v-select>
-              <v-text-field
-                v-model="search"
-                prepend-inner-icon="mdi-magnify"
-                label="Search products..."
-                single-line
-                hide-details
-                variant="outlined"
-                density="compact"
-                aria-label="Search products by name"
-                style="max-width: 300px"
-              ></v-text-field>
-            </v-card-title>
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <v-text-field
+          v-model="search"
+          prepend-inner-icon="mdi-magnify"
+          placeholder="Search products..."
+          variant="solo"
+          density="compact"
+          clearable
+          hide-details
+          flat
+          aria-label="Search products by name"
+          class="filter-search"
+        />
+        <v-select
+          v-model="sortBy"
+          :items="sortOptions"
+          item-title="label"
+          item-value="value"
+          prepend-inner-icon="mdi-sort"
+          placeholder="Sort by"
+          variant="solo"
+          flat
+          density="compact"
+          hide-details
+          class="filter-select"
+        />
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="showDialog = true">
+          New Product
+        </v-btn>
+        <v-btn
+          variant="outlined"
+          :color="deletedProductsCount > 0 ? 'warning' : 'grey'"
+          prepend-icon="mdi-delete-restore"
+          :disabled="deletedProductsCount === 0"
+          @click="showDeletedProductsDialog = true"
+        >
+          Deleted ({{ deletedProductsCount }})
+        </v-btn>
+      </div>
 
-            <v-card-text>
+      <!-- Product Cards (floating, no wrapper card) -->
               <v-row v-if="loading">
                 <v-col cols="12" class="text-center py-8">
                   <v-progress-circular indeterminate color="primary"></v-progress-circular>
@@ -263,12 +251,6 @@
                   </v-card>
                 </v-col>
               </v-row>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
-    </div>
-    <!-- End products-content -->
 
     <!-- Extracted Component Dialogs -->
 
@@ -1070,28 +1052,34 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 @use '../styles/design-tokens' as *;
-/* Fixed header and scrollable content layout */
-.products-container {
+.filter-bar {
   display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
-.products-header {
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background-color: inherit;
-  padding-top: 16px;
-}
-
-.products-content {
+.filter-search {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-bottom: 24px;
+}
+
+.filter-search :deep(.v-field) {
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
+  border-radius: $border-radius-default;
+}
+
+.filter-search :deep(.v-field:focus-within) {
+  box-shadow: inset 0 0 0 1px rgba($color-brand-yellow, 0.3);
+}
+
+.filter-select {
+  flex: 0 0 auto;
+  min-width: 200px;
+}
+
+.filter-select :deep(.v-field) {
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
+  border-radius: $border-radius-default;
 }
 
 .product-card {

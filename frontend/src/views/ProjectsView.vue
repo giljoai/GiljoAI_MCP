@@ -74,12 +74,10 @@
         class="filter-select"
       />
       <v-btn variant="text" class="filter-clear-btn" @click="clearFilters">Clear Filters</v-btn>
-      <v-spacer />
       <v-btn
         color="primary"
         variant="flat"
         prepend-icon="mdi-plus"
-        class="btn-pill"
         :disabled="!activeProduct"
         aria-label="Create new project"
         @click="showCreateDialog = true"
@@ -89,7 +87,6 @@
       <v-btn
         variant="outlined"
         prepend-icon="mdi-delete-restore"
-        class="btn-pill"
         :disabled="deletedCount === 0"
         aria-label="View deleted projects"
         @click="showDeletedDialog = true"
@@ -1509,7 +1506,6 @@ onBeforeUnmount(() => {
 
 .filter-search {
   flex: 1;
-  max-width: 600px;
 }
 
 .filter-search :deep(.v-field) {
@@ -1522,7 +1518,8 @@ onBeforeUnmount(() => {
 }
 
 .filter-select {
-  max-width: 160px;
+  flex: 0 0 auto;
+  max-width: 140px;
 }
 
 .filter-select :deep(.v-field) {
