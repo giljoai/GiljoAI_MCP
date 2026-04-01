@@ -1,5 +1,5 @@
 <template>
-  <v-card class="smooth-border">
+  <v-card class="db-card smooth-border">
     <!-- Title -->
     <v-card-title v-if="showTitle">{{ title }}</v-card-title>
 
@@ -401,7 +401,14 @@ defineExpose({
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
+
+.db-card {
+  background: $elevation-raised;
+  border-radius: $border-radius-rounded !important;
+}
+
 /* Improve readability of suggestion lists */
 :deep(ul) {
   list-style-type: disc;

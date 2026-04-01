@@ -94,7 +94,7 @@ defineEmits(['update:enabled'])
 <style lang="scss" scoped>
 @use '../../../styles/design-tokens' as *;
 .integration-card {
-  background: var(--bg-raised, #1e3147);
+  background: $elevation-raised;
   border-radius: $border-radius-rounded;
 }
 
