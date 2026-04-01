@@ -261,7 +261,7 @@ code {
   color: #ffc300;
   border: none;
   cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background $transition-fast, opacity $transition-fast;
   white-space: nowrap;
 }
 

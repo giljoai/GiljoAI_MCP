@@ -45,7 +45,7 @@
 
       <v-divider />
 
-      <v-card-text class="pa-4" style="max-height: 70vh; overflow-y: auto;">
+      <v-card-text class="pa-4 dialog-body-scroll">
         <v-progress-linear v-if="loading" indeterminate color="primary" />
         <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
 

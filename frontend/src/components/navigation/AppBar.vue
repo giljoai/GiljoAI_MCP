@@ -121,7 +121,7 @@
 
         <!-- About Dialog -->
         <v-dialog v-model="aboutDialog" max-width="380">
-          <v-card>
+          <v-card class="smooth-border">
             <v-btn
               icon="mdi-close"
               size="x-small"

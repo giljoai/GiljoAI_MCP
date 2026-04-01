@@ -267,7 +267,7 @@ function canCopyPrompt(agent) {
 
 .agent-table-view :deep(tbody tr) {
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background $transition-fast;
 }
 
 .agent-table-view :deep(tbody tr:hover) {

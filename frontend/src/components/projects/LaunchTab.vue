@@ -444,7 +444,7 @@ watch(missionText, (next, previous) => {
 
             .v-icon, .v-img {
               opacity: 0.7;
-              transition: opacity 0.2s ease;
+              transition: opacity $transition-normal ease;
               object-fit: contain;
               font-size: 16px;
 
@@ -552,7 +552,7 @@ watch(missionText, (next, previous) => {
     border-radius: $border-radius-default;
     background: transparent;
     border: none;
-    transition: background 0.15s;
+    transition: background $transition-fast;
     cursor: pointer;
 
     &:hover {

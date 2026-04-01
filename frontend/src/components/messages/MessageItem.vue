@@ -225,7 +225,7 @@ const handleReply = () => {
 .message-item {
   background: var(--bg-raised, #1a2a3c);
   border-radius: $border-radius-md;
-  transition: all 0.2s ease;
+  transition: all $transition-normal ease;
 }
 
 .message-item:hover {

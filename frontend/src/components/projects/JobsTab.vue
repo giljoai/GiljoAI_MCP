@@ -1069,7 +1069,7 @@ async function copyToClipboard(text) {
       }
 
       tbody tr {
-        transition: background 0.15s;
+        transition: background $transition-fast;
         cursor: pointer;
 
         &:hover {
@@ -1351,7 +1351,7 @@ async function copyToClipboard(text) {
       font-weight: 500;
       padding: 6px 14px;
       color: $color-text-muted;
-      transition: all 0.2s ease;
+      transition: all $transition-normal ease;
 
       &.v-btn--variant-flat {
         background: rgba(255, 195, 0, 0.12);
