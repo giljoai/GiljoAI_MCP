@@ -47,7 +47,7 @@
           <div style="display:flex;align-items:center;gap:10px;">
             <span class="team-slots smooth-border">{{ activeTemplates.length }} / {{ totalSlots }} slots</span>
             <router-link to="/Settings" class="team-manage">
-              <v-icon size="14">mdi-cog-outline</v-icon> Manage
+              <v-icon size="14">mdi-cog</v-icon> Manage
             </router-link>
           </div>
         </div>
