@@ -122,6 +122,80 @@
       >
         Implement
       </v-btn>
+
+      <v-spacer />
+
+      <!-- Integration icons (moved from LaunchTab, Handover 0875) -->
+      <div class="integrations-row">
+        <!-- GitHub Integration -->
+        <v-tooltip location="bottom" max-width="300">
+          <template #activator="{ props: tooltipProps }">
+            <v-icon
+              v-bind="tooltipProps"
+              :class="{ 'icon-disabled': !gitEnabled }"
+              size="36"
+              color="white"
+              data-testid="github-status-icon"
+              class="cursor-pointer integration-icon"
+              aria-label="GitHub integration status"
+              @click="goToIntegrations"
+            >
+              mdi-github
+            </v-icon>
+          </template>
+          <span v-if="gitEnabled">GitHub integration enabled. Commit history will be included in project summaries.</span>
+          <span v-else>GitHub integration disabled. Click to enable in Settings.</span>
+        </v-tooltip>
+        <!-- Serena MCP Integration -->
+        <v-tooltip location="bottom" max-width="300">
+          <template #activator="{ props: tooltipProps }">
+            <v-img
+              v-bind="tooltipProps"
+              src="/Serena.png"
+              width="36"
+              height="36"
+              :class="{ 'icon-disabled': !serenaEnabled }"
+              data-testid="serena-status-icon"
+              class="cursor-pointer integration-icon"
+              alt="Serena MCP integration status"
+              aria-label="Serena MCP integration status"
+              @click="goToIntegrations"
+            />
+          </template>
+          <span v-if="serenaEnabled">Serena MCP enabled. Agents will use semantic code navigation.</span>
+          <span v-else>Serena MCP disabled. Click to enable in Settings.</span>
+        </v-tooltip>
+        <!-- Agentic Tool Badge -->
+        <v-tooltip v-if="agenticTool" location="bottom" max-width="300">
+          <template #activator="{ props: tooltipProps }">
+            <v-icon
+              v-if="agenticTool.type === 'icon'"
+              v-bind="tooltipProps"
+              size="36"
+              color="primary"
+              data-testid="agentic-tool-icon"
+              class="cursor-pointer integration-icon"
+              :aria-label="agenticTool.alt"
+              @click="goToIntegrations"
+            >
+              {{ agenticTool.icon }}
+            </v-icon>
+            <v-img
+              v-else
+              v-bind="tooltipProps"
+              :src="agenticTool.src"
+              width="36"
+              height="36"
+              data-testid="agentic-tool-icon"
+              class="cursor-pointer integration-icon"
+              :alt="agenticTool.alt"
+              :aria-label="agenticTool.alt"
+              @click="goToIntegrations"
+            />
+          </template>
+          <span>{{ agenticTool.label }} mode active.</span>
+        </v-tooltip>
+      </div>
     </div>
 
     <!-- Bordered Content Box (tabs connect to this) -->
@@ -325,6 +399,25 @@ const { gitEnabled, serenaEnabled } = useIntegrationStatus()
 const { showToast } = useToast()
 
 const projectId = computed(() => props.project?.project_id || props.project?.id || null)
+
+/**
+ * Active agentic tool badge based on execution mode (moved from LaunchTab, Handover 0875)
+ */
+const agenticTool = computed(() => {
+  const mode = executionMode.value
+  if (mode === 'claude_code_cli') return { type: 'img', src: '/claude_pix.svg', label: 'Claude Code', alt: 'Claude Code subagent active' }
+  if (mode === 'codex_cli') return { type: 'img', src: '/codex_logo.svg', label: 'Codex CLI', alt: 'Codex CLI subagent active' }
+  if (mode === 'gemini_cli') return { type: 'img', src: '/gemini-icon.svg', label: 'Gemini CLI', alt: 'Gemini CLI subagent active' }
+  if (mode === 'multi_terminal') return { type: 'icon', icon: 'mdi-monitor-multiple', label: 'Multi Terminal', alt: 'Multi terminal mode active' }
+  return null
+})
+
+/**
+ * Navigate to integrations settings (moved from LaunchTab, Handover 0875)
+ */
+function goToIntegrations() {
+  router.push({ path: '/settings', query: { tab: 'integrations' } })
+}
 
 /**
  * Execution Mode Toggle (Handover 0428: Moved from LaunchTab)
