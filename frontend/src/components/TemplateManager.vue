@@ -61,11 +61,9 @@
         hide-details
         class="filter-select"
       />
-      <v-spacer />
       <v-btn
         color="primary"
         prepend-icon="mdi-plus"
-        class="btn-pill"
         aria-label="Create new template"
         @click="openCreateDialog"
       >
@@ -913,7 +911,6 @@ watch(
 
 .filter-search {
   flex: 1;
-  max-width: 400px;
 }
 
 .filter-search :deep(.v-field) {
@@ -926,7 +923,8 @@ watch(
 }
 
 .filter-select {
-  max-width: 160px;
+  flex: 0 0 auto;
+  max-width: 140px;
 }
 
 .filter-select :deep(.v-field) {

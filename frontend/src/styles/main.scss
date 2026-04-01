@@ -275,11 +275,6 @@ body {
   }
 }
 
-// Primary action buttons use pill shape
-.btn-pill {
-  border-radius: $border-radius-pill !important;
-}
-
 // Custom button styles
 .primary-action-btn {
   background: linear-gradient(135deg, $yellow 0%, color.adjust($yellow, $lightness: -10%) 100%);
