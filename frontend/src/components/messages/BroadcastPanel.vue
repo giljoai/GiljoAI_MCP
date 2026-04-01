@@ -197,6 +197,7 @@ import { ref, computed, onMounted } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { useToast } from '@/composables/useToast'
+import { useFormatDate } from '@/composables/useFormatDate'
 import api from '@/services/api'
 import { hexToRgba } from '@/utils/colorUtils'
 import type { BroadcastTemplate, MessagePriority } from '@/types/message'
@@ -229,6 +230,7 @@ const broadcastHistory = ref<BroadcastHistoryItem[]>([])
 
 // Toast
 const { showToast } = useToast()
+const { formatDate } = useFormatDate()
 
 // Priority options
 const priorityOptions = [
@@ -385,7 +387,7 @@ const formatTime = (timestamp: string): string => {
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString()
+  return formatDate(date)
 }
 
 const STATUS_COLORS: Record<string, string> = {

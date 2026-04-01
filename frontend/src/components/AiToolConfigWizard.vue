@@ -65,7 +65,7 @@
             <v-icon size="small" class="mr-2">mdi-server</v-icon>
             <span>{{ buildServerUrl() }}</span>
             <v-btn
-              icon="mdi-pencil-outline"
+              icon="mdi-pencil"
               size="x-small"
               variant="text"
               class="ml-1"
