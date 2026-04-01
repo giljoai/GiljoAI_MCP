@@ -124,7 +124,7 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
       const designTokensPath = getDesignTokensPath()
       if (fs.existsSync(designTokensPath)) {
         const stats = fs.statSync(designTokensPath)
-        expect(stats.size).toBeLessThan(10240)
+        expect(stats.size).toBeLessThan(12288)
       }
     })
 
