@@ -172,6 +172,12 @@ body {
   @include table-header-label;
 }
 
+// Table row separator utility class — apply to td/tr for subtle row dividers.
+// For Vuetify tables use @include table-row-separator inside :deep().
+.table-row-separator {
+  @include table-row-separator;
+}
+
 // Custom card styles
 .stats-card {
   background: linear-gradient(135deg, $almost-dark-blue 0%, $lighter-dark-blue 100%);
