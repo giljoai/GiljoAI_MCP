@@ -148,7 +148,7 @@ const handleLaunch = async () => {
     loadingStates.value.launch = true
     try {
       await clipboardCopy(storedContinuationPrompt.value)
-      showToast({ message: 'Prompt copied to clipboard!', type: 'success' })
+      showToast({ message: 'Prompt copied to clipboard', type: 'success' })
 
       // Reset handover state
       handoverPending.value = false
