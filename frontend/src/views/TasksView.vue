@@ -67,24 +67,20 @@
         class="filter-select"
       />
       <v-btn variant="text" class="filter-clear-btn" @click="clearFilters">Clear Filters</v-btn>
+      <v-spacer />
+      <v-btn
+        color="primary"
+        variant="flat"
+        prepend-icon="mdi-plus"
+        class="btn-pill"
+        @click="handleNewTask"
+      >
+        New Task
+      </v-btn>
     </div>
 
     <!-- Tasks Table (0870h: smooth-border panel) -->
     <v-card class="task-table-card smooth-border">
-      <!-- Table Controls -->
-      <v-card-title class="table-header">
-        <span class="table-title">Task List</span>
-        <v-spacer />
-        <v-btn
-          color="primary"
-          variant="flat"
-          prepend-icon="mdi-plus"
-          @click="handleNewTask"
-        >
-          New Task
-        </v-btn>
-      </v-card-title>
-
       <v-data-table
         :headers="headers"
         :items="hierarchicalTasks"
@@ -869,20 +865,6 @@ onMounted(async () => {
   font-size: 0.72rem;
   text-transform: none;
   letter-spacing: 0;
-}
-
-/* 0870h: table header */
-.table-header {
-  display: flex;
-  align-items: center;
-  padding: 14px 20px;
-  border-bottom: 1px solid $color-border-subtle;
-}
-
-.table-title {
-  font-family: 'Outfit', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 600;
 }
 
 /* Table body scrolls, footer (pagination) stays pinned below */
