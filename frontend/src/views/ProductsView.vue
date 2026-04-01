@@ -488,7 +488,7 @@ async function toggleProductActivation(product) {
       showToast({
         message: `${product.name} deactivated`,
         type: 'info',
-        duration: 3000,
+        timeout: 3000,
       })
 
       await loadProducts()
@@ -513,7 +513,7 @@ async function toggleProductActivation(product) {
       showToast({
         message: `${product.name} activated`,
         type: 'success',
-        duration: 3000,
+        timeout: 3000,
       })
 
       await loadProducts()
@@ -523,7 +523,7 @@ async function toggleProductActivation(product) {
     showToast({
       message: 'Failed to change product status. Try again or refresh the page.',
       type: 'error',
-      duration: 5000,
+      timeout: 5000,
     })
   }
 }
@@ -538,7 +538,7 @@ async function confirmActivation(_productId) {
     showToast({
       message: `${pendingActivation.value?.name} activated`,
       type: 'success',
-      duration: 3000,
+      timeout: 3000,
     })
 
     await loadProducts()
@@ -552,7 +552,7 @@ async function confirmActivation(_productId) {
     showToast({
       message: 'Failed to activate product. Try again or refresh the page.',
       type: 'error',
-      duration: 5000,
+      timeout: 5000,
     })
   }
 }
@@ -580,14 +580,14 @@ async function removeVisionDocument(doc) {
     showToast({
       message: `Deleted vision document: ${doc.document_name}`,
       type: 'success',
-      duration: 3000,
+      timeout: 3000,
     })
   } catch (error) {
     console.error('Failed to delete vision document:', error)
     showToast({
       message: 'Failed to delete vision document. Try again or refresh the page.',
       type: 'error',
-      duration: 5000,
+      timeout: 5000,
     })
   }
 }
@@ -623,7 +623,7 @@ function validateVisionFiles() {
       showToast({
         message: error,
         type: 'error',
-        duration: 7000,
+        timeout: 7000,
       })
       return false
     }
@@ -709,7 +709,7 @@ async function confirmDelete(product) {
       showToast({
         message: 'Failed to load deletion impact. Refresh the page and try again.',
         type: 'error',
-        duration: 5000,
+        timeout: 5000,
       })
     }
   } finally {
@@ -742,7 +742,7 @@ async function saveProduct(payload) {
         ? 'Product updated successfully'
         : 'Product created successfully',
       type: 'success',
-      duration: 3000,
+      timeout: 3000,
     })
 
     // Reset state
@@ -757,7 +757,7 @@ async function saveProduct(payload) {
     showToast({
       message: 'Failed to save product. Check your connection and try again.',
       type: 'error',
-      duration: 5000,
+      timeout: 5000,
     })
     // Handover 0051: Do NOT close dialog on error - keep form data visible
   }
@@ -816,7 +816,7 @@ async function uploadVisionFilesOnAttach(payload) {
         showToast({
           message: `${file.name} uploaded${statusParts.length ? ` (${statusParts.join(', ')})` : ''}`,
           type: 'success',
-          duration: 3000,
+          timeout: 3000,
         })
       } catch (uploadError) {
         console.error(`Failed to upload ${file.name}:`, uploadError)
@@ -839,7 +839,7 @@ async function uploadVisionFilesOnAttach(payload) {
         }
 
         visionUploadError.value = errorMessage
-        showToast({ message: errorMessage, type: 'error', duration: 7000 })
+        showToast({ message: errorMessage, type: 'error', timeout: 7000 })
       }
     }
 
@@ -854,7 +854,7 @@ async function uploadVisionFilesOnAttach(payload) {
     showToast({
       message: 'Failed to upload files. Check your connection and try again.',
       type: 'error',
-      duration: 5000,
+      timeout: 5000,
     })
   }
 }
@@ -883,7 +883,7 @@ async function confirmDeleteProduct() {
     showToast({
       message: `${productName} moved to trash. Recoverable for 10 days.`,
       type: 'info',
-      duration: 4000,
+      timeout: 4000,
     })
   } catch (error) {
     if (error?.response?.status === 404) {
@@ -892,13 +892,13 @@ async function confirmDeleteProduct() {
       const productName = deletingProduct.value?.name || 'Product'
       deletingProduct.value = null
       await loadProducts()
-      showToast({ message: `${productName} was already removed.`, type: 'info', duration: 3000 })
+      showToast({ message: `${productName} was already removed.`, type: 'info', timeout: 3000 })
     } else {
       console.error('Failed to delete product:', error)
       showToast({
         message: 'Failed to move product to trash. Try again or refresh the page.',
         type: 'error',
-        duration: 5000,
+        timeout: 5000,
       })
     }
   } finally {
@@ -971,7 +971,7 @@ async function restoreProduct(productId) {
     showToast({
       message: `${product?.name || 'Product'} restored successfully`,
       type: 'success',
-      duration: 3000,
+      timeout: 3000,
     })
 
     // Reload both lists
@@ -987,7 +987,7 @@ async function restoreProduct(productId) {
     showToast({
       message: 'Failed to restore product. Try again or refresh the page.',
       type: 'error',
-      duration: 5000,
+      timeout: 5000,
     })
   } finally {
     restoringProductId.value = null
@@ -1005,7 +1005,7 @@ async function purgeDeletedProduct(productId) {
     showToast({
       message: `${product?.name || 'Product'} permanently deleted.`,
       type: 'warning',
-      duration: 3000,
+      timeout: 3000,
     })
 
     await loadProducts()
@@ -1019,7 +1019,7 @@ async function purgeDeletedProduct(productId) {
     showToast({
       message: 'Failed to permanently delete product. Try again or refresh the page.',
       type: 'error',
-      duration: 5000,
+      timeout: 5000,
     })
   } finally {
     purgingProductId.value = null
@@ -1039,7 +1039,7 @@ async function purgeAllDeletedProducts() {
     showToast({
       message: `${ids.length} product(s) permanently deleted.`,
       type: 'warning',
-      duration: 3000,
+      timeout: 3000,
     })
 
     await loadProducts()
@@ -1050,7 +1050,7 @@ async function purgeAllDeletedProducts() {
     showToast({
       message: 'Failed to delete all products. Try again or refresh the page.',
       type: 'error',
-      duration: 5000,
+      timeout: 5000,
     })
   } finally {
     purgingAllProducts.value = false

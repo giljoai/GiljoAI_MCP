@@ -290,7 +290,7 @@ async function copyPrompt() {
   if (success) {
     copied.value = true
     setTimeout(() => (copied.value = false), 3000)
-    showToast({ message: 'Configuration copied to clipboard!', type: 'success' })
+    showToast({ message: 'Configuration copied to clipboard', type: 'success' })
   } else {
     showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
   }
@@ -303,7 +303,7 @@ async function copyEnvVar() {
   if (success) {
     copiedEnv.value = true
     setTimeout(() => (copiedEnv.value = false), 3000)
-    showToast({ message: 'Environment variable copied to clipboard!', type: 'success' })
+    showToast({ message: 'Environment variable copied to clipboard', type: 'success' })
   } else {
     showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
   }
@@ -315,7 +315,7 @@ async function copyCertCommand() {
   if (success) {
     copiedCert.value = true
     setTimeout(() => (copiedCert.value = false), 3000)
-    showToast({ message: 'Certificate trust command copied!', type: 'success' })
+    showToast({ message: 'Certificate trust command copied to clipboard', type: 'success' })
   } else {
     showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
   }

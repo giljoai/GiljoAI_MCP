@@ -221,7 +221,7 @@ async function handleCopyPrompt(toolId) {
 
   const success = await clipboardCopy(text)
   if (success) {
-    showToast({ message: 'Bootstrap prompt copied to clipboard!', type: 'success' })
+    showToast({ message: 'Bootstrap prompt copied to clipboard', type: 'success' })
   } else {
     showToast({ message: 'Copy failed -- select the text and press Ctrl+C', type: 'warning' })
   }
