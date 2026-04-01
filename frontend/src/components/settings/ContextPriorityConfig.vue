@@ -31,7 +31,6 @@
           <a
             @click="navigateToIntegrations"
             class="text-decoration-underline cursor-pointer"
-            style="cursor: pointer"
           >
             Integrations tab
           </a>

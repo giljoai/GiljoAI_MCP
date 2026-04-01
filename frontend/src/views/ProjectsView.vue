@@ -371,13 +371,13 @@
             <div class="text-body-2 mb-1">Project created successfully!</div>
             <div class="text-caption">
               <strong>Project ID:</strong>
-              <span class="ml-2" style="font-family: monospace">{{ createdProjectId }}</span>
+              <span class="ml-2 font-mono">{{ createdProjectId }}</span>
             </div>
           </v-alert>
 
           <!-- Project metadata (plain text, no alert box) -->
           <div v-if="editingProject" class="text-caption text-medium-emphasis mb-4">
-            <div>Project ID: <span style="font-family: monospace">{{ editingProject.id }}</span></div>
+            <div>Project ID: <span class="font-mono">{{ editingProject.id }}</span></div>
             <div>
               Created: {{ formatDateTime(editingProject.created_at) }}
               <span class="mx-2">|</span>
