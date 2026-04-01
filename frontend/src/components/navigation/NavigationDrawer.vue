@@ -221,7 +221,6 @@ watch(
   height: 32px;
   background: rgb(var(--v-theme-surface));
   border: none !important;
-  box-shadow: inset 0 0 0 1px rgba(var(--v-border-color), 0.2);
   border-radius: $border-radius-sharp;
   display: flex;
   align-items: center;
@@ -234,7 +233,7 @@ watch(
 
 .edge-toggle-tab:hover {
   background: rgba(var(--v-theme-primary), 0.1);
-  box-shadow: inset 0 0 0 1px rgb(var(--v-theme-primary));
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgb(var(--v-theme-primary)));
 }
 
 .edge-toggle-tab:focus {

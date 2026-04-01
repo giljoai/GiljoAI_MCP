@@ -600,7 +600,7 @@ onUnmounted(() => {
 }
 
 .dash-product-label {
-  color: var(--text-secondary, #a3aac4);
+  color: var(--text-secondary);
   font-weight: 400;
   font-size: 1rem;
 }
@@ -608,7 +608,7 @@ onUnmounted(() => {
 .dash-time {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.75rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
 }
 
 /* ═══ STAT PILLS + MICRO-BARS ═══ */
@@ -634,7 +634,7 @@ onUnmounted(() => {
   font-size: 0.62rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   margin-bottom: 4px;
 }
 
@@ -648,7 +648,7 @@ onUnmounted(() => {
 
   small {
     font-size: 0.6rem;
-    color: var(--text-muted, #8895a8);
+    color: var(--text-muted);
     font-weight: 400;
     margin-left: 4px;
   }
@@ -683,7 +683,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 0.6rem;
-  color: var(--text-secondary, #a3aac4);
+  color: var(--text-secondary);
 }
 
 .micro-legend-dot {
@@ -724,7 +724,7 @@ onUnmounted(() => {
   font-size: 0.58rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   margin-bottom: 2px;
 }
 
@@ -754,13 +754,13 @@ onUnmounted(() => {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-secondary, #a3aac4);
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
 .panel-subtitle {
   font-size: 0.62rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   font-family: 'IBM Plex Mono', monospace;
 }
 
@@ -826,13 +826,13 @@ onUnmounted(() => {
 
 .commit-meta {
   font-size: 0.58rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   margin-top: 1px;
 }
 
 .no-data-text {
   font-size: 0.75rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   padding: 8px 0;
 }
 
