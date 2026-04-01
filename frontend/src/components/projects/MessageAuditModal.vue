@@ -90,15 +90,11 @@
           <div class="message-audit-body">
             <!-- Message list -->
             <div class="message-list-column">
-              <div
+              <EmptyState
                 v-if="currentMessages.length === 0"
-                class="empty-state pa-4 text-center"
-              >
-                <v-icon icon="mdi-message-outline" size="32" class="mb-2" color="primary" />
-                <div class="text-body-2 text-muted-a11y">
-                  No messages in this category
-                </div>
-              </div>
+                icon="mdi-message-outline"
+                title="No messages in this category"
+              />
 
               <div
                 v-else
@@ -168,6 +164,7 @@
 <script setup>
 import { computed, ref, toRaw, watch } from 'vue'
 import MessageDetailView from '@/components/projects/MessageDetailView.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import api from '@/services/api'
 
 const props = defineProps({
@@ -516,9 +513,7 @@ function getMessagePreview(message) {
   opacity: 0.6;
 }
 
-.empty-state {
-  color: rgba(0, 0, 0, 0.6);
-}
+
 
 /* Legacy styles (kept for compatibility with any remaining references) */
 .audit-message-row {

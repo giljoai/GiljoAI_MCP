@@ -311,17 +311,13 @@
 
           <!-- No Data -->
           <template v-slot:no-data>
-            <div class="text-center py-8">
-              <v-icon size="64" color="grey-lighten-2">mdi-clipboard-text-outline</v-icon>
-              <p class="text-h6 mt-4">No tasks found</p>
-              <p class="text-body-2 text-medium-emphasis">
-                {{
-                  search || statusFilter || priorityFilter || categoryFilter
-                    ? 'Try adjusting your filters'
-                    : 'Create your first task to get started'
-                }}
-              </p>
-            </div>
+            <EmptyState
+              icon="mdi-clipboard-text-outline"
+              title="No tasks found"
+              :description="search || statusFilter || priorityFilter || categoryFilter
+                ? 'Try adjusting your filters'
+                : 'Create your first task to get started'"
+            />
           </template>
       </v-data-table>
     </v-card>
@@ -439,7 +435,7 @@
       v-model="showDeleteConfirmDialog"
       type="danger"
       title="Delete Task"
-      icon="mdi-delete-alert"
+      icon="mdi-delete"
       confirm-label="Delete"
       @confirm="confirmDelete"
       @cancel="showDeleteConfirmDialog = false"
@@ -483,6 +479,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useTaskStore } from '@/stores/tasks'
 import { useProductStore } from '@/stores/products'
 import { useUserStore } from '@/stores/user'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { format, isAfter } from 'date-fns'
 import api from '@/services/api'
 import BaseDialog from '@/components/common/BaseDialog.vue'
