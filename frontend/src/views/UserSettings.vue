@@ -468,14 +468,15 @@ function openIntroTour() {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 .settings-subtitle {
   color: #8895a8;
 }
 
 .settings-card {
   background: var(--bg-raised, #1e3147);
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
 }
 
 .settings-card-subtitle {
@@ -511,7 +512,7 @@ function openIntroTour() {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   padding: 8px 18px;
   font-size: 0.78rem;
   font-weight: 500;

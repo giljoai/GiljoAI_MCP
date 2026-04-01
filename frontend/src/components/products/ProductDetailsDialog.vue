@@ -726,15 +726,15 @@ async function regenerateConsolidation() {
 }
 </script>
 
-<style scoped>
-
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .summary-level-chip {
   display: inline-flex;
   align-items: center;
   font-size: 0.72rem;
   font-weight: 600;
   padding: 3px 10px;
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   line-height: 1.4;
   letter-spacing: 0.02em;
   transition: opacity 0.15s ease;

@@ -464,7 +464,7 @@ const createAdmin = async () => {
 
 .requirement-list {
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   padding: 12px;
   margin-bottom: 16px;
 }

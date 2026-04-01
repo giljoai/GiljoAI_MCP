@@ -79,10 +79,11 @@ async function copyToClipboard() {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../styles/design-tokens' as *;
 .config-snippet-card {
   background-color: rgb(var(--v-theme-surface-variant));
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   position: relative;
 }
 
@@ -97,7 +98,7 @@ async function copyToClipboard() {
   margin: 0;
   padding: 48px 16px 16px 16px;
   background-color: rgb(var(--v-theme-surface-variant));
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   overflow-x: auto;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.875rem;
@@ -119,7 +120,7 @@ async function copyToClipboard() {
   background-color: rgb(var(--v-theme-success));
   color: rgb(var(--v-theme-on-success));
   padding: 12px 24px;
-  border-radius: 24px;
+  border-radius: $border-radius-pill;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;

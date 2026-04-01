@@ -475,10 +475,11 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .broadcast-panel-card {
   background: var(--bg-raised, #1a2a3c);
-  border-radius: 16px;
+  border-radius: $border-radius-rounded;
 }
 
 .tab-pills {
@@ -491,7 +492,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 9999px;
+  border-radius: $border-radius-pill;
   padding: 8px 18px;
   font-size: 0.78rem;
   font-weight: 500;
@@ -518,7 +519,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   padding: 1px 8px;
-  border-radius: 10px;
+  border-radius: $border-radius-default;
   font-size: 0.68rem;
   font-weight: 600;
   background: rgba(109, 179, 228, 0.15);
@@ -541,7 +542,7 @@ onMounted(() => {
 .markdown-preview :deep(code) {
   background-color: rgba(var(--v-theme-surface-variant), 0.5);
   padding: 0.2rem 0.4rem;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   font-family: 'Courier New', monospace;
   font-size: 0.875rem;
 }
@@ -549,7 +550,7 @@ onMounted(() => {
 .markdown-preview :deep(pre) {
   background-color: rgba(var(--v-theme-surface-variant), 0.5);
   padding: 1rem;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
   overflow-x: auto;
   margin: 0.5rem 0;
 }

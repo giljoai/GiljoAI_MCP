@@ -26,9 +26,10 @@ const badgeStyle = computed(() => ({
 }))
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .tinted-badge {
-  border-radius: 8px;
+  border-radius: $border-radius-default;
   display: flex;
   align-items: center;
   justify-content: center;

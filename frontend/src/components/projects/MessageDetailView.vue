@@ -72,7 +72,8 @@ const formattedTimestamp = computed(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '../../styles/design-tokens' as *;
 .message-detail {
   padding: 16px;
 }
@@ -89,7 +90,7 @@ const formattedTimestamp = computed(() => {
   font-size: 0.85rem;
   background-color: rgba(0, 0, 0, 0.03);
   padding: 8px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
 }
 
 .text-mono {
@@ -97,6 +98,6 @@ const formattedTimestamp = computed(() => {
   font-size: 0.85rem;
   background-color: rgba(0, 0, 0, 0.05);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: $border-radius-sharp;
 }
 </style>

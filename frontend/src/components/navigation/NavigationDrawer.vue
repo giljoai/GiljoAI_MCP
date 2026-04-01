@@ -222,7 +222,7 @@ watch(
   background: rgb(var(--v-theme-surface));
   border: none !important;
   box-shadow: inset 0 0 0 1px rgba(var(--v-border-color), 0.2);
-  border-radius: 6px;
+  border-radius: $border-radius-sharp;
   display: flex;
   align-items: center;
   justify-content: center;
