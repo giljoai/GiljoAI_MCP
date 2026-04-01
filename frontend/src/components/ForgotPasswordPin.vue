@@ -75,7 +75,7 @@
               label="Username"
               prepend-inner-icon="mdi-account"
               variant="outlined"
-              :rules="[rules.required]"
+              :rules="[rules.username]"
               :disabled="loading"
               autofocus
               autocomplete="username"
@@ -267,7 +267,7 @@ const attemptsRemaining = ref(null)
 const pinForm = ref(null)
 // Validation rules
 const rules = {
-  required: (value) => !!value || 'This field is required',
+  username: (value) => !!value || 'Username is required',
 }
 
 const pinRules = [

@@ -66,7 +66,7 @@
               <v-text-field
                 v-model="productForm.name"
                 label="Product Name"
-                :rules="[(v) => !!v || 'Name is required']"
+                :rules="[(v) => !!v || 'Product name is required']"
                 variant="outlined"
                 density="comfortable"
                 required
