@@ -62,7 +62,7 @@ async def verify_templates(tenant_key: str = "default"):
             "behavioral_rules": [
                 "MCP tools",
                 "report progress",
-                "report_error",
+                "set_agent_status",
             ],
             "success_criteria": [
                 "MCP checkpoint",
@@ -77,7 +77,7 @@ async def verify_templates(tenant_key: str = "default"):
                 "get_pending_jobs",
                 "report_progress",
                 "complete_job",
-                "report_error",
+                "set_agent_status",
             ],
         }
 

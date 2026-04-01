@@ -54,7 +54,7 @@ describe('GitIntegrationCard.vue', () => {
     it('renders as a v-card', () => {
       wrapper = mountComponent()
       const html = wrapper.html()
-      expect(html).toContain('variant="outlined"')
+      expect(html).toContain('variant="flat"')
     })
 
     it('displays "Git + GiljoAI 360 Memory" title', () => {
@@ -218,7 +218,7 @@ describe('GitIntegrationCard.vue', () => {
       wrapper = mountComponent()
 
       const html = wrapper.html()
-      expect(html).toContain('variant="outlined"')
+      expect(html).toContain('variant="flat"')
     })
 
     it('toggle switch exists', () => {
@@ -255,7 +255,7 @@ describe('GitIntegrationCard.vue', () => {
       wrapper = mountComponent()
 
       const html = wrapper.html()
-      expect(html).toContain('variant="outlined"')
+      expect(html).toContain('variant="flat"')
     })
 
     it('uses tonal card variant for controls section', () => {

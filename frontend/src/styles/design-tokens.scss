@@ -43,12 +43,12 @@ $color-text-highlight: #ffd700; // Yellow - status, waiting
 // 4. COLOR TOKENS - Agent Avatar Colors
 // =========================================================================
 
-$color-agent-orchestrator: #d4a574; // Tan - matches agentColors.js
-$color-agent-analyzer: #e74c3c; // Red - matches agentColors.js
-$color-agent-implementor: #3498db; // Blue - matches agentColors.js
-$color-agent-tester: #ffc300; // Yellow - matches agentColors.js
-$color-agent-researcher: #27ae60; // Green (documenter alias) - matches agentColors.js
-$color-agent-reviewer: #9b59b6; // Purple - matches agentColors.js
+$color-agent-orchestrator: #d4b08a; // Tan/Beige — Luminous Pastels (WCAG 7.48:1)
+$color-agent-analyzer: #e07872; // Coral — Luminous Pastels (WCAG 5.11:1)
+$color-agent-implementor: #6db3e4; // Sky Blue — Luminous Pastels (WCAG 6.64:1)
+$color-agent-tester: #edba4a; // Warm Yellow — Luminous Pastels (WCAG 8.45:1)
+$color-agent-researcher: #5ec48e; // Mint Green — Luminous Pastels (WCAG 7.03:1)
+$color-agent-reviewer: #ac80cc; // Lavender — Luminous Pastels (WCAG 4.84:1)
 
 // Avatar text color (light)
 $color-avatar-text-light: #000; // Text on light backgrounds (orchestrator)

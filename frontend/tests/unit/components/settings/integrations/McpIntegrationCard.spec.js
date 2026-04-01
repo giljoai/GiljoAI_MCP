@@ -46,7 +46,7 @@ describe('McpIntegrationCard.vue', () => {
     it('renders v-card component', () => {
       // Check for card element - in test environment, v-card renders as div with variant
       const html = wrapper.html()
-      expect(html).toContain('variant="outlined"')
+      expect(html).toContain('variant="flat"')
     })
 
     it('displays "GiljoAI MCP Integration" title', () => {
@@ -105,10 +105,10 @@ describe('McpIntegrationCard.vue', () => {
 
     it('has nested cards in structure', () => {
       const html = wrapper.html()
-      // Should have multiple cards (outer outlined, inner tonal)
+      // Should have multiple cards (outer + inner, both flat with smooth-border)
       // Check for variant attributes which indicate card components
-      expect(html).toContain('variant="outlined"')
-      expect(html).toContain('variant="tonal"')
+      expect(html).toContain('variant="flat"')
+      expect(html).toContain('smooth-border')
     })
 
     it('outer card has mb-4 spacing class', () => {
@@ -153,13 +153,13 @@ describe('McpIntegrationCard.vue', () => {
       }
     })
 
-    it('description uses text-medium-emphasis class', () => {
+    it('description uses text-muted-a11y class', () => {
       const paragraphs = wrapper.findAll('p')
       const descriptionP = paragraphs.find(p =>
         p.text().includes('Attach GiljoAI MCP to your AI coding agents')
       )
       if (descriptionP) {
-        expect(descriptionP.classes()).toContain('text-medium-emphasis')
+        expect(descriptionP.classes()).toContain('text-muted-a11y')
       }
     })
 

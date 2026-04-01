@@ -42,26 +42,26 @@
             <span class="text-subtitle-2">{{ getSectionLabel(sectionKey) }}</span>
             <v-spacer />
             <!-- Drift badge -->
-            <v-chip
-              :color="getSectionData(sectionKey).drift_detected ? 'error' : 'success'"
-              size="small"
-              variant="tonal"
+            <span
+              class="tuning-chip"
+              :style="getSectionData(sectionKey).drift_detected
+                ? 'background: rgba(224,120,114,0.15); color: #E07872'
+                : 'background: rgba(103,189,109,0.15); color: #67bd6d'"
               :aria-label="getSectionData(sectionKey).drift_detected ? 'Drift detected' : 'No drift'"
             >
               <v-icon start size="14">
                 {{ getSectionData(sectionKey).drift_detected ? 'mdi-alert-circle' : 'mdi-check-circle' }}
               </v-icon>
               {{ getSectionData(sectionKey).drift_detected ? 'Drift' : 'Current' }}
-            </v-chip>
+            </span>
             <!-- Confidence chip -->
-            <v-chip
-              :color="getConfidenceColor(getSectionData(sectionKey).confidence)"
-              size="small"
-              variant="tonal"
+            <span
+              class="tuning-chip"
+              :style="getConfidenceStyle(getSectionData(sectionKey).confidence)"
               :aria-label="'Confidence: ' + (getSectionData(sectionKey).confidence || 'unknown')"
             >
               {{ formatConfidence(getSectionData(sectionKey).confidence) }}
-            </v-chip>
+            </span>
           </div>
         </v-expansion-panel-title>
 
@@ -69,8 +69,8 @@
           <div class="py-2">
             <!-- Current Value -->
             <div class="mb-4">
-              <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Current Value</div>
-              <v-card variant="outlined" class="pa-3">
+              <div class="text-caption font-weight-bold mb-1" style="color: #8895a8">Current Value</div>
+              <v-card variant="flat" class="pa-3 smooth-border" style="border-radius: 8px">
                 <div class="text-body-2" style="white-space: pre-wrap;">
                   {{ getSectionData(sectionKey).current_summary || 'No current value' }}
                 </div>
@@ -79,15 +79,15 @@
 
             <!-- Evidence -->
             <div v-if="getSectionData(sectionKey).evidence" class="mb-4">
-              <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Evidence</div>
-              <div class="text-body-2 text-medium-emphasis" style="white-space: pre-wrap;">
+              <div class="text-caption font-weight-bold mb-1" style="color: #8895a8">Evidence</div>
+              <div class="text-body-2" style="white-space: pre-wrap; color: #8895a8">
                 {{ getSectionData(sectionKey).evidence }}
               </div>
             </div>
 
             <!-- Proposed Value -->
             <div class="mb-4">
-              <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Proposed Value</div>
+              <div class="text-caption font-weight-bold mb-1" style="color: #8895a8">Proposed Value</div>
 
               <!-- Edit mode -->
               <div v-if="editingSection === sectionKey">
@@ -123,12 +123,11 @@
               <!-- Display mode -->
               <v-card
                 v-else
-                variant="outlined"
+                variant="flat"
                 :class="[
-                  'pa-3',
-                  hasValueChanged(sectionKey) ? 'border-warning' : ''
+                  'pa-3 smooth-border',
                 ]"
-                :style="hasValueChanged(sectionKey) ? 'border-color: rgb(var(--v-theme-warning))' : ''"
+                :style="hasValueChanged(sectionKey) ? 'border-radius: 8px; --smooth-border-color: #EDBA4A' : 'border-radius: 8px'"
               >
                 <div class="text-body-2" style="white-space: pre-wrap;">
                   {{ getSectionData(sectionKey).proposed_value || 'No change proposed' }}
@@ -138,8 +137,8 @@
 
             <!-- Reasoning -->
             <div v-if="getSectionData(sectionKey).reasoning" class="mb-4">
-              <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Reasoning</div>
-              <div class="text-body-2 text-medium-emphasis" style="white-space: pre-wrap;">
+              <div class="text-caption font-weight-bold mb-1" style="color: #8895a8">Reasoning</div>
+              <div class="text-body-2" style="white-space: pre-wrap; color: #8895a8">
                 {{ getSectionData(sectionKey).reasoning }}
               </div>
             </div>
@@ -313,18 +312,18 @@ function getSectionIcon(sectionKey) {
 }
 
 /**
- * Map confidence level to Vuetify theme color
+ * Map confidence level to tinted chip inline style
  */
-function getConfidenceColor(confidence) {
+function getConfidenceStyle(confidence) {
   switch (confidence?.toLowerCase()) {
     case 'high':
-      return 'success'
+      return 'background: rgba(103,189,109,0.15); color: #67bd6d'
     case 'medium':
-      return 'warning'
+      return 'background: rgba(237,186,74,0.15); color: #EDBA4A'
     case 'low':
-      return 'error'
+      return 'background: rgba(224,120,114,0.15); color: #E07872'
     default:
-      return 'grey'
+      return 'background: rgba(255,255,255,0.05); color: #8895a8'
   }
 }
 
@@ -429,3 +428,16 @@ async function dismissAll() {
   }
 }
 </script>
+
+<style scoped>
+.tuning-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 8px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+</style>

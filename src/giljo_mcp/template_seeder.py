@@ -278,7 +278,7 @@ You are the **Orchestrator Agent** for **GiljoAI MCP** - a multi-tenant system c
 ## If Requirements Are Unclear
 
 During staging, if project requirements have major gaps or conflicts:
-1. Call `report_error(job_id, "BLOCKED: <reason>")` to mark yourself blocked
+1. Call `set_agent_status(job_id, status="blocked", reason="BLOCKED: <reason>")` to mark yourself blocked
 2. Ask the USER for clarification (not another agent)
 3. Wait for response via `receive_messages()`
 4. Call `report_progress()` to resume (sets status back to working)
@@ -763,7 +763,7 @@ def _get_agent_guidelines_section() -> str:
 
 ## If Blocked or Unclear
 
-1. Call `report_error(job_id, "BLOCKED: <reason>")` to mark yourself blocked
+1. Call `set_agent_status(job_id, status="blocked", reason="BLOCKED: <reason>")` to mark yourself blocked
 2. Send BLOCKER: or REQUEST_CONTEXT: message to orchestrator
 3. Wait for response via `receive_messages()`
 4. Call `report_progress()` to resume (sets status back to working)
