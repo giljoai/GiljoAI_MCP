@@ -50,7 +50,6 @@
             :style="{
               marginLeft: '-2px',
               marginRight: '30px',
-              opacity: isJobsActive(item) ? 1 : 0.85,
             }"
           ></v-img>
           <v-icon v-else>{{ item.icon }}</v-icon>
@@ -124,7 +123,7 @@ const jobsIcon = computed(() => {
     // Active state: Yellow/White for dark theme (#ffc300 body, #e1e1e1 eyes)
     return '/icons/Giljo_YW_Face.svg'
   }
-  // Inactive state: #8f97b7 fill matching MDI icon color
+  // Inactive state: #A7AAAE fill matching MDI nav icon color
   return '/icons/Giljo_Inactive_Dark.svg'
 })
 
