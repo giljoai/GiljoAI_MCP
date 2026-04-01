@@ -1,81 +1,80 @@
 <template>
-  <v-card class="template-manager">
-    <v-card-title class="d-flex align-center">
-      Agent Template Manager
-      <v-tooltip location="bottom" max-width="360">
-        <template #activator="{ props }">
-          <v-icon v-bind="props" size="small" class="ml-2" color="medium-emphasis"
-            >mdi-information-outline</v-icon
+  <div>
+    <!-- 0873: Filter bar outside card (matches TasksView pattern) -->
+    <div class="filter-bar">
+      <v-text-field
+        v-model="search"
+        prepend-inner-icon="mdi-magnify"
+        placeholder="Search templates..."
+        variant="solo"
+        density="compact"
+        clearable
+        hide-details
+        flat
+        class="filter-search"
+      />
+      <v-select
+        v-model="filterCategory"
+        :items="categories"
+        placeholder="Category"
+        clearable
+        variant="solo"
+        flat
+        density="compact"
+        hide-details
+        class="filter-select"
+      />
+      <v-select
+        v-model="filterStatus"
+        :items="statusOptions"
+        placeholder="Status"
+        clearable
+        variant="solo"
+        flat
+        density="compact"
+        hide-details
+        class="filter-select"
+      />
+      <v-btn variant="text" class="filter-clear-btn" @click="clearFilters">Clear Filters</v-btn>
+    </div>
+
+    <v-card class="template-manager smooth-border">
+      <v-card-title class="d-flex align-center">
+        Agent Template Manager
+        <v-tooltip location="bottom" max-width="360">
+          <template #activator="{ props }">
+            <v-icon v-bind="props" size="small" class="ml-2" color="medium-emphasis"
+              >mdi-information-outline</v-icon
+            >
+          </template>
+          <span
+            >Each active agent template consumes context tokens during orchestration. The 8-slot limit
+            keeps prompt budgets manageable. 1 slot is reserved for the Orchestrator (managed in Admin
+            Settings), leaving 7 for your custom agents.</span
           >
-        </template>
-        <span
-          >Each active agent template consumes context tokens during orchestration. The 8-slot limit
-          keeps prompt budgets manageable. 1 slot is reserved for the Orchestrator (managed in Admin
-          Settings), leaving 7 for your custom agents.</span
+        </v-tooltip>
+        <v-chip
+          v-if="totalActiveAgents !== null"
+          :color="remainingUserSlots === 0 ? 'warning' : 'default'"
+          size="small"
+          variant="tonal"
+          class="ml-4"
         >
-      </v-tooltip>
-      <v-chip
-        v-if="totalActiveAgents !== null"
-        :color="remainingUserSlots === 0 ? 'warning' : 'default'"
-        size="small"
-        variant="tonal"
-        class="ml-4"
-      >
-        {{ totalActiveAgents }} / {{ totalCapacity }}
-      </v-chip>
-      <v-spacer />
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-plus"
-        aria-label="Create new template"
-        @click="openCreateDialog"
-      >
-        New Template
-      </v-btn>
-    </v-card-title>
+          {{ totalActiveAgents }} / {{ totalCapacity }}
+        </v-chip>
+        <v-spacer />
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-plus"
+          aria-label="Create new template"
+          @click="openCreateDialog"
+        >
+          New Template
+        </v-btn>
+      </v-card-title>
 
-    <v-card-text>
-
-      <!-- Search and Filters -->
-      <v-row class="mb-4">
-        <v-col cols="12" md="6">
-          <v-text-field
-            v-model="search"
-            prepend-inner-icon="mdi-magnify"
-            label="Search templates"
-            single-line
-            hide-details
-            clearable
-            density="compact"
-          />
-        </v-col>
-        <v-col cols="12" md="3">
-          <v-select
-            v-model="filterCategory"
-            :items="categories"
-            label="Category"
-            clearable
-            variant="solo"
-            flat
-            density="compact"
-            hide-details
-          />
-        </v-col>
-        <v-col cols="12" md="3">
-          <v-select
-            v-model="filterStatus"
-            :items="statusOptions"
-            label="Status"
-            clearable
-            variant="solo"
-            flat
-            density="compact"
-            hide-details
-          />
-        </v-col>
-      </v-row>
-
-      <!-- Templates Table -->
+      <v-card-text>
+        <!-- Templates Table -->
       <v-data-table
         :headers="headers"
         :items="filteredTemplates"
@@ -415,7 +414,8 @@
       </v-card>
     </v-dialog>
 
-  </v-card>
+    </v-card>
+  </div>
 </template>
 
 <script setup>
@@ -458,6 +458,12 @@ const previewContent = ref('') // Handover 0103: Preview window content
 const search = ref('')
 const filterCategory = ref(null)
 const filterStatus = ref(null)
+
+function clearFilters() {
+  search.value = ''
+  filterCategory.value = null
+  filterStatus.value = null
+}
 
 // Dialogs
 const editDialog = ref(false)
@@ -895,6 +901,54 @@ watch(
 
 <style scoped lang="scss">
 @use '../styles/design-tokens' as *;
+
+/* 0873: filter bar layout (matches TasksView pattern) */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.filter-search {
+  flex: 1;
+  max-width: 400px;
+}
+
+.filter-search :deep(.v-field) {
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
+  border-radius: $border-radius-default;
+}
+
+.filter-search :deep(.v-field:focus-within) {
+  box-shadow: inset 0 0 0 1px rgba($color-brand-yellow, 0.3);
+}
+
+.filter-select {
+  max-width: 160px;
+}
+
+.filter-select :deep(.v-field) {
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
+  border-radius: $border-radius-default;
+}
+
+.filter-clear-btn {
+  color: $color-text-muted !important;
+  font-size: 0.72rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+@media (max-width: 960px) {
+  .filter-bar {
+    flex-wrap: wrap;
+  }
+  .filter-search {
+    max-width: 100%;
+  }
+}
+
 .template-role-badge {
   display: inline-block;
   padding: 2px 10px;
@@ -904,11 +958,16 @@ watch(
 }
 
 .template-manager {
+  border: none !important;
+  border-radius: $border-radius-rounded !important;
+  overflow: hidden;
   background: var(--v-theme-surface-variant);
 
-  .templates-table {
-    background: var(--v-theme-surface);
+  :deep(.v-table) {
+    background: transparent;
+  }
 
+  .templates-table {
     :deep(.v-data-table-footer) {
       background: var(--v-theme-surface);
       color: var(--v-theme-on-surface);

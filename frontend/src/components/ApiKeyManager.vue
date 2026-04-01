@@ -1,5 +1,5 @@
 <template>
-  <v-card>
+  <v-card class="apikey-card smooth-border">
     <v-card-title class="d-flex align-center">
       API Keys
       <v-tooltip location="right" max-width="300">
@@ -39,7 +39,7 @@
         :items="apiKeys"
         :headers="headers"
         :loading="loading"
-        class="elevation-1"
+        class="elevation-0"
       >
         <!-- Name Column -->
         <template #item.name="{ item }">
@@ -254,6 +254,18 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 @use '../styles/design-tokens' as *;
+
+/* 0873: smooth-border card panel */
+.apikey-card {
+  border: none !important;
+  border-radius: $border-radius-rounded !important;
+  overflow: hidden;
+
+  :deep(.v-table) {
+    background: transparent;
+  }
+}
+
 .v-data-table {
   border-radius: $border-radius-default;
 }

@@ -1031,6 +1031,12 @@ async function copyToClipboard(text) {
       }
     }
 
+    // 0873: transparent table bg so smooth-border inset shadow shows on all sides
+    .agents-table,
+    :deep(.v-table) {
+      background: transparent;
+    }
+
     .agents-table {
       width: 100%;
       border-collapse: separate;

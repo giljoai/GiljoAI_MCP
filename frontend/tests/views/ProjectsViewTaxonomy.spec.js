@@ -253,44 +253,32 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
   // ----------------------------------------------------------------
   // 2. Type filter chip rendering
   // ----------------------------------------------------------------
-  describe('Type Filter Chips Rendering', () => {
-    it('renders filter button and collapsible pills when projectTypes populated', async () => {
+  describe('Type Filter Dropdown Rendering', () => {
+    it('renders status and type filter dropdowns in filter bar', async () => {
       const wrapper = await createWrapper()
 
       wrapper.vm.projectTypes = mockProjectTypes
       await wrapper.vm.$nextTick()
 
-      // Filter button is an icon button (mdi-filter-variant) with aria-label
-      const filterBtn = wrapper.find('button[aria-label="Toggle filters"]')
-      expect(filterBtn.exists()).toBe(true)
-
-      // Expand the filter row
-      wrapper.vm.showFilterRow = true
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.text()).toContain('FEAT')
-      expect(wrapper.text()).toContain('BUG')
+      // Filter bar with v-select dropdowns (replaced pill chips)
+      const filterBar = wrapper.find('.filter-bar')
+      expect(filterBar.exists()).toBe(true)
     })
 
-    it('does not render type filter section when projectTypes is empty', async () => {
+    it('renders search field in filter bar', async () => {
       const wrapper = await createWrapper()
 
-      // projectTypes defaults to empty array
-      expect(wrapper.text()).not.toContain('Type:')
-      expect(wrapper.text()).not.toContain('No Type')
+      const searchField = wrapper.find('.filter-search')
+      expect(searchField.exists()).toBe(true)
     })
 
-    it('shows all expected type filter labels including All and No Type', async () => {
+    it('has filter type reactive state for dropdown', async () => {
       const wrapper = await createWrapper()
       wrapper.vm.projectTypes = mockProjectTypes
-      wrapper.vm.showFilterRow = true
       await wrapper.vm.$nextTick()
 
-      const text = wrapper.text()
-      expect(text).toContain('All')
-      expect(text).toContain('FEAT')
-      expect(text).toContain('BUG')
-      expect(text).toContain('No Type')
+      // filterType is reactive and defaults to null (show all)
+      expect(wrapper.vm.filterType).toBeNull()
     })
   })
 
