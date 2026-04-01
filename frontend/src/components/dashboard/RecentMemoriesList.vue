@@ -44,10 +44,10 @@
         </v-card-title>
         <v-divider />
         <v-card-text class="pa-4">
-          <div v-if="selectedMemory.product_name" class="text-caption mb-3" style="color: var(--text-muted, #8895a8)">
+          <div v-if="selectedMemory.product_name" class="text-caption mb-3" style="color: var(--text-muted)">
             Product: {{ selectedMemory.product_name }}
           </div>
-          <div v-if="selectedMemory.timestamp" class="text-caption mb-4" style="color: var(--text-muted, #8895a8)">
+          <div v-if="selectedMemory.timestamp" class="text-caption mb-4" style="color: var(--text-muted)">
             {{ new Date(selectedMemory.timestamp).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) }}
           </div>
           <div class="text-body-2" style="white-space: pre-wrap; line-height: 1.6;">{{ selectedMemory.summary }}</div>
@@ -205,7 +205,7 @@ function relativeTime(timestamp) {
 
 .memory-meta {
   font-size: 0.58rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   font-family: 'IBM Plex Mono', monospace;
   margin-top: 2px;
 }
@@ -230,7 +230,7 @@ function relativeTime(timestamp) {
 
 .no-data-text {
   font-size: 0.75rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   padding: 8px 0;
   text-align: center;
 }

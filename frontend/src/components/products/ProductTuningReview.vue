@@ -69,7 +69,7 @@
           <div class="py-2">
             <!-- Current Value -->
             <div class="mb-4">
-              <div class="text-caption font-weight-bold mb-1" style="color: #8895a8">Current Value</div>
+              <div class="text-caption font-weight-bold mb-1 text-muted-a11y">Current Value</div>
               <v-card variant="flat" class="pa-3 smooth-border review-value-card">
                 <div class="text-body-2" style="white-space: pre-wrap;">
                   {{ getSectionData(sectionKey).current_summary || 'No current value' }}
@@ -79,15 +79,15 @@
 
             <!-- Evidence -->
             <div v-if="getSectionData(sectionKey).evidence" class="mb-4">
-              <div class="text-caption font-weight-bold mb-1" style="color: #8895a8">Evidence</div>
-              <div class="text-body-2" style="white-space: pre-wrap; color: #8895a8">
+              <div class="text-caption font-weight-bold mb-1 text-muted-a11y">Evidence</div>
+              <div class="text-body-2 text-muted-a11y" style="white-space: pre-wrap">
                 {{ getSectionData(sectionKey).evidence }}
               </div>
             </div>
 
             <!-- Proposed Value -->
             <div class="mb-4">
-              <div class="text-caption font-weight-bold mb-1" style="color: #8895a8">Proposed Value</div>
+              <div class="text-caption font-weight-bold mb-1 text-muted-a11y">Proposed Value</div>
 
               <!-- Edit mode -->
               <div v-if="editingSection === sectionKey">
@@ -137,8 +137,8 @@
 
             <!-- Reasoning -->
             <div v-if="getSectionData(sectionKey).reasoning" class="mb-4">
-              <div class="text-caption font-weight-bold mb-1" style="color: #8895a8">Reasoning</div>
-              <div class="text-body-2" style="white-space: pre-wrap; color: #8895a8">
+              <div class="text-caption font-weight-bold mb-1 text-muted-a11y">Reasoning</div>
+              <div class="text-body-2 text-muted-a11y" style="white-space: pre-wrap">
                 {{ getSectionData(sectionKey).reasoning }}
               </div>
             </div>
@@ -323,7 +323,7 @@ function getConfidenceStyle(confidence) {
     case 'low':
       return 'background: rgba(224,120,114,0.15); color: #E07872'
     default:
-      return 'background: rgba(255,255,255,0.05); color: #8895a8'
+      return 'background: rgba(255,255,255,0.05); color: var(--text-muted)'
   }
 }
 

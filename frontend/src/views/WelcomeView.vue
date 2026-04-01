@@ -45,7 +45,7 @@
         <div class="team-header">
           <div class="section-label" style="margin-bottom:0;">Your Team</div>
           <div style="display:flex;align-items:center;gap:10px;">
-            <span class="team-slots">{{ activeTemplates.length }} / {{ totalSlots }} slots</span>
+            <span class="team-slots smooth-border">{{ activeTemplates.length }} / {{ totalSlots }} slots</span>
             <router-link to="/Settings" class="team-manage">
               <v-icon size="14">mdi-cog-outline</v-icon> Manage
             </router-link>
@@ -518,12 +518,12 @@ onMounted(async () => {
   font-weight: 700;
   letter-spacing: -0.02em;
   margin-bottom: 6px;
-  color: var(--color-text-primary, #e1e1e1);
+  color: var(--color-text-primary);
 }
 
 .hero-subtitle {
   font-size: 0.88rem;
-  color: var(--text-secondary, #a3aac4);
+  color: var(--text-secondary);
   font-weight: 300;
   max-width: 480px;
   margin: 0 auto;
@@ -539,7 +539,7 @@ onMounted(async () => {
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   margin-bottom: 12px;
   font-weight: 500;
 }
@@ -565,7 +565,7 @@ onMounted(async () => {
 
 .quick-card:hover {
   transform: translateY(-3px);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10), 0 10px 20px -6px rgba(0,0,0,0.25);
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255,255,255,0.10)), 0 10px 20px -6px rgba(0,0,0,0.25);
 }
 
 .quick-card::before {
@@ -601,7 +601,7 @@ onMounted(async () => {
 
 .quick-card-desc {
   font-size: 0.75rem;
-  color: var(--text-secondary, #a3aac4);
+  color: var(--text-secondary);
   line-height: 1.4;
 }
 
@@ -613,7 +613,7 @@ onMounted(async () => {
   border-radius: $border-radius-sharp;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.6rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
 }
 
 /* ═══ YOUR TEAM ═══ */
@@ -632,10 +632,9 @@ onMounted(async () => {
 .team-slots {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.68rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   padding: 2px 8px;
   border-radius: $border-radius-pill;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
 }
 
 .team-manage {
@@ -674,7 +673,7 @@ onMounted(async () => {
 
 .team-card:hover {
   transform: translateY(-2px);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10), 0 6px 16px -4px rgba(0,0,0,0.25);
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255,255,255,0.10)), 0 6px 16px -4px rgba(0,0,0,0.25);
 }
 
 .team-avatar-wrap {
@@ -695,7 +694,7 @@ onMounted(async () => {
 
 .empty-avatar {
   background: rgba(255,255,255,0.05);
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
 }
 
 .team-name {
@@ -706,7 +705,7 @@ onMounted(async () => {
 
 .team-desc {
   font-size: 0.62rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
   line-height: 1.3;
 }
 
@@ -742,7 +741,7 @@ onMounted(async () => {
 
 .setup-cta:hover {
   transform: translateY(-2px);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10), 0 6px 16px -4px rgba(0,0,0,0.25);
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255,255,255,0.10)), 0 6px 16px -4px rgba(0,0,0,0.25);
 }
 
 .setup-cta-text {
@@ -757,7 +756,7 @@ onMounted(async () => {
 
 .setup-cta-desc {
   font-size: 0.75rem;
-  color: var(--text-secondary, #a3aac4);
+  color: var(--text-secondary);
 }
 
 /* ═══ RECENT PROJECTS ═══ */
@@ -811,7 +810,7 @@ onMounted(async () => {
 
 .footer-item {
   font-size: 0.68rem;
-  color: var(--text-muted, #8895a8);
+  color: var(--text-muted);
 }
 
 .footer-item.mono {
@@ -822,7 +821,7 @@ onMounted(async () => {
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: var(--text-muted, #8895a8);
+  background: var(--text-muted);
   opacity: 0.5;
 }
 

@@ -7,7 +7,7 @@
     <!-- Settings Pills -->
     <div class="pill-toggle-row">
       <button
-        class="pill-toggle"
+        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'identity' }"
         data-test="identity-tab"
         @click="activeTab = 'identity'"
@@ -16,7 +16,7 @@
         Identity
       </button>
       <button
-        class="pill-toggle"
+        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'network' }"
         @click="activeTab = 'network'"
       >
@@ -24,7 +24,7 @@
         Network
       </button>
       <button
-        class="pill-toggle"
+        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'database' }"
         @click="activeTab = 'database'"
       >
@@ -32,7 +32,7 @@
         Database
       </button>
       <button
-        class="pill-toggle"
+        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'security' }"
         @click="activeTab = 'security'"
       >
@@ -40,7 +40,7 @@
         Security
       </button>
       <button
-        class="pill-toggle"
+        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'prompts' }"
         @click="activeTab = 'prompts'"
       >
@@ -319,7 +319,7 @@ onMounted(async () => {
 <style lang="scss" scoped>
 @use '../styles/design-tokens' as *;
 .settings-subtitle {
-  color: #8895a8;
+  color: var(--text-muted);
 }
 
 /* Pill toggle row */
@@ -342,9 +342,9 @@ onMounted(async () => {
   cursor: pointer;
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
   background: transparent;
-  color: #8895a8;
+  color: var(--text-muted);
   border: none;
-  box-shadow: inset 0 0 0 1px var(--smooth-border-color, #2a4a6b);
+  --smooth-border-color: #2a4a6b;
 }
 
 .pill-toggle:hover {
