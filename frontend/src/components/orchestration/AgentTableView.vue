@@ -201,7 +201,7 @@ function handleHandOver(event) {
     showToast({ message: event.message || 'Session refreshed! Continuation prompt copied to clipboard.', type: 'success' })
   } else {
     console.error('[AgentTableView] Session refresh failed:', event.error)
-    showToast({ message: event.error || 'Failed to refresh session', type: 'error' })
+    showToast({ message: event.error || 'Failed to refresh session. Try again or reload the page.', type: 'error' })
   }
 }
 
@@ -229,7 +229,7 @@ async function handleCopyPrompt(agent) {
     }
   } catch (error) {
     console.error('[AgentTableView] Copy prompt failed:', error)
-    showToast({ message: 'Failed to copy prompt', type: 'error' })
+    showToast({ message: 'Failed to copy prompt — select the text and press Ctrl+C', type: 'error' })
   } finally {
     copyingJobId.value = null
   }
