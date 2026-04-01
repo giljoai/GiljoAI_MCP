@@ -203,6 +203,30 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
 @keyframes spin { to { transform: rotate(360deg); } }
 .skeleton { border-radius: 6px; background: linear-gradient(90deg, #1e3147 25%, #243b53 50%, #1e3147 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ── Toast demos ── */
+.toast-demo { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 8px; font-size: 0.82rem; font-weight: 500; }
+.toast-demo .mdi { font-size: 20px; }
+.toast-demo-success { background: rgba(103,189,109,0.12); color: #67bd6d; box-shadow: inset 0 0 0 1px rgba(103,189,109,0.25); }
+.toast-demo-error { background: rgba(224,120,114,0.12); color: #E07872; box-shadow: inset 0 0 0 1px rgba(224,120,114,0.25); }
+.toast-demo-warning { background: rgba(237,186,74,0.12); color: #EDBA4A; box-shadow: inset 0 0 0 1px rgba(237,186,74,0.25); }
+.toast-demo-info { background: rgba(109,179,228,0.12); color: #6DB3E4; box-shadow: inset 0 0 0 1px rgba(109,179,228,0.25); }
+.toast-demo-msg { flex: 1; }
+.toast-demo-close { color: inherit; opacity: 0.5; font-size: 16px; cursor: pointer; }
+
+/* ── Form validation demos ── */
+.form-field { margin-bottom: 16px; max-width: 360px; }
+.form-label { font-size: 0.72rem; font-weight: 500; color: #a3aac4; margin-bottom: 6px; display: block; }
+.form-input { background: rgba(255,255,255,0.04); border: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #e1e1e1; outline: none; width: 100%; font-family: 'Roboto', sans-serif; }
+.form-input:focus { box-shadow: inset 0 0 0 1px rgba(255,195,0,0.4); }
+.form-input.has-error { box-shadow: inset 0 0 0 1px rgba(224,120,114,0.6); }
+.form-input.has-error:focus { box-shadow: inset 0 0 0 1px #E07872; }
+.form-helper { font-size: 0.68rem; color: #8895a8; margin-top: 4px; }
+.form-error { font-size: 0.68rem; color: #E07872; margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+.form-error .mdi { font-size: 14px; }
+.form-input.is-valid { box-shadow: inset 0 0 0 1px rgba(103,189,109,0.5); }
+.form-success { font-size: 0.68rem; color: #67bd6d; margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+.form-success .mdi { font-size: 14px; }
 </style>
 </head>
 <body>
@@ -241,6 +265,8 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
       <a href="#s20"><span class="toc-num">20</span> Modal / Dialog Patterns</a>
       <a href="#s21"><span class="toc-num">21</span> Transition &amp; Animation Tokens</a>
       <a href="#s22"><span class="toc-num">22</span> Loading States</a>
+      <a href="#s23"><span class="toc-num">23</span> Toast / Notification Patterns</a>
+      <a href="#s24"><span class="toc-num">24</span> Form Validation Patterns</a>
     </div>
   </div>
 
@@ -1574,6 +1600,154 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
             </div>
           </div>
           <div class="skeleton" style="height:80px;width:100%;border-radius:8px;margin-top:4px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 23. TOAST / NOTIFICATION PATTERNS ═══ -->
+  <div class="section" id="s23">
+    <div class="section-title">23. Toast / Notification Patterns</div>
+    <div class="section-sub">Toast notifications via <code style="color:#ffc300;">useToast()</code> composable. Four types: success, error, warning, info. All use <code style="color:#ffc300;">showToast({ message, type, timeout })</code>.</div>
+
+    <div class="grid-2">
+      <!-- Live toast examples -->
+      <div class="card">
+        <h4>Toast Types</h4>
+        <div class="flex-col" style="gap:12px;">
+          <div class="toast-demo toast-demo-success">
+            <span class="mdi mdi-check-circle"></span>
+            <span class="toast-demo-msg">Project created successfully</span>
+            <span class="mdi mdi-close toast-demo-close"></span>
+          </div>
+          <div class="toast-demo toast-demo-error">
+            <span class="mdi mdi-alert-circle"></span>
+            <span class="toast-demo-msg">Failed to save settings. Check your connection and try again.</span>
+            <span class="mdi mdi-close toast-demo-close"></span>
+          </div>
+          <div class="toast-demo toast-demo-warning">
+            <span class="mdi mdi-alert"></span>
+            <span class="toast-demo-msg">Connection lost. Attempting to reconnect&hellip;</span>
+            <span class="mdi mdi-close toast-demo-close"></span>
+          </div>
+          <div class="toast-demo toast-demo-info">
+            <span class="mdi mdi-information"></span>
+            <span class="toast-demo-msg">Agent configuration updated</span>
+            <span class="mdi mdi-close toast-demo-close"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- API reference -->
+      <div class="card">
+        <h4>showToast API</h4>
+        <div class="subsection-label">Import</div>
+        <div style="background:#0e1c2d;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#8895a8;line-height:1.7;margin-bottom:14px;">
+          <span style="color:#ffc300;">import</span> <span style="color:#e1e1e1;">{ useToast }</span> <span style="color:#ffc300;">from</span> <span style="color:#67bd6d;">'@/composables/useToast'</span><br>
+          <span style="color:#e1e1e1;">const { showToast } = useToast()</span>
+        </div>
+
+        <div class="subsection-label">Usage Examples</div>
+        <div style="background:#0e1c2d;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#8895a8;line-height:1.7;">
+          <span style="color:#8895a8;">// Success (auto-dismiss, default timeout)</span><br>
+          <span style="color:#e1e1e1;">showToast({</span><br>
+          &nbsp;&nbsp;<span style="color:#6DB3E4;">message:</span> <span style="color:#67bd6d;">'Project created successfully'</span>,<br>
+          &nbsp;&nbsp;<span style="color:#6DB3E4;">type:</span> <span style="color:#67bd6d;">'success'</span><br>
+          <span style="color:#e1e1e1;">})</span><br><br>
+          <span style="color:#8895a8;">// Error with recovery suggestion</span><br>
+          <span style="color:#e1e1e1;">showToast({</span><br>
+          &nbsp;&nbsp;<span style="color:#6DB3E4;">message:</span> <span style="color:#67bd6d;">'Failed to save. Try again.'</span>,<br>
+          &nbsp;&nbsp;<span style="color:#6DB3E4;">type:</span> <span style="color:#67bd6d;">'error'</span>,<br>
+          &nbsp;&nbsp;<span style="color:#6DB3E4;">timeout:</span> <span style="color:#EDBA4A;">8000</span><br>
+          <span style="color:#e1e1e1;">})</span><br><br>
+          <span style="color:#8895a8;">// Warning / Info</span><br>
+          <span style="color:#e1e1e1;">showToast({ message, type: </span><span style="color:#67bd6d;">'warning'</span><span style="color:#e1e1e1;"> })</span><br>
+          <span style="color:#e1e1e1;">showToast({ message, type: </span><span style="color:#67bd6d;">'info'</span><span style="color:#e1e1e1;"> })</span>
+        </div>
+
+        <div class="subsection-label" style="margin-top:14px;">Message Guidelines</div>
+        <table class="demo-table" style="font-size:0.75rem;">
+          <thead><tr><th>Type</th><th>Pattern</th></tr></thead>
+          <tbody>
+            <tr><td style="color:#67bd6d;">success</td><td class="data-mono">"&lt;Entity&gt; &lt;action&gt;ed successfully"</td></tr>
+            <tr><td style="color:#E07872;">error</td><td class="data-mono">"Failed to &lt;action&gt;. &lt;Recovery suggestion&gt;."</td></tr>
+            <tr><td style="color:#EDBA4A;">warning</td><td class="data-mono">Plain language, state what happened</td></tr>
+            <tr><td style="color:#6DB3E4;">info</td><td class="data-mono">Neutral confirmation of state change</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 24. FORM VALIDATION PATTERNS ═══ -->
+  <div class="section" id="s24">
+    <div class="section-title">24. Form Validation Patterns</div>
+    <div class="section-sub">Vuetify form validation using <code style="color:#ffc300;">:rules</code> bindings. Field-specific error messages appear below the input. Use <code style="color:#ffc300;">v-form</code> with <code style="color:#ffc300;">ref</code> for programmatic validation.</div>
+
+    <div class="grid-2">
+      <!-- Visual states -->
+      <div class="card">
+        <h4>Input States</h4>
+
+        <div class="form-field">
+          <label class="form-label">Default (idle)</label>
+          <input class="form-input" type="text" placeholder="Enter project name" readonly>
+          <div class="form-helper">Letters, numbers, and hyphens only</div>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">Focused</label>
+          <input class="form-input" type="text" value="my-project" readonly style="box-shadow: inset 0 0 0 1px rgba(255,195,0,0.4);">
+          <div class="form-helper">Letters, numbers, and hyphens only</div>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">Error</label>
+          <input class="form-input has-error" type="text" value="my project!!" readonly>
+          <div class="form-error"><span class="mdi mdi-alert-circle"></span> Name contains invalid characters. Use letters, numbers, and hyphens only.</div>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">Valid</label>
+          <input class="form-input is-valid" type="text" value="my-project-2" readonly>
+          <div class="form-success"><span class="mdi mdi-check-circle"></span> Name is available</div>
+        </div>
+      </div>
+
+      <!-- Code reference -->
+      <div class="card">
+        <h4>Vuetify Rules Pattern</h4>
+        <div class="subsection-label">Rule Definitions</div>
+        <div style="background:#0e1c2d;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#8895a8;line-height:1.7;margin-bottom:14px;">
+          <span style="color:#ffc300;">const</span> <span style="color:#e1e1e1;">rules = {</span><br>
+          &nbsp;&nbsp;<span style="color:#6DB3E4;">required:</span> <span style="color:#e1e1e1;">(v) =&gt;</span> <span style="color:#e1e1e1;">!!v ||</span> <span style="color:#67bd6d;">'Field is required'</span>,<br>
+          &nbsp;&nbsp;<span style="color:#6DB3E4;">email:</span> <span style="color:#e1e1e1;">(v) =&gt;</span> <span style="color:#e1e1e1;">/.+@.+\..+/.test(v) ||</span> <span style="color:#67bd6d;">'Invalid email'</span>,<br>
+          &nbsp;&nbsp;<span style="color:#6DB3E4;">minLength:</span> <span style="color:#e1e1e1;">(v) =&gt;</span> <span style="color:#e1e1e1;">v.length &gt;= 8 ||</span> <span style="color:#67bd6d;">'Min 8 characters'</span>,<br>
+          <span style="color:#e1e1e1;">}</span>
+        </div>
+
+        <div class="subsection-label">Template Usage</div>
+        <div style="background:#0e1c2d;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#8895a8;line-height:1.7;margin-bottom:14px;">
+          <span style="color:#e1e1e1;">&lt;v-form</span> <span style="color:#ffc300;">ref="formRef"</span><span style="color:#e1e1e1;">&gt;</span><br>
+          &nbsp;&nbsp;<span style="color:#e1e1e1;">&lt;v-text-field</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#ffc300;">v-model="name"</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#ffc300;">label="Project Name"</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#ffc300;">:rules="[rules.required]"</span><br>
+          &nbsp;&nbsp;<span style="color:#e1e1e1;">/&gt;</span><br>
+          &nbsp;&nbsp;<span style="color:#e1e1e1;">&lt;v-text-field</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#ffc300;">v-model="email"</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#ffc300;">label="Email"</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#ffc300;">:rules="[rules.required, rules.email]"</span><br>
+          &nbsp;&nbsp;<span style="color:#e1e1e1;">/&gt;</span><br>
+          <span style="color:#e1e1e1;">&lt;/v-form&gt;</span>
+        </div>
+
+        <div class="subsection-label">Programmatic Validation</div>
+        <div style="background:#0e1c2d;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#8895a8;line-height:1.7;">
+          <span style="color:#ffc300;">const</span> <span style="color:#e1e1e1;">{ valid } =</span> <span style="color:#ffc300;">await</span> <span style="color:#e1e1e1;">formRef.value.validate()</span><br>
+          <span style="color:#ffc300;">if</span> <span style="color:#e1e1e1;">(valid) {</span><br>
+          &nbsp;&nbsp;<span style="color:#8895a8;">// submit form</span><br>
+          <span style="color:#e1e1e1;">}</span>
         </div>
       </div>
     </div>
