@@ -296,7 +296,7 @@ const fetchProjects = async () => {
     }
   } catch (err: any) {
     console.error('[BroadcastPanel] Error fetching projects:', err)
-    showToast('Failed to load projects', 'error')
+    showToast('Failed to load projects. Refresh the page or try again.', 'error')
   } finally {
     loadingProjects.value = false
   }

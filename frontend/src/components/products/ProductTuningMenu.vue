@@ -294,7 +294,7 @@ async function copyPrompt() {
   if (success) {
     showToast({ message: 'Tuning prompt copied to clipboard', type: 'success' })
   } else {
-    showToast({ message: 'Failed to copy to clipboard', type: 'error' })
+    showToast({ message: 'Failed to copy to clipboard — select the text and press Ctrl+C', type: 'error' })
   }
 }
 </script>

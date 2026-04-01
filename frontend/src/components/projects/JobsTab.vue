@@ -547,7 +547,7 @@ async function refreshJobs() {
   } catch (error) {
     console.warn('[JobsTab] Failed to load agent jobs:', error)
     showToast({
-      message: 'Failed to load agent jobs',
+      message: 'Failed to load agent jobs. Refresh the page or try again.',
       type: 'error',
       timeout: 5000,
     })

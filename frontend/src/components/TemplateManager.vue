@@ -773,7 +773,7 @@ const saveTemplateAndPreview = async () => {
   } catch (error) {
     console.error('Failed to save template:', error)
     previewContent.value = ''
-    showToast({ message: error.response?.data?.detail || 'Failed to save template', type: 'error', title: 'Error' })
+    showToast({ message: error.response?.data?.detail || 'Failed to save template. Check your connection and try again.', type: 'error', title: 'Error' })
   } finally {
     saving.value = false
   }
