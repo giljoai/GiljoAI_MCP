@@ -6,7 +6,7 @@
         <div class="agent-tinted-badge mr-2" :style="getAgentBadgeStyle(displayAgent?.agent_name || displayAgent?.agent_display_name)">
           {{ getAgentAbbr(displayAgent?.agent_name || displayAgent?.agent_display_name) }}
         </div>
-        <span style="text-transform: capitalize">{{ displayAgent?.agent_name || displayAgent?.agent_display_name }}</span>&nbsp;- Assigned Job
+        <span class="agent-name-label">{{ displayAgent?.agent_name || displayAgent?.agent_display_name }}</span>&nbsp;- Assigned Job
         <v-spacer></v-spacer>
         <v-btn icon variant="text" aria-label="Close" @click="handleClose">
           <v-icon>mdi-close</v-icon>
@@ -327,5 +327,9 @@ function getAgentAbbr(agentName) {
 
 .pulse-animation {
   animation: pulse 2s ease-in-out infinite;
+}
+
+.agent-name-label {
+  text-transform: capitalize;
 }
 </style>
