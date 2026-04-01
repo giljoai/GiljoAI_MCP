@@ -67,12 +67,10 @@
         class="filter-select"
       />
       <v-btn variant="text" class="filter-clear-btn" @click="clearFilters">Clear Filters</v-btn>
-      <v-spacer />
       <v-btn
         color="primary"
         variant="flat"
         prepend-icon="mdi-plus"
-        class="btn-pill"
         @click="handleNewTask"
       >
         New Task
@@ -839,7 +837,6 @@ onMounted(async () => {
 
 .filter-search {
   flex: 1;
-  max-width: 400px;
 }
 
 .filter-search :deep(.v-field) {
@@ -852,7 +849,8 @@ onMounted(async () => {
 }
 
 .filter-select {
-  max-width: 160px;
+  flex: 0 0 auto;
+  max-width: 140px;
 }
 
 .filter-select :deep(.v-field) {
