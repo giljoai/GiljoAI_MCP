@@ -906,11 +906,11 @@ async function stageAnalysis() {
 
   if (didCopy) {
     analysisPromptCopied.value = true
-    showToast({ message: 'Analysis prompt copied — paste into your AI coding agent', type: 'success', duration: 4000 })
+    showToast({ message: 'Analysis prompt copied — paste into your AI coding agent', type: 'success', timeout: 4000 })
     setTimeout(() => { analysisPromptCopied.value = false }, 3000)
   } else {
     promptFallbackText.value = prompt
-    showToast({ message: 'Clipboard unavailable — copy the prompt manually below', type: 'warning', duration: 5000 })
+    showToast({ message: 'Clipboard unavailable — copy the prompt manually below', type: 'warning', timeout: 5000 })
   }
 
   analysisInProgress.value = true
