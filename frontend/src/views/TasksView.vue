@@ -331,7 +331,7 @@
 
     <!-- Create/Edit Task Dialog -->
     <v-dialog v-model="showTaskDialog" max-width="600" persistent>
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
           <span>{{ editingTask ? 'Edit Task' : 'Create Task' }}</span>
@@ -908,7 +908,7 @@ onMounted(async () => {
 
 /* 0870h: row hover and separators */
 :deep(.v-data-table__tr) {
-  transition: background 0.15s;
+  transition: background $transition-fast;
   cursor: pointer;
 }
 
@@ -1095,7 +1095,7 @@ onMounted(async () => {
   padding: 4px 8px;
   border-radius: $border-radius-sharp;
   display: inline-block;
-  transition: background-color 0.2s ease;
+  transition: background-color $transition-normal ease;
   font-size: 0.72rem;
   color: $color-text-secondary;
 }
@@ -1109,7 +1109,7 @@ onMounted(async () => {
   align-items: center;
   padding: 8px 4px;
   border-radius: $border-radius-sharp;
-  transition: all 0.2s ease;
+  transition: all $transition-normal ease;
   min-height: 48px;
   cursor: pointer;
 }

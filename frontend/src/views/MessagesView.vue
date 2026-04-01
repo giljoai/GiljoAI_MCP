@@ -98,7 +98,7 @@ onMounted(() => {
   font-size: 0.78rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: $transition-all-fast;
   background: transparent;
   color: var(--text-muted);
   border: none;

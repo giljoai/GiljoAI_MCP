@@ -376,7 +376,7 @@ onUnmounted(() => {
 
 .notification-item {
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color $transition-normal ease;
   padding: 12px 16px;
 }
 

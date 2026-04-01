@@ -26,7 +26,7 @@
 
     <!-- Debug Panel Dialog -->
     <v-dialog v-model="showDebugPanel" max-width="800" scrollable>
-      <v-card v-draggable>
+      <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <v-icon start>mdi-bug</v-icon>
           WebSocket Debug Panel
@@ -388,9 +388,10 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/design-tokens' as *;
 .connection-status {
-  transition: all 0.3s ease;
+  transition: all $transition-slow ease;
 }
 
 .connection-status.reconnecting {
