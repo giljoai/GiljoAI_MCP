@@ -18,7 +18,8 @@ const layout = computed(() => {
 })
 </script>
 
-<style>
+<style lang="scss">
+@use '@/styles/design-tokens' as *;
 /* Global styles */
 html,
 body {
@@ -46,7 +47,7 @@ html.no-transition * {
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity $transition-normal ease;
 }
 
 .fade-enter-from,

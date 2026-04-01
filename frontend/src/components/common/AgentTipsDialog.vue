@@ -250,7 +250,7 @@ function downloadTemplate() {
 
 .lab-btn {
   color: rgb(var(--v-theme-primary));
-  transition: opacity 0.2s ease;
+  transition: opacity $transition-normal ease;
 
   &:hover {
     opacity: 0.8;

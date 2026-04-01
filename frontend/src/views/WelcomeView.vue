@@ -557,7 +557,7 @@ onMounted(async () => {
   border-radius: $border-radius-rounded;
   padding: 20px;
   cursor: pointer;
-  transition: all 0.25s;
+  transition: all $transition-normal;
   position: relative;
   overflow: hidden;
   animation: fadeSlideUp 0.45s ease-out both;
@@ -577,7 +577,7 @@ onMounted(async () => {
   height: 2px;
   background: var(--card-accent, rgba(255,255,255,0.10));
   opacity: 0;
-  transition: opacity 0.25s;
+  transition: opacity $transition-normal;
 }
 
 .quick-card:hover::before {
@@ -645,7 +645,7 @@ onMounted(async () => {
   color: #ffc300;
   cursor: pointer;
   opacity: 0.7;
-  transition: opacity 0.2s;
+  transition: opacity $transition-normal;
   text-decoration: none;
 }
 
@@ -664,7 +664,7 @@ onMounted(async () => {
   border-radius: $border-radius-rounded;
   padding: 16px 14px 20px;
   cursor: pointer;
-  transition: all 0.25s;
+  transition: all $transition-normal;
   text-align: center;
   flex: 1;
   min-width: 120px;
@@ -689,7 +689,7 @@ onMounted(async () => {
   place-items: center;
   font-size: 0.78rem;
   font-weight: 700;
-  transition: box-shadow 0.25s;
+  transition: box-shadow $transition-normal;
 }
 
 .empty-avatar {
@@ -736,7 +736,7 @@ onMounted(async () => {
   background: rgb(var(--v-theme-surface));
   border-radius: $border-radius-rounded;
   cursor: pointer;
-  transition: all 0.25s;
+  transition: all $transition-normal;
 }
 
 .setup-cta:hover {

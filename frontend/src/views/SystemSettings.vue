@@ -340,7 +340,7 @@ onMounted(async () => {
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  transition: background $transition-normal, color $transition-normal, box-shadow $transition-normal;
   background: transparent;
   color: var(--text-muted);
   border: none;

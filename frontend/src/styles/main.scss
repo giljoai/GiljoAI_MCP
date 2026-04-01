@@ -178,6 +178,17 @@ body {
   @include table-row-separator;
 }
 
+// Dialog / modal patterns
+.dialog-body-scroll {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.dialog-card {
+  @extend .smooth-border;
+  border-radius: $border-radius-rounded;
+}
+
 // Custom card styles
 .stats-card {
   background: linear-gradient(135deg, $almost-dark-blue 0%, $lighter-dark-blue 100%);
