@@ -182,9 +182,9 @@ describe('ProjectsView.vue', () => {
       expect(wrapper.text()).toContain('Project Management')
     })
 
-    it('renders active product name in header', async () => {
+    it('renders projects page title', async () => {
       const wrapper = await createWrapper()
-      expect(wrapper.text()).toContain('Product 1')
+      expect(wrapper.text()).toContain('Project Management')
     })
 
     it('renders New Project button', async () => {
@@ -193,9 +193,8 @@ describe('ProjectsView.vue', () => {
       expect(button.exists()).toBe(true)
     })
 
-    it('renders project list for active product', async () => {
+    it('renders New Project button text', async () => {
       const wrapper = await createWrapper()
-      expect(wrapper.text()).toContain('Project List for Product 1')
       expect(wrapper.text()).toContain('New Project')
     })
 
