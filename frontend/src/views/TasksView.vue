@@ -70,7 +70,7 @@
     </div>
 
     <!-- Tasks Table (0870h: smooth-border panel) -->
-    <v-card class="task-table-card">
+    <v-card class="task-table-card smooth-border">
       <!-- Table Controls -->
       <v-card-title class="table-header">
         <span class="table-title">Task List</span>
@@ -829,7 +829,6 @@ onMounted(async () => {
   min-height: 600px;
   display: flex;
   flex-direction: column;
-  box-shadow: inset 0 0 0 1px $color-border-subtle !important;
   border: none !important;
   border-radius: $border-radius-rounded !important;
 }
@@ -848,7 +847,7 @@ onMounted(async () => {
 }
 
 .filter-search :deep(.v-field) {
-  box-shadow: inset 0 0 0 1px $color-border-subtle;
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
   border-radius: $border-radius-default;
 }
 
@@ -861,7 +860,7 @@ onMounted(async () => {
 }
 
 .filter-select :deep(.v-field) {
-  box-shadow: inset 0 0 0 1px $color-border-subtle;
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
   border-radius: $border-radius-default;
 }
 
@@ -903,11 +902,7 @@ onMounted(async () => {
 
 /* 0870h: table header cells */
 :deep(.v-data-table__thead th) {
-  font-size: 0.6rem !important;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: $color-text-muted !important;
-  font-weight: 500 !important;
+  @include table-header-label;
   border-bottom: 1px solid $color-border-subtle !important;
 }
 
@@ -922,7 +917,7 @@ onMounted(async () => {
 }
 
 :deep(.v-data-table__td) {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  @include table-row-separator;
   font-size: 0.8rem;
 }
 

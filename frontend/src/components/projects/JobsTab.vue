@@ -1040,11 +1040,7 @@ async function copyToClipboard(text) {
       thead th {
         text-align: left;
         padding: 10px 14px;
-        font-size: 0.6rem;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: $color-text-muted;
-        font-weight: 500;
+        @include table-header-label;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         background: $elevation-raised;
         white-space: nowrap;
@@ -1085,7 +1081,7 @@ async function copyToClipboard(text) {
       tbody td {
         padding: 12px 14px;
         font-size: 0.78rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        @include table-row-separator;
         vertical-align: middle;
 
         &.phase-cell {
