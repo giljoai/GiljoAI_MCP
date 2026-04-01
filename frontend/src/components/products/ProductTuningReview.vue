@@ -71,7 +71,7 @@
             <div class="mb-4">
               <div class="text-caption font-weight-bold mb-1 text-muted-a11y">Current Value</div>
               <v-card variant="flat" class="pa-3 smooth-border review-value-card">
-                <div class="text-body-2" style="white-space: pre-wrap;">
+                <div class="text-body-2 text-pre-wrap">
                   {{ getSectionData(sectionKey).current_summary || 'No current value' }}
                 </div>
               </v-card>
@@ -80,7 +80,7 @@
             <!-- Evidence -->
             <div v-if="getSectionData(sectionKey).evidence" class="mb-4">
               <div class="text-caption font-weight-bold mb-1 text-muted-a11y">Evidence</div>
-              <div class="text-body-2 text-muted-a11y" style="white-space: pre-wrap">
+              <div class="text-body-2 text-muted-a11y text-pre-wrap">
                 {{ getSectionData(sectionKey).evidence }}
               </div>
             </div>
@@ -129,7 +129,7 @@
                 ]"
                 :style="hasValueChanged(sectionKey) ? '--smooth-border-color: #EDBA4A' : ''"
               >
-                <div class="text-body-2" style="white-space: pre-wrap;">
+                <div class="text-body-2 text-pre-wrap">
                   {{ getSectionData(sectionKey).proposed_value || 'No change proposed' }}
                 </div>
               </v-card>
@@ -138,7 +138,7 @@
             <!-- Reasoning -->
             <div v-if="getSectionData(sectionKey).reasoning" class="mb-4">
               <div class="text-caption font-weight-bold mb-1 text-muted-a11y">Reasoning</div>
-              <div class="text-body-2 text-muted-a11y" style="white-space: pre-wrap">
+              <div class="text-body-2 text-muted-a11y text-pre-wrap">
                 {{ getSectionData(sectionKey).reasoning }}
               </div>
             </div>

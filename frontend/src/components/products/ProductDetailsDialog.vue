@@ -399,7 +399,7 @@
           <v-icon size="14" class="mr-1">mdi-counter</v-icon>
           ~{{ formatTokens(summaryTokens) }} tokens
         </div>
-        <div class="text-body-2" style="white-space: pre-wrap;">{{ summaryContent }}</div>
+        <div class="text-body-2 text-pre-wrap">{{ summaryContent }}</div>
       </v-card-text>
 
       <v-divider></v-divider>
@@ -436,7 +436,7 @@
             Hash: {{ consolidatedSummaryHash.substring(0, 12) }}...
           </span>
         </div>
-        <div class="text-body-2" style="white-space: pre-wrap;">{{ consolidatedSummaryContent }}</div>
+        <div class="text-body-2 text-pre-wrap">{{ consolidatedSummaryContent }}</div>
       </v-card-text>
 
       <v-divider></v-divider>

@@ -50,7 +50,7 @@
           <div v-if="selectedMemory.timestamp" class="text-caption mb-4" style="color: var(--text-muted)">
             {{ new Date(selectedMemory.timestamp).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) }}
           </div>
-          <div class="text-body-2" style="white-space: pre-wrap; line-height: 1.6;">{{ selectedMemory.summary }}</div>
+          <div class="text-body-2 text-pre-wrap" style="line-height: 1.6;">{{ selectedMemory.summary }}</div>
         </v-card-text>
         <v-divider v-if="selectedMemory.project_id" />
         <v-card-actions v-if="selectedMemory.project_id">
