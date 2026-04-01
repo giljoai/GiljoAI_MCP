@@ -13,6 +13,7 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: #182739; }
 ::-webkit-scrollbar-thumb { background: #315074; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #8f97b7; }
 
 .page { max-width: 1400px; margin: 0 auto; padding: 0 32px 64px; }
 
@@ -153,6 +154,55 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
 .a11y-label.do { color: #67bd6d; }
 .a11y-label.dont { color: #E07872; }
 .a11y-code { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; background: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 4px; }
+
+/* ── Naming / Terminology ── */
+.term-card { background: #182739; border-radius: 16px; padding: 24px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); margin-bottom: 20px; }
+.term-card h4 { font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 600; color: #ffc300; margin-bottom: 14px; }
+.term-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.term-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.term-table td:first-child { color: #8895a8; width: 35%; }
+.term-retired { margin-top: 14px; padding: 12px 16px; background: rgba(198,41,140,0.08); border-left: 3px solid #c6298c; border-radius: 0 8px 8px 0; font-size: 0.78rem; }
+.term-retired strong { color: #c6298c; }
+.term-retired span { color: #8895a8; }
+
+/* ── Scrollbar demos ── */
+.scroll-demo-box { height: 160px; overflow-y: auto; border-radius: 8px; padding: 14px; background: #0e1c2d; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); font-size: 0.72rem; color: #a3aac4; line-height: 1.7; }
+.scroll-demo-box.scrollbar-standard-demo::-webkit-scrollbar { width: 8px; }
+.scroll-demo-box.scrollbar-standard-demo::-webkit-scrollbar-track { background: #182739; border-radius: 4px; }
+.scroll-demo-box.scrollbar-standard-demo::-webkit-scrollbar-thumb { background: #315074; border-radius: 4px; }
+.scroll-demo-box.scrollbar-standard-demo::-webkit-scrollbar-thumb:hover { background: #8f97b7; }
+.scroll-demo-box.scrollbar-thin-demo::-webkit-scrollbar { width: 6px; }
+.scroll-demo-box.scrollbar-thin-demo::-webkit-scrollbar-track { background: transparent; }
+.scroll-demo-box.scrollbar-thin-demo::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+.scroll-demo-box.scrollbar-thin-demo::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+.scrollbar-swatch { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.scrollbar-swatch-bar { width: 8px; height: 32px; border-radius: 4px; }
+
+/* ── Dialog demos ── */
+.dialog-mockup { background: rgba(0,0,0,0.4); border-radius: 16px; padding: 32px; display: flex; justify-content: center; align-items: flex-start; }
+.dialog-card-demo { background: #1e3147; border-radius: 16px; width: 100%; max-width: 480px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14), 0 16px 48px rgba(0,0,0,0.4); }
+.dialog-card-demo .dialog-header { padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 0.92rem; }
+.dialog-card-demo .dialog-body { padding: 0 20px 20px; max-height: 180px; overflow-y: auto; font-size: 0.78rem; color: #a3aac4; line-height: 1.6; }
+.dialog-card-demo .dialog-body::-webkit-scrollbar { width: 6px; }
+.dialog-card-demo .dialog-body::-webkit-scrollbar-track { background: transparent; }
+.dialog-card-demo .dialog-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+.dialog-card-demo .dialog-footer { padding: 14px 20px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid rgba(255,255,255,0.06); }
+
+/* ── Transition demos ── */
+.transition-demo-box { width: 100%; height: 48px; border-radius: 8px; background: #182739; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); display: flex; align-items: center; justify-content: center; font-size: 0.78rem; color: #a3aac4; cursor: pointer; }
+.transition-demo-box.t-fast { transition: all 0.15s ease; }
+.transition-demo-box.t-normal { transition: all 0.25s ease; }
+.transition-demo-box.t-slow { transition: all 0.4s ease; }
+.transition-demo-box:hover { background: rgba(255,195,0,0.12); color: #ffc300; box-shadow: inset 0 0 0 1px rgba(255,195,0,0.3); }
+
+/* ── Loading demos ── */
+.loading-bar-track { width: 100%; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06); overflow: hidden; position: relative; }
+.loading-bar-fill { height: 100%; border-radius: 2px; background: #ffc300; position: absolute; animation: indeterminate 1.5s infinite; }
+@keyframes indeterminate { 0% { left: -40%; width: 40%; } 50% { left: 30%; width: 40%; } 100% { left: 100%; width: 40%; } }
+.loading-circle { width: 40px; height: 40px; border: 3px solid rgba(255,195,0,0.2); border-top-color: #ffc300; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.skeleton { border-radius: 6px; background: linear-gradient(90deg, #1e3147 25%, #243b53 50%, #1e3147 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 </style>
 </head>
 <body>
@@ -186,6 +236,11 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
       <a href="#s15"><span class="toc-num">15</span> Brand &amp; Logos</a>
       <a href="#s16"><span class="toc-num">16</span> Icon Library</a>
       <a href="#s17"><span class="toc-num">17</span> Accessibility</a>
+      <a href="#s18"><span class="toc-num">18</span> Naming &amp; Terminology</a>
+      <a href="#s19"><span class="toc-num">19</span> Scrollbar Styles</a>
+      <a href="#s20"><span class="toc-num">20</span> Modal / Dialog Patterns</a>
+      <a href="#s21"><span class="toc-num">21</span> Transition &amp; Animation Tokens</a>
+      <a href="#s22"><span class="toc-num">22</span> Loading States</a>
     </div>
   </div>
 
@@ -934,12 +989,6 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
           <span class="token-value">Primary &mdash; yellow + white</span>
         </div>
         <div class="card-elevated" style="text-align:center;padding:24px;">
-          <img src="./public/giljologo_full.png" alt="GiljoAI Full Logo" style="height:64px;margin-bottom:12px;" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-          <div style="display:none;color:#E07872;font-size:0.72rem;">[image not found]</div>
-          <span class="token-label">giljologo_full.png</span>
-          <span class="token-value">Full logo with text</span>
-        </div>
-        <div class="card-elevated" style="text-align:center;padding:24px;">
           <img src="./public/giljo_logo.png" alt="GiljoAI Logo" style="height:64px;margin-bottom:12px;" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
           <div style="display:none;color:#E07872;font-size:0.72rem;">[image not found]</div>
           <span class="token-label">giljo_logo.png</span>
@@ -964,16 +1013,6 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
           <span class="token-value">Blinking / closed</span>
         </div>
         <div class="card-elevated" style="text-align:center;padding:16px;">
-          <img src="./public/icons/Giljo_gray_Face.svg" alt="Gray Face" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
-          <span class="token-label">Giljo_gray_Face.svg</span>
-          <span class="token-value">Inactive / idle</span>
-        </div>
-        <div class="card-elevated" style="text-align:center;padding:16px;">
-          <img src="./public/icons/Giljo_gray_Face_happy.svg" alt="Gray Happy" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
-          <span class="token-label">Giljo_gray_Face_happy.svg</span>
-          <span class="token-value">Happy expression</span>
-        </div>
-        <div class="card-elevated" style="text-align:center;padding:16px;">
           <img src="./public/icons/Giljo_gray_Face_sleeping.svg" alt="Gray Sleeping" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
           <span class="token-label">Giljo_gray_Face_sleeping.svg</span>
           <span class="token-value">Sleeping / offline</span>
@@ -995,31 +1034,6 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
           <img src="./public/icons/Giljo_YW.svg" alt="YW" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
           <span class="token-label">Giljo_YW.svg</span>
           <span class="token-value">Yellow body, White face</span>
-        </div>
-        <div class="card-elevated" style="text-align:center;padding:16px;">
-          <img src="./public/icons/Giljo_BY.svg" alt="BY" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
-          <span class="token-label">Giljo_BY.svg</span>
-          <span class="token-value">Blue body, Yellow face</span>
-        </div>
-        <div class="card-elevated" style="text-align:center;padding:16px;">
-          <img src="./public/icons/Giljo_BB.svg" alt="BB" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
-          <span class="token-label">Giljo_BB.svg</span>
-          <span class="token-value">Blue body, Blue face</span>
-        </div>
-        <div class="card-elevated" style="text-align:center;padding:16px;">
-          <img src="./public/icons/Giljo_WB.svg" alt="WB" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
-          <span class="token-label">Giljo_WB.svg</span>
-          <span class="token-value">White body, Blue face</span>
-        </div>
-        <div class="card-elevated" style="text-align:center;padding:16px;">
-          <img src="./public/icons/Giljo_YY.svg" alt="YY" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
-          <span class="token-label">Giljo_YY.svg</span>
-          <span class="token-value">Yellow body, Yellow face</span>
-        </div>
-        <div class="card-elevated" style="text-align:center;padding:16px;">
-          <img src="./public/icons/Giljo_W.svg" alt="W" style="height:48px;margin-bottom:8px;" onerror="this.alt='[missing]'">
-          <span class="token-label">Giljo_W.svg</span>
-          <span class="token-value">White mono</span>
         </div>
       </div>
     </div>
@@ -1228,6 +1242,338 @@ body { background: #0e1c2d; color: #e1e1e1; font-family: "Roboto", sans-serif; f
             <tr><td style="padding:3px 0;color:#ffc300;">Brand #ffc300</td><td style="padding:3px 0;text-align:right;"><span class="wcag-badge pass">10.54:1</span></td></tr>
             <tr><td style="padding:3px 0;color:#AC80CC;">Reviewer #AC80CC</td><td style="padding:3px 0;text-align:right;"><span class="wcag-badge pass">4.84:1 (min)</span></td></tr>
           </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 18. NAMING & TERMINOLOGY ═══ -->
+  <div class="section" id="s18">
+    <div class="section-title">18. Naming &amp; Terminology</div>
+    <div class="section-sub">Mandatory naming conventions for all UI text, tooltips, descriptions, and documentation.</div>
+
+    <div class="term-card">
+      <h4>Product Name</h4>
+      <table class="term-table">
+        <tr><td>Product name (all contexts)</td><td><strong>GiljoAI MCP</strong></td></tr>
+        <tr><td>Company / brand</td><td><strong>GiljoAI</strong></td></tr>
+        <tr><td>Trademark</td><td><strong>GILJO&trade;</strong></td></tr>
+        <tr><td>LICENSE file only</td><td>GiljoAI MCP Coding Orchestrator</td></tr>
+        <tr><td>Informal shorthand (after first mention)</td><td>the MCP server <span style="color:#8895a8;">(lowercase "server")</span></td></tr>
+      </table>
+      <div class="term-retired">
+        <strong>Retired forms &mdash; never use:</strong>
+        <span> GiljoAI MCP Coding Orchestrator (except LICENSE) &bull; GiljoAI Orchestrator &bull; Giljo MCP &bull; MCP Orchestrator</span>
+      </div>
+    </div>
+
+    <div class="term-card">
+      <h4>Terminology</h4>
+      <table class="term-table">
+        <tr><td style="color:#67bd6d;">Standard term</td><td><strong>AI coding agents</strong> <span style="color:#8895a8;">(or "AI coding agent" singular)</span></td></tr>
+        <tr><td>Primary functional descriptor</td><td><strong>context engineering platform</strong></td></tr>
+        <tr><td>Technical clarification only</td><td><strong>passive orchestrator</strong> <span style="color:#8895a8;">(where no-AI-inference distinction matters)</span></td></tr>
+      </table>
+      <div class="term-retired">
+        <strong>Retired terms &mdash; never use:</strong>
+        <span> CLI tool/tools &bull; coding tool/tools &bull; AI tool/tools &bull; CLI agent/agents &bull; agentic CLI &bull; AI coding tool/tools &bull; passive orchestration platform &bull; persistent context layer</span>
+      </div>
+    </div>
+
+    <div class="term-card">
+      <h4>Footer Standard</h4>
+      <div style="background:#0e1c2d;padding:16px;border-radius:8px;text-align:center;color:#8895a8;font-size:0.78rem;">
+        &copy; 2026 GiljoAI LLC. GILJO&trade; is a trademark of GiljoAI LLC. Source-available under GiljoAI Community License.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 19. SCROLLBAR STYLES ═══ -->
+  <div class="section" id="s19">
+    <div class="section-title">19. Scrollbar Styles</div>
+    <div class="section-sub">Global scrollbar classes from main.scss. Two variants: <code style="color:#ffc300;">.scrollbar-standard</code> (8px, design-token colors) and <code style="color:#ffc300;">.scrollbar-thin</code> (6px, transparent track, tinted thumb). Hover: thumb lightens on mouseover.</div>
+
+    <div class="grid-2">
+      <!-- Token reference -->
+      <div class="card">
+        <h4>Scrollbar Color Tokens</h4>
+        <div class="scrollbar-swatch">
+          <div class="scrollbar-swatch-bar" style="background:#182739;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10);"></div>
+          <div><div class="token-name">Track (global)</div><div class="token-value">#182739</div></div>
+        </div>
+        <div class="scrollbar-swatch">
+          <div class="scrollbar-swatch-bar" style="background:#315074;"></div>
+          <div><div class="token-name">Thumb (global)</div><div class="token-value">#315074</div></div>
+        </div>
+        <div class="scrollbar-swatch">
+          <div class="scrollbar-swatch-bar" style="background:#8f97b7;"></div>
+          <div><div class="token-name">Thumb :hover (global)</div><div class="token-value">#8f97b7</div></div>
+        </div>
+
+        <div class="subsection-label" style="margin-top:20px;">Design Token Values (main.scss classes)</div>
+        <div class="scrollbar-swatch">
+          <div class="scrollbar-swatch-bar" style="background:#182739;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10);"></div>
+          <div><div class="token-name">.scrollbar-standard track</div><div class="token-value">$color-scrollbar-track-background: #182739</div></div>
+        </div>
+        <div class="scrollbar-swatch">
+          <div class="scrollbar-swatch-bar" style="background:#315074;"></div>
+          <div><div class="token-name">.scrollbar-standard thumb</div><div class="token-value">$color-scrollbar-thumb-background: #315074</div></div>
+        </div>
+        <div class="scrollbar-swatch">
+          <div class="scrollbar-swatch-bar" style="background:#8f97b7;"></div>
+          <div><div class="token-name">.scrollbar-standard thumb:hover</div><div class="token-value">$color-scrollbar-thumb-hover-background: #8f97b7</div></div>
+        </div>
+      </div>
+
+      <!-- Class reference table -->
+      <div class="card">
+        <h4>Class Reference</h4>
+        <table class="demo-table">
+          <thead><tr><th>Class</th><th>Width</th><th>Track</th><th>Thumb</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="a11y-code">.scrollbar-standard</span></td>
+              <td class="data-mono">8px</td>
+              <td class="data-mono">rgba(0,0,0,0.2)</td>
+              <td class="data-mono">rgba(255,255,255,0.2)</td>
+            </tr>
+            <tr>
+              <td><span class="a11y-code">.scrollbar-thin</span></td>
+              <td class="data-mono">6px</td>
+              <td class="data-mono">transparent</td>
+              <td class="data-mono">rgba(on-surface,0.2)</td>
+            </tr>
+            <tr>
+              <td><span class="a11y-code">::-webkit-scrollbar</span> (global)</td>
+              <td class="data-mono">8px</td>
+              <td class="data-mono">#182739</td>
+              <td class="data-mono">#315074</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:12px;font-size:0.72rem;color:#8895a8;">Firefox: <code style="color:#ffc300;">scrollbar-width: thin; scrollbar-color: thumb track;</code></div>
+      </div>
+    </div>
+
+    <!-- Live demos -->
+    <div class="subsection-label" style="margin-top:20px;">Live Demos</div>
+    <div class="grid-2">
+      <div class="card">
+        <h4>.scrollbar-standard (8px)</h4>
+        <div class="scroll-demo-box scrollbar-standard-demo">
+          Scrollbar standard demo content. Scroll down to see the 8px scrollbar with design-token colors.<br><br>
+          The track uses <code>rgba(0,0,0,0.2)</code> and the thumb uses <code>rgba(255,255,255,0.2)</code>.<br><br>
+          On hover, the thumb brightens to <code>rgba(255,255,255,0.3)</code>.<br><br>
+          This variant is used for panel content areas, description panels, and mission text blocks.<br><br>
+          It works with Firefox via <code>scrollbar-width: thin</code> and <code>scrollbar-color</code>.<br><br>
+          Additional filler text to ensure scrollable area. The scrollbar should be visible on the right side of this box.<br><br>
+          More content to demonstrate scrolling behavior with the standard scrollbar pattern.
+        </div>
+      </div>
+      <div class="card">
+        <h4>.scrollbar-thin (6px)</h4>
+        <div class="scroll-demo-box scrollbar-thin-demo">
+          Scrollbar thin demo content. Scroll down to see the 6px scrollbar with transparent track.<br><br>
+          The track is <code>transparent</code> and the thumb uses <code>rgba(on-surface, 0.2)</code>.<br><br>
+          On hover, the thumb brightens to <code>rgba(on-surface, 0.3)</code>.<br><br>
+          This variant is used for notification dropdowns, compact lists, and sidebar panels.<br><br>
+          It provides a minimal, unobtrusive scrollbar that blends with the content area.<br><br>
+          Additional filler text to ensure scrollable area. The thin scrollbar should be barely visible.<br><br>
+          More content to demonstrate the thin scrollbar pattern.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 20. MODAL / DIALOG PATTERNS ═══ -->
+  <div class="section" id="s20">
+    <div class="section-title">20. Modal / Dialog Patterns</div>
+    <div class="section-sub">Dialog patterns from main.scss: <code style="color:#ffc300;">.dialog-card</code> (smooth-border + border-radius: 16px) and <code style="color:#ffc300;">.dialog-body-scroll</code> (max-height: 70vh, overflow-y: auto).</div>
+
+    <div class="grid-2">
+      <!-- Class reference -->
+      <div class="card">
+        <h4>Dialog Classes</h4>
+        <table class="demo-table">
+          <thead><tr><th>Class</th><th>Properties</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="a11y-code">.dialog-card</span></td>
+              <td class="data-mono">@extend .smooth-border; border-radius: 16px;</td>
+            </tr>
+            <tr>
+              <td><span class="a11y-code">.dialog-body-scroll</span></td>
+              <td class="data-mono">max-height: 70vh; overflow-y: auto;</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="subsection-label" style="margin-top:16px;">Usage Pattern (Vue)</div>
+        <div style="background:#0e1c2d;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#8895a8;line-height:1.7;">
+          <span style="color:#8895a8;">&lt;!-- BaseDialog.vue pattern --&gt;</span><br>
+          <span style="color:#e1e1e1;">&lt;v-dialog&gt;</span><br>
+          &nbsp;&nbsp;<span style="color:#e1e1e1;">&lt;v-card</span> <span style="color:#ffc300;">class="dialog-card"</span><span style="color:#e1e1e1;">&gt;</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#e1e1e1;">&lt;v-card-title&gt;</span>...<span style="color:#e1e1e1;">&lt;/v-card-title&gt;</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#e1e1e1;">&lt;v-card-text</span> <span style="color:#ffc300;">class="dialog-body-scroll"</span><span style="color:#e1e1e1;">&gt;</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8895a8;">&lt;!-- scrollable content --&gt;</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#e1e1e1;">&lt;/v-card-text&gt;</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#e1e1e1;">&lt;v-card-actions&gt;</span>...<span style="color:#e1e1e1;">&lt;/v-card-actions&gt;</span><br>
+          &nbsp;&nbsp;<span style="color:#e1e1e1;">&lt;/v-card&gt;</span><br>
+          <span style="color:#e1e1e1;">&lt;/v-dialog&gt;</span>
+        </div>
+      </div>
+
+      <!-- Live mockup -->
+      <div class="card">
+        <h4>Dialog Mockup</h4>
+        <div class="dialog-mockup">
+          <div class="dialog-card-demo">
+            <div class="dialog-header">
+              <span><span class="mdi mdi-alert-circle" style="color:#ffc300;margin-right:6px;"></span>Confirm Action</span>
+              <span class="mdi mdi-close" style="color:#8895a8;cursor:pointer;font-size:18px;"></span>
+            </div>
+            <div class="dialog-body">
+              This is a dialog with <code>.dialog-body-scroll</code> applied. When the content exceeds the max-height of 70vh, a scrollbar appears automatically.<br><br>
+              The card uses <code>.dialog-card</code> which applies smooth-border (box-shadow inset) and border-radius: 16px. No CSS border is used on the rounded surface.<br><br>
+              Additional content to demonstrate body scroll behavior in a constrained dialog.<br><br>
+              The footer stays pinned at the bottom while the body scrolls independently.
+            </div>
+            <div class="dialog-footer">
+              <button class="btn btn-secondary" style="padding:6px 16px;font-size:0.75rem;">Cancel</button>
+              <button class="btn btn-primary" style="padding:6px 16px;font-size:0.75rem;">Confirm</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 21. TRANSITION & ANIMATION TOKENS ═══ -->
+  <div class="section" id="s21">
+    <div class="section-title">21. Transition &amp; Animation Tokens</div>
+    <div class="section-sub">Duration primitives from design-tokens.scss. Use SCSS variables for consistent motion across the app.</div>
+
+    <div class="grid-2">
+      <!-- Token table -->
+      <div class="card">
+        <h4>Duration Primitives</h4>
+        <table class="demo-table">
+          <thead><tr><th>Token</th><th>Value</th><th>Use Case</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="a11y-code">$transition-fast</span></td>
+              <td class="data-mono">0.15s</td>
+              <td style="font-size:0.72rem;color:#a3aac4;">Hover states, focus rings, micro-interactions</td>
+            </tr>
+            <tr>
+              <td><span class="a11y-code">$transition-normal</span></td>
+              <td class="data-mono">0.25s</td>
+              <td style="font-size:0.72rem;color:#a3aac4;">Panel transitions, card transforms, route fades</td>
+            </tr>
+            <tr>
+              <td><span class="a11y-code">$transition-slow</span></td>
+              <td class="data-mono">0.4s</td>
+              <td style="font-size:0.72rem;color:#a3aac4;">Toast enter/leave, modal overlays, page-level</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="subsection-label" style="margin-top:16px;">Composite Tokens</div>
+        <table class="demo-table">
+          <thead><tr><th>Token</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="a11y-code">$transition-hover</span></td>
+              <td class="data-mono">background 0.15s, color 0.15s</td>
+            </tr>
+            <tr>
+              <td><span class="a11y-code">$transition-transform</span></td>
+              <td class="data-mono">transform 0.25s ease</td>
+            </tr>
+            <tr>
+              <td><span class="a11y-code">$transition-all-fast</span></td>
+              <td class="data-mono">all 0.15s ease</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Live hover demos -->
+      <div class="card">
+        <h4>Hover Timing Demos</h4>
+        <div class="section-sub" style="margin-bottom:12px;">Hover each box to see the transition speed.</div>
+        <div class="flex-col" style="gap:12px;">
+          <div class="transition-demo-box t-fast">
+            <span><span class="a11y-code">$transition-fast</span> &mdash; 0.15s &mdash; hover me</span>
+          </div>
+          <div class="transition-demo-box t-normal">
+            <span><span class="a11y-code">$transition-normal</span> &mdash; 0.25s &mdash; hover me</span>
+          </div>
+          <div class="transition-demo-box t-slow">
+            <span><span class="a11y-code">$transition-slow</span> &mdash; 0.4s &mdash; hover me</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 22. LOADING STATES ═══ -->
+  <div class="section" id="s22">
+    <div class="section-title">22. Loading States</div>
+    <div class="section-sub">Standard loading indicators: indeterminate progress bar, circular spinner, and skeleton placeholders.</div>
+
+    <div class="grid-3">
+      <!-- Progress Linear -->
+      <div class="card">
+        <h4>Progress Linear (indeterminate)</h4>
+        <div class="section-sub" style="margin-bottom:12px;">Vuetify: <code style="color:#ffc300;">&lt;v-progress-linear indeterminate color="primary" /&gt;</code></div>
+        <div class="loading-bar-track">
+          <div class="loading-bar-fill"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <div class="loading-bar-track" style="height:2px;">
+            <div class="loading-bar-fill" style="height:2px;"></div>
+          </div>
+          <div style="font-size:0.68rem;color:#8895a8;margin-top:6px;">Thin variant (2px) for table headers</div>
+        </div>
+      </div>
+
+      <!-- Progress Circular -->
+      <div class="card" style="text-align:center;">
+        <h4 style="text-align:left;">Progress Circular</h4>
+        <div class="section-sub" style="margin-bottom:12px;text-align:left;">Vuetify: <code style="color:#ffc300;">&lt;v-progress-circular indeterminate color="primary" /&gt;</code></div>
+        <div style="display:flex;justify-content:center;gap:24px;align-items:center;">
+          <div>
+            <div class="loading-circle" style="width:24px;height:24px;border-width:2px;"></div>
+            <div style="font-size:0.62rem;color:#8895a8;margin-top:6px;">size="24"</div>
+          </div>
+          <div>
+            <div class="loading-circle"></div>
+            <div style="font-size:0.62rem;color:#8895a8;margin-top:6px;">size="40"</div>
+          </div>
+          <div>
+            <div class="loading-circle" style="width:64px;height:64px;border-width:4px;"></div>
+            <div style="font-size:0.62rem;color:#8895a8;margin-top:6px;">size="64"</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skeleton Loaders -->
+      <div class="card">
+        <h4>Skeleton Loaders</h4>
+        <div class="section-sub" style="margin-bottom:12px;">Vuetify: <code style="color:#ffc300;">&lt;v-skeleton-loader type="card" /&gt;</code></div>
+        <div class="flex-col" style="gap:10px;">
+          <div class="skeleton" style="height:14px;width:70%;"></div>
+          <div class="skeleton" style="height:14px;width:100%;"></div>
+          <div class="skeleton" style="height:14px;width:85%;"></div>
+          <div style="display:flex;gap:10px;margin-top:8px;">
+            <div class="skeleton" style="width:40px;height:40px;border-radius:8px;"></div>
+            <div class="flex-col" style="gap:6px;flex:1;">
+              <div class="skeleton" style="height:12px;width:60%;"></div>
+              <div class="skeleton" style="height:12px;width:40%;"></div>
+            </div>
+          </div>
+          <div class="skeleton" style="height:80px;width:100%;border-radius:8px;margin-top:4px;"></div>
         </div>
       </div>
     </div>
