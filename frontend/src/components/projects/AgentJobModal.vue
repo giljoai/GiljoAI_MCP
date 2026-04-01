@@ -27,7 +27,7 @@
       <!-- Tabs -->
       <div class="tab-pills px-4 py-2">
         <button
-          class="pill-btn"
+          class="pill-btn smooth-border"
           :class="{ active: activeTab === 'mission' }"
           data-test="job-tab-mission"
           @click="activeTab = 'mission'"
@@ -36,7 +36,7 @@
           Mission
         </button>
         <button
-          class="pill-btn"
+          class="pill-btn smooth-border"
           :class="{ active: activeTab === 'plan' }"
           data-test="job-tab-plan"
           @click="activeTab = 'plan'"
@@ -241,12 +241,12 @@ function getAgentAbbr(agentName) {
   background: transparent;
   color: var(--text-muted);
   border: none;
-  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.15);
+  --smooth-border-color: rgba(var(--v-theme-on-surface), 0.15);
 }
 
 .pill-btn:hover {
   color: var(--text-secondary);
-  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.25);
+  --smooth-border-color: rgba(var(--v-theme-on-surface), 0.25);
 }
 
 .pill-btn.active {
