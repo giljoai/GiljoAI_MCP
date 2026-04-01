@@ -72,7 +72,7 @@ async function copyToClipboard() {
     setTimeout(() => {
       copySuccess.value = false
     }, 2000)
-    showToast({ message: 'Configuration copied to clipboard!', type: 'success' })
+    showToast({ message: 'Configuration copied to clipboard', type: 'success' })
   } else {
     showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
   }

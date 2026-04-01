@@ -149,7 +149,7 @@ async function copyRetirementPrompt() {
   const success = await clipboardCopy(props.retirementPrompt)
   if (success) {
     step1Done.value = true
-    showToast({ message: 'Retirement prompt copied!', type: 'success' })
+    showToast({ message: 'Retirement prompt copied to clipboard', type: 'success' })
   } else {
     showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
   }
@@ -159,7 +159,7 @@ async function copyContinuationPrompt() {
   const success = await clipboardCopy(props.continuationPrompt)
   if (success) {
     step2Done.value = true
-    showToast({ message: 'Continuation prompt copied!', type: 'success' })
+    showToast({ message: 'Continuation prompt copied to clipboard', type: 'success' })
   } else {
     showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
   }

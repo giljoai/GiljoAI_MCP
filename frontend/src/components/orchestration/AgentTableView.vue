@@ -198,7 +198,7 @@ function handleViewMessages(job) {
  */
 function handleHandOver(event) {
   if (event.success) {
-    showToast({ message: event.message || 'Session refreshed! Continuation prompt copied to clipboard.', type: 'success' })
+    showToast({ message: event.message || 'Session refreshed — continuation prompt copied to clipboard', type: 'success' })
   } else {
     console.error('[AgentTableView] Session refresh failed:', event.error)
     showToast({ message: event.error || 'Failed to refresh session. Try again or reload the page.', type: 'error' })
@@ -223,7 +223,7 @@ async function handleCopyPrompt(agent) {
     const success = await copy(prompt)
 
     if (success) {
-      showToast({ message: 'Prompt copied to clipboard!', type: 'success' })
+      showToast({ message: 'Prompt copied to clipboard', type: 'success' })
     } else {
       throw new Error('Clipboard copy failed')
     }
