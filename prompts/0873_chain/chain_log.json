@@ -354,8 +354,8 @@
       "handover": "handovers/0873_style_centralization_sweep.md",
       "handover_section": "### 0873h",
       "color": "#FF9800",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-03-31",
       "completed_at": null,
       "agent_types": [
         "frontend-tester"
