@@ -260,7 +260,7 @@
             <div class="d-flex justify-center">
               <button
                 v-if="item.status !== 'completed' && !item.converted_project_id"
-                class="row-action convert-action"
+                class="row-action icon-interactive convert-action"
                 aria-label="Convert to project"
                 @click.stop="convertTaskToProject(item)"
               >
@@ -1027,24 +1027,15 @@ onMounted(async () => {
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* 0870h: row action buttons */
+/* 0870h: row action buttons — color/hover via global .icon-interactive */
 .row-action {
   width: 30px;
   height: 30px;
   border: none;
-  border-radius: 6px;
   background: transparent;
-  color: $color-text-muted;
-  cursor: pointer;
   display: inline-grid;
   place-items: center;
   font-size: 16px;
-  transition: all 0.15s;
-}
-
-.row-action:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: $color-brand-yellow;
 }
 
 .convert-action {
