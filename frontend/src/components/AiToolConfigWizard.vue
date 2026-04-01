@@ -32,7 +32,7 @@
           </div>
         </v-radio-group>
 
-        <v-divider class="mb-4" style="opacity: 0.3" />
+        <v-divider class="mb-4 opacity-30" />
 
         <!-- Server Info (centered, inline edit) -->
         <div class="d-flex align-center justify-center mb-1">
@@ -74,7 +74,7 @@
           </div>
         </div>
 
-        <v-divider class="mb-4 mt-2" style="opacity: 0.3" />
+        <v-divider class="mb-4 mt-2 opacity-30" />
 
         <!-- Error Alert -->
         <v-alert v-if="errorMsg" type="error" variant="tonal" density="compact" class="mb-3" closable @click:close="errorMsg = ''">

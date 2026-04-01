@@ -232,6 +232,24 @@ body {
   white-space: pre-wrap;
 }
 
+.text-pre-line {
+  white-space: pre-line;
+}
+
+// Typography utility classes
+.font-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+// Opacity utility classes
+.opacity-30 {
+  opacity: 0.3;
+}
+
+.opacity-80 {
+  opacity: 0.8;
+}
+
 // Dialog / modal patterns
 .dialog-body-scroll {
   max-height: 70vh;
