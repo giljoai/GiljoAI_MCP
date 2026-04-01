@@ -56,12 +56,12 @@ defineEmits(['select'])
   background: transparent;
   color: var(--text-muted);
   border: none;
-  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.15);
+  --smooth-border-color: rgba(var(--v-theme-on-surface), 0.15);
 }
 
 .pill-filter:hover {
   color: var(--text-secondary);
-  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.25);
+  --smooth-border-color: rgba(var(--v-theme-on-surface), 0.25);
 }
 
 .pill-filter.active {

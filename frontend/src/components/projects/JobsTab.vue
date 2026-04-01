@@ -1,7 +1,7 @@
 <template>
   <div class="implement-tab-wrapper">
     <!-- Agent Table Container -->
-    <div class="table-container">
+    <div class="table-container smooth-border">
       <!-- Handover 0411a: Proposed execution order (multi-terminal mode) -->
       <div v-if="executionOrderPhases" class="execution-order-section" data-testid="execution-order">
         <div class="execution-order-title">Proposed Execution Order:</div>
@@ -280,10 +280,10 @@
     </div>
 
     <!-- Message Composer (Bottom) -->
-    <div class="message-composer">
+    <div class="message-composer smooth-border">
       <div class="composer-channels">
         <v-btn
-          class="recipient-btn"
+          class="recipient-btn smooth-border"
           :variant="selectedRecipient === 'orchestrator' ? 'flat' : 'outlined'"
           color="yellow-darken-2"
           @click="selectedRecipient = 'orchestrator'"
@@ -292,7 +292,7 @@
         </v-btn>
 
         <v-btn
-          class="broadcast-btn"
+          class="broadcast-btn smooth-border"
           :variant="selectedRecipient === 'broadcast' ? 'flat' : 'outlined'"
           color="yellow-darken-2"
           @click="selectedRecipient = 'broadcast'"
@@ -963,7 +963,6 @@ async function copyToClipboard(text) {
   .table-container {
     background: $elevation-raised;
     border-radius: $border-radius-rounded;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
     margin-bottom: 16px;
     overflow: hidden;
 
@@ -1310,7 +1309,6 @@ async function copyToClipboard(text) {
     padding: 12px 18px;
     background: $elevation-raised;
     border-radius: $border-radius-rounded;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
     margin-bottom: 20px;
 
     .composer-channels {
@@ -1352,7 +1350,6 @@ async function copyToClipboard(text) {
       font-size: 0.72rem;
       font-weight: 500;
       padding: 6px 14px;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
       color: $color-text-muted;
       transition: all 0.2s ease;
 
@@ -1378,7 +1375,7 @@ async function copyToClipboard(text) {
       ::v-deep(.v-field) {
         background: $elevation-elevated;
         border: none !important;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+        box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
         border-radius: $border-radius-default;
 
         input {
@@ -1392,7 +1389,7 @@ async function copyToClipboard(text) {
         }
 
         &:hover {
-          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+          box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.14));
         }
 
         &.v-field--focused {

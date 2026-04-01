@@ -25,7 +25,7 @@
     <!-- Tab Pills -->
     <div class="tab-pills">
       <button
-        class="pill-btn"
+        class="pill-btn smooth-border"
         :class="{ active: activeTab === 'launch' }"
         data-testid="launch-tab"
         @click="activeTab = 'launch'"
@@ -34,7 +34,7 @@
         Staging
       </button>
       <button
-        class="pill-btn"
+        class="pill-btn smooth-border"
         :class="{ active: activeTab === 'jobs' }"
         data-testid="jobs-tab"
         @click="activeTab = 'jobs'"
@@ -45,14 +45,14 @@
     </div>
 
     <!-- Bordered Content Box (tabs connect to this) -->
-    <div class="bordered-tabs-content">
+    <div class="bordered-tabs-content smooth-border">
       <!-- Execution Mode Pills (above buttons) - only show on Launch tab -->
       <div v-if="activeTab === 'launch'" class="execution-mode-row">
         <div class="execution-mode-pills" :class="{ 'mode-locked': isExecutionModeLocked }">
           <span class="mode-label">Execution Mode:</span>
           <div class="mode-pill-group">
             <button
-              class="pill-btn pill-sm"
+              class="pill-btn pill-sm smooth-border"
               :class="{ active: executionPlatform === 'multi_terminal' }"
               :disabled="isExecutionModeLocked"
               data-testid="radio-multi-terminal"
@@ -61,7 +61,7 @@
               Multi-Terminal
             </button>
             <button
-              class="pill-btn pill-sm"
+              class="pill-btn pill-sm smooth-border"
               :class="{ active: executionPlatform === 'claude_code_cli' }"
               :disabled="isExecutionModeLocked"
               data-testid="radio-claude-cli"
@@ -70,7 +70,7 @@
               Subagent: Claude
             </button>
             <button
-              class="pill-btn pill-sm"
+              class="pill-btn pill-sm smooth-border"
               :class="{ active: executionPlatform === 'codex_cli' }"
               :disabled="isExecutionModeLocked"
               data-testid="radio-codex-cli"
@@ -80,7 +80,7 @@
               <v-icon size="x-small" color="warning" class="ml-1" title="Experimental — limited testing">mdi-alert</v-icon>
             </button>
             <button
-              class="pill-btn pill-sm"
+              class="pill-btn pill-sm smooth-border"
               :class="{ active: executionPlatform === 'gemini_cli' }"
               :disabled="isExecutionModeLocked"
               data-testid="radio-gemini-cli"
@@ -873,11 +873,11 @@ async function handleContinueWorking() {
   background: transparent;
   color: var(--text-muted);
   border: none;
-  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.15);
+  --smooth-border-color: rgba(var(--v-theme-on-surface), 0.15);
 
   &:hover:not(:disabled) {
     color: var(--text-secondary);
-    box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.25);
+    --smooth-border-color: rgba(var(--v-theme-on-surface), 0.25);
   }
 
   &.active {
@@ -903,10 +903,10 @@ async function handleContinueWorking() {
   display: flex;
   flex-direction: column;
   border: none !important;
-  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.2);
   border-radius: $border-radius-default;
   background: rgb(var(--v-theme-surface));
   overflow: hidden;
+  --smooth-border-color: rgba(var(--v-theme-on-surface), 0.2);
 }
 
 /* Action buttons row inside the box (centered) */
