@@ -64,110 +64,78 @@ describe('Products Store - Authentication Gated Initialization', () => {
     localStorageMock.clear()
   })
 
-  describe('initializeFromStorage - Auth Guards', () => {
-    it('should skip initialization without auth token', async () => {
+  describe('initializeFromStorage - Product Restoration', () => {
+    // Auth guards removed — caller (DefaultLayout) verifies authentication before calling.
+    // initializeFromStorage now directly fetches products and restores from localStorage.
+
+    it('should fetch products and set first product when no stored ID', async () => {
       const store = useProductStore()
 
-      // No auth token in localStorage
       localStorageMock.getItem.mockReturnValue(null)
 
-      await store.initializeFromStorage()
-
-      expect(store.products).toHaveLength(0)
-      expect(api.setup.status).not.toHaveBeenCalled()
-      expect(api.products.list).not.toHaveBeenCalled()
-    })
-
-    it('should skip initialization during setup (default password active)', async () => {
-      const store = useProductStore()
-
-      // Mock auth token exists
-      localStorageMock.getItem.mockReturnValue('mock-token')
-
-      // Mock setup status - default password active
-      api.setup.status.mockResolvedValue({
-        data: {
-          default_password_active: true,
-          database_initialized: true
-        }
-      })
-
-      await store.initializeFromStorage()
-
-      expect(store.products).toHaveLength(0)
-      expect(api.setup.status).toHaveBeenCalledTimes(1)
-      expect(api.products.list).not.toHaveBeenCalled()
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('currentProductId')
-    })
-
-    it('should skip initialization during setup (database not initialized)', async () => {
-      const store = useProductStore()
-
-      // Mock auth token exists
-      localStorageMock.getItem.mockReturnValue('mock-token')
-
-      // Mock setup status - database not initialized
-      api.setup.status.mockResolvedValue({
-        data: {
-          default_password_active: false,
-          database_initialized: false
-        }
-      })
-
-      await store.initializeFromStorage()
-
-      expect(store.products).toHaveLength(0)
-      expect(api.setup.status).toHaveBeenCalledTimes(1)
-      expect(api.products.list).not.toHaveBeenCalled()
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('currentProductId')
-    })
-
-    it('should skip initialization when setup status check fails', async () => {
-      const store = useProductStore()
-
-      // Mock auth token exists
-      localStorageMock.getItem.mockReturnValue('mock-token')
-
-      // Mock setup status failure
-      api.setup.status.mockRejectedValue(new Error('API error'))
-
-      await store.initializeFromStorage()
-
-      expect(store.products).toHaveLength(0)
-      expect(api.setup.status).toHaveBeenCalledTimes(1)
-      expect(api.products.list).not.toHaveBeenCalled()
-    })
-
-    it('should initialize products after authentication when setup is complete', async () => {
-      const store = useProductStore()
-
-      // Mock auth token exists
-      localStorageMock.getItem.mockReturnValue('mock-token')
-
-      // Mock setup status - complete
-      api.setup.status.mockResolvedValue({
-        data: {
-          default_password_active: false,
-          database_initialized: true
-        }
-      })
-
-      // Mock products API response
       const mockProducts = [
         { id: 1, name: 'Product 1' },
         { id: 2, name: 'Product 2' }
       ]
       api.products.list.mockResolvedValue({ data: mockProducts })
-      // setCurrentProduct calls fetchProductById which uses api.products.get
       api.products.get.mockResolvedValue({ data: { id: 1, name: 'Product 1' } })
 
       await store.initializeFromStorage()
 
-      expect(api.setup.status).toHaveBeenCalledTimes(1)
-      // api.products.list is called multiple times: once in fetchProducts(),
-      // and again inside setCurrentProduct() which also calls fetchProducts()
       expect(api.products.list).toHaveBeenCalled()
       expect(store.products).toEqual(mockProducts)
+    })
+
+    it('should restore stored product ID from localStorage', async () => {
+      const store = useProductStore()
+
+      localStorageMock.getItem.mockReturnValue('2')
+
+      const mockProducts = [
+        { id: 1, name: 'Product 1' },
+        { id: 2, name: 'Product 2' }
+      ]
+      api.products.list.mockResolvedValue({ data: mockProducts })
+      api.products.get.mockResolvedValue({ data: { id: 2, name: 'Product 2' } })
+
+      await store.initializeFromStorage()
+
+      expect(api.products.list).toHaveBeenCalled()
+    })
+
+    it('should handle empty product list gracefully', async () => {
+      const store = useProductStore()
+
+      localStorageMock.getItem.mockReturnValue(null)
+      api.products.list.mockResolvedValue({ data: [] })
+
+      await store.initializeFromStorage()
+
+      expect(store.products).toHaveLength(0)
+    })
+
+    it('should remove stored ID if product no longer exists', async () => {
+      const store = useProductStore()
+
+      localStorageMock.getItem.mockReturnValue('999')
+
+      const mockProducts = [{ id: 1, name: 'Product 1' }]
+      api.products.list.mockResolvedValue({ data: mockProducts })
+      api.products.get.mockResolvedValue({ data: { id: 1, name: 'Product 1' } })
+
+      await store.initializeFromStorage()
+
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('currentProductId')
+    })
+
+    it('should handle API failure gracefully', async () => {
+      const store = useProductStore()
+
+      api.products.list.mockRejectedValue(new Error('Network error'))
+
+      await store.initializeFromStorage()
+
+      expect(store.products).toHaveLength(0)
     })
 
     it('should restore selected product from localStorage after successful initialization', async () => {
@@ -293,48 +261,32 @@ describe('Products Store - Authentication Gated Initialization', () => {
     })
   })
 
-  describe('Authentication Integration', () => {
-    it('should use API client for setup status check (not direct fetch)', async () => {
+  describe('API Integration', () => {
+    // Auth is now handled by DefaultLayout before calling initializeFromStorage.
+    // These tests verify the API calls are made correctly.
+
+    it('should call products list API on initialization', async () => {
       const store = useProductStore()
 
-      // Mock auth token exists
-      localStorageMock.getItem.mockReturnValue('mock-token')
-
-      // Mock setup status
-      api.setup.status.mockResolvedValue({
-        data: {
-          default_password_active: false,
-          database_initialized: true
-        }
-      })
-
-      // Mock products response (empty to focus on setup check)
+      localStorageMock.getItem.mockReturnValue(null)
       api.products.list.mockResolvedValue({ data: [] })
 
       await store.initializeFromStorage()
 
-      // Verify that api.setup.status is called (uses API client with auth headers)
-      expect(api.setup.status).toHaveBeenCalledTimes(1)
+      expect(api.products.list).toHaveBeenCalled()
     })
 
-    it('should respect authentication token for all API calls', async () => {
+    it('should call fetchActiveProduct after loading products', async () => {
       const store = useProductStore()
-      const mockToken = 'bearer-token-123'
 
-      // Mock auth token exists
-      localStorageMock.getItem.mockReturnValue(mockToken)
-
-      // Mock setup and products responses
-      api.setup.status.mockResolvedValue({
-        data: { default_password_active: false, database_initialized: true }
-      })
-      api.products.list.mockResolvedValue({ data: [] })
+      localStorageMock.getItem.mockReturnValue(null)
+      api.products.list.mockResolvedValue({ data: [{ id: 1, name: 'P1' }] })
+      api.products.get.mockResolvedValue({ data: { id: 1, name: 'P1' } })
+      api.products.getActive = vi.fn().mockResolvedValue({ data: { has_active_product: true, product: { id: 1, name: 'P1' } } })
 
       await store.initializeFromStorage()
 
-      // Both API calls should have been made (indicating auth token was present)
-      expect(api.setup.status).toHaveBeenCalledTimes(1)
-      expect(api.products.list).toHaveBeenCalledTimes(1)
+      expect(api.products.list).toHaveBeenCalled()
     })
   })
 

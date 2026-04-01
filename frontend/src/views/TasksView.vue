@@ -825,6 +825,12 @@ onMounted(async () => {
 .task-table-card {
   border: none !important;
   border-radius: $border-radius-rounded !important;
+  overflow: hidden;
+
+  // Make inner table transparent so card's inset box-shadow border shows on all sides
+  :deep(.v-table) {
+    background: transparent;
+  }
 }
 
 /* 0870h: filter bar layout */
