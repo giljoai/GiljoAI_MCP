@@ -1,6 +1,6 @@
 <template>
   <div class="launch-tab-wrapper">
-    <!-- Two-column grid: Description + Mission cards -->
+    <!-- 3-column grid: Description | Mission | Agents -->
     <div class="content-grid">
       <!-- Description Card -->
       <div class="content-card smooth-border" data-testid="description-panel">
@@ -38,10 +38,11 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Integration icons row (bare, no frame) -->
-    <div class="integrations-row">
+      <!-- Agents Column (bare, no card) -->
+      <div class="agents-column" data-testid="agents-panel">
+        <!-- Integration icons -->
+        <div class="integrations-row">
       <!-- GitHub Integration -->
       <v-tooltip location="bottom" max-width="300">
         <template #activator="{ props: tooltipProps }">
@@ -110,13 +111,13 @@
         </template>
         <span>{{ agenticTool.label }} mode active.</span>
       </v-tooltip>
-    </div>
+        </div>
 
-    <!-- Agents section label -->
-    <div class="section-label section-label--standalone">Agents</div>
+        <!-- Agents label -->
+        <div class="section-label section-label--standalone">Agents</div>
 
-    <!-- Agents list (bare, no card wrapper) -->
-    <div class="agents-list">
+        <!-- Agents list (bare, no card wrapper) -->
+        <div class="agents-list">
       <!-- All agents shown together -->
       <div
         v-for="agent in sortedJobs"
@@ -177,6 +178,8 @@
       <div v-if="!sortedJobs || sortedJobs.length === 0" class="empty-agents">
         <v-icon size="48" class="empty-icon">mdi-account-group-outline</v-icon>
         <p class="text-caption text-muted-a11y">No agents yet - click Stage Project to begin</p>
+        </div>
+      </div>
       </div>
     </div>
 
@@ -388,9 +391,16 @@ watch(missionText, (next, previous) => {
 /* Two-column grid for Description + Mission cards */
 .content-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 20px;
   margin-bottom: 24px;
+}
+
+/* Agents column (bare, no card frame) */
+.agents-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* Individual content cards (Description, Mission) */
@@ -464,16 +474,16 @@ watch(missionText, (next, previous) => {
   margin-bottom: 20px;
 
   .integration-icon {
-    opacity: 0.7;
+    opacity: 1;
     transition: opacity $transition-normal ease;
     object-fit: contain;
 
-    &:hover {
-      opacity: 1;
-    }
-
     &.icon-disabled {
       opacity: 0.3;
+
+      &:hover {
+        opacity: 0.5;
+      }
     }
   }
 }
