@@ -245,7 +245,13 @@
                     title="Edit Project"
                     @click="editProject(item)"
                   ></v-list-item>
-                  <v-divider v-if="!['completed', 'cancelled', 'terminated'].includes(normalizeStatus(item.status))" class="my-1" />
+                  <!-- Duplicate -->
+                  <v-list-item
+                    prepend-icon="mdi-content-copy"
+                    title="Duplicate"
+                    @click="duplicateProject(item)"
+                  ></v-list-item>
+                  <v-divider class="my-1" />
                   <v-list-item
                     prepend-icon="mdi-delete"
                     title="Delete Project"
@@ -1220,6 +1226,30 @@ async function editProject(project) {
     usedSubseries.value = []
   }
   showCreateDialog.value = true
+}
+
+/**
+ * Duplicate a project: copy name + description, strip taxonomy, add #2 to description (Handover 0875)
+ */
+async function duplicateProject(project) {
+  try {
+    const createData = {
+      name: project.name,
+      description: `${project.description || ''} #2`.trim(),
+      mission: '',
+      status: 'inactive',
+      project_type_id: null,
+      series_number: null,
+      subseries: null,
+      product_id: activeProduct.value?.id,
+    }
+    await projectStore.createProject(createData)
+    await projectStore.fetchProjects()
+    showToast({ message: `Duplicated project "${project.name}"`, type: 'success' })
+  } catch (error) {
+    console.error('[PROJECTS] Failed to duplicate project:', error)
+    showToast({ message: error.response?.data?.detail || 'Failed to duplicate project', type: 'error' })
+  }
 }
 
 function confirmDelete(project) {
