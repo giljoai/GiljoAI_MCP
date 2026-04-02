@@ -220,9 +220,11 @@ When creating a new handover, you MUST validate the number:
 - Pattern: `async def my_endpoint(current_user: User = Depends(get_current_active_user)):`
 
 ### Frontend Code Discipline
+- **Design reference:** `frontend/design-system-sample-v2.html` is the authoritative UI/brand guide. Open it in a browser before any frontend styling work. All colors, typography, elevation, borders, badges, and component patterns must align with this document.
 - Shared logic goes in `composables/` — do not duplicate utility functions across components
 - Use Vuetify theme variables for colors — no `!important` CSS overrides unless compensating for a verified framework bug
 - When removing a parent event listener, also remove the child `$emit` call
+- **Dialog anatomy:** All modals use `.dlg-header` / `.dlg-footer` from `main.scss`. Never use `v-card-title` or `v-card-actions` for dialog chrome. See CLAUDE.md for full dialog conventions.
 - **UI accessibility baseline:** Sufficient color contrast (WCAG AA 4.5:1 ratio), color-blind safe palettes (no red/green as sole state differentiator), keyboard navigability for all interactive elements (tab order, enter/space to activate). Screen reader optimization (ARIA roles, live regions) is not required at this stage.
 - **Frontend tests exist**: `frontend/tests/` with Vitest + @vue/test-utils + @pinia/testing. Run `npm run test:run` from `frontend/`. Setup: `frontend/tests/setup.js` (499 lines, Vuetify stubs + API mocks). 105+ existing spec files — add tests for new components.
 

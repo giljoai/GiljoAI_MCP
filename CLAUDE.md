@@ -46,6 +46,8 @@ Every handover MUST include: `**Edition Scope:** CE | SaaS | Both`
 - **Agent color palette (Luminous Pastels):** Orchestrator `#D4B08A`, Analyzer `#E07872`, Implementer `#6DB3E4`, Documenter `#5EC48E`, Reviewer `#AC80CC`, Tester `#EDBA4A`. All pass WCAG AA contrast on `#182739` background. Colors are defined in `design-tokens.scss` (SCSS) and `agentColors.js` (JS). Use `getAgentColor()` or CSS `var(--agent-*-primary)` — never hardcode hex values.
 - **Tinted badge style:** Agent badges use `rgba(agent_color, 0.15)` background + full-brightness agent color text, with `border-radius: 8px` (square, not round). Use `hexToRgba()` from `@/utils/colorUtils` for inline styles.
 - **WCAG AA text accessibility:** `--text-muted` is `#8895a8` (4.98:1 on `#182739`). Never use Vuetify's `text-medium-emphasis` class — use a scoped CSS class with `color: #8895a8` instead. `--text-secondary` is `#a3aac4` (6.56:1).
+- **Dialog anatomy:** All modals use the centralized `.dlg-header` / `.dlg-footer` classes from `main.scss`. Never use `v-card-title` or `v-card-actions` for dialog chrome. Header variants: plain (default), `.dlg-header--warning` (amber band, destructive), `.dlg-header--primary` (yellow band, workflow actions), `.dlg-header--danger` (magenta band). Every dialog must have a close button (`.dlg-close`). Footer layout: `<v-spacer> Cancel(text) | Action(flat)`.
+- **Agent icon conventions:** Use `Giljo_YW_Face.svg` (yellow) for generic agent branding (menus, tours). Use tinted initial badges (`.agent-badge-sq`) for agent-specific contexts (job details, mission edit, message audit). In tinted badge pills (`.agent-tinted-badge`) showing the full agent name, do NOT include initials — just the text label.
 
 ## Key Documents
 
@@ -55,3 +57,4 @@ Every handover MUST include: `**Edition Scope:** CE | SaaS | Both`
 - `docs/README_FIRST.md` -- documentation navigation hub
 - `docs/SERVER_ARCHITECTURE_TECH_STACK.md` -- system architecture and network topology
 - `LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md` -- licensing terms and commercial strategy
+- `frontend/design-system-sample-v2.html` -- **authoritative UI/brand reference** (open in browser). Covers color palette, typography, agent badges, elevation, borders, buttons, inputs, tables, dialogs, toasts, and accessibility. All frontend styling decisions must align with this document.
