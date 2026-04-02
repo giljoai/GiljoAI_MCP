@@ -8,31 +8,30 @@
   >
     <v-card v-draggable class="smooth-border">
       <!-- Header -->
-      <v-card-title class="d-flex align-center justify-space-between">
-        <div class="d-flex align-center">
-          <v-icon icon="mdi-folder-account-outline" class="mr-2" />
-          <div class="d-flex flex-column">
-            <span class="text-subtitle-1">Message Audit: {{ agentLabel }}</span>
-            <span class="text-caption text-muted-a11y">
-              {{ displayAgent?.job_id || 'Unknown job' }}
-            </span>
-            <span
-              v-if="steps && typeof steps.completed === 'number' && typeof steps.total === 'number'"
-              class="text-caption text-muted-a11y"
-            >
-              Steps: {{ steps.completed }} / {{ steps.total }}
-            </span>
-          </div>
+      <div class="dlg-header">
+        <div
+          class="agent-badge-sq"
+          :style="{
+            background: agentTintedBg,
+            color: agentPrimaryColor,
+          }"
+        >{{ agentAbbr }}</div>
+        <div class="d-flex flex-column" style="flex:1">
+          <span class="dlg-title">Message Audit: {{ agentLabel }}</span>
+          <span class="text-caption text-muted-a11y">
+            {{ displayAgent?.job_id || 'Unknown job' }}
+          </span>
+          <span
+            v-if="steps && typeof steps.completed === 'number' && typeof steps.total === 'number'"
+            class="text-caption text-muted-a11y"
+          >
+            Steps: {{ steps.completed }} / {{ steps.total }}
+          </span>
         </div>
-        <v-btn
-          icon
-          variant="text"
-          aria-label="Close message audit"
-          @click="handleClose"
-        >
-          <v-icon icon="mdi-close" />
+        <v-btn icon variant="text" size="small" class="dlg-close" @click="handleClose">
+          <v-icon icon="mdi-close" size="18" />
         </v-btn>
-      </v-card-title>
+      </div>
 
       <v-divider />
 
@@ -46,7 +45,7 @@
 
         <!-- Error State (Handover 0387g Phase 4) -->
         <div v-else-if="error" class="pa-4">
-          <v-alert type="error" variant="tonal" closable>
+          <v-alert type="error" variant="tonal" density="compact" closable>
             {{ error }}
           </v-alert>
         </div>
@@ -166,6 +165,8 @@ import { computed, ref, toRaw, watch } from 'vue'
 import MessageDetailView from '@/components/projects/MessageDetailView.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import api from '@/services/api'
+import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
+import { hexToRgba } from '@/utils/colorUtils'
 
 const props = defineProps({
   show: {
@@ -266,6 +267,25 @@ const agentLabel = computed(() => {
   return source.agent_name || source.agent_display_name || 'Agent'
 })
 
+const agentPrimaryColor = computed(() => {
+  return getAgentColorConfig(agentLabel.value).hex
+})
+
+const agentTintedBg = computed(() => {
+  return hexToRgba(agentPrimaryColor.value, 0.15)
+})
+
+const agentAbbr = computed(() => {
+  const name = agentLabel.value
+  if (!name) return '?'
+  return name
+    .split(/[\s_-]+/)
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+})
+
 // Fetch messages when modal opens (Handover 0387g Phase 4)
 watch(
   () => props.show,
@@ -341,26 +361,6 @@ function getMessagePreview(message) {
   z-index: 2100;
 }
 
-.message-audit-tabs {
-  display: flex;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-}
-
-.tab-button {
-  flex: 1 1 0;
-  padding: 8px 12px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 0.875rem;
-  text-align: center;
-}
-
-.tab-button.active {
-  border-bottom: 2px solid rgb(var(--v-theme-primary));
-  font-weight: 600;
-}
-
 .message-audit-body {
   display: flex;
   flex-direction: row;
@@ -406,7 +406,7 @@ function getMessagePreview(message) {
 
 .message-timestamp {
   color: rgb(var(--v-theme-primary));
-  font-family: 'Courier New', monospace;
+  font-family: 'IBM Plex Mono', monospace;
 }
 
 .v-theme--dark .message-timestamp {
@@ -502,7 +502,7 @@ function getMessagePreview(message) {
 
 .message-full-text {
   white-space: pre-wrap;
-  font-family: 'Courier New', monospace;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 0.85rem;
   line-height: 1.5;
 }

@@ -12,30 +12,26 @@
   >
     <v-card v-draggable data-testid="handover-modal-card" class="smooth-border">
       <!-- Modal header -->
-      <v-card-title id="handover-modal-title" class="modal-title bg-primary text-white pa-4">
-        <div class="d-flex align-center justify-space-between">
-          <div class="d-flex align-center">
-            <v-icon icon="mdi-refresh" size="large" class="mr-2" />
-            <span class="text-h6">Session Handover</span>
-            <v-tooltip location="bottom" max-width="300">
-              <template #activator="{ props: tooltipProps }">
-                <v-icon
-                  v-bind="tooltipProps"
-                  icon="mdi-information-outline"
-                  size="small"
-                  class="ml-2 opacity-80"
-                  aria-label="Handover information"
-                />
-              </template>
-              Refreshes the orchestrator's context by retiring the current session
-              and starting a new one.
-            </v-tooltip>
-          </div>
-          <v-btn icon variant="text" color="white" aria-label="Close modal" @click="handleClose">
-            <v-icon icon="mdi-close" />
-          </v-btn>
-        </div>
-      </v-card-title>
+      <div id="handover-modal-title" class="dlg-header dlg-header--primary dlg-header--sticky">
+        <v-icon class="dlg-icon" icon="mdi-refresh" />
+        <span class="dlg-title">Session Handover</span>
+        <v-tooltip location="bottom" max-width="300">
+          <template #activator="{ props: tooltipProps }">
+            <v-icon
+              v-bind="tooltipProps"
+              icon="mdi-information-outline"
+              size="small"
+              class="ml-2 opacity-80"
+              aria-label="Handover information"
+            />
+          </template>
+          Refreshes the orchestrator's context by retiring the current session
+          and starting a new one.
+        </v-tooltip>
+        <v-btn icon variant="text" size="small" class="dlg-close" aria-label="Close modal" @click="handleClose">
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
 
       <v-divider />
 
@@ -168,25 +164,3 @@ function handleClose() {
   emit('close')
 }
 </script>
-
-<style lang="scss" scoped>
-@use '../../styles/design-tokens' as *;
-.modal-title {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.step-row {
-  display: flex;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: $border-radius-default;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.step-label {
-  color: rgba(255, 255, 255, 0.7);
-  line-height: 1.4;
-}
-</style>

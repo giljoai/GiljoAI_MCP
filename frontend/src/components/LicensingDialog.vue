@@ -1,14 +1,17 @@
 <template>
   <v-dialog v-model="showDialog" max-width="520" persistent>
     <v-card class="smooth-border">
-      <v-card-title class="d-flex align-center pa-4">
-        <v-icon color="warning" class="mr-2">mdi-license</v-icon>
-        Commercial License Required
-      </v-card-title>
+      <div class="dlg-header">
+        <v-icon class="dlg-icon" icon="mdi-license" />
+        <span class="dlg-title">Commercial License Required</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" @click="dismiss">
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
 
       <v-divider />
 
-      <v-card-text class="pa-5">
+      <v-card-text class="pa-4">
         <p class="text-body-1 mb-4">
           This GiljoAI MCP installation has
           <strong>{{ userCount }} user accounts</strong>.
@@ -30,12 +33,12 @@
 
       <v-divider />
 
-      <v-card-actions class="pa-4">
+      <div class="dlg-footer">
         <v-spacer />
         <v-btn color="primary" variant="flat" @click="dismiss">
           I Understand
         </v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -83,6 +86,3 @@ onMounted(() => {
   checkLicensing()
 })
 </script>
-
-<style scoped>
-</style>

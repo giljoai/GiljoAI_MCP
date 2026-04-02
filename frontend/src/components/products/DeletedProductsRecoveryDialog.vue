@@ -1,18 +1,17 @@
 <template>
   <v-dialog v-model="isOpen" max-width="800" persistent retain-focus>
     <v-card v-draggable class="smooth-border">
-      <v-card-title class="d-flex align-center">
-        <span>Deleted Products ({{ deletedProducts.length }})</span>
-        <v-spacer />
-        <v-btn
-          icon="mdi-close"
-          variant="text"
-          aria-label="Close dialog"
-          @click="closeDialog"
-        />
-      </v-card-title>
+      <div class="dlg-header">
+        <v-icon class="dlg-icon" icon="mdi-delete-restore" />
+        <span class="dlg-title">Deleted Products ({{ deletedProducts.length }})</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" aria-label="Close dialog" @click="closeDialog">
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
 
-      <v-card-text>
+      <v-divider />
+
+      <v-card-text class="pa-4">
         <v-alert
           v-if="deletedProducts.length > 0"
           type="warning"
@@ -73,8 +72,11 @@
         </div>
       </v-card-text>
 
-      <v-card-actions>
-        <v-spacer></v-spacer>
+      <v-divider />
+
+      <div class="dlg-footer">
+        <v-spacer />
+        <v-btn variant="text" @click="closeDialog">Close</v-btn>
         <v-btn
           color="error"
           variant="flat"
@@ -85,8 +87,7 @@
         >
           Delete All
         </v-btn>
-        <v-btn variant="text" @click="closeDialog">Close</v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -140,6 +141,3 @@ const handlePurgeAll = () => {
   emit('purge-all')
 }
 </script>
-
-<style scoped>
-</style>
