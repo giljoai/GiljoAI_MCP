@@ -1,7 +1,7 @@
 <template>
   <v-dialog v-model="showWizard" max-width="720" persistent>
     <template #activator="{ props }">
-      <button v-bind="props" class="configurator-pill">
+      <button v-bind="props" class="configurator-pill smooth-border">
         <v-icon size="16" class="mr-1">mdi-wrench-outline</v-icon>
         Configurator
       </button>
@@ -356,13 +356,16 @@ defineExpose({
 }
 
 .configurator-pill {
+  --smooth-border-color: #ffc300;
   display: inline-flex;
   align-items: center;
-  border-radius: $border-radius-pill;
-  padding: 6px 16px;
-  font-size: 0.78rem;
+  justify-content: center;
+  border-radius: $border-radius-rounded;
+  padding: 8px 20px;
+  height: 40px;
+  font-size: 0.82rem;
   font-weight: 500;
-  background: rgba(255, 195, 0, 0.12);
+  background: transparent;
   color: #ffc300;
   border: none;
   cursor: pointer;
@@ -371,6 +374,6 @@ defineExpose({
 }
 
 .configurator-pill:hover {
-  background: rgba(255, 195, 0, 0.2);
+  background: rgba(255, 195, 0, 0.12);
 }
 </style>
