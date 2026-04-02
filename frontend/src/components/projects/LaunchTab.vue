@@ -26,93 +26,35 @@
 
       <!-- Mission Card -->
       <div class="content-card smooth-border" data-testid="mission-panel">
-        <div class="section-label">Orchestrator Generated Mission</div>
+        <div class="section-label">
+          <span>Mission</span>
+          <v-icon
+            size="18"
+            class="icon-interactive"
+            title="Regenerate mission (re-stage project)"
+            aria-label="Regenerate mission"
+          >mdi-refresh</v-icon>
+        </div>
         <div class="card-body scrollbar-standard">
           <EmptyState
             v-if="!missionText"
             icon="mdi-file-document-outline"
             title="No mission generated"
           />
-          <div v-else class="mission-content">
-            {{ missionText }}
-          </div>
+          <template v-else>
+            <span class="orchestrator-tag">
+              <v-icon size="14" class="mr-1">mdi-creation</v-icon>
+              Orchestrator Generated
+            </span>
+            <div class="mission-content">
+              {{ missionText }}
+            </div>
+          </template>
         </div>
       </div>
 
       <!-- Agents Column (bare, no card) -->
       <div class="agents-column" data-testid="agents-panel">
-        <!-- Integration icons -->
-        <div class="integrations-row">
-      <!-- GitHub Integration -->
-      <v-tooltip location="bottom" max-width="300">
-        <template #activator="{ props: tooltipProps }">
-          <v-icon
-            v-bind="tooltipProps"
-            :class="{ 'icon-disabled': !gitEnabled }"
-            size="36"
-            color="white"
-            data-testid="github-status-icon"
-            class="cursor-pointer integration-icon"
-            aria-label="GitHub integration status"
-            @click="goToIntegrations"
-          >
-            mdi-github
-          </v-icon>
-        </template>
-        <span v-if="gitEnabled">GitHub integration enabled. Commit history will be included in project summaries.</span>
-        <span v-else>GitHub integration disabled. Click to enable in Settings.</span>
-      </v-tooltip>
-      <!-- Serena MCP Integration -->
-      <v-tooltip location="bottom" max-width="300">
-        <template #activator="{ props: tooltipProps }">
-          <v-img
-            v-bind="tooltipProps"
-            src="/Serena.png"
-            width="36"
-            height="36"
-            :class="{ 'icon-disabled': !serenaEnabled }"
-            data-testid="serena-status-icon"
-            class="cursor-pointer integration-icon"
-            alt="Serena MCP integration status"
-            aria-label="Serena MCP integration status"
-            @click="goToIntegrations"
-          />
-        </template>
-        <span v-if="serenaEnabled">Serena MCP enabled. Agents will use semantic code navigation.</span>
-        <span v-else>Serena MCP disabled. Click to enable in Settings.</span>
-      </v-tooltip>
-      <!-- Agentic Tool Badge -->
-      <v-tooltip v-if="agenticTool" location="bottom" max-width="300">
-        <template #activator="{ props: tooltipProps }">
-          <v-icon
-            v-if="agenticTool.type === 'icon'"
-            v-bind="tooltipProps"
-            size="36"
-            color="primary"
-            data-testid="agentic-tool-icon"
-            class="cursor-pointer integration-icon"
-            :aria-label="agenticTool.alt"
-            @click="goToIntegrations"
-          >
-            {{ agenticTool.icon }}
-          </v-icon>
-          <v-img
-            v-else
-            v-bind="tooltipProps"
-            :src="agenticTool.src"
-            width="36"
-            height="36"
-            data-testid="agentic-tool-icon"
-            class="cursor-pointer integration-icon"
-            :alt="agenticTool.alt"
-            :aria-label="agenticTool.alt"
-            @click="goToIntegrations"
-          />
-        </template>
-        <span>{{ agenticTool.label }} mode active.</span>
-      </v-tooltip>
-        </div>
-
         <!-- Agents label -->
         <div class="section-label section-label--standalone">Agents</div>
 
@@ -201,7 +143,6 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { useAgentJobsStore } from '@/stores/agentJobsStore'
@@ -210,8 +151,7 @@ import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import AgentMissionEditModal from '@/components/projects/AgentMissionEditModal.vue'
 import AgentTipsDialog from '@/components/common/AgentTipsDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
-import { hexToRgba, getAgentBadgeStyle } from '@/utils/colorUtils'
+import { getAgentBadgeStyle } from '@/utils/colorUtils'
 
 /**
  * LaunchTab Component - Complete Rewrite (Handover 0241)
@@ -235,14 +175,6 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  gitEnabled: {
-    type: Boolean,
-    default: false,
-  },
-  serenaEnabled: {
-    type: Boolean,
-    default: false,
-  },
 })
 
 const emit = defineEmits([
@@ -262,25 +194,6 @@ const projectId = computed(() => {
 })
 
 /**
- * Active agentic tool based on project execution_mode
- */
-const agenticTool = computed(() => {
-  const mode = props.project?.execution_mode
-  if (mode === 'claude_code_cli') return { type: 'img', src: '/claude_pix.svg', label: 'Claude Code', alt: 'Claude Code subagent active' }
-  if (mode === 'codex_cli') return { type: 'img', src: '/codex_logo.svg', label: 'Codex CLI', alt: 'Codex CLI subagent active' }
-  if (mode === 'gemini_cli') return { type: 'img', src: '/gemini-icon.svg', label: 'Gemini CLI', alt: 'Gemini CLI subagent active' }
-  if (mode === 'multi_terminal') return { type: 'icon', icon: 'mdi-monitor-multiple', label: 'Multi Terminal', alt: 'Multi terminal mode active' }
-  return null
-})
-
-/**
- * Get agent color based on type
- */
-const getAgentColor = (displayName) => {
-  return getAgentColorConfig(displayName).hex
-}
-
-/**
  * Get agent initials - uses word initials
  * Split by dash, space, or underscore and use first letter of each part
  * e.g., "Backend-Implementer" -> "BI", "Backend-Tester" -> "BT"
@@ -298,15 +211,6 @@ const getAgentInitials = (displayName) => {
 
   // Single word fallback: use first two letters
   return displayName.substring(0, 2).toUpperCase()
-}
-
-const router = useRouter()
-
-/**
- * Navigate to integrations settings
- */
-function goToIntegrations() {
-  router.push({ path: '/settings', query: { tab: 'integrations' } })
 }
 
 const projectStateStore = useProjectStateStore()
@@ -421,6 +325,18 @@ watch(missionText, (next, previous) => {
     color: $color-text-primary;
     margin-top: 12px;
 
+    .orchestrator-tag {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(212, 176, 138, 0.15);
+      color: $color-agent-orchestrator;
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: $border-radius-default;
+      margin-bottom: 10px;
+    }
+
     .mission-content {
       white-space: pre-wrap;
       word-break: break-word;
@@ -463,28 +379,6 @@ watch(missionText, (next, previous) => {
 
   &--standalone {
     margin-bottom: 8px;
-  }
-}
-
-/* Integration icons row (bare, no frame) */
-.integrations-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-
-  .integration-icon {
-    opacity: 1;
-    transition: opacity $transition-normal ease;
-    object-fit: contain;
-
-    &.icon-disabled {
-      opacity: 0.3;
-
-      &:hover {
-        opacity: 0.5;
-      }
-    }
   }
 }
 

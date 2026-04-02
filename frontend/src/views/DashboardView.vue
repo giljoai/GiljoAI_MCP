@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid>
+  <v-container>
     <!-- Setup Banner (shown when database not configured) -->
     <AppAlert
       v-if="setupStatus.requires_setup"
@@ -55,7 +55,7 @@
 
     <!-- Header -->
     <div class="dash-header">
-      <h1 class="dash-title">
+      <h1 class="text-h4">
         Dashboard
         <span v-if="selectedProductName" class="dash-product-label">/ {{ selectedProductName }}</span>
       </h1>
@@ -598,13 +598,6 @@ onUnmounted(() => {
   margin-bottom: 20px;
 }
 
-.dash-title {
-  font-family: 'Outfit', 'Roboto', sans-serif;
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: $color-text-primary;
-}
-
 .dash-product-label {
   color: var(--text-secondary);
   font-weight: 400;
@@ -628,7 +621,7 @@ onUnmounted(() => {
 .stat-pill {
   background: $elevation-raised;
   border-radius: $border-radius-rounded;
-  padding: 18px 20px;
+  padding: 14px 16px;
   transition: transform $transition-normal, box-shadow $transition-normal;
 
   &:hover {
@@ -646,9 +639,9 @@ onUnmounted(() => {
 
 .stat-pill-value {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   font-weight: 500;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   line-height: 1;
   color: $color-text-primary;
 

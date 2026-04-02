@@ -158,6 +158,7 @@ function relativeTime(timestamp) {
 .memories-scroll {
   max-height: 340px;
   overflow-y: auto;
+  padding-right: 8px;
 }
 
 .memory-row {
