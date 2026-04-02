@@ -1556,7 +1556,7 @@ onBeforeUnmount(() => {
 
 .filter-select {
   flex: 0 0 auto;
-  max-width: 140px;
+  min-width: 200px;
 }
 
 .filter-select :deep(.v-field) {
