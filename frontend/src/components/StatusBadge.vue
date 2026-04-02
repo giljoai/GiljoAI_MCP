@@ -22,7 +22,7 @@ const props = defineProps({
 
 // Status colors unchanged — tinted style (rgba bg + bright text)
 const STATUS_CONFIG = {
-  active: { label: 'Active', color: '#67bd6d' },
+  active: { label: 'Active', color: '#6DB3E4' },
   inactive: { label: 'Inactive', color: '#9e9e9e' },
   completed: { label: 'Completed', color: '#67bd6d' },
   cancelled: { label: 'Cancelled', color: '#ff9800' },
@@ -41,7 +41,10 @@ const config = computed(() => STATUS_CONFIG[props.status] || { label: props.stat
 const statusLabel = computed(() => config.value.label)
 
 const badgeStyle = computed(() => {
-  const color = config.value.color
+  const { color, bg, textColor } = config.value
+  if (bg) {
+    return { background: bg, color: textColor || color }
+  }
   return {
     background: `rgba(${hexToRgb(color)}, 0.15)`,
     color,
