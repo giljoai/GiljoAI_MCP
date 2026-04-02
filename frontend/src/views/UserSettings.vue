@@ -191,15 +191,13 @@
           <p class="text-body-2 text-muted-a11y mt-1">Connect external tools and services to your GiljoAI workspace</p>
         </div>
 
-        <!-- Section: Primary + Skills & Agents Export (side by side) -->
-        <div class="integration-section-label">Primary</div>
-        <div class="tools-grid">
+        <!-- Primary + Skills & Agents Export (side by side) -->
+        <div class="tools-grid mb-5">
           <McpIntegrationCard />
           <AgentExport />
         </div>
 
-        <!-- Section: Tools (2-column grid) -->
-        <div class="integration-section-label">Tools</div>
+        <!-- Tools (2-column grid) -->
         <div class="tools-grid">
           <SerenaIntegrationCard
             :enabled="serenaEnabled"
