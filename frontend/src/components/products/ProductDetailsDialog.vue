@@ -14,35 +14,7 @@
       <v-card-text v-if="product" class="pa-4">
         <!-- Product Name -->
         <div class="text-h6 mb-2">{{ product.name }}</div>
-        <div class="text-caption mb-2 text-muted-a11y font-mono product-id-text">ID: {{ product.id }}</div>
-
-        <!-- Context Tuning (Handover 0831) -->
-        <div class="d-flex align-center mb-4">
-          <v-btn
-            variant="outlined"
-            color="primary"
-            size="small"
-            prepend-icon="mdi-tune"
-            @click="showTuningMenu = !showTuningMenu"
-          >
-            Tune Context
-          </v-btn>
-        </div>
-
-        <ProductTuningMenu
-          v-if="showTuningMenu"
-          :product-id="product.id"
-          hide-trigger
-          :initially-open="showTuningMenu"
-          class="mb-4"
-        />
-
-        <ProductTuningReview
-          v-if="product.tuning_state?.pending_proposals"
-          :product-id="product.id"
-          :pending-proposals="product.tuning_state.pending_proposals"
-          class="mb-4"
-        />
+        <div class="text-caption mb-4 text-muted-a11y font-mono product-id-text">ID: {{ product.id }}</div>
 
         <!-- Description -->
         <div class="mb-4">
@@ -67,110 +39,146 @@
           </v-row>
         </div>
 
+        <!-- Context Tuning -->
+        <div class="detail-section smooth-border mb-4">
+          <button type="button" class="detail-section-toggle" @click="toggleTuningSection">
+            <span class="detail-section-title-wrap">
+              <v-icon size="18" class="mr-2">mdi-tune</v-icon>
+              <span class="detail-section-title">Tune Context</span>
+            </span>
+            <v-icon size="18">{{ isTuningOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+          </button>
+          <div v-if="isTuningOpen" class="detail-section-body">
+            <div class="detail-section-subtitle text-caption text-muted-a11y">
+              Generate or review context tuning guidance for this product.
+            </div>
+            <ProductTuningMenu
+              :product-id="product.id"
+              hide-trigger
+              :initially-open="isTuningOpen"
+            />
+          </div>
+        </div>
+
+        <div
+          v-if="product.tuning_state?.pending_proposals"
+          class="detail-section smooth-border mb-4"
+        >
+          <button type="button" class="detail-section-toggle" @click="toggleProposalSection">
+            <span class="detail-section-title-wrap">
+              <v-icon size="18" class="mr-2">mdi-clipboard-text-outline</v-icon>
+              <span class="detail-section-title">Tuning Proposals</span>
+            </span>
+            <v-icon size="18">{{ isProposalOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+          </button>
+          <div v-if="isProposalOpen" class="detail-section-body">
+            <div class="detail-section-subtitle text-caption text-muted-a11y">
+              Review proposed updates detected from product context drift.
+            </div>
+            <ProductTuningReview
+              :product-id="product.id"
+              :pending-proposals="product.tuning_state.pending_proposals"
+            />
+          </div>
+        </div>
+
         <!-- Vision Documents -->
         <div>
           <div class="text-subtitle-2 mb-2">Vision Documents ({{ visionDocuments.length }})</div>
 
           <v-list v-if="visionDocuments.length > 0" density="compact">
             <v-card v-for="doc in visionDocuments" :key="doc.id" variant="flat" class="smooth-border mb-2">
-              <v-list-item class="px-3">
-                <template v-slot:prepend>
-                  <v-icon color="primary">mdi-file-document</v-icon>
-                </template>
+              <div class="doc-card-header px-3 py-3">
+                <div class="doc-card-heading">
+                  <v-icon color="primary" class="mr-2">mdi-file-document</v-icon>
+                  <div class="doc-card-heading-text">
+                    <div class="doc-card-title">{{ doc.filename || doc.document_name }}</div>
+                    <div class="doc-card-meta">
+                      <span class="doc-meta-pill">{{ doc.is_summarized ? 'Summarized' : 'Processing' }}</span>
+                      <span class="doc-meta-pill">{{ formatFileSize(doc.file_size || 0) }}</span>
+                      <span v-if="doc.chunked" class="doc-meta-pill">Chunked · {{ doc.chunk_count }} chunks</span>
+                      <span v-if="doc.original_token_count" class="doc-meta-pill">{{ formatTokens(doc.original_token_count) }} tokens</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                <v-list-item-title>{{ doc.filename || doc.document_name }}</v-list-item-title>
-                <v-list-item-subtitle>
-                  {{ doc.is_summarized ? 'Summarized' : 'Processing' }}
-                  <span v-if="doc.chunked"> • Chunked ({{ doc.chunk_count }} chunks)</span>
-                  • {{ formatFileSize(doc.file_size || 0) }}
-                </v-list-item-subtitle>
-              </v-list-item>
+              <div class="doc-dropdown smooth-border">
+                <button
+                  v-if="doc.is_summarized || doc.vision_document"
+                  type="button"
+                  class="detail-section-toggle detail-section-toggle--compact"
+                  @click="toggleSummarySection(doc.id)"
+                >
+                  <span class="detail-section-title-wrap">
+                    <span class="detail-section-title">Summary Previews</span>
+                  </span>
+                  <v-icon size="18">{{ isSummaryOpen(doc.id) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+                </button>
 
-              <!-- Summary Levels Preview (Handover 0246b: light/medium/full) -->
-              <v-card-text v-if="doc.is_summarized || doc.vision_document" class="pt-0 pb-2">
-                <div class="text-caption mb-1 text-muted-a11y">Summary Previews</div>
-                <div class="d-flex justify-space-around">
-                  <span
-                    class="summary-level-chip cursor-pointer"
-                    :style="docSummaryStyle('light')"
-                    role="button"
-                    tabindex="0"
-                    @click="showSummary(doc, 'light')"
-                    @keydown.enter="showSummary(doc, 'light')"
-                  >
-                    <v-progress-circular
-                      v-if="loadingSummary.docId === doc.id && loadingSummary.level === 'light'"
-                      indeterminate size="12" width="2" class="mr-1"
-                    />
-                    Light
-                    <v-icon end size="14">mdi-eye</v-icon>
-                    <v-tooltip activator="parent" location="bottom">
-                      {{ doc.summary_light_tokens ? `~${formatTokens(doc.summary_light_tokens)} tokens (33%)` : 'Click to load' }}
-                    </v-tooltip>
-                  </span>
-                  <span
-                    class="summary-level-chip cursor-pointer"
-                    :style="docSummaryStyle('medium')"
-                    role="button"
-                    tabindex="0"
-                    @click="showSummary(doc, 'medium')"
-                    @keydown.enter="showSummary(doc, 'medium')"
-                  >
-                    <v-progress-circular
-                      v-if="loadingSummary.docId === doc.id && loadingSummary.level === 'medium'"
-                      indeterminate size="12" width="2" class="mr-1"
-                    />
-                    Medium
-                    <v-icon end size="14">mdi-eye</v-icon>
-                    <v-tooltip activator="parent" location="bottom">
-                      {{ doc.summary_medium_tokens ? `~${formatTokens(doc.summary_medium_tokens)} tokens (66%)` : 'Click to load' }}
-                    </v-tooltip>
-                  </span>
-                  <span
-                    class="summary-level-chip cursor-pointer"
-                    :style="docSummaryStyle('full')"
-                    role="button"
-                    tabindex="0"
-                    @click="showSummary(doc, 'full')"
-                    @keydown.enter="showSummary(doc, 'full')"
-                  >
-                    <v-progress-circular
-                      v-if="loadingSummary.docId === doc.id && loadingSummary.level === 'full'"
-                      indeterminate size="12" width="2" class="mr-1"
-                    />
-                    Full
-                    <v-icon end size="14">mdi-eye</v-icon>
-                    <v-tooltip activator="parent" location="bottom">
-                      {{ doc.original_token_count ? `~${formatTokens(doc.original_token_count)} tokens (100%)` : 'Click to load' }}
-                    </v-tooltip>
-                  </span>
+                <div v-if="isSummaryOpen(doc.id) && (doc.is_summarized || doc.vision_document)" class="detail-section-body">
+                  <div class="detail-section-subtitle text-caption text-muted-a11y">
+                    Open a summary level or the full document view.
+                  </div>
+                  <div class="summary-action-grid">
+                    <button
+                      type="button"
+                      class="summary-action-btn"
+                      :style="docSummaryStyle('light')"
+                      @click="showSummary(doc, 'light')"
+                    >
+                      <v-progress-circular
+                        v-if="loadingSummary.docId === doc.id && loadingSummary.level === 'light'"
+                        indeterminate size="12" width="2" class="mr-1"
+                      />
+                      <span>Light</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="summary-action-btn"
+                      :style="docSummaryStyle('medium')"
+                      @click="showSummary(doc, 'medium')"
+                    >
+                      <v-progress-circular
+                        v-if="loadingSummary.docId === doc.id && loadingSummary.level === 'medium'"
+                        indeterminate size="12" width="2" class="mr-1"
+                      />
+                      <span>Medium</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="summary-action-btn"
+                      :style="docSummaryStyle('full')"
+                      @click="showSummary(doc, 'full')"
+                    >
+                      <v-progress-circular
+                        v-if="loadingSummary.docId === doc.id && loadingSummary.level === 'full'"
+                        indeterminate size="12" width="2" class="mr-1"
+                      />
+                      <span>Full</span>
+                    </button>
+                  </div>
+                  <div v-if="doc.has_ai_summaries" class="summary-badge-row mt-3">
+                    <span class="text-caption text-muted-a11y summary-badge-label">AI summaries</span>
+                    <span
+                      v-if="doc.ai_summary_light_tokens"
+                      class="summary-level-chip summary-level-chip--ai"
+                      :style="aiSummaryStyle('light')"
+                    >
+                      <v-icon size="12" class="mr-1">mdi-check-bold</v-icon>
+                      33% · {{ formatTokens(doc.ai_summary_light_tokens) }} tokens
+                    </span>
+                    <span
+                      v-if="doc.ai_summary_medium_tokens"
+                      class="summary-level-chip summary-level-chip--ai"
+                      :style="aiSummaryStyle('medium')"
+                    >
+                      <v-icon size="12" class="mr-1">mdi-check-bold</v-icon>
+                      66% · {{ formatTokens(doc.ai_summary_medium_tokens) }} tokens
+                    </span>
+                  </div>
                 </div>
-                <div v-if="doc.has_ai_summaries" class="summary-badge-row mt-2">
-                  <span class="text-caption text-muted-a11y">AI summaries:</span>
-                  <span
-                    v-if="doc.ai_summary_light_tokens"
-                    class="summary-level-chip summary-level-chip--ai"
-                    :style="aiSummaryStyle('light')"
-                  >
-                    <v-icon size="12" class="mr-1">mdi-check-bold</v-icon>
-                    33% ({{ formatTokens(doc.ai_summary_light_tokens) }} tokens)
-                  </span>
-                  <span
-                    v-if="doc.ai_summary_medium_tokens"
-                    class="summary-level-chip summary-level-chip--ai"
-                    :style="aiSummaryStyle('medium')"
-                  >
-                    <v-icon size="12" class="mr-1">mdi-check-bold</v-icon>
-                    66% ({{ formatTokens(doc.ai_summary_medium_tokens) }} tokens)
-                  </span>
-                </div>
-              </v-card-text>
-              <v-card-text v-else class="pt-0 pb-2">
-                <div class="text-caption text-muted-a11y">
-                  <v-icon size="12" class="mr-1">mdi-information-outline</v-icon>
-                  No summaries generated yet
-                </div>
-              </v-card-text>
+              </div>
             </v-card>
           </v-list>
 
@@ -538,7 +546,9 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'refresh-product'])
 
 // Context Tuning toggle (Handover 0831)
-const showTuningMenu = ref(false)
+const isTuningOpen = ref(false)
+const isProposalOpen = ref(false)
+const openSummarySections = ref({})
 
 // Vision analysis result (Handover 0842d)
 const visionAnalysisResult = ref(null)
@@ -562,7 +572,12 @@ watch(
   () => props.modelValue,
   (open) => {
     if (open && props.autoExpandTuning) {
-      showTuningMenu.value = true
+      isTuningOpen.value = true
+    }
+    if (!open) {
+      isTuningOpen.value = false
+      isProposalOpen.value = false
+      openSummarySections.value = {}
     }
   },
 )
@@ -574,6 +589,25 @@ const isOpen = computed({
 
 const handleClose = () => {
   emit('update:modelValue', false)
+}
+
+function toggleTuningSection() {
+  isTuningOpen.value = !isTuningOpen.value
+}
+
+function toggleProposalSection() {
+  isProposalOpen.value = !isProposalOpen.value
+}
+
+function toggleSummarySection(documentId) {
+  openSummarySections.value = {
+    ...openSummarySections.value,
+    [documentId]: !openSummarySections.value[documentId],
+  }
+}
+
+function isSummaryOpen(documentId) {
+  return Boolean(openSummarySections.value[documentId])
 }
 
 // Summary preview dialog state
@@ -785,6 +819,130 @@ async function regenerateConsolidation() {
 .product-id-text {
   font-size: 0.65rem;
 }
+
+.detail-section {
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.detail-section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.detail-section-toggle:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.detail-section-toggle--compact {
+  padding: 10px 14px;
+}
+
+.detail-section-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.detail-section-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.detail-section-body {
+  padding: 0 14px 14px;
+}
+
+.detail-section-subtitle {
+  margin-bottom: 10px;
+}
+
+.doc-card-header {
+  display: flex;
+  align-items: flex-start;
+}
+
+.doc-card-heading {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.doc-card-heading-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.doc-card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.doc-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.doc-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: $border-radius-pill;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  line-height: 1.4;
+}
+
+.doc-dropdown {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.summary-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-action-btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  border: none;
+  border-radius: $border-radius-default;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform $transition-fast ease, opacity $transition-fast ease;
+}
+
+.summary-action-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.summary-action-btn:focus-visible,
+.detail-section-toggle:focus-visible {
+  outline: 2px solid rgba(255, 195, 0, 0.45);
+  outline-offset: 2px;
+}
+
 .summary-level-chip {
   display: inline-flex;
   align-items: center;
@@ -808,8 +966,18 @@ async function regenerateConsolidation() {
   gap: 6px;
 }
 
+.summary-badge-label {
+  width: 100%;
+}
+
 .summary-level-chip--ai {
   font-size: 0.68rem;
   padding: 2px 8px;
+}
+
+@media (max-width: 640px) {
+  .summary-action-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
