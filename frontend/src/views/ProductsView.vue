@@ -4,7 +4,20 @@
     <v-row align="center" class="mb-4">
       <v-col>
         <h1 class="text-h4">Products</h1>
-        <p class="text-body-2 text-muted-a11y mt-1">Manage your product configurations and AI agent workspaces.</p>
+        <p class="text-body-2 text-muted-a11y mt-1">
+          Manage your product configurations and AI agent workspaces.
+          <v-tooltip location="bottom start" max-width="480">
+            <template #activator="{ props }">
+              <v-icon v-bind="props" size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+            </template>
+            <div>
+              <div class="font-weight-bold mb-2">Product Hierarchy</div>
+              <div class="mb-2">Products sit at the top of the workflow: <strong>Product → Projects → Jobs → Agents</strong>.</div>
+              <div class="mb-2">Each product defines a scope of work. Projects break it into deliverables, jobs assign agents, and agents execute.</div>
+              <div>Products can be created manually or your coding agent can analyze a vision document and propose the product architecture via <span class="font-weight-medium">/gil_add</span>.</div>
+            </div>
+          </v-tooltip>
+        </p>
       </v-col>
     </v-row>
 
@@ -1052,6 +1065,14 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 @use '../styles/design-tokens' as *;
+/* Help icon on subtitle */
+.help-icon {
+  color: rgba(255, 255, 255, 0.5);
+  cursor: help;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
 .filter-bar {
   display: flex;
   align-items: center;
