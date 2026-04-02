@@ -1,18 +1,17 @@
 <template>
   <v-dialog v-model="isOpen" max-width="600">
     <v-card v-draggable class="smooth-border">
-      <v-card-title class="d-flex align-center">
-        <v-icon start>mdi-information-outline</v-icon>
-        Product Details
-        <v-spacer></v-spacer>
-        <v-btn icon variant="text" @click="handleClose">
-          <v-icon>mdi-close</v-icon>
+      <div class="dlg-header">
+        <v-icon class="dlg-icon" icon="mdi-information-outline" />
+        <span class="dlg-title">Product Details</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" @click="handleClose">
+          <v-icon icon="mdi-close" size="18" />
         </v-btn>
-      </v-card-title>
+      </div>
 
-      <v-divider></v-divider>
+      <v-divider />
 
-      <v-card-text v-if="product">
+      <v-card-text v-if="product" class="pa-4">
         <!-- Product Name -->
         <div class="text-h6 mb-2">{{ product.name }}</div>
         <div class="text-caption mb-2 text-muted-a11y font-mono" style="font-size: 0.65rem">ID: {{ product.id }}</div>
@@ -367,33 +366,32 @@
         </div>
       </v-card-text>
 
-      <v-divider></v-divider>
+      <v-divider />
 
-      <v-card-actions>
-        <v-spacer></v-spacer>
+      <div class="dlg-footer">
+        <v-spacer />
         <v-btn variant="text" @click="handleClose">Close</v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 
   <!-- Summary Preview Dialog -->
   <v-dialog v-model="summaryDialog" max-width="800" scrollable>
     <v-card v-draggable class="smooth-border">
-      <v-card-title class="d-flex align-center">
-        <v-icon start :color="summaryLevelColor">mdi-text-box-outline</v-icon>
-        {{ summaryTitle }}
-        <v-spacer></v-spacer>
+      <div class="dlg-header">
+        <v-icon class="dlg-icon" :color="summaryLevelColor" icon="mdi-text-box-outline" />
+        <span class="dlg-title">{{ summaryTitle }}</span>
         <v-chip size="small" :color="summaryLevelColor" variant="tonal" class="mr-2">
           {{ summaryLevel }}
         </v-chip>
-        <v-btn icon variant="text" @click="summaryDialog = false">
-          <v-icon>mdi-close</v-icon>
+        <v-btn icon variant="text" size="small" class="dlg-close" @click="summaryDialog = false">
+          <v-icon icon="mdi-close" size="18" />
         </v-btn>
-      </v-card-title>
+      </div>
 
-      <v-divider></v-divider>
+      <v-divider />
 
-      <v-card-text class="summary-content" style="max-height: 60vh; overflow-y: auto;">
+      <v-card-text class="summary-content pa-4" style="max-height: 60vh; overflow-y: auto;">
         <div class="text-caption text-muted-a11y mb-2">
           <v-icon size="14" class="mr-1">mdi-counter</v-icon>
           ~{{ formatTokens(summaryTokens) }} tokens
@@ -401,33 +399,32 @@
         <div class="text-body-2 text-pre-wrap">{{ summaryContent }}</div>
       </v-card-text>
 
-      <v-divider></v-divider>
+      <v-divider />
 
-      <v-card-actions>
-        <v-spacer></v-spacer>
+      <div class="dlg-footer">
+        <v-spacer />
         <v-btn variant="text" @click="summaryDialog = false">Close</v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 
   <!-- Consolidated Summary Viewer Dialog (Handover 0377) -->
   <v-dialog v-model="consolidatedSummaryDialog" max-width="800" scrollable>
     <v-card v-draggable class="smooth-border">
-      <v-card-title class="d-flex align-center">
-        <v-icon start color="teal">mdi-database-merge</v-icon>
-        {{ consolidatedSummaryTitle }}
-        <v-spacer></v-spacer>
+      <div class="dlg-header">
+        <v-icon class="dlg-icon" color="teal" icon="mdi-database-merge" />
+        <span class="dlg-title">{{ consolidatedSummaryTitle }}</span>
         <v-chip size="small" :color="consolidatedSummaryColor" variant="tonal" class="mr-2">
           {{ consolidatedSummaryLevel }}
         </v-chip>
-        <v-btn icon variant="text" @click="consolidatedSummaryDialog = false">
-          <v-icon>mdi-close</v-icon>
+        <v-btn icon variant="text" size="small" class="dlg-close" @click="consolidatedSummaryDialog = false">
+          <v-icon icon="mdi-close" size="18" />
         </v-btn>
-      </v-card-title>
+      </div>
 
-      <v-divider></v-divider>
+      <v-divider />
 
-      <v-card-text class="summary-content" style="max-height: 60vh; overflow-y: auto;">
+      <v-card-text class="summary-content pa-4" style="max-height: 60vh; overflow-y: auto;">
         <div class="text-caption text-muted-a11y mb-2">
           <v-icon size="14" class="mr-1">mdi-counter</v-icon>
           ~{{ formatTokens(consolidatedSummaryTokens) }} tokens
@@ -438,12 +435,12 @@
         <div class="text-body-2 text-pre-wrap">{{ consolidatedSummaryContent }}</div>
       </v-card-text>
 
-      <v-divider></v-divider>
+      <v-divider />
 
-      <v-card-actions>
-        <v-spacer></v-spacer>
+      <div class="dlg-footer">
+        <v-spacer />
         <v-btn variant="text" @click="consolidatedSummaryDialog = false">Close</v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>

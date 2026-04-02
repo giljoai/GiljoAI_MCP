@@ -1,13 +1,17 @@
 <template>
   <v-dialog :model-value="modelValue" max-width="500" persistent @update:model-value="$emit('update:modelValue', $event)">
     <v-card class="smooth-border">
-      <v-card-title class="d-flex align-center">
-        <span>Add Project Type</span>
-        <v-spacer />
-        <v-btn icon="mdi-close" variant="text" size="small" aria-label="Close" @click="close" />
-      </v-card-title>
+      <div class="dlg-header">
+        <v-icon class="dlg-icon" icon="mdi-shape-plus" />
+        <span class="dlg-title">Add Project Type</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" aria-label="Close" @click="close">
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
 
-      <v-card-text>
+      <v-divider />
+
+      <v-card-text class="pa-4">
         <v-form ref="formRef" v-model="formValid">
           <v-text-field
             v-model="abbreviation"
@@ -83,13 +87,15 @@
         </v-form>
       </v-card-text>
 
-      <v-card-actions>
+      <v-divider />
+
+      <div class="dlg-footer">
         <v-spacer />
         <v-btn variant="text" @click="close">Cancel</v-btn>
         <v-btn color="primary" variant="flat" :disabled="!formValid || submitting" :loading="submitting" @click="handleSubmit">
           Add Type
         </v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>
