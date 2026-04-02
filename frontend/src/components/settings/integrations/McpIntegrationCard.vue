@@ -20,17 +20,9 @@
         Attach GiljoAI MCP to your AI coding agents.
       </p>
 
-      <!-- MCP Configuration Tool -->
-      <v-card variant="flat" class="mb-0 smooth-border">
-        <v-card-text class="pa-3">
-          <div class="d-flex align-center justify-between">
-            <div class="flex-grow-1">
-              <div class="text-subtitle-2 font-weight-medium">MCP Configuration Tool</div>
-            </div>
-            <AiToolConfigWizard />
-          </div>
-        </v-card-text>
-      </v-card>
+      <div class="d-flex justify-center">
+        <AiToolConfigWizard />
+      </div>
     </v-card-text>
   </v-card>
 </template>
