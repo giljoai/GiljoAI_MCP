@@ -3,15 +3,16 @@
     <!-- Header -->
     <v-row align="center" class="mb-4">
       <v-col>
-        <div class="d-flex align-center">
-          <h1 class="text-h4">Tasks</h1>
+        <h1 class="text-h4">Tasks</h1>
+        <p class="text-body-2 text-muted-a11y mt-1">
+          Use MCP tool /gil_add to have the AI coding agent add ideas and thoughts to Task dashboard.
           <v-tooltip location="bottom start" max-width="600">
             <template #activator="{ props }">
-              <v-icon v-bind="props" size="18" color="medium-emphasis" class="ml-2">mdi-information-outline</v-icon>
+              <v-icon v-bind="props" size="16" class="help-icon">mdi-help-circle-outline</v-icon>
             </template>
             <div>
               <div class="font-weight-bold mb-1">Task Field Reference</div>
-              <div class="text-caption text-medium-emphasis mb-2">Instructions for /gil_add</div>
+              <div class="text-caption mb-2" style="color: #8895a8;">Instructions for /gil_add</div>
               <div><span class="font-weight-medium">title (required):</span> Free text</div>
               <div class="mt-1"><span class="font-weight-medium">description (recommended):</span> Free text</div>
               <div class="mt-1"><span class="font-weight-medium">status (optional):</span></div>
@@ -24,8 +25,7 @@
               <div class="ml-2 text-caption">/gil_add add task ... description ...</div>
             </div>
           </v-tooltip>
-        </div>
-        <p class="text-body-2 text-medium-emphasis mt-1">Use MCP tool /gil_add to have the AI coding agent add ideas and thoughts to Task dashboard.</p>
+        </p>
       </v-col>
     </v-row>
 
@@ -814,6 +814,14 @@ onMounted(async () => {
 <style lang="scss" scoped>
 @use '../styles/variables' as *;
 @use '../styles/design-tokens' as *;
+
+/* Help icon on subtitle (Handover 0875) */
+.help-icon {
+  color: rgba(255, 255, 255, 0.5);
+  cursor: help;
+  vertical-align: middle;
+  margin-left: 4px;
+}
 
 /* 0870h: smooth-border table panel */
 .task-table-card {

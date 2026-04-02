@@ -1,23 +1,23 @@
 <template>
-  <div class="project-tabs-container">
+  <v-container class="project-tabs-container">
     <!-- Project Header (static, no scroll) -->
     <div class="project-header">
-      <h1 class="project-label">Project:</h1>
-      <h2 class="project-name">
+      <h1 class="text-h4 project-title-row">
+        Project:
         <!-- Series Chip (Handover 0440c) -->
         <v-chip
           v-if="project?.project_type_id || project?.series_number"
           :color="project?.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR"
           size="small"
           variant="flat"
-          class="project-badge mr-3"
+          class="project-badge mx-2"
           :title="project?.project_type?.label || 'Untyped'"
         >
           {{ project.taxonomy_alias }}
         </v-chip>
-        <span class="project-title">{{ project?.name || 'Loading...' }}</span>
-      </h2>
-      <p class="text-subtitle-1 text-medium-emphasis mb-0">
+        <span class="project-name-text">{{ project?.name || 'Loading...' }}</span>
+      </h1>
+      <p class="text-body-2 project-id mb-0">
         Project ID: {{ project?.project_id || project?.id || 'N/A' }}
       </p>
     </div>
@@ -198,100 +198,88 @@
       </div>
     </div>
 
-    <!-- Bordered Content Box (tabs connect to this) -->
-    <div class="bordered-tabs-content">
-
-      <!-- Project Status Area (Jobs tab only) - Handover 0819a -->
-      <!-- State A: Project is done -> status banner -->
-      <div v-if="activeTab === 'jobs' && projectDoneStatus" class="action-buttons-row">
-        <v-chip
-          :color="projectDoneStatus === 'completed' ? 'success' : projectDoneStatus === 'terminated' ? 'warning' : 'grey'"
-          variant="flat"
-          size="large"
-          :prepend-icon="projectDoneStatus === 'cancelled' ? 'mdi-cancel' : 'mdi-check-circle'"
-          data-testid="project-done-banner"
-        >
-          {{ projectDoneStatus === 'completed' ? 'Project Completed and Closed'
-             : projectDoneStatus === 'terminated' ? 'Project Terminated'
-             : 'Project Cancelled' }}
-        </v-chip>
-      </div>
-
-      <!-- State B: All agents terminal, project NOT done -> closeout button -->
-      <div v-else-if="activeTab === 'jobs' && showCloseoutButton" class="action-buttons-row">
-        <v-btn
-          class="closeout-btn"
-          color="yellow-darken-2"
-          variant="flat"
-          prepend-icon="mdi-check-circle"
-          data-testid="close-project-btn"
-          @click="openCloseoutModal"
-        >
-          Close Out Project
-        </v-btn>
-      </div>
-
-      <!-- State B2: All agents terminal, waiting for 360 memory (Handover 0820) -->
-      <div v-else-if="activeTab === 'jobs' && showMemoryPending" class="action-buttons-row">
-        <v-chip color="info" variant="tonal" size="large" data-testid="memory-pending-chip">
-          <template #prepend>
-            <v-progress-circular indeterminate size="16" width="2" />
-          </template>
-          Saving project memory...
-        </v-chip>
-      </div>
-
-      <!-- State C: Continue-working guidance -->
-      <div v-else-if="activeTab === 'jobs' && showContinueGuidance" class="action-buttons-row">
-        <v-chip
-          color="info"
-          variant="tonal"
-          size="large"
-          prepend-icon="mdi-information"
-          data-testid="continue-guidance"
-        >
-          Continue working within the agent's terminal session, or use the handover prompt generator next to the orchestrator.
-        </v-chip>
-      </div>
-
-      <!-- Gemini subagent notice (shown on Jobs tab when Gemini mode active) -->
-      <div v-if="activeTab === 'jobs' && isGeminiMode" class="gemini-notice-row">
-        <v-chip
-          color="warning"
-          variant="tonal"
-          size="default"
-          prepend-icon="mdi-alert-circle-outline"
-          class="gemini-notice-chip"
-          data-testid="gemini-notice"
-          @click="showGeminiNotice = true"
-        >
-          Gemini subagent: no active orchestrator during execution
-          <v-icon end size="x-small">mdi-information-outline</v-icon>
-        </v-chip>
-      </div>
-
-      <!-- Tab Content -->
-      <v-window v-model="activeTab" class="tabs-content">
-        <!-- Launch Tab -->
-        <v-window-item value="launch">
-          <LaunchTab
-            :project="projectWithUpdatedMode"
-            :orchestrator="orchestrator"
-            :is-staging="loadingStageProject"
-            :git-enabled="gitEnabled"
-            :serena-enabled="serenaEnabled"
-            @edit-description="emit('edit-description')"
-          />
-        </v-window-item>
-
-        <!-- Jobs Tab -->
-        <v-window-item value="jobs">
-          <JobsTab
-            :project="projectWithUpdatedMode"
-          />
-        </v-window-item>
-      </v-window>
+    <!-- Project Status Area (Jobs tab only) - Handover 0819a -->
+    <!-- State A: Project is done -> status banner -->
+    <div v-if="activeTab === 'jobs' && projectDoneStatus" class="action-buttons-row">
+      <v-chip
+        :color="projectDoneStatus === 'completed' ? 'success' : projectDoneStatus === 'terminated' ? 'warning' : 'grey'"
+        variant="flat"
+        size="large"
+        :prepend-icon="projectDoneStatus === 'cancelled' ? 'mdi-cancel' : 'mdi-check-circle'"
+        data-testid="project-done-banner"
+      >
+        {{ projectDoneStatus === 'completed' ? 'Project Completed and Closed'
+           : projectDoneStatus === 'terminated' ? 'Project Terminated'
+           : 'Project Cancelled' }}
+      </v-chip>
     </div>
+
+    <!-- State B: All agents terminal, project NOT done -> closeout button -->
+    <div v-else-if="activeTab === 'jobs' && showCloseoutButton" class="action-buttons-row">
+      <v-btn
+        class="closeout-btn"
+        color="yellow-darken-2"
+        variant="flat"
+        prepend-icon="mdi-check-circle"
+        data-testid="close-project-btn"
+        @click="openCloseoutModal"
+      >
+        Close Out Project
+      </v-btn>
+    </div>
+
+    <!-- State B2: All agents terminal, waiting for 360 memory (Handover 0820) -->
+    <div v-else-if="activeTab === 'jobs' && showMemoryPending" class="action-buttons-row">
+      <v-chip color="info" variant="tonal" size="large" data-testid="memory-pending-chip">
+        <template #prepend>
+          <v-progress-circular indeterminate size="16" width="2" />
+        </template>
+        Saving project memory...
+      </v-chip>
+    </div>
+
+    <!-- State C: Continue-working guidance -->
+    <div v-else-if="activeTab === 'jobs' && showContinueGuidance" class="action-buttons-row">
+      <v-chip
+        color="info"
+        variant="tonal"
+        size="large"
+        prepend-icon="mdi-information"
+        data-testid="continue-guidance"
+      >
+        Continue working within the agent's terminal session, or use the handover prompt generator next to the orchestrator.
+      </v-chip>
+    </div>
+
+    <!-- Gemini subagent notice (shown on Jobs tab when Gemini mode active) -->
+    <div v-if="activeTab === 'jobs' && isGeminiMode" class="gemini-notice-row">
+      <v-chip
+        color="warning"
+        variant="tonal"
+        size="default"
+        prepend-icon="mdi-alert-circle-outline"
+        class="gemini-notice-chip"
+        data-testid="gemini-notice"
+        @click="showGeminiNotice = true"
+      >
+        Gemini subagent: no active orchestrator during execution
+        <v-icon end size="x-small">mdi-information-outline</v-icon>
+      </v-chip>
+    </div>
+
+    <!-- Tab Content (flat, no v-window wrapper — Handover 0875) -->
+    <LaunchTab
+      v-if="activeTab === 'launch'"
+      :project="projectWithUpdatedMode"
+      :orchestrator="orchestrator"
+      :is-staging="loadingStageProject"
+      @edit-description="emit('edit-description')"
+    />
+
+    <JobsTab
+      v-else-if="activeTab === 'jobs'"
+      :project="projectWithUpdatedMode"
+    />
 
     <!-- Gemini Subagent Notice Dialog -->
     <v-dialog v-model="showGeminiNotice" max-width="520">
@@ -334,7 +322,7 @@
       @closeout="handleCloseoutComplete"
       @continue="handleContinueWorking"
     />
-  </div>
+  </v-container>
 </template>
 
 <script setup>
@@ -902,34 +890,25 @@ async function handleContinueWorking() {
 .project-tabs-container {
   background: rgb(var(--v-theme-background));
   height: 100%;
-  padding: 24px;
   display: flex;
   flex-direction: column;
   overflow: hidden; /* Page doesn't scroll - only individual panels do */
 }
 
-/* Project Header - Title and ID */
+/* Project Header - Title and ID (matches Products page pattern) */
 .project-header {
   margin-bottom: 16px;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
 
-  .project-label {
-    font-size: 1.5rem;
-    font-weight: 400;
+  .project-title-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     margin: 0;
   }
 
-  .project-name {
-    display: flex;
-    align-items: center;
+  .project-name-text {
     color: rgb(var(--v-theme-primary));
-    font-size: 2rem;
-    font-weight: 400;
-    margin: 0;
   }
 
   .project-badge {
@@ -938,8 +917,8 @@ async function handleContinueWorking() {
     text-overflow: ellipsis;
   }
 
-  .text-subtitle-1 {
-    width: 100%;
+  .project-id {
+    color: #8895a8;
   }
 }
 
@@ -991,13 +970,6 @@ async function handleContinueWorking() {
   font-size: 0.73rem;
 }
 
-/* Tab content container (bare, no frame) */
-.bordered-tabs-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
 
 /* Action buttons row inside the box (centered) */
 .action-buttons-row {
@@ -1099,41 +1071,37 @@ async function handleContinueWorking() {
   }
 }
 
-/* Tab content fills remaining space */
-.tabs-content {
-  flex: 1;
-  min-height: 0; /* Critical for flex overflow */
-  overflow: hidden;
+/* Integration icons row (right-aligned on action-buttons-row, Handover 0875) */
+.integrations-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 
-  :deep(.v-window__container) {
-    height: 100%;
-  }
+  .integration-icon {
+    opacity: 1;
+    transition: opacity $transition-normal ease;
+    object-fit: contain;
 
-  :deep(.v-window-item) {
-    height: 100%;
+    &.icon-disabled {
+      opacity: 0.3;
+
+      &:hover {
+        opacity: 0.5;
+      }
+    }
   }
 }
 
+
 /* Mobile / Portrait Responsive */
 @media (max-width: 1024px) {
-  .project-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-
-    .project-label {
-      font-size: 1.2rem;
-    }
-
-    .project-name {
-      font-size: 1.1rem;
-    }
+  .project-header .project-title-row {
+    font-size: 1.2rem;
   }
 }
 
 @media (max-width: 600px) {
   .project-tabs-container {
-    padding: 16px;
   }
 
   .action-buttons-row {
