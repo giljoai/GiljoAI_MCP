@@ -78,7 +78,11 @@
                   aria-label="View agent details"
                   @click="handleAgentRole(agent)"
                 >
-                  <div class="agent-badge" :style="getAgentBadgeStyle(agent?.agent_name || agent?.agent_display_name)">
+                  <div
+                    class="agent-badge"
+                    :class="{ 'agent-badge--active': agent.status === 'working' }"
+                    :style="getAgentBadgeStyle(agent?.agent_name || agent?.agent_display_name)"
+                  >
                     {{ getAgentAbbr(getPrimaryAgentLabel(agent)) }}
                   </div>
                 </button>
@@ -1231,6 +1235,39 @@ async function copyToClipboard(text) {
             font-size: 0.62rem;
             font-weight: 700;
             flex-shrink: 0;
+            position: relative;
+            transition: filter 0.3s ease;
+          }
+
+          // Active agent: breathing glow + expanding pulse ring
+          .agent-badge--active {
+            animation: badgeBreathe 2.4s ease-in-out infinite;
+
+            // Outer expanding ring (uses currentColor from the badge text)
+            &::before,
+            &::after {
+              content: '';
+              position: absolute;
+              inset: 0;
+              border-radius: inherit;
+              pointer-events: none;
+              animation: badgePulseRing 2.4s ease-out infinite;
+            }
+
+            &::after {
+              animation-delay: 1.2s;
+            }
+          }
+
+          @keyframes badgeBreathe {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
+          }
+
+          @keyframes badgePulseRing {
+            0% { box-shadow: 0 0 0 0 currentColor; opacity: 0.4; }
+            70% { box-shadow: 0 0 0 10px currentColor; opacity: 0; }
+            100% { box-shadow: 0 0 0 10px currentColor; opacity: 0; }
           }
 
           .agent-avatar-button,
