@@ -28,12 +28,6 @@
       <div class="content-card smooth-border" data-testid="mission-panel">
         <div class="section-label">
           <span>Mission</span>
-          <v-icon
-            size="18"
-            class="icon-interactive"
-            title="Regenerate mission (re-stage project)"
-            aria-label="Regenerate mission"
-          >mdi-refresh</v-icon>
         </div>
         <div class="card-body scrollbar-standard">
           <EmptyState
@@ -296,8 +290,10 @@ watch(missionText, (next, previous) => {
 .content-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr;
   gap: 20px;
-  margin-bottom: 24px;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Agents column (bare, no card frame) */
@@ -359,6 +355,7 @@ watch(missionText, (next, previous) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  height: 26px;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.62rem;
   color: $color-text-muted;
