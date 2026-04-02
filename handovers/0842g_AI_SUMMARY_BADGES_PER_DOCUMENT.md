@@ -6,7 +6,7 @@
 **To Agent:** tdd-implementor + ux-designer
 **Priority:** Medium
 **Estimated Complexity:** 1 hour
-**Status:** Not Started
+**Status:** Completed
 **Standalone handover** (follow-up to 0842d deviation #2)
 **Depends on:** 0842a (summaries table), 0842c (MCP write tool)
 
@@ -89,11 +89,11 @@ Use `color="info"` to visually distinguish AI badges from Sumy badges (which use
 
 ## Success Criteria
 
-- [ ] API returns AI summary metadata per document
-- [ ] AI badge row visible on document cards after AI analysis
-- [ ] Badges hidden when no AI summaries exist
-- [ ] Sumy badges unchanged
-- [ ] Matches wireframe layout (`FLow_vision_doc3.png`)
+- [x] API returns AI summary metadata per document
+- [x] AI badge row visible on document cards after AI analysis
+- [x] Badges hidden when no AI summaries exist
+- [x] Sumy badges unchanged
+- [x] Matches wireframe layout (`FLow_vision_doc3.png`)
 
 ## MANDATORY: Pre-Work Reading
 
@@ -101,3 +101,27 @@ Use `color="info"` to visually distinguish AI badges from Sumy badges (which use
 2. `handovers/Reference_docs/FLow_vision_doc3.png` — the wireframe to match
 
 **Use `tdd-implementor` for backend, `ux-designer` for frontend.**
+
+---
+
+## Completion Summary
+
+Implemented in CE with TDD.
+
+Backend:
+- Extended `VisionDocumentResponse` with `ai_summary_light_tokens`, `ai_summary_medium_tokens`, and `has_ai_summaries`
+- Updated `api/endpoints/vision_documents.py` so both `get_vision_document()` and `list_vision_documents()` enrich responses from `vision_document_summaries` rows where `source='ai'`
+- Reused the existing repository `get_summaries()` method and mapped ratios `0.33` and `0.66` to the new response fields
+
+Frontend:
+- Added a second per-document badge row in `frontend/src/components/products/ProductDetailsDialog.vue`
+- Kept the existing Sumy summary preview row unchanged
+- Styled the new AI badges using the existing tinted-chip pattern and tokenized colors rather than ad hoc Vuetify chip styling
+
+Tests added:
+- `tests/test_0842g_vision_document_ai_summary_badges.py`
+- `frontend/tests/unit/components/products/ProductDetailsDialog.ai-summary-badges.spec.js`
+
+Verified with:
+- `python -m pytest -c pytest_no_coverage.ini tests/test_0842g_vision_document_ai_summary_badges.py -q`
+- `npm run test:run -- tests/unit/components/products/ProductDetailsDialog.ai-summary-badges.spec.js`
