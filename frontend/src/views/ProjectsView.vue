@@ -12,7 +12,7 @@
             </template>
             <div>
               <div class="font-weight-bold mb-1">Project Field Reference</div>
-              <div class="text-caption mb-2" style="color: #8895a8;">Instructions for /gil_add</div>
+              <div class="text-caption mb-2 text-muted-a11y">Instructions for /gil_add</div>
               <div><span class="font-weight-medium">name (required):</span> Free text</div>
               <div class="mt-1"><span class="font-weight-medium">description (recommended):</span> Free text</div>
               <div class="mt-1"><span class="font-weight-medium">status (optional):</span></div>
@@ -665,16 +665,8 @@
 
         <v-card-text>
           <v-sheet
-            class="pa-4 rounded smooth-border"
+            class="pa-4 rounded smooth-border mission-viewer-sheet"
             color="grey-lighten-5"
-            style="
-              max-height: 500px;
-              overflow-y: auto;
-              white-space: pre-wrap;
-              font-family: monospace;
-              font-size: 0.875rem;
-              line-height: 1.5;
-            "
           >
             {{ projectData.mission || 'No mission text available' }}
           </v-sheet>
@@ -1503,6 +1495,15 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 @use '../styles/variables' as *;
 @use '../styles/design-tokens' as *;
+
+.mission-viewer-sheet {
+  max-height: 500px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
 
 /* CSS custom properties for template-level token references */
 :deep(.v-container) {

@@ -13,7 +13,7 @@
       <!-- Header -->
       <div id="review-modal-title" class="dlg-header">
         <v-icon class="dlg-icon">mdi-eye</v-icon>
-        <div class="d-flex flex-column" style="flex:1">
+        <div class="d-flex flex-column flex-grow-1">
           <span class="dlg-title">Project Review: <span class="review-project-name">{{ projectData?.name }}</span>
             <v-chip
               v-if="projectData?.status"
@@ -79,7 +79,7 @@
             <h3 class="text-h6 mb-2 d-flex align-center">
               Agents ({{ agents.length }})
               <v-chip v-if="executionModeLabel" size="small" variant="tonal" class="ml-3">
-                <img v-if="executionModeIcon.img" :src="executionModeIcon.img" :alt="executionModeLabel" style="width: 16px; height: 16px;" class="mr-1" />
+                <img v-if="executionModeIcon.img" :src="executionModeIcon.img" :alt="executionModeLabel" class="giljo-icon-sm mr-1" />
                 <v-icon v-else size="small" class="mr-1">{{ executionModeIcon.icon }}</v-icon>
                 {{ executionModeLabel }}
               </v-chip>
@@ -139,7 +139,7 @@
                     Failed to load messages
                   </v-alert>
                   <div v-else-if="agentMessages[agent.id]?.messages?.length">
-                    <div v-for="msg in agentMessages[agent.id].messages" :key="msg.id" class="mb-2 pa-2 rounded" style="background: rgba(var(--v-theme-on-surface), 0.03);">
+                    <div v-for="msg in agentMessages[agent.id].messages" :key="msg.id" class="mb-2 pa-2 rounded message-bg">
                       <div class="d-flex justify-space-between align-center">
                         <div class="d-flex align-center">
                           <span class="text-caption font-weight-bold">{{ msg.from }}</span>
@@ -202,7 +202,7 @@
                   <div v-if="!entry.summary && !entry.key_outcomes?.length && !entry.decisions_made?.length">
                     <p class="text-caption text-muted-a11y">No detailed content available.</p>
                   </div>
-                  <div v-if="entry.entry_type" class="mt-3 pt-2" style="border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);">
+                  <div v-if="entry.entry_type" class="mt-3 pt-2 entry-divider">
                     <span class="text-caption text-muted-a11y">
                       <strong>Type:</strong> {{ entry.entry_type }}
                       <template v-if="entry.source"> | <strong>Source:</strong> {{ entry.source }}</template>
@@ -404,6 +404,16 @@ function truncate(text, maxLen) {
 }
 .review-project-id:hover {
   text-decoration: underline;
+}
+.giljo-icon-sm {
+  width: 16px;
+  height: 16px;
+}
+.message-bg {
+  background: rgba(var(--v-theme-on-surface), 0.03);
+}
+.entry-divider {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 </style>
