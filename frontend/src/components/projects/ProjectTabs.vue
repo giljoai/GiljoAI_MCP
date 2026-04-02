@@ -123,8 +123,6 @@
         Implement
       </v-btn>
 
-      <v-spacer />
-
       <!-- Integration icons (moved from LaunchTab, Handover 0875) -->
       <div class="integrations-row">
         <!-- GitHub Integration -->
@@ -392,7 +390,9 @@ const projectId = computed(() => props.project?.project_id || props.project?.id 
  * Active agentic tool badge based on execution mode (moved from LaunchTab, Handover 0875)
  */
 const agenticTool = computed(() => {
-  const mode = executionMode.value
+  // Only show after user has explicitly selected a mode (executionPlatform starts null)
+  const mode = executionPlatform.value
+  if (!mode) return null
   if (mode === 'claude_code_cli') return { type: 'img', src: '/claude_pix.svg', label: 'Claude Code', alt: 'Claude Code subagent active' }
   if (mode === 'codex_cli') return { type: 'img', src: '/codex_logo.svg', label: 'Codex CLI', alt: 'Codex CLI subagent active' }
   if (mode === 'gemini_cli') return { type: 'img', src: '/gemini-icon.svg', label: 'Gemini CLI', alt: 'Gemini CLI subagent active' }
@@ -971,13 +971,21 @@ async function handleContinueWorking() {
 }
 
 
-/* Action buttons row inside the box (centered) */
+/* Action buttons row (buttons centered, integrations right) */
 .action-buttons-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   margin-bottom: 16px;
   flex-shrink: 0;
+  position: relative;
+}
+
+/* Integration icons float right within the centered row */
+.action-buttons-row .integrations-row {
+  position: absolute;
+  right: 0;
 }
 
 /* Action buttons styling */
@@ -1029,10 +1037,11 @@ async function handleContinueWorking() {
   }
 }
 
-/* Execution mode row (above buttons, centered) */
+/* Execution mode row (centered) */
 .execution-mode-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   margin-bottom: 12px;
 }
 
