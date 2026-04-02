@@ -2,20 +2,27 @@
   <v-dialog v-model="isOpen" max-width="800" persistent>
     <v-card v-draggable class="smooth-border">
       <!-- Header -->
-      <v-card-title class="d-flex align-center">
-        <v-icon start>mdi-information-outline</v-icon>
-        <span v-if="isOrchestrator">System Orchestrator Prompt</span>
-        <span v-else>Agent Details: {{ agent?.agent_name || 'Unknown Agent' }}</span>
-        <v-spacer></v-spacer>
-        <v-btn icon variant="text" aria-label="Close dialog" @click="handleClose">
-          <v-icon>mdi-close</v-icon>
+      <div class="dlg-header">
+        <div
+          v-if="!isOrchestrator"
+          class="agent-badge-sq"
+          :style="{
+            background: hexToRgba(getAgentDisplayNameColor(agent?.agent_display_name), 0.15),
+            color: getAgentDisplayNameColor(agent?.agent_display_name),
+          }"
+        >{{ getAgentAbbr(agent?.agent_display_name) }}</div>
+        <v-icon v-else class="dlg-icon">mdi-information-outline</v-icon>
+        <span v-if="isOrchestrator" class="dlg-title">System Orchestrator Prompt</span>
+        <span v-else class="dlg-title">Agent Details: {{ agent?.agent_name || 'Unknown Agent' }}</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" @click="handleClose">
+          <v-icon icon="mdi-close" size="18" />
         </v-btn>
-      </v-card-title>
+      </div>
 
       <v-divider></v-divider>
 
       <!-- Content -->
-      <v-card-text v-if="agent">
+      <v-card-text v-if="agent" class="pa-4">
         <!-- Agent Info Section (non-orchestrator) -->
         <div v-if="!isOrchestrator" class="mb-4">
           <div class="d-flex align-center gap-2 mb-2">
@@ -68,7 +75,7 @@
       </v-card-text>
 
       <!-- No Agent Data -->
-      <v-card-text v-else>
+      <v-card-text v-else class="pa-4">
         <v-alert type="warning" variant="tonal" density="compact">
           No agent information available.
         </v-alert>
@@ -77,10 +84,10 @@
       <v-divider></v-divider>
 
       <!-- Actions -->
-      <v-card-actions>
-        <v-spacer></v-spacer>
+      <div class="dlg-footer">
+        <v-spacer />
         <v-btn variant="text" @click="handleClose">Close</v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -131,6 +138,16 @@ const handleClose = () => {
 
 const getAgentDisplayNameColor = (displayName) => {
   return getAgentColorConfig(displayName).hex
+}
+
+const getAgentAbbr = (agentName) => {
+  if (!agentName) return '?'
+  return agentName
+    .split(/[\s_-]+/)
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
 }
 
 /**
@@ -230,33 +247,13 @@ watch(
 </script>
 
 <style lang="scss" scoped>
-@use '../../styles/design-tokens' as *;
 .template-content-card {
   max-height: 500px;
   overflow-y: auto;
   background-color: rgb(var(--v-theme-surface-variant));
 }
 
-.template-content {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 12px;
-  line-height: 1.6;
-  padding: 16px;
-  margin: 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  color: rgb(var(--v-theme-on-surface-variant));
-}
-
 .gap-2 {
   gap: 8px;
-}
-
-.agent-tinted-badge {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: $border-radius-default;
-  font-size: 0.75rem;
-  font-weight: 600;
 }
 </style>

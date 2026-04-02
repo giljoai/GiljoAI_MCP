@@ -2,12 +2,19 @@
   <v-dialog v-model="isOpen" max-width="900" persistent>
     <v-card v-draggable class="smooth-border">
       <!-- Header -->
-      <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2" :color="agentColor">mdi-pencil</v-icon>
-        Edit {{ agent?.agent_display_name || 'Agent' }} Mission
-        <v-spacer />
-        <v-btn icon="mdi-close" variant="text" size="small" aria-label="Close" @click="handleClose" />
-      </v-card-title>
+      <div class="dlg-header">
+        <div
+          class="agent-badge-sq"
+          :style="{
+            background: agentTintedBg,
+            color: agentPrimaryColor,
+          }"
+        >{{ agentAbbr }}</div>
+        <span class="dlg-title">Edit {{ agent?.agent_display_name || 'Agent' }} Mission</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" @click="handleClose">
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
 
       <div class="d-flex align-center ga-2 px-4 pb-2">
         <v-chip size="small" variant="outlined">
@@ -21,7 +28,7 @@
       <v-divider></v-divider>
 
       <!-- Mission Editor -->
-      <v-card-text>
+      <v-card-text class="pa-4">
         <v-alert
           v-if="error"
           type="error"
@@ -84,7 +91,7 @@
       <v-divider></v-divider>
 
       <!-- Actions -->
-      <v-card-actions>
+      <div class="dlg-footer">
         <v-btn
           variant="text"
           :disabled="!hasChanges || loading"
@@ -111,27 +118,30 @@
           <v-icon start>mdi-content-save</v-icon>
           Save Mission
         </v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 
   <!-- Unsaved Changes Confirmation -->
   <v-dialog v-model="showDiscardDialog" max-width="400" persistent z-index="2600">
     <v-card class="smooth-border">
-      <v-card-title class="bg-warning d-flex align-center">
-        <v-icon class="mr-2">mdi-alert</v-icon>
-        Unsaved Changes
-      </v-card-title>
+      <div class="dlg-header dlg-header--warning">
+        <v-icon class="dlg-icon">mdi-alert</v-icon>
+        <span class="dlg-title">Unsaved Changes</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" @click="showDiscardDialog = false">
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
       <v-divider />
-      <v-card-text class="pt-4">
+      <v-card-text class="pa-4">
         You have unsaved changes. Are you sure you want to close?
       </v-card-text>
       <v-divider />
-      <v-card-actions>
+      <div class="dlg-footer">
         <v-spacer />
         <v-btn variant="text" @click="showDiscardDialog = false">Keep Editing</v-btn>
         <v-btn color="warning" variant="flat" @click="discardAndClose">Discard</v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -139,6 +149,8 @@
 <script setup>
 import { ref, computed, watch, getCurrentInstance } from 'vue'
 import api from '@/services/api'
+import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
+import { hexToRgba } from '@/utils/colorUtils'
 
 const props = defineProps({
   modelValue: {
@@ -190,6 +202,25 @@ const agentColor = computed(() => {
 
 const executionCount = computed(() => {
   return props.agent?.execution_count || 1
+})
+
+const agentPrimaryColor = computed(() => {
+  return getAgentColorConfig(props.agent?.agent_display_name).hex
+})
+
+const agentTintedBg = computed(() => {
+  return hexToRgba(agentPrimaryColor.value, 0.15)
+})
+
+const agentAbbr = computed(() => {
+  const name = props.agent?.agent_display_name
+  if (!name) return '?'
+  return name
+    .split(/[\s_-]+/)
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
 })
 
 // Validation rules
@@ -269,7 +300,7 @@ function discardAndClose() {
 
 <style scoped>
 .mission-editor :deep(.v-field__input) {
-  font-family: 'Roboto Mono', monospace;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 0.875rem;
 }
 
