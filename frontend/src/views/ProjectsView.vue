@@ -165,18 +165,13 @@
 
           <!-- Staged Column (0870h: tinted style) -->
           <template v-slot:item.staging_status="{ item }">
-            <!-- Tinted pill: desktop -->
-            <span
-              class="staged-full tinted-chip"
-              :class="isProjectStaged(item) ? 'tinted-yes' : 'tinted-no'"
-            >
-              {{ isProjectStaged(item) ? 'Yes' : 'No' }}
-            </span>
-            <!-- Compact dot: small viewports -->
-            <span
-              class="staged-dot"
-              :style="{ backgroundColor: isProjectStaged(item) ? 'var(--color-status-success)' : 'var(--color-text-muted)' }"
-            >{{ isProjectStaged(item) ? 'Y' : 'N' }}</span>
+            <v-icon
+              v-if="isProjectStaged(item)"
+              size="18"
+              color="#67bd6d"
+              aria-label="Staged"
+            >mdi-check</v-icon>
+            <span v-else class="staged-dash">—</span>
           </template>
 
           <!-- Created Date Column (0870h: accessible muted text) -->
@@ -826,7 +821,7 @@ function clearFilters() {
 const headers = [
   { title: 'Name', key: 'name', sortable: true, width: '33%' },
   { title: 'Status', key: 'status', sortable: true, width: '15%', align: 'center' },
-  { title: 'Staged', key: 'staging_status', sortable: true, width: '9%' },
+  { title: 'Staged', key: 'staging_status', sortable: true, width: '9%', align: 'center' },
   { title: 'Created', key: 'created_at', sortable: true, width: '13%' },
   { title: 'Completed', key: 'completed_at', sortable: true, width: '13%', align: 'center' },
   { title: 'Actions', key: 'quick_action', sortable: false, width: '5%', align: 'center' },
@@ -1637,25 +1632,15 @@ onBeforeUnmount(() => {
 }
 
 /* 0870h: Tinted chip base */
-.tinted-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: $border-radius-pill;
-  font-size: 0.65rem;
-  font-weight: 600;
+/* Staged column: check or dash (Handover 0875) */
+.staged-dash {
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
-/* 0870h: Tinted Yes/No staged chips */
-.tinted-yes {
-  background: rgba($color-status-success, 0.12);
-  color: $color-status-success;
-}
-
-.tinted-no {
-  background: rgba($color-agent-analyzer, 0.12);
-  color: $color-agent-analyzer;
+/* Force center alignment on Staged column cells (3rd column) */
+.project-table-card :deep(td:nth-child(3)) {
+  text-align: center;
 }
 
 /* Play-circle activate button — uses global .icon-interactive-play */
@@ -1676,7 +1661,6 @@ onBeforeUnmount(() => {
 /* ── Responsive compact elements (hidden by default, shown via media queries) ── */
 .taxonomy-dot,
 .status-dot,
-.staged-dot,
 .date-compact {
   display: none;
 }
@@ -1703,31 +1687,16 @@ onBeforeUnmount(() => {
   text-align: center;
 }
 
-/* Staged compact dot with Y/N */
-.staged-dot {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-  border-radius: 50%;
-  font-size: 11px;
-  font-weight: 700;
-  color: $darkest-blue;
-  line-height: 22px;
-  text-align: center;
-}
-
 /* ── Compact breakpoint (≤1280px): collapse badges to dots, dates to DD/MM/YY ── */
 /* At 1200px with sidebar open (~160px), content area is ~1040px and badges overflow */
 @media (max-width: 1280px) {
   .taxonomy-chip-full,
   .status-full,
-  .staged-full,
   .date-full {
     display: none !important;
   }
   .taxonomy-dot,
   .status-dot,
-  .staged-dot,
   .date-compact {
     display: inline-block;
   }
