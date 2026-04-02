@@ -95,6 +95,9 @@ class VisionDocumentResponse(BaseModel):
     summary_medium_tokens: int | None = Field(default=None, description="Token count for medium summary")
     original_token_count: int | None = Field(default=None, description="Original document token count")
     has_summaries: bool = Field(default=False, description="Whether summaries have been generated (computed)")
+    ai_summary_light_tokens: int | None = Field(default=None, description="AI light summary token count (33%)")
+    ai_summary_medium_tokens: int | None = Field(default=None, description="AI medium summary token count (66%)")
+    has_ai_summaries: bool = Field(default=False, description="Whether AI summaries have been generated")
 
     model_config = ConfigDict(from_attributes=True)
 

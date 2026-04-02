@@ -143,6 +143,25 @@
                     </v-tooltip>
                   </span>
                 </div>
+                <div v-if="doc.has_ai_summaries" class="summary-badge-row mt-2">
+                  <span class="text-caption text-muted-a11y">AI summaries:</span>
+                  <span
+                    v-if="doc.ai_summary_light_tokens"
+                    class="summary-level-chip summary-level-chip--ai"
+                    :style="aiSummaryStyle('light')"
+                  >
+                    <v-icon size="12" class="mr-1">mdi-check-bold</v-icon>
+                    33% ({{ formatTokens(doc.ai_summary_light_tokens) }} tokens)
+                  </span>
+                  <span
+                    v-if="doc.ai_summary_medium_tokens"
+                    class="summary-level-chip summary-level-chip--ai"
+                    :style="aiSummaryStyle('medium')"
+                  >
+                    <v-icon size="12" class="mr-1">mdi-check-bold</v-icon>
+                    66% ({{ formatTokens(doc.ai_summary_medium_tokens) }} tokens)
+                  </span>
+                </div>
               </v-card-text>
               <v-card-text v-else class="pt-0 pb-2">
                 <div class="text-caption text-muted-a11y">
@@ -471,6 +490,11 @@ const CONSOLIDATED_SUMMARY_COLORS = {
   medium: getAgentColor('implementer').hex,
 }
 
+const AI_SUMMARY_COLORS = {
+  light: getStatusColor('complete'),
+  medium: getAgentColor('implementer').hex,
+}
+
 function docSummaryStyle(level) {
   const hex = DOC_SUMMARY_COLORS[level] || '#8895a8'
   return { background: hexToRgba(hex, 0.15), color: hex }
@@ -478,6 +502,11 @@ function docSummaryStyle(level) {
 
 function consolidatedSummaryStyle(level) {
   const hex = CONSOLIDATED_SUMMARY_COLORS[level] || '#8895a8'
+  return { background: hexToRgba(hex, 0.15), color: hex }
+}
+
+function aiSummaryStyle(level) {
+  const hex = AI_SUMMARY_COLORS[level] || '#8895a8'
   return { background: hexToRgba(hex, 0.15), color: hex }
 }
 
@@ -768,5 +797,17 @@ async function regenerateConsolidation() {
 
 .summary-level-chip:hover {
   opacity: 0.85;
+}
+
+.summary-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.summary-level-chip--ai {
+  font-size: 0.68rem;
+  padding: 2px 8px;
 }
 </style>
