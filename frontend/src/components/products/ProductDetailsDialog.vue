@@ -14,7 +14,7 @@
       <v-card-text v-if="product" class="pa-4">
         <!-- Product Name -->
         <div class="text-h6 mb-2">{{ product.name }}</div>
-        <div class="text-caption mb-2 text-muted-a11y font-mono" style="font-size: 0.65rem">ID: {{ product.id }}</div>
+        <div class="text-caption mb-2 text-muted-a11y font-mono product-id-text">ID: {{ product.id }}</div>
 
         <!-- Context Tuning (Handover 0831) -->
         <div class="d-flex align-center mb-4">
@@ -391,7 +391,7 @@
 
       <v-divider />
 
-      <v-card-text class="summary-content pa-4" style="max-height: 60vh; overflow-y: auto;">
+      <v-card-text class="summary-content pa-4 dialog-body-scroll">
         <div class="text-caption text-muted-a11y mb-2">
           <v-icon size="14" class="mr-1">mdi-counter</v-icon>
           ~{{ formatTokens(summaryTokens) }} tokens
@@ -424,7 +424,7 @@
 
       <v-divider />
 
-      <v-card-text class="summary-content pa-4" style="max-height: 60vh; overflow-y: auto;">
+      <v-card-text class="summary-content pa-4 dialog-body-scroll">
         <div class="text-caption text-muted-a11y mb-2">
           <v-icon size="14" class="mr-1">mdi-counter</v-icon>
           ~{{ formatTokens(consolidatedSummaryTokens) }} tokens
@@ -751,6 +751,9 @@ async function regenerateConsolidation() {
 
 <style lang="scss" scoped>
 @use '../../styles/design-tokens' as *;
+.product-id-text {
+  font-size: 0.65rem;
+}
 .summary-level-chip {
   display: inline-flex;
   align-items: center;
