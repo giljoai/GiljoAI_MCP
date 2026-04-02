@@ -7,18 +7,27 @@
     @update:model-value="handleDialogChange"
   >
     <v-card v-draggable class="base-dialog-card smooth-border" elevation="24">
-      <!-- Title Bar -->
-      <v-card-title :class="titleClasses">
-        <v-icon v-if="showIcon" :class="iconClasses">{{ iconName }}</v-icon>
-        <span>{{ title }}</span>
-        <v-spacer v-if="$slots.titleAppend" />
+      <!-- Header -->
+      <div :class="headerClasses">
+        <v-icon v-if="showIcon" class="dlg-icon" :icon="iconName" />
+        <span class="dlg-title">{{ title }}</span>
         <slot name="titleAppend" />
-      </v-card-title>
+        <v-btn
+          icon
+          variant="text"
+          size="small"
+          class="dlg-close"
+          :disabled="loading"
+          @click="handleCancel"
+        >
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
 
       <v-divider />
 
       <!-- Content -->
-      <v-card-text :class="contentClasses">
+      <v-card-text class="pa-4">
         <!-- Default alert for simple messages -->
         <v-alert
           v-if="message && !$slots.default"
@@ -61,10 +70,10 @@
 
       <v-divider />
 
-      <!-- Actions -->
-      <v-card-actions>
-        <v-spacer />
+      <!-- Footer -->
+      <div class="dlg-footer">
         <slot name="actions" :can-confirm="canConfirm" :loading="loading">
+          <v-spacer />
           <v-btn
             variant="text"
             :disabled="loading"
@@ -74,7 +83,7 @@
           </v-btn>
           <v-btn
             :color="confirmButtonColor"
-            :variant="confirmButtonVariant"
+            variant="flat"
             :loading="loading"
             :disabled="!canConfirm"
             @click="handleConfirm"
@@ -82,7 +91,7 @@
             {{ confirmLabel }}
           </v-btn>
         </slot>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -92,12 +101,13 @@
  * BaseDialog.vue - Standardized Dialog Component
  *
  * Provides consistent styling and behavior for all application dialogs.
+ * Uses the harmonized dialog anatomy: .dlg-header / .dlg-footer classes.
  *
- * Types:
- * - info: Blue header, informational content
- * - warning: Amber header, caution/reversible actions
- * - danger: Red header, destructive/irreversible actions
- * - success: Green header, positive confirmations
+ * Header types:
+ * - info: Plain header (no colored band)
+ * - warning: Amber band (.dlg-header--warning)
+ * - danger: Magenta band (.dlg-header--danger)
+ * - success: Plain header (no colored band, green icon)
  *
  * Confirmation Patterns:
  * - None: Simple confirm/cancel
@@ -128,86 +138,59 @@
 import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
-  // v-model binding
   modelValue: {
     type: Boolean,
     required: true,
   },
-
-  // Dialog type determines colors and icon
   type: {
     type: String,
     default: 'info',
     validator: (val) => ['info', 'warning', 'danger', 'success'].includes(val),
   },
-
-  // Title text
   title: {
     type: String,
     required: true,
   },
-
-  // Simple message (alternative to slot content)
   message: {
     type: String,
     default: '',
   },
-
-  // Confirm button text
   confirmLabel: {
     type: String,
     default: 'Confirm',
   },
-
-  // Cancel button text
   cancelText: {
     type: String,
     default: 'Cancel',
   },
-
-  // Dialog width: 'sm' (400), 'md' (500), 'lg' (650), 'xl' (800), or number
   size: {
     type: [String, Number],
     default: 'md',
   },
-
-  // Prevent closing by clicking outside
   persistent: {
     type: Boolean,
     default: true,
   },
-
-  // Loading state for confirm button
   loading: {
     type: Boolean,
     default: false,
   },
-
-  // Text confirmation (user must type this to confirm)
   confirmText: {
     type: String,
     default: '',
   },
-
-  // Checkbox confirmation
   confirmCheckbox: {
     type: Boolean,
     default: false,
   },
-
-  // Checkbox label
   confirmCheckboxLabel: {
     type: String,
     default: 'I understand and want to proceed',
   },
-
-  // Hide the icon in title
   hideIcon: {
     type: Boolean,
     default: false,
   },
-
-  // Custom icon (overrides type default)
   icon: {
     type: String,
     default: '',
@@ -216,96 +199,69 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'confirm', 'cancel'])
 
-// Local state
 const confirmInput = ref('')
 const checkboxConfirmed = ref(false)
 
-// Computed: dialog open state
 const isOpen = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val),
 })
 
-// Computed: size to max-width mapping
 const maxWidth = computed(() => {
-  const sizeMap = {
-    sm: 400,
-    md: 500,
-    lg: 650,
-    xl: 800,
-  }
+  const sizeMap = { sm: 400, md: 500, lg: 650, xl: 800 }
   return typeof props.size === 'number' ? props.size : sizeMap[props.size] || 500
 })
 
-// Computed: type-based configuration
+// Type-based configuration: maps type to header variant + icon + color
 const typeConfig = computed(() => {
   const configs = {
     info: {
       color: 'info',
       icon: 'mdi-information',
-      bgClass: 'bg-info',
+      headerVariant: '',
     },
     warning: {
       color: 'warning',
       icon: 'mdi-alert',
-      bgClass: 'bg-warning',
+      headerVariant: 'dlg-header--warning',
     },
     danger: {
       color: 'error',
       icon: 'mdi-alert-circle',
-      bgClass: 'bg-error',
+      headerVariant: 'dlg-header--danger',
     },
     success: {
       color: 'success',
       icon: 'mdi-check-circle',
-      bgClass: 'bg-success',
+      headerVariant: '',
     },
   }
   return configs[props.type] || configs.info
 })
 
-// Computed: title bar classes
-const titleClasses = computed(() => [
-  'd-flex',
-  'align-center',
-  typeConfig.value.bgClass,
-])
+// Header classes: base + optional variant band
+const headerClasses = computed(() => {
+  const classes = ['dlg-header']
+  if (typeConfig.value.headerVariant) {
+    classes.push(typeConfig.value.headerVariant)
+  }
+  return classes
+})
 
-// Computed: icon classes
-const iconClasses = computed(() => ['mr-2'])
-
-// Computed: whether to show icon
 const showIcon = computed(() => !props.hideIcon)
-
-// Computed: icon name
 const iconName = computed(() => props.icon || typeConfig.value.icon)
-
-// Computed: content area classes
-const contentClasses = computed(() => ['pt-4'])
-
-// Computed: confirm button color
 const confirmButtonColor = computed(() => typeConfig.value.color)
 
-// Computed: confirm button variant
-const confirmButtonVariant = computed(() => 'flat')
-
-// Computed: can confirm (validation passed)
 const canConfirm = computed(() => {
-  // Text confirmation required
   if (props.confirmText) {
     return confirmInput.value === props.confirmText
   }
-
-  // Checkbox confirmation required
   if (props.confirmCheckbox) {
     return checkboxConfirmed.value
   }
-
-  // No confirmation required
   return true
 })
 
-// Methods
 function handleConfirm() {
   if (canConfirm.value) {
     emit('confirm')
@@ -325,7 +281,6 @@ function handleDialogChange(val) {
   }
 }
 
-// Reset confirmation state when dialog opens/closes
 watch(() => props.modelValue, (newVal) => {
   if (!newVal) {
     confirmInput.value = ''
@@ -335,35 +290,8 @@ watch(() => props.modelValue, (newVal) => {
 </script>
 
 <style scoped>
-/* Ensure dialog card is fully opaque and elevated */
 .base-dialog-card {
   background-color: rgb(var(--v-theme-surface));
   opacity: 1;
-}
-
-/* Title bar background colors with proper contrast */
-.bg-info {
-  background-color: rgb(var(--v-theme-info));
-  color: white;
-}
-
-.bg-warning {
-  background-color: rgb(var(--v-theme-warning));
-  color: rgba(0, 0, 0, 0.87);
-}
-
-.bg-error {
-  background-color: rgb(var(--v-theme-error));
-  color: white;
-}
-
-.bg-success {
-  background-color: rgb(var(--v-theme-success));
-  color: white;
-}
-
-/* Icon sizing in title */
-.v-card-title .v-icon {
-  font-size: 1.5rem;
 }
 </style>

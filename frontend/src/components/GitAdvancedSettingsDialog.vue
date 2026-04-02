@@ -5,16 +5,17 @@
     @update:model-value="$emit('update:model-value', $event)"
   >
     <v-card v-draggable class="smooth-border">
-      <v-card-title class="d-flex align-center">
-        <v-icon start>mdi-github</v-icon>
-        Git Integration – Advanced Settings
-        <v-spacer></v-spacer>
-        <v-btn icon="mdi-close" variant="text" @click="$emit('update:model-value', false)" />
-      </v-card-title>
+      <div class="dlg-header">
+        <v-icon class="dlg-icon" icon="mdi-github" />
+        <span class="dlg-title">Git Integration – Advanced Settings</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" @click="$emit('update:model-value', false)">
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
 
       <v-divider></v-divider>
 
-      <v-card-text>
+      <v-card-text class="pa-4">
         <v-form ref="form" v-model="valid">
           <div class="mb-4 text-muted-a11y">
             Configure how Git integration works with 360 Memory and agent prompts.
@@ -80,11 +81,11 @@
 
       <v-divider></v-divider>
 
-      <v-card-actions>
-        <v-spacer></v-spacer>
+      <div class="dlg-footer">
+        <v-spacer />
         <v-btn variant="text" @click="$emit('update:model-value', false)">Cancel</v-btn>
-        <v-btn color="primary" :disabled="!valid" :loading="saving" @click="handleSave">Save</v-btn>
-      </v-card-actions>
+        <v-btn color="primary" variant="flat" :disabled="!valid" :loading="saving" @click="handleSave">Save</v-btn>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -127,6 +128,3 @@ function handleSave() {
   })
 }
 </script>
-
-<style scoped>
-</style>

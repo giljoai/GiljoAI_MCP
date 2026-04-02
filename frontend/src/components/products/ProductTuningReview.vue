@@ -198,12 +198,19 @@
     <!-- Confirm Dismiss All Dialog -->
     <v-dialog v-model="dismissAllDialog" max-width="400">
       <v-card class="smooth-border">
-        <v-card-title class="text-subtitle-1">Dismiss All Proposals</v-card-title>
-        <v-card-text>
+        <div class="dlg-header dlg-header--warning">
+          <v-icon class="mr-2" size="20">mdi-alert-outline</v-icon>
+          <span class="dlg-title">Dismiss All Proposals</span>
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" class="dlg-close" @click="dismissAllDialog = false" />
+        </div>
+        <v-divider />
+        <v-card-text class="pa-4">
           Are you sure you want to dismiss all {{ sectionKeys.length }} pending proposals?
           This action cannot be undone.
         </v-card-text>
-        <v-card-actions>
+        <v-divider />
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" @click="dismissAllDialog = false">Cancel</v-btn>
           <v-btn
@@ -214,7 +221,7 @@
           >
             Dismiss All
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
   </div>

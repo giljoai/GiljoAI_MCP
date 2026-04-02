@@ -1,8 +1,17 @@
 <template>
   <v-dialog v-model="dialogModel" max-width="500" persistent>
     <v-card v-draggable class="smooth-border">
-      <v-card-title>Invite Member</v-card-title>
-      <v-card-text>
+      <div class="dlg-header">
+        <v-icon class="dlg-icon" icon="mdi-account-plus" />
+        <span class="dlg-title">Invite Member</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" @click="dialogModel = false">
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
+
+      <v-divider />
+
+      <v-card-text class="pa-4">
         <v-text-field
           v-model="userId"
           label="User ID"
@@ -12,11 +21,15 @@
         />
         <v-select v-model="role" :items="roles" label="Role" variant="outlined" density="compact" data-test="invite-role" />
       </v-card-text>
-      <v-card-actions>
+
+      <v-divider />
+
+      <div class="dlg-footer">
         <v-spacer />
-        <v-btn data-test="invite-cancel" @click="dialogModel = false">Cancel</v-btn>
+        <v-btn variant="text" data-test="invite-cancel" @click="dialogModel = false">Cancel</v-btn>
         <v-btn
           color="primary"
+          variant="flat"
           :loading="loading"
           :disabled="!userId"
           data-test="invite-submit"
@@ -24,7 +37,7 @@
         >
           Invite
         </v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>

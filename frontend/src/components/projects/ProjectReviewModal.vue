@@ -11,43 +11,47 @@
   >
     <v-card class="smooth-border">
       <!-- Header -->
-      <v-card-title id="review-modal-title" class="d-flex align-center">
-        <v-icon icon="mdi-eye" class="mr-2" />
-        <span>Project Review: <span class="review-project-name">{{ projectData?.name }}</span></span>
-        <v-chip
-          v-if="projectData?.status"
-          :color="statusColor"
-          :style="statusTextStyle"
-          variant="flat"
-          size="x-small"
-          class="ml-3"
-        >
-          {{ projectData.status }}
-        </v-chip>
-        <v-spacer />
-        <v-btn icon="mdi-close" variant="text" aria-label="Close dialog" @click="$emit('close')" />
-      </v-card-title>
-      <div class="text-caption text-muted-a11y px-6 pb-2">
-        <v-tooltip location="bottom">
-          <template #activator="{ props: tp }">
-            <span
-              v-bind="tp"
-              class="review-project-id"
-              role="button"
-              tabindex="0"
-              @click="copyProjectId"
-              @keydown.enter="copyProjectId"
-            >{{ projectId }}</span>
-          </template>
-          <span>{{ copied ? 'Copied!' : 'Click to copy project ID' }}</span>
-        </v-tooltip>
+      <div id="review-modal-title" class="dlg-header">
+        <v-icon class="dlg-icon">mdi-eye</v-icon>
+        <div class="d-flex flex-column" style="flex:1">
+          <span class="dlg-title">Project Review: <span class="review-project-name">{{ projectData?.name }}</span>
+            <v-chip
+              v-if="projectData?.status"
+              :color="statusColor"
+              :style="statusTextStyle"
+              variant="flat"
+              size="x-small"
+              class="ml-2"
+            >
+              {{ projectData.status }}
+            </v-chip>
+          </span>
+          <span class="text-caption text-muted-a11y">
+            <v-tooltip location="bottom">
+              <template #activator="{ props: tp }">
+                <span
+                  v-bind="tp"
+                  class="review-project-id"
+                  role="button"
+                  tabindex="0"
+                  @click="copyProjectId"
+                  @keydown.enter="copyProjectId"
+                >{{ projectId }}</span>
+              </template>
+              <span>{{ copied ? 'Copied!' : 'Click to copy project ID' }}</span>
+            </v-tooltip>
+          </span>
+        </div>
+        <v-btn icon variant="text" size="small" class="dlg-close" @click="$emit('close')">
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
       </div>
 
       <v-divider />
 
       <v-card-text class="pa-4 dialog-body-scroll">
         <v-progress-linear v-if="loading" indeterminate color="primary" />
-        <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
+        <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-4">{{ error }}</v-alert>
 
         <template v-if="projectData && !loading">
           <!-- Section 1: Project Overview -->
@@ -95,7 +99,7 @@
                   <td>
                     <span
                       v-if="agent.agent_name"
-                      class="agent-tinted-chip"
+                      class="agent-tinted-badge"
                       :style="{ backgroundColor: hexToRgba(agentTypeColor(agent.agent_name), 0.15), color: agentTypeColor(agent.agent_name) }"
                     >{{ agent.agent_name }}</span>
                     <span v-else class="text-muted-a11y">-</span>
@@ -119,8 +123,8 @@
                 <v-expansion-panel-title>
                   <div class="d-flex align-center w-100">
                     <div
-                      class="agent-tinted-badge mr-2"
-                      :style="{ backgroundColor: hexToRgba(agentTypeColor(agent.agent_name), 0.15), color: agentTypeColor(agent.agent_name) }"
+                      class="agent-badge-sq agent-badge-sq--sm mr-2"
+                      :style="{ background: hexToRgba(agentTypeColor(agent.agent_name), 0.15), color: agentTypeColor(agent.agent_name) }"
                     >
                       {{ agentTypeBadge(agent.agent_name) }}
                     </div>
@@ -213,12 +217,12 @@
 
       <v-divider />
 
-      <v-card-actions class="pa-4">
+      <div class="dlg-footer">
         <v-spacer />
         <v-btn variant="elevated" color="primary" aria-label="Close review modal" data-testid="review-close-btn" @click="$emit('close')">
           Close
         </v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -402,23 +406,4 @@ function truncate(text, maxLen) {
   text-decoration: underline;
 }
 
-.agent-tinted-badge {
-  width: 24px;
-  height: 24px;
-  border-radius: $border-radius-default;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.6rem;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.agent-tinted-chip {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: $border-radius-default;
-  font-size: 0.7rem;
-  font-weight: 600;
-}
 </style>

@@ -18,12 +18,12 @@
 
     <v-dialog v-model="showDialog" max-width="680" scrollable>
       <v-card v-draggable class="lab-dialog-card smooth-border">
-        <v-card-title class="d-flex align-center lab-header">
+        <div class="dlg-header">
           <v-icon class="mr-2" size="22" color="primary">mdi-flask-outline</v-icon>
-          <span>Agent Lab</span>
+          <span class="dlg-title">Agent Lab</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" size="small" @click="showDialog = false" />
-        </v-card-title>
+          <v-btn icon="mdi-close" variant="text" size="small" class="dlg-close" @click="showDialog = false" />
+        </div>
 
         <v-divider />
 
@@ -261,11 +261,6 @@ function downloadTemplate() {
   background: rgb(var(--v-theme-surface));
 }
 
-.lab-header {
-  font-size: 1rem;
-  font-weight: 600;
-}
-
 .lab-content {
   max-height: 70vh;
   overflow-y: auto;
@@ -289,67 +284,6 @@ function downloadTemplate() {
     background: rgba($color-brand-yellow, 0.15);
     border-color: rgb(var(--v-theme-primary));
     color: rgb(var(--v-theme-primary));
-  }
-}
-
-.tip-box {
-  position: relative;
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  border-radius: $border-radius-sharp;
-  padding: 10px 12px;
-  padding-right: 36px;
-
-  .tip-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: rgba(var(--v-theme-on-surface), 0.6);
-    margin-bottom: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .tip-code {
-    display: block;
-    font-size: 0.8rem;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-word;
-    color: rgba(var(--v-theme-on-surface), 0.85);
-  }
-
-  .copy-btn {
-    position: absolute;
-    top: 6px;
-    right: 4px;
-    color: rgba(var(--v-theme-on-surface), 0.4);
-
-    &:hover {
-      color: rgb(var(--v-theme-primary));
-    }
-  }
-}
-
-.tip-section {
-  .tip-subtitle {
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-bottom: 6px;
-    color: rgba(var(--v-theme-on-surface), 0.7);
-  }
-}
-
-.tip-list {
-  margin: 0;
-  padding-left: 20px;
-  font-size: 0.825rem;
-  line-height: 1.7;
-  color: rgba(var(--v-theme-on-surface), 0.85);
-
-  code {
-    font-size: 0.75rem;
-    background: rgba(var(--v-theme-on-surface), 0.08);
-    padding: 1px 4px;
-    border-radius: $border-radius-sharp;
   }
 }
 
