@@ -41,6 +41,36 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Vision Documents"])
 
+AI_SUMMARY_LIGHT_RATIO = Decimal("0.33")
+AI_SUMMARY_MEDIUM_RATIO = Decimal("0.66")
+
+
+async def _attach_ai_summary_metadata(
+    vision_repo: VisionDocumentRepository,
+    db: AsyncSession,
+    tenant_key: str,
+    response_model: VisionDocumentResponse,
+) -> VisionDocumentResponse:
+    """Augment a vision document response with AI summary token metadata."""
+    summaries = await vision_repo.get_summaries(
+        session=db,
+        tenant_key=tenant_key,
+        document_id=response_model.id,
+    )
+
+    for summary in summaries:
+        if summary.source != "ai":
+            continue
+        if summary.ratio == AI_SUMMARY_LIGHT_RATIO:
+            response_model.ai_summary_light_tokens = summary.tokens_summary
+        elif summary.ratio == AI_SUMMARY_MEDIUM_RATIO:
+            response_model.ai_summary_medium_tokens = summary.tokens_summary
+
+    response_model.has_ai_summaries = bool(
+        response_model.ai_summary_light_tokens or response_model.ai_summary_medium_tokens
+    )
+    return response_model
+
 
 async def trigger_consolidation(product_id: str, tenant_key: str, db_session: AsyncSession) -> None:
     """
@@ -341,6 +371,7 @@ async def get_vision_document(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
+    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
 ):
     """
     Get a single vision document by ID.
@@ -372,7 +403,8 @@ async def get_vision_document(
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Vision document {document_id} not found")
 
-    return VisionDocumentResponse.model_validate(doc)
+    response_model = VisionDocumentResponse.model_validate(doc)
+    return await _attach_ai_summary_metadata(vision_repo, db, tenant_key, response_model)
 
 
 @router.get("/product/{product_id}", response_model=list[VisionDocumentResponse])
@@ -409,7 +441,12 @@ async def list_vision_documents(
         session=db, tenant_key=tenant_key, product_id=product_id, active_only=active_only
     )
 
-    return [VisionDocumentResponse.model_validate(doc) for doc in docs]
+    response_models = []
+    for doc in docs:
+        response_model = VisionDocumentResponse.model_validate(doc)
+        response_models.append(await _attach_ai_summary_metadata(vision_repo, db, tenant_key, response_model))
+
+    return response_models
 
 
 @router.put("/{document_id}", response_model=VisionDocumentResponse)
