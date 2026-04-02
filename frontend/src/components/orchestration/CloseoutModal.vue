@@ -12,17 +12,13 @@
   >
     <v-card v-draggable data-testid="closeout-modal" class="smooth-border">
       <!-- Modal header -->
-      <v-card-title id="closeout-modal-title" class="modal-title bg-primary text-white pa-4">
-        <div class="d-flex align-center justify-space-between">
-          <div class="d-flex align-center">
-            <v-icon icon="mdi-memory" size="large" class="mr-2" />
-            <span class="text-h6">Project 360 Memory: {{ projectName }}</span>
-          </div>
-          <v-btn icon variant="text" color="white" :aria-label="'Close modal'" @click="handleClose">
-            <v-icon icon="mdi-close" />
-          </v-btn>
-        </div>
-      </v-card-title>
+      <div id="closeout-modal-title" class="dlg-header dlg-header--primary dlg-header--sticky">
+        <v-icon class="dlg-icon" icon="mdi-memory" />
+        <span class="dlg-title">Project 360 Memory: {{ projectName }}</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" :aria-label="'Close modal'" @click="handleClose">
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
 
       <v-divider />
 
@@ -52,7 +48,7 @@
         </div>
 
         <!-- Error state -->
-        <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
+        <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-4">
           {{ error }}
         </v-alert>
 
@@ -60,7 +56,8 @@
         <v-alert
           v-if="!loading && !error && memoryEntries.length === 0"
           type="info"
-          variant="outlined"
+          variant="tonal"
+          density="compact"
           class="mb-4"
         >
           No 360 memory entries found for this project yet. Memory entries are created when
@@ -196,7 +193,7 @@
       <v-divider />
 
       <!-- Modal actions -->
-      <v-card-actions class="pa-4">
+      <div class="dlg-footer">
         <v-btn
           color="primary"
           variant="elevated"
@@ -230,7 +227,7 @@
         >
           Cancel
         </v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -403,12 +400,6 @@ const resetState = () => {
 
 <style lang="scss" scoped>
 @use '../../styles/design-tokens' as *;
-.modal-title {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
 .summary-text {
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -444,10 +435,6 @@ const resetState = () => {
 
 /* Mobile optimizations */
 @media (max-width: 600px) {
-  .modal-title {
-    font-size: 1.125rem;
-  }
-
   .git-commits-list {
     max-height: 200px;
   }

@@ -12,17 +12,13 @@
   >
     <v-card v-draggable class="smooth-border">
       <!-- Modal header -->
-      <v-card-title id="manual-closeout-title" class="bg-primary text-white pa-4">
-        <div class="d-flex align-center justify-space-between">
-          <div class="d-flex align-center">
-            <v-icon icon="mdi-check-circle-outline" size="large" class="mr-2" />
-            <span class="text-h6">Complete Project: {{ projectName }}</span>
-          </div>
-          <v-btn icon variant="text" color="white" aria-label="Close modal" @click="handleClose">
-            <v-icon icon="mdi-close" />
-          </v-btn>
-        </div>
-      </v-card-title>
+      <div id="manual-closeout-title" class="dlg-header dlg-header--primary dlg-header--sticky">
+        <v-icon class="dlg-icon" icon="mdi-check-circle-outline" />
+        <span class="dlg-title">Complete Project: {{ projectName }}</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" aria-label="Close modal" @click="handleClose">
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
 
       <v-divider />
 
@@ -46,7 +42,7 @@
         </v-alert>
 
         <!-- Error state -->
-        <v-alert v-if="error" type="error" variant="tonal" class="mb-4" closable @click:close="error = null">
+        <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="error = null">
           {{ error }}
         </v-alert>
 
@@ -83,7 +79,7 @@
       <v-divider />
 
       <!-- Modal actions -->
-      <v-card-actions class="pa-4">
+      <div class="dlg-footer">
         <v-btn variant="text" @click="handleClose">
           Cancel
         </v-btn>
@@ -99,7 +95,7 @@
           <v-icon icon="mdi-check-circle" start />
           Complete Project
         </v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -179,11 +175,3 @@ const resetState = () => {
   error.value = null
 }
 </script>
-
-<style scoped>
-.manual-closeout-modal .v-card-title {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-</style>

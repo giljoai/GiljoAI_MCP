@@ -1,14 +1,17 @@
 <template>
   <v-dialog v-model="internalModel" max-width="560" persistent>
     <v-card v-draggable class="smooth-border">
-      <v-card-title class="d-flex align-center">
-        <v-icon start>mdi-account</v-icon>
-        Edit Profile
-        <v-spacer />
-        <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="close" />
-      </v-card-title>
+      <div class="dlg-header">
+        <v-icon class="dlg-icon" icon="mdi-account" />
+        <span class="dlg-title">Edit Profile</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" aria-label="Close" @click="close">
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
 
-      <v-card-text>
+      <v-divider />
+
+      <v-card-text class="pa-4">
         <v-form ref="formRef">
           <v-text-field
             v-model="form.username"
@@ -52,7 +55,7 @@
             class="mb-6"
           />
 
-          <v-alert type="info" variant="tonal" class="mb-3">
+          <v-alert type="info" variant="tonal" density="compact" class="mb-3">
             Password changes are handled by an administrator. You can reset your 4‑digit recovery
             PIN below.
           </v-alert>
@@ -98,13 +101,13 @@
         </v-form>
       </v-card-text>
 
-      <v-card-actions>
+      <v-divider />
+
+      <div class="dlg-footer">
         <v-spacer />
         <v-btn variant="text" :disabled="saving" @click="close">Cancel</v-btn>
-        <v-btn color="primary" :loading="saving" :disabled="saving" @click="save"
-          >Save Changes</v-btn
-        >
-      </v-card-actions>
+        <v-btn color="primary" variant="flat" :loading="saving" :disabled="saving" @click="save">Save Changes</v-btn>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -205,6 +208,3 @@ async function save() {
   }
 }
 </script>
-
-<style scoped>
-</style>

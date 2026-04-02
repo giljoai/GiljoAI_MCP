@@ -1,26 +1,25 @@
 <template>
   <v-dialog :model-value="modelValue" max-width="980" @update:model-value="emitModelValue">
     <v-card v-draggable class="smooth-border">
-      <v-card-title class="d-flex align-center justify-space-between">
-        <div class="d-flex align-center ga-2">
-          <v-icon color="secondary">mdi-information-outline</v-icon>
-          <span>What is GiljoAI MCP?</span>
-          <v-chip size="small" variant="tonal" color="secondary">{{ activeIndex + 1 }}/{{ slides.length }}</v-chip>
-        </div>
-        <div class="d-flex align-center ga-2">
-          <v-checkbox
-            v-model="dontShowAgain"
-            density="compact"
-            hide-details
-            label="Don’t show again"
-            color="secondary"
-            class="intro-hide-checkbox"
-          />
-          <v-btn icon="mdi-close" variant="text" @click="close()" />
-        </div>
-      </v-card-title>
+      <div class="dlg-header">
+        <GiljoFaceIcon :active="true" :size="24" alt="GiljoAI" class="mr-2" />
+        <span class="dlg-title">What is GiljoAI MCP?</span>
+        <v-chip size="small" variant="tonal" color="secondary" class="ml-2">{{ activeIndex + 1 }}/{{ slides.length }}</v-chip>
+        <v-spacer />
+        <v-checkbox
+          v-model="dontShowAgain"
+          density="compact"
+          hide-details
+          label="Don’t show again"
+          color="secondary"
+          class="intro-hide-checkbox"
+        />
+        <v-btn icon="mdi-close" variant="text" class="dlg-close" @click="close()" />
+      </div>
 
-      <v-card-text>
+      <v-divider />
+
+      <v-card-text class="pa-4">
         <v-window v-model="activeIndex" :touch="false" :reverse="false">
           <v-window-item v-for="slide in slides" :key="slide.id">
             <div class="intro-slide-header">
@@ -93,7 +92,7 @@
 
       <v-divider />
 
-      <v-card-actions class="d-flex flex-column align-center ga-2">
+      <div class="dlg-footer d-flex flex-column align-center ga-2">
         <div class="d-flex ga-2 flex-wrap justify-center w-100">
           <v-btn variant="text" :disabled="activeIndex === 0" @click="prev">Back</v-btn>
           <v-btn variant="tonal" @click="skip">Skip</v-btn>
@@ -101,7 +100,7 @@
             {{ activeIndex === slides.length - 1 ? 'Finish' : 'Next' }}
           </v-btn>
         </div>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>

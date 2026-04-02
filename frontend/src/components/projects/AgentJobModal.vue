@@ -2,21 +2,21 @@
   <v-dialog v-model="isVisible" max-width="700" persistent>
     <v-card v-draggable class="smooth-border">
       <!-- Header -->
-      <v-card-title class="d-flex align-center">
-        <div class="agent-tinted-badge mr-2" :style="getAgentBadgeStyle(displayAgent?.agent_name || displayAgent?.agent_display_name)">
-          {{ getAgentAbbr(displayAgent?.agent_name || displayAgent?.agent_display_name) }}
-        </div>
-        <span class="agent-name-label">{{ displayAgent?.agent_name || displayAgent?.agent_display_name }}</span>&nbsp;- Assigned Job
-        <v-spacer></v-spacer>
-        <v-btn icon variant="text" aria-label="Close" @click="handleClose">
-          <v-icon>mdi-close</v-icon>
+      <div class="dlg-header">
+        <div
+          class="agent-badge-sq"
+          :style="getAgentBadgeStyle(displayAgent?.agent_name || displayAgent?.agent_display_name)"
+        >{{ getAgentAbbr(displayAgent?.agent_name || displayAgent?.agent_display_name) }}</div>
+        <span class="dlg-title"><span class="agent-name-label">{{ displayAgent?.agent_name || displayAgent?.agent_display_name }}</span>&nbsp;- Assigned Job</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" @click="handleClose">
+          <v-icon icon="mdi-close" size="18" />
         </v-btn>
-      </v-card-title>
+      </div>
 
       <v-divider />
 
       <!-- Agent Info -->
-      <v-card-text v-if="displayAgent" class="pb-0">
+      <v-card-text v-if="displayAgent" class="pa-4 pb-0">
         <div class="text-caption text-muted-a11y">
           <div><strong>Agent ID:</strong> {{ displayAgent.agent_id }}</div>
           <div><strong>Job ID:</strong> {{ displayAgent.job_id }}</div>
@@ -27,7 +27,7 @@
       <!-- Tabs -->
       <div class="tab-pills px-4 py-2">
         <button
-          class="pill-btn smooth-border"
+          class="pill-btn"
           :class="{ active: activeTab === 'mission' }"
           data-test="job-tab-mission"
           @click="activeTab = 'mission'"
@@ -36,7 +36,7 @@
           Mission
         </button>
         <button
-          class="pill-btn smooth-border"
+          class="pill-btn"
           :class="{ active: activeTab === 'plan' }"
           data-test="job-tab-plan"
           @click="activeTab = 'plan'"
@@ -49,7 +49,7 @@
       <v-divider />
 
       <!-- Tab Content -->
-      <v-card-text>
+      <v-card-text class="pa-4">
         <v-window v-model="activeTab">
           <!-- Mission Tab -->
           <v-window-item value="mission">
@@ -93,11 +93,13 @@
         </v-window>
       </v-card-text>
 
+      <v-divider />
+
       <!-- Footer -->
-      <v-card-actions>
+      <div class="dlg-footer">
         <v-spacer />
         <v-btn color="primary" @click="handleClose">Close</v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -228,58 +230,9 @@ function getAgentAbbr(agentName) {
   gap: 8px;
 }
 
-.pill-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: $border-radius-pill;
-  padding: 8px 18px;
-  font-size: 0.78rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: $transition-all-fast;
-  background: transparent;
-  color: var(--text-muted);
-  border: none;
-  --smooth-border-color: rgba(var(--v-theme-on-surface), 0.15);
-}
-
-.pill-btn:hover {
-  color: var(--text-secondary);
-  --smooth-border-color: rgba(var(--v-theme-on-surface), 0.25);
-}
-
-.pill-btn.active,
-.pill-btn.active:hover {
-  background: rgba(255, 195, 0, 0.12);
-  color: #ffc300;
-  box-shadow: none;
-}
-
-.agent-tinted-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: $border-radius-default;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
 .mission-section {
   max-height: 400px;
   overflow-y: auto;
-}
-
-.mission-text {
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  font-family: 'Roboto Mono', monospace;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  margin: 0;
 }
 
 .empty-state {
