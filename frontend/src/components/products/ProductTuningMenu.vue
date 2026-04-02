@@ -2,6 +2,7 @@
   <div class="product-tuning-menu">
     <!-- Tune Context Button -->
     <v-btn
+      v-if="!hideTrigger"
       variant="outlined"
       color="primary"
       :loading="loadingSections"
@@ -155,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import api from '@/services/api'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
@@ -164,6 +165,14 @@ const props = defineProps({
   productId: {
     type: String,
     required: true,
+  },
+  hideTrigger: {
+    type: Boolean,
+    default: false,
+  },
+  initiallyOpen: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -247,6 +256,19 @@ async function fetchSections() {
     loadingSections.value = false
   }
 }
+
+watch(
+  () => props.initiallyOpen,
+  async (shouldOpen) => {
+    if (!shouldOpen || panelOpen.value) {
+      return
+    }
+
+    panelOpen.value = true
+    await fetchSections()
+  },
+  { immediate: true },
+)
 
 /**
  * Toggle select-all / deselect-all
