@@ -148,9 +148,11 @@ FIRST ACTIONS (DO NOT RE-STAGE):
    mcp__giljo_mcp__get_workflow_status(project_id="{project_id}")
 
 AFTER CONTEXT GATHERING — decide next action based on workflow status:
-- If all agents completed: proceed to closeout (update your own todos to completed via report_progress, then complete_job, then close_project_and_update_memory)
-- If agents still working: ask user if they want you to auto-monitor agents (sleep and periodically check progress and message queues). Warn user this can drastically increase token consumption.
+- If agents still working: resume coordination loop — poll receive_messages(), react to agent updates,
+  send DEPENDENCY_MET or other coordination messages as needed. The agents do not know you restarted.
 - If agents blocked: send messages to resolve blockers
+- If all agents completed: proceed to closeout (update your own todos to completed via report_progress,
+  then complete_job, then close_project_and_update_memory)
 - If agents failed: assess and re-spawn if needed
 
 CRITICAL RULES:
@@ -158,6 +160,8 @@ CRITICAL RULES:
 - Do NOT re-write the project mission
 - Read 360 Memory handover_closeout for context from previous session
 - You are CONTINUING work, not starting from scratch
+- Agents were NOT terminated during handover — they kept working. Expect them to be in the same or
+  more advanced state than described in the handover. Check workflow_status for current truth.
 """
 
 
@@ -208,68 +212,40 @@ This commit makes project history searchable via git log --grep="closeout" or gi
 
     return f"""ORCHESTRATOR SESSION RETIREMENT{project_display}
 
-Your terminal session is ending due to context exhaustion. Execute these steps IN ORDER to close out all subagents and preserve session context.
+Your terminal session is ending due to context exhaustion. You are handing off to a continuation
+orchestrator that will pick up where you left off. Other agents are NOT affected — leave them alone.
 
 YOUR IDENTITY:
   Agent ID: {agent_id}
   Job ID: {job_id}
   Project ID: {project_id}
 
-Timeout: If any agent is still "working" after 60 seconds, skip it and document as unresolved.
+IMPORTANT: Do NOT touch other agents. Do NOT drain their messages, modify their todos, or force-complete
+their jobs. They are running independently and will continue working after you exit. The continuation
+orchestrator will resume coordination with them seamlessly using the same agent_id and job_id.
 
-STEP 1 — Pre-flight: Gather team state (do NOT modify anything yet)
+STEP 1 — Snapshot team state (READ-ONLY, do NOT modify anything)
 
 mcp__giljo_mcp__get_workflow_status(project_id="{project_id}")
 
-Record:
-- Which agents need cleanup (status is NOT "complete" and NOT "decommissioned")
-- Which agents have messages_waiting > 0 or incomplete todos
-- Which agents can be skipped (status "complete" with 0 messages waiting and all todos done, or status "decommissioned")
+Record the current state of each agent for your handover summary:
+- Agent name, job_id, status, messages_waiting, todo progress
+- Any agents that are blocked and what they are blocked on
 
-STEP 2 — Drain and close out each subagent
-
-LOOP over each non-orchestrator agent from Step 1 that needs cleanup:
-
-  2a. Drain their messages:
-      mcp__giljo_mcp__receive_messages(agent_id="<agent_id>")
-      Record any important content for the 360 Memory summary.
-
-  2b. If agent has incomplete todos, mark remaining as skipped:
-      mcp__giljo_mcp__report_progress(
-          job_id="<their_job_id>",
-          todo_items=[
-              ...keep completed items as "completed",
-              ...mark remaining pending/in_progress items as "skipped"
-          ]
-      )
-      NOTE: This will fail on agents already in "complete" status.
-      If it fails, skip and include their incomplete todos in your 360 Memory summary instead.
-
-  2c. ONLY if agent is NOT already "complete", force complete it:
-      mcp__giljo_mcp__complete_job(
-          job_id="<their_job_id>",
-          result={{
-              "summary": "Handed over due to context exhaustion. Skipped items documented in 360 Memory.",
-              "status": "handed_over"
-          }}
-      )
-      Do NOT call complete_job() on agents already in "complete" status — it will fail.
-
-Skip agents in status "decommissioned".
-Skip agents in status "complete" with 0 unread messages and all todos done (fully clean).
-
-STEP 3 — Drain YOUR OWN message queue
+STEP 2 — Drain YOUR OWN message queue
 
 mcp__giljo_mcp__receive_messages(agent_id="{agent_id}")
 
-STEP 4 — Report progress (signal alive on dashboard)
+Record any important messages for your handover summary.
+
+STEP 3 — Report your own progress
 
 mcp__giljo_mcp__report_progress(
     job_id="{job_id}",
     todo_items=[...mark your own items appropriately...]
 )
 
-STEP 5 — Write 360 Memory ONCE (this is the ONLY write, must succeed first attempt)
+STEP 4 — Write 360 Memory handover (append-only, previous entries are preserved)
 
 mcp__giljo_mcp__write_360_memory(
     project_id="{project_id}",
@@ -278,21 +254,25 @@ mcp__giljo_mcp__write_360_memory(
     summary="<Include ALL of the following sections:
       COMPLETED WORK: <what was accomplished this session>
       IN-PROGRESS WORK: <what was actively being worked on>
-      UNRESOLVED ITEMS FOR CONTINUATION SESSION:
-        - Agent <name> (job_id: <id>): skipped todos: [list], important messages: [list]
-        - <repeat for each unresolved agent>
-        - What the continuation orchestrator needs to address
+      TEAM STATE AT HANDOVER:
+        - Agent <name> (job_id: <id>): status=<status>, pending work: <description>
+        - <repeat for each agent>
+      COORDINATION CONTEXT FOR CONTINUATION:
+        - What decisions were you about to make?
+        - What messages were you expecting from agents?
+        - What is the next coordination action the continuation orchestrator should take?
       BLOCKERS: <any known blockers>>",
     key_outcomes=["<list each concrete outcome from this session>"],
     decisions_made=["<list architectural/design decisions and rationale>"]
 )
 {git_closeout_section}
-STEP 6 — Confirm to user
+STEP 5 — Confirm to user
 
-Print: "Session context saved to 360 Memory. All subagents closed out. You may now close this terminal and paste the continuation prompt in a new terminal."
+Print: "Session context saved to 360 Memory. You may now close this terminal and paste the continuation prompt in a new terminal. Other agents are unaffected and will continue working."
 
 CRITICAL: Do NOT skip the memory write. The continuation session depends on this context.
-CRITICAL: Do NOT call complete_job() on YOUR OWN job. You are NOT done - your work continues in a new terminal.
+CRITICAL: Do NOT call complete_job() on YOUR OWN job. You are NOT done — your work continues in a new terminal.
+CRITICAL: Do NOT modify other agents in any way — no force-complete, no message draining, no todo changes.
 """
 
 
