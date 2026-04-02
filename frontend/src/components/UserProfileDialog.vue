@@ -20,16 +20,18 @@
           />
 
           <!-- Workspace/Organization + Role (read-only) - Handover 0424o, 0875 -->
-          <div class="mb-4 pa-3 bg-surface-variant rounded">
-            <div v-if="userStore.currentOrg" class="d-flex align-center gap-2 mb-2">
-              <v-icon size="small" color="primary">mdi-office-building</v-icon>
-              <div class="text-caption text-muted-a11y">Workspace</div>
+          <div class="mb-4 pa-4 bg-surface-variant rounded">
+            <div v-if="userStore.currentOrg" class="d-flex align-center mb-3">
+              <v-icon size="small" color="primary" class="mr-2">mdi-office-building</v-icon>
+              <div class="text-caption text-muted-a11y mr-2">Workspace</div>
               <span class="font-weight-medium">{{ userStore.currentOrg.name }}</span>
+              <v-spacer />
               <RoleBadge v-if="userStore.orgRole" :role="userStore.orgRole" size="small" />
             </div>
-            <div v-if="userStore.currentUser?.role" class="d-flex align-center gap-2">
-              <v-icon size="small" color="primary">mdi-shield-account</v-icon>
-              <div class="text-caption text-muted-a11y">Role</div>
+            <div v-if="userStore.currentUser?.role" class="d-flex align-center">
+              <v-icon size="small" color="primary" class="mr-2">mdi-shield-account</v-icon>
+              <div class="text-caption text-muted-a11y mr-2">Role</div>
+              <v-spacer />
               <RoleBadge :role="userStore.currentUser.role" size="small" />
             </div>
           </div>
