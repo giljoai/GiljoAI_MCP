@@ -13,7 +13,10 @@
               <span class="phase-agents">
                 <template v-for="(agent, aidx) in phase.agents" :key="aidx">
                   <span v-if="aidx > 0" class="phase-separator">+</span>
-                  <span class="agent-pill" :style="{ backgroundColor: agent.color }">{{ agent.displayName }}</span>
+                  <span
+                    class="agent-tinted-badge"
+                    :style="{ backgroundColor: agent.tintedBg, color: agent.color }"
+                  >{{ agent.displayName }}</span>
                 </template>
               </span>
             </div>
@@ -60,20 +63,6 @@
                         @click="handlePlay(agent)"
                       >
                         <v-icon size="18">mdi-play</v-icon>
-                      </button>
-                    </template>
-                  </v-tooltip>
-                  <!-- Reactivate button (shown when play is faded) -->
-                  <v-tooltip v-if="isPlayButtonFaded(agent)" text="Re-copy prompt">
-                    <template #activator="{ props: tooltipProps }">
-                      <button
-                        v-bind="tooltipProps"
-                        type="button"
-                        class="reactivate-btn icon-interactive"
-                        aria-label="Reactivate prompt copy"
-                        @click="reactivatePlay(agent)"
-                      >
-                        <v-icon size="14">mdi-recycle</v-icon>
                       </button>
                     </template>
                   </v-tooltip>
@@ -168,6 +157,20 @@
             <td class="actions-cell">
               <!-- Inline icons (hidden on narrow/portrait screens) -->
               <div class="actions-inline">
+                <v-tooltip v-if="isPlayButtonFaded(agent)" text="Re-copy prompt">
+                  <template #activator="{ props: tooltipProps }">
+                    <v-btn
+                      v-bind="tooltipProps"
+                      icon="mdi-refresh"
+                      size="small"
+                      variant="text"
+                      class="icon-interactive"
+                      aria-label="Re-copy prompt"
+                      @click="reactivatePlay(agent)"
+                    />
+                  </template>
+                </v-tooltip>
+
                 <v-tooltip text="View messages">
                   <template #activator="{ props: tooltipProps }">
                     <v-btn
@@ -189,7 +192,7 @@
                       v-bind="tooltipProps"
                       size="small"
                       variant="text"
-                      class="icon-interactive"
+                      class="icon-interactive giljo-face-btn"
                       aria-label="View agent role"
                       data-testid="jobs-role-btn"
                       @click="handleAgentRole(agent)"
@@ -197,7 +200,12 @@
                       <img
                         :src="giljoFaceIcon"
                         alt="Agent Role"
-                        class="giljo-face-icon"
+                        class="giljo-face-icon giljo-face-default"
+                      />
+                      <img
+                        :src="giljoFaceIconActive"
+                        alt="Agent Role"
+                        class="giljo-face-icon giljo-face-hover"
                       />
                     </v-btn>
                   </template>
@@ -225,7 +233,7 @@
                   <template #activator="{ props: tooltipProps }">
                     <v-btn
                       v-bind="tooltipProps"
-                      icon="mdi-handshake-outline"
+                      icon="mdi-logout"
                       size="small"
                       variant="text"
                       class="icon-interactive"
@@ -277,7 +285,7 @@
                     <v-list-item prepend-icon="mdi-briefcase-outline" title="View assigned job" @click="handleAgentJob(agent)" />
                     <v-list-item
                       v-if="agent.agent_display_name === 'orchestrator' && !['decommissioned', 'handed_over', 'waiting'].includes(agent.status)"
-                      prepend-icon="mdi-handshake-outline"
+                      prepend-icon="mdi-logout"
                       title="Hand over"
                       @click="handleHandOver(agent)"
                     />
@@ -467,16 +475,22 @@ const executionOrderPhases = computed(() => {
     if (isOrchestrator(agent)) continue
     const phase = agent.phase ?? 999
     if (!groups[phase]) groups[phase] = []
+    const agentColor = getAgentColor(agent.agent_name || agent.agent_display_name)
     groups[phase].push({
       displayName: agent.agent_display_name || agent.agent_name || 'unknown',
-      color: getAgentColor(agent.agent_name || agent.agent_display_name),
+      color: agentColor,
+      tintedBg: hexToRgba(agentColor, 0.15),
     })
   }
 
   // Build structured phases with hardcoded Start > Orchestrator first
   const phases = [{
     label: 'Start',
-    agents: [{ displayName: 'Orchestrator', color: getAgentColor('orchestrator') }],
+    agents: [{
+      displayName: 'Orchestrator',
+      color: getAgentColor('orchestrator'),
+      tintedBg: hexToRgba(getAgentColor('orchestrator'), 0.15),
+    }],
   }]
 
   Object.keys(groups)
@@ -512,9 +526,10 @@ const phaseSortedAgents = computed(() => {
  */
 
 /**
- * GiljoAI face icon (dark theme only)
+ * GiljoAI face icons: gray default, yellow on hover/active
  */
-const giljoFaceIcon = '/giljo_YW_Face.svg'
+const giljoFaceIcon = '/icons/Giljo_Inactive_Dark.svg'
+const giljoFaceIconActive = '/icons/Giljo_YW_Face.svg'
 
 function isOrchestrator(agent) {
   return agent?.agent_name === 'orchestrator' || agent?.agent_display_name === 'orchestrator'
@@ -1063,14 +1078,8 @@ async function copyToClipboard(text) {
             align-items: center;
             gap: 4px;
 
-            .agent-pill {
-              display: inline-block;
-              padding: 2px 10px;
-              border-radius: $border-radius-md;
-              font-size: 0.68rem;
-              font-weight: 600;
+            .agent-tinted-badge {
               white-space: nowrap;
-              color: rgb(var(--v-theme-surface));
             }
 
             .phase-separator {
@@ -1199,27 +1208,6 @@ async function copyToClipboard(text) {
             }
           }
 
-          .reactivate-btn {
-            width: 22px;
-            height: 22px;
-            border: none;
-            border-radius: $border-radius-sharp;
-            background: transparent;
-            display: grid;
-            place-items: center;
-            padding: 0;
-            cursor: pointer;
-            opacity: 0.4;
-            transition: opacity $transition-fast;
-
-            &:hover {
-              opacity: 0.8;
-            }
-
-            .v-icon {
-              color: $color-brand-yellow;
-            }
-          }
         }
 
         &.agent-display-name-cell {
@@ -1488,11 +1476,21 @@ async function copyToClipboard(text) {
     }
   }
 
-  /* GiljoAI Face Icon */
+  /* GiljoAI Face Icon — gray default, yellow on hover */
   .giljo-face-icon {
     width: 18px;
     height: 18px;
     object-fit: contain;
+  }
+
+  .giljo-face-btn {
+    .giljo-face-hover { display: none; }
+    .giljo-face-default { display: block; }
+
+    &:hover {
+      .giljo-face-hover { display: block; }
+      .giljo-face-default { display: none; }
+    }
   }
 
   /* Responsive: below 1200px — collapse action icons to three-dot menu */
