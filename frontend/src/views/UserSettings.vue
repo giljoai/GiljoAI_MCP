@@ -191,13 +191,12 @@
           <p class="text-body-2 text-muted-a11y mt-1">Connect external tools and services to your GiljoAI workspace</p>
         </div>
 
-        <!-- Section: Primary -->
+        <!-- Section: Primary + Skills & Agents Export (side by side) -->
         <div class="integration-section-label">Primary</div>
-        <McpIntegrationCard />
-
-        <!-- Section: Skills & Agents Export -->
-        <div class="integration-section-label">Skills &amp; Agents Export</div>
-        <AgentExport />
+        <div class="tools-grid">
+          <McpIntegrationCard />
+          <AgentExport />
+        </div>
 
         <!-- Section: Tools (2-column grid) -->
         <div class="integration-section-label">Tools</div>
