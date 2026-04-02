@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-30 (0860a-d Code Provenance & License Audit COMPLETE)
+**Last Updated:** 2026-04-01 (Full reconciliation: 0841/0843/0873-0875/0880 COMPLETE, 11 files archived, 0842L/0842m closed, catalogue harmonized with git history)
 
 ---
 
@@ -19,8 +19,8 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE, **0769a-g sprint COMPLETE (2026-03-30)**. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 NOT STARTED.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
-| 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE.** Luminous Pastels palette, WCAG AA compliance, tinted badges, pill tabs, shared components, interactive icon polish. **0873a-o NOT STARTED** — Style Centralization Sweep + UX Heuristics (15 sessions). All on branch feature/0870-design-harmonization. **0880 NOT STARTED.** |
+| 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. **0841 COMPLETE.** **0842a-f, 0842i-m COMPLETE.** 0842g+0842h NOT STARTED. **0843 COMPLETE.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 NOT STARTED.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
+| 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE. 0873a-o COMPLETE. 0874a-c COMPLETE. 0875 COMPLETE. 0880 COMPLETE.** All design system work done. Branch: feature/0873-style-centralization. |
 
 ---
 
@@ -30,23 +30,13 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| ~~0277~~ | ~~Design Token Standardization — Radius & Shadow~~ | **ABSORBED** | - | Absorbed into 0870a (design token update). |
-| 0841 | Slash Command Optimization (/gil_add) | Not Started | Low | Rewrite /gil_add from 343 lines (~3,500 tokens) to ~40 lines (~500 tokens). Keep local, remove verbose templates. |
 | 0842g | Per-Document AI Summary Badges | Not Started | Medium | Add AI summary badge row to vision doc cards (wireframe fidelity). Needs API extension. Follow-up to 0842d deviation. |
 | 0842h | Frontend Tests — Tuning Icon & Vision Analysis Banner | Not Started | Medium | 11 Vitest component tests for 0842d features. Follow-up to 0842d deviation (agent missed existing test framework). |
-| 0842L | Post-Implementation Audit & Cleanup | Not Started | High | Quality audit of entire 0842 branch (50 files, 6860 insertions). Dead code, orphaned tests, secure-context audit, lint, WebSocket chain verification. Tests may be rewritten/deleted. Must pass before merge to master. |
 | 0844 | Tenant Data Export/Import (Series Coordinator) | Not Started | Medium | Series of 3 sub-handovers. Sequential: 0844a → manual gate → 0844b → manual gate → 0844c. |
 | 0844a | Tenant Export Service | Not Started | Medium | Backend export engine: 31 models, field stripping, vision file bundling, ZIP creation, REPEATABLE READ, SHA-256 checksums. 1-2 sessions. |
 | 0844b | Tenant Import Service + Schema Diff | Not Started | Medium | Backend import: schema compatibility analysis, UPSERT pipeline, topological sort, vision file extraction, TSVECTOR regen. Heaviest phase, 2-3 sessions. Depends on 0844a. |
 | 0844c | Tenant Data Frontend | Not Started | Medium | Vue component in Database tab: export/import UI, compatibility report dialog, stale backup warning, WebSocket progress. 1 session. Depends on 0844a+b. |
 | 0847 | Tool-Aware Orchestrator Protocol | Not Started | High | Make orchestrator protocol (CH1-CH5 + identity) fully tool-aware. Codex/Gemini get native-only language, no Claude refs. Multi-terminal → "Any Coding Agent". 2-3h. |
-| 0873a-o | Style Centralization Sweep + UX Heuristics (15 sessions) | **COMPLETE** | High | All 15 sessions done. Tokens/classes across 65+ files, toast audit, EmptyState, silent error elimination, V2 24 sections. Branch: feature/0873-style-centralization. |
-| 0874a-b | Inline Style Final Sweep (2 sessions) | **Complete** | Medium | 0874a: Agent/status color tokens in templates (~45 hardcoded hex). 0874b: Layout utilities + whitespace + final count. Zero visual change. Branch: feature/0873-style-centralization. |
-| 0875 | Project Detail Page Layout Redesign | Not Started | High | Restructure staging/implementation tabs to match Products page layout pattern. Product-card-style Description + Mission, bare agents list, integration icons right-aligned with buttons. Reference mockup: Untitled.png. Branch: feature/0873-style-centralization. |
-| 0880 | Agent Resting States (idle + sleeping) | Not Started | High | Rename report_error → set_agent_status. Add idle ("Monitoring") and sleeping ("Sleeping") states for orchestrators. Protocol injection only — no template changes. 1 session. |
-| ~~0870~~ | ~~Design System Harmonization (16 sessions)~~ | **COMPLETE** | - | 2026-03-31. Branch: feature/0870-design-harmonization. |
-| ~~0871~~ | ~~Design Remediation & Polish (8 sessions)~~ | **COMPLETE** | - | 2026-03-31. Shared components, tab-to-pill, smooth-border sweep, design system sample v2. |
-| ~~0872~~ | ~~Interactive Element Polish (4 sessions)~~ | **COMPLETE** | - | 2026-03-31. Global icon-interactive classes, card frames, icon audit. |
 
 ### Deferred (Still in Root Folder)
 
@@ -54,6 +44,20 @@
 |----|-------|--------|----------|-------|
 | 1014 | Security Event Auditing | Deferred | Medium | Enterprise compliance. No requirement yet. |
 | TODO_vision | Vision Summarizer LLM Upgrade | Deferred | Low | Phase 1 incomplete. Current Sumy works. |
+
+### Recently Closed (April 2026 - from Active)
+
+| ID | Title | Closed | How |
+|----|-------|--------|-----|
+| 0277 | Design Token Standardization — Radius & Shadow | 2026-04-01 | **ABSORBED** into 0870a (design token update). Archived. |
+| 0841 | Slash Command Optimization (/gil_add) | 2026-04-01 | COMPLETE (`48376d20`) — Slim slash command templates, platform-aware signoff, project taxonomy improvements. |
+| 0842L | Post-Implementation Audit & Cleanup | 2026-04-01 | COMPLETE (`8304eac6`) — Dead code removal, zombie cleanup, backward compat bloat removed. Branch merged to master. |
+| 0842m | Pre-Existing Bug Fixes | 2026-04-01 | COMPLETE (`2f72e7a7`) — config.services AttributeError + network_mode passthrough. |
+| 0843 | HTTPS Conditional Install | 2026-04-01 | COMPLETE (8 commits) — Localhost HTTP, LAN/WAN HTTPS. Cert cleanup in control panel, pristine reset, remote WS button, cert trust instructions for Codex CLI. |
+| 0873a-o | Style Centralization Sweep + UX Heuristics (15 sessions) | 2026-04-01 | COMPLETE (`1edac7b5`) — Tokens/classes across 65+ files, toast audit, EmptyState component, silent error elimination, V2 design template 24 sections. Branch: feature/0873-style-centralization. |
+| 0874a-c | Inline Style Final Sweep (3 sessions) | 2026-04-01 | COMPLETE — 0874a: agent/status color tokens (~45 hardcoded hex). 0874b: layout utilities + whitespace. 0874c: unified card pattern + transparent table bg. Branch: feature/0873-style-centralization. |
+| 0875 | Project Detail Page Layout Redesign | 2026-04-01 | COMPLETE (5 commits) — Restructured staging/implementation tabs, cross-page title consistency, integration icons inline with Agents label. Branch: feature/0873-style-centralization. |
+| 0880 | Agent Resting States (idle + sleeping) | 2026-04-01 | COMPLETE (`6e466f90`) — Unified set_agent_status replaces report_error. Idle ("Monitoring") + sleeping ("Sleeping") states for orchestrators. Protocol injection only. |
 
 ### Recently Closed (March 2026 - from Active)
 
@@ -209,6 +213,19 @@
 ---
 
 ## Completed (In completed/ Folder)
+
+### Recently Completed (April 2026)
+
+| ID | Title | Status |
+|----|-------|--------|
+| 0841 | Slash Command Optimization (/gil_add) | **COMPLETE** (2026-04-01, `48376d20`, slim templates, platform-aware signoff) |
+| 0842L | Post-Implementation Audit & Cleanup | **COMPLETE** (2026-04-01, `8304eac6`, dead code + zombie removal, backward compat bloat removed) |
+| 0842m | Pre-Existing Bug Fixes | **COMPLETE** (2026-04-01, `2f72e7a7`, config.services AttributeError + network_mode passthrough) |
+| 0843 | HTTPS Conditional Install | **COMPLETE** (2026-04-01, 8 commits, localhost HTTP / LAN-WAN HTTPS, cert cleanup, remote WS button) |
+| 0873a-o | Style Centralization Sweep (15 sessions) | **COMPLETE** (2026-04-01, `1edac7b5`, 65+ files tokenized, toast audit, EmptyState, silent error elimination) |
+| 0874a-c | Inline Style Final Sweep (3 sessions) | **COMPLETE** (2026-04-01, agent/status color tokens, layout utilities, unified card pattern) |
+| 0875 | Project Detail Page Layout Redesign | **COMPLETE** (2026-04-01, 5 commits, staging/implementation tab restructure, cross-page title consistency) |
+| 0880 | Agent Resting States (idle + sleeping) | **COMPLETE** (2026-04-01, `6e466f90`, unified set_agent_status, idle + sleeping states) |
 
 ### Recently Completed (March 2026)
 
@@ -585,9 +602,16 @@ completed/reference/
 **0825** (Enhancement & Feature Series): 0825 Agent Identity Separation from Mission Response (COMPLETE, `1aebbcd8`)
 **0826** (Enhancement & Feature Series): 0826 Staging Completion Hardening (COMPLETE, `e972e2f9`+`ddfda73d`)
 **0827** (Enhancement & Feature Series): 0827 Agent Reactivation & Continuation (COMPLETE, 7 commits, 4 phases: display names + auto-block + tools + todo_append)
-**0828** (Enhancement & Feature Series): 0828 OAuth 2.1 PKCE Flow for MCP Client Authorization (ACTIVE)
+**0828** (Enhancement & Feature Series): 0828 OAuth 2.1 PKCE Flow for MCP Client Authorization (COMPLETE)
+**0841** (Enhancement & Feature Series): 0841 Slash Command Optimization (COMPLETE, `48376d20`)
+**0842L** (Enhancement & Feature Series): 0842L Post-Implementation Audit & Cleanup (COMPLETE, `8304eac6`)
+**0842m** (Enhancement & Feature Series): 0842m Pre-Existing Bug Fixes (COMPLETE, `2f72e7a7`)
+**0843** (Enhancement & Feature Series): 0843 HTTPS Conditional Install (COMPLETE, 8 commits — localhost HTTP, LAN/WAN HTTPS, cert cleanup)
 **0844a-c** (Enhancement & Feature Series): 0844 Tenant Data Export/Import series (ALL NOT STARTED). 0844a export service, 0844b import+schema diff, 0844c frontend. Sequential with manual gates between phases.
+**0847** (Enhancement & Feature Series): 0847 Tool-Aware Orchestrator Protocol (NOT STARTED)
 **0860a-d** (Code Provenance & License Audit — PERMANENT, reusable): All phases COMPLETE (2026-03-30). CE: PASS, SaaS: PASS. Owner review cleared all 4 REVIEW items. **Handovers live in `audit/` folder (not `handovers/`) — never closed out, rerun before each major release.** Spec: `audit/CODE_PROVENANCE_LICENSE_AUDIT.md`. Results: `audit/AUDIT_SUMMARY.md`.
+**0870-0875** (Design System & Agent States): 0870a-p harmonization COMPLETE, 0871a-h remediation COMPLETE, 0872a-d interactive polish COMPLETE, 0873a-o style centralization COMPLETE, 0874a-c inline style sweep COMPLETE, 0875 project detail layout COMPLETE. All on feature/0873-style-centralization branch.
+**0880** (Agent States): 0880 Agent Resting States — idle + sleeping (COMPLETE, `6e466f90`)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
@@ -620,6 +644,20 @@ completed/reference/
 ---
 
 ## History
+
+### April 2026
+- **Full Reconciliation (2026-04-01)**: Cross-validated catalogue against git history, JSON chain logs, and completed/ folder
+  - 11 files archived from root to completed/ with -C suffix: 0277 (ABSORBED), 0841, 0843, 0870, 0871, 0872, 0873 (+chain_log.json), 0874, 0875, 0880
+  - Fixed 0873_chain_log.json: all 15 sessions were `not_started` in JSON but `completed` per git (final commit `1edac7b5`)
+  - Added missing catalogue entries: 0843 (HTTPS Conditional Install, 8 commits), 0842m (bug fixes, 2 commits)
+  - Fixed 0842L status: was "Not Started" in catalogue, actually COMPLETE (`8304eac6`) and merged to master
+  - Fixed 0841 status: was "Not Started", actually COMPLETE (`48376d20`)
+  - Fixed 0874: was listed as 2 sessions, actually 3 (0874a, 0874b, 0874c per git)
+  - Fixed 0875: was "Not Started", actually COMPLETE (5 commits)
+  - Fixed 0880: was "Not Started", actually COMPLETE (`6e466f90`)
+  - Fixed Quick Reference: 0870-0899 range now shows all series COMPLETE
+  - Active handovers reduced to: 0842g, 0842h, 0844a-c, 0847. Deferred: 1014, TODO_vision.
+  - Total: 340+ completed handovers in archive
 
 ### March 2026
 - **Closeout Reconciliation (2026-03-15)**: Closed 3 handovers that had implementation commits but docs still showed active/not-started
