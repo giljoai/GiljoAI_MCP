@@ -123,77 +123,6 @@
         Implement
       </v-btn>
 
-      <!-- Integration icons (moved from LaunchTab, Handover 0875) -->
-      <div class="integrations-row">
-        <!-- GitHub Integration -->
-        <v-tooltip location="bottom" max-width="300">
-          <template #activator="{ props: tooltipProps }">
-            <v-icon
-              v-bind="tooltipProps"
-              :class="{ 'icon-disabled': !gitEnabled }"
-              size="36"
-              color="white"
-              data-testid="github-status-icon"
-              class="cursor-pointer integration-icon"
-              aria-label="GitHub integration status"
-              @click="goToIntegrations"
-            >
-              mdi-github
-            </v-icon>
-          </template>
-          <span v-if="gitEnabled">GitHub integration enabled. Commit history will be included in project summaries.</span>
-          <span v-else>GitHub integration disabled. Click to enable in Settings.</span>
-        </v-tooltip>
-        <!-- Serena MCP Integration -->
-        <v-tooltip location="bottom" max-width="300">
-          <template #activator="{ props: tooltipProps }">
-            <v-img
-              v-bind="tooltipProps"
-              src="/Serena.png"
-              width="36"
-              height="36"
-              :class="{ 'icon-disabled': !serenaEnabled }"
-              data-testid="serena-status-icon"
-              class="cursor-pointer integration-icon"
-              alt="Serena MCP integration status"
-              aria-label="Serena MCP integration status"
-              @click="goToIntegrations"
-            />
-          </template>
-          <span v-if="serenaEnabled">Serena MCP enabled. Agents will use semantic code navigation.</span>
-          <span v-else>Serena MCP disabled. Click to enable in Settings.</span>
-        </v-tooltip>
-        <!-- Agentic Tool Badge -->
-        <v-tooltip v-if="agenticTool" location="bottom" max-width="300">
-          <template #activator="{ props: tooltipProps }">
-            <v-icon
-              v-if="agenticTool.type === 'icon'"
-              v-bind="tooltipProps"
-              size="36"
-              color="primary"
-              data-testid="agentic-tool-icon"
-              class="cursor-pointer integration-icon"
-              :aria-label="agenticTool.alt"
-              @click="goToIntegrations"
-            >
-              {{ agenticTool.icon }}
-            </v-icon>
-            <v-img
-              v-else
-              v-bind="tooltipProps"
-              :src="agenticTool.src"
-              width="36"
-              height="36"
-              data-testid="agentic-tool-icon"
-              class="cursor-pointer integration-icon"
-              :alt="agenticTool.alt"
-              :aria-label="agenticTool.alt"
-              @click="goToIntegrations"
-            />
-          </template>
-          <span>{{ agenticTool.label }} mode active.</span>
-        </v-tooltip>
-      </div>
     </div>
 
     <!-- Project Status Area (Jobs tab only) - Handover 0819a -->
@@ -271,6 +200,9 @@
       :project="projectWithUpdatedMode"
       :orchestrator="orchestrator"
       :is-staging="loadingStageProject"
+      :git-enabled="gitEnabled"
+      :serena-enabled="serenaEnabled"
+      :agentic-tool="agenticTool"
       @edit-description="emit('edit-description')"
     />
 
@@ -971,7 +903,7 @@ async function handleContinueWorking() {
 }
 
 
-/* Action buttons row (buttons centered, integrations right) */
+/* Action buttons row (centered) */
 .action-buttons-row {
   display: flex;
   align-items: center;
@@ -979,13 +911,6 @@ async function handleContinueWorking() {
   gap: 12px;
   margin-bottom: 16px;
   flex-shrink: 0;
-  position: relative;
-}
-
-/* Integration icons float right within the centered row */
-.action-buttons-row .integrations-row {
-  position: absolute;
-  right: 0;
 }
 
 /* Action buttons styling */
@@ -1080,28 +1005,6 @@ async function handleContinueWorking() {
   }
 }
 
-/* Integration icons row (right-aligned on action-buttons-row, Handover 0875) */
-.integrations-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  .integration-icon {
-    opacity: 1;
-    transition: opacity $transition-normal ease;
-    object-fit: contain;
-
-    &.icon-disabled {
-      opacity: 0.3;
-
-      &:hover {
-        opacity: 0.5;
-      }
-    }
-  }
-}
-
-
 /* Mobile / Portrait Responsive */
 @media (max-width: 1024px) {
   .project-header .project-title-row {
@@ -1110,12 +1013,15 @@ async function handleContinueWorking() {
 }
 
 @media (max-width: 600px) {
-  .project-tabs-container {
-  }
-
   .action-buttons-row {
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .execution-mode-pills .mode-pill-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
   }
 }
 </style>
