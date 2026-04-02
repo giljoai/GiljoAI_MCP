@@ -32,6 +32,8 @@
         <ProductTuningMenu
           v-if="showTuningMenu"
           :product-id="product.id"
+          hide-trigger
+          :initially-open="showTuningMenu"
           class="mb-4"
         />
 
