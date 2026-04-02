@@ -19,13 +19,18 @@
             class="mb-3"
           />
 
-          <!-- Workspace/Organization (read-only) - Handover 0424o -->
-          <div v-if="userStore.currentOrg" class="mb-4 pa-3 bg-surface-variant rounded">
-            <div class="text-caption text-muted-a11y mb-1">Workspace</div>
-            <div class="d-flex align-center gap-2">
+          <!-- Workspace/Organization + Role (read-only) - Handover 0424o, 0875 -->
+          <div class="mb-4 pa-3 bg-surface-variant rounded">
+            <div v-if="userStore.currentOrg" class="d-flex align-center gap-2 mb-2">
               <v-icon size="small" color="primary">mdi-office-building</v-icon>
+              <div class="text-caption text-muted-a11y">Workspace</div>
               <span class="font-weight-medium">{{ userStore.currentOrg.name }}</span>
               <RoleBadge v-if="userStore.orgRole" :role="userStore.orgRole" size="small" />
+            </div>
+            <div v-if="userStore.currentUser?.role" class="d-flex align-center gap-2">
+              <v-icon size="small" color="primary">mdi-shield-account</v-icon>
+              <div class="text-caption text-muted-a11y">Role</div>
+              <RoleBadge :role="userStore.currentUser.role" size="small" />
             </div>
           </div>
 
