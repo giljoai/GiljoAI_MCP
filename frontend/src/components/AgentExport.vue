@@ -8,48 +8,45 @@
           <template #activator="{ props }">
             <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
           </template>
-          <span>Generates a combined bootstrap prompt that installs slash commands and agent templates in one step. Paste into your AI coding agent.</span>
+          <div>
+            Generates a combined bootstrap prompt that installs slash commands and agent templates in one step. Paste into your AI coding agent.
+            <br /><br />
+            After setup, use <code>/gil_get_agents</code> to update agent templates and
+            <code>/gil_add</code> to create tasks and projects from your AI coding agent.
+          </div>
         </v-tooltip>
       </div>
 
-      <div class="mb-5">
-        <p class="text-body-2 text-muted-a11y mb-4">
-          Generate a setup prompt for your AI coding agents.
-        </p>
+      <p class="text-body-2 text-muted-a11y mb-4">
+        Generate a setup prompt for your AI coding agents.
+      </p>
 
-        <v-card variant="flat" class="mb-0 smooth-border">
-          <v-card-text class="pa-3">
-            <div class="d-flex flex-wrap justify-center" style="gap: 25px;">
-              <div v-for="p in platforms" :key="p.id" class="d-flex align-center gap-2">
-                <button
-                  class="export-pill"
-                  :class="{ 'export-pill--loading': setupLoading[p.id] }"
-                  :disabled="setupLoading[p.id]"
-                  :data-testid="`setup-${p.id}`"
-                  @click="generateBootstrapPrompt(p.id)"
-                >
-                  <v-avatar size="20" rounded="0" class="mr-1">
-                    <v-img :src="p.icon" :alt="p.label" />
-                  </v-avatar>
-                  <span>{{ p.buttonLabel }}</span>
-                  <v-progress-circular
-                    v-if="setupLoading[p.id]"
-                    size="14"
-                    width="2"
-                    indeterminate
-                    class="ml-1"
-                  />
-                </button>
-                <v-tooltip v-if="p.experimental" location="top">
-                  <template #activator="{ props: ttProps }">
-                    <v-icon v-bind="ttProps" size="small" color="warning">mdi-alert</v-icon>
-                  </template>
-                  <span>Experimental — limited testing. Use with caution.</span>
-                </v-tooltip>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
+      <div class="d-flex flex-wrap justify-center mb-5" style="gap: 16px;">
+        <div v-for="p in platforms" :key="p.id" class="d-flex align-center gap-2">
+          <v-tooltip location="top">
+            <template #activator="{ props: btnProps }">
+              <button
+                v-bind="btnProps"
+                class="export-icon-btn smooth-border"
+                :class="{ 'export-icon-btn--loading': setupLoading[p.id] }"
+                :disabled="setupLoading[p.id]"
+                :data-testid="`setup-${p.id}`"
+                @click="generateBootstrapPrompt(p.id)"
+              >
+                <v-progress-circular
+                  v-if="setupLoading[p.id]"
+                  size="18"
+                  width="2"
+                  indeterminate
+                />
+                <v-avatar v-else size="24" rounded="0">
+                  <v-img :src="p.icon" :alt="p.label" />
+                </v-avatar>
+              </button>
+            </template>
+            <span>{{ p.label }}{{ p.experimental ? ' (experimental)' : '' }}</span>
+          </v-tooltip>
+        </div>
       </div>
 
       <!-- Section 2: Manual Downloads (collapsed) -->
@@ -106,13 +103,6 @@
         </v-expansion-panel>
       </v-expansion-panels>
 
-      <!-- Section 3: After Setup -->
-      <v-alert type="info" variant="tonal" density="compact">
-        <div class="text-body-2">
-          After setup, use <code>/gil_get_agents</code> to update agent templates and
-          <code>/gil_add</code> to create tasks and projects from your AI coding agent.
-        </div>
-      </v-alert>
     </v-card-text>
   </v-card>
 </template>
@@ -256,31 +246,30 @@ code {
   min-height: unset !important;
 }
 
-.export-pill {
+.export-icon-btn {
+  --smooth-border-color: #ffc300;
   display: inline-flex;
   align-items: center;
-  border-radius: $border-radius-pill;
-  padding: 6px 16px;
-  font-size: 0.78rem;
-  font-weight: 500;
-  background: rgba(255, 195, 0, 0.12);
-  color: #ffc300;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: $border-radius-rounded;
+  background: transparent;
   border: none;
   cursor: pointer;
   transition: background $transition-fast, opacity $transition-fast;
-  white-space: nowrap;
 }
 
-.export-pill:hover {
-  background: rgba(255, 195, 0, 0.2);
+.export-icon-btn:hover {
+  background: rgba(255, 195, 0, 0.12);
 }
 
-.export-pill--loading {
+.export-icon-btn--loading {
   opacity: 0.7;
   cursor: wait;
 }
 
-.export-pill:disabled {
+.export-icon-btn:disabled {
   cursor: wait;
 }
 </style>
