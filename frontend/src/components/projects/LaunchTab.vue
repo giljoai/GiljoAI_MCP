@@ -296,11 +296,12 @@ watch(missionText, (next, previous) => {
   min-height: 0;
 }
 
-/* Agents column (bare, no card frame) */
+/* Agents column (bare, no card frame — top padding matches content-card) */
 .agents-column {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  padding-top: 20px;
 }
 
 /* Individual content cards (Description, Mission) */
