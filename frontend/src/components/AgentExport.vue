@@ -1,9 +1,9 @@
 <template>
-  <v-card variant="flat" class="mb-4 smooth-border">
+  <v-card variant="flat" class="mb-4 smooth-border export-card">
     <v-card-text>
       <div class="d-flex align-center mb-3">
         <v-icon size="28" class="mr-2" color="primary">mdi-export</v-icon>
-        <h3 class="text-h6 mb-0 mr-2">Skills, Commands and Agents Export</h3>
+        <h3 class="text-h6 mb-0 mr-2">Skills and Agents Export</h3>
         <v-tooltip location="top" max-width="400">
           <template #activator="{ props }">
             <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
@@ -233,6 +233,12 @@ async function downloadZip(contentType, platform) {
 
 <style lang="scss" scoped>
 @use '../styles/design-tokens' as *;
+
+.export-card {
+  background: $elevation-raised;
+  border-radius: $border-radius-rounded;
+}
+
 code {
   background-color: rgba(var(--v-theme-on-surface), 0.05);
   padding: 2px 6px;
