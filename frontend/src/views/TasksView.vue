@@ -857,8 +857,7 @@ onMounted(async () => {
 }
 
 .filter-select {
-  flex: 0 0 auto;
-  max-width: 140px;
+  flex: 0 0 160px;
 }
 
 .filter-select :deep(.v-field) {
