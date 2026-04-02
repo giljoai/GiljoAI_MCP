@@ -35,9 +35,10 @@
         </thead>
         <tbody>
           <tr v-for="agent in phaseSortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
-            <!-- Phase Badge (Handover 0829) -->
+            <!-- Phase Badge (Handover 0829, 0875: "All" for subagent modes) -->
             <td class="phase-cell" data-testid="phase-badge">
-              <span v-if="isOrchestrator(agent)" class="phase-badge">Start</span>
+              <span v-if="isSubagentMode" class="phase-badge">All</span>
+              <span v-else-if="isOrchestrator(agent)" class="phase-badge">Start</span>
               <span v-else-if="agent.phase == null" class="phase-badge phase-badge--none">&mdash;</span>
               <span v-else class="phase-badge">P{{ agent.phase }}</span>
             </td>
@@ -45,21 +46,38 @@
             <!-- Play button: own column, no header -->
             <td class="play-cell">
               <div class="play-btn-slot">
-                <v-tooltip v-if="shouldShowCopyButton(agent)" text="Copy prompt">
-                  <template #activator="{ props: tooltipProps }">
-                    <button
-                      v-bind="tooltipProps"
-                      type="button"
-                      class="play-circle-btn icon-interactive-play"
-                      :class="{ 'play-btn-faded': isPlayButtonFaded(agent) }"
-                      :disabled="isPlayButtonFaded(agent)"
-                      aria-label="Copy agent prompt"
-                      @click="handlePlay(agent)"
-                    >
-                      <v-icon size="18">mdi-play</v-icon>
-                    </button>
-                  </template>
-                </v-tooltip>
+                <template v-if="shouldShowCopyButton(agent)">
+                  <!-- Play button (fades after launch, reactivatable) -->
+                  <v-tooltip text="Copy prompt">
+                    <template #activator="{ props: tooltipProps }">
+                      <button
+                        v-bind="tooltipProps"
+                        type="button"
+                        class="play-circle-btn icon-interactive-play"
+                        :class="{ 'play-btn-faded': isPlayButtonFaded(agent) }"
+                        :disabled="isPlayButtonFaded(agent)"
+                        aria-label="Copy agent prompt"
+                        @click="handlePlay(agent)"
+                      >
+                        <v-icon size="18">mdi-play</v-icon>
+                      </button>
+                    </template>
+                  </v-tooltip>
+                  <!-- Reactivate button (shown when play is faded) -->
+                  <v-tooltip v-if="isPlayButtonFaded(agent)" text="Re-copy prompt">
+                    <template #activator="{ props: tooltipProps }">
+                      <button
+                        v-bind="tooltipProps"
+                        type="button"
+                        class="reactivate-btn icon-interactive"
+                        aria-label="Reactivate prompt copy"
+                        @click="reactivatePlay(agent)"
+                      >
+                        <v-icon size="14">mdi-recycle</v-icon>
+                      </button>
+                    </template>
+                  </v-tooltip>
+                </template>
               </div>
             </td>
             <!-- Agent card: tinted badge + name (0870j) -->
@@ -207,7 +225,7 @@
                   <template #activator="{ props: tooltipProps }">
                     <v-btn
                       v-bind="tooltipProps"
-                      icon="mdi-refresh"
+                      icon="mdi-handshake-outline"
                       size="small"
                       variant="text"
                       class="icon-interactive"
@@ -259,7 +277,7 @@
                     <v-list-item prepend-icon="mdi-briefcase-outline" title="View assigned job" @click="handleAgentJob(agent)" />
                     <v-list-item
                       v-if="agent.agent_display_name === 'orchestrator' && !['decommissioned', 'handed_over', 'waiting'].includes(agent.status)"
-                      prepend-icon="mdi-refresh"
+                      prepend-icon="mdi-handshake-outline"
                       title="Hand over"
                       @click="handleHandOver(agent)"
                     />
@@ -367,6 +385,7 @@ import { api } from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { useClipboard } from '@/composables/useClipboard'
 import { useWebSocketStore } from '@/stores/websocket'
+import { useProjectStateStore } from '@/stores/projectStateStore'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { getStatusLabel, getStatusColor, isStatusItalic } from '@/utils/statusConfig'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
@@ -418,7 +437,15 @@ const props = defineProps({
  */
 const { showToast } = useToast()
 const wsStore = useWebSocketStore()
+const projectStateStore = useProjectStateStore()
 const { sortedJobs: sortedAgents, loadJobs, store: agentJobsStore } = useAgentJobs()
+
+/**
+ * Subagent mode: all agents launched together by orchestrator (Handover 0875)
+ */
+const isSubagentMode = computed(() => {
+  return ['claude_code_cli', 'codex_cli', 'gemini_cli'].includes(props.project?.execution_mode)
+})
 
 /**
  * Handover 0411a: Proposed execution order phases for multi-terminal mode.
@@ -672,6 +699,11 @@ function getMessagesWaiting(agent) {
  * CLI Mode: Only waiting orchestrator shows copy button
  */
 function shouldShowCopyButton(agent) {
+  // Hide play button until staging is complete (Handover 0875)
+  const projectId = props.project?.project_id || props.project?.id
+  const state = projectStateStore.getProjectState(projectId)
+  if (!state?.stagingComplete) return false
+
   // Get execution mode from project prop (read-only)
   const executionMode = props.project?.execution_mode
   const claudeCodeCliMode = ['claude_code_cli', 'codex_cli', 'gemini_cli'].includes(executionMode)
@@ -681,17 +713,37 @@ function shouldShowCopyButton(agent) {
 }
 
 /**
+ * Set of agent job IDs where user has manually reactivated the play button (Handover 0875)
+ */
+const reactivatedAgents = ref(new Set())
+
+/**
  * Fade the play button for any status other than "waiting"
- * Gives a clear visual signal that the agent has been launched.
+ * Unless the user has manually reactivated it via the recycle button.
  */
 function isPlayButtonFaded(agent) {
+  const jobId = agent.job_id || agent.agent_id
+  if (reactivatedAgents.value.has(jobId)) return false
   return agent.status !== 'waiting'
+}
+
+/**
+ * Reactivate the play button for an agent (Handover 0875)
+ * Allows re-copying the prompt after initial launch.
+ */
+function reactivatePlay(agent) {
+  const jobId = agent.job_id || agent.agent_id
+  reactivatedAgents.value.add(jobId)
 }
 
 /**
  * Handle Play button click
  */
 async function handlePlay(agent) {
+  // Re-fade after re-copy (Handover 0875)
+  const jobId = agent.job_id || agent.agent_id
+  reactivatedAgents.value.delete(jobId)
+
   try {
     // Handover 0337: CLI mode implementation prompt for orchestrator
     if (agent.agent_display_name === 'orchestrator') {
@@ -1119,9 +1171,7 @@ async function copyToClipboard(text) {
           .play-btn-slot {
             display: flex;
             align-items: center;
-            justify-content: center;
-            width: 30px;
-            height: 30px;
+            gap: 2px;
           }
 
           .play-circle-btn {
@@ -1146,6 +1196,28 @@ async function copyToClipboard(text) {
               .v-icon {
                 color: $color-text-muted;
               }
+            }
+          }
+
+          .reactivate-btn {
+            width: 22px;
+            height: 22px;
+            border: none;
+            border-radius: $border-radius-sharp;
+            background: transparent;
+            display: grid;
+            place-items: center;
+            padding: 0;
+            cursor: pointer;
+            opacity: 0.4;
+            transition: opacity $transition-fast;
+
+            &:hover {
+              opacity: 0.8;
+            }
+
+            .v-icon {
+              color: $color-brand-yellow;
             }
           }
         }
