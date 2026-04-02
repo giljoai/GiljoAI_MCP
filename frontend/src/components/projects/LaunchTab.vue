@@ -49,8 +49,71 @@
 
       <!-- Agents Column (bare, no card) -->
       <div class="agents-column" data-testid="agents-panel">
-        <!-- Agents label -->
-        <div class="section-label section-label--standalone">Agents</div>
+        <!-- Agents label + integration icons inline -->
+        <div class="section-label section-label--standalone">
+          <span>Agents</span>
+          <div class="integrations-row">
+            <v-tooltip location="bottom" max-width="300">
+              <template #activator="{ props: tooltipProps }">
+                <v-icon
+                  v-bind="tooltipProps"
+                  :class="{ 'icon-disabled': !gitEnabled }"
+                  size="28"
+                  color="white"
+                  data-testid="github-status-icon"
+                  class="cursor-pointer integration-icon"
+                  aria-label="GitHub integration status"
+                  @click="goToIntegrations"
+                >mdi-github</v-icon>
+              </template>
+              <span v-if="gitEnabled">GitHub integration enabled.</span>
+              <span v-else>GitHub disabled. Click to enable.</span>
+            </v-tooltip>
+            <v-tooltip location="bottom" max-width="300">
+              <template #activator="{ props: tooltipProps }">
+                <v-img
+                  v-bind="tooltipProps"
+                  src="/Serena.png"
+                  width="28"
+                  height="28"
+                  :class="{ 'icon-disabled': !serenaEnabled }"
+                  data-testid="serena-status-icon"
+                  class="cursor-pointer integration-icon"
+                  alt="Serena MCP"
+                  @click="goToIntegrations"
+                />
+              </template>
+              <span v-if="serenaEnabled">Serena MCP enabled.</span>
+              <span v-else>Serena disabled. Click to enable.</span>
+            </v-tooltip>
+            <v-tooltip v-if="agenticTool" location="bottom" max-width="300">
+              <template #activator="{ props: tooltipProps }">
+                <v-icon
+                  v-if="agenticTool.type === 'icon'"
+                  v-bind="tooltipProps"
+                  size="28"
+                  color="primary"
+                  data-testid="agentic-tool-icon"
+                  class="cursor-pointer integration-icon"
+                  :aria-label="agenticTool.alt"
+                  @click="goToIntegrations"
+                >{{ agenticTool.icon }}</v-icon>
+                <v-img
+                  v-else
+                  v-bind="tooltipProps"
+                  :src="agenticTool.src"
+                  width="28"
+                  height="28"
+                  data-testid="agentic-tool-icon"
+                  class="cursor-pointer integration-icon"
+                  :alt="agenticTool.alt"
+                  @click="goToIntegrations"
+                />
+              </template>
+              <span>{{ agenticTool.label }} mode active.</span>
+            </v-tooltip>
+          </div>
+        </div>
 
         <!-- Agents list (bare, no card wrapper) -->
         <div class="agents-list">
@@ -137,6 +200,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { useAgentJobsStore } from '@/stores/agentJobsStore'
@@ -169,11 +233,29 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  gitEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  serenaEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  agenticTool: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits([
   'edit-description',
 ])
+
+const router = useRouter()
+
+function goToIntegrations() {
+  router.push({ path: '/settings', query: { tab: 'integrations' } })
+}
 
 /**
  * Project ID from props
@@ -284,6 +366,27 @@ watch(missionText, (next, previous) => {
   flex-direction: column;
   padding: 16px;
   background: transparent;
+}
+
+/* Integration icons inline with Agents label */
+.integrations-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .integration-icon {
+    opacity: 1;
+    transition: opacity 0.25s ease;
+    object-fit: contain;
+
+    &.icon-disabled {
+      opacity: 0.3;
+
+      &:hover {
+        opacity: 0.5;
+      }
+    }
+  }
 }
 
 /* Two-column grid for Description + Mission cards */
