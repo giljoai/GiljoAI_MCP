@@ -83,8 +83,13 @@
 
           <!-- Step content -->
           <div class="setup-wizard-content">
+            <!-- Closing state: all checkmarks, brief confirmation -->
+            <div v-if="closingWithCheckmarks" class="closing-confirmation">
+              <v-icon size="48" color="success" class="closing-icon">mdi-check-circle</v-icon>
+              <div class="closing-text">Setup complete</div>
+            </div>
             <!-- Learning mode: read-only reference guide -->
-            <template v-if="mode === 'learning'">
+            <template v-else-if="mode === 'learning'">
               <div class="learning-content">
                 <div
                   v-for="section in LEARNING_SECTIONS"
@@ -187,7 +192,19 @@
             </v-btn>
           </div>
 
-          <!-- Setup mode footer (hidden on step 3 — Step 4 has its own card-based navigation) -->
+          <!-- Setup mode footer: restart button on final step when setup already completed -->
+          <div v-else-if="currentStep === 3 && mode === 'setup' && !closingWithCheckmarks" class="setup-wizard-footer" style="justify-content: center;">
+            <v-btn
+              variant="text"
+              prepend-icon="mdi-restart"
+              class="footer-btn-back"
+              @click="showRestartConfirm = true"
+            >
+              Restart Setup
+            </v-btn>
+          </div>
+
+          <!-- Setup mode footer (steps 0–2) -->
           <div v-else-if="currentStep < 3" class="setup-wizard-footer">
             <v-btn
               v-if="currentStep > 0"
@@ -211,6 +228,27 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Restart confirmation dialog -->
+    <v-dialog v-model="showRestartConfirm" max-width="380">
+      <v-card class="smooth-border">
+        <div class="dlg-header dlg-header--warning">
+          <v-icon class="dlg-icon">mdi-alert</v-icon>
+          <span class="dlg-title">Restart Setup</span>
+          <v-btn icon variant="text" size="small" class="dlg-close" @click="showRestartConfirm = false">
+            <v-icon icon="mdi-close" size="18" />
+          </v-btn>
+        </div>
+        <v-card-text class="pa-4">
+          Setup is already completed. Are you sure you want to restart?
+        </v-card-text>
+        <div class="dlg-footer">
+          <v-spacer />
+          <v-btn variant="text" @click="showRestartConfirm = false">Cancel</v-btn>
+          <v-btn variant="flat" color="warning" @click="handleRestartConfirmed">Yes</v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
   </Teleport>
 </template>
 
@@ -332,6 +370,13 @@ const step2CanProceed = ref(false)
 const step2Data = ref({})
 const step3CanProceed = ref(false)
 const step3Data = ref({})
+const showRestartConfirm = ref(false)
+
+function handleRestartConfirmed() {
+  showRestartConfirm.value = false
+  localSelectedTools.value = []
+  emit('update:currentStep', 0)
+}
 
 // Sync when prop changes externally
 watch(
@@ -412,7 +457,23 @@ function handleStep4Complete({ action, route }) {
   emit('update:modelValue', false)
 }
 
+const closingWithCheckmarks = ref(false)
+
 function handleDismiss() {
+  // If setup is already done and we're on the final step, show all-complete state then auto-close
+  if (props.mode === 'setup' && props.currentStep === 3 && !closingWithCheckmarks.value) {
+    closingWithCheckmarks.value = true
+    // Force all steps to show as completed visually
+    emit('update:currentStep', 4)
+    setTimeout(() => {
+      closingWithCheckmarks.value = false
+      emit('dismiss')
+      emit('update:modelValue', false)
+      // Reset back to step 3 for next open
+      emit('update:currentStep', 3)
+    }, 1200)
+    return
+  }
   emit('dismiss')
   emit('update:modelValue', false)
 }
@@ -598,6 +659,38 @@ function handleDismiss() {
   flex: 1;
   padding: 0 24px 16px;
   min-height: 240px;
+}
+
+.closing-confirmation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+  gap: 12px;
+  animation: closing-fade-in 0.4s ease;
+}
+
+.closing-icon {
+  animation: closing-scale 0.5s ease;
+}
+
+.closing-text {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: rgb(var(--v-theme-success));
+}
+
+@keyframes closing-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes closing-scale {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .step-question {
