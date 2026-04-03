@@ -757,3 +757,15 @@ body {
     min-height: 48px;
   }
 }
+
+// ── Data-table: sticky pagination footer ──
+// Tables expand to show all rows for the selected "items per page".
+// The pagination footer sticks to the viewport bottom so it is
+// always accessible without scrolling past the table.
+.v-data-table-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  background-color: rgb(var(--v-theme-surface));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
