@@ -295,7 +295,7 @@
             v-model="newOrigin"
             label="Add New Origin"
             variant="outlined"
-            placeholder="https://192.168.1.100:7274"
+            placeholder="https://192.168.1.100:7272"
             hint="Disabled for single-server installations"
             persistent-hint
             :append-icon="'mdi-plus'"
@@ -333,7 +333,7 @@ const props = defineProps({
     default: () => ({
       externalHost: 'localhost',
       apiPort: 7272,
-      frontendPort: 7274,
+      frontendPort: parseInt(window.location.port) || 7272,
     }),
   },
   corsOrigins: {
