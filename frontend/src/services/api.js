@@ -385,6 +385,11 @@ export const api = {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
     },
+    // Get a single vision document by ID (full content + summaries)
+    get: (documentId) => apiClient.get(`/api/vision-documents/${documentId}`),
+    // Get AI summary content for a document at a given level ('light' or 'medium')
+    getAiSummary: (documentId, level) =>
+      apiClient.get(`/api/vision-documents/${documentId}/ai-summary/${level}`),
     // Delete a vision document
     delete: (documentId) => apiClient.delete(`/api/vision-documents/${documentId}`),
   },
