@@ -397,15 +397,8 @@ async function handleSubmit() {
   background: linear-gradient(135deg, rgb(18, 29, 42) 0%, rgb(10, 15, 22) 100%);
 }
 
-/* Accessibility: Focus indicators */
-.v-text-field:focus-within {
-  outline: 2px solid rgba(var(--v-theme-primary), 0.5);
-  outline-offset: 2px;
-  border-radius: $border-radius-sharp;
-}
-
-.v-btn:focus-visible {
-  outline: 2px solid rgba(var(--v-theme-primary), 0.8);
-  outline-offset: 2px;
+/* Remove Vuetify field overlay tint so inputs match the card background */
+:deep(.v-field__overlay) {
+  opacity: 0 !important;
 }
 </style>

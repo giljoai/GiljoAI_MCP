@@ -88,28 +88,31 @@
                 </template>
               </v-text-field>
 
-              <v-checkbox
-                v-model="rememberMe"
-                label="Remember me"
-                color="primary"
-                density="compact"
-                :disabled="loading"
-                class="mt-2"
-              />
+              <div class="d-flex justify-center">
+                <v-checkbox
+                  v-model="rememberMe"
+                  label="Remember me"
+                  color="primary"
+                  density="compact"
+                  :disabled="loading"
+                  class="mt-2"
+                  hide-details
+                />
+              </div>
 
-              <v-btn
-                type="submit"
-                color="primary"
-                size="large"
-                block
-                :loading="loading"
-                :disabled="!username || !password || loading"
-                class="mt-4"
-                data-testid="login-button"
-              >
-                <v-icon v-if="!loading" start>mdi-login</v-icon>
-                {{ loading ? 'Logging in...' : 'Sign In' }}
-              </v-btn>
+              <div class="d-flex justify-center mt-4">
+                <v-btn
+                  type="submit"
+                  color="primary"
+                  size="large"
+                  :loading="loading"
+                  :disabled="!username || !password || loading"
+                  data-testid="login-button"
+                >
+                  <v-icon v-if="!loading" start>mdi-login</v-icon>
+                  {{ loading ? 'Logging in...' : 'Sign In' }}
+                </v-btn>
+              </div>
 
               <!-- Forgot Password Link -->
               <div class="text-center mt-4">
@@ -359,10 +362,16 @@ onMounted(async () => {
   font-weight: 500;
 }
 
-/* Accessibility: Focus indicators */
-.v-text-field:focus-within {
-  outline: 2px solid rgba(var(--v-theme-primary), 0.5);
-  outline-offset: 2px;
-  border-radius: $border-radius-sharp;
+/* Remove Vuetify field overlay tint so inputs match the card background */
+:deep(.v-field__overlay) {
+  opacity: 0 !important;
+}
+
+/* Neutralize browser autofill background */
+:deep(input:-webkit-autofill),
+:deep(input:-webkit-autofill:hover),
+:deep(input:-webkit-autofill:focus) {
+  -webkit-box-shadow: 0 0 0 1000px rgb(var(--v-theme-surface)) inset !important;
+  -webkit-text-fill-color: rgb(var(--v-theme-on-surface)) !important;
 }
 </style>
