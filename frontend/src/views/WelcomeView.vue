@@ -45,13 +45,29 @@
         <div class="team-header">
           <div class="section-label mb-0">Your Team</div>
           <div class="d-flex align-center ga-2">
-            <span class="team-slots smooth-border">{{ activeTemplates.length }} / {{ totalSlots }} slots</span>
+            <span class="team-slots smooth-border">{{ activeTemplates.length + 1 }} / {{ totalSlots }} slots</span>
             <router-link to="/settings?tab=agents" class="team-manage">
               <v-icon size="14">mdi-cog</v-icon> Manage
             </router-link>
           </div>
         </div>
         <div class="team-grid">
+          <!-- Orchestrator: system agent, always present -->
+          <div class="team-card smooth-border">
+            <div class="team-avatar-wrap">
+              <div
+                class="team-avatar"
+                :style="{
+                  background: tintedBg('#D4B08A'),
+                  color: '#D4B08A',
+                }"
+              >
+                OR
+              </div>
+            </div>
+            <div class="team-name">orchestrator</div>
+            <div class="team-desc">Primary coordinator and mission planner</div>
+          </div>
           <div
             v-for="tmpl in activeTemplates"
             :key="tmpl.id"
@@ -216,7 +232,7 @@ const activeTemplates = computed(() =>
     })
 )
 
-const emptySlots = computed(() => Math.max(0, totalSlots.value - activeTemplates.value.length))
+const emptySlots = computed(() => Math.max(0, totalSlots.value - activeTemplates.value.length - 1))
 
 function tintedBg(hex) {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -672,9 +688,9 @@ onMounted(async () => {
 }
 
 .team-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
-  flex-wrap: wrap;
 }
 
 .team-card {
@@ -684,9 +700,6 @@ onMounted(async () => {
   cursor: pointer;
   transition: all $transition-normal;
   text-align: center;
-  flex: 1;
-  min-width: 120px;
-  max-width: 160px;
 }
 
 .team-card:hover {
@@ -872,8 +885,8 @@ onMounted(async () => {
   .quick-grid {
     grid-template-columns: 1fr;
   }
-  .team-card {
-    min-width: 100px;
+  .team-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>
