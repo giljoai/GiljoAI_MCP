@@ -68,7 +68,7 @@ def find_available_port(preferred_port: int) -> int:
         pass  # nosec B110 - best effort port check
 
     # Try some alternative ports
-    alternatives = [7273, 7274, 8747, 8823, 9456, 9789]
+    alternatives = [7273, 8747, 8823, 9456, 9789]
     for port in alternatives:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
