@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <!-- Header -->
-    <v-row align="center" class="mb-4">
+    <v-row align="center" class="mb-4 main-window-reveal main-window-reveal--hero main-window-delay-1">
       <v-col>
         <h1 class="text-h4">Project Management</h1>
         <p class="text-body-2 text-muted-a11y mt-1">
@@ -32,12 +32,12 @@
     </v-row>
 
     <!-- No Active Product Alert -->
-    <v-alert v-if="!activeProduct" type="info" variant="tonal" class="ma-4" closable>
+    <v-alert v-if="!activeProduct" type="info" variant="tonal" class="ma-4 main-window-reveal main-window-delay-2" closable>
       No active product selected. Please activate a product to view and manage its projects.
     </v-alert>
 
     <!-- Filter Bar (0873: restyled to match TasksView pattern) -->
-    <div v-if="activeProduct" class="filter-bar">
+    <div v-if="activeProduct" class="filter-bar main-window-reveal main-window-delay-2">
       <v-text-field
         v-model="searchQuery"
         prepend-inner-icon="mdi-magnify"
@@ -96,7 +96,7 @@
     </div>
 
     <!-- Projects Table -->
-    <v-card v-if="activeProduct" class="project-table-card smooth-border">
+    <v-card v-if="activeProduct" class="project-table-card smooth-border main-window-reveal main-window-delay-3">
       <!-- Scrollable Table Container -->
       <div class="project-list-container">
         <v-data-table

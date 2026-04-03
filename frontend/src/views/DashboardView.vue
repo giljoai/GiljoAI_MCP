@@ -54,7 +54,7 @@
     </AppAlert>
 
     <!-- Header -->
-    <div class="dash-header">
+    <div class="dash-header main-window-reveal main-window-reveal--hero main-window-delay-1">
       <h1 class="text-h4">
         Dashboard
         <span v-if="selectedProductName" class="dash-product-label">/ {{ selectedProductName }}</span>
@@ -66,13 +66,13 @@
     <ProductSelector
       :products="productStore.products"
       :selected-product-id="selectedProductId"
-      class="mb-5"
+      class="mb-5 main-window-reveal main-window-delay-2"
       @select="onProductSelect"
     />
 
     <!-- Stat Pills Row (3 cards: status, taxonomy, agent roles) -->
     <div class="stat-pills">
-      <div class="stat-pill smooth-border">
+      <div class="stat-pill smooth-border main-window-reveal main-window-delay-3">
         <div class="stat-pill-label">Status Distribution</div>
         <div class="stat-pill-value">{{ statusPill.total }}<small>projects</small></div>
         <div class="micro-bar">
@@ -91,7 +91,7 @@
         </div>
       </div>
 
-      <div class="stat-pill smooth-border">
+      <div class="stat-pill smooth-border main-window-reveal main-window-delay-4">
         <div class="stat-pill-label">Taxonomy</div>
         <div class="stat-pill-value">{{ taxonomyPill.total }}<small>types</small></div>
         <div class="micro-bar">
@@ -110,7 +110,7 @@
         </div>
       </div>
 
-      <div class="stat-pill smooth-border">
+      <div class="stat-pill smooth-border main-window-reveal main-window-delay-5">
         <div class="stat-pill-label">Agent Roles</div>
         <div class="stat-pill-value">{{ agentRolePill.total }}<small>spawned</small></div>
         <div class="micro-bar">
@@ -131,7 +131,7 @@
     </div>
 
     <!-- Mini Stats Row (6 compact counters) -->
-    <div class="mini-stats">
+    <div class="mini-stats main-window-reveal main-window-delay-6">
       <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-documenter-primary, #5EC48E)">
         <div class="mini-stat-label">Active</div>
         <div class="mini-stat-value">{{ miniStats.active }}</div>
@@ -159,7 +159,7 @@
     </div>
 
     <!-- Projects Panel (full width) -->
-    <div class="panel projects-panel smooth-border">
+    <div class="panel projects-panel smooth-border main-window-reveal main-window-delay-7">
       <div class="panel-header">
         <span class="panel-title">Projects</span>
         <router-link to="/projects" class="panel-action">All Projects →</router-link>
@@ -171,7 +171,7 @@
 
     <!-- Bottom 2-column grid: 360 Memories + Git Commits -->
     <div class="bottom-grid">
-      <div class="panel smooth-border">
+      <div class="panel smooth-border main-window-reveal main-window-delay-8">
         <div class="panel-header">
           <span class="panel-title">360 Memories</span>
         </div>
@@ -180,7 +180,7 @@
         </div>
       </div>
 
-      <div class="panel smooth-border">
+      <div class="panel smooth-border main-window-reveal main-window-delay-9">
         <div class="panel-header">
           <span class="panel-title">Recent Commits</span>
           <span class="panel-subtitle">from 360 memory</span>
