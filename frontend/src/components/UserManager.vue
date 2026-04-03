@@ -120,7 +120,7 @@
     </v-data-table>
 
     <!-- Create/Edit User Dialog -->
-    <v-dialog v-model="showUserDialog" max-width="600" persistent>
+    <v-dialog v-model="showUserDialog" max-width="600" persistent scrollable>
       <v-card v-draggable class="smooth-border">
         <v-card-title>
           <v-icon class="mr-2">{{ isEditMode ? 'mdi-pencil' : 'mdi-account-plus' }}</v-icon>
@@ -135,6 +135,7 @@
               variant="outlined"
               :rules="[rules.username]"
               required
+              autocomplete="off"
               class="mb-3"
             />
 
@@ -144,6 +145,7 @@
               variant="outlined"
               type="email"
               :rules="[rules.email]"
+              autocomplete="off"
               class="mb-3"
             />
 
@@ -157,6 +159,7 @@
               hint="Min 8 characters"
               persistent-hint
               required
+              autocomplete="new-password"
               class="mb-3"
             />
 
@@ -505,7 +508,7 @@ async function saveUser() {
       // Update existing user
       await api.auth.updateUser(userForm.value.id, {
         username: userForm.value.username,
-        email: userForm.value.email,
+        email: userForm.value.email || null,
         role: userForm.value.role,
         is_active: userForm.value.is_active,
       })
@@ -513,7 +516,7 @@ async function saveUser() {
       // Create new user
       await api.auth.register({
         username: userForm.value.username,
-        email: userForm.value.email,
+        email: userForm.value.email || null,
         password: userForm.value.password,
         role: userForm.value.role,
       })
