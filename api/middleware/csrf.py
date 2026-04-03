@@ -174,10 +174,12 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
         # Process request
         response = await call_next(request)
 
-        # Set CSRF token cookie if not present
-        # This ensures every client gets a token on first visit
-        if self.cookie_name not in request.cookies:
-            token = self._generate_token()
+        # Set or refresh CSRF token cookie.
+        # Generate on first visit; refresh on every GET to keep it alive during active use.
+        # max_age matches JWT lifetime (24 hours) so the cookie doesn't expire mid-session.
+        existing_token = request.cookies.get(self.cookie_name)
+        if not existing_token or request.method == "GET":
+            token = existing_token or self._generate_token()
             response.set_cookie(
                 key=self.cookie_name,
                 value=token,
@@ -185,9 +187,10 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
                 secure=request.url.scheme == "https",  # Adapt to connection scheme
                 samesite="lax",  # Lax required for cross-origin LAN access (strict blocks cookie on IP-based origins)
                 path="/",  # Must be root so cookie is sent on all API paths
-                max_age=3600,  # 1 hour expiry
+                max_age=86400,  # 24 hours — matches JWT token lifetime
             )
-            logger.debug(f"Generated new CSRF token for IP: {request.client.host if request.client else 'unknown'}")
+            if not existing_token:
+                logger.debug(f"Generated new CSRF token for IP: {request.client.host if request.client else 'unknown'}")
 
         return response
 
