@@ -39,7 +39,7 @@
           </button>
         </div>
 
-        <v-window v-model="activeTab">
+        <v-window v-model="activeTab" class="main-window-tabs">
           <!-- Message Timeline Tab -->
           <v-window-item value="timeline">
             <MessagePanel :project-id="selectedProjectId" />

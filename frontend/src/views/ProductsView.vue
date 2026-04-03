@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <!-- Header (matches Tasks/Projects pattern) -->
-    <v-row align="center" class="mb-4">
+    <v-row align="center" class="mb-4 main-window-reveal main-window-reveal--hero main-window-delay-1">
       <v-col>
         <h1 class="text-h4">Products</h1>
         <p class="text-body-2 text-muted-a11y mt-1">
@@ -22,7 +22,7 @@
     </v-row>
 
     <!-- Filter Bar -->
-    <div class="filter-bar">
+    <div class="filter-bar main-window-reveal main-window-delay-2">
         <v-text-field
           v-model="search"
           prepend-inner-icon="mdi-magnify"
@@ -63,14 +63,14 @@
       </div>
 
       <!-- Product Cards (floating, no wrapper card) -->
-              <v-row v-if="loading">
+              <v-row v-if="loading" class="main-window-reveal main-window-delay-3">
                 <v-col cols="12" class="text-center py-8">
                   <v-progress-circular indeterminate color="primary"></v-progress-circular>
                   <div class="text-muted-a11y mt-4">Loading products...</div>
                 </v-col>
               </v-row>
 
-              <v-row v-else-if="filteredProducts.length === 0">
+              <v-row v-else-if="filteredProducts.length === 0" class="main-window-reveal main-window-delay-3">
                 <v-col cols="12" class="text-center py-8">
                   <v-icon size="64" color="grey-lighten-2">mdi-package-variant-remove</v-icon>
                   <div class="text-h6 product-text-secondary mt-4">No products found</div>
@@ -84,7 +84,7 @@
                 </v-col>
               </v-row>
 
-              <v-row v-else>
+              <v-row v-else class="main-window-reveal main-window-delay-3">
                 <v-col
                   v-for="product in filteredProducts"
                   :key="product.id"
