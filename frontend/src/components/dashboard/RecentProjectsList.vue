@@ -18,9 +18,6 @@
           <span v-if="project.product_name" class="project-product">({{ project.product_name }})</span>
         </span>
         <span class="project-time">{{ formatDateTime(project.completed_at) }}</span>
-        <span class="project-status" :class="statusClass(project.status)">
-          {{ capitalize(project.status) }}
-        </span>
       </div>
     </div>
   </div>
@@ -75,7 +72,7 @@ function capitalize(str) {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 0;
+  padding: 10px 16px;
   border-bottom: 1px solid $color-border-tertiary;
   transition: background $transition-fast;
   cursor: pointer;
