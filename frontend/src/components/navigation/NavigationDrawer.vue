@@ -11,16 +11,16 @@
     class="navigation-drawer-container"
     @update:model-value="$emit('update:model-value', $event)"
   >
-    <!-- Edge-Aligned Collapse Tab (expanded mode only) -->
+    <!-- Edge-Aligned Collapse Tab -->
     <div
-      v-if="!temporary && !rail"
+      v-if="(!rail || temporary) && modelValue"
       class="edge-toggle-tab"
-      :aria-label="'Collapse sidebar'"
+      :aria-label="temporary ? 'Close navigation' : 'Collapse sidebar'"
       role="button"
       tabindex="0"
-      @click="$emit('toggle-rail')"
-      @keydown.enter="$emit('toggle-rail')"
-      @keydown.space.prevent="$emit('toggle-rail')"
+      @click="temporary ? $emit('update:model-value', false) : $emit('toggle-rail')"
+      @keydown.enter="temporary ? $emit('update:model-value', false) : $emit('toggle-rail')"
+      @keydown.space.prevent="temporary ? $emit('update:model-value', false) : $emit('toggle-rail')"
     >
       <v-icon size="20">mdi-chevron-left</v-icon>
     </div>
@@ -478,6 +478,7 @@ watch(
   overflow: visible;
 }
 
+// Force width in temporary mode
 .navigation-drawer-container.v-navigation-drawer--temporary {
   width: 180px !important;
 }
@@ -583,6 +584,7 @@ watch(
 .nav-items {
   flex: 1;
 }
+
 
 // ─── BOTTOM SECTION ───
 .nav-bottom {
@@ -696,4 +698,17 @@ watch(
   border-radius: 50%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
+
+// Mobile: bigger touch targets for orbs
+@media (max-width: 1024px) {
+  .nav-orb {
+    width: 44px;
+    height: 44px;
+  }
+
+  .nav-orb-initials {
+    font-size: 0.8rem;
+  }
+}
+
 </style>
