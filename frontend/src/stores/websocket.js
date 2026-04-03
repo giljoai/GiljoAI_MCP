@@ -126,7 +126,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         // This ensures WebSocket connects to the same host the user is accessing
         // Security note: Auth is enforced server-side via JWT, not by hostname
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-        const wsPort = API_CONFIG.WEBSOCKET?.port || 7272
+        const wsPort = API_CONFIG.WEBSOCKET?.port || parseInt(window.location.port) || 7272
         const baseUrl = `${wsProtocol}//${window.location.hostname}:${wsPort}`
         const wsUrl = new URL(`${baseUrl}/ws/${clientId.value}`)
 

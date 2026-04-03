@@ -355,6 +355,10 @@ class UnifiedInstaller:
                 return result
             result["steps"].append("frontend_dependencies_installed")
 
+            # Step 7.1: Production / Development mode prompt
+            if frontend_result["success"] and not frontend_result.get("skipped", False):
+                self._prompt_frontend_mode()
+
             # Step 7.5: HTTPS setup (automatic for LAN/WAN, skipped for localhost)
             if not self.settings.get("headless"):
                 self._print_header("HTTPS Configuration")
@@ -2213,6 +2217,55 @@ class UnifiedInstaller:
             result["error"] = str(e)
             result["success"] = False
             return result
+
+    def _prompt_frontend_mode(self) -> None:
+        """Prompt user to choose Production or Development mode for the frontend.
+
+        Production builds the frontend to frontend/dist/ so FastAPI can serve it
+        on a single port. Development removes any stale dist/ so the Vite dev
+        server is used instead.
+
+        Skipped silently in headless mode (defaults to Production).
+        """
+        frontend_dir = self.install_dir / "frontend"
+        dist_dir = frontend_dir / "dist"
+
+        headless = self.settings.get("headless")
+        mode = "1"
+
+        if not headless:
+            print()
+            self._print_header("Frontend Mode")
+            self._print_info("How will you use GiljoAI?")
+            self._print_info("  1. Production (recommended) - Single port, optimized build")
+            self._print_info("  2. Development - Two ports, hot-reload for code changes")
+            try:
+                mode = input("\nSelect [1/2] (default: 1): ").strip() or "1"
+            except EOFError:
+                mode = "1"
+
+        if mode == "1":
+            self._print_info("Building production frontend...")
+            npm_executable = shutil.which("npm")
+            try:
+                subprocess.run(
+                    [npm_executable, "run", "build"],
+                    cwd=str(frontend_dir),
+                    check=True,
+                    timeout=300,
+                )
+                self._print_success("Frontend built to frontend/dist/")
+                self._print_info("startup.py will serve the frontend on the API port")
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+                self._print_warning(f"Frontend build failed: {e}")
+                self._print_info("You can build later with: cd frontend && npm run build")
+                self._print_info("Without a build, startup.py will use the Vite dev server")
+        else:
+            if dist_dir.exists():
+                shutil.rmtree(dist_dir)
+                self._print_info("Removed stale frontend/dist/ directory")
+            self._print_success("Development mode selected")
+            self._print_info("startup.py will launch the Vite dev server on port 7274")
 
     def launch_services(self) -> Dict[str, Any]:
         """

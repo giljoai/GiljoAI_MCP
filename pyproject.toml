@@ -87,8 +87,7 @@ Documentation = "https://giljoai.github.io/giljo-mcp"
 Repository = "https://github.com/giljoai/giljo-mcp.git"
 Issues = "https://github.com/giljoai/giljo-mcp/issues"
 
-[project.scripts]
-giljo-setup = "setup_gui:main"
+# Entry points intentionally omitted — CE installs via install.py, not pip install
 
 [tool.black]
 line-length = 120
@@ -200,7 +199,6 @@ exclude = [
     "^installers/",
     "bootstrap\\.py$",
     "setup\\.py$",
-    "setup_gui\\.py$",
 ]
 
 [[tool.mypy.overrides]]
@@ -219,7 +217,6 @@ module = [
     "redis.*",
     "bootstrap",
     "setup",
-    "setup_gui",
     "installer.*",
     "installers.*",
 ]

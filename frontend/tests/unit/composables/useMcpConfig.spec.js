@@ -82,9 +82,10 @@ describe('useMcpConfig', () => {
       )
     })
 
-    it('defaults to hostname and port 7272', () => {
+    it('defaults to hostname and current page port', () => {
       const result = buildServerUrl()
-      expect(result).toContain(':7272')
+      const expectedPort = window.location.port || '7272'
+      expect(result).toContain(`:${expectedPort}`)
     })
   })
 

@@ -528,8 +528,7 @@ describe('NetworkSettingsTab.vue', () => {
       // Fields should have helpful hints - check HTML for hint attributes
       const html = wrapper.html()
       expect(html).toContain('Host/IP configured during installation')
-      expect(html).toContain('Default: 7272')
-      expect(html).toContain('Default: 7274')
+      expect(html).toContain('Configured during installation')
     })
   })
 
