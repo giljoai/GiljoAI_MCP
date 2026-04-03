@@ -51,7 +51,7 @@
 
     <!-- Tab Content -->
     <div class="pill-tabs-content">
-      <v-window v-model="activeTab" class="global-tabs-window">
+      <v-window v-model="activeTab" class="global-tabs-window main-window-tabs">
       <!-- Identity (Workspace + Members) - Handover 0434 -->
       <v-window-item value="identity">
         <IdentityTab />
