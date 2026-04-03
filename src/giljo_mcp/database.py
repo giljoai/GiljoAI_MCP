@@ -33,19 +33,36 @@ class DatabaseManager:
     - Production-ready configuration
     """
 
-    def __init__(self, database_url: Optional[str] = None, is_async: bool = False):
+    def __init__(
+        self,
+        database_url: Optional[str] = None,
+        is_async: bool = False,
+        pool_size: Optional[int] = None,
+        max_overflow: Optional[int] = None,
+    ):
         """
         Initialize DatabaseManager.
 
         Args:
             database_url: PostgreSQL connection URL. Required.
             is_async: Whether to use async engine and sessions.
+            pool_size: Connection pool size. Auto-scaled from system RAM if not set.
+            max_overflow: Max overflow connections. Defaults to 2x pool_size.
         """
         if not database_url:
             raise ValueError("Database URL is required")
 
         self.database_url = database_url
         self.is_async = is_async
+
+        # Auto-scale pool from system RAM if not explicitly set
+        if pool_size is None:
+            pool_size = self._auto_pool_size()
+        if max_overflow is None:
+            max_overflow = pool_size * 2
+
+        self.pool_size = pool_size
+        self.max_overflow = max_overflow
 
         # Validate database URL - PostgreSQL only
         if "postgresql" not in self.database_url:
@@ -59,14 +76,40 @@ class DatabaseManager:
             self.engine = self._create_sync_engine()
             self.SessionLocal = scoped_session(sessionmaker(self.engine, expire_on_commit=False))
 
+    @staticmethod
+    def _auto_pool_size() -> int:
+        """Scale connection pool based on available system RAM.
+
+        Returns a pool_size appropriate for the host machine:
+            <=4 GB  ->  10
+            <=8 GB  ->  20
+            <=16 GB ->  30
+            <=32 GB ->  40
+            >32 GB  ->  50
+        """
+        try:
+            import psutil
+            ram_gb = psutil.virtual_memory().total / (1024 ** 3)
+        except (ImportError, Exception):
+            return 20  # safe default when psutil unavailable
+
+        if ram_gb <= 4:
+            return 10
+        if ram_gb <= 8:
+            return 20
+        if ram_gb <= 16:
+            return 30
+        if ram_gb <= 32:
+            return 40
+        return 50
+
     def _create_sync_engine(self) -> Engine:
         """Create synchronous PostgreSQL engine with optimized settings."""
-        # PostgreSQL optimizations
         engine = create_engine(
             self.database_url,
             poolclass=QueuePool,
-            pool_size=20,
-            max_overflow=40,
+            pool_size=self.pool_size,
+            max_overflow=self.max_overflow,
             pool_pre_ping=True,
             pool_recycle=3600,
             echo=False,
@@ -75,19 +118,15 @@ class DatabaseManager:
 
     def _create_async_engine(self) -> AsyncEngine:
         """Create asynchronous PostgreSQL engine with optimized settings."""
-        # Convert URL for async drivers
         async_url = self.database_url
 
-        # Only replace if not already an async dialect
         if async_url.startswith("postgresql://"):
             async_url = async_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-        # PostgreSQL async optimizations
-        # Note: AsyncEngine handles pooling internally, don't specify poolclass
         engine = create_async_engine(
             async_url,
-            pool_size=20,
-            max_overflow=40,
+            pool_size=self.pool_size,
+            max_overflow=self.max_overflow,
             pool_pre_ping=True,
             pool_recycle=3600,
             echo=False,
