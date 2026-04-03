@@ -872,33 +872,12 @@ onMounted(async () => {
   letter-spacing: 0;
 }
 
-/* Table body scrolls, footer (pagination) stays pinned below */
+/* Table body expands to show all rows; browser scrollbar handles overflow */
 .scrollable-table :deep(.v-table__wrapper) {
-  max-height: calc(100vh - 340px);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: $color-scrollbar-thumb-background $color-scrollbar-track-background;
-
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: $color-scrollbar-track-background;
-    border-radius: $border-radius-sharp;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: $color-scrollbar-thumb-background;
-    border-radius: $border-radius-sharp;
-
-    &:hover {
-      background: $color-scrollbar-thumb-hover-background;
-    }
-  }
+  overflow: visible;
 }
 
-/* Pagination footer: always visible below scroll area */
+/* Pagination footer: sticky at viewport bottom */
 .scrollable-table :deep(.v-data-table-footer) {
   border-top: 1px solid $color-border-subtle;
 }
