@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="isOpen" max-width="600">
-    <v-card v-draggable class="smooth-border">
+    <v-card v-draggable class="smooth-border product-details-card">
       <div class="dlg-header">
         <v-icon class="dlg-icon" icon="mdi-information-outline" />
         <span class="dlg-title">Product Details</span>
@@ -11,7 +11,7 @@
 
       <v-divider />
 
-      <v-card-text v-if="product" class="pa-4">
+      <v-card-text v-if="product" class="pa-4 dialog-body-scroll product-details-body">
         <!-- Product Name -->
         <div class="text-h6 mb-2">{{ product.name }}</div>
         <div class="text-caption mb-4 text-muted-a11y font-mono product-id-text">ID: {{ product.id }}</div>
@@ -39,55 +39,17 @@
           </v-row>
         </div>
 
-        <!-- Context Tuning -->
-        <div class="detail-section smooth-border mb-4">
-          <button type="button" class="detail-section-toggle" @click="toggleTuningSection">
-            <span class="detail-section-title-wrap">
-              <v-icon size="18" class="mr-2">mdi-tune</v-icon>
-              <span class="detail-section-title">Tune Context</span>
-            </span>
-            <v-icon size="18">{{ isTuningOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
-          </button>
-          <div v-if="isTuningOpen" class="detail-section-body">
-            <div class="detail-section-subtitle text-caption text-muted-a11y">
-              Generate or review context tuning guidance for this product.
-            </div>
-            <ProductTuningMenu
-              :product-id="product.id"
-              hide-trigger
-              :initially-open="isTuningOpen"
-            />
-          </div>
-        </div>
-
-        <div
-          v-if="product.tuning_state?.pending_proposals"
-          class="detail-section smooth-border mb-4"
-        >
-          <button type="button" class="detail-section-toggle" @click="toggleProposalSection">
-            <span class="detail-section-title-wrap">
-              <v-icon size="18" class="mr-2">mdi-clipboard-text-outline</v-icon>
-              <span class="detail-section-title">Tuning Proposals</span>
-            </span>
-            <v-icon size="18">{{ isProposalOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
-          </button>
-          <div v-if="isProposalOpen" class="detail-section-body">
-            <div class="detail-section-subtitle text-caption text-muted-a11y">
-              Review proposed updates detected from product context drift.
-            </div>
-            <ProductTuningReview
-              :product-id="product.id"
-              :pending-proposals="product.tuning_state.pending_proposals"
-            />
-          </div>
-        </div>
-
         <!-- Vision Documents -->
         <div>
           <div class="text-subtitle-2 mb-2">Vision Documents ({{ visionDocuments.length }})</div>
 
           <v-list v-if="visionDocuments.length > 0" density="compact">
-            <v-card v-for="doc in visionDocuments" :key="doc.id" variant="flat" class="smooth-border mb-2">
+            <v-card
+              v-for="doc in visionDocuments"
+              :key="doc.id"
+              variant="flat"
+              class="smooth-border mb-2 doc-entry-card"
+            >
               <div class="doc-card-header px-3 py-3">
                 <div class="doc-card-heading">
                   <v-icon color="primary" class="mr-2">mdi-file-document</v-icon>
@@ -103,7 +65,7 @@
                 </div>
               </div>
 
-              <div class="doc-dropdown smooth-border">
+              <div class="doc-dropdown">
                 <button
                   v-if="doc.is_summarized || doc.vision_document"
                   type="button"
@@ -482,8 +444,6 @@ import { useToast } from '@/composables/useToast'
 import { hexToRgba } from '@/utils/colorUtils'
 import { getAgentColor } from '@/config/agentColors'
 import { getStatusColor } from '@/utils/statusConfig'
-import ProductTuningMenu from './ProductTuningMenu.vue'
-import ProductTuningReview from './ProductTuningReview.vue'
 
 const { formatDate } = useFormatDate()
 const { showToast } = useToast()
@@ -537,17 +497,10 @@ const props = defineProps({
     type: Object,
     default: () => ({ unresolved_tasks: 0, unfinished_projects: 0 }),
   },
-  autoExpandTuning: {
-    type: Boolean,
-    default: false,
-  },
 })
 
 const emit = defineEmits(['update:modelValue', 'refresh-product'])
 
-// Context Tuning toggle (Handover 0831)
-const isTuningOpen = ref(false)
-const isProposalOpen = ref(false)
 const openSummarySections = ref({})
 
 // Vision analysis result (Handover 0842d)
@@ -567,16 +520,10 @@ onUnmounted(() => {
   window.removeEventListener('vision-analysis-complete', handleVisionAnalysisComplete)
 })
 
-// Handover 0842d: Auto-expand tuning when opened via tune button
 watch(
   () => props.modelValue,
   (open) => {
-    if (open && props.autoExpandTuning) {
-      isTuningOpen.value = true
-    }
     if (!open) {
-      isTuningOpen.value = false
-      isProposalOpen.value = false
       openSummarySections.value = {}
     }
   },
@@ -589,14 +536,6 @@ const isOpen = computed({
 
 const handleClose = () => {
   emit('update:modelValue', false)
-}
-
-function toggleTuningSection() {
-  isTuningOpen.value = !isTuningOpen.value
-}
-
-function toggleProposalSection() {
-  isProposalOpen.value = !isProposalOpen.value
 }
 
 function toggleSummarySection(documentId) {
@@ -818,6 +757,23 @@ async function regenerateConsolidation() {
 @use '../../styles/design-tokens' as *;
 .product-id-text {
   font-size: 0.65rem;
+}
+
+:deep(.product-details-card) {
+  display: flex;
+  flex-direction: column;
+  max-height: min(80vh, 900px);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10) !important;
+}
+
+:deep(.product-details-body) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+:deep(.doc-entry-card) {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10) !important;
 }
 
 .detail-section {

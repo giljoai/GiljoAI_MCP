@@ -267,8 +267,10 @@ body {
     0 16px 48px rgba(0, 0, 0, 0.5) !important;
 }
 
-// Global: all modal/dialog cards get smooth border + drop shadow + rounded corners
-.v-dialog .v-card {
+// Global: only the top-level modal/dialog card gets dialog chrome.
+// Nested cards inside dialog content should keep their local component styling.
+.v-dialog > .v-overlay__content > .v-card,
+.v-dialog > .v-overlay__content > form > .v-card {
   border: none !important;
   border-radius: $border-radius-rounded !important;
   box-shadow:
