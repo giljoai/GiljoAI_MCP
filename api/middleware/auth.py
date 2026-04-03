@@ -141,6 +141,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     def _is_public_endpoint(self, path: str) -> bool:
         """Check if endpoint is public (no authentication required)"""
+        if path in {"/", "/index.html", "/favicon.ico"} or path.startswith("/assets/"):
+            return True
         public_paths = [
             "/health",
             "/docs",

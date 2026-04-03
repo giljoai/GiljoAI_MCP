@@ -21,7 +21,7 @@
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
 | 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. **0841 COMPLETE.** **0842a-f, 0842g, 0842h, 0842i-m COMPLETE.** **0843 COMPLETE.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 COMPLETE.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
 | 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE. 0873a-o COMPLETE. 0874a-c COMPLETE. 0875 COMPLETE. 0880 COMPLETE.** All design system work done. Branch: feature/0873-style-centralization. |
-| 0900-0999 | Infrastructure & DevEx | **0900 COMPLETE.** 0901 NOT STARTED. |
+| 0900-0999 | Infrastructure & DevEx | **0900 COMPLETE.** 0901 NOT STARTED. **0902 COMPLETE (0902a-d all COMPLETE).** **0903 NOT STARTED.** |
 
 ---
 
@@ -36,6 +36,12 @@
 | 0844b | Tenant Import Service + Schema Diff | Not Started | Medium | Backend import: schema compatibility analysis, UPSERT pipeline, topological sort, vision file extraction, TSVECTOR regen. Heaviest phase, 2-3 sessions. Depends on 0844a. |
 | 0844c | Tenant Data Frontend | Not Started | Medium | Vue component in Database tab: export/import UI, compatibility report dialog, stale backup warning, WebSocket progress. 1 session. Depends on 0844a+b. |
 | 0901 | Dashboard Scope Simplification | Not Started | Low | Remove product selector from CE dashboard. Show all-tenant stats only. 1 hour. |
+| 0902 | Single-Port Frontend Serving | **COMPLETE** | High | CE release blocker. Serve built frontend from FastAPI on port 7272. 8 hours. |
+| 0902a | Backend Static Mount + Middleware | **COMPLETE** | High | FastAPI static mount, SPA fallback, middleware exemptions. 2 hours. |
+| 0902b | Frontend Port Fixes | **COMPLETE** | High | Fix 13 hardcoded port references + portConfig utility. 1.5 hours. |
+| 0902c | Startup/Install Mode Toggle | **COMPLETE** | High | Production detection, --dev flag, install.py prompt. Depends on 0902a+b. 2 hours. |
+| 0902d | Testing + Documentation | **COMPLETE** | High | Backend/frontend tests, doc updates. Depends on 0902a+b+c. 1.5 hours. |
+| 0903 | Streamlined CLI Install | Not Started | Medium | Post-launch. `pip install giljo-mcp` → `giljo-mcp init` → paste MCP command → done. Supersedes 0409. Depends on 0902. 12-16 hours. |
 
 ### Deferred (Still in Root Folder)
 
@@ -615,6 +621,7 @@ completed/reference/
 **0860a-d** (Code Provenance & License Audit — PERMANENT, reusable): All phases COMPLETE (2026-03-30). CE: PASS, SaaS: PASS. Owner review cleared all 4 REVIEW items. **Handovers live in `audit/` folder (not `handovers/`) — never closed out, rerun before each major release.** Spec: `audit/CODE_PROVENANCE_LICENSE_AUDIT.md`. Results: `audit/AUDIT_SUMMARY.md`.
 **0870-0875** (Design System & Agent States): 0870a-p harmonization COMPLETE, 0871a-h remediation COMPLETE, 0872a-d interactive polish COMPLETE, 0873a-o style centralization COMPLETE, 0874a-c inline style sweep COMPLETE, 0875 project detail layout COMPLETE. All on feature/0873-style-centralization branch.
 **0880** (Agent States): 0880 Agent Resting States — idle + sleeping (COMPLETE, `6e466f90`)
+**0900-0903** (Infrastructure & DevEx): 0900 WebSocket Debug Simplification (COMPLETE), 0901 Dashboard Scope Simplification (COMPLETE), 0902 Single-Port Frontend Serving (COMPLETE — 0902a-d all done), 0903 Streamlined CLI Install (NOT STARTED, supersedes 0409, depends on 0902)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers

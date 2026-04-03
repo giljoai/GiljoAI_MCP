@@ -401,6 +401,7 @@ def _configure_middleware(app: FastAPI) -> None:
             "/api/download/",  # Public download endpoints
             "/api/mcp-installer/",  # MCP installer (Bearer token auth, not cookie-based)
             "/ws",  # WebSocket endpoints
+            "/assets",  # Static file assets (production frontend serving)
         ],
     )
 
@@ -521,19 +522,24 @@ def _register_event_handlers(app: FastAPI) -> None:
     updates, and global exception handlers.
     """
 
-    @app.get("/")
-    async def root():
-        """Root endpoint"""
-        edition = "community"
-        if hasattr(app.state, "config") and app.state.config:
-            edition = getattr(app.state.config, "edition", None) or "community"
-        return {
-            "name": "GiljoAI MCP",
-            "version": "1.0.0",
-            "edition": edition,
-            "status": "operational",
-            "endpoints": {"api": "/docs", "websocket": "/ws", "health": "/health"},
-        }
+    dist_dir = Path(state.config.get_nested("paths.static", "frontend/dist")) if state.config else Path("frontend/dist")
+    has_frontend = dist_dir.exists() and (dist_dir / "index.html").exists()
+
+    if not has_frontend:
+
+        @app.get("/")
+        async def root():
+            """Root endpoint"""
+            edition = "community"
+            if hasattr(app.state, "config") and app.state.config:
+                edition = getattr(app.state.config, "edition", None) or "community"
+            return {
+                "name": "GiljoAI MCP",
+                "version": "1.0.0",
+                "edition": edition,
+                "status": "operational",
+                "endpoints": {"api": "/docs", "websocket": "/ws", "health": "/health"},
+            }
 
     @app.get("/health")
     async def health_check():
@@ -821,6 +827,25 @@ def create_app() -> FastAPI:
     _configure_middleware(app)
     _register_routers(app)
     _register_event_handlers(app)
+
+    # Production frontend serving (single-port mode)
+    # Must be LAST so API routes registered above take priority
+    dist_dir = Path(state.config.get_nested("paths.static", "frontend/dist")) if state.config else Path("frontend/dist")
+    if dist_dir.exists() and (dist_dir / "index.html").exists():
+        from starlette.responses import FileResponse
+        from starlette.staticfiles import StaticFiles
+
+        @app.exception_handler(404)
+        async def spa_fallback(request, exc):
+            """SPA fallback: non-API 404s serve index.html for Vue Router."""
+            path = request.url.path
+            if not path.startswith(("/api", "/ws", "/mcp", "/health", "/docs", "/redoc", "/openapi.json")):
+                return FileResponse(str(dist_dir / "index.html"))
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+
+        app.mount("/", StaticFiles(directory=str(dist_dir), html=False), name="static")
 
     return app
 

@@ -28,24 +28,46 @@ You are welcome to fork the repository and use it under the terms of the
 
 ## Development Setup
 
+**Requirements**: Python 3.12+, PostgreSQL 18, Node.js 20+
+
 ```bash
 # Clone and install
 git clone https://github.com/patrik-giljoai/GiljoAI_MCP.git
 cd GiljoAI_MCP
-python install.py
+python install.py          # Interactive installer (sets up config.yaml, DB, etc.)
 
-# Backend
+# Install dependencies
 pip install -r requirements.txt
 pip install -r dev-requirements.txt
-python startup.py --dev
-
-# Frontend
-cd frontend
-npm install
-npm run dev
+cd frontend && npm install && cd ..
 ```
 
-**Requirements**: Python 3.11+, PostgreSQL 18, Node.js 20+
+### Production mode (single port)
+
+In production, FastAPI serves both the API and the built frontend on port **7272**:
+
+```bash
+cd frontend && npm run build && cd ..   # Build frontend into frontend/dist/
+python startup.py                        # Starts on :7272 (API + frontend)
+```
+
+Open `http://127.0.0.1:7272` to access the full application.
+
+### Development mode (two ports, hot-reload)
+
+For active development, use `--dev` to run the Vite dev server alongside the API:
+
+```bash
+python startup.py --dev
+```
+
+This starts:
+- **Port 7272** -- FastAPI API server
+- **Port 7274** -- Vite dev server with hot module replacement
+
+Open `http://127.0.0.1:7274` for the frontend (proxies API calls to 7272).
+
+To switch from production back to dev mode, simply re-run with `--dev`. No build step needed.
 
 ## Code Style
 

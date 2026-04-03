@@ -629,12 +629,28 @@ def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
     """
     Start the frontend development server.
 
+    In production mode (frontend/dist/ exists and --dev not set), returns None
+    so FastAPI serves the pre-built frontend. In development mode, launches
+    the Vite dev server as before.
+
     Args:
         verbose: If True, show console window with output (Windows only)
 
     Returns:
-        Popen process object or None if failed
+        Popen process object, or None if production mode or failed
     """
+    dev_mode = "--dev" in sys.argv
+
+    if dev_mode:
+        print_info("Development mode (--dev): launching Vite dev server")
+    else:
+        dist_index = Path.cwd() / "frontend" / "dist" / "index.html"
+        if dist_index.exists():
+            api_port, _ = get_config_ports()
+            print_success("Production frontend detected (frontend/dist/)")
+            print_info(f"Frontend served by FastAPI on port {api_port}")
+            return None
+
     try:
         frontend_dir = Path.cwd() / "frontend"
 
@@ -1038,50 +1054,54 @@ def run_startup(
         print_warning("You may see connection errors in the browser initially")
 
     # Step 9: Open browser
+    # In production mode (no Vite), browser should point to the API port
+    # since FastAPI serves both the API and the frontend static files.
+    production_mode = frontend_process is None and (Path.cwd() / "frontend" / "dist" / "index.html").exists()
+    browser_port = api_port if production_mode else frontend_port
+
     print_header("Opening Browser")
 
     if no_browser:
-        # User chose not to auto-launch browser
         network_ip = get_network_ip()
         if network_ip:
             print_info("Login to your published IP on your PC to begin setup!")
-            print_success(f"Setup URL: {http_proto}://{network_ip}:{frontend_port}/setup")
+            print_success(f"Setup URL: {http_proto}://{network_ip}:{browser_port}/setup")
         else:
             print_info("Login to your published IP on your PC to begin setup!")
-            print_success(f"Localhost URL: {http_proto}://localhost:{frontend_port}/setup")
+            print_success(f"Localhost URL: {http_proto}://localhost:{browser_port}/setup")
 
         print_header("Welcome to GiljoAI MCP! -Gil")
     else:
-        # Auto-launch browser
         # v3.0 Enhancement: Use network IP for fresh installs (better UX than localhost)
         # Localhost triggers auto-login which confuses setup wizard
         network_ip = get_network_ip() if is_first_run else None
 
         if is_first_run:
-            # Open welcome setup first to enforce admin credential update before setup
             target_route = "/welcome"
             if network_ip:
-                setup_url = f"{http_proto}://{network_ip}:{frontend_port}{target_route}"
+                setup_url = f"{http_proto}://{network_ip}:{browser_port}{target_route}"
                 print_info("First-run detected - opening welcome setup screen at network IP...")
                 print_info("(Using network IP avoids localhost auto-login)")
             else:
-                setup_url = f"{http_proto}://localhost:{frontend_port}{target_route}"
+                setup_url = f"{http_proto}://localhost:{browser_port}{target_route}"
                 print_info("First-run detected - opening welcome setup screen...")
 
             open_browser(setup_url, delay=2)
         else:
-            # Open dashboard - localhost is fine for existing users
-            dashboard_url = f"{http_proto}://localhost:{frontend_port}"
+            dashboard_url = f"{http_proto}://localhost:{browser_port}"
             print_info("Opening dashboard...")
             open_browser(dashboard_url, delay=2)
 
     # Step 10: Display status
-    print_header("Services Running")
+    mode_label = "PRODUCTION" if production_mode else "DEVELOPMENT"
+    print_header(f"Services Running ({mode_label})")
     print_success(f"API Server: {http_proto}://localhost:{api_port}")
     print_success(f"API Docs: {http_proto}://localhost:{api_port}/docs")
 
-    if frontend_process:
-        print_success(f"Frontend: {http_proto}://localhost:{frontend_port}")
+    if production_mode:
+        print_success(f"Frontend (Production): {http_proto}://localhost:{api_port}")
+    elif frontend_process:
+        print_success(f"Frontend (Dev): {http_proto}://localhost:{frontend_port}")
 
     print_info("\nPress Ctrl+C to stop all services")
 
@@ -1171,12 +1191,16 @@ def stop_services() -> int:
 @click.option("--no-migrations", is_flag=True, help="Skip automatic database migrations")
 @click.option("--no-ssl", is_flag=True, help="Force HTTP even if HTTPS is configured (for Docker/CI/reverse-proxy)")
 @click.option("--stop", is_flag=True, help="Stop all running GiljoAI services")
-def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool, no_ssl: bool, stop: bool) -> None:
+@click.option("--dev", is_flag=True, help="Force development mode (Vite dev server with hot-reload)")
+def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool, no_ssl: bool, stop: bool, dev: bool) -> None:
     """
     GiljoAI MCP - Unified Startup Script
 
     This script handles the complete startup process for GiljoAI MCP,
     including dependency checking, database verification, and service launching.
+
+    Production mode is automatic when frontend/dist/ exists.
+    Use --dev to force Vite dev server with hot-reload.
     """
     exit_code = 0
     try:

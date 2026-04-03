@@ -224,7 +224,7 @@ const setupStatus = ref({
 })
 const showLanWelcome = ref(false)
 const serverIp = ref('localhost')
-const serverPort = ref(7272)
+const serverPort = ref(parseInt(window.location.port) || 7272)
 const serverProtocol = computed(() => window.location.protocol === 'https:' ? 'https' : 'http')
 
 // Clock
@@ -473,7 +473,7 @@ curl ${serverProtocol.value}://${serverIp.value}:${serverPort.value}/health
 Expected: {"status": "ok"}
 
 **3. Browser Access**
-Open: ${serverProtocol.value}://${serverIp.value}:7274
+Open: ${serverProtocol.value}://${serverIp.value}:${serverPort.value}
 
 ---
 

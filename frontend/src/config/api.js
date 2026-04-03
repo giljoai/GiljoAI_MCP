@@ -4,7 +4,7 @@ import configService from '@/services/configService'
 
 // Initial fallback configuration (used before backend config is fetched)
 // CRITICAL: Use window.API_BASE_URL first (set in index.html) for production mode
-const API_PORT = import.meta.env.VITE_API_PORT || window.API_PORT || '7272'
+const API_PORT = import.meta.env.VITE_API_PORT || window.API_PORT || window.location.port || '7272'
 const API_HOST = import.meta.env.VITE_API_HOST || window.API_HOST || window.location.hostname
 const DEFAULT_PROTOCOL = window.location.protocol === 'https:' ? 'https' : 'http'
 const DEFAULT_BASE_URL =

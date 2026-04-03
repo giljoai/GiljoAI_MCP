@@ -167,8 +167,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         Raises:
             HTTPException: 429 if rate limit exceeded
         """
+        # Skip rate limiting for static file requests (production frontend serving)
+        path = request.url.path
+        if path in {"/", "/index.html", "/favicon.ico"} or path.startswith("/assets/"):
+            return await call_next(request)
+
         # Exempt certain paths (health checks, metrics, etc.)
-        if request.url.path in self.exempt_paths:
+        if path in self.exempt_paths:
             return await call_next(request)
 
         # Get client IP

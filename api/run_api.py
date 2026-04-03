@@ -212,6 +212,9 @@ def main():
             "heartbeat",
             "/ws/",
             "ping-pong",
+            "GET /assets/",
+            "GET /index.html",
+            "GET /favicon.ico",
         ]
 
         # Apply filter to root logger
