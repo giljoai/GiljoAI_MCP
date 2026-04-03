@@ -210,6 +210,16 @@ The application runs as a single-process uvicorn instance. These items are in-me
 - No invite-by-email (invite-by-user-ID only)
 - No org/workspace switcher for multi-org users
 
+### MEDIUM: TLS Certificate Distribution
+
+mkcert generates a local Certificate Authority trusted only on the install machine. Remote users (LAN or internet) get browser warnings, and critically, background API calls from the frontend fail silently — causing the app to show `/welcome` (fresh install wizard) instead of the login page.
+
+**Current workaround:** Export `rootCA.pem` (via `mkcert -CAROOT`) and install on each client machine. Acceptable for a second workstation, not viable for SaaS or public demos.
+
+**Demo approach (decided 2026-04-02):** Cloudflare Tunnel — exposes the server behind real TLS certs with zero client-side setup. See `handovers/Demo_server_prepp.md` section 6 for full setup.
+
+**SaaS approach:** Let's Encrypt via certbot (automated renewal) or Cloudflare proxy with real domain. Should be part of Phase 3 (SaaS Infrastructure).
+
 ### MEDIUM: No Billing Infrastructure
 
 - No subscription model
@@ -327,6 +337,7 @@ These components are **already built** and reduce SaaS implementation effort:
 | Frontend | Full dashboard (CE branding) | Multi-user admin tools, billing UI |
 | Billing | -- | Stripe, subscriptions, usage metering |
 | Analytics | -- | Usage analytics, metering dashboards |
+| TLS | mkcert (local CA, single-machine trust) | Cloudflare Tunnel or Let's Encrypt (zero-friction for remote users) |
 | Deployment | install.py + Docker (single-machine) | Docker/K8s, horizontal scaling, Redis |
 
 > **Implementation architecture (2026-03-08):** The edition split is implemented via physical directory isolation. SaaS-only code lives in `saas/` directories (`src/giljo_mcp/saas/`, `api/saas_endpoints/`, `api/saas_middleware/`, `frontend/src/saas/`, `tests/saas/`, `migrations/saas_versions/`). CE code never imports from these directories. Full specification: `docs/EDITION_ISOLATION_GUIDE.md`.
