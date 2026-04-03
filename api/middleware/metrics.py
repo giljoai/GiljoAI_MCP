@@ -21,6 +21,9 @@ class APIMetricsMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         """Increment API and MCP call counters."""
+        path = request.url.path
+        if path == "/" or path.startswith("/assets/") or path == "/favicon.ico":
+            return await call_next(request)
         tenant_key = getattr(request.state, "tenant_key", None)
         if tenant_key:
             request.app.state.api_state.api_call_count[tenant_key] = (

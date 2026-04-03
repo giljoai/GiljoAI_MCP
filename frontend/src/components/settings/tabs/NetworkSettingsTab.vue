@@ -31,7 +31,7 @@
           label="API Port"
           variant="outlined"
           readonly
-          hint="Default: 7272"
+          hint="Configured during installation"
           persistent-hint
           class="mb-4"
           data-test="api-port-field"
@@ -42,7 +42,7 @@
           label="Frontend Port"
           variant="outlined"
           readonly
-          hint="Default: 7274"
+          hint="Configured during installation"
           persistent-hint
           class="mb-4"
           data-test="frontend-port-field"

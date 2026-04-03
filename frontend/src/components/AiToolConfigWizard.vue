@@ -210,7 +210,7 @@ const certPlatform = ref('windows')
 // Server detection
 function detectServerInfo() {
   const hostname = window.location.hostname
-  const port = '7272'
+  const port = window.location.port || '7272'
   return { hostname, port }
 }
 

@@ -35,155 +35,127 @@ This is the **GiljoAI MCP Community Edition** -- the full orchestration platform
 
 ## Quick Start
 
-**NEW (v3.0+): Simplified Startup**
-
 ```bash
-# Install and start GiljoAI MCP (one command for everything)
-python startup.py
-```
-
-**What happens**:
-- **First time**: Launches interactive setup wizard in your browser
-- **Already configured**: Starts services and opens dashboard directly
-- **No manual steps**: Everything is automatic
-
-**That's it.** No complex installation. No platform-specific scripts. Just one command.
-
----
-
-### Detailed Installation
-
-For those who want to understand what's happening:
-
-```bash
-# 1. Clone and enter directory (30 seconds)
+# 1. Clone the repository
 git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
 cd GiljoAI_MCP
 
-# 2. Run startup script (automatic first-run detection)
+# 2. Run the installer (interactive, ~6 minutes)
+python install.py
+
+# 3. Start the application
 python startup.py
-
-# First Run: Setup wizard opens in browser (v3.0)
-# - Admin account creation (FIRST - required)
-# - MCP tool integration (Claude Code, Cursor, Windsurf)
-# - Serena enhancement (optional)
-# - Database connectivity test (courtesy check)
-# - Service startup
-
-# Subsequent Runs: Dashboard opens directly
-# - All services start automatically
-# - Browser opens to dashboard
-# - Ready to use immediately
-
-# 3. Start orchestrating AI agents!
-# ✨ Dashboard: http://localhost:7274
-# ✨ API: http://localhost:7272
 ```
 
-**Command-Line Options**:
+**First run** opens the setup wizard in your browser. **Subsequent runs** go straight to the dashboard.
+
+---
+
+### Installation Modes
+
+The installer asks how you plan to use GiljoAI:
+
+| Mode | What it does | URL after startup |
+|------|-------------|-------------------|
+| **Production** (default) | Builds optimized frontend, serves everything on a single port | `http://localhost:7272` |
+| **Development** | Runs Vite dev server with hot-reload on a separate port | Frontend: `http://localhost:7274`, API: `http://localhost:7272` |
+
 ```bash
-python startup.py              # Auto-detect and run
+# Production install (recommended for users)
+python install.py
+# Select "Production" when prompted
+python startup.py          # Single port: http://localhost:7272
+
+# Development install (for contributors)
+python install.py
+# Select "Development" when prompted
+python startup.py          # Two ports: frontend :7274, API :7272
+```
+
+### Switching Between Modes
+
+Already installed in production mode but want to contribute code?
+
+```bash
+python startup.py --dev    # Forces Vite dev server with hot-reload
+```
+
+Already installed in dev mode but want to test production serving?
+
+```bash
+cd frontend && npm run build && cd ..
+python startup.py          # Auto-detects frontend/dist/ and serves on single port
+```
+
+### Command-Line Options
+
+```bash
+python startup.py              # Auto-detect mode and run
+python startup.py --dev        # Force development mode (Vite HMR)
 python startup.py --setup      # Force setup wizard
-python startup.py --dev        # Development mode (auto-reload)
 python startup.py --no-browser # Skip browser auto-open
 python startup.py --verbose    # Detailed logging
+python startup.py --stop       # Stop all services
 ```
 
-### What Just Happened?
+### What Happens During Startup
 
-`python startup.py` intelligently handles the entire process:
+**Production mode** (single port):
+1. Validates Python 3.10+, PostgreSQL 18, dependencies
+2. Runs database migrations if needed
+3. Starts FastAPI on port 7272 (serves API + built frontend)
+4. Opens browser to `http://localhost:7272`
 
-**First Run (Setup Mode)**:
-1. **Environment Check**: Validates Python 3.10+, PostgreSQL 18, dependencies
-2. **First-Run Detection**: Checks for admin user (none found = first run)
-3. **Setup Wizard Launch**: Opens browser to http://localhost:7274/setup
-4. **Interactive Configuration**: Guides you through all setup steps
-5. **Service Startup**: Starts API and frontend automatically
-6. **Dashboard Launch**: Opens to configured dashboard
-
-**Subsequent Runs (Normal Mode)**:
-1. **Environment Check**: Quick validation of prerequisites
-2. **First-Run Detection**: Admin user found = skip setup wizard
-3. **Service Startup**: Starts API (port 7272) and frontend (port 7274)
-4. **Dashboard Launch**: Opens browser directly to dashboard
-5. **Authentication**: Standard login required for all connections
+**Development mode** (two ports):
+1. Same validation and migration steps
+2. Starts FastAPI API server on port 7272
+3. Starts Vite dev server on port 7274 (proxies `/api` and `/ws` to 7272)
+4. Opens browser to `http://localhost:7274`
 
 **For complete details**, see [Installation Flow](docs/INSTALLATION_FLOW_PROCESS.md)
 
-### Architecture (v3.0)
+### Architecture
 
-GiljoAI MCP v3.0 uses a **unified architecture** with no deployment modes:
+GiljoAI MCP uses a **unified architecture** -- one codebase, one configuration:
 
-| Component      | Configuration                           | Access Control                        |
-| -------------- | --------------------------------------- | ------------------------------------- |
-| **API Server** | Localhost: `127.0.0.1`. LAN/WAN: `0.0.0.0` + HTTPS | Bind address from install config |
-| **Database**   | Always on `localhost` (never exposed)   | Local socket only (maximum security)  |
-| **Auth**       | Always enabled                          | JWT authentication for all connections      |
-| **Network**    | Firewall controls access                | Localhost-only by default, configurable for LAN/WAN |
+| Component | Configuration | Access Control |
+|-----------|--------------|----------------|
+| **Application** | Production: single port 7272. Dev: API 7272 + frontend 7274 | Bind address from install config |
+| **Database** | Always on `localhost` (never exposed) | Local socket only (maximum security) |
+| **Auth** | Always enabled | JWT authentication for all connections |
+| **Network** | Firewall controls access | Localhost-only by default, configurable for LAN/WAN |
 
-**No deployment modes** - one codebase, all contexts. See [Server Architecture](docs/SERVER_ARCHITECTURE_TECH_STACK.md) for details.
+```
+Production (single port):
+  Browser --> :7272 (FastAPI) --> API + WebSocket + MCP + Static files
+                               --> PostgreSQL (localhost:5432)
+
+Development (two ports):
+  Browser --> :7274 (Vite HMR) --> proxies /api, /ws, /mcp --> :7272 (FastAPI)
+                                                             --> PostgreSQL (localhost:5432)
+```
+
+See [Server Architecture](docs/SERVER_ARCHITECTURE_TECH_STACK.md) for details.
 
 ### Next Steps
 
 ```bash
-# Watch your agents work
-open http://localhost:7274
+# Open the dashboard
+# Production: http://localhost:7272
+# Development: http://localhost:7274
 
-# Try a complex task
-"Refactor my authentication system to use JWT tokens"
-
-# See available MCP tools
-python -m giljo_mcp tools
-
-# Read the full documentation
-python -m giljo_mcp docs
+# API documentation
+# Swagger UI:  http://localhost:7272/docs
+# ReDoc:       http://localhost:7272/redoc
 ```
 
-### Advanced Setup Options
+### Linux Installer
 
 ```bash
-# Force setup wizard (even if already configured)
-python startup.py --setup
-
-# Development mode with auto-reload
-python startup.py --dev
-
-# Headless installation (CI/CD, automated deployment)
-python startup.py --config install_config.yaml --headless
-
-# Custom ports
-python startup.py --api-port 8000 --dashboard-port 8001
-
-# Verbose logging for troubleshooting
-python startup.py --verbose
-
-# See all options
-python startup.py --help
-```
-
-**Legacy Installation** (still supported):
-```bash
-# CLI installer (older method)
-python installer/cli/install.py
-
-# Platform-specific scripts
-install.bat              # Windows
-quickstart.sh            # Linux/macOS
-```
-
-### Linux Installer Package
-
-```bash
-# Dedicated Linux installer workflow
 python Linux_Installer/linux_install.py
 ```
 
-The `Linux_Installer/` directory mirrors the Windows installer flow with Linux-specific logic. It includes:
-- `linux_install.py` – interactive CLI installer optimized for Linux environments
-- `Linux_Installer/core/` – configuration and database setup modules reused by the installer
-- `Linux_Installer/credentials/` and `Linux_Installer/scripts/` – runtime outputs (database credentials and elevated setup scripts)
-
-Use this when you want a Linux-first installation experience without relying on the cross-platform bootstrapper.
+The `Linux_Installer/` directory mirrors the Windows installer flow with Linux-specific logic (interactive CLI, config and database setup modules, runtime credential and script outputs).
 
 ---
 
@@ -230,7 +202,7 @@ Use this when you want a Linux-first installation experience without relying on 
 **Network Tab** (Handover 0025-0026):
 - v3.1 unified architecture (conditional binding + HTTPS for LAN/WAN)
 - External host configuration (localhost, LAN IP, or domain)
-- Port management (API: 7272, Dashboard: 7274)
+- Port management (single port 7272 in production, dual port in dev)
 - WCAG 2.1 Level AA accessible
 - Real-time validation and testing
 
@@ -326,38 +298,38 @@ Use this when you want a Linux-first installation experience without relying on 
 
 ## Architecture Overview
 
-### v3.0 Unified Architecture
+### Unified Architecture
 
-**Network Topology**:
+**Network Topology** (production -- single port):
 ```
 User Access (controlled by OS firewall):
 ┌──────────────────────────────────────────┐
 │ Localhost:    http://127.0.0.1:7272      │
-│ LAN (if fw):  http://10.1.0.164:7272     │
-│ WAN (if fw):  https://example.com:443    │
+│ LAN (if fw):  https://10.1.0.164:7272   │
+│ WAN (if fw):  https://example.com:443   │
 └───────────────────┬──────────────────────┘
                     │
                     ▼
        ┌────────────────────────┐
-       │  API Server (FastAPI)  │
-       │  Binds to: 0.0.0.0     │ ← ALWAYS all interfaces
+       │  FastAPI Server        │
        │  Port: 7272            │
+       │  Serves: API + WS +   │
+       │  MCP + Frontend (SPA)  │
        │  Auth: JWT Required    │
        └────────────┬───────────┘
                     │
-                    │ ALWAYS localhost (security)
+                    │ localhost only (security)
                     ▼
        ┌────────────────────────┐
        │  PostgreSQL Database   │
-       │  Host: localhost       │ ← NEVER exposed to network
+       │  Host: localhost       │
        │  Port: 5432            │
-       │  Binding: 127.0.0.1    │
        └────────────────────────┘
 ```
 
 **Architecture Principles**:
-- Single unified architecture (no deployment modes)
-- API bind address from install config (localhost: 127.0.0.1, LAN/WAN: 0.0.0.0 + HTTPS)
+- Single unified architecture (production runs on one port)
+- Development mode adds Vite HMR on port 7274 (optional)
 - Database always on localhost (maximum security)
 - ONE authentication flow for all connections
 - Multi-tenant isolation at database level
@@ -522,7 +494,7 @@ installer/
 ## Technology Stack
 
 **Backend**:
-- Python 3.11+
+- Python 3.12+
 - FastAPI (REST API + WebSocket)
 - SQLAlchemy (ORM with async support)
 - PostgreSQL 18 (required - no SQLite)

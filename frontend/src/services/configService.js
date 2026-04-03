@@ -57,7 +57,7 @@ class ConfigService {
         configUrl = '/api/v1/config/frontend'
       } else {
         const currentHost = window.location.hostname
-        const apiPort = import.meta.env.VITE_API_PORT || window.API_PORT || '7272'
+        const apiPort = import.meta.env.VITE_API_PORT || window.API_PORT || window.location.port || '7272'
         const protocol = window.location.protocol === 'https:' ? 'https' : 'http'
         configUrl = `${protocol}://${currentHost}:${apiPort}/api/v1/config/frontend`
       }
@@ -100,7 +100,7 @@ class ConfigService {
 
       // Fallback to window.location.hostname
       const fallbackHost = window.location.hostname
-      const fallbackPort = parseInt(import.meta.env.VITE_API_PORT || window.API_PORT || '7272', 10)
+      const fallbackPort = parseInt(import.meta.env.VITE_API_PORT || window.API_PORT || window.location.port || '7272', 10)
 
       const fallbackConfig = {
         api: {
