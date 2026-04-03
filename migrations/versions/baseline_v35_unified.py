@@ -1,20 +1,15 @@
-"""Unified baseline migration for v3.4 schema
+"""Unified baseline migration for v3.5 schema
 
-Revision ID: baseline_v34
+Revision ID: baseline_v35
 Revises: None
-Create Date: 2026-03-29
+Create Date: 2026-04-03
 
 This is a consolidated baseline migration that creates EXACTLY the schema
-produced by running baseline_v33 + 8 incremental migrations:
+matching the current SQLAlchemy models. Squashed from baseline_v34 + 1 incremental:
 
-  0840a - Drop 7 dead meta_data columns
-  0840b - Message normalization (junction tables replace JSONB arrays)
-  0840c - Product config_data normalization (tech_stacks, architectures, test_configs)
-  0840d - User settings normalization (field_priorities, depth columns)
-  0840e - Project meta_data extraction, download_tokens filename, JSON->JSONB bulk
-  0842a - Vision document summaries table + extraction_custom_instructions
-  0844a - Product coding_conventions + brand_guidelines
-  0845a - Taxonomy unique constraint -> partial index (exclude soft-deleted)
+  baseline_v34 - Full schema (39 tables)
+  0855a - User setup wizard state columns (setup_complete, setup_selected_tools, setup_step_completed)
+  0904 - Orchestrator auto check-in columns (auto_checkin_enabled, auto_checkin_interval)
 
 Tables created (39 total):
   1. organizations           21. configurations
@@ -48,7 +43,7 @@ from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
-revision: str = "baseline_v34"
+revision: str = "baseline_v35"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -106,6 +101,9 @@ def upgrade() -> None:
     sa.Column("depth_tech_stack_sections", sa.String(length=20), server_default=sa.text("'all'"), nullable=True),
     sa.Column("depth_architecture", sa.String(length=20), server_default=sa.text("'overview'"), nullable=True),
     sa.Column("execution_mode", sa.String(length=20), server_default=sa.text("'claude_code'"), nullable=True),
+    sa.Column("setup_complete", sa.Boolean(), nullable=False, server_default="false"),
+    sa.Column("setup_selected_tools", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column("setup_step_completed", sa.Integer(), nullable=False, server_default="0"),
     sa.ForeignKeyConstraint(["org_id"], ["organizations.id"], ondelete="SET NULL"),
     sa.CheckConstraint("role IN ('admin', 'developer', 'viewer')", name="ck_user_role"),
     sa.CheckConstraint("failed_pin_attempts >= 0", name="ck_user_pin_attempts_positive"),
@@ -285,6 +283,8 @@ def upgrade() -> None:
     sa.Column("cancellation_reason", sa.Text(), nullable=True),
     sa.Column("deactivation_reason", sa.Text(), nullable=True),
     sa.Column("early_termination", sa.Boolean(), server_default=sa.text("false"), nullable=True),
+    sa.Column("auto_checkin_enabled", sa.Boolean(), nullable=False, server_default="false"),
+    sa.Column("auto_checkin_interval", sa.Integer(), nullable=False, server_default="60"),
     sa.ForeignKeyConstraint(["product_id"], ["products.id"], ondelete="CASCADE"),
     sa.ForeignKeyConstraint(["project_type_id"], ["project_types.id"], ondelete="SET NULL"),
     sa.PrimaryKeyConstraint("id"),
