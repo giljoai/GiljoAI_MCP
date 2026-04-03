@@ -270,7 +270,7 @@ const activeNormalizedId = computed(() => normalizeToolId(activeToolId.value))
 
 // Server config
 const serverHostname = ref(window.location.hostname)
-const serverPort = ref('7272')
+const serverPort = ref(window.location.port || '7272')
 const editingServer = ref(false)
 const serverUrl = computed(() => buildServerUrl(serverHostname.value, serverPort.value))
 

@@ -141,7 +141,7 @@ const loading = ref({
 // Network settings state
 const networkSettings = ref({
   externalHost: 'localhost',
-  apiPort: 7272,
+  apiPort: parseInt(window.location.port) || 7272,
   frontendPort: 7274,
 })
 const corsOrigins = ref([])
@@ -171,7 +171,7 @@ async function loadNetworkSettings() {
     networkSettings.value.externalHost = config.services?.external_host || 'localhost'
 
     // Set API port
-    networkSettings.value.apiPort = config.services?.api?.port || 7272
+    networkSettings.value.apiPort = config.services?.api?.port || parseInt(window.location.port) || 7272
 
     // Set Frontend port
     networkSettings.value.frontendPort = config.services?.frontend?.port || 7274
@@ -187,7 +187,7 @@ async function loadNetworkSettings() {
 
     // Fallback to defaults
     networkSettings.value.externalHost = 'localhost'
-    networkSettings.value.apiPort = 7272
+    networkSettings.value.apiPort = parseInt(window.location.port) || 7272
     networkSettings.value.frontendPort = 7274
     corsOrigins.value = []
     sslEnabled.value = false
