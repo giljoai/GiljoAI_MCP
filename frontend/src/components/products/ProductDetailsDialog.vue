@@ -80,7 +80,7 @@
 
                 <div v-if="isSummaryOpen(doc.id) && (doc.is_summarized || doc.vision_document)" class="detail-section-body">
                   <div class="detail-section-subtitle text-caption text-muted-a11y">
-                    Open a summary level or the full document view.
+                    Extractive summaries — original sentences selected by LSA, no AI generation.
                   </div>
                   <div class="summary-action-grid">
                     <button
@@ -120,24 +120,38 @@
                       <span>Full</span>
                     </button>
                   </div>
-                  <div v-if="doc.has_ai_summaries" class="summary-badge-row mt-3">
-                    <span class="text-caption text-muted-a11y summary-badge-label">AI summaries</span>
-                    <span
-                      v-if="doc.ai_summary_light_tokens"
-                      class="summary-level-chip summary-level-chip--ai"
-                      :style="aiSummaryStyle('light')"
-                    >
-                      <v-icon size="12" class="mr-1">mdi-check-bold</v-icon>
-                      33% · {{ formatTokens(doc.ai_summary_light_tokens) }} tokens
-                    </span>
-                    <span
-                      v-if="doc.ai_summary_medium_tokens"
-                      class="summary-level-chip summary-level-chip--ai"
-                      :style="aiSummaryStyle('medium')"
-                    >
-                      <v-icon size="12" class="mr-1">mdi-check-bold</v-icon>
-                      66% · {{ formatTokens(doc.ai_summary_medium_tokens) }} tokens
-                    </span>
+                  <div v-if="doc.has_ai_summaries" class="mt-3">
+                    <div class="detail-section-subtitle text-caption text-muted-a11y">
+                      AI-generated summaries — rewritten by your LLM.
+                    </div>
+                    <div class="summary-action-grid summary-action-grid--ai">
+                      <button
+                        v-if="doc.ai_summary_light_tokens"
+                        type="button"
+                        class="summary-action-btn"
+                        :style="aiSummaryStyle('light')"
+                        @click="showAiSummary(doc, 'light')"
+                      >
+                        <v-progress-circular
+                          v-if="loadingAiSummary.docId === doc.id && loadingAiSummary.level === 'light'"
+                          indeterminate size="12" width="2" class="mr-1"
+                        />
+                        <span>Light · {{ formatTokens(doc.ai_summary_light_tokens) }} tokens</span>
+                      </button>
+                      <button
+                        v-if="doc.ai_summary_medium_tokens"
+                        type="button"
+                        class="summary-action-btn"
+                        :style="aiSummaryStyle('medium')"
+                        @click="showAiSummary(doc, 'medium')"
+                      >
+                        <v-progress-circular
+                          v-if="loadingAiSummary.docId === doc.id && loadingAiSummary.level === 'medium'"
+                          indeterminate size="12" width="2" class="mr-1"
+                        />
+                        <span>Medium · {{ formatTokens(doc.ai_summary_medium_tokens) }} tokens</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -462,7 +476,7 @@ const CONSOLIDATED_SUMMARY_COLORS = {
 
 const AI_SUMMARY_COLORS = {
   light: getStatusColor('complete'),
-  medium: getAgentColor('implementer').hex,
+  medium: getAgentColor('tester').hex,
 }
 
 function docSummaryStyle(level) {
@@ -586,6 +600,7 @@ const consolidatedSummaryColor = computed(() => {
 
 // Track which doc/level is loading
 const loadingSummary = ref({ docId: null, level: null })
+const loadingAiSummary = ref({ docId: null, level: null })
 
 /**
  * Show document summary (light, medium, or full)
@@ -650,6 +665,33 @@ async function showSummary(doc, level) {
     summaryDialog.value = true
   } finally {
     loadingSummary.value = { docId: null, level: null }
+  }
+}
+
+/**
+ * Show AI-generated summary (light or medium)
+ * Fetches from dedicated AI summary endpoint
+ */
+async function showAiSummary(doc, level) {
+  try {
+    loadingAiSummary.value = { docId: doc.id, level }
+    const response = await api.visionDocuments.getAiSummary(doc.id, level)
+    const data = response.data
+
+    summaryContent.value = data.summary
+    summaryTitle.value = `${doc.document_name || doc.filename} - AI Summary`
+    summaryLevel.value = data.level
+    summaryTokens.value = data.tokens || 0
+    summaryDialog.value = true
+  } catch (error) {
+    console.error('Failed to fetch AI summary:', error)
+    summaryContent.value = 'Error: Could not load AI summary content'
+    summaryTitle.value = `${doc.document_name || doc.filename} - Error`
+    summaryLevel.value = level.charAt(0).toUpperCase() + level.slice(1)
+    summaryTokens.value = 0
+    summaryDialog.value = true
+  } finally {
+    loadingAiSummary.value = { docId: null, level: null }
   }
 }
 
@@ -915,20 +957,8 @@ async function regenerateConsolidation() {
   opacity: 0.85;
 }
 
-.summary-badge-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.summary-badge-label {
-  width: 100%;
-}
-
-.summary-level-chip--ai {
-  font-size: 0.68rem;
-  padding: 2px 8px;
+.summary-action-grid--ai {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 @media (max-width: 640px) {
