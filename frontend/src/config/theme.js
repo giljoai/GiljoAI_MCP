@@ -3,9 +3,9 @@ export const darkTheme = {
   dark: true,
   colors: {
     // Primary colors from docs/Website colors.txt
-    background: '#0e1c2d', // Darkest blue
-    surface: '#182739', // Almost as dark blue
-    'surface-variant': '#1e3147', // A hue lighter dark blue
+    background: '#091520', // Darkest blue (deepened for cosmic atmosphere)
+    surface: '#12202e', // Almost as dark blue
+    'surface-variant': '#182a3c', // A hue lighter dark blue
     primary: '#ffc300', // Yellow (brand color) - high contrast buttons
     'primary-darken-1': '#1e3147',
     'primary-lighten-1': '#8f97b7', // Lightest blue
