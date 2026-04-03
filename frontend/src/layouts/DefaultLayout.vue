@@ -136,5 +136,10 @@ router.afterEach(async (to, from) => {
 </script>
 
 <style scoped>
-/* Application layout styling */
+/* Mobile: add top padding to clear the hamburger FAB */
+@media (max-width: 1024px) {
+  :deep(.v-main) {
+    padding-top: 48px !important;
+  }
+}
 </style>
