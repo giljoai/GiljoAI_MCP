@@ -2522,20 +2522,26 @@ class UnifiedInstaller:
                         result_version = await session.execute(version_query)
                         current_version = result_version.scalar()
 
-                        if current_version == "baseline_v33":
-                            self._print_info("Database already at baseline_v33 - up to date")
+                        if current_version == "baseline_v35":
+                            self._print_info("Database already at baseline_v35 - up to date")
                             await db_manager.close_async()
                             return True
 
-                        if current_version and current_version != "baseline_v33":
-                            # Existing database from pre-v33 migration chain.
-                            # Reconcile schema: add any columns that may be missing
-                            # depending on which old revision the DB stopped at.
-                            # All use IF NOT EXISTS / ADD COLUMN IF NOT EXISTS for safety.
+                        # Known old revisions that need stamping to baseline_v35
+                        known_old_revisions = {
+                            "baseline_v33",
+                            "baseline_v34",
+                            "0855a_setup_state",
+                            "0904_auto_checkin",
+                        }
+
+                        if current_version and current_version in known_old_revisions:
+                            # Existing database from a previous baseline.
+                            # Reconcile schema: add any columns that may be missing.
                             self._print_info(
-                                f"Upgrading migration chain: {current_version} -> baseline_v33"
+                                f"Upgrading migration chain: {current_version} -> baseline_v35"
                             )
-                            self._print_info("Reconciling schema for baseline_v33...")
+                            self._print_info("Reconciling schema for baseline_v35...")
 
                             reconcile_statements = [
                                 # Handover 0831: Product context tuning
@@ -2554,6 +2560,13 @@ class UnifiedInstaller:
                                 "ALTER TABLE agent_executions ADD COLUMN IF NOT EXISTS reactivation_count INTEGER DEFAULT 0",
                                 # Handover 0828: OAuth JWT sessions (nullable api_key_id)
                                 "ALTER TABLE mcp_sessions ALTER COLUMN api_key_id DROP NOT NULL",
+                                # Handover 0855a: User setup wizard state
+                                "ALTER TABLE users ADD COLUMN IF NOT EXISTS setup_complete BOOLEAN NOT NULL DEFAULT false",
+                                "ALTER TABLE users ADD COLUMN IF NOT EXISTS setup_selected_tools JSONB",
+                                "ALTER TABLE users ADD COLUMN IF NOT EXISTS setup_step_completed INTEGER NOT NULL DEFAULT 0",
+                                # Handover 0904: Orchestrator auto check-in
+                                "ALTER TABLE projects ADD COLUMN IF NOT EXISTS auto_checkin_enabled BOOLEAN NOT NULL DEFAULT false",
+                                "ALTER TABLE projects ADD COLUMN IF NOT EXISTS auto_checkin_interval INTEGER NOT NULL DEFAULT 60",
                             ]
 
                             for stmt_text in reconcile_statements:
@@ -2562,13 +2575,26 @@ class UnifiedInstaller:
                                 except Exception as reconcile_err:
                                     self._print_warning(f"Reconcile skipped: {reconcile_err}")
 
-                            # Stamp to baseline_v33
                             stamp_query = text(
-                                "UPDATE alembic_version SET version_num = 'baseline_v33'"
+                                "UPDATE alembic_version SET version_num = 'baseline_v35'"
                             )
                             await session.execute(stamp_query)
                             await session.commit()
-                            self._print_success("Schema reconciled and stamped to baseline_v33")
+                            self._print_success("Schema reconciled and stamped to baseline_v35")
+                            await db_manager.close_async()
+                            return True
+
+                        if current_version and current_version not in known_old_revisions:
+                            # Unknown old revision — attempt reconcile and stamp
+                            self._print_info(
+                                f"Upgrading from unknown revision: {current_version} -> baseline_v35"
+                            )
+                            stamp_query = text(
+                                "UPDATE alembic_version SET version_num = 'baseline_v35'"
+                            )
+                            await session.execute(stamp_query)
+                            await session.commit()
+                            self._print_success("Stamped to baseline_v35")
                             await db_manager.close_async()
                             return True
 
