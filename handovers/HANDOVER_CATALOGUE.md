@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-04-01 (Full reconciliation: 0841/0843/0873-0875/0880 COMPLETE, 11 files archived, 0842L/0842m closed, catalogue harmonized with git history)
+**Last Updated:** 2026-04-02 (Archive 0842g/0847/0900 COMPLETE, catalogue reconciled with ROADMAP.md)
 
 ---
 
@@ -19,8 +19,9 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE, **0769a-g sprint COMPLETE (2026-03-30)**. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. **0841 COMPLETE.** **0842a-f, 0842i-m COMPLETE.** 0842g+0842h NOT STARTED. **0843 COMPLETE.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 NOT STARTED.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
+| 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. **0841 COMPLETE.** **0842a-f, 0842g, 0842i-m COMPLETE.** 0842h NOT STARTED. **0843 COMPLETE.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 COMPLETE.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
 | 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE. 0873a-o COMPLETE. 0874a-c COMPLETE. 0875 COMPLETE. 0880 COMPLETE.** All design system work done. Branch: feature/0873-style-centralization. |
+| 0900-0999 | Infrastructure & DevEx | **0900 COMPLETE.** |
 
 ---
 
@@ -30,13 +31,11 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0842g | Per-Document AI Summary Badges | Not Started | Medium | Add AI summary badge row to vision doc cards (wireframe fidelity). Needs API extension. Follow-up to 0842d deviation. |
 | 0842h | Frontend Tests — Tuning Icon & Vision Analysis Banner | Not Started | Medium | 11 Vitest component tests for 0842d features. Follow-up to 0842d deviation (agent missed existing test framework). |
 | 0844 | Tenant Data Export/Import (Series Coordinator) | Not Started | Medium | Series of 3 sub-handovers. Sequential: 0844a → manual gate → 0844b → manual gate → 0844c. |
 | 0844a | Tenant Export Service | Not Started | Medium | Backend export engine: 31 models, field stripping, vision file bundling, ZIP creation, REPEATABLE READ, SHA-256 checksums. 1-2 sessions. |
 | 0844b | Tenant Import Service + Schema Diff | Not Started | Medium | Backend import: schema compatibility analysis, UPSERT pipeline, topological sort, vision file extraction, TSVECTOR regen. Heaviest phase, 2-3 sessions. Depends on 0844a. |
 | 0844c | Tenant Data Frontend | Not Started | Medium | Vue component in Database tab: export/import UI, compatibility report dialog, stale backup warning, WebSocket progress. 1 session. Depends on 0844a+b. |
-| 0847 | Tool-Aware Orchestrator Protocol | Not Started | High | Make orchestrator protocol (CH1-CH5 + identity) fully tool-aware. Codex/Gemini get native-only language, no Claude refs. Multi-terminal → "Any Coding Agent". 2-3h. |
 
 ### Deferred (Still in Root Folder)
 
@@ -50,6 +49,9 @@
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
 | 0277 | Design Token Standardization — Radius & Shadow | 2026-04-01 | **ABSORBED** into 0870a (design token update). Archived. |
+| 0842g | Per-Document AI Summary Badges | 2026-04-02 | COMPLETE (`e0ad3058`) — Per-document AI summary badge row on vision doc cards. API extension + frontend UI. |
+| 0847 | Tool-Aware Orchestrator Protocol | 2026-04-02 | COMPLETE (`8a9de0d2`) — Orchestrator protocol fully tool-aware. Codex/Gemini get native-only language, no Claude refs. |
+| 0900 | WebSocket Debug Panel Simplification | 2026-04-02 | COMPLETE — Extracted ConnectionDebugDialog from ConnectionStatus, simplified to Connection Health panel in navbar orb. |
 | 0841 | Slash Command Optimization (/gil_add) | 2026-04-01 | COMPLETE (`48376d20`) — Slim slash command templates, platform-aware signoff, project taxonomy improvements. |
 | 0842L | Post-Implementation Audit & Cleanup | 2026-04-01 | COMPLETE (`8304eac6`) — Dead code removal, zombie cleanup, backward compat bloat removed. Branch merged to master. |
 | 0842m | Pre-Existing Bug Fixes | 2026-04-01 | COMPLETE (`2f72e7a7`) — config.services AttributeError + network_mode passthrough. |
