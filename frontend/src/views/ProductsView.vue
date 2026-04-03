@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <!-- Header (matches Tasks/Projects pattern) -->
-    <v-row align="center" class="mb-4">
+    <v-row align="center" class="mb-4 main-window-reveal main-window-reveal--hero main-window-delay-1">
       <v-col>
         <h1 class="text-h4">Products</h1>
         <p class="text-body-2 text-muted-a11y mt-1">
@@ -22,7 +22,7 @@
     </v-row>
 
     <!-- Filter Bar -->
-    <div class="filter-bar">
+    <div class="filter-bar main-window-reveal main-window-delay-2">
         <v-text-field
           v-model="search"
           prepend-inner-icon="mdi-magnify"
@@ -63,14 +63,14 @@
       </div>
 
       <!-- Product Cards (floating, no wrapper card) -->
-              <v-row v-if="loading">
+              <v-row v-if="loading" class="main-window-reveal main-window-delay-3">
                 <v-col cols="12" class="text-center py-8">
                   <v-progress-circular indeterminate color="primary"></v-progress-circular>
                   <div class="text-muted-a11y mt-4">Loading products...</div>
                 </v-col>
               </v-row>
 
-              <v-row v-else-if="filteredProducts.length === 0">
+              <v-row v-else-if="filteredProducts.length === 0" class="main-window-reveal main-window-delay-3">
                 <v-col cols="12" class="text-center py-8">
                   <v-icon size="64" color="grey-lighten-2">mdi-package-variant-remove</v-icon>
                   <div class="text-h6 product-text-secondary mt-4">No products found</div>
@@ -84,7 +84,7 @@
                 </v-col>
               </v-row>
 
-              <v-row v-else>
+              <v-row v-else class="main-window-reveal main-window-delay-3">
                 <v-col
                   v-for="product in filteredProducts"
                   :key="product.id"
@@ -289,7 +289,13 @@
       :product="selectedProduct"
       :vision-documents="detailsVisionDocuments"
       :stats="productStats"
-      :auto-expand-tuning="autoExpandTuning"
+      @refresh-product="handleProductRefresh"
+    />
+
+    <ProductTuningDialog
+      v-model="showTuningDialog"
+      :product="tuningProduct"
+      @refresh-product="handleProductRefresh"
     />
 
     <!-- Delete Confirmation Dialog -->
@@ -337,6 +343,7 @@ import api from '@/services/api'
 import ActivationWarningDialog from '@/components/products/ActivationWarningDialog.vue'
 import ProductDeleteDialog from '@/components/products/ProductDeleteDialog.vue'
 import ProductDetailsDialog from '@/components/products/ProductDetailsDialog.vue'
+import ProductTuningDialog from '@/components/products/ProductTuningDialog.vue'
 import DeletedProductsRecoveryDialog from '@/components/products/DeletedProductsRecoveryDialog.vue'
 import ProductForm from '@/components/products/ProductForm.vue'
 
@@ -352,9 +359,11 @@ const sortBy = ref('name')
 const showDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showDetailsDialog = ref(false)
+const showTuningDialog = ref(false)
 const editingProduct = ref(null)
 const deletingProduct = ref(null)
 const selectedProduct = ref(null)
+const tuningProduct = ref(null)
 const deleting = ref(false)
 const visionFiles = ref([])
 const existingVisionDocuments = ref([])
@@ -363,7 +372,6 @@ const uploadingVision = ref(false)
 const uploadProgress = ref(0)
 const visionUploadError = ref(null)
 const detailsVisionDocuments = ref([])
-const autoExpandTuning = ref(false)
 const cascadeImpact = ref(null)
 const loadingCascadeImpact = ref(false)
 
@@ -638,7 +646,6 @@ function getTuningState(product) {
 
 async function showProductDetails(product) {
   selectedProduct.value = product
-  autoExpandTuning.value = false
 
   // Fetch vision documents
   try {
@@ -653,18 +660,20 @@ async function showProductDetails(product) {
 }
 
 async function showProductTuning(product) {
-  selectedProduct.value = product
-  autoExpandTuning.value = true
+  tuningProduct.value = product
+  showTuningDialog.value = true
+}
 
-  try {
-    const response = await api.visionDocuments.listByProduct(product.id)
-    detailsVisionDocuments.value = response.data || []
-  } catch (error) {
-    console.error('Failed to load vision documents:', error)
-    detailsVisionDocuments.value = []
+async function handleProductRefresh() {
+  await loadProducts()
+
+  if (selectedProduct.value) {
+    selectedProduct.value = productStore.products.find((product) => product.id === selectedProduct.value.id) || selectedProduct.value
   }
 
-  showDetailsDialog.value = true
+  if (tuningProduct.value) {
+    tuningProduct.value = productStore.products.find((product) => product.id === tuningProduct.value.id) || tuningProduct.value
+  }
 }
 
 async function editProduct(product) {
