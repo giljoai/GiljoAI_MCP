@@ -82,6 +82,124 @@ host    giljo_db        giljo_user      127.0.0.1/32            scram-sha-256
 host    all             all             0.0.0.0/0               reject
 ```
 
+### 6. TLS via Cloudflare Tunnel (Recommended for Demo)
+
+The server uses mkcert for local HTTPS, which installs a root CA only on the machine that ran `install.py`. Remote users would get untrusted-cert browser warnings, and "proceed anyway" only applies to the page — background API calls (e.g. to port 7272) still fail silently, causing the frontend to fall back to `/welcome` as if it were a fresh install.
+
+**Solution:** Use a Cloudflare Tunnel to expose the server behind a real TLS certificate with zero friction for end users.
+
+#### Setup
+
+```bash
+# Install cloudflared
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
+chmod +x /usr/local/bin/cloudflared
+
+# Authenticate (one-time, opens browser)
+cloudflared tunnel login
+
+# Create a named tunnel
+cloudflared tunnel create giljo-demo
+
+# Configure tunnel (create ~/.cloudflared/config.yml)
+cat > ~/.cloudflared/config.yml << 'EOF'
+tunnel: giljo-demo
+credentials-file: ~/.cloudflared/<tunnel-id>.json
+
+ingress:
+  # Frontend (Vite)
+  - hostname: demo.giljo.ai
+    service: https://127.0.0.1:7274
+    originRequest:
+      noTLSVerify: true
+  # API (FastAPI)
+  - hostname: api.demo.giljo.ai
+    service: https://127.0.0.1:7272
+    originRequest:
+      noTLSVerify: true
+  # Catch-all (required)
+  - service: http_status:404
+EOF
+
+# Add DNS records (one-time per hostname)
+cloudflared tunnel route dns giljo-demo demo.giljo.ai
+cloudflared tunnel route dns giljo-demo api.demo.giljo.ai
+
+# Run the tunnel
+cloudflared tunnel run giljo-demo
+```
+
+#### How It Works
+
+```
+User browser (any device)
+  --> https://demo.giljo.ai (Cloudflare edge, real TLS cert)
+  --> Cloudflare Tunnel (encrypted)
+  --> localhost:7274 (frontend) / localhost:7272 (API)
+      (noTLSVerify: true skips mkcert validation on the tunnel side)
+```
+
+- Users get a valid TLS certificate from Cloudflare — no warnings, no root CA to install
+- The tunnel connects outbound from the server (no inbound ports needed besides SSH)
+- `noTLSVerify: true` tells cloudflared to accept the local mkcert certs without validation
+- Firewall only needs to allow SSH — ports 7272/7274 stay unexposed to the internet
+
+#### Frontend API Base URL
+
+The frontend must know to call `api.demo.giljo.ai` instead of `10.1.0.116:7272`. Set this in the Vite environment or via `config.yaml`:
+
+```yaml
+# config.yaml
+services:
+  external_host: api.demo.giljo.ai
+  external_port: 443
+  external_protocol: https
+```
+
+Or via `.env` for the frontend build:
+
+```
+VITE_API_BASE_URL=https://api.demo.giljo.ai
+```
+
+#### Running as a Service
+
+```bash
+sudo cloudflared service install
+sudo systemctl enable cloudflared
+sudo systemctl start cloudflared
+```
+
+#### Quick Test (No Domain Required)
+
+For a quick throwaway demo without a custom domain:
+
+```bash
+cloudflared tunnel --url https://127.0.0.1:7274 --no-tls-verify
+```
+
+This gives a temporary `*.trycloudflare.com` URL with valid TLS. Only works for a single origin (frontend), so the API would need to be proxied through the frontend or served on the same port.
+
+### 7. TLS for Second Workstation (Non-Demo, Same User)
+
+For users running GiljoAI on one machine and accessing from another on the same LAN, export the mkcert root CA:
+
+```bash
+# On the install machine: find the root CA
+mkcert -CAROOT
+# Copy rootCA.pem to the second machine
+
+# Windows: double-click rootCA.pem -> Install Certificate -> Local Machine -> Trusted Root CAs
+# macOS:   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain rootCA.pem
+# Linux:   sudo cp rootCA.pem /usr/local/share/ca-certificates/giljo-ca.crt && sudo update-ca-certificates
+```
+
+After installing the root CA, both ports (7274 frontend, 7272 API) are trusted — no browser warnings.
+
 ## Conclusion
 
-The existing installer security model is solid. The main action items for demo server deployment are firewall configuration, verifying PostgreSQL listens on localhost only, and implementing session expiry cleanup.
+The existing installer security model is solid. The main action items for demo server deployment are:
+- Firewall configuration (SSH only when using Cloudflare Tunnel)
+- Verifying PostgreSQL listens on localhost only
+- Cloudflare Tunnel for zero-friction TLS to remote users
+- Implementing session expiry cleanup
