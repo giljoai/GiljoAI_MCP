@@ -768,3 +768,48 @@ async def regenerate_summaries(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to regenerate summaries: {e!s}"
         ) from e
+
+
+@router.get("/{document_id}/ai-summary/{level}")
+async def get_ai_summary(
+    document_id: str,
+    level: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+    tenant_key: str = Depends(get_tenant_key),
+    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
+):
+    """
+    Get AI summary content for a vision document at a given compression level.
+
+    Args:
+        document_id: Vision document ID
+        level: Compression level ('light' or 'medium')
+
+    Returns:
+        Dict with summary text, token count, and level label
+    """
+    ratio_map = {"light": AI_SUMMARY_LIGHT_RATIO, "medium": AI_SUMMARY_MEDIUM_RATIO}
+    ratio = ratio_map.get(level)
+    if not ratio:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid level: {level}. Use 'light' or 'medium'."
+        )
+
+    summaries = await vision_repo.get_summaries(session=db, tenant_key=tenant_key, document_id=document_id)
+    ai_summary = None
+    for s in summaries:
+        if s.source == "ai" and s.ratio == ratio:
+            ai_summary = s
+            break
+
+    if not ai_summary:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"No AI {level} summary found for document {document_id}"
+        )
+
+    return {
+        "summary": ai_summary.summary,
+        "tokens": ai_summary.tokens_summary,
+        "level": level.capitalize(),
+    }
