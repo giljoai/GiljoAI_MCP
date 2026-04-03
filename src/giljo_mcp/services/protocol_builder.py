@@ -1444,6 +1444,43 @@ END OF IMPLEMENTATION PHASE REFERENCE
 """
 
 
+def _build_ch6_auto_checkin(interval: int) -> str:
+    """Build CH6: AUTO CHECK-IN PROTOCOL for multi-terminal orchestrator self-polling (Handover 0904).
+
+    Args:
+        interval: Check-in interval in seconds (30, 60, or 90).
+    """
+    return f"""════════════════════════════════════════════════════════════════════════════
+                CH6: AUTO CHECK-IN PROTOCOL
+════════════════════════════════════════════════════════════════════════════
+
+ORCHESTRATOR SELF-MONITORING MODE (Enabled by user)
+
+After dispatching all agents to their terminals:
+
+1. Set your status:
+   set_agent_status(job_id, status="sleeping", reason="Auto check-in active, interval: {interval}s")
+
+2. Wait {interval} seconds (use your tool's native sleep/pause capability).
+
+3. Wake and check in:
+   a. Call receive_messages() — process any agent reports, questions, or completions
+   b. Assess progress: Are agents blocked? Have any completed? Do handoffs need coordinating?
+   c. Take action as needed: send coordination messages, spawn next-phase agents, unblock
+
+4. If all agents have completed: proceed to Completion Protocol (CH5).
+   If agents are still working: return to step 1.
+
+IMPORTANT:
+- Each check-in cycle consumes tokens. The user has chosen this trade-off.
+- If an agent reports being blocked, address it immediately rather than sleeping again.
+- If you have nothing actionable after a check-in, go back to sleep — do not generate
+  unnecessary messages.
+
+────────────────────────────────────────────────────────────────────────────
+"""
+
+
 def _build_orchestrator_protocol(
     cli_mode: bool,
     project_id: str,
@@ -1454,11 +1491,13 @@ def _build_orchestrator_protocol(
     depth_config: dict[str, Any] | None = None,
     product_id: str | None = None,
     tool: str = "claude-code",
+    auto_checkin_enabled: bool = False,
+    auto_checkin_interval: int = 60,
 ) -> dict:
     """
     Build chapter-based orchestrator protocol.
 
-    Creates 5 navigable chapters with clear visual boundaries.
+    Creates 5-6 navigable chapters with clear visual boundaries.
     Solves the "rotation problem" where content gets buried.
 
     Args:
@@ -1471,6 +1510,8 @@ def _build_orchestrator_protocol(
         depth_config: Depth settings per category (Handover 0823)
         product_id: Product UUID for fetch calls (Handover 0823)
         tool: Platform identifier for platform-specific spawning rules (Handover 0838)
+        auto_checkin_enabled: Enable CH6 auto check-in protocol (Handover 0904)
+        auto_checkin_interval: Check-in interval in seconds (Handover 0904)
 
     Returns:
         Dict with chapter keys and navigation_hint
@@ -1489,11 +1530,15 @@ def _build_orchestrator_protocol(
     ch4 = _build_ch4_error_handling()
     ch5 = _build_ch5_reference(project_id, orchestrator_id, effective_tool) if include_implementation_reference else ""
 
+    # Handover 0904: CH6 only for multi-terminal mode with auto check-in enabled
+    ch6 = _build_ch6_auto_checkin(auto_checkin_interval) if (auto_checkin_enabled and not cli_mode) else ""
+
     return {
         "ch1_your_mission": ch1,
         "ch2_startup_sequence": ch2,
         "ch3_agent_spawning_rules": ch3,
         "ch4_error_handling": ch4,
         "ch5_reference": ch5,
+        "ch6_auto_checkin": ch6,
         "navigation_hint": "Reference chapters by name (e.g., 'see CH4 for error handling')",
     }
