@@ -46,7 +46,7 @@
           <div class="section-label mb-0">Your Team</div>
           <div class="d-flex align-center ga-2">
             <span class="team-slots smooth-border">{{ activeTemplates.length }} / {{ totalSlots }} slots</span>
-            <router-link to="/Settings" class="team-manage">
+            <router-link to="/settings?tab=agents" class="team-manage">
               <v-icon size="14">mdi-cog</v-icon> Manage
             </router-link>
           </div>
@@ -113,8 +113,6 @@
 
       <!-- FOOTER -->
       <div class="page-footer">
-        <span class="footer-item">Community Edition</span>
-        <span class="footer-dot"></span>
         <span class="footer-item mono">{{ appVersion }}</span>
       </div>
     </div>
@@ -124,7 +122,7 @@
       v-model="showSetupOverlay"
       :current-step="setupStep"
       :selected-tools="setupSelectedTools"
-      :mode="setupComplete ? 'learning' : 'setup'"
+      :mode="setupOverlayMode"
       @update:current-step="setupStep = $event"
       @step-complete="handleStepComplete"
       @dismiss="handleDismiss"
@@ -153,8 +151,13 @@ const projectStore = useProjectStore()
 // Setup wizard state
 const showSetupOverlay = ref(false)
 const setupStep = ref(0)
+const forceSetupMode = ref(false)
 
 const setupComplete = computed(() => userStore.currentUser?.setup_complete ?? false)
+const setupOverlayMode = computed(() => {
+  if (forceSetupMode.value) return 'setup'
+  return setupComplete.value ? 'learning' : 'setup'
+})
 const setupStepCompleted = computed(() => userStore.currentUser?.setup_step_completed ?? 0)
 const setupSelectedTools = computed(() => userStore.currentUser?.setup_selected_tools ?? [])
 
@@ -191,6 +194,7 @@ async function handleStepComplete({ step, data }) {
 
 function handleDismiss() {
   showSetupOverlay.value = false
+  forceSetupMode.value = false
 }
 
 // Template data
@@ -228,7 +232,7 @@ const activeProjectCount = computed(() => projectStore.activeProjects?.length ??
 const quickCards = computed(() => {
   if (hasActiveProduct.value) {
     const productName = productStore.activeProduct?.name || 'your product'
-    return [
+    const cards = [
       {
         title: 'New Project',
         description: `Launch an orchestrated project with AI agents for ${productName}.`,
@@ -239,26 +243,39 @@ const quickCards = computed(() => {
         badge: '/gil_add project',
         to: '/Projects',
       },
-      {
+    ]
+    if (activeProjectCount.value > 0) {
+      cards.push({
         title: 'Active Projects',
         description: 'Monitor running orchestrations, agent status, and real-time progress.',
         icon: 'mdi-play-circle-outline',
         iconBg: 'rgba(109,179,228,0.12)',
         iconColor: '#6DB3E4',
         accent: '#6DB3E4',
-        badge: activeProjectCount.value > 0 ? `${activeProjectCount.value} active` : null,
-        to: '/Projects',
-      },
-      {
-        title: 'Task Board',
-        description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
-        icon: 'mdi-clipboard-check-outline',
-        iconBg: 'rgba(172,128,204,0.12)',
-        iconColor: '#AC80CC',
-        accent: '#AC80CC',
-        to: '/Tasks',
-      },
-    ]
+        badge: `${activeProjectCount.value} active`,
+        to: '/launch?via=jobs',
+      })
+    } else {
+      cards.push({
+        title: 'New Product',
+        description: 'Define another product to give your AI agents full context.',
+        icon: 'mdi-package-variant-closed',
+        iconBg: 'rgba(94,196,142,0.12)',
+        iconColor: '#5EC48E',
+        accent: '#5EC48E',
+        to: '/Products',
+      })
+    }
+    cards.push({
+      title: 'Task Board',
+      description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
+      icon: 'mdi-clipboard-check-outline',
+      iconBg: 'rgba(172,128,204,0.12)',
+      iconColor: '#AC80CC',
+      accent: '#AC80CC',
+      to: '/Tasks',
+    })
+    return cards
   }
   return [
     {
@@ -447,7 +464,8 @@ onMounted(async () => {
 
   // Auto-launch overlay on first login or when directed from UserSettings
   if (route.query.openSetup === 'true' || !setupComplete.value) {
-    setupStep.value = setupStepCompleted.value
+    forceSetupMode.value = route.query.openSetup === 'true'
+    setupStep.value = Math.min(setupStepCompleted.value, 3)
     showSetupOverlay.value = true
     // Clean up query param so refresh doesn't re-trigger
     if (route.query.openSetup) {
