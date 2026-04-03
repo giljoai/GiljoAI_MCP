@@ -63,13 +63,11 @@ The installer asks how you plan to use GiljoAI:
 ```bash
 # Production install (recommended for users)
 python install.py
-# Select "Production" when prompted
 python startup.py          # Single port: http://localhost:7272
 
 # Development install (for contributors)
-python install.py
-# Select "Development" when prompted
-python startup.py          # Two ports: frontend :7274, API :7272
+python install.py --dev    # Also installs pre-commit hooks, NLTK data
+python startup.py --dev    # Two ports: frontend :7274, API :7272
 ```
 
 ### Switching Between Modes
@@ -89,6 +87,15 @@ python startup.py          # Auto-detects frontend/dist/ and serves on single po
 
 ### Command-Line Options
 
+**Installer** (`install.py`):
+```bash
+python install.py              # Production install (lean, fast)
+python install.py --dev        # Developer install (adds pre-commit hooks, NLTK data)
+python install.py --headless   # Non-interactive mode (CI/CD)
+python install.py --pg-password PASSWORD  # PostgreSQL admin password
+```
+
+**Startup** (`startup.py`):
 ```bash
 python startup.py              # Auto-detect mode and run
 python startup.py --dev        # Force development mode (Vite HMR)
