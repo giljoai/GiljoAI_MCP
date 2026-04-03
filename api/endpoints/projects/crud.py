@@ -405,6 +405,8 @@ async def get_project(
         agent_count=proj.agent_count or len(agents_from_service),
         message_count=proj.message_count,
         execution_mode=proj.execution_mode or "multi_terminal",  # Handover 0260
+        auto_checkin_enabled=proj.auto_checkin_enabled,
+        auto_checkin_interval=proj.auto_checkin_interval,
         agents=agents_from_service,  # Fixed: Use agents from ProjectService, not hardcoded []
         # Handover 0440a: Taxonomy fields
         project_type_id=proj.project_type_id,
@@ -463,6 +465,8 @@ async def update_project(
         proj_agents = detail.agent_count
         proj_messages = detail.message_count
         proj_mode = detail.execution_mode or "multi_terminal"
+        proj_auto_checkin = detail.auto_checkin_enabled
+        proj_auto_interval = detail.auto_checkin_interval
         # Handover 0440a: Taxonomy fields from ProjectDetail
         proj_type_id = detail.project_type_id
         proj_type = detail.project_type  # Handover 0440c: Nested type info
@@ -486,6 +490,8 @@ async def update_project(
         proj_agents = 0
         proj_messages = 0
         proj_mode = proj.execution_mode or "multi_terminal"
+        proj_auto_checkin = proj.auto_checkin_enabled
+        proj_auto_interval = proj.auto_checkin_interval
         # Handover 0440a: Taxonomy fields from ProjectData
         proj_type_id = proj.project_type_id
         proj_type = proj.project_type  # Handover 0440c: Nested type info
@@ -510,6 +516,8 @@ async def update_project(
         agent_count=proj_agents,
         message_count=proj_messages,
         execution_mode=proj_mode,
+        auto_checkin_enabled=proj_auto_checkin,
+        auto_checkin_interval=proj_auto_interval,
         agents=[],
         # Handover 0440a: Taxonomy fields
         project_type_id=proj_type_id,
