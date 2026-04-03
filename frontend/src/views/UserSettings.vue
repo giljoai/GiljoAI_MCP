@@ -62,7 +62,7 @@
 
     <!-- Tab Content -->
     <div class="pill-tabs-content">
-      <v-window v-model="activeTab" :touch="false" :reverse="false" class="global-tabs-window">
+      <v-window v-model="activeTab" :touch="false" :reverse="false" class="global-tabs-window main-window-tabs">
       <!-- Context Settings -->
       <v-window-item value="context">
         <ContextPriorityConfig :git-integration-enabled="gitEnabled" />
