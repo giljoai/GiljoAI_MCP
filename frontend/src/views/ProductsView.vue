@@ -289,7 +289,13 @@
       :product="selectedProduct"
       :vision-documents="detailsVisionDocuments"
       :stats="productStats"
-      :auto-expand-tuning="autoExpandTuning"
+      @refresh-product="handleProductRefresh"
+    />
+
+    <ProductTuningDialog
+      v-model="showTuningDialog"
+      :product="tuningProduct"
+      @refresh-product="handleProductRefresh"
     />
 
     <!-- Delete Confirmation Dialog -->
@@ -337,6 +343,7 @@ import api from '@/services/api'
 import ActivationWarningDialog from '@/components/products/ActivationWarningDialog.vue'
 import ProductDeleteDialog from '@/components/products/ProductDeleteDialog.vue'
 import ProductDetailsDialog from '@/components/products/ProductDetailsDialog.vue'
+import ProductTuningDialog from '@/components/products/ProductTuningDialog.vue'
 import DeletedProductsRecoveryDialog from '@/components/products/DeletedProductsRecoveryDialog.vue'
 import ProductForm from '@/components/products/ProductForm.vue'
 
@@ -352,9 +359,11 @@ const sortBy = ref('name')
 const showDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showDetailsDialog = ref(false)
+const showTuningDialog = ref(false)
 const editingProduct = ref(null)
 const deletingProduct = ref(null)
 const selectedProduct = ref(null)
+const tuningProduct = ref(null)
 const deleting = ref(false)
 const visionFiles = ref([])
 const existingVisionDocuments = ref([])
@@ -363,7 +372,6 @@ const uploadingVision = ref(false)
 const uploadProgress = ref(0)
 const visionUploadError = ref(null)
 const detailsVisionDocuments = ref([])
-const autoExpandTuning = ref(false)
 const cascadeImpact = ref(null)
 const loadingCascadeImpact = ref(false)
 
@@ -638,7 +646,6 @@ function getTuningState(product) {
 
 async function showProductDetails(product) {
   selectedProduct.value = product
-  autoExpandTuning.value = false
 
   // Fetch vision documents
   try {
@@ -653,18 +660,20 @@ async function showProductDetails(product) {
 }
 
 async function showProductTuning(product) {
-  selectedProduct.value = product
-  autoExpandTuning.value = true
+  tuningProduct.value = product
+  showTuningDialog.value = true
+}
 
-  try {
-    const response = await api.visionDocuments.listByProduct(product.id)
-    detailsVisionDocuments.value = response.data || []
-  } catch (error) {
-    console.error('Failed to load vision documents:', error)
-    detailsVisionDocuments.value = []
+async function handleProductRefresh() {
+  await loadProducts()
+
+  if (selectedProduct.value) {
+    selectedProduct.value = productStore.products.find((product) => product.id === selectedProduct.value.id) || selectedProduct.value
   }
 
-  showDetailsDialog.value = true
+  if (tuningProduct.value) {
+    tuningProduct.value = productStore.products.find((product) => product.id === tuningProduct.value.id) || tuningProduct.value
+  }
 }
 
 async function editProduct(product) {
