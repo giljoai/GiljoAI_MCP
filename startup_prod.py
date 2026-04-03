@@ -1,21 +1,12 @@
-#!/usr/bin/env python3  # noqa: EXE001
+#!/usr/bin/env python3
 """
-GiljoAI MCP - Production Startup Script
+GiljoAI MCP - Production Startup Script (DEPRECATED)
 
-This script launches GiljoAI MCP in PRODUCTION mode:
-- Backend API: Standard startup (same as dev mode)
-- Frontend: Serves pre-built production files from frontend/dist/
+DEPRECATED: Use 'python startup.py' instead.
+Production mode is now automatic when frontend/dist/ exists.
+Use 'python startup.py --dev' to force development mode.
 
-Prerequisites:
-- Run `npm run build` in frontend/ directory first
-- Production build must exist in frontend/dist/
-
-Usage:
-    python startup_prod.py              # Start in production mode
-    python startup_prod.py --verbose    # Show console windows
-    python startup_prod.py --help       # Show help
-
-Cross-platform: Works on Windows, Linux, and macOS
+This script is kept for backward compatibility and delegates to startup.py.
 """
 
 import platform
@@ -27,7 +18,7 @@ from pathlib import Path
 from typing import Optional
 
 import click
-from colorama import init
+from colorama import Fore, Style, init
 
 # Import helper functions from startup.py
 from startup import (
@@ -386,7 +377,15 @@ def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool)
     GiljoAI MCP - Production Startup Script
 
     Launches GiljoAI MCP in PRODUCTION mode with pre-built frontend.
+
+    DEPRECATED: Use 'python startup.py' instead.
     """
+    print(f"\n{Fore.YELLOW}{Style.BRIGHT}WARNING: startup_prod.py is deprecated.{Style.RESET_ALL}")  # noqa: T201
+    print(  # noqa: T201
+        f"{Fore.YELLOW}Use 'python startup.py' instead — production mode is automatic when frontend/dist/ exists.{Style.RESET_ALL}"
+    )
+    print(f"{Fore.YELLOW}Use 'python startup.py --dev' to force Vite dev server.{Style.RESET_ALL}\n")  # noqa: T201
+
     try:
         exit_code = run_production_startup(
             check_only=check_only, verbose=verbose, no_browser=no_browser, no_migrations=no_migrations

@@ -74,10 +74,23 @@ User Access (controlled by OS firewall):
        └────────────────────────┘
 ```
 
+**Production Single-Port Mode** (Handover 0902):
+
+In production, FastAPI serves both the REST API and the built Vue frontend on port 7272. When `frontend/dist/` exists, static files are mounted at `/` and a custom 404 handler provides SPA fallback (non-API paths return `index.html` for Vue Router). API routes registered before the static mount always take priority.
+
+```
+Production (single port):              Development (two ports):
+┌──────────────────────┐               ┌──────────────────────┐
+│  Browser → :7272     │               │  Browser → :7274     │
+│  API + Frontend      │               │  Vite dev server     │
+│  (StaticFiles mount) │               │  (proxies /api→7272) │
+└──────────────────────┘               └──────────────────────┘
+```
+
 **Code Verification**:
-- **API Binding**: `api/app.py:532-538` - CORS middleware configured for conditional binding (127.0.0.1 or 0.0.0.0)
-- **Database Host**: `api/app.py:185` - `state.config.database.host` (always "localhost")
-- **Port Configuration**: `api/app.py:467-468` - Default ports 7272 (API), 7274 (frontend)
+- **API Binding**: `api/app.py` - CORS middleware configured for conditional binding (127.0.0.1 or 0.0.0.0)
+- **Database Host**: Always "localhost"
+- **Port Configuration**: Port 7272 (API + production frontend). Port 7274 is dev-only (Vite).
 
 ### Network Access Control
 
@@ -168,10 +181,10 @@ class DatabaseManager:
 - **WebSocket Integration** - Real-time state updates
 - **JWT Token Management** - Client-side authentication
 
-**Development Server**:
-- **Port 7274** - Production frontend port
-- **Port 5173** - Vite development server port
-- **Hot Module Replacement** - Development-time features
+**Serving Modes**:
+- **Production** - Built frontend served by FastAPI on port 7272 (single port)
+- **Development** - Vite dev server on port 7274 with hot module replacement (two ports)
+- **Port 5173** - Alternative Vite dev server port (raw `npm run dev`)
 
 ### Database Architecture
 
@@ -2136,9 +2149,7 @@ class PlatformHandler(ABC):
 services:
   api:
     host: 0.0.0.0      # LAN/WAN track; localhost track uses 127.0.0.1
-    port: 7272         # Standard API port
-  frontend:
-    port: 7274         # Standard frontend port
+    port: 7272         # API + production frontend (single port)
 
 database:
   host: localhost      # NEVER change this
@@ -2183,14 +2194,9 @@ services:
       - DATABASE_URL=postgresql://user:pass@db:5432/giljo_mcp
     depends_on:
       - db
-      
-  frontend:
-    build: ./frontend
-    ports:
-      - "7274:80"
-    depends_on:
-      - api
-      
+    # Frontend is served by FastAPI on port 7272 (single-port mode).
+    # Build frontend/dist/ during container build.
+
   db:
     image: postgres:18
     environment:
