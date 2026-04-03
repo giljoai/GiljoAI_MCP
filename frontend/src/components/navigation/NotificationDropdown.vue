@@ -2,12 +2,35 @@
   <v-menu
     v-model="menuOpen"
     :close-on-content-click="false"
-    location="bottom end"
+    :location="compact ? 'right' : 'bottom end'"
     offset="8"
     max-width="350"
   >
     <template v-slot:activator="{ props: menuProps }">
+      <!-- Compact: orb style for navbar -->
       <v-badge
+        v-if="compact"
+        :content="unreadCount"
+        :model-value="unreadCount > 0"
+        :color="badgeColor"
+        overlap
+        offset-x="2"
+        offset-y="2"
+      >
+        <div
+          v-bind="menuProps"
+          class="nav-orb nav-orb--bell"
+          :class="notificationBellClass"
+          role="button"
+          tabindex="0"
+          aria-label="View notifications"
+        >
+          <v-icon size="18">mdi-bell</v-icon>
+        </div>
+      </v-badge>
+      <!-- Default: button style for other contexts -->
+      <v-badge
+        v-else
         :content="unreadCount"
         :model-value="unreadCount > 0"
         :color="badgeColor"
@@ -133,6 +156,13 @@ import { useRouter } from 'vue-router'
 import { formatDistanceToNow } from 'date-fns'
 import { useNotificationStore } from '@/stores/notifications'
 import { useWebSocketStore } from '@/stores/websocket'
+
+defineProps({
+  compact: {
+    type: Boolean,
+    default: false,
+  },
+})
 
 const router = useRouter()
 const notificationStore = useNotificationStore()
@@ -409,6 +439,28 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+
+// Orb style matching NavigationDrawer orbs
+.nav-orb {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+
+  &:hover { transform: scale(1.08); }
+  &:active { transform: scale(0.95); }
+}
+
+.nav-orb--bell {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+
+  &:hover { background: rgba(255, 255, 255, 0.18); }
 }
 
 </style>
