@@ -259,6 +259,66 @@ body {
   overflow-y: auto;
 }
 
+// =========================================================================
+// Main Window Motion Utilities
+// =========================================================================
+
+@keyframes main-window-enter-down {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes main-window-enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.main-window-reveal {
+  animation: main-window-enter-up 0.45s ease-out both;
+  animation-delay: var(--main-window-delay, 0s);
+}
+
+.main-window-reveal--hero {
+  animation-name: main-window-enter-down;
+  animation-duration: 0.55s;
+}
+
+.main-window-delay-1 { --main-window-delay: 0.04s; }
+.main-window-delay-2 { --main-window-delay: 0.12s; }
+.main-window-delay-3 { --main-window-delay: 0.2s; }
+.main-window-delay-4 { --main-window-delay: 0.27s; }
+.main-window-delay-5 { --main-window-delay: 0.34s; }
+.main-window-delay-6 { --main-window-delay: 0.42s; }
+.main-window-delay-7 { --main-window-delay: 0.5s; }
+.main-window-delay-8 { --main-window-delay: 0.58s; }
+.main-window-delay-9 { --main-window-delay: 0.65s; }
+
+.main-window-tabs {
+  :is(.v-window-item--active, .v-window-item--reverse.v-window-item--active) {
+    animation: main-window-enter-up 0.2s ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-window-reveal,
+  .main-window-reveal--hero,
+  .main-window-tabs :is(.v-window-item--active, .v-window-item--reverse.v-window-item--active) {
+    animation: none !important;
+  }
+}
+
 .dialog-card {
   border: none !important;
   border-radius: $border-radius-rounded !important;
@@ -267,8 +327,10 @@ body {
     0 16px 48px rgba(0, 0, 0, 0.5) !important;
 }
 
-// Global: all modal/dialog cards get smooth border + drop shadow + rounded corners
-.v-dialog .v-card {
+// Global: only the top-level modal/dialog card gets dialog chrome.
+// Nested cards inside dialog content should keep their local component styling.
+.v-dialog > .v-overlay__content > .v-card,
+.v-dialog > .v-overlay__content > form > .v-card {
   border: none !important;
   border-radius: $border-radius-rounded !important;
   box-shadow:
