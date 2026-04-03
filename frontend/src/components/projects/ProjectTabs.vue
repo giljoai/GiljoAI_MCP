@@ -256,7 +256,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, watchEffect, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectTabsStore } from '@/stores/projectTabs'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -374,6 +374,17 @@ const activeTab = ref('launch')
 // Initialize from URL query param if present
 if (route.query.tab && ['launch', 'jobs'].includes(route.query.tab)) {
   activeTab.value = route.query.tab
+}
+
+// Auto-select Implementation tab for active staged projects arriving via jobs link
+if (route.query.via === 'jobs' && !route.query.tab) {
+  const stop = watchEffect(() => {
+    const state = projectStateStore.getProjectState(projectId.value)
+    if (props.project?.status === 'active' && state?.stagingComplete) {
+      activeTab.value = 'jobs'
+      nextTick(() => stop())
+    }
+  })
 }
 
 /**
