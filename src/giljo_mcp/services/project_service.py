@@ -427,6 +427,8 @@ class ProjectService:
                     product_id=project.product_id,
                     tenant_key=project.tenant_key,
                     execution_mode=project.execution_mode,
+                    auto_checkin_enabled=project.auto_checkin_enabled,
+                    auto_checkin_interval=project.auto_checkin_interval,
                     cancellation_reason=project.cancellation_reason,
                     deactivation_reason=project.deactivation_reason,
                     early_termination=project.early_termination,
@@ -926,9 +928,18 @@ class ProjectService:
                 context={"project_id": str(project.id)},
             )
 
+        # Handover 0904: Validate auto check-in interval (must be 30, 60, or 90)
+        if "auto_checkin_interval" in updates and updates["auto_checkin_interval"] not in (30, 60, 90):
+            raise ValidationError(
+                message="auto_checkin_interval must be 30, 60, or 90 seconds",
+                error_code="VALIDATION_ERROR",
+                context={"project_id": str(project.id), "value": updates["auto_checkin_interval"]},
+            )
+
         # Update allowed fields (Handover 0260: Added execution_mode)
         # Handover 0412: Added status, completed_at for archive endpoint
         # Handover 0440a: Added project_type_id, series_number, subseries for taxonomy
+        # Handover 0904: Added auto_checkin_enabled, auto_checkin_interval
         allowed_fields = {
             "name",
             "description",
@@ -939,6 +950,8 @@ class ProjectService:
             "project_type_id",
             "series_number",
             "subseries",
+            "auto_checkin_enabled",
+            "auto_checkin_interval",
         }
         for field, value in updates.items():
             if field in allowed_fields:
@@ -956,6 +969,8 @@ class ProjectService:
             mission=project.mission,
             description=project.description,
             execution_mode=project.execution_mode,
+            auto_checkin_enabled=project.auto_checkin_enabled,
+            auto_checkin_interval=project.auto_checkin_interval,
             cancellation_reason=project.cancellation_reason,
             deactivation_reason=project.deactivation_reason,
             early_termination=project.early_termination,

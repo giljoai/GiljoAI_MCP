@@ -178,6 +178,22 @@ class Project(Base):
         comment="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)",
     )
 
+    # Handover 0904: Orchestrator auto check-in settings (multi-terminal only)
+    auto_checkin_enabled = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+        comment="Enable orchestrator self-polling in multi-terminal mode",
+    )
+    auto_checkin_interval = Column(
+        Integer,
+        nullable=False,
+        default=60,
+        server_default=text("60"),
+        comment="Auto check-in interval in seconds (30, 60, or 90)",
+    )
+
     # Relationships
     product = relationship("Product", back_populates="projects")
     project_type = relationship("ProjectType", back_populates="projects")

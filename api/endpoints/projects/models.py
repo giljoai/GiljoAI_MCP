@@ -51,6 +51,12 @@ class ProjectUpdate(BaseModel):
     project_type_id: str | None = None
     series_number: int | None = None
     subseries: str | None = None
+    # Handover 0904: Orchestrator auto check-in
+    auto_checkin_enabled: bool | None = None
+    auto_checkin_interval: int | None = Field(
+        None,
+        description="Auto check-in interval in seconds (30, 60, or 90)",
+    )
 
 
 class AgentSimple(BaseModel):
@@ -94,6 +100,9 @@ class ProjectResponse(BaseModel):
     agents: list[AgentSimple] = []
     # Handover 0260: Execution mode for Claude Code CLI toggle
     execution_mode: str = "multi_terminal"
+    # Handover 0904: Orchestrator auto check-in
+    auto_checkin_enabled: bool = False
+    auto_checkin_interval: int = 60
     # Handover 0440a: Project taxonomy fields
     project_type_id: str | None = None
     project_type: ProjectTypeInfo | None = None  # Handover 0440c: Nested type with color
