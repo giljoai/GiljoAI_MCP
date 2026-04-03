@@ -43,7 +43,7 @@ export function detectPlatform() {
  */
 export function buildServerUrl(hostname, port) {
   const h = hostname || window.location.hostname
-  const p = port || '7272'
+  const p = port || window.location.port || '7272'
   const protocol = window.location.protocol === 'https:' ? 'https' : 'http'
   return `${protocol}://${h}:${p}`
 }
