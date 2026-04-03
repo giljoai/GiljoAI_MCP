@@ -179,7 +179,7 @@ apiClient.interceptors.response.use(
         // CSRF token expired or missing — fetch a fresh one via GET then retry
         originalRequest._csrfRetry = true
         try {
-          await apiClient.get('/api/setup/status') // lightweight GET to receive new csrf_token cookie
+          await apiClient.get('/api/v1/products/') // lightweight GET to receive new csrf_token cookie (must not be CSRF-exempt)
           const newToken = getCsrfToken()
           if (newToken) {
             originalRequest.headers['X-CSRF-Token'] = newToken
