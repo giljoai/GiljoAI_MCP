@@ -21,7 +21,7 @@
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
 | 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. **0841 COMPLETE.** **0842a-f, 0842g, 0842h, 0842i-m COMPLETE.** **0843 COMPLETE.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 COMPLETE.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
 | 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE. 0873a-o COMPLETE. 0874a-c COMPLETE. 0875 COMPLETE. 0880 COMPLETE.** All design system work done. Branch: feature/0873-style-centralization. |
-| 0900-0999 | Infrastructure & DevEx | **0900 COMPLETE.** 0901 NOT STARTED. **0902 COMPLETE (0902a-d all COMPLETE).** **0903 NOT STARTED.** |
+| 0900-0999 | Infrastructure & DevEx | **0900 COMPLETE.** 0901 NOT STARTED. **0902 COMPLETE (0902a-d all COMPLETE).** **0903 NOT STARTED.** **0904 NOT STARTED.** |
 
 ---
 
@@ -42,6 +42,7 @@
 | 0902c | Startup/Install Mode Toggle | **COMPLETE** | High | Production detection, --dev flag, install.py prompt. Depends on 0902a+b. 2 hours. |
 | 0902d | Testing + Documentation | **COMPLETE** | High | Backend/frontend tests, doc updates. Depends on 0902a+b+c. 1.5 hours. |
 | 0903 | Streamlined CLI Install | Not Started | Medium | Post-launch. `pip install giljo-mcp` → `giljo-mcp init` → paste MCP command → done. Supersedes 0409. Depends on 0902. 12-16 hours. |
+| 0904 | Orchestrator Auto Check-in | Not Started | Medium | Multi-terminal only. Toggle + interval slider (30/60/90s) on Implementation tab. Protocol injection (CH6) into orchestrator instructions. 4-6 hours. |
 
 ### Deferred (Still in Root Folder)
 
