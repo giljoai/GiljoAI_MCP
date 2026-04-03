@@ -55,19 +55,8 @@
 
     <!-- Header -->
     <div class="dash-header main-window-reveal main-window-reveal--hero main-window-delay-1">
-      <h1 class="text-h4">
-        Dashboard
-        <span v-if="selectedProductName" class="dash-product-label">/ {{ selectedProductName }}</span>
-      </h1>
+      <h1 class="text-h4">Dashboard</h1>
     </div>
-
-    <!-- Product Selector -->
-    <ProductSelector
-      :products="productStore.products"
-      :selected-product-id="selectedProductId"
-      class="mb-5 main-window-reveal main-window-delay-2"
-      @select="onProductSelect"
-    />
 
     <!-- Stat Pills Row (3 cards: status, taxonomy, agent roles) -->
     <div class="stat-pills">
@@ -211,14 +200,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
-import ProductSelector from '@/components/dashboard/ProductSelector.vue'
 import RecentProjectsList from '@/components/dashboard/RecentProjectsList.vue'
 import RecentMemoriesList from '@/components/dashboard/RecentMemoriesList.vue'
 import ProjectReviewModal from '@/components/projects/ProjectReviewModal.vue'
 import { useRouter } from 'vue-router'
-import { useProductStore } from '@/stores/products'
 
 import api from '@/services/api'
 import setupService from '@/services/setupService'
@@ -226,9 +213,6 @@ import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const { showToast } = useToast()
-
-// Stores
-const productStore = useProductStore()
 
 // Reactive data
 const setupStatus = ref({
@@ -242,15 +226,6 @@ const showLanWelcome = ref(false)
 const serverIp = ref('localhost')
 const serverPort = ref(7272)
 const serverProtocol = computed(() => window.location.protocol === 'https:' ? 'https' : 'http')
-
-// Product selection
-const selectedProductId = ref(null)
-
-const selectedProductName = computed(() => {
-  if (!selectedProductId.value) return null
-  const product = productStore.products.find(p => p.id === selectedProductId.value)
-  return product ? product.name : null
-})
 
 // Clock
 const currentTime = ref('')
@@ -375,7 +350,7 @@ const miniStats = computed(() => {
 // Data fetching
 const fetchDashboardData = async () => {
   try {
-    const response = await api.stats.getDashboard(selectedProductId.value)
+    const response = await api.stats.getDashboard()
     if (response.data) {
       dashboardData.value = {
         project_status_dist: response.data.project_status_dist || {},
@@ -425,13 +400,6 @@ const fetchSystemStats = async () => {
     showToast({ message: 'Unable to load system statistics.', type: 'error' })
   }
 }
-
-const onProductSelect = (productId) => {
-  selectedProductId.value = productId
-}
-
-// Watch product selection to refetch dashboard data
-watch(selectedProductId, fetchDashboardData, { immediate: true })
 
 let fetchInterval = null
 
@@ -558,11 +526,8 @@ onMounted(async () => {
   await checkSetupStatus()
 
   if (!setupStatus.value.requires_setup) {
-    // Fetch products for selector
-    await productStore.fetchProducts()
-
-    // Fetch server-level stats (always global)
     await Promise.all([
+      fetchDashboardData(),
       fetchCallCounts(),
       fetchSystemStats(),
     ])
@@ -595,12 +560,6 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
-}
-
-.dash-product-label {
-  color: var(--text-secondary);
-  font-weight: 400;
-  font-size: 1rem;
 }
 
 .dash-time {
