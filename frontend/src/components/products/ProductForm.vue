@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="950" persistent retain-focus>
+  <v-dialog v-model="isOpen" max-width="950" persistent retain-focus scrollable>
     <v-card v-draggable class="product-form-card smooth-border">
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2">{{ isEdit ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>

@@ -317,7 +317,7 @@
     </v-card>
 
     <!-- Create/Edit Task Dialog -->
-    <v-dialog v-model="showTaskDialog" max-width="600" persistent>
+    <v-dialog v-model="showTaskDialog" max-width="600" persistent scrollable>
       <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>

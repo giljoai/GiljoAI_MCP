@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="showDialog" max-width="520" persistent>
+  <v-dialog v-model="showDialog" max-width="520" persistent scrollable>
     <v-card class="smooth-border">
       <div class="dlg-header">
         <v-icon class="dlg-icon" icon="mdi-license" />
