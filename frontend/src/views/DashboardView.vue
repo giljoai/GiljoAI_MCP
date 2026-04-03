@@ -59,7 +59,6 @@
         Dashboard
         <span v-if="selectedProductName" class="dash-product-label">/ {{ selectedProductName }}</span>
       </h1>
-      <span class="dash-time">{{ currentTime }}</span>
     </div>
 
     <!-- Product Selector -->
