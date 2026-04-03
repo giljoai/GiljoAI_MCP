@@ -319,6 +319,33 @@
       </v-card>
     </v-dialog>
 
+    <!-- CE Single-User Limit Dialog -->
+    <v-dialog v-model="showCeLimitDialog" max-width="480">
+      <v-card class="smooth-border">
+        <div class="dlg-header dlg-header--primary">
+          <v-icon class="mr-2">mdi-account-lock</v-icon>
+          Single-User License
+          <v-spacer />
+          <v-btn icon size="small" variant="text" class="dlg-close" @click="showCeLimitDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
+        <v-card-text class="pt-5 pb-4">
+          <p class="mb-3">
+            GiljoAI Community Edition is licensed for <strong>single-user</strong> use.
+          </p>
+          <p class="mb-0" style="color: var(--text-muted)">
+            To add additional users, upgrade to a Commercial License.
+            Contact <strong>sales@giljo.ai</strong> for details.
+          </p>
+        </v-card-text>
+        <div class="dlg-footer">
+          <v-spacer />
+          <v-btn variant="text" @click="showCeLimitDialog = false">Close</v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
   </v-container>
 </template>
 
@@ -326,6 +353,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
+import configService from '@/services/configService'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
 import { useFormatDate } from '@/composables/useFormatDate'
@@ -344,6 +372,10 @@ const search = ref('')
 
 // Template refs
 const formRef = ref(null)
+
+// Edition
+const isCommunityEdition = computed(() => configService.getEdition() === 'community')
+const showCeLimitDialog = ref(false)
 
 // Dialog state
 const showUserDialog = ref(false)
@@ -464,6 +496,10 @@ async function loadUsers() {
 }
 
 function openCreateDialog() {
+  if (isCommunityEdition.value && users.value.length >= 1) {
+    showCeLimitDialog.value = true
+    return
+  }
   isEditMode.value = false
   userForm.value = {
     id: null,
