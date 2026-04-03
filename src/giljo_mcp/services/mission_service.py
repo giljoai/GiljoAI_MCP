@@ -990,6 +990,11 @@ class MissionService:
         }
         protocol_tool = execution_mode_to_tool.get(execution_mode, "claude-code")
         is_staging = execution.status == "waiting"
+
+        # Handover 0904: Read auto check-in settings from project
+        auto_checkin_enabled = getattr(project, "auto_checkin_enabled", False)
+        auto_checkin_interval = getattr(project, "auto_checkin_interval", 60)
+
         orchestrator_protocol = _build_orchestrator_protocol(
             cli_mode=cli_mode,
             project_id=str(project.id),
@@ -1000,6 +1005,8 @@ class MissionService:
             depth_config=depth_config,
             product_id=str(product.id) if product else None,
             tool=protocol_tool,
+            auto_checkin_enabled=auto_checkin_enabled,
+            auto_checkin_interval=auto_checkin_interval,
         )
         response["orchestrator_protocol"] = orchestrator_protocol
 
