@@ -119,6 +119,13 @@ describe('ProductDetailsDialog Component', () => {
 
       expect(wrapper.text()).toContain('No description provided')
     })
+
+    it('does not render tune context controls inside product details', () => {
+      const wrapper = createWrapper()
+
+      expect(wrapper.text()).not.toContain('Tune Context')
+      expect(wrapper.text()).not.toContain('Tuning Proposals')
+    })
   })
 
   describe('Statistics Display', () => {
