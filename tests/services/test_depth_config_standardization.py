@@ -127,7 +127,7 @@ class TestFrontendFieldNaming:
         """Verify ContextPriorityConfig.vue uses 'vision_documents' field."""
         from pathlib import Path
 
-        component_path = Path("F:/GiljoAI_MCP/frontend/src/components/settings/ContextPriorityConfig.vue")
+        component_path = Path(__file__).resolve().parents[2] / "frontend" / "src" / "components" / "settings" / "ContextPriorityConfig.vue"
         assert component_path.exists(), "ContextPriorityConfig.vue not found"
 
         content = component_path.read_text(encoding="utf-8")
