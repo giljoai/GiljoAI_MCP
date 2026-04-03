@@ -270,7 +270,7 @@ From `completed/techdebt_march_2026-C.md`. None are blocking. Prioritize based o
 |------|-------------|-------|
 | ~~0902 Single-Port Frontend Serving~~ | ~~Medium~~ | **COMPLETE.** FastAPI serves built frontend on :7272. |
 | 0901 Dashboard Scope Simplification | Small | Remove product selector from CE dashboard — show all-tenant stats only. Handover written. |
-| Orchestrator Message Loop Automation | Medium | Auto-polling toggle for message coordination |
+| 0904 Orchestrator Auto Check-in | Medium | Multi-terminal toggle + interval slider (30/60/90s). Protocol injection (CH6) for orchestrator self-polling. Handover written: `handovers/0904_ORCHESTRATOR_AUTO_CHECKIN.md` |
 | ~~360 Memory Frontend UI~~ | ~~Medium~~ | **Moved to SaaS.** See "360 Memory Product Knowledge Hub" in SaaS Features below |
 | MCP HTTP Tool Catalog Refactoring | Large | Registry pattern to replace 1096-line inline JSON. Planned for v4.0 |
 | Developer Workflow Guide | Medium | End-to-end docs + quick start tutorial |
