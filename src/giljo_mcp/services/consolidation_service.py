@@ -15,7 +15,6 @@ from sqlalchemy.orm import selectinload
 from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.schemas.service_responses import ConsolidationResult, SummaryLevel
-from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +24,8 @@ class ConsolidatedVisionService:
     """Generate consolidated summaries from multiple vision documents."""
 
     def __init__(self):
+        from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
+
         self.summarizer = VisionDocumentSummarizer()
 
     async def consolidate_vision_documents(
