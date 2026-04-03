@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="isVisible" max-width="700" persistent>
+  <v-dialog v-model="isVisible" max-width="700" persistent scrollable>
     <v-card v-draggable class="smooth-border">
       <!-- Header -->
       <div class="dlg-header">

@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="internalModel" max-width="560" persistent>
+  <v-dialog v-model="internalModel" max-width="560" persistent scrollable>
     <v-card v-draggable class="smooth-border">
       <div class="dlg-header">
         <v-icon class="dlg-icon" icon="mdi-account" />
