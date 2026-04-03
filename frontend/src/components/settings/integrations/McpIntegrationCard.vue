@@ -1,6 +1,6 @@
 <template>
   <v-card variant="flat" class="smooth-border mb-4 integration-card">
-    <v-card-text>
+    <v-card-text class="d-flex flex-column h-100">
       <div class="d-flex align-center mb-3">
         <v-avatar size="40" rounded="0" class="mr-2">
           <v-img
@@ -16,11 +16,11 @@
           <span>Connect your AI coding agent to GiljoAI orchestration. Supports Claude Code, Codex CLI, and Gemini CLI. Creates an MCP integration CLI command for your AI coding agent of choice.</span>
         </v-tooltip>
       </div>
-      <p class="text-body-2 text-muted-a11y mb-4">
+      <p class="text-body-2 text-muted-a11y mb-0">
         Attach GiljoAI MCP to your AI coding agents.
       </p>
 
-      <div class="d-flex justify-center">
+      <div class="d-flex justify-center align-center flex-grow-1">
         <AiToolConfigWizard />
       </div>
     </v-card-text>
