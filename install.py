@@ -19,7 +19,7 @@ Architecture:
     5. Generate configs (.env + config.yaml v3.0) - BEFORE table creation!
     6. Setup database (create DB, roles, tables via DatabaseManager) - needs .env from step 5
     7. Launch services (API + Frontend)
-    8. Open browser (http://localhost:7274)
+    8. Open browser (http://localhost:7272)
 
 Cross-platform: Windows, Linux, macOS
 """
@@ -332,19 +332,7 @@ class UnifiedInstaller:
                 self._print_info("Continuing installation - manual migration may be required")
             result["steps"].append("migrations_applied")
 
-            # Step 6.6: Seed demo AgentJob and AgentExecution data (Handover 0366d-4)
-            if migration_result["success"]:
-                self._print_info("Seeding demo data for agent succession...")
-                try:
-                    import asyncio
-
-                    demo_seeded = asyncio.run(self._seed_agent_job_demo_data())
-                    if demo_seeded:
-                        self._print_success("Demo data seeded successfully")
-                    else:
-                        self._print_warning("Demo data seeding skipped (already exists or failed)")
-                except Exception as e:
-                    self._print_warning(f"Failed to seed demo data: {e}")
+            # Demo data seeding happens inside setup_database() — no duplicate call here
 
             # Step 7: Install frontend dependencies (NEW - using production-grade npm system)
             self._print_header("Installing Frontend Dependencies")
@@ -1440,41 +1428,45 @@ class UnifiedInstaller:
 
             self._print_success("Dependencies installed successfully")
 
-            # Install pre-commit hooks (ensures git commits work without manual venv activation)
-            self._print_info("Setting up pre-commit hooks...")
-            try:
-                python_executable = self.platform.get_venv_python(self.venv_dir)
-                subprocess.run(
-                    [str(python_executable), "-m", "pip", "install", "-q", "pre-commit>=3.5.0"],
-                    check=True,
-                    capture_output=True,
-                    timeout=60,
-                )
-                subprocess.run(
-                    [str(python_executable), "-m", "pre_commit", "install"],
-                    check=True,
-                    capture_output=True,
-                    cwd=str(self.install_dir),
-                    timeout=30,
-                )
-                self._print_success("Pre-commit hooks installed")
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
-                self._print_warning(f"Pre-commit hook setup skipped: {e}")
-                self._print_info("Install later: pip install pre-commit && pre-commit install")
+            # Dev-only steps: pre-commit hooks and NLTK data (use --dev flag)
+            if self.settings.get("dev"):
+                # Install pre-commit hooks (ensures git commits work without manual venv activation)
+                self._print_info("Setting up pre-commit hooks...")
+                try:
+                    python_executable = self.platform.get_venv_python(self.venv_dir)
+                    subprocess.run(
+                        [str(python_executable), "-m", "pip", "install", "-q", "pre-commit>=3.5.0"],
+                        check=True,
+                        capture_output=True,
+                        timeout=60,
+                    )
+                    subprocess.run(
+                        [str(python_executable), "-m", "pre_commit", "install"],
+                        check=True,
+                        capture_output=True,
+                        cwd=str(self.install_dir),
+                        timeout=30,
+                    )
+                    self._print_success("Pre-commit hooks installed")
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
+                    self._print_warning(f"Pre-commit hook setup skipped: {e}")
+                    self._print_info("Install later: pip install pre-commit && pre-commit install")
 
-            # Download NLTK data for vision summarization (Handover 0345b)
-            self._print_info("Downloading NLTK data for vision summarization...")
-            try:
-                python_executable = self.platform.get_venv_python(self.venv_dir)
-                nltk_result = self._download_nltk_data(python_executable)
-                if nltk_result["success"]:
-                    self._print_success("NLTK data downloaded successfully")
-                else:
-                    self._print_warning(f"NLTK data download failed: {nltk_result.get('error', 'Unknown error')}")
+                # Download NLTK data for vision summarization (Handover 0345b)
+                self._print_info("Downloading NLTK data for vision summarization...")
+                try:
+                    python_executable = self.platform.get_venv_python(self.venv_dir)
+                    nltk_result = self._download_nltk_data(python_executable)
+                    if nltk_result["success"]:
+                        self._print_success("NLTK data downloaded successfully")
+                    else:
+                        self._print_warning(f"NLTK data download failed: {nltk_result.get('error', 'Unknown error')}")
+                        self._print_warning("Vision summarization may not work correctly")
+                except Exception as e:
+                    self._print_warning(f"NLTK data download failed: {e}")
                     self._print_warning("Vision summarization may not work correctly")
-            except Exception as e:
-                self._print_warning(f"NLTK data download failed: {e}")
-                self._print_warning("Vision summarization may not work correctly")
+            else:
+                self._print_info("Skipping dev tools (pre-commit, NLTK). Use --dev to include them.")
 
             result["success"] = True
             return result
@@ -2906,14 +2898,16 @@ except Exception as e:
 
 @click.command()
 @click.option("--headless", is_flag=True, help="Non-interactive mode (use defaults)")
+@click.option("--dev", is_flag=True, help="Developer install (adds pre-commit hooks, NLTK data)")
 @click.option("--pg-password", default=None, help="PostgreSQL admin password (REQUIRED)")
 @click.option("--api-port", default=DEFAULT_API_PORT, type=int, help="API server port")
 @click.option("--frontend-port", default=DEFAULT_FRONTEND_PORT, type=int, help="Frontend port")
-def main(headless: bool, pg_password: str, api_port: int, frontend_port: int) -> None:
+def main(headless: bool, dev: bool, pg_password: str, api_port: int, frontend_port: int) -> None:
     """
     GiljoAI MCP v3.0 - Unified Installer
 
     Single-command installation for all platforms.
+    Use --dev to include developer tools (pre-commit hooks, NLTK data).
     """
     try:
         # Prepare settings
@@ -2923,6 +2917,7 @@ def main(headless: bool, pg_password: str, api_port: int, frontend_port: int) ->
             "api_port": api_port,
             "dashboard_port": frontend_port,
             "headless": headless,
+            "dev": dev,
         }
 
         # Create installer
