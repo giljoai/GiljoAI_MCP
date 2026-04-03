@@ -49,8 +49,7 @@ Small items that can be slotted in between larger work.
 
 | Item | Effort | Why Easy |
 |------|--------|----------|
-| Model Selection in Template Manager | Small | DB field already exists, needs UI dropdown only |
-| Dashboard Scope Selector | Small | Per-product/project filtering, straightforward Pinia + API filter |
+| 0901 Dashboard Scope Simplification | Small | Remove product selector from CE dashboard, show tenant-level stats only |
 | Mission Launch Summary | Small | Preview panel before execution, UX polish only |
 
 ---
@@ -269,11 +268,10 @@ From `completed/techdebt_march_2026-C.md`. None are blocking. Prioritize based o
 
 | Item | Effort Est. | Notes |
 |------|-------------|-------|
-| Dashboard Scope Selector | Small | Per-product/project filtering of dashboard stats |
+| 0901 Dashboard Scope Simplification | Small | Remove product selector from CE dashboard — show all-tenant stats only. Handover written. |
 | Mission Launch Summary | Small | Preview mission plan before execution. UX polish |
 | Orchestrator Message Loop Automation | Medium | Auto-polling toggle for message coordination |
 | 360 Memory Frontend UI | Medium | GitHubSettingsCard, ProductMemoryPanel, LearningTimeline. Backend complete (0135-0139) |
-| Model Selection in Template Manager | Small | DB field exists, needs UI dropdown |
 | MCP HTTP Tool Catalog Refactoring | Large | Registry pattern to replace 1096-line inline JSON. Planned for v4.0 |
 | Developer Workflow Guide | Medium | End-to-end docs + quick start tutorial |
 | Developer Panel | Aspirational | Localhost read-only panel showing architecture, APIs, dependencies |
