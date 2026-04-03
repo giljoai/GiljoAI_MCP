@@ -23,6 +23,39 @@
           </template>
         </div>
       </div>
+      <!-- Handover 0904: Auto check-in controls (multi-terminal only, after staging) -->
+      <div
+        v-if="showAutoCheckin"
+        class="auto-checkin-section"
+        data-testid="auto-checkin"
+      >
+        <div class="auto-checkin-row">
+          <span class="auto-checkin-label">Orchestrator Auto Check-in</span>
+          <v-switch
+            v-model="autoCheckinEnabled"
+            density="compact"
+            hide-details
+            color="rgb(var(--v-theme-primary))"
+            class="auto-checkin-toggle"
+            data-testid="auto-checkin-toggle"
+            @update:model-value="onAutoCheckinToggle"
+          />
+        </div>
+        <div v-if="autoCheckinEnabled" class="auto-checkin-interval" data-testid="auto-checkin-interval">
+          <span class="auto-checkin-interval-label">Check-in every:</span>
+          <v-btn-toggle
+            v-model="autoCheckinInterval"
+            mandatory
+            density="compact"
+            class="auto-checkin-btn-group"
+            @update:model-value="onAutoCheckinIntervalChange"
+          >
+            <v-btn :value="30" size="small" variant="outlined">0:30</v-btn>
+            <v-btn :value="60" size="small" variant="outlined">1:00</v-btn>
+            <v-btn :value="90" size="small" variant="outlined">1:30</v-btn>
+          </v-btn-toggle>
+        </div>
+      </div>
       <table class="agents-table" data-testid="agent-status-table">
         <thead>
           <tr>
@@ -458,6 +491,50 @@ const { sortedJobs: sortedAgents, loadJobs, store: agentJobsStore } = useAgentJo
 const isSubagentMode = computed(() => {
   return ['claude_code_cli', 'codex_cli', 'gemini_cli'].includes(props.project?.execution_mode)
 })
+
+/**
+ * Handover 0904: Auto check-in state and handlers (multi-terminal only)
+ */
+const autoCheckinEnabled = ref(props.project?.auto_checkin_enabled ?? false)
+const autoCheckinInterval = ref(props.project?.auto_checkin_interval ?? 60)
+
+const showAutoCheckin = computed(() => {
+  if (isSubagentMode.value) return false
+  const projectId = props.project?.project_id || props.project?.id
+  const state = projectStateStore.getProjectState(projectId)
+  return !!state?.stagingComplete
+})
+
+watch(() => props.project?.auto_checkin_enabled, (val) => {
+  if (val !== undefined) autoCheckinEnabled.value = val
+})
+watch(() => props.project?.auto_checkin_interval, (val) => {
+  if (val !== undefined) autoCheckinInterval.value = val
+})
+
+async function onAutoCheckinToggle(val) {
+  const projectId = props.project?.project_id || props.project?.id
+  if (!projectId) return
+  try {
+    await api.projects.update(projectId, { auto_checkin_enabled: val })
+  } catch (err) {
+    console.error('[JobsTab] Failed to update auto check-in toggle:', err)
+    autoCheckinEnabled.value = !val
+    showToast({ message: 'Failed to update auto check-in setting', type: 'error', timeout: 4000 })
+  }
+}
+
+async function onAutoCheckinIntervalChange(val) {
+  const projectId = props.project?.project_id || props.project?.id
+  if (!projectId) return
+  try {
+    await api.projects.update(projectId, { auto_checkin_interval: val })
+  } catch (err) {
+    console.error('[JobsTab] Failed to update auto check-in interval:', err)
+    autoCheckinInterval.value = props.project?.auto_checkin_interval ?? 60
+    showToast({ message: 'Failed to update check-in interval', type: 'error', timeout: 4000 })
+  }
+}
 
 /**
  * Handover 0411a: Proposed execution order phases for multi-terminal mode.
@@ -1092,6 +1169,50 @@ async function copyToClipboard(text) {
               color: white;
             }
           }
+        }
+      }
+    }
+
+    // Handover 0904: Auto check-in controls
+    .auto-checkin-section {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+      .auto-checkin-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .auto-checkin-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #8895a8;
+      }
+
+      .auto-checkin-toggle {
+        flex-shrink: 0;
+      }
+
+      .auto-checkin-interval {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 6px;
+      }
+
+      .auto-checkin-interval-label {
+        font-size: 0.72rem;
+        color: #8895a8;
+      }
+
+      .auto-checkin-btn-group {
+        :deep(.v-btn) {
+          font-size: 0.72rem;
+          min-width: 48px;
+          height: 28px;
+          text-transform: none;
         }
       }
     }
