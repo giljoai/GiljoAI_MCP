@@ -290,8 +290,8 @@ def _configure_middleware(app: FastAPI) -> None:
     # Safe default: explicit localhost origins only (no wildcards)
     if not cors_origins:
         cors_origins = [
-            "http://127.0.0.1:7274",
-            "http://localhost:7274",
+            "http://127.0.0.1:7272",
+            "http://localhost:7272",
         ]
         logger.info(f"Using default CORS origins (no wildcards): {cors_origins}")
     else:
@@ -313,7 +313,7 @@ def _configure_middleware(app: FastAPI) -> None:
 
             if current_ip:
                 # Add adapter IP to CORS origins (whether changed or not)
-                frontend_port = config.get("services", {}).get("frontend", {}).get("port", 7274)
+                frontend_port = config.get("services", {}).get("frontend", {}).get("port", 7272)
                 api_port = config.get("services", {}).get("api", {}).get("port", 7272)
                 adapter_origins = [
                     f"http://{current_ip}:{frontend_port}",
