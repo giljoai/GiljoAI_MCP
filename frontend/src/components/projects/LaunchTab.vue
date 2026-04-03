@@ -132,7 +132,7 @@
         <div class="agent-info">
           <span class="agent-name" data-testid="agent-name">{{ agent.agent_display_name?.toUpperCase() || '' }}</span>
           <div class="text-caption agent-meta">
-            <span class="status-text" :class="'status-' + agent.status">
+            <span v-if="agent.status && agent.status !== 'waiting' && agent.status !== 'pending'" class="status-text" :class="'status-' + agent.status">
               {{ agent.status }}
             </span>
             <v-tooltip v-if="agent.agent_id || agent.job_id" location="top">
