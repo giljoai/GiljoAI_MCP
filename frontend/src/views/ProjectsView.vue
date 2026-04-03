@@ -278,7 +278,7 @@
     </v-card>
 
     <!-- Create/Edit Dialog -->
-    <v-dialog v-model="showCreateDialog" max-width="800" persistent retain-focus>
+    <v-dialog v-model="showCreateDialog" max-width="800" persistent retain-focus scrollable>
       <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <span>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</span>
@@ -557,7 +557,7 @@
     </BaseDialog>
 
     <!-- Deleted Projects Modal -->
-    <v-dialog v-model="showDeletedDialog" max-width="800" persistent retain-focus>
+    <v-dialog v-model="showDeletedDialog" max-width="800" persistent retain-focus scrollable>
       <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <span>Deleted Projects ({{ deletedProjects.length }})</span>
@@ -650,7 +650,7 @@
     </v-dialog>
 
     <!-- Mission Viewer Dialog -->
-    <v-dialog v-model="showMissionDialog" max-width="800" persistent retain-focus>
+    <v-dialog v-model="showMissionDialog" max-width="800" persistent retain-focus scrollable>
       <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <span>Full Mission Text</span>
