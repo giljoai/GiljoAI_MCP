@@ -7,7 +7,7 @@
 
 # Core Framework
 fastapi>=0.100.0            # REST API and WebSockets
-uvicorn[standard]>=0.23.0   # ASGI server with production extras
+uvicorn[standard]>=0.23.0   # ASGI server with production extras (includes websockets, httptools, watchfiles)
 pydantic>=2.0.0             # Data validation and serialization
 
 # Database (PostgreSQL Only - Required)
@@ -32,8 +32,6 @@ pyyaml>=6.0.0              # YAML configuration parsing
 click>=8.1.0               # CLI interface builder
 colorama>=0.4.6            # Cross-platform colored terminal output (required by startup.py)
 httpx>=0.25.0              # Modern async HTTP client
-aiohttp>=3.9.0             # Async HTTP client (required by websocket_client.py)
-websockets>=12.0           # WebSocket client/server support
 psutil>=5.9.0              # Process and system utilities (required for network detection and statistics)
 aiofiles>=24.1.0           # Async file I/O operations (required for product vision uploads)
 tiktoken>=0.5.0            # Token counting for Context Management System (context prioritization and orchestration)
@@ -41,10 +39,8 @@ structlog>=25.0.0          # Structured logging (required by MCP context tools)
 watchdog>=3.0.0            # File system event monitoring
 
 # Vision Document Summarization (Handover 0345b - Optional CPU-based feature)
-sumy>=0.11.0               # Extractive summarization using LSA algorithm
+sumy>=0.11.0               # Extractive summarization using LSA algorithm (pulls numpy, scipy as transitive deps)
 nltk>=3.8                  # Natural language processing (tokenization, stopwords)
-numpy>=1.24.0              # Required by sumy for LSA calculations
-scipy>=1.10.0              # Required by sumy for SVD in LSA
 
 # Platform-Specific
 # pywin32 removed in Handover 0394 - no usage found in codebase
