@@ -1613,22 +1613,12 @@ onBeforeUnmount(() => {
   border-bottom: none !important;
 }
 
-/* Scrollable project list container */
+/* Project list container — no height constraint, browser scrollbar handles overflow */
 .project-list-container {
-  height: calc(100vh - 260px);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: visible;
 }
 
-/* Ensure table headers are sticky */
-.project-list-container :deep(.v-data-table__thead) {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background-color: $color-surface;
-}
-
-/* Remove default table wrapper overflow to allow container scroll */
+/* Remove default table wrapper overflow so table expands fully */
 .project-list-container :deep(.v-table__wrapper) {
   overflow: visible;
 }
