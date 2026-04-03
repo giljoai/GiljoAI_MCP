@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="showWizard" max-width="720" persistent>
+  <v-dialog v-model="showWizard" max-width="720" persistent scrollable>
     <template #activator="{ props }">
       <button v-bind="props" class="configurator-pill smooth-border">
         <v-icon size="16" class="mr-1">mdi-wrench-outline</v-icon>

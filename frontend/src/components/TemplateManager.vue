@@ -102,74 +102,85 @@
         </template>
 
         <template v-slot:item.updated_at="{ item }">
-          <span class="text-caption">{{ formatDate(item.updated_at) }}</span>
+          <span class="text-caption">{{ item._system ? '—' : formatDate(item.updated_at) }}</span>
         </template>
 
         <template v-slot:item.export_status="{ item }">
           <div class="d-flex flex-column align-center">
-            <v-chip
-              v-if="item.may_be_stale"
-              size="small"
-              color="warning"
-              prepend-icon="mdi-alert"
-              class="mb-1"
-              aria-label="Template may be outdated"
-            >
-              May be outdated
-            </v-chip>
-            <v-tooltip location="top" max-width="300">
-              <template v-slot:activator="{ props }">
-                <span
-                  v-bind="props"
-                  class="text-caption text-muted-a11y"
-                  :class="{ 'text-warning': item.may_be_stale }"
-                >
-                  {{ item.last_exported_at ? formatDate(item.last_exported_at) : 'Never exported' }}
+            <template v-if="item._system">
+              <span class="text-caption text-muted-a11y">System managed</span>
+            </template>
+            <template v-else>
+              <v-chip
+                v-if="item.may_be_stale"
+                size="small"
+                color="warning"
+                prepend-icon="mdi-alert"
+                class="mb-1"
+                aria-label="Template may be outdated"
+              >
+                May be outdated
+              </v-chip>
+              <v-tooltip location="top" max-width="300">
+                <template v-slot:activator="{ props }">
+                  <span
+                    v-bind="props"
+                    class="text-caption text-muted-a11y"
+                    :class="{ 'text-warning': item.may_be_stale }"
+                  >
+                    {{ item.last_exported_at ? formatDate(item.last_exported_at) : 'Never exported' }}
+                  </span>
+                </template>
+                <span v-if="item.may_be_stale">
+                  This template was modified after the last export. Re-export to your AI coding agents to get the
+                  latest version.
                 </span>
-              </template>
-              <span v-if="item.may_be_stale">
-                This template was modified after the last export. Re-export to your AI coding agents to get the
-                latest version.
-              </span>
-              <span v-else-if="item.last_exported_at">
-                Last exported: {{ formatDate(item.last_exported_at) }}
-              </span>
-              <span v-else>
-                This template has never been exported to your AI coding agents. Use the export feature to make it
-                available.
-              </span>
-            </v-tooltip>
+                <span v-else-if="item.last_exported_at">
+                  Last exported: {{ formatDate(item.last_exported_at) }}
+                </span>
+                <span v-else>
+                  This template has never been exported to your AI coding agents. Use the export feature to make it
+                  available.
+                </span>
+              </v-tooltip>
+            </template>
           </div>
         </template>
 
         <template v-slot:item.is_active="{ item }">
           <div class="d-flex align-center justify-center">
-            <v-switch
-              :model-value="item.is_active"
-              :disabled="!item.is_active && remainingUserSlots === 0"
-              color="primary"
-              hide-details
-              density="compact"
-              :aria-label="item.is_active ? 'Deactivate agent' : 'Activate agent'"
-              :data-testid="`template-toggle-${item.role}`"
-              @update:model-value="handleToggleActive(item, $event)"
-            />
-            <v-tooltip v-if="!item.is_active && remainingUserSlots === 0" location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" color="warning" size="small" class="ml-1">
-                  mdi-information-outline
-                </v-icon>
-              </template>
-              <span>
-                Maximum {{ userAgentLimit }} user-managed agents allowed (context budget limit).
-                Deactivate another agent first.
-              </span>
-            </v-tooltip>
+            <template v-if="item._system">
+              <v-icon color="grey" size="small">mdi-lock</v-icon>
+            </template>
+            <template v-else>
+              <v-switch
+                :model-value="item.is_active"
+                :disabled="!item.is_active && remainingUserSlots === 0"
+                color="primary"
+                hide-details
+                density="compact"
+                :aria-label="item.is_active ? 'Deactivate agent' : 'Activate agent'"
+                :data-testid="`template-toggle-${item.role}`"
+                @update:model-value="handleToggleActive(item, $event)"
+              />
+              <v-tooltip v-if="!item.is_active && remainingUserSlots === 0" location="top">
+                <template v-slot:activator="{ props }">
+                  <v-icon v-bind="props" color="warning" size="small" class="ml-1">
+                    mdi-information-outline
+                  </v-icon>
+                </template>
+                <span>
+                  Maximum {{ userAgentLimit }} user-managed agents allowed (context budget limit).
+                  Deactivate another agent first.
+                </span>
+              </v-tooltip>
+            </template>
           </div>
         </template>
 
         <template v-slot:item.actions="{ item }">
-          <div class="d-flex align-center justify-center">
+          <div v-if="item._system" />
+          <div v-else class="d-flex align-center justify-center">
             <v-menu>
               <template v-slot:activator="{ props }">
                 <v-btn
@@ -212,7 +223,7 @@
     </v-card-text>
 
     <!-- Create/Edit Dialog -->
-    <v-dialog v-model="editDialog" max-width="900px" persistent retain-focus>
+    <v-dialog v-model="editDialog" max-width="900px" persistent retain-focus scrollable>
       <v-card v-draggable class="smooth-border">
         <v-card-title class="d-flex align-center">
           <span class="text-h5">{{ editingTemplate.id ? 'Edit' : 'Create' }} Template</span>
@@ -523,6 +534,19 @@ const statusOptions = [
 ]
 
 // Computed
+// System orchestrator row (always first, not editable)
+const orchestratorRow = {
+  id: '__orchestrator__',
+  name: 'orchestrator',
+  role: 'orchestrator',
+  is_active: true,
+  export_status: null,
+  last_exported_at: null,
+  updated_at: null,
+  may_be_stale: false,
+  _system: true,
+}
+
 const filteredTemplates = computed(() => {
   let filtered = templates.value
 
@@ -534,6 +558,10 @@ const filteredTemplates = computed(() => {
     filtered = filtered.filter((t) => t.status === filterStatus.value)
   }
 
+  // Only prepend orchestrator when no filters are active
+  if (!filterCategory.value && !filterStatus.value) {
+    return [orchestratorRow, ...filtered]
+  }
   return filtered
 })
 
@@ -923,8 +951,7 @@ watch(
 }
 
 .filter-select {
-  flex: 0 0 auto;
-  max-width: 140px;
+  flex: 0 0 160px;
 }
 
 .filter-select :deep(.v-field) {
