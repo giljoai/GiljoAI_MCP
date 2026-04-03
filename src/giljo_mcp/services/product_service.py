@@ -662,7 +662,7 @@ class ProductService:
                         update(AgentJob)
                         .where(AgentJob.project_id.in_(project_ids_stmt))
                         .where(AgentJob.status == "active")
-                        .values(status="cancelled", updated_at=datetime.now(timezone.utc))
+                        .values(status="cancelled")
                     )
                     await session.execute(job_cancel_stmt)
                     await session.flush()
@@ -749,7 +749,7 @@ class ProductService:
                     update(AgentJob)
                     .where(AgentJob.project_id.in_(project_ids_stmt))
                     .where(AgentJob.status == "active")
-                    .values(status="cancelled", updated_at=datetime.now(timezone.utc))
+                    .values(status="cancelled")
                 )
                 await session.execute(job_cancel_stmt)
 
