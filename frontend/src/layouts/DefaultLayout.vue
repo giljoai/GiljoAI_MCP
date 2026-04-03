@@ -1,10 +1,6 @@
 <template>
   <v-app>
-    <AppBar
-      v-if="!route.meta.hideAppBar"
-      :current-user="currentUser"
-      @toggle-drawer="drawer = !drawer"
-    />
+    <StarField />
 
     <NavigationDrawer
       v-if="!route.meta.hideDrawer"
@@ -35,7 +31,7 @@ import { useProductStore } from '@/stores/products'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useMessageStore } from '@/stores/messages'
 import { initWebsocketEventRouter } from '@/stores/websocketEventRouter'
-import AppBar from '@/components/navigation/AppBar.vue'
+import StarField from '@/components/StarField.vue'
 import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
 import ToastManager from '@/components/ToastManager.vue'
 import LicensingDialog from '@/components/LicensingDialog.vue'
