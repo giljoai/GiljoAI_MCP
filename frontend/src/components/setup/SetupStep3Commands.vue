@@ -64,43 +64,10 @@
         </p>
       </Transition>
 
-      <!-- Fallback: manual prompt copy -->
-      <details class="fallback-section">
-        <summary class="fallback-summary">Manual setup (alternative)</summary>
-        <div class="fallback-content">
-          <p class="instruction-hint">
-            If <code class="inline-code">giljo_setup</code> is not available, copy this prompt into your {{ activeTool.name }} terminal:
-          </p>
-
-          <!-- Loading state -->
-          <div v-if="promptLoading[activeToolId]" class="prompt-loading">
-            <v-progress-circular size="20" width="2" indeterminate :color="COLOR_MUTED" />
-            <span class="prompt-loading-text">Preparing prompt...</span>
-          </div>
-
-          <!-- Error state -->
-          <div v-else-if="promptErrors[activeToolId]" class="prompt-error">
-            <v-icon size="16" :color="COLOR_ERROR_LIGHT">mdi-alert-circle-outline</v-icon>
-            <span class="prompt-error-text">{{ promptErrors[activeToolId] }}</span>
-            <v-btn size="small" variant="outlined" class="retry-btn" @click="fetchPrompt(activeToolId)">
-              Retry
-            </v-btn>
-          </div>
-
-          <!-- Copy button -->
-          <div v-else class="copy-prompt-row">
-            <v-btn
-              color="primary"
-              variant="flat"
-              prepend-icon="mdi-content-copy"
-              :disabled="!prompts[activeToolId]"
-              @click="handleCopyPrompt(activeToolId)"
-            >
-              Copy Prompt
-            </v-btn>
-          </div>
-        </div>
-      </details>
+      <!-- Manual setup pointer -->
+      <p class="manual-setup-hint">
+        For manual setup, go to <strong>Settings &gt; Integrations</strong>
+      </p>
     </div>
 
     <!-- Skip link -->
@@ -120,14 +87,11 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useClipboard } from '@/composables/useClipboard'
-import { useToast } from '@/composables/useToast'
 import { useWebSocketStore } from '@/stores/websocket'
 
 /* design-token-exempt: Vuetify color props require raw values, not SCSS vars or CSS custom properties */
 const COLOR_MUTED = '#8f97b7' // $lightest-blue
 const COLOR_SUCCESS = '#6bcf7f' // $gradient-brand-end
-const COLOR_ERROR_LIGHT = '#e57373' // lightened $color-status-error
 
 const TOOL_META = {
   claude_code: { name: 'Claude Code', logo: '/claude_pix.svg' },
@@ -154,8 +118,6 @@ const props = defineProps({
 
 const emit = defineEmits(['can-proceed', 'step-data', 'skip'])
 
-const { copy: clipboardCopy } = useClipboard()
-const { showToast } = useToast()
 const wsStore = useWebSocketStore()
 
 // Derive tool list from connectedTools
@@ -171,70 +133,10 @@ const activeTool = computed(() => TOOL_META[activeToolId.value] || { name: 'Tool
 // Active tab
 const activeToolId = ref(props.connectedTools[0] || 'claude_code')
 
-// Bootstrap prompt state per tool (initialize eagerly so template sees loading state)
-const prompts = reactive(Object.fromEntries(props.connectedTools.map((id) => [id, null])))
-const promptLoading = reactive(Object.fromEntries(props.connectedTools.map((id) => [id, true])))
-const promptErrors = reactive(Object.fromEntries(props.connectedTools.map((id) => [id, null])))
-
 // Installation status per tool (initialize eagerly)
 const toolStatus = reactive(
   Object.fromEntries(props.connectedTools.map((id) => [id, { commands: false, agents: false }])),
 )
-
-// Fetch bootstrap prompt from backend
-async function fetchBootstrapPrompt(toolId) {
-  const response = await fetch(
-    `/api/download/bootstrap-prompt?platform=${toolId}`,
-    {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-      },
-    },
-  )
-  if (!response.ok) throw new Error(`Failed: ${response.status}`)
-  const data = await response.json()
-  return data.prompt
-}
-
-async function fetchPrompt(toolId) {
-  promptLoading[toolId] = true
-  promptErrors[toolId] = null
-  try {
-    const promptText = await fetchBootstrapPrompt(toolId)
-    prompts[toolId] = promptText
-  } catch (e) {
-    promptErrors[toolId] = e.message || 'Failed to fetch bootstrap prompt'
-  } finally {
-    promptLoading[toolId] = false
-  }
-}
-
-// Fetch prompts for all connected tools
-function fetchAllPrompts() {
-  for (const id of props.connectedTools) {
-    fetchPrompt(id)
-  }
-}
-
-// Copy prompt — resets both checkboxes until server detects real downloads
-async function handleCopyPrompt(toolId) {
-  const text = prompts[toolId]
-  if (!text) return
-
-  // Reset status — user is re-running the flow
-  if (toolStatus[toolId]) {
-    toolStatus[toolId].commands = false
-    toolStatus[toolId].agents = false
-  }
-
-  const success = await clipboardCopy(text)
-  if (success) {
-    showToast({ message: 'Bootstrap prompt copied to clipboard', type: 'success' })
-  } else {
-    showToast({ message: 'Copy failed -- select the text and press Ctrl+C', type: 'warning' })
-  }
-}
 
 function getAgentCommand(toolId) {
   return AGENT_COMMANDS[toolId] || '/gil_get_agents'
@@ -307,7 +209,6 @@ function handleBootstrapComplete() {
 let unsubBootstrap = null
 
 onMounted(() => {
-  fetchAllPrompts()
   unsubCommands = wsStore.on('setup:commands_installed', handleCommandsInstalled)
   unsubAgents = wsStore.on('setup:agents_downloaded', handleAgentsDownloaded)
   unsubBootstrap = wsStore.on('setup:bootstrap_complete', handleBootstrapComplete)
@@ -421,50 +322,6 @@ onUnmounted(() => {
   border-radius: $border-radius-sharp;
 }
 
-/* Copy prompt row */
-.copy-prompt-row {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 8px;
-}
-
-/* Loading state */
-.prompt-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 16px;
-}
-
-.prompt-loading-text {
-  font-size: 0.875rem;
-  color: $lightest-blue;
-}
-
-/* Error state */
-.prompt-error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: rgba(229, 115, 115, 0.08); /* design-token-exempt: error background tint, no exact token */
-  border-radius: $border-radius-default;
-}
-
-.prompt-error-text {
-  flex: 1;
-  font-size: 0.875rem;
-  color: #e57373; /* design-token-exempt: lightened error variant, no exact token */
-}
-
-.retry-btn {
-  color: $color-brand-yellow !important;
-  border-color: $color-brand-yellow !important;
-  text-transform: none;
-  font-size: 0.75rem;
-}
-
 /* giljo_setup command display */
 .setup-command-row {
   display: flex;
@@ -489,39 +346,14 @@ onUnmounted(() => {
   margin-bottom: 16px;
 }
 
-/* Fallback manual setup */
-.fallback-section {
-  margin-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 16px;
-}
-
-.fallback-summary {
+/* Manual setup hint */
+.manual-setup-hint {
   font-size: 0.8125rem;
   color: $lightest-blue;
-  cursor: pointer;
   text-align: center;
-  list-style: none;
-}
-
-.fallback-summary::-webkit-details-marker {
-  display: none;
-}
-
-.fallback-summary::before {
-  content: '\25B6';
-  margin-right: 6px;
-  font-size: 0.625rem;
-  transition: transform 200ms ease-out;
-  display: inline-block;
-}
-
-details[open] > .fallback-summary::before {
-  transform: rotate(90deg);
-}
-
-.fallback-content {
-  margin-top: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* Checklist items */
