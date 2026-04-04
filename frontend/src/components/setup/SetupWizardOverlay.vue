@@ -193,7 +193,15 @@
           </div>
 
           <!-- Setup mode footer: restart button on final step when setup already completed -->
-          <div v-else-if="currentStep === 3 && mode === 'setup' && !closingWithCheckmarks" class="setup-wizard-footer" style="justify-content: center;">
+          <div v-else-if="currentStep === 3 && mode === 'setup' && !closingWithCheckmarks" class="setup-wizard-footer">
+            <v-btn
+              variant="text"
+              class="footer-btn-back"
+              @click="handleBack"
+            >
+              Back
+            </v-btn>
+            <v-spacer />
             <v-btn
               variant="text"
               prepend-icon="mdi-restart"
@@ -204,8 +212,8 @@
             </v-btn>
           </div>
 
-          <!-- Setup mode footer (steps 0–2) -->
-          <div v-else-if="currentStep < 3" class="setup-wizard-footer">
+          <!-- Setup mode footer (steps 0–3) -->
+          <div v-else-if="currentStep <= 3" class="setup-wizard-footer">
             <v-btn
               v-if="currentStep > 0"
               variant="text"
