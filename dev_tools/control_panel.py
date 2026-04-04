@@ -3173,6 +3173,35 @@ pg_restore -l {backup_file.name} | head -20
             cleared.append(f"{var_name} {'(was set)' if had_value else '(not set)'}")
         return cleared
 
+    @staticmethod
+    def _get_sudo_password(reason=""):
+        """Prompt for sudo password via GUI dialog.
+
+        Tries passwordless sudo first. If that fails, shows a password
+        input dialog. Returns the password string, or None if cancelled.
+        """
+        # Check if passwordless sudo works (cached credentials or NOPASSWD)
+        try:
+            check = subprocess.run(
+                ["sudo", "-n", "true"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if check.returncode == 0:
+                return ""  # Empty string signals passwordless sudo
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            pass
+
+        prompt = "Enter your sudo password:"
+        if reason:
+            prompt = f"{reason}\n\n{prompt}"
+
+        password = simpledialog.askstring(
+            "Sudo Password Required",
+            prompt,
+            show="*",
+        )
+        return password  # None if cancelled
+
     def _remove_mkcert_root_ca_from_client(self):
         """Remove the mkcert root CA from the OS trust store on this machine.
 
@@ -3207,18 +3236,26 @@ pg_restore -l {backup_file.name} | head -20
         elif system == "Linux":
             giljo_cert = Path("/usr/local/share/ca-certificates/giljoai.crt")
             if giljo_cert.exists():
-                try:
-                    subprocess.run(
-                        ["sudo", "rm", "-f", str(giljo_cert)],
-                        capture_output=True, text=True, timeout=10, check=False,
-                    )
-                    subprocess.run(
-                        ["sudo", "update-ca-certificates"],
-                        capture_output=True, text=True, timeout=15, check=False,
-                    )
-                    removed.append("mkcert root CA (Linux ca-certificates)")
-                except Exception:
-                    pass
+                # Get sudo password via GUI prompt
+                sudo_pw = self._get_sudo_password(
+                    "Removing the mkcert root CA from the system\n"
+                    "trust store requires elevated privileges."
+                )
+                if sudo_pw is not None:
+                    try:
+                        subprocess.run(
+                            ["sudo", "-S", "rm", "-f", str(giljo_cert)],
+                            input=sudo_pw + "\n",
+                            capture_output=True, text=True, timeout=10, check=False,
+                        )
+                        subprocess.run(
+                            ["sudo", "-S", "update-ca-certificates"],
+                            input=sudo_pw + "\n",
+                            capture_output=True, text=True, timeout=15, check=False,
+                        )
+                        removed.append("mkcert root CA (Linux ca-certificates)")
+                    except Exception:
+                        pass
         elif system == "Darwin":
             mkcert_path = shutil.which("mkcert")
             if mkcert_path:
@@ -3231,11 +3268,19 @@ pg_restore -l {backup_file.name} | head -20
                     if ca_dir:
                         ca_file = Path(ca_dir) / "rootCA.pem"
                         if ca_file.exists():
-                            subprocess.run(
-                                ["sudo", "security", "remove-trusted-cert", "-d", str(ca_file)],
-                                capture_output=True, text=True, timeout=10, check=False,
+                            sudo_pw = self._get_sudo_password(
+                                "Removing the mkcert root CA from the System\n"
+                                "keychain requires elevated privileges."
                             )
-                            removed.append("mkcert root CA (macOS System keychain)")
+                            if sudo_pw is not None:
+                                subprocess.run(
+                                    ["sudo", "-S", "security", "remove-trusted-cert",
+                                     "-d", str(ca_file)],
+                                    input=sudo_pw + "\n",
+                                    capture_output=True, text=True, timeout=10,
+                                    check=False,
+                                )
+                                removed.append("mkcert root CA (macOS System keychain)")
                 except Exception:
                     pass
 
@@ -3434,27 +3479,16 @@ pg_restore -l {backup_file.name} | head -20
 
             # Ask for sudo password once upfront if any operation needs it
             if needs_sudo:
-                try:
-                    check = subprocess.run(
-                        ["sudo", "-n", "true"],
-                        capture_output=True, text=True, timeout=5,
+                sudo_password = self._get_sudo_password(
+                    "Removing orphaned mkcert certificates requires\n"
+                    "elevated privileges."
+                )
+                if sudo_password is None:
+                    messagebox.showwarning(
+                        "Skipped",
+                        "Certificate removal skipped (no password provided).",
                     )
-                    if check.returncode != 0:
-                        raise subprocess.CalledProcessError(1, "sudo")
-                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-                    sudo_password = simpledialog.askstring(
-                        "Sudo Password Required",
-                        "Removing the orphaned mkcert certificate requires\n"
-                        "elevated privileges.\n\n"
-                        "Enter your sudo password:",
-                        show="*",
-                    )
-                    if not sudo_password:
-                        messagebox.showwarning(
-                            "Skipped",
-                            "Certificate removal skipped (no password provided).",
-                        )
-                        return False
+                    return False
 
             # --- Step 1: Ensure certutil is available ---
             certutil_path = shutil.which("certutil")
