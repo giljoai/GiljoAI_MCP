@@ -1,6 +1,6 @@
 <template>
   <div class="step-commands">
-    <p class="step-heading">Install commands and agents</p>
+    <p class="step-heading">Install Skills and Agents</p>
 
     <!-- Tool tabs (only if multiple connected tools) -->
     <div v-if="tools.length > 1" class="tool-tabs" role="tablist">
