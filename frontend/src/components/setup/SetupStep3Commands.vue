@@ -35,6 +35,7 @@
 
       <!-- Status checklist -->
       <div class="checklist-centered">
+        <div class="checklist-column">
         <div class="checklist-item">
           <v-icon
             size="20"
@@ -57,6 +58,7 @@
           <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.agents }]">
             Agents downloaded
           </span>
+        </div>
         </div>
       </div>
 
@@ -361,9 +363,13 @@ onUnmounted(() => {
 /* Checklist items */
 .checklist-centered {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  justify-content: center;
   margin-bottom: 8px;
+}
+
+.checklist-column {
+  display: flex;
+  flex-direction: column;
 }
 
 .checklist-item {
