@@ -43,7 +43,7 @@
         @click="handleDashboard"
         @keydown.enter.prevent="handleDashboard"
       >
-        Go to Dashboard
+        Go to Home
       </span>
     </div>
   </div>
@@ -84,7 +84,7 @@ function handleCardClick(card) {
 }
 
 function handleDashboard() {
-  emit('complete', { action: 'dashboard', route: '/dashboard' })
+  emit('complete', { action: 'home', route: '/home' })
 }
 </script>
 

@@ -94,6 +94,14 @@
             </v-btn>
             <v-btn
               variant="text"
+              prepend-icon="mdi-book-open-variant"
+              class="ml-3"
+              @click="router.push({ path: '/', query: { openGuide: 'true' } })"
+            >
+              How to Use
+            </v-btn>
+            <v-btn
+              variant="text"
               prepend-icon="mdi-help-circle-outline"
               class="ml-3"
               data-testid="startup-intro-help"
