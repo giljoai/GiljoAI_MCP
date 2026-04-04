@@ -84,6 +84,39 @@ except ImportError:
     yaml = None
     print("Warning: pyyaml not installed. Config loading will be limited.")
 
+try:
+    import bcrypt as _bcrypt
+except ImportError:
+    _bcrypt = None
+    print("Warning: bcrypt not installed. Dev admin reset will be limited.")
+
+import configparser
+
+# ---------------------------------------------------------------------------
+# Local config helpers (devtools.local.ini -- gitignored, per-developer)
+# ---------------------------------------------------------------------------
+_CONFIG_FILENAME = "devtools.local.ini"
+
+
+def _config_path(project_root: Path) -> Path:
+    return project_root / "dev_tools" / _CONFIG_FILENAME
+
+
+def load_local_config(project_root: Path) -> configparser.ConfigParser:
+    cfg = configparser.ConfigParser()
+    path = _config_path(project_root)
+    if path.exists():
+        cfg.read(str(path))
+    return cfg
+
+
+def save_local_config(project_root: Path, cfg: configparser.ConfigParser) -> None:
+    path = _config_path(project_root)
+    with open(path, "w") as f:
+        f.write("# GiljoAI Dev Tools - local config (gitignored, do not commit)\n")
+        f.write("# Delete this file to be re-prompted for credentials.\n\n")
+        cfg.write(f)
+
 
 class GiljoDevControlPanel:
     """
@@ -1424,18 +1457,32 @@ class GiljoDevControlPanel:
 
     def get_db_credentials(self) -> dict[str, Any]:
         """
-        Get database credentials from .env or prompt.
+        Get database credentials from local config, .env fallback, or prompt.
 
-        Cross-platform support:
-        - Reads PG_SUPERUSER_PASSWORD from .env (set per dev station)
-        - Falls back to prompting via dialog if not found
-        - Caches the password for the session
-        - Always connects to localhost:5432
+        Resolution order:
+        1. In-memory cache (session)
+        2. dev_tools/devtools.local.ini  [database] section
+        3. .env  PG_SUPERUSER_PASSWORD (legacy fallback)
+        4. GUI prompt (saves to devtools.local.ini for next time)
+
+        Cross-platform: uses configparser (stdlib), localhost:5432.
         """
         password = getattr(self, "_cached_pg_password", None)
+        host = "localhost"
+        port = 5432
+        user = "postgres"
 
         if not password:
-            # Try reading from .env
+            # 1. Try local config
+            cfg = load_local_config(self.project_root)
+            if cfg.has_section("database"):
+                password = cfg.get("database", "password", fallback=None)
+                host = cfg.get("database", "host", fallback=host)
+                port = cfg.getint("database", "port", fallback=port)
+                user = cfg.get("database", "user", fallback=user)
+
+        if not password:
+            # 2. Legacy fallback: .env
             env_file = self.project_root / ".env"
             if env_file.exists():
                 try:
@@ -1447,29 +1494,37 @@ class GiljoDevControlPanel:
                 except Exception:
                     pass
 
-            # Prompt if not found
-            if not password:
-                from tkinter import simpledialog
-                password = simpledialog.askstring(
-                    "PostgreSQL Password",
-                    "Enter postgres superuser password:\n\n"
-                    "(Add PG_SUPERUSER_PASSWORD=<pwd> to .env to skip this prompt)",
-                    show="*",
-                    parent=self.root,
-                )
-
+        if not password:
+            # 3. Prompt and persist
+            from tkinter import simpledialog
+            password = simpledialog.askstring(
+                "PostgreSQL Password",
+                "Enter postgres superuser password:\n\n"
+                "This will be saved to dev_tools/devtools.local.ini\n"
+                "(gitignored — safe for your machine only).",
+                show="*",
+                parent=self.root,
+            )
             if password:
-                self._cached_pg_password = password
+                cfg = load_local_config(self.project_root)
+                if not cfg.has_section("database"):
+                    cfg.add_section("database")
+                cfg.set("database", "host", host)
+                cfg.set("database", "port", str(port))
+                cfg.set("database", "user", user)
+                cfg.set("database", "password", password)
+                save_local_config(self.project_root, cfg)
 
-        credentials = {
-            "host": "localhost",
-            "port": 5432,
-            "user": "postgres",
+        if password:
+            self._cached_pg_password = password
+
+        return {
+            "host": host,
+            "port": port,
+            "user": user,
             "password": password,
             "database": "postgres",
         }
-
-        return credentials
 
     def check_db_connection(self):
         """Check if PostgreSQL is accessible."""
@@ -2553,17 +2608,58 @@ pg_restore -l {backup_file.name} | head -20
         """
         Reset to fresh state for testing setup flow.
 
-        Resets the dev admin user (patrik) to dev credentials (MHTGiljo4010!)
+        Prompts for a temporary dev admin password, hashes it with bcrypt,
         and sets must_change_password=True so you can test the password
         change flow without reinstalling.
 
         Does NOT delete venv or configs - only resets authentication state.
         """
+        if _bcrypt is None:
+            messagebox.showerror(
+                "Missing Dependency",
+                "bcrypt is not installed.\n\nInstall with: pip install bcrypt",
+            )
+            return
+
+        if psycopg2 is None:
+            messagebox.showerror(
+                "Missing Dependency", "psycopg2 is not installed.\n\nInstall with: pip install psycopg2"
+            )
+            return
+
+        # Load saved dev admin config
+        cfg = load_local_config(self.project_root)
+        saved_username = cfg.get("dev_admin", "username", fallback="")
+        saved_password = cfg.get("dev_admin", "password", fallback="")
+
+        # Prompt for dev admin username
+        from tkinter import simpledialog
+        dev_username = simpledialog.askstring(
+            "Dev Admin Username",
+            "Enter the admin username to reset:",
+            initialvalue=saved_username or "patrik",
+            parent=self.root,
+        )
+        if not dev_username:
+            return
+
+        # Prompt for temporary password
+        dev_password = simpledialog.askstring(
+            "Dev Admin Password",
+            f"Enter temporary password for '{dev_username}':\n\n"
+            "(You will be forced to change it on login)",
+            initialvalue=saved_password,
+            show="*",
+            parent=self.root,
+        )
+        if not dev_password:
+            return
+
         # Confirmation dialog
         confirm = messagebox.askyesno(
             "Confirm Reset to Fresh State",
-            "This will reset the dev admin user for testing setup flow:\n\n"
-            "- Reset 'patrik' password to 'MHTGiljo4010!'\n"
+            f"This will reset the dev admin user for testing setup flow:\n\n"
+            f"- Reset '{dev_username}' password to the one you entered\n"
             "- Set must_change_password = True\n"
             "- Set must_set_pin = True\n"
             "- Clear recovery PIN\n\n"
@@ -2579,14 +2675,14 @@ pg_restore -l {backup_file.name} | head -20
         if not confirm:
             return
 
-        self.update_status_message("Resetting dev admin user to test state...")
+        # Save for next time
+        if not cfg.has_section("dev_admin"):
+            cfg.add_section("dev_admin")
+        cfg.set("dev_admin", "username", dev_username)
+        cfg.set("dev_admin", "password", dev_password)
+        save_local_config(self.project_root, cfg)
 
-        # Reset admin user in database
-        if psycopg2 is None:
-            messagebox.showerror(
-                "Missing Dependency", "psycopg2 is not installed.\n\nInstall with: pip install psycopg2"
-            )
-            return
+        self.update_status_message("Resetting dev admin user to test state...")
 
         try:
             credentials = self.get_db_credentials()
@@ -2601,10 +2697,10 @@ pg_restore -l {backup_file.name} | head -20
             conn.autocommit = True
 
             with conn.cursor() as cur:
-                # Step 1: Reset dev admin user password and set flags
-                self.update_status_message("Resetting patrik password to dev credentials...")
-                # This is the bcrypt hash for 'MHTGiljo4010!'
-                dev_admin_hash = "$2b$12$ax7nbk8fPDnQjbgj3Cz9fe4h1bM7MDUiS9UQ0i3ZeJW8GvCVE3VGa"
+                self.update_status_message(f"Resetting {dev_username} password...")
+                dev_admin_hash = _bcrypt.hashpw(
+                    dev_password.encode("utf-8"), _bcrypt.gensalt()
+                ).decode("utf-8")
 
                 cur.execute(
                     """
@@ -2615,24 +2711,23 @@ pg_restore -l {backup_file.name} | head -20
                         recovery_pin_hash = NULL,
                         failed_pin_attempts = 0,
                         pin_lockout_until = NULL
-                    WHERE username = 'patrik'
+                    WHERE username = %s
                 """,
-                    (dev_admin_hash,),
+                    (dev_admin_hash, dev_username),
                 )
 
-                # Check if update was successful
                 if cur.rowcount == 0:
-                    raise Exception("User 'patrik' not found in database")
+                    raise Exception(f"User '{dev_username}' not found in database")
 
             conn.close()
 
             self.update_status_message("Reset complete - ready for testing!")
             messagebox.showinfo(
                 "Reset Complete",
-                "Dev admin user reset successfully!\n\n"
+                f"Dev admin user reset successfully!\n\n"
                 "You can now test the setup flow:\n\n"
                 "1. Visit http://localhost:7274\n"
-                "2. Login with patrik / MHTGiljo4010!\n"
+                f"2. Login with {dev_username} / <the password you entered>\n"
                 "3. Change password (forced)\n"
                 "4. Set recovery PIN (forced)\n\n"
                 "No reinstallation needed!",
