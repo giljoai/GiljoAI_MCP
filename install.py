@@ -1186,20 +1186,20 @@ class UnifiedInstaller:
             print(f"  {Fore.CYAN}{ca_cert}{Style.RESET_ALL}\n")
 
             if current_os == "Windows":
-                print(f"  {Fore.GREEN}On the client machine (Windows):{Style.RESET_ALL}")
-                print(f"  {Fore.CYAN}certutil -addstore -f \"ROOT\" rootCA.pem{Style.RESET_ALL}")
-                print(f"\n  {Fore.GREEN}On the client machine (macOS):{Style.RESET_ALL}")
-                print(f"  {Fore.CYAN}sudo security add-trusted-cert -d -r trustRoot \\")
-                print(f"    -k /Library/Keychains/System.keychain rootCA.pem{Style.RESET_ALL}")
-                print(f"\n  {Fore.GREEN}On the client machine (Linux):{Style.RESET_ALL}")
-                print(f"  {Fore.CYAN}sudo cp rootCA.pem /usr/local/share/ca-certificates/giljoai.crt \\")
-                print(f"    && sudo update-ca-certificates{Style.RESET_ALL}")
-            else:
-                print(f"  {Fore.GREEN}Transfer the file to the client, then:{Style.RESET_ALL}")
-                print(f"  {Fore.WHITE}Windows:{Style.RESET_ALL}  certutil -addstore -f \"ROOT\" rootCA.pem")
+                print(f"  {Fore.GREEN}1. Save rootCA.pem to the client's Downloads folder{Style.RESET_ALL}")
+                print(f"\n  {Fore.GREEN}2. Install it into the OS trust store:{Style.RESET_ALL}")
+                print(f"  {Fore.WHITE}Windows:{Style.RESET_ALL}  certutil -addstore -f \"ROOT\" %USERPROFILE%\\Downloads\\rootCA.pem")
                 print(f"  {Fore.WHITE}macOS:{Style.RESET_ALL}    sudo security add-trusted-cert -d -r trustRoot \\")
-                print(f"              -k /Library/Keychains/System.keychain rootCA.pem")
-                print(f"  {Fore.WHITE}Linux:{Style.RESET_ALL}    sudo cp rootCA.pem /usr/local/share/ca-certificates/giljoai.crt \\")
+                print(f"              -k /Library/Keychains/System.keychain ~/Downloads/rootCA.pem")
+                print(f"  {Fore.WHITE}Linux:{Style.RESET_ALL}    sudo cp ~/Downloads/rootCA.pem /usr/local/share/ca-certificates/giljoai.crt \\")
+                print(f"              && sudo update-ca-certificates")
+            else:
+                print(f"  {Fore.GREEN}1. Save rootCA.pem to the client's Downloads folder{Style.RESET_ALL}")
+                print(f"\n  {Fore.GREEN}2. Install it into the OS trust store:{Style.RESET_ALL}")
+                print(f"  {Fore.WHITE}Windows:{Style.RESET_ALL}  certutil -addstore -f \"ROOT\" %USERPROFILE%\\Downloads\\rootCA.pem")
+                print(f"  {Fore.WHITE}macOS:{Style.RESET_ALL}    sudo security add-trusted-cert -d -r trustRoot \\")
+                print(f"              -k /Library/Keychains/System.keychain ~/Downloads/rootCA.pem")
+                print(f"  {Fore.WHITE}Linux:{Style.RESET_ALL}    sudo cp ~/Downloads/rootCA.pem /usr/local/share/ca-certificates/giljoai.crt \\")
                 print(f"              && sudo update-ca-certificates")
 
             print(f"\n  {Fore.WHITE}Transfer methods: file share, USB, email, or scp.{Style.RESET_ALL}")
@@ -2211,10 +2211,10 @@ class UnifiedInstaller:
             return result
 
     def _prompt_frontend_mode(self) -> None:
-        """Prompt user to choose Production or Development mode for the frontend.
+        """Prompt user to choose Production or Contributor/Dev mode for the frontend.
 
         Production builds the frontend to frontend/dist/ so FastAPI can serve it
-        on a single port. Development removes any stale dist/ so the Vite dev
+        on a single port. Contributor/Dev removes any stale dist/ so the Vite dev
         server is used instead.
 
         Skipped silently in headless mode (defaults to Production).
@@ -2230,7 +2230,7 @@ class UnifiedInstaller:
             self._print_header("Frontend Mode")
             self._print_info("How will you use GiljoAI?")
             self._print_info("  1. Production (recommended) - Single port, optimized build")
-            self._print_info("  2. Development - Two ports, hot-reload for code changes")
+            self._print_info("  2. Contributor / Dev mode - Two ports, hot-reload for code changes")
             try:
                 mode = input("\nSelect [1/2] (default: 1): ").strip() or "1"
             except EOFError:
