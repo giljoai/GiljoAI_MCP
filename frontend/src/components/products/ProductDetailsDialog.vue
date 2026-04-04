@@ -735,7 +735,10 @@ function formatPlatform(platform) {
     windows: 'Windows',
     linux: 'Linux',
     macos: 'macOS',
-    all: 'All (Cross-platform)'
+    android: 'Android',
+    ios: 'iOS',
+    web: 'Web',
+    all: 'All (Cross-platform)',
   }
   return labels[platform] || platform
 }
