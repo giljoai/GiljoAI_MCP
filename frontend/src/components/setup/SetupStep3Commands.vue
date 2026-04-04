@@ -34,28 +34,30 @@
       </div>
 
       <!-- Status checklist -->
-      <div class="checklist-item">
-        <v-icon
-          size="20"
-          :color="toolStatus[activeToolId]?.commands ? COLOR_SUCCESS : COLOR_MUTED"
-        >
-          {{ toolStatus[activeToolId]?.commands ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
-        </v-icon>
-        <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.commands }]">
-          Slash commands installed
-        </span>
-      </div>
+      <div class="checklist-centered">
+        <div class="checklist-item">
+          <v-icon
+            size="20"
+            :color="toolStatus[activeToolId]?.commands ? COLOR_SUCCESS : COLOR_MUTED"
+          >
+            {{ toolStatus[activeToolId]?.commands ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
+          </v-icon>
+          <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.commands }]">
+            Skills downloaded
+          </span>
+        </div>
 
-      <div class="checklist-item">
-        <v-icon
-          size="20"
-          :color="toolStatus[activeToolId]?.agents ? COLOR_SUCCESS : COLOR_MUTED"
-        >
-          {{ toolStatus[activeToolId]?.agents ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
-        </v-icon>
-        <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.agents }]">
-          Agents downloaded
-        </span>
+        <div class="checklist-item">
+          <v-icon
+            size="20"
+            :color="toolStatus[activeToolId]?.agents ? COLOR_SUCCESS : COLOR_MUTED"
+          >
+            {{ toolStatus[activeToolId]?.agents ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
+          </v-icon>
+          <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.agents }]">
+            Agents downloaded
+          </span>
+        </div>
       </div>
 
       <Transition name="fade-slide">
@@ -357,12 +359,18 @@ onUnmounted(() => {
 }
 
 /* Checklist items */
+.checklist-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 .checklist-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .checklist-text {
