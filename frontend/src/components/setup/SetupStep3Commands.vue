@@ -20,42 +20,20 @@
     <!-- Active tool panel -->
     <div class="tool-panel" role="tabpanel">
 
-      <!-- 1. Copy Prompt Button -->
+      <!-- Primary path: giljo_setup -->
       <div class="panel-section">
         <p class="instruction-text">
-          Paste this into your {{ activeTool.name }} terminal and press Enter
+          Ask your {{ activeTool.name }} to run:
         </p>
-
-        <!-- Loading state -->
-        <div v-if="promptLoading[activeToolId]" class="prompt-loading">
-          <v-progress-circular size="20" width="2" indeterminate :color="COLOR_MUTED" />
-          <span class="prompt-loading-text">Preparing prompt...</span>
+        <div class="setup-command-row">
+          <code class="setup-command">giljo_setup</code>
         </div>
-
-        <!-- Error state -->
-        <div v-else-if="promptErrors[activeToolId]" class="prompt-error">
-          <v-icon size="16" :color="COLOR_ERROR_LIGHT">mdi-alert-circle-outline</v-icon>
-          <span class="prompt-error-text">{{ promptErrors[activeToolId] }}</span>
-          <v-btn size="small" variant="outlined" class="retry-btn" @click="fetchPrompt(activeToolId)">
-            Retry
-          </v-btn>
-        </div>
-
-        <!-- Copy button (no visible prompt text) -->
-        <div v-else class="copy-prompt-row">
-          <v-btn
-            color="primary"
-            variant="flat"
-            prepend-icon="mdi-content-copy"
-            :disabled="!prompts[activeToolId]"
-            @click="handleCopyPrompt(activeToolId)"
-          >
-            Copy Prompt
-          </v-btn>
-        </div>
+        <p class="instruction-hint">
+          This installs slash commands and agent templates automatically
+        </p>
       </div>
 
-      <!-- 2. Slash commands status -->
+      <!-- Status checklist -->
       <div class="checklist-item">
         <v-icon
           size="20"
@@ -68,14 +46,6 @@
         </span>
       </div>
 
-      <!-- 3. Agent command instruction -->
-      <div class="panel-section agent-section">
-        <p class="instruction-text">
-          Run <code class="inline-code">{{ getAgentCommand(activeToolId) }}</code> in your {{ activeTool.name }} terminal session
-        </p>
-      </div>
-
-      <!-- 4. Agents downloaded status -->
       <div class="checklist-item">
         <v-icon
           size="20"
@@ -86,12 +56,51 @@
         <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.agents }]">
           Agents downloaded
         </span>
-        <Transition name="fade-slide">
-          <p v-if="toolStatus[activeToolId]?.agents" class="agent-refresh-tip">
-            You can run this command again when you update your agent templates to refresh agents from your tool.
-          </p>
-        </Transition>
       </div>
+
+      <Transition name="fade-slide">
+        <p v-if="toolStatus[activeToolId]?.agents" class="instruction-hint" style="text-align: center;">
+          Run <code class="inline-code">{{ getAgentCommand(activeToolId) }}</code> in the future to refresh agent templates
+        </p>
+      </Transition>
+
+      <!-- Fallback: manual prompt copy -->
+      <details class="fallback-section">
+        <summary class="fallback-summary">Manual setup (alternative)</summary>
+        <div class="fallback-content">
+          <p class="instruction-hint">
+            If <code class="inline-code">giljo_setup</code> is not available, copy this prompt into your {{ activeTool.name }} terminal:
+          </p>
+
+          <!-- Loading state -->
+          <div v-if="promptLoading[activeToolId]" class="prompt-loading">
+            <v-progress-circular size="20" width="2" indeterminate :color="COLOR_MUTED" />
+            <span class="prompt-loading-text">Preparing prompt...</span>
+          </div>
+
+          <!-- Error state -->
+          <div v-else-if="promptErrors[activeToolId]" class="prompt-error">
+            <v-icon size="16" :color="COLOR_ERROR_LIGHT">mdi-alert-circle-outline</v-icon>
+            <span class="prompt-error-text">{{ promptErrors[activeToolId] }}</span>
+            <v-btn size="small" variant="outlined" class="retry-btn" @click="fetchPrompt(activeToolId)">
+              Retry
+            </v-btn>
+          </div>
+
+          <!-- Copy button -->
+          <div v-else class="copy-prompt-row">
+            <v-btn
+              color="primary"
+              variant="flat"
+              prepend-icon="mdi-content-copy"
+              :disabled="!prompts[activeToolId]"
+              @click="handleCopyPrompt(activeToolId)"
+            >
+              Copy Prompt
+            </v-btn>
+          </div>
+        </div>
+      </details>
     </div>
 
     <!-- Skip link -->
@@ -285,15 +294,29 @@ function handleAgentsDownloaded() {
   }
 }
 
+function handleBootstrapComplete() {
+  // giljo_setup installs both commands and agents in one shot
+  for (const id of props.connectedTools) {
+    if (toolStatus[id]) {
+      toolStatus[id].commands = true
+      toolStatus[id].agents = true
+    }
+  }
+}
+
+let unsubBootstrap = null
+
 onMounted(() => {
   fetchAllPrompts()
   unsubCommands = wsStore.on('setup:commands_installed', handleCommandsInstalled)
   unsubAgents = wsStore.on('setup:agents_downloaded', handleAgentsDownloaded)
+  unsubBootstrap = wsStore.on('setup:bootstrap_complete', handleBootstrapComplete)
 })
 
 onUnmounted(() => {
   if (unsubCommands) unsubCommands()
   if (unsubAgents) unsubAgents()
+  if (unsubBootstrap) unsubBootstrap()
 })
 </script>
 
@@ -442,9 +465,63 @@ onUnmounted(() => {
   font-size: 0.75rem;
 }
 
-/* Agent section */
-.agent-section {
+/* giljo_setup command display */
+.setup-command-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.setup-command {
+  font-family: "Roboto Mono", "Courier New", monospace;
+  font-size: 1.125rem;
+  font-weight: 600;
+  background: rgba($color-brand-yellow, 0.1);
+  color: $color-brand-yellow;
+  padding: 8px 20px;
+  border-radius: $border-radius-default;
+}
+
+.instruction-hint {
+  font-size: 0.8125rem;
+  color: $lightest-blue;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+/* Fallback manual setup */
+.fallback-section {
   margin-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 16px;
+}
+
+.fallback-summary {
+  font-size: 0.8125rem;
+  color: $lightest-blue;
+  cursor: pointer;
+  text-align: center;
+  list-style: none;
+}
+
+.fallback-summary::-webkit-details-marker {
+  display: none;
+}
+
+.fallback-summary::before {
+  content: '\25B6';
+  margin-right: 6px;
+  font-size: 0.625rem;
+  transition: transform 200ms ease-out;
+  display: inline-block;
+}
+
+details[open] > .fallback-summary::before {
+  transform: rotate(90deg);
+}
+
+.fallback-content {
+  margin-top: 12px;
 }
 
 /* Checklist items */
