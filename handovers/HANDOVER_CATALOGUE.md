@@ -19,9 +19,9 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE, **0769a-g sprint COMPLETE (2026-03-30)**. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. **0841 COMPLETE.** **0842a-f, 0842g, 0842h, 0842i-m COMPLETE.** **0843 COMPLETE.** **0834b NOT STARTED.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 COMPLETE.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
+| 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. **0841 COMPLETE.** **0842a-f, 0842g, 0842h, 0842i-m COMPLETE.** **0843 COMPLETE.** **0834b COMPLETE.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 COMPLETE.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
 | 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE. 0873a-o COMPLETE. 0874a-c COMPLETE. 0875 COMPLETE. 0880 COMPLETE.** All design system work done. Branch: feature/0873-style-centralization. |
-| 0900-0999 | Infrastructure & DevEx | **0900 COMPLETE.** 0901 NOT STARTED. **0902 COMPLETE (0902a-d all COMPLETE).** **0903 NOT STARTED.** **0904 NOT STARTED.** **0905 NOT STARTED.** **0906 NOT STARTED.** |
+| 0900-0999 | Infrastructure & DevEx | **0900 COMPLETE.** 0901 NOT STARTED. **0902 COMPLETE (0902a-d all COMPLETE).** **0903 NOT STARTED.** **0904 NOT STARTED.** **0905 COMPLETE.** **0906 COMPLETE.** |
 
 ---
 
@@ -43,8 +43,8 @@
 | 0902d | Testing + Documentation | **COMPLETE** | High | Backend/frontend tests, doc updates. Depends on 0902a+b+c. 1.5 hours. |
 | 0903 | Streamlined CLI Install | Not Started | Medium | Post-launch. `pip install giljo-mcp` → `giljo-mcp init` → paste MCP command → done. Supersedes 0409. Depends on 0902. 12-16 hours. |
 | 0904 | Orchestrator Auto Check-in | Not Started | Medium | Multi-terminal only. Toggle + interval slider (30/60/90s) on Implementation tab. Protocol injection (CH6) into orchestrator instructions. 4-6 hours. |
-| 0905 | Dependency Cleanup & Lazy Imports | Not Started | Medium | Remove unused aiohttp, redundant explicit deps. Lazy-load vision summarizer (167 MB numpy/scipy off startup). 1 hour. |
-| 0906 | install.py --dev Flag | Not Started | Medium | Gate pre-commit + NLTK behind --dev flag. Fix duplicate demo seeding. Update README. 1 hour. |
+| 0905 | Dependency Cleanup & Lazy Imports | **COMPLETE** | Medium | Remove unused aiohttp, redundant explicit deps. Lazy-load vision summarizer (167 MB numpy/scipy off startup). |
+| 0906 | install.py --dev Flag | **COMPLETE** | Medium | Gate pre-commit + NLTK behind --dev flag. Fix duplicate demo seeding. Update README. |
 
 ### Deferred (Still in Root Folder)
 
@@ -103,7 +103,7 @@
 | 0831 | Product Context Tuning — Scope Drift Detection & Review | 2026-03-23 | COMPLETE — ProductTuningService, submit_tuning_review MCP tool #24, 5 tuning endpoints, 2 Vue components, 39 tests, staleness notification hook. |
 | 0836 | Multi-Platform Agent Template Export (all sub-handovers) | 2026-03-23 | COMPLETE — 0836a-e: assembler+MCP, slash commands, frontend UI, two-phase install, Codex skill rewrite, Gemini format fix. All 3 platforms verified working. |
 | 0835 | Bearer Auth Migration & HTTPS Contextual Warnings | 2026-03-22 | COMPLETE — wizard outputs Authorization: Bearer for all CLIs, HTTPS warnings in wizard/network tab/installer, protocol toggle re-attach warning |
-| 0834b | Remote Client Certificate Trust Modal | 2026-04-03 | NOT STARTED — Cert trust modal for remote HTTPS clients before setup wizard, rootCA download endpoint, Network settings download section. Completes missing 0843 deliverables. |
+| 0834b | Remote Client Certificate Trust Modal | 2026-04-03 | COMPLETE — Cert trust modal for remote HTTPS clients before setup wizard, rootCA download endpoint, Network settings download section. |
 | 0834 | Dynamic Protocol Resolution (HTTP/HTTPS) | 2026-03-22 | COMPLETE — all URL-generating code respects ssl_enabled config, 14 files fixed across 3 phases, integration test added |
 | 0833 | Vision Stats Multi-Doc Aggregation & DB Test Button Fix | 2026-03-22 | COMPLETE — multi-doc stats aggregation, missing testDatabase API method, Windows path fix in handover instructions |
 | 0832 | SSL/HTTPS Admin UI Toggle | 2026-03-21 | COMPLETE — interactive SSL toggle in Admin Settings > Network tab, auto-generates self-signed certs, config.yaml persistence |
@@ -245,7 +245,7 @@
 | ID | Title | Status |
 |----|-------|--------|
 | 0835 | Bearer Auth Migration & HTTPS Contextual Warnings | **COMPLETE** (2026-03-22, Bearer auth in wizard, HTTPS warnings, protocol toggle re-attach warning) |
-| 0834b | Remote Client Certificate Trust Modal | **NOT STARTED** (2026-04-03, cert modal for remote HTTPS clients, rootCA download endpoint, Network settings section) |
+| 0834b | Remote Client Certificate Trust Modal | **COMPLETE** (2026-04-03, cert modal for remote HTTPS clients, rootCA download endpoint, Network settings section) |
 | 0834 | Dynamic Protocol Resolution (HTTP/HTTPS) | **COMPLETE** (2026-03-22, all URL-generating code respects ssl_enabled, 14 files fixed, integration test) |
 | 0833 | Vision Stats Multi-Doc Aggregation & DB Test Button Fix | **COMPLETE** (2026-03-22, multi-doc vision stats aggregation, missing testDatabase API method, Windows path fix) |
 | 0832 | SSL/HTTPS Admin UI Toggle | **COMPLETE** (2026-03-21, interactive SSL toggle in Admin > Network, auto-cert generation, config.yaml persistence) |
