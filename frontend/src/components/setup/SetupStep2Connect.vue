@@ -194,7 +194,8 @@
       </div>
 
       <!-- 4. Connection Status -->
-      <div class="panel-section">
+      <div class="panel-section connection-section">
+        <p class="instruction-text">Start your AI Coding tool</p>
         <label class="section-label">Connection Status</label>
         <div class="connection-status">
           <span
@@ -208,9 +209,7 @@
             {{ connectionStatus[activeToolId] === 'connected' ? 'Connected' : 'Not connected' }}
           </span>
         </div>
-        <p class="instruction-text">
-          After pasting the config and restarting your tool, ask it to run a GiljoAI health check.
-        </p>
+        <p class="instruction-text">Ask your AI Coding tool to run a health check</p>
       </div>
     </div>
   </div>
@@ -619,6 +618,10 @@ onUnmounted(() => {
 }
 
 /* Connection status */
+.connection-section {
+  text-align: center;
+}
+
 .connection-status {
   margin-bottom: 8px;
 }
@@ -626,6 +629,7 @@ onUnmounted(() => {
 .status-indicator {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-size: 0.875rem;
   font-weight: 500;
