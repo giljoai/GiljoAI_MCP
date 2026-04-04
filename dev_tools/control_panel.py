@@ -602,17 +602,17 @@ class GiljoDevControlPanel:
             foreground="red",
         ).grid(row=2, column=2, sticky="w", padx=5)
 
-        # Row 3: Remote workstation cert cleanup
+        # Row 3: Full certificate cleanup
         ttk.Button(
             section,
-            text="Remote WS Cert Cleanup",
+            text="Full Cert Cleanup",
             command=self.cleanup_remote_workstation_certs,
             width=25,
         ).grid(row=3, column=0, pady=5, padx=5)
 
         ttk.Label(
             section,
-            text="Clear Node.js cert env vars (this machine)",
+            text="Remove all cert trust (OS + Node.js env vars)",
             font=("Arial", 8),
         ).grid(row=4, column=0, sticky="w", padx=5)
 
@@ -3044,19 +3044,14 @@ pg_restore -l {backup_file.name} | head -20
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
                     errors.append(f"mkcert CA uninstall: {e}")
 
-            # Clear Node.js cert trust env vars (current process + persistent)
-            for var_name in ("NODE_OPTIONS", "NODE_EXTRA_CA_CERTS"):
-                os.environ.pop(var_name, None)
-                if platform.system() == "Windows":
-                    try:
-                        subprocess.run(
-                            ["powershell", "-Command",
-                             f"[System.Environment]::SetEnvironmentVariable('{var_name}', $null, 'User')"],
-                            capture_output=True, text=True, timeout=10,
-                        )
-                    except Exception:
-                        pass
-            deleted.append("Node.js cert trust env vars (NODE_OPTIONS, NODE_EXTRA_CA_CERTS)")
+            # Clear Node.js cert trust env vars (current process + persistent, cross-platform)
+            env_cleared = self._clear_node_cert_env_vars()
+            if env_cleared:
+                deleted.append("Node.js cert trust env vars (NODE_OPTIONS, NODE_EXTRA_CA_CERTS)")
+
+            # Remove mkcert root CA from client OS trust store (cross-platform)
+            ca_removed = self._remove_mkcert_root_ca_from_client()
+            deleted.extend(ca_removed)
 
         except Exception as e:
             errors.append(f"Certificate cleanup: {e}")
@@ -3124,33 +3119,13 @@ pg_restore -l {backup_file.name} | head -20
 
         self.update_status_message("Pristine reset complete")
 
-    def cleanup_remote_workstation_certs(self):
+    def _clear_node_cert_env_vars(self):
+        """Clear NODE_OPTIONS and NODE_EXTRA_CA_CERTS from current process and persistent storage.
+
+        Works cross-platform:
+        - Windows: clears User environment via PowerShell
+        - Linux/macOS: removes export lines from ~/.bashrc, ~/.zshrc, ~/.config/fish/config.fish
         """
-        Clean up Node.js certificate trust env vars on this machine.
-
-        Use this on a remote workstation (laptop, desktop) that was configured
-        to connect to a GiljoAI MCP server over HTTPS. Removes NODE_OPTIONS
-        and NODE_EXTRA_CA_CERTS from both the current session and persistent
-        user environment variables.
-
-        Does NOT remove the mkcert root CA from the Windows cert store
-        (that's for browser trust, not Node.js).
-        """
-        confirm = messagebox.askyesno(
-            "Remote Workstation Cert Cleanup",
-            "This will remove Node.js certificate trust settings:\n\n"
-            "• NODE_OPTIONS (current + persistent)\n"
-            "• NODE_EXTRA_CA_CERTS (current + persistent)\n\n"
-            "This does NOT remove the browser certificate trust.\n"
-            "After cleanup, AI tools (Claude Code, Codex, Gemini)\n"
-            "will need the cert trust command re-applied to connect.\n\n"
-            "Continue?",
-        )
-
-        if not confirm:
-            self.update_status_message("Cert cleanup cancelled")
-            return
-
         cleared = []
         for var_name in ("NODE_OPTIONS", "NODE_EXTRA_CA_CERTS"):
             had_value = var_name in os.environ
@@ -3161,17 +3136,135 @@ pg_restore -l {backup_file.name} | head -20
                     subprocess.run(
                         ["powershell", "-Command",
                          f"[System.Environment]::SetEnvironmentVariable('{var_name}', $null, 'User')"],
-                        capture_output=True, text=True, timeout=10,
+                        capture_output=True, text=True, timeout=10, check=False,
                     )
                 except Exception:
                     pass
+            else:
+                # Linux/macOS: remove from shell rc files
+                home = Path.home()
+                rc_files = [
+                    home / ".bashrc",
+                    home / ".zshrc",
+                    home / ".config" / "fish" / "config.fish",
+                ]
+                for rc_file in rc_files:
+                    if rc_file.exists():
+                        try:
+                            original = rc_file.read_text()
+                            cleaned = "\n".join(
+                                line for line in original.splitlines()
+                                if var_name not in line
+                            )
+                            if cleaned != original:
+                                rc_file.write_text(cleaned + "\n")
+                        except Exception:
+                            pass
 
             cleared.append(f"{var_name} {'(was set)' if had_value else '(not set)'}")
+        return cleared
 
+    def _remove_mkcert_root_ca_from_client(self):
+        """Remove the mkcert root CA from the OS trust store on this machine.
+
+        Works cross-platform:
+        - Windows: removes from Windows cert store via certutil
+        - Linux: removes from /usr/local/share/ca-certificates/ and updates
+        - macOS: removes from System keychain
+        """
+        removed = []
+        system = platform.system()
+
+        if system == "Windows":
+            # Find the mkcert root CA subject to remove it
+            mkcert_path = shutil.which("mkcert")
+            if mkcert_path:
+                try:
+                    result = subprocess.run(
+                        [mkcert_path, "-CAROOT"],
+                        capture_output=True, text=True, timeout=5, check=False,
+                    )
+                    ca_dir = result.stdout.strip()
+                    if ca_dir:
+                        ca_file = Path(ca_dir) / "rootCA.pem"
+                        if ca_file.exists():
+                            subprocess.run(
+                                ["certutil", "-delstore", "ROOT", "mkcert"],
+                                capture_output=True, text=True, timeout=10, check=False,
+                            )
+                            removed.append("mkcert root CA (Windows cert store)")
+                except Exception:
+                    pass
+        elif system == "Linux":
+            giljo_cert = Path("/usr/local/share/ca-certificates/giljoai.crt")
+            if giljo_cert.exists():
+                try:
+                    subprocess.run(
+                        ["sudo", "rm", "-f", str(giljo_cert)],
+                        capture_output=True, text=True, timeout=10, check=False,
+                    )
+                    subprocess.run(
+                        ["sudo", "update-ca-certificates"],
+                        capture_output=True, text=True, timeout=15, check=False,
+                    )
+                    removed.append("mkcert root CA (Linux ca-certificates)")
+                except Exception:
+                    pass
+        elif system == "Darwin":
+            mkcert_path = shutil.which("mkcert")
+            if mkcert_path:
+                try:
+                    result = subprocess.run(
+                        [mkcert_path, "-CAROOT"],
+                        capture_output=True, text=True, timeout=5, check=False,
+                    )
+                    ca_dir = result.stdout.strip()
+                    if ca_dir:
+                        ca_file = Path(ca_dir) / "rootCA.pem"
+                        if ca_file.exists():
+                            subprocess.run(
+                                ["sudo", "security", "remove-trusted-cert", "-d", str(ca_file)],
+                                capture_output=True, text=True, timeout=10, check=False,
+                            )
+                            removed.append("mkcert root CA (macOS System keychain)")
+                except Exception:
+                    pass
+
+        return removed
+
+    def cleanup_remote_workstation_certs(self):
+        """
+        Full certificate cleanup on this machine (server or remote workstation).
+
+        Removes:
+        - mkcert root CA from OS trust store (browser trust)
+        - NODE_OPTIONS / NODE_EXTRA_CA_CERTS from env + shell rc files
+        """
+        confirm = messagebox.askyesno(
+            "Remote Workstation Cert Cleanup",
+            "This will remove ALL certificate trust on this machine:\n\n"
+            "Browser trust:\n"
+            "• mkcert root CA from OS trust store\n\n"
+            "AI tool trust:\n"
+            "• NODE_OPTIONS (current + persistent)\n"
+            "• NODE_EXTRA_CA_CERTS (current + persistent)\n\n"
+            "After cleanup, both browsers and AI tools will\n"
+            "show certificate warnings until re-configured.\n\n"
+            "Continue?",
+        )
+
+        if not confirm:
+            self.update_status_message("Cert cleanup cancelled")
+            return
+
+        ca_removed = self._remove_mkcert_root_ca_from_client()
+        env_cleared = self._clear_node_cert_env_vars()
+
+        all_items = ca_removed + env_cleared
         messagebox.showinfo(
             "Cert Cleanup Complete",
-            "Node.js cert trust env vars cleared:\n\n"
-            + "\n".join(f"✓ {c}" for c in cleared)
+            "Certificate trust removed:\n\n"
+            + "\n".join(f"✓ {c}" for c in all_items)
             + "\n\nRestart your terminal for changes to take effect.",
         )
         self.update_status_message("Remote workstation cert cleanup complete")
