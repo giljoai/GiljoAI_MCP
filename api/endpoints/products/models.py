@@ -57,7 +57,8 @@ class ProductCreate(BaseModel):
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
     target_platforms: Optional[list[str]] = Field(
-        default=["all"], description="Target platforms: windows, linux, macos, or all - Handover 0425"
+        default=["all"],
+        description="Target platforms: windows, linux, macos, android, ios, web, or all - Handover 0425",
     )
 
 
@@ -76,7 +77,7 @@ class ProductUpdate(BaseModel):
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
     target_platforms: Optional[list[str]] = Field(
-        None, description="Target platforms: windows, linux, macos, or all - Handover 0425"
+        None, description="Target platforms: windows, linux, macos, android, ios, web, or all - Handover 0425"
     )
 
 
@@ -109,7 +110,8 @@ class ProductResponse(BaseModel):
         description="360 Memory storage (GitHub, sequential_history, context) - Handover 0412",
     )
     target_platforms: Optional[list[str]] = Field(
-        default=["all"], description="Target platforms: windows, linux, macos, or all - Handover 0425"
+        default=["all"],
+        description="Target platforms: windows, linux, macos, android, ios, web, or all - Handover 0425",
     )
 
 
