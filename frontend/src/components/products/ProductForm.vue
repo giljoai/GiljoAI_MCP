@@ -464,6 +464,15 @@
                   />
                   <v-checkbox
                     v-model="productForm.targetPlatforms"
+                    value="web"
+                    label="Web"
+                    hide-details
+                    density="comfortable"
+                    :disabled="isAllPlatformSelected"
+                    @update:model-value="handlePlatformChange"
+                  />
+                  <v-checkbox
+                    v-model="productForm.targetPlatforms"
                     value="all"
                     label="All (Cross-platform)"
                     hide-details

@@ -40,7 +40,12 @@ from src.giljo_mcp.exceptions import (
 )
 from src.giljo_mcp.models import Product, Project, Task, VisionDocument
 from src.giljo_mcp.models.agent_identity import AgentJob
-from src.giljo_mcp.models.products import ProductArchitecture, ProductTechStack, ProductTestConfig
+from src.giljo_mcp.models.products import (
+    VALID_TARGET_PLATFORMS,
+    ProductArchitecture,
+    ProductTechStack,
+    ProductTestConfig,
+)
 from src.giljo_mcp.schemas.jsonb_validators import validate_product_memory
 from src.giljo_mcp.schemas.service_responses import (
     CascadeImpact,
@@ -122,17 +127,17 @@ class ProductService:
             Tuple of (is_valid, error_message)
 
         Validation Rules:
-            - All values must be in ['windows', 'linux', 'macos', 'all']
+            - All values must be in VALID_TARGET_PLATFORMS
             - If 'all' is present, it must be the only value
         """
         if not target_platforms:
             return False, "target_platforms cannot be empty"
 
-        valid_platforms = {"windows", "linux", "macos", "android", "ios", "all"}
-        invalid_platforms = set(target_platforms) - valid_platforms
+        invalid_platforms = set(target_platforms) - VALID_TARGET_PLATFORMS
 
         if invalid_platforms:
-            return False, f"Invalid platform values: {', '.join(invalid_platforms)}"
+            valid_list = ", ".join(sorted(VALID_TARGET_PLATFORMS))
+            return False, f"Invalid platform values: {', '.join(sorted(invalid_platforms))}. Valid values: {valid_list}"
 
         if "all" in target_platforms and len(target_platforms) > 1:
             return False, "'all' platform cannot be combined with specific platforms"
@@ -252,7 +257,7 @@ class ProductService:
             test_config: Test configuration dict
             core_features: Core product features string
             product_memory: 360 Memory data (GitHub, sequential_history, context) - Handover 0135
-            target_platforms: Target OS platforms (windows, linux, macos, or all) - Handover 0425
+            target_platforms: Target platforms (windows, linux, macos, android, ios, web, or all) - Handover 0425
 
         Returns:
             Product ORM model after commit and refresh
