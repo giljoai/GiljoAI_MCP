@@ -430,6 +430,7 @@ function handleSkip() {
   background: rgba(0, 0, 0, 0.3);
   border-radius: $border-radius-default;
   padding: 10px 40px 10px 12px;
+  margin: 0 15%;
 }
 
 .cert-command {
