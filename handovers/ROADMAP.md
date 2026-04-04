@@ -2,7 +2,7 @@
 
 **Purpose:** Forward-looking planning document for post-launch work, including the CE/SaaS branch split and feature development.
 **Replaces:** PRIORITY_ORDER.md served as the launch checklist (now complete). This document is the active planning reference.
-**Last Updated:** 2026-03-30
+**Last Updated:** 2026-04-03
 
 ---
 
@@ -12,22 +12,22 @@ Prioritized sequence for remaining handovers and quick wins. Tier 1 items are st
 
 ### Tier 1: Quick Wins (1-3 hours each)
 
-| Order | ID | Title | Effort | Rationale |
-|-------|-----|-------|--------|-----------|
-| 1 | 0841 | Slash Command Optimization (`/gil_add`) | 1-2 hrs | Standalone refactor, 343→40 lines, no dependencies |
+| Order | ID | Title | Effort | Status |
+|-------|-----|-------|--------|--------|
+| 1 | ~~0841~~ | ~~Slash Command Optimization (`/gil_add`)~~ | ~~1-2 hrs~~ | **COMPLETE** |
 | 2 | 0277 | Design Token Standardization (Radius & Shadow) | 1-2 hrs | ~15 CSS-only file edits, no backend risk |
-| 3 | 0847 | Tool-Aware Orchestrator Protocol | 2-3 hrs | High priority, self-contained protocol/config changes |
-| 4 | — | Housekeeping (move ref docs, archive PRIORITY_ORDER.md) | 30 min | Zero risk, declutters handovers folder |
+| 3 | ~~0847~~ | ~~Tool-Aware Orchestrator Protocol~~ | ~~2-3 hrs~~ | **COMPLETE** |
+| 4 | — | ~~Housekeeping (move ref docs, archive PRIORITY_ORDER.md)~~ | ~~30 min~~ | **COMPLETE** (2026-04-03) |
 
-### Tier 2: 0842 Series Closure (merge-blocking)
+### Tier 2: 0842 Series Closure — **COMPLETE**
 
-Complete in this order — 0842L must be last as it audits the full branch.
+All 0842 handovers merged to master. Branch deleted.
 
-| Order | ID | Title | Effort | Notes |
-|-------|-----|-------|--------|-------|
-| 5 | 0842h | Frontend Tests (Tuning/Vision) | 2-3 hrs | 11 Vitest tests, no feature code |
-| 6 | 0842g | Per-Document AI Summary Badges | 2-3 hrs | Small UI + API extension |
-| 7 | 0842L | Post-Implementation Audit & Cleanup | 3-4 hrs | Final gate before 0842 branch merges to master |
+| Order | ID | Title | Status |
+|-------|-----|-------|--------|
+| 5 | ~~0842h~~ | ~~Frontend Tests (Tuning/Vision)~~ | **COMPLETE** |
+| 6 | ~~0842g~~ | ~~Per-Document AI Summary Badges~~ | **COMPLETE** |
+| 7 | ~~0842L~~ | ~~Post-Implementation Audit & Cleanup~~ | **COMPLETE** |
 
 ### Tier 3: Pre-Launch (required before public repo)
 
@@ -55,12 +55,12 @@ Small items that can be slotted in between larger work.
 
 ## Current State
 
-- All launch-blocking handovers: **COMPLETE** (330+ archived)
+- All launch-blocking handovers: **COMPLETE** (530+ archived)
 - All actionable tech debt: **RESOLVED** (techdebt_march_2026-C.md archived)
 - Test suite: **0 failures** across 91 frontend files, 1390+ backend tests
 - Code quality: **8.35/10** (Perfect Score Sprint 0765a-s)
-- Active feature branch: **feature/0842-vision-doc-analysis** (45+ commits, merge-ready after remaining items)
-- Active handovers: **7** (2 on 0842, 7 on 0855, plus pre-launch items below)
+- Feature branches: **all merged to master** (0842, 0855, 0873 series all complete)
+- Active handovers: **8** (0844 series, 0901, 0903, 0904, plus pre-launch items)
 - Branch: **master** only (no `main` or `saas` branch yet)
 - SaaS scaffold: frontend `.gitkeep` placeholders only, no backend dirs
 
@@ -215,30 +215,15 @@ Once branches exist, this is the ongoing development model.
 
 ## Active Implementation Work
 
-### 0842 Series — Vision Document Analysis (remaining)
+### Completed Series
 
-| ID | Title | Effort | Priority | Handover |
-|----|-------|--------|----------|----------|
-| 0842g | Per-Document AI Summary Badges | 2-3 hrs | Low | `handovers/0842g_AI_SUMMARY_BADGES_PER_DOCUMENT.md` |
-| 0842h | Vitest Frontend Tests for Tuning/Vision | 2-3 hrs | Medium | `handovers/0842h_FRONTEND_TESTS_TUNING_VISION.md` |
-
-### 0855 Series — Setup Wizard Learning Overlay (7 handovers, not started)
-
-| ID | Title | Handover |
-|----|-------|----------|
-| 0855a | Backend Schema | `handovers/0855a_SETUP_WIZARD_BACKEND_SCHEMA.md` |
-| 0855b | WebSocket Events | `handovers/0855b_SETUP_WIZARD_WEBSOCKET_EVENTS.md` |
-| 0855c | Overlay Step 1 | `handovers/0855c_SETUP_WIZARD_OVERLAY_STEP1.md` |
-| 0855d | Step 2 Connect | `handovers/0855d_SETUP_WIZARD_STEP2_CONNECT.md` |
-| 0855e | Step 3 Commands | `handovers/0855e_SETUP_WIZARD_STEP3_COMMANDS.md` |
-| 0855f | Step 4 Wiring | `handovers/0855f_SETUP_WIZARD_STEP4_WIRING.md` |
-| 0855g | Learning Overlay Cleanup | `handovers/0855g_SETUP_WIZARD_LEARNING_OVERLAY_CLEANUP.md` |
-
-### 0841 — Slash Command Optimization (standalone)
-
-| ID | Title | Effort | Priority | Handover |
-|----|-------|--------|----------|----------|
-| 0841 | `/gil_add` Slash Command Token Bloat Rewrite | 1-2 hrs | Low | `handovers/0841_slash_command_optimization.md` |
+- **0842 Series** — Vision Document Analysis: all handovers COMPLETE, merged to master
+- **0855 Series** — Setup Wizard Learning Overlay (0855a-g): all COMPLETE, merged to master
+- **0841** — Slash Command Optimization: COMPLETE
+- **0860a-d** — Code Provenance & License Audit: CE PASS, SaaS PASS
+- **0905** — Dependency Cleanup & Lazy Imports: COMPLETE
+- **0906** — install.py --dev Flag: COMPLETE
+- **0834b** — Remote Client Certificate Trust Modal: COMPLETE
 
 ### Pre-Launch Items (unnumbered)
 
