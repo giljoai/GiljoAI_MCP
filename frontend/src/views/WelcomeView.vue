@@ -144,6 +144,7 @@
       v-model="showSetupOverlay"
       :current-step="setupStep"
       :selected-tools="setupSelectedTools"
+      :setup-step-completed="setupStepCompleted"
       :mode="setupOverlayMode"
       @update:current-step="setupStep = $event"
       @step-complete="handleStepComplete"
@@ -525,6 +526,11 @@ onMounted(async () => {
   } catch {
     appVersion.value = ''
   }
+
+  // Ensure frontend config is loaded before cert modal check (needs ssl_enabled + is_remote_client)
+  try {
+    await configService.fetchConfig()
+  } catch { /* config may fail on first load — cert modal just won't show */ }
 
   // Auto-launch overlay on first login or when directed from UserSettings
   if (route.query.openSetup === 'true' || !setupComplete.value) {

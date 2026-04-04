@@ -42,80 +42,80 @@
             </p>
 
             <!-- Step 1: Download -->
-            <div class="cert-step">
-              <div class="cert-step-number">1</div>
-              <div class="cert-step-content">
-                <div class="cert-step-title">Download the root certificate</div>
-                <v-btn
-                  color="primary"
-                  variant="flat"
-                  prepend-icon="mdi-download"
-                  class="mt-2 footer-btn-next"
-                  :loading="downloading"
-                  @click="downloadCert"
-                >
-                  Download rootCA.pem
-                </v-btn>
-                <div v-if="downloadError" class="cert-error mt-2">{{ downloadError }}</div>
-              </div>
-            </div>
-
-            <!-- Step 2: Install into OS trust store -->
-            <div class="cert-step">
-              <div class="cert-step-number">2</div>
-              <div class="cert-step-content">
-                <div class="cert-step-title">Install it into your OS trust store</div>
-                <p class="cert-hint">Save the file to your Downloads folder, then run:</p>
-
-                <div class="os-tabs">
-                  <button
-                    v-for="os in osList"
-                    :key="os.id"
-                    :class="['os-tab', { 'os-tab--active': activeOs === os.id }]"
-                    @click="activeOs = os.id"
-                  >
-                    {{ os.label }}
-                  </button>
-                </div>
-
-                <div class="cert-command-block smooth-border">
-                  <code class="cert-command">{{ osCommands[activeOs] }}</code>
+              <div class="cert-step">
+                <div class="cert-step-number">1</div>
+                <div class="cert-step-content">
+                  <div class="cert-step-title">Download the root certificate</div>
                   <v-btn
-                    icon
-                    variant="text"
-                    size="x-small"
-                    class="cert-copy-btn"
-                    aria-label="Copy command"
-                    @click="copyCommand(osCommands[activeOs], 'os')"
+                    color="primary"
+                    variant="flat"
+                    prepend-icon="mdi-download"
+                    class="mt-2 footer-btn-next"
+                    :loading="downloading"
+                    @click="downloadCert"
                   >
-                    <v-icon size="14">{{ copiedOs ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
+                    Download rootCA.pem
                   </v-btn>
+                  <div v-if="downloadError" class="cert-error mt-2">{{ downloadError }}</div>
                 </div>
               </div>
-            </div>
 
-            <!-- Step 3: NODE_OPTIONS -->
-            <div class="cert-step">
-              <div class="cert-step-number">3</div>
-              <div class="cert-step-content">
-                <div class="cert-step-title">Enable Node.js system CA trust</div>
-                <p class="cert-hint">Required for Claude Code, Codex CLI, and Gemini CLI:</p>
+              <!-- Step 2: Install into OS trust store -->
+              <div class="cert-step">
+                <div class="cert-step-number">2</div>
+                <div class="cert-step-content">
+                  <div class="cert-step-title">Install it into your OS trust store</div>
+                  <p class="cert-hint">Save the file to your Downloads folder, then run:</p>
 
-                <div class="cert-command-block smooth-border">
-                  <code class="cert-command">{{ nodeCommand }}</code>
-                  <v-btn
-                    icon
-                    variant="text"
-                    size="x-small"
-                    class="cert-copy-btn"
-                    aria-label="Copy NODE_OPTIONS command"
-                    @click="copyCommand(nodeCommand, 'node')"
-                  >
-                    <v-icon size="14">{{ copiedNode ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
-                  </v-btn>
+                  <div class="os-tabs">
+                    <button
+                      v-for="os in osList"
+                      :key="os.id"
+                      :class="['os-tab', { 'os-tab--active': activeOs === os.id }]"
+                      @click="activeOs = os.id"
+                    >
+                      {{ os.label }}
+                    </button>
+                  </div>
+
+                  <div class="cert-command-block smooth-border">
+                    <code class="cert-command">{{ osCommands[activeOs] }}</code>
+                    <v-btn
+                      icon
+                      variant="text"
+                      size="x-small"
+                      class="cert-copy-btn"
+                      aria-label="Copy command"
+                      @click="copyCommand(osCommands[activeOs], 'os')"
+                    >
+                      <v-icon size="14">{{ copiedOs ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
+                    </v-btn>
+                  </div>
                 </div>
               </div>
-            </div>
+
+              <!-- Step 3: NODE_OPTIONS -->
+              <div class="cert-step">
+                <div class="cert-step-number">3</div>
+                <div class="cert-step-content">
+                  <div class="cert-step-title">Enable Node.js system CA trust</div>
+                  <p class="cert-hint">Required for Claude Code, Codex CLI, and Gemini CLI:</p>
+
+                  <div class="cert-command-block smooth-border">
+                    <code class="cert-command">{{ nodeCommand }}</code>
+                    <v-btn
+                      icon
+                      variant="text"
+                      size="x-small"
+                      class="cert-copy-btn"
+                      aria-label="Copy NODE_OPTIONS command"
+                      @click="copyCommand(nodeCommand, 'node')"
+                    >
+                      <v-icon size="14">{{ copiedNode ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
+                    </v-btn>
+                  </div>
+                </div>
+              </div>
           </div>
 
           <!-- Footer — same pattern as setup wizard -->
@@ -351,11 +351,14 @@ function handleSkip() {
   line-height: 1.6;
   margin-bottom: 24px;
   text-align: center;
+  padding: 0 15%;
 }
 
 .cert-step {
   display: flex;
-  gap: 14px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   margin-bottom: 20px;
 }
 
@@ -377,8 +380,7 @@ function handleSkip() {
 }
 
 .cert-step-content {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
 }
 
 .cert-step-title {
@@ -392,10 +394,12 @@ function handleSkip() {
   font-size: 0.8125rem;
   color: $lightest-blue;
   margin-bottom: 8px;
+  text-align: center;
 }
 
 .os-tabs {
   display: flex;
+  justify-content: center;
   gap: 4px;
   margin-bottom: 8px;
 }
@@ -426,6 +430,7 @@ function handleSkip() {
   background: rgba(0, 0, 0, 0.3);
   border-radius: $border-radius-default;
   padding: 10px 40px 10px 12px;
+  margin: 0 15%;
 }
 
 .cert-command {

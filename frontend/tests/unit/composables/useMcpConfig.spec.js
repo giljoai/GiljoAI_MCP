@@ -95,7 +95,7 @@ describe('useMcpConfig', () => {
     it('returns the correct claude mcp add command', () => {
       const result = generateClaudeConfig('https://localhost:8372', 'giljo_abc123')
       expect(result).toBe(
-        'claude mcp add --transport http giljo_mcp https://localhost:8372/mcp --header "Authorization: Bearer giljo_abc123"',
+        'claude mcp add --scope user --transport http giljo_mcp https://localhost:8372/mcp --header "Authorization: Bearer giljo_abc123"',
       )
     })
   })
