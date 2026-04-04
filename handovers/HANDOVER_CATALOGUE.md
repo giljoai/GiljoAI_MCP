@@ -21,7 +21,7 @@
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
 | 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. **0841 COMPLETE.** **0842a-f, 0842g, 0842h, 0842i-m COMPLETE.** **0843 COMPLETE.** **0834b COMPLETE.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 COMPLETE.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
 | 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE. 0873a-o COMPLETE. 0874a-c COMPLETE. 0875 COMPLETE. 0880 COMPLETE.** All design system work done. Branch: feature/0873-style-centralization. |
-| 0900-0999 | Infrastructure & DevEx | **0900 COMPLETE.** **0901 COMPLETE.** **0902 COMPLETE (0902a-d all COMPLETE).** **0903 NOT STARTED.** **0904 COMPLETE.** **0905 COMPLETE.** **0906 COMPLETE.** |
+| 0900-0999 | Infrastructure & DevEx | **0900 COMPLETE.** **0901 COMPLETE.** **0902 COMPLETE (0902a-d all COMPLETE).** **0903 NOT STARTED.** **0904 COMPLETE.** **0905 COMPLETE.** **0906 COMPLETE.** **0907 NOT STARTED.** |
 
 ---
 
@@ -45,6 +45,7 @@
 | 0904 | Orchestrator Auto Check-in | **COMPLETE** | Medium | Multi-terminal only. Toggle + interval buttons (30/60/90s) on Jobs tab. DB columns, API, frontend wired. |
 | 0905 | Dependency Cleanup & Lazy Imports | **COMPLETE** | Medium | Remove unused aiohttp, redundant explicit deps. Lazy-load vision summarizer (167 MB numpy/scipy off startup). |
 | 0906 | install.py --dev Flag | **COMPLETE** | Medium | Gate pre-commit + NLTK behind --dev flag. Fix duplicate demo seeding. Update README. |
+| 0907 | MCP Bootstrap Setup Tool (`giljo_setup`) | Not Started | High | Single MCP tool provisions slash commands + agent templates via binary ZIP download. Eliminates browser from first-time setup. 4-6 hours. |
 
 ### Deferred (Still in Root Folder)
 
