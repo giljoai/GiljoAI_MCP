@@ -135,7 +135,7 @@
           </v-alert>
           <div class="config-block smooth-border">
             <div class="config-block-header">
-              <span class="config-block-label">Certificate Trust (one-time)</span>
+              <span class="config-block-label">CERTIFICATE TRUST (ONE-TIME) Paste in terminal</span>
               <v-btn
                 icon="mdi-content-copy"
                 size="x-small"
@@ -172,7 +172,7 @@
         <!-- Main config command -->
         <div class="config-block smooth-border">
           <div class="config-block-header">
-            <span class="config-block-label">Configuration Command — copy in terminal, not inside tool session</span>
+            <span class="config-block-label">CONFIGURATION COMMAND Paste in terminal</span>
             <v-btn
               icon="mdi-content-copy"
               size="x-small"
