@@ -166,6 +166,7 @@
                 v-else-if="currentStep === 2"
                 :selected-tools="localSelectedTools"
                 :connected-tools="step2ConnectedTools"
+                :previously-completed="props.setupStepCompleted >= 3"
                 @can-proceed="step3CanProceed = $event"
                 @step-data="step3Data = $event"
                 @skip="handleStep3Skip"
@@ -192,9 +193,19 @@
             </v-btn>
           </div>
 
-          <!-- Setup mode footer: restart button on final step when setup already completed -->
-          <div v-else-if="currentStep === 3 && mode === 'setup' && !closingWithCheckmarks" class="setup-wizard-footer" style="justify-content: center;">
+          <!-- Setup mode footer: final step -->
+          <div v-else-if="currentStep === 3 && mode === 'setup' && !closingWithCheckmarks" class="setup-wizard-footer">
             <v-btn
+              variant="text"
+              class="footer-btn-back"
+              @click="handleBack"
+            >
+              Back
+            </v-btn>
+            <v-spacer />
+            <!-- Restart only when re-entering setup after initial completion -->
+            <v-btn
+              v-if="props.setupStepCompleted >= 3"
               variant="text"
               prepend-icon="mdi-restart"
               class="footer-btn-back"
@@ -202,10 +213,20 @@
             >
               Restart Setup
             </v-btn>
+            <!-- Finish on first-time setup -->
+            <v-btn
+              v-else
+              color="primary"
+              variant="flat"
+              class="footer-btn-next"
+              @click="handleDismiss"
+            >
+              Finish
+            </v-btn>
           </div>
 
-          <!-- Setup mode footer (steps 0–2) -->
-          <div v-else-if="currentStep < 3" class="setup-wizard-footer">
+          <!-- Setup mode footer (steps 0–3) -->
+          <div v-else-if="currentStep <= 3" class="setup-wizard-footer">
             <v-btn
               v-if="currentStep > 0"
               variant="text"
@@ -341,6 +362,10 @@ const props = defineProps({
   selectedTools: {
     type: Array,
     default: () => [],
+  },
+  setupStepCompleted: {
+    type: Number,
+    default: 0,
   },
   mode: {
     type: String,
