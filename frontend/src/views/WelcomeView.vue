@@ -145,6 +145,7 @@
       :current-step="setupStep"
       :selected-tools="setupSelectedTools"
       :setup-step-completed="setupStepCompleted"
+      :is-rerun="forceSetupMode"
       :mode="setupOverlayMode"
       @update:current-step="setupStep = $event"
       @step-complete="handleStepComplete"

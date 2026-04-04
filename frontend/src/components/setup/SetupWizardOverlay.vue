@@ -203,9 +203,9 @@
               Back
             </v-btn>
             <v-spacer />
-            <!-- Restart only when re-entering setup after initial completion -->
+            <!-- Restart only when re-entering setup from user settings -->
             <v-btn
-              v-if="props.setupStepCompleted >= 3"
+              v-if="props.isRerun"
               variant="text"
               prepend-icon="mdi-restart"
               class="footer-btn-back"
@@ -366,6 +366,10 @@ const props = defineProps({
   setupStepCompleted: {
     type: Number,
     default: 0,
+  },
+  isRerun: {
+    type: Boolean,
+    default: false,
   },
   mode: {
     type: String,
