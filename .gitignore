@@ -36,7 +36,8 @@ env/
 ENV/
 env.bak/
 venv.bak/
-dev_tools/venv_devtools/  # Isolated venv for dev tools only
+dev_tools/venv_devtools/
+dev_tools/devtools.local.ini
 
 # Testing - Python
 .pytest_cache/

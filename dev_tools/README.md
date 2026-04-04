@@ -243,7 +243,7 @@ sudo systemctl status postgresql
 ```
 
 **Verify credentials** in `.env` or `config.yaml`:
-- Default password: `4010`
+- Password: set via `dev_tools/devtools.local.ini` or `PG_SUPERUSER_PASSWORD` in `.env`
 - Default user: `postgres`
 - Default host: `localhost`
 - Default port: `5432`
@@ -300,9 +300,10 @@ If reset fails with permission errors:
 ## Security Considerations
 
 ### Database Credentials
-- Default development password: `4010`
-- Reads from `.env` if available
-- **Production**: Use strong passwords, never commit `.env`
+- Credentials are stored in `dev_tools/devtools.local.ini` (gitignored, per-developer)
+- Legacy fallback: `PG_SUPERUSER_PASSWORD` in `.env`
+- The control panel prompts on first use and saves to the local config
+- **Never commit credentials** — both `.env` and `devtools.local.ini` are gitignored
 
 ### Service Binding
 - Backend binds to `127.0.0.1` in localhost mode (config.yaml)

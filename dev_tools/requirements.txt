@@ -9,3 +9,14 @@ psycopg2-binary>=2.9.0
 
 # YAML configuration parsing
 pyyaml>=6.0
+
+# Password hashing for dev admin reset
+bcrypt>=4.0.0
+
+# --- System-level dependencies (NOT pip-installable) ---
+# tkinter is required for the GUI but must be installed via your OS package manager:
+#   Debian/Ubuntu:  sudo apt install python3-tk
+#   Fedora/RHEL:    sudo dnf install python3-tkinter
+#   Arch:           sudo pacman -S tk
+#   macOS:          brew install python-tk
+# The launch script will check for tkinter and prompt you if it's missing.

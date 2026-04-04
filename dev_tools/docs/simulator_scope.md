@@ -77,7 +77,7 @@ Run/Setup
   - run.sh / run.bat: activate venv and run simulator (uvicorn dev_tools.simulator.simulator_app:app --port 7390)
 
 Windows Notes
-- PostgreSQL path: F:\\PostgreSQL\\bin, database password: 4010 (not used by simulator directly).
+- PostgreSQL path: F:\\PostgreSQL\\bin, database password: set per developer in devtools.local.ini (not used by simulator directly).
 - Simulator calls the HTTP API; it does not connect to PostgreSQL directly.
 
 MVP Acceptance
