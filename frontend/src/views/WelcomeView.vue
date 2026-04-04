@@ -217,7 +217,13 @@ async function handleStepComplete({ step, data }) {
       setup_step_completed: 4,
     })
     showSetupOverlay.value = false
-    if (data.route) {
+
+    // After first-time setup, show the "How to Use" guide automatically
+    if (!forceSetupMode.value) {
+      setTimeout(() => {
+        showSetupOverlay.value = true
+      }, 400)
+    } else if (data.route) {
       router.push(data.route)
     }
   }
@@ -533,8 +539,12 @@ onMounted(async () => {
     await configService.fetchConfig()
   } catch { /* config may fail on first load — cert modal just won't show */ }
 
+  // Open "How to Use" guide when directed from UserSettings
+  if (route.query.openGuide === 'true') {
+    showSetupOverlay.value = true
+    router.replace({ path: '/', query: {} })
   // Auto-launch overlay on first login or when directed from UserSettings
-  if (route.query.openSetup === 'true' || !setupComplete.value) {
+  } else if (route.query.openSetup === 'true' || !setupComplete.value) {
     forceSetupMode.value = route.query.openSetup === 'true'
     setupStep.value = Math.min(setupStepCompleted.value, 3)
 
