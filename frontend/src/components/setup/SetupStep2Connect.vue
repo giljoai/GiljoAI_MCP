@@ -126,13 +126,16 @@
 
         <!-- HTTPS cert trust (Node.js tools) -->
         <template v-if="needsCertTrust">
-          <v-btn-toggle v-model="platform" mandatory variant="outlined" divided rounded="t-lg" color="primary" class="mb-3">
-            <v-btn value="windows" size="small">PowerShell</v-btn>
-            <v-btn value="unix" size="small">Linux / macOS</v-btn>
-          </v-btn-toggle>
-          <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-            <strong>HTTPS with self-signed certificates:</strong> Node.js-based AI coding agents need to trust the system CA store (one-time setup, requires Node.js 20.12+).
-          </v-alert>
+          <div class="platform-pill-row">
+            <button :class="['platform-pill', 'smooth-border', { 'platform-pill--active': platform === 'windows' }]" @click="platform = 'windows'">PowerShell</button>
+            <button :class="['platform-pill', 'smooth-border', { 'platform-pill--active': platform === 'unix' }]" @click="platform = 'unix'">Linux / macOS</button>
+            <v-tooltip location="top" max-width="300">
+              <template #activator="{ props: tipProps }">
+                <v-icon v-bind="tipProps" size="16" class="platform-help-icon">mdi-help-circle-outline</v-icon>
+              </template>
+              HTTPS with self-signed certificates: Node.js-based AI coding agents need to trust the system CA store (one-time setup, requires Node.js 20.12+).
+            </v-tooltip>
+          </div>
           <div class="config-block smooth-border">
             <div class="config-block-header">
               <span class="config-block-label">CERTIFICATE TRUST (ONE-TIME) Paste in terminal</span>
@@ -149,10 +152,10 @@
         </template>
 
         <!-- Platform toggle for Codex env var (if not already shown for HTTPS) -->
-        <v-btn-toggle v-if="!needsCertTrust && activeNormalizedId === 'codex'" v-model="platform" mandatory variant="outlined" divided rounded="t-lg" color="primary" class="mb-3">
-          <v-btn value="windows" size="small">PowerShell</v-btn>
-          <v-btn value="unix" size="small">Linux / macOS</v-btn>
-        </v-btn-toggle>
+        <div v-if="!needsCertTrust && activeNormalizedId === 'codex'" class="platform-pill-row">
+          <button :class="['platform-pill', 'smooth-border', { 'platform-pill--active': platform === 'windows' }]" @click="platform = 'windows'">PowerShell</button>
+          <button :class="['platform-pill', 'smooth-border', { 'platform-pill--active': platform === 'unix' }]" @click="platform = 'unix'">Linux / macOS</button>
+        </div>
 
         <!-- Codex: Environment Variable -->
         <div v-if="activeNormalizedId === 'codex'" class="config-block smooth-border">
@@ -615,6 +618,45 @@ onUnmounted(() => {
   padding: 0;
   margin-bottom: 12px;
   overflow: hidden;
+}
+
+/* Platform pill toggles (matches UserSettings pill-toggle pattern) */
+.platform-pill-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.platform-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 14px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  color: $lightest-blue;
+  cursor: pointer;
+  transition: color 200ms ease-out, background 200ms ease-out;
+  --smooth-border-color: #{$med-blue};
+}
+
+.platform-pill:hover {
+  color: $color-text-primary;
+}
+
+.platform-pill--active,
+.platform-pill--active:hover {
+  background: rgba($color-brand-yellow, 0.12);
+  color: $color-brand-yellow;
+  box-shadow: none;
+}
+
+.platform-help-icon {
+  color: $lightest-blue;
+  cursor: help;
 }
 
 .config-block-header {
