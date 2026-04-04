@@ -303,7 +303,8 @@ async def health_check(ctx: Context = None) -> dict:
 @mcp.tool(
     description=(
         "First-time setup: downloads slash commands and agent templates as a ZIP. "
-        "Run once after connecting. Returns a download URL and extract instructions."
+        "Run once after connecting. Installs with default models. "
+        "To customize models later, run /gil_get_agents (or $gil-get-agents for Codex)."
     ),
 )
 async def giljo_setup(
