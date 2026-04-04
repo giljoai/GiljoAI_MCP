@@ -639,10 +639,10 @@ onUnmounted(() => {
 .status-indicator {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
   font-size: 0.875rem;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .status-indicator::before {
@@ -650,23 +650,25 @@ onUnmounted(() => {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  display: inline-block;
+  flex-shrink: 0;
 }
 
 .status-indicator--waiting {
-  color: $lightest-blue;
+  color: #e05252;
 }
 
 .status-indicator--waiting::before {
-  background: $lightest-blue;
+  background: #e05252;
+  box-shadow: 0 0 6px 2px rgba(224, 82, 82, 0.5);
 }
 
 .status-indicator--connected {
-  color: $gradient-brand-end;
+  color: #4caf50;
 }
 
 .status-indicator--connected::before {
-  background: $gradient-brand-end;
+  background: #4caf50;
+  box-shadow: 0 0 6px 2px rgba(76, 175, 80, 0.5);
 }
 
 .instruction-text {
