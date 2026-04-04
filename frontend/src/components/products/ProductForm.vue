@@ -676,7 +676,12 @@
           :loading="isEdit ? saving : isLastTab ? saving : false"
           @click="isEdit ? saveProduct() : isLastTab ? saveProduct() : goNextTab()"
         >
-          {{ isEdit ? 'Save Changes' : isLastTab ? 'Create Product' : 'Next' }}
+          <template v-if="!isEdit && !isLastTab && analysisAgentConnected">
+            Waiting<span class="dot dot-1">.</span><span class="dot dot-2">.</span><span class="dot dot-3">.</span>
+          </template>
+          <template v-else>
+            {{ isEdit ? 'Save Changes' : isLastTab ? 'Create Product' : 'Next' }}
+          </template>
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -743,6 +748,7 @@ const promptFallbackText = ref(null) // Shown when clipboard copy fails
 // Setup mode and analysis state (Handover 0842i)
 const setupMode = ref('manual')
 const analysisInProgress = ref(false)
+const analysisAgentConnected = ref(false)
 const analysisHintVisible = ref(false)
 let analysisHintTimer = null
 
@@ -1016,6 +1022,7 @@ watch(
       analysisBannerDismissed.value = false
       setupMode.value = 'manual'
       analysisInProgress.value = false
+      analysisAgentConnected.value = false
       analysisHintVisible.value = false
       clearTimeout(analysisHintTimer)
       loadProductData()
@@ -1039,10 +1046,19 @@ watch(
 watch(setupMode, (newMode) => {
   if (newMode === 'manual') {
     analysisInProgress.value = false
+    analysisAgentConnected.value = false
     analysisHintVisible.value = false
     clearTimeout(analysisHintTimer)
   }
 })
+
+// Listen for vision:analysis_started WebSocket event (agent called gil_get_vision_doc)
+function onVisionAnalysisStarted(event) {
+  const productId = event.detail?.product_id
+  if (productId && productId === props.product?.id) {
+    analysisAgentConnected.value = true
+  }
+}
 
 // Listen for vision:analysis_complete WebSocket event to unlock the UI
 const productStore = useProductStore()
@@ -1093,14 +1109,17 @@ async function onVisionAnalysisComplete(event) {
 
     // Unlock the UI
     analysisInProgress.value = false
+    analysisAgentConnected.value = false
   }
 }
 
 onMounted(() => {
+  window.addEventListener('vision-analysis-started', onVisionAnalysisStarted)
   window.addEventListener('vision-analysis-complete', onVisionAnalysisComplete)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('vision-analysis-started', onVisionAnalysisStarted)
   window.removeEventListener('vision-analysis-complete', onVisionAnalysisComplete)
 })
 </script>
@@ -1144,5 +1163,21 @@ onUnmounted(() => {
 /* Override Vuetify overlay on active button */
 :deep(.v-btn-toggle > .v-btn.v-btn--active > .v-btn__overlay) {
   opacity: 0 !important;
+}
+
+/* Animated waiting dots — each dot fades in sequentially then all reset */
+.dot {
+  opacity: 0;
+  animation: dot-pulse 1.4s infinite steps(1, end);
+}
+
+.dot-1 { animation-delay: 0s; }
+.dot-2 { animation-delay: 0.35s; }
+.dot-3 { animation-delay: 0.7s; }
+
+@keyframes dot-pulse {
+  0%   { opacity: 0; }
+  25%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 </style>

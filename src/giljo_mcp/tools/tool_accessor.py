@@ -789,6 +789,7 @@ class ToolAccessor:
             tenant_key=tenant_key,
             chunk=chunk,
             db_manager=self.db_manager,
+            websocket_manager=self._websocket_manager,
         )
 
     async def write_product_from_analysis(
