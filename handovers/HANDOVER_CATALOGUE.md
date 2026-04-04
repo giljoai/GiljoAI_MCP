@@ -21,7 +21,7 @@
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
 | 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. **0841 COMPLETE.** **0842a-f, 0842g, 0842h, 0842i-m COMPLETE.** **0843 COMPLETE.** **0834b COMPLETE.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 COMPLETE.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
 | 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE. 0873a-o COMPLETE. 0874a-c COMPLETE. 0875 COMPLETE. 0880 COMPLETE.** All design system work done. Branch: feature/0873-style-centralization. |
-| 0900-0999 | Infrastructure & DevEx | **0900 COMPLETE.** 0901 NOT STARTED. **0902 COMPLETE (0902a-d all COMPLETE).** **0903 NOT STARTED.** **0904 COMPLETE.** **0905 COMPLETE.** **0906 COMPLETE.** |
+| 0900-0999 | Infrastructure & DevEx | **0900 COMPLETE.** **0901 COMPLETE.** **0902 COMPLETE (0902a-d all COMPLETE).** **0903 NOT STARTED.** **0904 COMPLETE.** **0905 COMPLETE.** **0906 COMPLETE.** |
 
 ---
 
@@ -35,7 +35,7 @@
 | 0844a | Tenant Export Service | Not Started | Medium | Backend export engine: 31 models, field stripping, vision file bundling, ZIP creation, REPEATABLE READ, SHA-256 checksums. 1-2 sessions. |
 | 0844b | Tenant Import Service + Schema Diff | Not Started | Medium | Backend import: schema compatibility analysis, UPSERT pipeline, topological sort, vision file extraction, TSVECTOR regen. Heaviest phase, 2-3 sessions. Depends on 0844a. |
 | 0844c | Tenant Data Frontend | Not Started | Medium | Vue component in Database tab: export/import UI, compatibility report dialog, stale backup warning, WebSocket progress. 1 session. Depends on 0844a+b. |
-| 0901 | Dashboard Scope Simplification | Not Started | Low | Remove product selector from CE dashboard. Show all-tenant stats only. 1 hour. |
+| 0901 | Dashboard Scope Simplification | **COMPLETE** | Low | Removed product selector from CE dashboard. All-tenant stats only. |
 | 0902 | Single-Port Frontend Serving | **COMPLETE** | High | CE release blocker. Serve built frontend from FastAPI on port 7272. 8 hours. |
 | 0902a | Backend Static Mount + Middleware | **COMPLETE** | High | FastAPI static mount, SPA fallback, middleware exemptions. 2 hours. |
 | 0902b | Frontend Port Fixes | **COMPLETE** | High | Fix 13 hardcoded port references + portConfig utility. 1.5 hours. |
