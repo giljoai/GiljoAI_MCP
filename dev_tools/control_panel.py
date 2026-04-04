@@ -28,7 +28,7 @@ import threading
 import time
 import webbrowser
 from pathlib import Path
-from tkinter import BooleanVar, Tk, messagebox, ttk
+from tkinter import BooleanVar, Tk, messagebox, simpledialog, ttk
 from typing import Any, List, Optional
 
 
@@ -3053,6 +3053,15 @@ pg_restore -l {backup_file.name} | head -20
             ca_removed = self._remove_mkcert_root_ca_from_client()
             deleted.extend(ca_removed)
 
+            # Check for orphaned mkcert CA still in trust store
+            # (handles cases where mkcert binary was removed before uninstall,
+            # or CA in NSS/Firefox profiles that _remove_mkcert_root_ca_from_client missed)
+            orphaned_ca = self._find_orphaned_mkcert_ca()
+            if orphaned_ca:
+                removed = self._try_remove_orphaned_ca(orphaned_ca)
+                if removed:
+                    deleted.append("mkcert CA (removed orphaned CA from trust stores)")
+
         except Exception as e:
             errors.append(f"Certificate cleanup: {e}")
 
@@ -3231,6 +3240,453 @@ pg_restore -l {backup_file.name} | head -20
                     pass
 
         return removed
+
+    @staticmethod
+    def _find_nss_certutil_windows():
+        """
+        Locate Mozilla NSS certutil on Windows.
+
+        Windows has its own certutil.exe (in System32) which is a completely
+        different tool from Mozilla's NSS certutil. For Firefox NSS database
+        operations we need the Mozilla version, typically found in the
+        Firefox installation directory.
+
+        Returns the path to NSS certutil, or None if not found.
+        """
+        if platform.system() != "Windows":
+            return None
+
+        search_paths = [
+            Path(os.environ.get("PROGRAMFILES", "")) / "Mozilla Firefox",
+            Path(os.environ.get("PROGRAMFILES(X86)", "")) / "Mozilla Firefox",
+            Path(os.environ.get("LOCALAPPDATA", "")) / "Mozilla Firefox",
+        ]
+        for base in search_paths:
+            certutil = base / "certutil.exe"
+            if certutil.exists():
+                # Verify it's the NSS version (supports -L flag)
+                try:
+                    result = subprocess.run(
+                        [str(certutil), "-H"],
+                        capture_output=True, text=True, timeout=5,
+                    )
+                    if "-L" in result.stdout or "-L" in result.stderr:
+                        return str(certutil)
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    pass
+        return None
+
+    def _find_orphaned_mkcert_ca(self):
+        """
+        Detect mkcert root CA lingering in system trust stores.
+
+        On Linux, checks:
+        - p11-kit system trust store (via `trust list`)
+        - NSS user database (~/.pki/nssdb, used by Chrome/Chromium)
+        - Firefox NSS profiles
+
+        On Windows, checks:
+        - CurrentUser and LocalMachine Root cert stores
+        - Firefox NSS profiles (using Mozilla's certutil, not Windows certutil)
+
+        Returns a dict with found CA locations, or None if clean.
+        """
+        found = {}
+
+        if platform.system() == "Linux":
+            # Check p11-kit system trust store
+            trust_path = shutil.which("trust")
+            if trust_path:
+                try:
+                    result = subprocess.run(
+                        [trust_path, "list"],
+                        capture_output=True, text=True, timeout=15,
+                    )
+                    current_uri = None
+                    for line in result.stdout.splitlines():
+                        stripped = line.strip()
+                        if stripped.startswith("pkcs11:"):
+                            current_uri = stripped
+                        elif "label:" in stripped and "mkcert" in stripped.lower():
+                            found["p11kit_uri"] = current_uri
+                            found["p11kit_label"] = stripped.split("label:", 1)[1].strip()
+                            break
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    pass
+
+            # Check NSS user database (~/.pki/nssdb) used by Chrome/Chromium
+            nssdb_dir = Path.home() / ".pki" / "nssdb"
+            certutil_path = shutil.which("certutil")
+            if nssdb_dir.exists() and certutil_path:
+                try:
+                    result = subprocess.run(
+                        [certutil_path, "-L", "-d", f"sql:{nssdb_dir}"],
+                        capture_output=True, text=True, timeout=15,
+                    )
+                    for line in result.stdout.splitlines():
+                        if "mkcert" in line.lower():
+                            label = line.rsplit(None, 1)[0].strip()
+                            found["nss_label"] = label
+                            break
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    pass
+            elif nssdb_dir.exists() and not certutil_path:
+                found["nss_no_certutil"] = True
+
+            # Check Firefox NSS profiles (Linux path)
+            firefox_profiles = Path.home() / ".mozilla" / "firefox"
+            if firefox_profiles.exists() and certutil_path:
+                for profile_dir in firefox_profiles.iterdir():
+                    nssdb = profile_dir / "cert9.db"
+                    if nssdb.exists():
+                        try:
+                            result = subprocess.run(
+                                [certutil_path, "-L", "-d", f"sql:{profile_dir}"],
+                                capture_output=True, text=True, timeout=15,
+                            )
+                            for line in result.stdout.splitlines():
+                                if "mkcert" in line.lower():
+                                    label = line.rsplit(None, 1)[0].strip()
+                                    found.setdefault("firefox_profiles", []).append(
+                                        {"path": str(profile_dir), "label": label}
+                                    )
+                                    break
+                        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                            pass
+
+        elif platform.system() == "Windows":
+            # Check user certificate store (CurrentUser\Root)
+            try:
+                result = subprocess.run(
+                    ["powershell", "-Command",
+                     "Get-ChildItem Cert:\\CurrentUser\\Root | "
+                     "Where-Object { $_.Subject -like '*mkcert*' } | "
+                     "Select-Object -ExpandProperty Thumbprint"],
+                    capture_output=True, text=True, timeout=15,
+                )
+                thumbprint = result.stdout.strip()
+                if thumbprint:
+                    found["win_user_thumbprint"] = thumbprint.splitlines()[0]
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                pass
+
+            # Check machine certificate store (LocalMachine\Root)
+            try:
+                result = subprocess.run(
+                    ["powershell", "-Command",
+                     "Get-ChildItem Cert:\\LocalMachine\\Root | "
+                     "Where-Object { $_.Subject -like '*mkcert*' } | "
+                     "Select-Object -ExpandProperty Thumbprint"],
+                    capture_output=True, text=True, timeout=15,
+                )
+                thumbprint = result.stdout.strip()
+                if thumbprint:
+                    found["win_machine_thumbprint"] = thumbprint.splitlines()[0]
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                pass
+
+            # Check Firefox NSS profiles (Windows path)
+            firefox_profiles = Path(os.environ.get("APPDATA", "")) / "Mozilla" / "Firefox" / "Profiles"
+            if firefox_profiles.exists():
+                nss_certutil = self._find_nss_certutil_windows()
+                if nss_certutil:
+                    for profile_dir in firefox_profiles.iterdir():
+                        nssdb = profile_dir / "cert9.db"
+                        if nssdb.exists():
+                            try:
+                                result = subprocess.run(
+                                    [nss_certutil, "-L", "-d",
+                                     f"sql:{profile_dir}"],
+                                    capture_output=True, text=True, timeout=15,
+                                )
+                                for line in result.stdout.splitlines():
+                                    if "mkcert" in line.lower():
+                                        label = line.rsplit(None, 1)[0].strip()
+                                        found.setdefault(
+                                            "win_firefox_profiles", []
+                                        ).append({
+                                            "path": str(profile_dir),
+                                            "label": label,
+                                        })
+                                        break
+                            except (subprocess.CalledProcessError,
+                                    subprocess.TimeoutExpired):
+                                pass
+
+        return found if found else None
+
+    def _try_remove_orphaned_ca(self, ca_info):
+        """
+        Attempt to remove orphaned mkcert CA(s) from system trust stores.
+
+        Handles Linux (p11-kit + NSS + Firefox) and Windows cert stores.
+        Prompts for sudo password when needed. Installs certutil if needed
+        for NSS database cleanup.
+
+        Returns True if all found CAs were successfully removed.
+        """
+        all_removed = True
+        sudo_password = None
+
+        if platform.system() == "Linux":
+            needs_sudo = ("nss_no_certutil" in ca_info
+                          or "p11kit_uri" in ca_info)
+
+            # Ask for sudo password once upfront if any operation needs it
+            if needs_sudo:
+                try:
+                    check = subprocess.run(
+                        ["sudo", "-n", "true"],
+                        capture_output=True, text=True, timeout=5,
+                    )
+                    if check.returncode != 0:
+                        raise subprocess.CalledProcessError(1, "sudo")
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    sudo_password = simpledialog.askstring(
+                        "Sudo Password Required",
+                        "Removing the orphaned mkcert certificate requires\n"
+                        "elevated privileges.\n\n"
+                        "Enter your sudo password:",
+                        show="*",
+                    )
+                    if not sudo_password:
+                        messagebox.showwarning(
+                            "Skipped",
+                            "Certificate removal skipped (no password provided).",
+                        )
+                        return False
+
+            # --- Step 1: Ensure certutil is available ---
+            certutil_path = shutil.which("certutil")
+            if not certutil_path and "nss_no_certutil" in ca_info:
+                install = messagebox.askyesno(
+                    "Install Certificate Tool?",
+                    "The mkcert CA is stored in the browser certificate\n"
+                    "database (~/.pki/nssdb). The 'certutil' tool is needed\n"
+                    "to remove it.\n\n"
+                    "Install libnss3-tools now?",
+                )
+                if install:
+                    try:
+                        result = subprocess.run(
+                            ["sudo", "-S", "apt-get", "install", "-y",
+                             "libnss3-tools"],
+                            input=(sudo_password + "\n") if sudo_password else None,
+                            capture_output=True, text=True, timeout=60,
+                        )
+                        if result.returncode == 0:
+                            certutil_path = shutil.which("certutil")
+                            if certutil_path:
+                                nssdb_dir = Path.home() / ".pki" / "nssdb"
+                                if nssdb_dir.exists():
+                                    scan = subprocess.run(
+                                        [certutil_path, "-L", "-d",
+                                         f"sql:{nssdb_dir}"],
+                                        capture_output=True, text=True, timeout=15,
+                                    )
+                                    for line in scan.stdout.splitlines():
+                                        if "mkcert" in line.lower():
+                                            label = line.rsplit(None, 1)[0].strip()
+                                            ca_info["nss_label"] = label
+                                            break
+                        else:
+                            self.logger.warning(
+                                f"libnss3-tools install failed: {result.stderr.strip()}"
+                            )
+                            all_removed = False
+                    except subprocess.TimeoutExpired:
+                        all_removed = False
+                else:
+                    all_removed = False
+
+            # --- Step 2: Remove from NSS user database (no sudo needed) ---
+            if "nss_label" in ca_info and certutil_path:
+                nssdb_dir = Path.home() / ".pki" / "nssdb"
+                label = ca_info["nss_label"]
+                try:
+                    result = subprocess.run(
+                        [certutil_path, "-D", "-d", f"sql:{nssdb_dir}", "-n", label],
+                        capture_output=True, text=True, timeout=15,
+                    )
+                    if result.returncode != 0:
+                        self.logger.warning(
+                            f"NSS cert removal failed: {result.stderr.strip()}"
+                        )
+                        all_removed = False
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    all_removed = False
+
+            # --- Step 3: Remove from system CA certificates directory ---
+            if "p11kit_uri" in ca_info:
+                ca_certs_dir = Path("/usr/local/share/ca-certificates")
+                removed_file = False
+                for cert_file in ca_certs_dir.glob("*.crt"):
+                    try:
+                        result = subprocess.run(
+                            ["openssl", "x509", "-in", str(cert_file),
+                             "-noout", "-subject"],
+                            capture_output=True, text=True, timeout=5,
+                        )
+                        if "mkcert" in result.stdout.lower():
+                            rm_result = subprocess.run(
+                                ["sudo", "-S", "rm", str(cert_file)],
+                                input=(sudo_password + "\n") if sudo_password else None,
+                                capture_output=True, text=True, timeout=10,
+                            )
+                            if rm_result.returncode == 0:
+                                removed_file = True
+                            else:
+                                self.logger.warning(
+                                    f"Failed to delete {cert_file}: "
+                                    f"{rm_result.stderr.strip()}"
+                                )
+                    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                        pass
+
+                if removed_file:
+                    try:
+                        subprocess.run(
+                            ["sudo", "-S", "update-ca-certificates"],
+                            input=(sudo_password + "\n") if sudo_password else None,
+                            capture_output=True, text=True, timeout=30,
+                        )
+                    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                        self.logger.warning("update-ca-certificates failed")
+                else:
+                    all_removed = False
+
+            # --- Step 4: Remove from Firefox NSS profiles ---
+            for profile in ca_info.get("firefox_profiles", []):
+                if certutil_path:
+                    try:
+                        result = subprocess.run(
+                            [certutil_path, "-D", "-d", f"sql:{profile['path']}",
+                             "-n", profile["label"]],
+                            capture_output=True, text=True, timeout=15,
+                        )
+                        if result.returncode != 0:
+                            self.logger.warning(
+                                f"Firefox NSS cert removal failed for "
+                                f"{profile['path']}: {result.stderr.strip()}"
+                            )
+                            all_removed = False
+                    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                        all_removed = False
+
+            if all_removed:
+                messagebox.showinfo(
+                    "Certificates Removed",
+                    "All orphaned mkcert root CAs have been removed\n"
+                    "from the system trust stores.",
+                )
+            else:
+                messagebox.showwarning(
+                    "Partial Cleanup",
+                    "Some mkcert CAs could not be automatically removed.\n"
+                    "Check the control panel log for details.",
+                )
+
+        elif platform.system() == "Windows":
+            stores_cleaned = []
+
+            # --- Remove from user certificate store ---
+            if "win_user_thumbprint" in ca_info:
+                thumbprint = ca_info["win_user_thumbprint"]
+                try:
+                    result = subprocess.run(
+                        ["certutil", "-delstore", "-user", "Root", thumbprint],
+                        capture_output=True, text=True, timeout=15,
+                    )
+                    if result.returncode == 0:
+                        stores_cleaned.append("User certificate store")
+                    else:
+                        self.logger.warning(
+                            f"User cert store removal failed: {result.stderr.strip()}"
+                        )
+                        all_removed = False
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    all_removed = False
+
+            # --- Remove from machine certificate store (needs elevation) ---
+            if "win_machine_thumbprint" in ca_info:
+                thumbprint = ca_info["win_machine_thumbprint"]
+                try:
+                    ps_script = (
+                        f"$cert = Get-ChildItem Cert:\\LocalMachine\\Root "
+                        f"| Where-Object {{ $_.Thumbprint -eq '{thumbprint}' }}; "
+                        f"if ($cert) {{ $cert | Remove-Item -Force; exit 0 }} "
+                        f"else {{ exit 1 }}"
+                    )
+                    result = subprocess.run(
+                        ["powershell", "-Command",
+                         "Start-Process", "powershell",
+                         f"'-Command {ps_script}'",
+                         "-Verb", "RunAs", "-Wait"],
+                        capture_output=True, text=True, timeout=30,
+                    )
+                    verify = subprocess.run(
+                        ["powershell", "-Command",
+                         f"Get-ChildItem Cert:\\LocalMachine\\Root "
+                         f"| Where-Object {{ $_.Thumbprint -eq '{thumbprint}' }} "
+                         f"| Measure-Object | Select-Object -ExpandProperty Count"],
+                        capture_output=True, text=True, timeout=10,
+                    )
+                    if verify.stdout.strip() == "0":
+                        stores_cleaned.append("Machine certificate store")
+                    else:
+                        self.logger.warning(
+                            "Machine cert store removal: cert still present after UAC"
+                        )
+                        all_removed = False
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    all_removed = False
+
+            # --- Remove from Firefox NSS profiles ---
+            nss_certutil = self._find_nss_certutil_windows()
+            for profile in ca_info.get("win_firefox_profiles", []):
+                if nss_certutil:
+                    try:
+                        result = subprocess.run(
+                            [nss_certutil, "-D", "-d",
+                             f"sql:{profile['path']}",
+                             "-n", profile["label"]],
+                            capture_output=True, text=True, timeout=15,
+                        )
+                        if result.returncode == 0:
+                            stores_cleaned.append(
+                                f"Firefox profile ({Path(profile['path']).name})"
+                            )
+                        else:
+                            self.logger.warning(
+                                f"Firefox NSS removal failed: {result.stderr.strip()}"
+                            )
+                            all_removed = False
+                    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                        all_removed = False
+
+            if stores_cleaned:
+                if all_removed:
+                    messagebox.showinfo(
+                        "Certificates Removed",
+                        "All orphaned mkcert root CAs have been removed:\n\n"
+                        + "\n".join(f"  \u2713 {s}" for s in stores_cleaned),
+                    )
+                else:
+                    messagebox.showwarning(
+                        "Partial Cleanup",
+                        "Some mkcert CAs were removed but others failed:\n\n"
+                        "Removed:\n"
+                        + "\n".join(f"  \u2713 {s}" for s in stores_cleaned)
+                        + "\n\nCheck the control panel log for details.",
+                    )
+            elif not all_removed:
+                messagebox.showerror(
+                    "Removal Failed",
+                    "Failed to remove mkcert CAs from Windows certificate stores.\n"
+                    "Check the control panel log for details.",
+                )
+
+        return all_removed
 
     def cleanup_remote_workstation_certs(self):
         """
