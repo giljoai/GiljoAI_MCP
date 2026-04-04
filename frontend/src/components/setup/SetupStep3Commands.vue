@@ -118,6 +118,10 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  previouslyCompleted: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['can-proceed', 'step-data', 'skip'])
@@ -137,9 +141,12 @@ const activeTool = computed(() => TOOL_META[activeToolId.value] || { name: 'Tool
 // Active tab
 const activeToolId = ref(props.connectedTools[0] || 'claude_code')
 
-// Installation status per tool (initialize eagerly)
+// Installation status per tool — pre-fill if user already completed this step before
 const toolStatus = reactive(
-  Object.fromEntries(props.connectedTools.map((id) => [id, { commands: false, agents: false }])),
+  Object.fromEntries(props.connectedTools.map((id) => [id, {
+    commands: props.previouslyCompleted,
+    agents: props.previouslyCompleted,
+  }])),
 )
 
 function getAgentCommand(toolId) {
