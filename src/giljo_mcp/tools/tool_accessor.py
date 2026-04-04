@@ -31,6 +31,60 @@ from src.giljo_mcp.tenant import TenantManager
 logger = logging.getLogger(__name__)
 
 
+def _build_setup_instructions(platform: str, download_url: str) -> dict[str, Any]:
+    """Build platform-specific extract and config edit instructions for giljo_setup."""
+    if platform == "claude_code":
+        return {
+            "download": f"Download the ZIP: curl -o giljo_setup.zip '{download_url}'",
+            "extract_path": "~/.claude/",
+            "extract_command": "unzip -o giljo_setup.zip -d ~/.claude/",
+            "config_edits": [],
+            "cleanup": "rm giljo_setup.zip",
+            "post_install": "Restart your CLI tool to activate slash commands and agent templates.",
+        }
+    if platform == "gemini_cli":
+        return {
+            "download": f"Download the ZIP: curl -o giljo_setup.zip '{download_url}'",
+            "extract_path": "~/.gemini/",
+            "extract_command": "unzip -o giljo_setup.zip -d ~/.gemini/",
+            "config_edits": [
+                {
+                    "file": "~/.gemini/settings.json",
+                    "action": "merge_json",
+                    "value": {"experimental": {"enableAgents": True}},
+                    "reason": "Required for Gemini CLI to discover custom agents",
+                },
+            ],
+            "cleanup": "rm giljo_setup.zip",
+            "post_install": "Restart your CLI tool to activate slash commands and agent templates.",
+        }
+    # codex_cli
+    return {
+        "download": f"Download the ZIP: curl -o giljo_setup.zip '{download_url}'",
+        "extract_path": "~/.codex/",
+        "extract_command": "unzip -o giljo_setup.zip -d ~/.codex/",
+        "config_edits": [
+            {
+                "file": "~/.codex/config.toml",
+                "action": "merge_toml_section",
+                "section": "features",
+                "value": {"default_mode_request_user_input": True},
+                "reason": "Required for interactive skill menus",
+            },
+            {
+                "file": "~/.codex/config.toml",
+                "action": "register_agents",
+                "reason": (
+                    "Register each gil-*.toml file under [agents.<name>] with "
+                    "config_file = 'agents/<name>.toml' (relative path, not absolute)"
+                ),
+            },
+        ],
+        "cleanup": "rm giljo_setup.zip",
+        "post_install": "Restart your CLI tool to activate skills and agent templates.",
+    }
+
+
 class ToolAccessor:
     """Provides direct access to MCP tool functionality for API"""
 
@@ -459,6 +513,66 @@ class ToolAccessor:
                 }
         except Exception:  # Broad catch: tool boundary, logs and re-raises
             logger.exception("Failed to generate download token")
+            raise
+
+    async def bootstrap_setup(self, tenant_key: str, platform: str = "claude_code") -> dict[str, Any]:
+        """
+        Stage combined slash commands + agent templates ZIP for first-time setup (Handover 0907).
+
+        Returns a download URL for a ZIP containing everything the agent needs.
+        Binary transfer — no template content passes through the LLM.
+        """
+        from giljo_mcp.downloads.token_manager import TokenManager
+        from giljo_mcp.file_staging import FileStaging
+
+        try:
+            async with self.get_session_async() as session:
+                token_manager = TokenManager(db_session=session)
+                staging = FileStaging(db_session=session)
+
+                filename = "giljo_setup.zip"
+                token = await token_manager.generate_token(
+                    tenant_key=tenant_key,
+                    download_type="slash_commands",
+                    filename=filename,
+                )
+
+                staging_path = await staging.create_staging_directory(tenant_key, token)
+                zip_path, message = await staging.stage_combined_setup(
+                    staging_path,
+                    tenant_key,
+                    db_session=session,
+                    platform=platform,
+                )
+
+                if not zip_path:
+                    await token_manager.mark_failed(token, message)
+                    raise ValidationError(message)
+
+                await token_manager.mark_ready(token)
+
+                from giljo_mcp.config_manager import get_config
+
+                config = get_config()
+                host = config.get_nested("services.external_host", "localhost")
+                port = config.server.api_port
+                protocol = "https" if config.get_nested("features.ssl_enabled", default=False) else "http"
+                server_url = f"{protocol}://{host}:{port}"
+                download_url = f"{server_url}/api/download/temp/{token}/{filename}"
+
+                # Build platform-specific install instructions
+                instructions = _build_setup_instructions(platform, download_url)
+
+                return {
+                    "download_url": download_url,
+                    "expires_in_minutes": 15,
+                    "platform": platform,
+                    "install_instructions": instructions,
+                }
+        except (ValidationError, ValueError):
+            raise
+        except Exception:
+            logger.exception("Failed to stage bootstrap setup")
             raise
 
     async def get_agent_templates_for_export(self, tenant_key: str, platform: str) -> dict[str, Any]:
