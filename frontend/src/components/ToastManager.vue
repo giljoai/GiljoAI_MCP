@@ -187,6 +187,11 @@ onUnmounted(() => {
   max-width: 500px;
 }
 
+/* Ensure toasts render above setup wizard overlay (z-index: 2100) */
+:deep(.v-overlay__content) {
+  z-index: 10000 !important;
+}
+
 /* Slide animation based on position */
 .toast-enter-active,
 .toast-leave-active {

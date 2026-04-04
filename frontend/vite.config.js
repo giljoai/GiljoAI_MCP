@@ -88,10 +88,15 @@ export default defineConfig({
         cookieDomainRewrite: '', // Don't rewrite cookie domains
         preserveHeaderKeyCase: true, // Preserve header casing
         configure: (proxy, _options) => {
-          // Ensure cookies are forwarded from browser to backend
           proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Forward cookies for JWT auth
             if (req.headers.cookie) {
               proxyReq.setHeader('Cookie', req.headers.cookie)
+            }
+            // Forward real client IP so backend can detect remote clients
+            const clientIp = req.socket?.remoteAddress?.replace('::ffff:', '')
+            if (clientIp) {
+              proxyReq.setHeader('X-Forwarded-For', clientIp)
             }
           })
         },
@@ -108,6 +113,10 @@ export default defineConfig({
           proxy.on('proxyReq', (proxyReq, req, _res) => {
             if (req.headers.cookie) {
               proxyReq.setHeader('Cookie', req.headers.cookie)
+            }
+            const clientIp = req.socket?.remoteAddress?.replace('::ffff:', '')
+            if (clientIp) {
+              proxyReq.setHeader('X-Forwarded-For', clientIp)
             }
           })
         },

@@ -61,7 +61,7 @@ export function isHttps() {
  * Generate Claude Code MCP add command.
  */
 export function generateClaudeConfig(serverUrl, apiKey) {
-  return `claude mcp add --transport http giljo_mcp ${serverUrl}/mcp --header "Authorization: Bearer ${apiKey}"`
+  return `claude mcp add --scope user --transport http giljo_mcp ${serverUrl}/mcp --header "Authorization: Bearer ${apiKey}"`
 }
 
 /**
