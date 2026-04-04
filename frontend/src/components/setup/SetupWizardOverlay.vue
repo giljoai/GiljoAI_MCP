@@ -166,6 +166,7 @@
                 v-else-if="currentStep === 2"
                 :selected-tools="localSelectedTools"
                 :connected-tools="step2ConnectedTools"
+                :previously-completed="props.setupStepCompleted >= 3"
                 @can-proceed="step3CanProceed = $event"
                 @step-data="step3Data = $event"
                 @skip="handleStep3Skip"
@@ -349,6 +350,10 @@ const props = defineProps({
   selectedTools: {
     type: Array,
     default: () => [],
+  },
+  setupStepCompleted: {
+    type: Number,
+    default: 0,
   },
   mode: {
     type: String,
