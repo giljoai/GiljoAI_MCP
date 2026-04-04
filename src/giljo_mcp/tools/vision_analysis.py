@@ -20,6 +20,7 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import ResourceNotFoundError
 from src.giljo_mcp.models.context import MCPContextIndex
 from src.giljo_mcp.models.products import (
+    VALID_TARGET_PLATFORMS,
     Product,
     ProductArchitecture,
     ProductTechStack,
@@ -41,6 +42,8 @@ RULES:
 - Keep descriptions concise and factual, not promotional
 - product_description should be 2-3 sentences maximum
 - testing_strategy MUST be one of: TDD, BDD, Integration-First, E2E-First, Manual, Hybrid
+- target_platforms MUST be a list of: windows, linux, macos, android, ios, web, all
+  Use 'web' for browser-based apps (SPA, PWA, responsive). Use 'all' alone if cross-platform.
 - For summaries: preserve technical specs, architecture decisions, and constraints
 - For summaries: remove marketing prose, user personas, and storytelling
 
@@ -336,6 +339,16 @@ def _write_product_fields(
 ) -> None:
     """Apply direct product fields (name, description, core_features, target_platforms)."""
     # See CROSS-REFERENCE note on FIELD_MAP — tuning also writes these fields.
+
+    # Validate target_platforms before writing — fail fast with actionable error
+    if "target_platforms" in fields:
+        platforms = fields["target_platforms"]
+        if isinstance(platforms, list):
+            invalid = set(platforms) - VALID_TARGET_PLATFORMS
+            if invalid:
+                valid_list = ", ".join(sorted(VALID_TARGET_PLATFORMS))
+                raise ValueError(f"Invalid target_platforms: {', '.join(sorted(invalid))}. Valid values: {valid_list}")
+
     for field_name in _PRODUCT_FIELDS:
         if field_name not in fields:
             continue

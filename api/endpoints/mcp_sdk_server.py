@@ -709,7 +709,8 @@ async def get_vision_doc(
         "Write structured product fields extracted from vision document analysis. "
         "Performs merge-write: only updates fields that are provided. Creates child "
         "table rows (tech_stack, architecture, test_config) on first write. "
-        "Include summary_33 and summary_66 for AI-generated summaries."
+        "Include summary_33 and summary_66 for AI-generated summaries. "
+        "target_platforms must be from: windows, linux, macos, android, ios, web, all."
     ),
 )
 async def write_product_from_analysis(
