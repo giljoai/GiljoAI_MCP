@@ -106,6 +106,7 @@ async def gil_get_vision_doc(
     tenant_key: str,
     chunk: int | None = None,
     db_manager: DatabaseManager | None = None,
+    websocket_manager: Any = None,
     _test_session: AsyncSession | None = None,
 ) -> dict[str, Any]:
     """
@@ -222,6 +223,17 @@ async def gil_get_vision_doc(
         else:
             # Metadata only — no content, agent should request chunks individually
             base["usage"] = f"Call again with chunk=1 through chunk={total_chunks} to retrieve content"
+
+        # Notify frontend that the agent has connected and started analysis
+        if websocket_manager and chunk is None:
+            from api.events.schemas import EventFactory
+
+            event = EventFactory.tenant_envelope(
+                event_type="vision:analysis_started",
+                tenant_key=tenant_key,
+                data={"product_id": product_id, "total_chunks": total_chunks},
+            )
+            await websocket_manager.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
 
         return base
 
