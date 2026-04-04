@@ -221,9 +221,18 @@ async function handleStepComplete({ step, data }) {
   }
 }
 
-function handleDismiss() {
+async function handleDismiss() {
   showSetupOverlay.value = false
   forceSetupMode.value = false
+
+  // If the user reached the final step and dismisses, mark setup as complete
+  // so the wizard doesn't reopen on every login
+  if (setupStep.value >= 3 && !setupComplete.value) {
+    await userStore.updateSetupState({
+      setup_complete: true,
+      setup_step_completed: 4,
+    })
+  }
 }
 
 function handleCertContinue() {
