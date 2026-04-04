@@ -246,6 +246,49 @@
         </div>
 
 
+        <!-- Connect Another Machine (visible when HTTPS enabled) -->
+        <template v-if="sslStatus.ssl_enabled">
+          <v-divider class="my-6" />
+
+          <h3 class="text-h6 mb-3">Connect Another Machine</h3>
+          <p class="text-body-2 mb-4">
+            To access this server from another machine without browser warnings,
+            download the root certificate and install it on the client machine.
+          </p>
+
+          <v-btn
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-download"
+            class="mb-4"
+            :loading="certDownloading"
+            @click="downloadRootCa"
+          >
+            Download rootCA.pem
+          </v-btn>
+
+          <v-alert v-if="certDownloadError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="certDownloadError = ''">
+            {{ certDownloadError }}
+          </v-alert>
+
+          <div class="mb-3">
+            <div class="text-subtitle-2 mb-2">Install on the client machine:</div>
+            <div class="pa-3 bg-grey-darken-4 rounded text-body-2">
+              <code class="d-block mb-1"><strong>Windows:</strong> certutil -addstore -f "ROOT" %USERPROFILE%\Downloads\rootCA.pem</code>
+              <code class="d-block mb-1"><strong>macOS:</strong> sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/Downloads/rootCA.pem</code>
+              <code class="d-block mb-1"><strong>Linux:</strong> sudo cp ~/Downloads/rootCA.pem /usr/local/share/ca-certificates/giljoai.crt &amp;&amp; sudo update-ca-certificates</code>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <div class="text-subtitle-2 mb-2">Then enable Node.js system CA trust (for AI coding tools):</div>
+            <div class="pa-3 bg-grey-darken-4 rounded text-body-2">
+              <code class="d-block mb-1"><strong>Windows (PowerShell):</strong> $env:NODE_OPTIONS = "--use-system-ca"; [System.Environment]::SetEnvironmentVariable('NODE_OPTIONS', '--use-system-ca', 'User')</code>
+              <code class="d-block"><strong>Linux/macOS:</strong> echo 'export NODE_OPTIONS="--use-system-ca"' >> ~/.bashrc &amp;&amp; source ~/.bashrc</code>
+            </div>
+          </div>
+        </template>
+
         <!-- CORS Origins Management -->
         <v-divider class="my-6" />
 
@@ -355,6 +398,10 @@ const emit = defineEmits(['refresh', 'save'])
 // Local state for CORS management (disabled for now)
 const newOrigin = ref('')
 
+// Root CA download state
+const certDownloading = ref(false)
+const certDownloadError = ref('')
+
 // SSL state
 const sslStatus = ref({
   ssl_enabled: false,
@@ -451,6 +498,37 @@ async function toggleSsl(enabled) {
     console.error('[NETWORK] SSL toggle failed:', error)
   } finally {
     sslToggling.value = false
+  }
+}
+
+async function downloadRootCa() {
+  certDownloading.value = true
+  certDownloadError.value = ''
+  try {
+    const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1]
+    const response = await fetch(`${getApiBaseURL()}/api/v1/config/root-ca`, {
+      credentials: 'include',
+      headers: {
+        ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+      },
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      throw new Error(err.detail || `Download failed (${response.status})`)
+    }
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'rootCA.pem'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    certDownloadError.value = err.message
+  } finally {
+    certDownloading.value = false
   }
 }
 
