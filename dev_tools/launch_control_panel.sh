@@ -11,8 +11,28 @@ VENV_DIR="$PROJECT_ROOT/dev_tools/venv_devtools"
 
 cd "$PROJECT_ROOT"
 
+# ── Check tkinter is available (system-level dependency) ─────
+check_tkinter() {
+    local py="$1"
+    "$py" -c "import tkinter" 2>/dev/null
+}
+
 # ── Check isolated devtools venv (preferred) ─────────────────
 if [ -f "$VENV_DIR/pyvenv.cfg" ] && [ -x "$VENV_DIR/bin/python" ]; then
+    if ! check_tkinter "$VENV_DIR/bin/python"; then
+        echo ""
+        echo "  [FAIL] Python tkinter module is not installed."
+        echo "         tkinter is a system package and cannot be installed via pip."
+        echo ""
+        echo "  Install it for your OS:"
+        echo "    Debian/Ubuntu:  sudo apt install python3-tk"
+        echo "    Fedora/RHEL:    sudo dnf install python3-tkinter"
+        echo "    Arch:           sudo pacman -S tk"
+        echo "    macOS:          brew install python-tk"
+        echo ""
+        echo "  Then re-run this script."
+        exit 1
+    fi
     exec "$VENV_DIR/bin/python" "$PROJECT_ROOT/dev_tools/control_panel.py" "$@"
 fi
 
@@ -74,6 +94,23 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo "  [OK] Dependencies installed"
+
+# Check tkinter after bootstrap
+if ! check_tkinter "$VENV_DIR/bin/python"; then
+    echo ""
+    echo "  [FAIL] Python tkinter module is not installed."
+    echo "         tkinter is a system package and cannot be installed via pip."
+    echo ""
+    echo "  Install it for your OS:"
+    echo "    Debian/Ubuntu:  sudo apt install python3-tk"
+    echo "    Fedora/RHEL:    sudo dnf install python3-tkinter"
+    echo "    Arch:           sudo pacman -S tk"
+    echo "    macOS:          brew install python-tk"
+    echo ""
+    echo "  Then re-run this script."
+    exit 1
+fi
+
 echo ""
 echo "  Setup complete. Launching control panel..."
 echo ""
