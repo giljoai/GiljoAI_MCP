@@ -195,9 +195,9 @@
 
       <!-- 4. Connection Status -->
       <div class="panel-section connection-section">
-        <p class="instruction-text">Start your AI Coding tool</p>
-        <label class="section-label">Connection Status</label>
-        <div class="connection-status">
+        <p class="instruction-text mb-4">Start your AI Coding tool</p>
+        <div class="connection-status-line">
+          <span class="connection-label">CONNECTION STATUS:</span>
           <span
             :class="[
               'status-indicator',
@@ -206,10 +206,10 @@
                 : 'status-indicator--waiting',
             ]"
           >
-            {{ connectionStatus[activeToolId] === 'connected' ? 'Connected' : 'Not connected' }}
+            {{ connectionStatus[activeToolId] === 'connected' ? 'Connected' : 'Not Connected' }}
           </span>
         </div>
-        <p class="instruction-text">Ask your AI Coding tool to run a health check</p>
+        <p class="instruction-text mt-4">Ask your AI Coding tool to run a health check</p>
       </div>
     </div>
   </div>
@@ -622,8 +622,18 @@ onUnmounted(() => {
   text-align: center;
 }
 
-.connection-status {
-  margin-bottom: 8px;
+.connection-status-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.connection-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: $lightest-blue;
+  letter-spacing: 0.5px;
 }
 
 .status-indicator {
