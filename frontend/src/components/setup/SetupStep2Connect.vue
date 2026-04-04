@@ -82,28 +82,30 @@
         </div>
 
         <!-- Existing key found (prefix only, no plaintext) -->
-        <div v-else-if="existingKeyPrefix" class="api-key-status api-key-status--centered">
-          <v-icon size="16" :color="COLOR_SUCCESS">mdi-check-circle</v-icon>
-          <span class="status-text">Key exists ({{ existingKeyPrefix }}...)</span>
-          <v-btn
-            size="small"
-            color="primary"
-            variant="flat"
-            prepend-icon="mdi-key-plus"
-            class="ml-3"
-            :loading="generatingKey"
-            @click="handleGenerateKey"
-          >
-            Generate New Config
-          </v-btn>
-          <v-btn
-            size="small"
-            variant="text"
-            class="ml-1"
-            @click="skipAlreadyConfigured"
-          >
-            I already configured this
-          </v-btn>
+        <div v-else-if="existingKeyPrefix" class="api-key-existing">
+          <div class="api-key-status api-key-status--centered">
+            <v-icon size="16" :color="COLOR_SUCCESS">mdi-check-circle</v-icon>
+            <span class="status-text">Key exists ({{ existingKeyPrefix }}...)</span>
+          </div>
+          <div class="api-key-actions">
+            <v-btn
+              size="small"
+              color="primary"
+              variant="flat"
+              prepend-icon="mdi-key-plus"
+              :loading="generatingKey"
+              @click="handleGenerateKey"
+            >
+              Generate New Config
+            </v-btn>
+            <v-btn
+              size="small"
+              variant="text"
+              @click="skipAlreadyConfigured"
+            >
+              I already configured this
+            </v-btn>
+          </div>
         </div>
 
         <!-- No key at all -->
@@ -547,6 +549,19 @@ onUnmounted(() => {
 
 .api-key-status--centered {
   justify-content: center;
+}
+
+.api-key-existing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.api-key-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .status-text {
