@@ -555,7 +555,7 @@ async def toggle_ssl(request_body: SSLToggleRequest, current_user: User = Depend
 
 
 @router.get("/frontend")
-async def get_frontend_configuration():
+async def get_frontend_configuration(request: Request):
     """
     Get frontend-specific configuration.
 
@@ -566,6 +566,7 @@ async def get_frontend_configuration():
     Returns:
         - api.host: The host where the API is accessible (e.g., "192.168.1.100" or "localhost")
         - api.port: The API port (e.g., 7272)
+        - api.is_remote_client: Whether the requesting client is on a different machine
         - websocket.url: The full WebSocket URL (e.g., "ws://192.168.1.100:7272")
         - security.api_keys_required: Whether API keys are required
 
@@ -597,12 +598,16 @@ async def get_frontend_configuration():
     # v3.0 Unified Architecture: No 'mode' field in response
     api_protocol = "https" if ssl_enabled else "http"
 
+    # Detect remote client: compare request IP against local addresses and server's own host
+    is_remote_client = _is_remote_client(request, frontend_host)
+
     return {
         "api": {
             "host": frontend_host,  # Frontend connection host (external_host from config)
             "port": api_port,
             "protocol": api_protocol,
             "ssl_enabled": ssl_enabled,
+            "is_remote_client": is_remote_client,
         },
         "websocket": {
             "url": ws_url,
@@ -614,6 +619,73 @@ async def get_frontend_configuration():
         },
         "edition": state.config.get_nested("edition", "community"),
     }
+
+
+def _get_client_ip(request: Request) -> str:
+    """Extract client IP from request, respecting proxy headers."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip
+    return request.client.host if request.client else "unknown"
+
+
+def _is_remote_client(request: Request, server_host: str) -> bool:
+    """Check if the requesting client is on a different machine than the server.
+
+    Returns False for localhost, loopback, and the server's own external_host IP.
+    Returns True for any other client IP (i.e., a remote machine on the LAN).
+    """
+    client_ip = _get_client_ip(request)
+    local_addresses = {"127.0.0.1", "::1", "localhost", server_host}
+    return client_ip not in local_addresses
+
+
+@router.get(
+    "/root-ca",
+    dependencies=[Depends(get_current_active_user)],
+)
+async def download_root_ca():
+    """Download the mkcert root CA certificate for trusting on remote machines.
+
+    Only available when HTTPS is enabled and mkcert root CA exists.
+    Requires authentication.
+    """
+    import subprocess
+
+    from api.app import state
+
+    ssl_enabled = state.config.get_nested("features.ssl_enabled", default=False) if state.config else False
+    if not ssl_enabled:
+        raise HTTPException(status_code=404, detail="HTTPS is not enabled on this server")
+
+    try:
+        result = subprocess.run(
+            ["mkcert", "-CAROOT"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        ca_dir = result.stdout.strip()
+        if not ca_dir:
+            raise HTTPException(status_code=404, detail="mkcert CA root directory not found")
+
+        ca_file = Path(ca_dir) / "rootCA.pem"
+        if not ca_file.exists():
+            raise HTTPException(status_code=404, detail="Root CA certificate not found")
+
+        from fastapi.responses import FileResponse
+
+        return FileResponse(
+            path=str(ca_file),
+            filename="rootCA.pem",
+            media_type="application/x-pem-file",
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail="mkcert is not installed or CA not found") from exc
 
 
 @router.get("/health/database")
