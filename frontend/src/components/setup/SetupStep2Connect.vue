@@ -192,8 +192,8 @@
         </div>
       </div>
 
-      <!-- 4. Connection Status -->
-      <div class="panel-section connection-section">
+      <!-- 4. Connection Status (only after generating new config) -->
+      <div v-if="generatedKey" class="panel-section connection-section">
         <p class="instruction-text mb-4">Start your AI Coding tool</p>
         <div class="connection-status-line">
           <span class="connection-label">CONNECTION STATUS:</span>
