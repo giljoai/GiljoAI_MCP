@@ -41,8 +41,7 @@
               certificate installed on this machine to work properly.
             </p>
 
-            <div class="cert-steps">
-              <!-- Step 1: Download -->
+            <!-- Step 1: Download -->
               <div class="cert-step">
                 <div class="cert-step-number">1</div>
                 <div class="cert-step-content">
@@ -117,7 +116,6 @@
                   </div>
                 </div>
               </div>
-            </div>
           </div>
 
           <!-- Footer — same pattern as setup wizard -->
@@ -356,14 +354,11 @@ function handleSkip() {
   padding: 0 15%;
 }
 
-.cert-steps {
-  max-width: 540px;
-  margin: 0 auto;
-}
-
 .cert-step {
   display: flex;
-  gap: 14px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   margin-bottom: 20px;
 }
 
@@ -385,8 +380,7 @@ function handleSkip() {
 }
 
 .cert-step-content {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
 }
 
 .cert-step-title {
@@ -400,10 +394,12 @@ function handleSkip() {
   font-size: 0.8125rem;
   color: $lightest-blue;
   margin-bottom: 8px;
+  text-align: center;
 }
 
 .os-tabs {
   display: flex;
+  justify-content: center;
   gap: 4px;
   margin-bottom: 8px;
 }
