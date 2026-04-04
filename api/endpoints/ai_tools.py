@@ -63,7 +63,7 @@ def get_claude_code_config(server_url: str, api_key: str) -> str:
     Returns:
         Command string for HTTP transport
     """
-    return f"""claude mcp add --transport http giljo_mcp {server_url}/mcp \\
+    return f"""claude mcp add --scope user --transport http giljo_mcp {server_url}/mcp \\
   --header "Authorization: Bearer {api_key}" """
 
 
