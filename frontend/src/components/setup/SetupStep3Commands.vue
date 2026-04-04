@@ -1,6 +1,6 @@
 <template>
   <div class="step-commands">
-    <p class="step-heading">Install commands and agents</p>
+    <p class="step-heading">Install Skills and Agents</p>
 
     <!-- Tool tabs (only if multiple connected tools) -->
     <div v-if="tools.length > 1" class="tool-tabs" role="tablist">
@@ -20,78 +20,58 @@
     <!-- Active tool panel -->
     <div class="tool-panel" role="tabpanel">
 
-      <!-- 1. Copy Prompt Button -->
+      <!-- Primary path: giljo_setup -->
       <div class="panel-section">
         <p class="instruction-text">
-          Paste this into your {{ activeTool.name }} terminal and press Enter
+          Ask your {{ activeTool.name }} to run:
         </p>
-
-        <!-- Loading state -->
-        <div v-if="promptLoading[activeToolId]" class="prompt-loading">
-          <v-progress-circular size="20" width="2" indeterminate :color="COLOR_MUTED" />
-          <span class="prompt-loading-text">Preparing prompt...</span>
+        <div class="setup-command-row">
+          <code class="setup-command">giljo_setup</code>
         </div>
+        <p class="instruction-hint">
+          This installs slash commands and agent templates automatically
+        </p>
+      </div>
 
-        <!-- Error state -->
-        <div v-else-if="promptErrors[activeToolId]" class="prompt-error">
-          <v-icon size="16" :color="COLOR_ERROR_LIGHT">mdi-alert-circle-outline</v-icon>
-          <span class="prompt-error-text">{{ promptErrors[activeToolId] }}</span>
-          <v-btn size="small" variant="outlined" class="retry-btn" @click="fetchPrompt(activeToolId)">
-            Retry
-          </v-btn>
-        </div>
-
-        <!-- Copy button (no visible prompt text) -->
-        <div v-else class="copy-prompt-row">
-          <v-btn
-            color="primary"
-            variant="flat"
-            prepend-icon="mdi-content-copy"
-            :disabled="!prompts[activeToolId]"
-            @click="handleCopyPrompt(activeToolId)"
+      <!-- Status checklist -->
+      <div class="checklist-centered">
+        <div class="checklist-column">
+        <div class="checklist-item">
+          <v-icon
+            size="20"
+            :color="toolStatus[activeToolId]?.commands ? COLOR_SUCCESS : COLOR_MUTED"
           >
-            Copy Prompt
-          </v-btn>
+            {{ toolStatus[activeToolId]?.commands ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
+          </v-icon>
+          <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.commands }]">
+            Skills downloaded
+          </span>
+        </div>
+
+        <div class="checklist-item">
+          <v-icon
+            size="20"
+            :color="toolStatus[activeToolId]?.agents ? COLOR_SUCCESS : COLOR_MUTED"
+          >
+            {{ toolStatus[activeToolId]?.agents ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
+          </v-icon>
+          <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.agents }]">
+            Agents downloaded
+          </span>
+        </div>
         </div>
       </div>
 
-      <!-- 2. Slash commands status -->
-      <div class="checklist-item">
-        <v-icon
-          size="20"
-          :color="toolStatus[activeToolId]?.commands ? COLOR_SUCCESS : COLOR_MUTED"
-        >
-          {{ toolStatus[activeToolId]?.commands ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
-        </v-icon>
-        <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.commands }]">
-          Slash commands installed
-        </span>
-      </div>
-
-      <!-- 3. Agent command instruction -->
-      <div class="panel-section agent-section">
-        <p class="instruction-text">
-          Run <code class="inline-code">{{ getAgentCommand(activeToolId) }}</code> in your {{ activeTool.name }} terminal session
+      <Transition name="fade-slide">
+        <p v-if="toolStatus[activeToolId]?.agents" class="instruction-hint" style="text-align: center;">
+          Run <code class="inline-code">{{ getAgentCommand(activeToolId) }}</code> in the future to refresh agent templates
         </p>
-      </div>
+      </Transition>
 
-      <!-- 4. Agents downloaded status -->
-      <div class="checklist-item">
-        <v-icon
-          size="20"
-          :color="toolStatus[activeToolId]?.agents ? COLOR_SUCCESS : COLOR_MUTED"
-        >
-          {{ toolStatus[activeToolId]?.agents ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
-        </v-icon>
-        <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.agents }]">
-          Agents downloaded
-        </span>
-        <Transition name="fade-slide">
-          <p v-if="toolStatus[activeToolId]?.agents" class="agent-refresh-tip">
-            You can run this command again when you update your agent templates to refresh agents from your tool.
-          </p>
-        </Transition>
-      </div>
+      <!-- Manual setup pointer -->
+      <p class="manual-setup-hint">
+        For manual setup, go to <strong>Settings &gt; Integrations</strong>
+      </p>
     </div>
 
     <!-- Skip link -->
@@ -111,14 +91,11 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useClipboard } from '@/composables/useClipboard'
-import { useToast } from '@/composables/useToast'
 import { useWebSocketStore } from '@/stores/websocket'
 
 /* design-token-exempt: Vuetify color props require raw values, not SCSS vars or CSS custom properties */
 const COLOR_MUTED = '#8f97b7' // $lightest-blue
 const COLOR_SUCCESS = '#6bcf7f' // $gradient-brand-end
-const COLOR_ERROR_LIGHT = '#e57373' // lightened $color-status-error
 
 const TOOL_META = {
   claude_code: { name: 'Claude Code', logo: '/claude_pix.svg' },
@@ -141,12 +118,14 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  previouslyCompleted: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['can-proceed', 'step-data', 'skip'])
 
-const { copy: clipboardCopy } = useClipboard()
-const { showToast } = useToast()
 const wsStore = useWebSocketStore()
 
 // Derive tool list from connectedTools
@@ -162,70 +141,13 @@ const activeTool = computed(() => TOOL_META[activeToolId.value] || { name: 'Tool
 // Active tab
 const activeToolId = ref(props.connectedTools[0] || 'claude_code')
 
-// Bootstrap prompt state per tool (initialize eagerly so template sees loading state)
-const prompts = reactive(Object.fromEntries(props.connectedTools.map((id) => [id, null])))
-const promptLoading = reactive(Object.fromEntries(props.connectedTools.map((id) => [id, true])))
-const promptErrors = reactive(Object.fromEntries(props.connectedTools.map((id) => [id, null])))
-
-// Installation status per tool (initialize eagerly)
+// Installation status per tool — pre-fill if user already completed this step before
 const toolStatus = reactive(
-  Object.fromEntries(props.connectedTools.map((id) => [id, { commands: false, agents: false }])),
+  Object.fromEntries(props.connectedTools.map((id) => [id, {
+    commands: props.previouslyCompleted,
+    agents: props.previouslyCompleted,
+  }])),
 )
-
-// Fetch bootstrap prompt from backend
-async function fetchBootstrapPrompt(toolId) {
-  const response = await fetch(
-    `/api/download/bootstrap-prompt?platform=${toolId}`,
-    {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-      },
-    },
-  )
-  if (!response.ok) throw new Error(`Failed: ${response.status}`)
-  const data = await response.json()
-  return data.prompt
-}
-
-async function fetchPrompt(toolId) {
-  promptLoading[toolId] = true
-  promptErrors[toolId] = null
-  try {
-    const promptText = await fetchBootstrapPrompt(toolId)
-    prompts[toolId] = promptText
-  } catch (e) {
-    promptErrors[toolId] = e.message || 'Failed to fetch bootstrap prompt'
-  } finally {
-    promptLoading[toolId] = false
-  }
-}
-
-// Fetch prompts for all connected tools
-function fetchAllPrompts() {
-  for (const id of props.connectedTools) {
-    fetchPrompt(id)
-  }
-}
-
-// Copy prompt — resets both checkboxes until server detects real downloads
-async function handleCopyPrompt(toolId) {
-  const text = prompts[toolId]
-  if (!text) return
-
-  // Reset status — user is re-running the flow
-  if (toolStatus[toolId]) {
-    toolStatus[toolId].commands = false
-    toolStatus[toolId].agents = false
-  }
-
-  const success = await clipboardCopy(text)
-  if (success) {
-    showToast({ message: 'Bootstrap prompt copied to clipboard', type: 'success' })
-  } else {
-    showToast({ message: 'Copy failed -- select the text and press Ctrl+C', type: 'warning' })
-  }
-}
 
 function getAgentCommand(toolId) {
   return AGENT_COMMANDS[toolId] || '/gil_get_agents'
@@ -285,15 +207,28 @@ function handleAgentsDownloaded() {
   }
 }
 
+function handleBootstrapComplete() {
+  // giljo_setup installs both commands and agents in one shot
+  for (const id of props.connectedTools) {
+    if (toolStatus[id]) {
+      toolStatus[id].commands = true
+      toolStatus[id].agents = true
+    }
+  }
+}
+
+let unsubBootstrap = null
+
 onMounted(() => {
-  fetchAllPrompts()
   unsubCommands = wsStore.on('setup:commands_installed', handleCommandsInstalled)
   unsubAgents = wsStore.on('setup:agents_downloaded', handleAgentsDownloaded)
+  unsubBootstrap = wsStore.on('setup:bootstrap_complete', handleBootstrapComplete)
 })
 
 onUnmounted(() => {
   if (unsubCommands) unsubCommands()
   if (unsubAgents) unsubAgents()
+  if (unsubBootstrap) unsubBootstrap()
 })
 </script>
 
@@ -398,62 +333,57 @@ onUnmounted(() => {
   border-radius: $border-radius-sharp;
 }
 
-/* Copy prompt row */
-.copy-prompt-row {
+/* giljo_setup command display */
+.setup-command-row {
   display: flex;
   justify-content: center;
   margin-bottom: 8px;
 }
 
-/* Loading state */
-.prompt-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 16px;
-}
-
-.prompt-loading-text {
-  font-size: 0.875rem;
-  color: $lightest-blue;
-}
-
-/* Error state */
-.prompt-error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: rgba(229, 115, 115, 0.08); /* design-token-exempt: error background tint, no exact token */
+.setup-command {
+  font-family: "Roboto Mono", "Courier New", monospace;
+  font-size: 1.125rem;
+  font-weight: 600;
+  background: rgba($color-brand-yellow, 0.1);
+  color: $color-brand-yellow;
+  padding: 8px 20px;
   border-radius: $border-radius-default;
 }
 
-.prompt-error-text {
-  flex: 1;
-  font-size: 0.875rem;
-  color: #e57373; /* design-token-exempt: lightened error variant, no exact token */
+.instruction-hint {
+  font-size: 0.8125rem;
+  color: $lightest-blue;
+  text-align: center;
+  margin-bottom: 16px;
 }
 
-.retry-btn {
-  color: $color-brand-yellow !important;
-  border-color: $color-brand-yellow !important;
-  text-transform: none;
-  font-size: 0.75rem;
-}
-
-/* Agent section */
-.agent-section {
+/* Manual setup hint */
+.manual-setup-hint {
+  font-size: 0.8125rem;
+  color: $lightest-blue;
+  text-align: center;
   margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* Checklist items */
+.checklist-centered {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.checklist-column {
+  display: flex;
+  flex-direction: column;
+}
+
 .checklist-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .checklist-text {

@@ -82,28 +82,23 @@
         </div>
 
         <!-- Existing key found (prefix only, no plaintext) -->
-        <div v-else-if="existingKeyPrefix" class="api-key-status api-key-status--centered">
-          <v-icon size="16" :color="COLOR_SUCCESS">mdi-check-circle</v-icon>
-          <span class="status-text">Key exists ({{ existingKeyPrefix }}...)</span>
-          <v-btn
-            size="small"
-            color="primary"
-            variant="flat"
-            prepend-icon="mdi-key-plus"
-            class="ml-3"
-            :loading="generatingKey"
-            @click="handleGenerateKey"
-          >
-            Generate New Config
-          </v-btn>
-          <v-btn
-            size="small"
-            variant="text"
-            class="ml-1"
-            @click="skipAlreadyConfigured"
-          >
-            I already configured this
-          </v-btn>
+        <div v-else-if="existingKeyPrefix" class="api-key-existing">
+          <div class="api-key-status api-key-status--centered">
+            <v-icon size="16" :color="COLOR_SUCCESS">mdi-check-circle</v-icon>
+            <span class="status-text">Key exists ({{ existingKeyPrefix }}...)</span>
+          </div>
+          <div class="api-key-actions">
+            <v-btn
+              size="small"
+              color="primary"
+              variant="flat"
+              prepend-icon="mdi-key-plus"
+              :loading="generatingKey"
+              @click="handleGenerateKey"
+            >
+              Generate New Config
+            </v-btn>
+          </div>
         </div>
 
         <!-- No key at all -->
@@ -131,16 +126,21 @@
 
         <!-- HTTPS cert trust (Node.js tools) -->
         <template v-if="needsCertTrust">
-          <v-btn-toggle v-model="platform" mandatory variant="outlined" divided rounded="t-lg" color="primary" class="mb-3">
-            <v-btn value="windows" size="small">PowerShell</v-btn>
-            <v-btn value="unix" size="small">Linux / macOS</v-btn>
-          </v-btn-toggle>
-          <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-            <strong>HTTPS with self-signed certificates:</strong> Node.js-based AI coding agents need to trust the system CA store (one-time setup, requires Node.js 20.12+).
-          </v-alert>
+          <div class="platform-pill-row">
+            <button :class="['platform-pill', 'smooth-border', { 'platform-pill--active': platform === 'windows' }]" @click="platform = 'windows'">PowerShell</button>
+            <button :class="['platform-pill', 'smooth-border', { 'platform-pill--active': platform === 'unix' }]" @click="platform = 'unix'">Linux / macOS</button>
+            <v-tooltip location="top" max-width="300">
+              <template #activator="{ props: tipProps }">
+                <v-btn v-bind="tipProps" icon variant="text" size="x-small" class="platform-help-icon">
+                  <v-icon size="16">mdi-help-circle-outline</v-icon>
+                </v-btn>
+              </template>
+              HTTPS with self-signed certificates: Node.js-based AI coding agents need to trust the system CA store (one-time setup, requires Node.js 20.12+).
+            </v-tooltip>
+          </div>
           <div class="config-block smooth-border">
             <div class="config-block-header">
-              <span class="config-block-label">Certificate Trust (one-time)</span>
+              <span class="config-block-label">CERTIFICATE TRUST (ONE-TIME) Paste in terminal</span>
               <v-btn
                 icon="mdi-content-copy"
                 size="x-small"
@@ -150,15 +150,14 @@
               />
             </div>
             <pre class="config-code">{{ certCommand }}</pre>
-            <span v-if="copiedField === 'cert'" class="copied-badge">Copied!</span>
           </div>
         </template>
 
         <!-- Platform toggle for Codex env var (if not already shown for HTTPS) -->
-        <v-btn-toggle v-if="!needsCertTrust && activeNormalizedId === 'codex'" v-model="platform" mandatory variant="outlined" divided rounded="t-lg" color="primary" class="mb-3">
-          <v-btn value="windows" size="small">PowerShell</v-btn>
-          <v-btn value="unix" size="small">Linux / macOS</v-btn>
-        </v-btn-toggle>
+        <div v-if="!needsCertTrust && activeNormalizedId === 'codex'" class="platform-pill-row">
+          <button :class="['platform-pill', 'smooth-border', { 'platform-pill--active': platform === 'windows' }]" @click="platform = 'windows'">PowerShell</button>
+          <button :class="['platform-pill', 'smooth-border', { 'platform-pill--active': platform === 'unix' }]" @click="platform = 'unix'">Linux / macOS</button>
+        </div>
 
         <!-- Codex: Environment Variable -->
         <div v-if="activeNormalizedId === 'codex'" class="config-block smooth-border">
@@ -173,13 +172,12 @@
             />
           </div>
           <pre class="config-code">{{ envVarText }}</pre>
-          <span v-if="copiedField === 'env'" class="copied-badge">Copied!</span>
         </div>
 
         <!-- Main config command -->
         <div class="config-block smooth-border">
           <div class="config-block-header">
-            <span class="config-block-label">Configuration Command — copy in terminal, not inside tool session</span>
+            <span class="config-block-label">CONFIGURATION COMMAND Paste in terminal</span>
             <v-btn
               icon="mdi-content-copy"
               size="x-small"
@@ -189,29 +187,38 @@
             />
           </div>
           <pre class="config-code">{{ configCommand }}</pre>
-          <span v-if="copiedField === 'config'" class="copied-badge">Copied!</span>
         </div>
       </div>
 
-      <!-- 4. Connection Status -->
-      <div class="panel-section">
-        <label class="section-label">Connection Status</label>
-        <div class="connection-status">
+      <!-- 4. Connection Status (only after generating new config) -->
+      <div v-if="generatedKey" class="panel-section connection-section">
+        <p class="instruction-text mb-4">Start your AI Coding tool</p>
+        <div class="connection-status-line">
+          <span class="connection-label">CONNECTION STATUS:</span>
           <span
             :class="[
-              'status-indicator',
+              'status-dot',
               connectionStatus[activeToolId] === 'connected'
-                ? 'status-indicator--connected'
-                : 'status-indicator--waiting',
+                ? 'status-dot--connected'
+                : 'status-dot--waiting',
             ]"
-          >
-            {{ connectionStatus[activeToolId] === 'connected' ? 'Connected' : 'Not connected' }}
-          </span>
+          />
         </div>
-        <p class="instruction-text">
-          After pasting the config and restarting your tool, ask it to run a GiljoAI health check.
-        </p>
+        <p class="instruction-text mt-4">Ask your AI Coding tool to run a health check</p>
       </div>
+    </div>
+
+    <!-- Bottom skip link (between Back and Next) -->
+    <div v-if="existingKeyPrefix && !generatedKey" class="skip-configured">
+      <span
+        class="skip-configured-link"
+        role="button"
+        tabindex="0"
+        @click="skipAlreadyConfigured"
+        @keydown.enter.prevent="skipAlreadyConfigured"
+      >
+        I already configured this
+      </span>
     </div>
   </div>
 </template>
@@ -555,6 +562,39 @@ onUnmounted(() => {
   justify-content: center;
 }
 
+.api-key-existing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.api-key-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skip-configured {
+  text-align: center;
+  margin-top: 16px;
+  padding-top: 8px;
+}
+
+.skip-configured-link {
+  font-size: 0.8125rem;
+  color: $lightest-blue;
+  cursor: pointer;
+  transition: color 250ms ease-out;
+}
+
+.skip-configured-link:hover,
+.skip-configured-link:focus-visible {
+  color: $color-brand-yellow;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .status-text {
   font-size: 0.875rem;
   color: $color-text-primary;
@@ -580,6 +620,45 @@ onUnmounted(() => {
   padding: 0;
   margin-bottom: 12px;
   overflow: hidden;
+}
+
+/* Platform pill toggles (matches UserSettings pill-toggle pattern) */
+.platform-pill-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.platform-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 14px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  color: $lightest-blue;
+  cursor: pointer;
+  transition: color 200ms ease-out, background 200ms ease-out;
+  --smooth-border-color: #{$med-blue};
+}
+
+.platform-pill:hover {
+  color: $color-text-primary;
+}
+
+.platform-pill--active,
+.platform-pill--active:hover {
+  background: rgba($color-brand-yellow, 0.12);
+  color: $color-brand-yellow;
+  box-shadow: none;
+}
+
+.platform-help-icon {
+  color: $lightest-blue;
+  cursor: help;
 }
 
 .config-block-header {
@@ -609,50 +688,39 @@ onUnmounted(() => {
   word-break: break-all;
 }
 
-.copied-badge {
-  position: absolute;
-  top: 6px;
-  right: 44px;
-  font-size: 0.6875rem;
-  color: $gradient-brand-end;
-  font-weight: 600;
-}
-
 /* Connection status */
-.connection-status {
-  margin-bottom: 8px;
+.connection-section {
+  text-align: center;
 }
 
-.status-indicator {
-  display: inline-flex;
+.connection-status-line {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
+  justify-content: center;
+  gap: 10px;
 }
 
-.status-indicator::before {
-  content: '';
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.status-indicator--waiting {
+.connection-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
   color: $lightest-blue;
+  letter-spacing: 0.5px;
 }
 
-.status-indicator--waiting::before {
-  background: $lightest-blue;
+.status-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
 }
 
-.status-indicator--connected {
-  color: $gradient-brand-end;
+.status-dot--waiting {
+  background: #e05252;
+  box-shadow: 0 0 8px 3px rgba(224, 82, 82, 0.5);
 }
 
-.status-indicator--connected::before {
-  background: $gradient-brand-end;
+.status-dot--connected {
+  background: #4caf50;
+  box-shadow: 0 0 8px 3px rgba(76, 175, 80, 0.5);
 }
 
 .instruction-text {
