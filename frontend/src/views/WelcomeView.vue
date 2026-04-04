@@ -105,7 +105,7 @@
 
       <!-- CONDITIONAL SECTION: Setup or Recent Projects -->
       <div v-if="!setupComplete" class="setup-cta-section">
-        <div class="setup-cta smooth-border" @click="showSetupOverlay = true">
+        <div class="setup-cta smooth-border" @click="openSetupWithCertGate">
           <v-icon size="24" color="#ffc300">mdi-rocket-launch</v-icon>
           <div class="setup-cta-text">
             <div class="setup-cta-title">{{ setupCtaLabel }}</div>
@@ -133,6 +133,12 @@
       </div>
     </div>
 
+    <!-- Certificate trust modal (shown before setup for remote HTTPS clients) -->
+    <CertTrustModal
+      v-model="showCertModal"
+      @continue="handleCertContinue"
+    />
+
     <!-- Setup wizard overlay -->
     <SetupWizardOverlay
       v-model="showSetupOverlay"
@@ -156,13 +162,20 @@ import { getAgentColor } from '@/config/agentColors'
 import api from '@/services/api'
 import GilMascot from '@/components/GilMascot.vue'
 import SetupWizardOverlay from '@/components/setup/SetupWizardOverlay.vue'
+import CertTrustModal from '@/components/setup/CertTrustModal.vue'
 import RecentProjectsList from '@/components/dashboard/RecentProjectsList.vue'
+import configService from '@/services/configService'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const productStore = useProductStore()
 const projectStore = useProjectStore()
+
+// Certificate trust modal state
+const showCertModal = ref(false)
+const certModalDismissed = ref(false)
+const pendingSetupOpen = ref(false)
 
 // Setup wizard state
 const showSetupOverlay = ref(false)
@@ -211,6 +224,32 @@ async function handleStepComplete({ step, data }) {
 function handleDismiss() {
   showSetupOverlay.value = false
   forceSetupMode.value = false
+}
+
+function handleCertContinue() {
+  certModalDismissed.value = true
+  sessionStorage.setItem('cert_modal_dismissed', '1')
+  if (pendingSetupOpen.value) {
+    pendingSetupOpen.value = false
+    showSetupOverlay.value = true
+  }
+}
+
+function openSetupWithCertGate() {
+  if (shouldShowCertModal()) {
+    pendingSetupOpen.value = true
+    showCertModal.value = true
+  } else {
+    showSetupOverlay.value = true
+  }
+}
+
+function shouldShowCertModal() {
+  if (sessionStorage.getItem('cert_modal_dismissed') === '1') return false
+  if (certModalDismissed.value) return false
+  const config = configService.getRawConfig()
+  if (!config) return false
+  return config.api?.ssl_enabled === true && config.api?.is_remote_client === true
 }
 
 // Template data
@@ -482,7 +521,15 @@ onMounted(async () => {
   if (route.query.openSetup === 'true' || !setupComplete.value) {
     forceSetupMode.value = route.query.openSetup === 'true'
     setupStep.value = Math.min(setupStepCompleted.value, 3)
-    showSetupOverlay.value = true
+
+    // Gate: show cert modal first for remote HTTPS clients, then open setup after
+    if (shouldShowCertModal()) {
+      pendingSetupOpen.value = true
+      showCertModal.value = true
+    } else {
+      showSetupOverlay.value = true
+    }
+
     // Clean up query param so refresh doesn't re-trigger
     if (route.query.openSetup) {
       router.replace({ path: '/', query: {} })
