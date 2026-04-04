@@ -202,7 +202,7 @@ def upgrade() -> None:
     sa.Column("description", sa.Text(), nullable=True),
     sa.Column("project_path", sa.String(length=500), nullable=True, comment="File system path to product folder (required for agent export)"),
     sa.Column("quality_standards", sa.Text(), nullable=True, comment="Quality standards and testing expectations"),
-    sa.Column("target_platforms", sa.ARRAY(sa.String()), server_default=sa.text("'{all}'::text[]"), nullable=False, comment="Target platforms: windows, linux, macos, or all"),
+    sa.Column("target_platforms", sa.ARRAY(sa.String()), server_default=sa.text("'{all}'::text[]"), nullable=False, comment="Target platforms: windows, linux, macos, android, ios, web, or all"),
     sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
     sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
     sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True, comment="Timestamp when product was soft deleted (NULL for active products)"),
@@ -219,7 +219,7 @@ def upgrade() -> None:
     sa.Column("extraction_custom_instructions", sa.Text(), nullable=True, comment="Custom instructions appended to AI vision document extraction prompt"),
     sa.Column("brand_guidelines", sa.Text(), nullable=True, comment="Brand & design guidelines for frontend-facing agents"),
     sa.ForeignKeyConstraint(["org_id"], ["organizations.id"], ondelete="SET NULL"),
-    sa.CheckConstraint("target_platforms <@ ARRAY['windows', 'linux', 'macos', 'all']::VARCHAR[]", name="ck_product_target_platforms_valid"),
+    sa.CheckConstraint("target_platforms <@ ARRAY['windows', 'linux', 'macos', 'android', 'ios', 'web', 'all']::VARCHAR[]", name="ck_product_target_platforms_valid"),
     sa.CheckConstraint("NOT ('all' = ANY(target_platforms) AND array_length(target_platforms, 1) > 1)", name="ck_product_target_platforms_all_exclusive"),
     sa.PrimaryKeyConstraint("id")
     )

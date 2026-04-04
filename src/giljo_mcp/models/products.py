@@ -30,6 +30,12 @@ from sqlalchemy.sql import func
 from .base import Base, generate_uuid
 
 
+# Single source of truth for valid product target platforms.
+# Referenced by: DB check constraint, ProductService validation, MCP tool validation,
+# extraction prompt, frontend checkboxes, and API schema descriptions.
+VALID_TARGET_PLATFORMS = frozenset({"windows", "linux", "macos", "android", "ios", "web", "all"})
+
+
 class Product(Base):
     """
     Product model - TOP-level organizational unit.
@@ -71,7 +77,7 @@ class Product(Base):
         ARRAY(String),
         nullable=False,
         server_default=text("'{all}'::text[]"),
-        comment="Target platforms: windows, linux, macos, or all",
+        comment="Target platforms: windows, linux, macos, android, ios, web, or all",
     )
 
     # ✅ Handover 0128e Complete: Deprecated vision fields removed
@@ -185,7 +191,7 @@ class Product(Base):
         # Handover 0128e: Removed CheckConstraint for deprecated vision_type field
         # Handover 0425: Validate target_platforms field
         CheckConstraint(
-            "target_platforms <@ ARRAY['windows', 'linux', 'macos', 'android', 'ios', 'all']::VARCHAR[]",
+            "target_platforms <@ ARRAY['windows', 'linux', 'macos', 'android', 'ios', 'web', 'all']::VARCHAR[]",
             name="ck_product_target_platforms_valid",
         ),
         CheckConstraint(
