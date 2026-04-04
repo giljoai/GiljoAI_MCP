@@ -42,6 +42,36 @@ from .tools.slash_command_templates import get_all_templates
 logger = logging.getLogger(__name__)
 
 
+def _codex_agents_to_toml(agents: list[dict]) -> list[tuple[str, str]]:
+    """Convert Codex agent dicts to (zip_path, toml_content) pairs.
+
+    Renders each agent as a standalone TOML file that Codex CLI reads
+    when referenced from config.toml. Uses the gil- prefix to avoid
+    shadowing Codex built-in roles.
+    """
+    entries = []
+    for agent in agents:
+        name = agent["agent_name"]
+        slug = name.lower().replace(" ", "-").replace("_", "-")
+        if not slug.startswith("gil-"):
+            slug = f"gil-{slug}"
+
+        # Escape triple-quoted strings for TOML multiline
+        instructions = agent.get("developer_instructions", "")
+        # Replace any literal triple-quotes in instructions to avoid TOML parse errors
+        instructions = instructions.replace('"""', '\\"\\"\\"')
+
+        toml_content = (
+            f'name = "{name}"\n'
+            f'description = "{agent.get("description", "")}"\n'
+            f'model = "{agent.get("suggested_model", "gpt-5.2-codex")}"\n'
+            f'reasoning_effort = "{agent.get("suggested_reasoning_effort", "medium")}"\n'
+            f'developer_instructions = """\n{instructions}\n"""\n'
+        )
+        entries.append((f"agents/{slug}.toml", toml_content))
+    return entries
+
+
 class FileStaging:
     """
     Manages temporary file staging for download tokens.
@@ -232,6 +262,110 @@ class FileStaging:
             # Rollback on error
             if session:
                 await session.rollback()
+            return (None, msg)
+
+    async def stage_combined_setup(
+        self,
+        staging_path: Path,
+        tenant_key: str,
+        db_session: AsyncSession | None = None,
+        platform: str = "claude_code",
+    ) -> tuple[Path | None, str]:
+        """
+        Stage slash commands AND agent templates in a single ZIP (Handover 0907).
+
+        Creates a combined ZIP structured so it extracts directly into the
+        platform's home directory root (~/.claude/, ~/.gemini/, ~/.codex/).
+        Agent templates are binary content — no LLM processing on the client.
+
+        Args:
+            staging_path: Pre-created staging directory
+            tenant_key: Tenant identifier
+            db_session: Optional DB session override
+            platform: Target CLI platform (claude_code, gemini_cli, codex_cli)
+
+        Returns:
+            Tuple (zip_path|None, message)
+        """
+        from .tools.slash_command_templates import _VALID_PLATFORMS, get_all_templates
+
+        if platform not in _VALID_PLATFORMS:
+            raise ValueError(f"Unknown platform '{platform}'. Must be one of: {', '.join(_VALID_PLATFORMS)}")
+
+        session = db_session or self.db_session
+
+        try:
+            staging_path.mkdir(parents=True, exist_ok=True)
+            zip_path = staging_path / "giljo_setup.zip"
+
+            # --- Slash commands ---
+            slash_templates = get_all_templates(platform=platform)
+
+            # Map slash command filenames into platform directory structure
+            slash_dir = "skills" if platform == "codex_cli" else "commands"
+
+            # --- Agent templates (if DB session available) ---
+            agent_entries: list[tuple[str, str]] = []
+            selected_templates: list = []
+
+            if session:
+                from datetime import datetime, timezone
+
+                from .template_renderer import select_templates_for_packaging
+                from .tools.agent_template_assembler import AgentTemplateAssembler
+
+                result = await session.execute(
+                    select(AgentTemplate).where(
+                        AgentTemplate.tenant_key == tenant_key,
+                        AgentTemplate.is_active,
+                    )
+                )
+                all_active = result.scalars().all()
+
+                if all_active:
+                    selected_templates = select_templates_for_packaging(all_active, max_count=8)
+                    assembler = AgentTemplateAssembler()
+                    export_data = assembler.assemble(selected_templates, platform)
+
+                    if platform == "codex_cli":
+                        agent_entries = _codex_agents_to_toml(export_data["agents"])
+                    else:
+                        for agent in export_data["agents"]:
+                            agent_entries.append(
+                                (
+                                    f"agents/{agent['filename']}",
+                                    agent["content"],
+                                )
+                            )
+
+            # --- Build ZIP ---
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for filename, content in slash_templates.items():
+                    zf.writestr(f"{slash_dir}/{filename}", content)
+                for zip_name, content in agent_entries:
+                    zf.writestr(zip_name, content)
+
+            # Update export timestamps
+            if selected_templates and session:
+                export_timestamp = datetime.now(timezone.utc)
+                for t in selected_templates:
+                    t.last_exported_at = export_timestamp
+                await session.commit()
+
+            total = len(slash_templates) + len(agent_entries)
+            logger.info(f"Staged combined setup ZIP: {zip_path} ({total} files for {platform})")
+            return (
+                zip_path,
+                f"Successfully staged {total} files ({len(slash_templates)} commands, {len(agent_entries)} agents)",
+            )
+
+        except (OSError, ValueError, RuntimeError) as e:
+            msg = f"Error staging combined setup ZIP: {e}"
+            logger.exception(msg)
+            if session:
+                await session.rollback()
+            if isinstance(e, ValueError):
+                raise
             return (None, msg)
 
     async def cleanup(self, tenant_key: str, token: str) -> bool:

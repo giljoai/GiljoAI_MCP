@@ -302,6 +302,57 @@ async def health_check(ctx: Context = None) -> dict:
 
 @mcp.tool(
     description=(
+        "First-time setup: downloads slash commands and agent templates as a ZIP. "
+        "Run once after connecting. Installs with default models. "
+        "To customize models later, run /gil_get_agents (or $gil-get-agents for Codex)."
+    ),
+)
+async def giljo_setup(
+    platform: str = "auto",
+    ctx: Context = None,
+) -> dict:
+    """Install slash commands and agent templates for your CLI tool."""
+    # Auto-detect platform from MCP client info if available
+    if platform == "auto":
+        try:
+            client_info = getattr(ctx, "client_info", None) or {}
+            client_name = (client_info.get("name") or "").lower() if isinstance(client_info, dict) else ""
+            if "claude" in client_name:
+                platform = "claude_code"
+            elif "codex" in client_name:
+                platform = "codex_cli"
+            elif "gemini" in client_name:
+                platform = "gemini_cli"
+            else:
+                platform = "claude_code"
+        except (AttributeError, TypeError):
+            platform = "claude_code"
+
+    result = await _call_tool(ctx, "bootstrap_setup", {"platform": platform})
+
+    # Emit setup:bootstrap_complete WebSocket event
+    try:
+        from api.app import state as app_state
+
+        ws_manager = getattr(app_state, "websocket_manager", None)
+        tenant_key = _resolve_tenant(ctx)
+        if ws_manager and tenant_key:
+            from api.events.schemas import EventFactory
+
+            event = EventFactory.tenant_envelope(
+                event_type="setup:bootstrap_complete",
+                tenant_key=tenant_key,
+                data={"platform": platform},
+            )
+            await ws_manager.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
+    except (OSError, RuntimeError, ValueError, TypeError, AttributeError, ImportError, KeyError) as e:
+        logger.warning(f"setup:bootstrap_complete emission failed: {type(e).__name__}: {e}")
+
+    return result
+
+
+@mcp.tool(
+    description=(
         "Generate a one-time download URL for agent templates or slash commands. Returns a URL valid for 15 minutes."
     ),
 )
