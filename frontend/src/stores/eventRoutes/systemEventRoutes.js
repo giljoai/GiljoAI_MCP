@@ -82,7 +82,14 @@ export const SYSTEM_EVENT_ROUTES = {
     },
   },
 
-  // Vision Document Analysis (Handover 0842c)
+  // Vision Document Analysis — agent connected (Handover 0842c)
+  'vision:analysis_started': {
+    handler: async (payload) => {
+      dispatchWindowEvent('vision-analysis-started', payload)
+    },
+  },
+
+  // Vision Document Analysis — complete (Handover 0842c)
   'vision:analysis_complete': {
     handler: async (payload) => {
       const productStore = useProductStore()
