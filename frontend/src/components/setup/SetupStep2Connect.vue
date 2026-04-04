@@ -197,17 +197,14 @@
       <div class="panel-section connection-section">
         <p class="instruction-text mb-4">Start your AI Coding tool</p>
         <div class="connection-status-line">
-          <span class="connection-label">CONNECTION STATUS:</span>
           <span
             :class="[
-              'status-indicator',
+              'status-dot',
               connectionStatus[activeToolId] === 'connected'
-                ? 'status-indicator--connected'
-                : 'status-indicator--waiting',
+                ? 'status-dot--connected'
+                : 'status-dot--waiting',
             ]"
-          >
-            {{ connectionStatus[activeToolId] === 'connected' ? 'Connected' : 'Not Connected' }}
-          </span>
+          />
         </div>
         <p class="instruction-text mt-4">Ask your AI Coding tool to run a health check</p>
       </div>
@@ -624,51 +621,23 @@ onUnmounted(() => {
 
 .connection-status-line {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 8px;
 }
 
-.connection-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: $lightest-blue;
-  letter-spacing: 0.5px;
-}
-
-.status-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.status-indicator::before {
-  content: '';
-  width: 10px;
-  height: 10px;
+.status-dot {
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  flex-shrink: 0;
 }
 
-.status-indicator--waiting {
-  color: #e05252;
-}
-
-.status-indicator--waiting::before {
+.status-dot--waiting {
   background: #e05252;
-  box-shadow: 0 0 6px 2px rgba(224, 82, 82, 0.5);
+  box-shadow: 0 0 8px 3px rgba(224, 82, 82, 0.5);
 }
 
-.status-indicator--connected {
-  color: #4caf50;
-}
-
-.status-indicator--connected::before {
+.status-dot--connected {
   background: #4caf50;
-  box-shadow: 0 0 6px 2px rgba(76, 175, 80, 0.5);
+  box-shadow: 0 0 8px 3px rgba(76, 175, 80, 0.5);
 }
 
 .instruction-text {
