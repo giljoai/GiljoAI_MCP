@@ -197,6 +197,7 @@
       <div class="panel-section connection-section">
         <p class="instruction-text mb-4">Start your AI Coding tool</p>
         <div class="connection-status-line">
+          <span class="connection-label">CONNECTION STATUS:</span>
           <span
             :class="[
               'status-dot',
@@ -621,7 +622,16 @@ onUnmounted(() => {
 
 .connection-status-line {
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 10px;
+}
+
+.connection-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: $lightest-blue;
+  letter-spacing: 0.5px;
 }
 
 .status-dot {
