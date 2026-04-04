@@ -131,7 +131,9 @@
             <button :class="['platform-pill', 'smooth-border', { 'platform-pill--active': platform === 'unix' }]" @click="platform = 'unix'">Linux / macOS</button>
             <v-tooltip location="top" max-width="300">
               <template #activator="{ props: tipProps }">
-                <v-icon v-bind="tipProps" size="16" class="platform-help-icon">mdi-help-circle-outline</v-icon>
+                <v-btn v-bind="tipProps" icon variant="text" size="x-small" class="platform-help-icon">
+                  <v-icon size="16">mdi-help-circle-outline</v-icon>
+                </v-btn>
               </template>
               HTTPS with self-signed certificates: Node.js-based AI coding agents need to trust the system CA store (one-time setup, requires Node.js 20.12+).
             </v-tooltip>
