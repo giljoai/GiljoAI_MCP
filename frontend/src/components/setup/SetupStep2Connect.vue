@@ -98,13 +98,6 @@
             >
               Generate New Config
             </v-btn>
-            <v-btn
-              size="small"
-              variant="text"
-              @click="skipAlreadyConfigured"
-            >
-              I already configured this
-            </v-btn>
           </div>
         </div>
 
@@ -208,6 +201,19 @@
         </div>
         <p class="instruction-text mt-4">Ask your AI Coding tool to run a health check</p>
       </div>
+    </div>
+
+    <!-- Bottom skip link (between Back and Next) -->
+    <div v-if="existingKeyPrefix && !generatedKey" class="skip-configured">
+      <span
+        class="skip-configured-link"
+        role="button"
+        tabindex="0"
+        @click="skipAlreadyConfigured"
+        @keydown.enter.prevent="skipAlreadyConfigured"
+      >
+        I already configured this
+      </span>
     </div>
   </div>
 </template>
@@ -562,6 +568,26 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.skip-configured {
+  text-align: center;
+  margin-top: 16px;
+  padding-top: 8px;
+}
+
+.skip-configured-link {
+  font-size: 0.8125rem;
+  color: $lightest-blue;
+  cursor: pointer;
+  transition: color 250ms ease-out;
+}
+
+.skip-configured-link:hover,
+.skip-configured-link:focus-visible {
+  color: $color-brand-yellow;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .status-text {
