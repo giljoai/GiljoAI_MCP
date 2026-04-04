@@ -150,7 +150,6 @@
               />
             </div>
             <pre class="config-code">{{ certCommand }}</pre>
-            <span v-if="copiedField === 'cert'" class="copied-badge">Copied!</span>
           </div>
         </template>
 
@@ -173,7 +172,6 @@
             />
           </div>
           <pre class="config-code">{{ envVarText }}</pre>
-          <span v-if="copiedField === 'env'" class="copied-badge">Copied!</span>
         </div>
 
         <!-- Main config command -->
@@ -189,7 +187,6 @@
             />
           </div>
           <pre class="config-code">{{ configCommand }}</pre>
-          <span v-if="copiedField === 'config'" class="copied-badge">Copied!</span>
         </div>
       </div>
 
@@ -604,15 +601,6 @@ onUnmounted(() => {
   color: $color-text-primary;
   white-space: pre-wrap;
   word-break: break-all;
-}
-
-.copied-badge {
-  position: absolute;
-  top: 6px;
-  right: 44px;
-  font-size: 0.6875rem;
-  color: $gradient-brand-end;
-  font-weight: 600;
 }
 
 /* Connection status */
