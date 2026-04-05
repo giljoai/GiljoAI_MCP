@@ -5,11 +5,13 @@ Revises: None
 Create Date: 2026-04-03
 
 This is a consolidated baseline migration that creates EXACTLY the schema
-matching the current SQLAlchemy models. Squashed from baseline_v34 + 1 incremental:
+matching the current SQLAlchemy models. Squashed from baseline_v34 + 4 incrementals:
 
   baseline_v34 - Full schema (39 tables)
   0855a - User setup wizard state columns (setup_complete, setup_selected_tools, setup_step_completed)
   0904 - Orchestrator auto check-in columns (auto_checkin_enabled, auto_checkin_interval)
+  a47a2 - Add 'web' to target_platforms check constraint (already in baseline)
+  0908a - Add learning_complete column to users
 
 Tables created (39 total):
   1. organizations           21. configurations
@@ -104,6 +106,7 @@ def upgrade() -> None:
     sa.Column("setup_complete", sa.Boolean(), nullable=False, server_default="false"),
     sa.Column("setup_selected_tools", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column("setup_step_completed", sa.Integer(), nullable=False, server_default="0"),
+    sa.Column("learning_complete", sa.Boolean(), nullable=False, server_default="false"),
     sa.ForeignKeyConstraint(["org_id"], ["organizations.id"], ondelete="SET NULL"),
     sa.CheckConstraint("role IN ('admin', 'developer', 'viewer')", name="ck_user_role"),
     sa.CheckConstraint("failed_pin_attempts >= 0", name="ck_user_pin_attempts_positive"),
