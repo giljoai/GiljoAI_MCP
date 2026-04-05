@@ -32,7 +32,7 @@
 | # | Dimension | 0950a Score | 0950m Score | Delta | Notes |
 |---|-----------|-------------|-------------|-------|-------|
 | 1 | Lint cleanliness | 7.5/10 | 8.5/10 | +1.0 | Ruff 1→0 (perfect). ESLint 17→11 (improved but still 3 over budget). All 11 are trivially fixable unused-var warnings. |
-| 2 | Dead code density | 8.0/10 | 8.5/10 | +0.5 | 7 dead backend methods deleted. 3 dead SCSS mixins deleted. 10 new unused frontend vars from 0950k. 3 dead computed properties in Vue (senderColor, currentTime, agentsSpawned). 8 empty tests with zero assertions. |
+| 2 | Dead code density | 8.0/10 | 7.5/10 | -0.5 | 7 dead backend methods deleted but 23 NEW dead methods found by deep audit (5 ContextRepository, 3 AgentJobRepository, 3 PortManager, 7 model properties, 2 TemplateService, 3 misc). 10 unused frontend vars from 0950k. 3 dead computed Vue properties. 8 empty tests. |
 | 3 | Pattern compliance | 9.0/10 | 9.5/10 | +0.5 | 4 baseline dict-return endpoints converted to Pydantic. Zero dict-returns in services/tools. 5 additional success-dict API returns found (configuration.py x3, messages.py, serena.py) — not error-path but inconsistent. |
 | 4 | Tenant isolation | 9.0/10 | 9.5/10 | +0.5 | DB health endpoint now requires auth. CORS wildcards now rejected. 1 implicit tenant_key gap in tasks.py:256 (relies on context var instead of explicit parameter — works but fragile). |
 | 5 | Security posture | 9.0/10 | 9.5/10 | +0.5 | All 3 baseline SECURITY findings resolved. New findings: database_setup.py 3 endpoints without auth declaration (mitigated by middleware), serena toggle missing require_admin, CSRF exempt breadth on /api/download/ and /api/auth/ prefixes. |
@@ -42,7 +42,7 @@
 | 9 | Code organization | 7.0/10 | 8.0/10 | +1.0 | God-classes: 9→3 (6 split). Oversized functions: 9→8 (3 fixed, 2 pre-existing found in extended scope). Remaining: ProductService 1550, MissionService 1121, ProjectService 1059 lines. |
 | 10 | Convention & docs | 9.0/10 | 9.0/10 | +0.0 | Stale docstring fixed. TODO resolved. Version dynamic from package.json. Zero forbidden terminology/AI signatures/boundary violations. New: WelcomeView version display bug (reads wrong endpoint — always blank). |
 
-**Overall Score: 9.0/10** (0950a baseline: 7.9, 0769 baseline: 8.5, target: ≥ 9.0)
+**Overall Score: 8.9/10** (0950a baseline: 7.9, 0769 baseline: 8.5, target: ≥ 9.0)
 
 ---
 
@@ -59,17 +59,17 @@
 | Zero unannotated broad exception catches | 0 | 0 | ✅ PASS |
 | Zero dict-returns in services | 0 | 0 | ✅ PASS |
 | Zero hardcoded hex colours in Vue components | 0 | 0 (all in named JS constants per 0950e pattern) | ✅ PASS |
-| Overall score ≥ 9.0/10 | ≥9.0 | 9.0 | ⚠️ BORDERLINE |
+| Overall score ≥ 9.0/10 | ≥9.0 | 8.9 | ❌ FAIL |
 
-**Hard gate failures: 3 definitive + 2 borderline = FAIL**
+**Hard gate failures: 4 definitive + 1 borderline = FAIL**
 
 ---
 
 ### VERDICT: FAIL
 
-**Score 9.0/10 meets the target (borderline), but 3 hard gates fail (ESLint budget, class size, function size).**
+**Score 8.9/10 falls just below the 9.0 target, and 3 additional hard gates fail (ESLint budget, class size, function size).**
 
-The sprint achieved massive improvement — from 7.9 to 9.0 — and resolved 89 of the original 95 findings. The remaining failures are:
+The sprint achieved massive improvement — from 7.9 to 8.9 — and resolved 89 of the original 95 findings. The remaining failures are:
 
 1. **ESLint 11 > 8** — Regression from 0950k composable extraction. 10 unused variables left in parent components when logic was moved to composables. Estimated fix: <15 minutes.
 
@@ -131,6 +131,17 @@ The sprint achieved massive improvement — from 7.9 to 9.0 — and resolved 89 
    - **Fix:** Extract to named constants with token comments. ~5 minutes.
 
 #### MEDIUM — Subagent Findings (not in baseline, newly discovered)
+
+**Backend Dead Code (Subagent 1):**
+
+4. **[23 dead backend methods found by deep audit]**
+   - ContextRepository: 4 dead methods (create_chunk, get_chunks_by_product, get_chunk_by_id, delete_chunks_by_product) — superseded by chunker's direct pattern
+   - AgentJobRepository: 3 dead methods (get_job_by_job_id, get_active_jobs, decrement_waiting_increment_read) — superseded by dual-model architecture
+   - PortManager: 3 dead methods (get_postgres_port, validate_ports, get_environment_variables) — confirmed by coverage reports
+   - Model properties: 7 dead (APIKey.display_key, GitConfig.webhook_configured, SetupState.add_validation_failure, Product.has_product_memory, Product.all_documents_chunked, VisionDocument.needs_rechunking, AgentTemplate.variable_list)
+   - TemplateService: 2 dead (list_active_user_templates, get_template_by_role) — incomplete refactor from endpoint inline queries
+   - Misc: 4 dead (ProductMemoryRepository.update_entry, VisionDocumentRepository.count_by_product, TestingConfigGenerator.generate_for_agent, TemplateValidator.add_custom_rule)
+   - **Note:** These are all pre-existing — not introduced during the 0950 sprint. The 0950a baseline audit found only 7 of these; the deep subagent audit discovered 23 more.
 
 **Security & API (Subagent 2):**
 
@@ -205,7 +216,7 @@ The sprint achieved massive improvement — from 7.9 to 9.0 — and resolved 89 
 
 | Metric | 0950a (Start) | 0950m (End) | Change |
 |--------|---------------|-------------|--------|
-| Overall score | 7.9/10 | 9.0/10 | +1.1 |
+| Overall score | 7.9/10 | 8.9/10 | +1.0 |
 | Ruff issues | 1 | 0 | -1 |
 | ESLint warnings | 17 | 11 | -6 |
 | Frontend test failures | 83 | 0 | -83 |
@@ -222,14 +233,29 @@ The sprint achieved massive improvement — from 7.9 to 9.0 — and resolved 89 
 
 If 0950n is triggered, these are the minimum actions to achieve PASS:
 
-1. **[15 min] Fix ESLint — delete 10 unused vars + 1 unused import** (clears hard gate)
-2. **[2-3 hr] Split 3 remaining god-classes** (clears hard gate):
+**Hard gate fixes (required):**
+
+1. **[15 min] Fix ESLint — delete 10 unused vars + 1 unused import** (clears ESLint gate)
+2. **[2-3 hr] Split 3 remaining god-classes** (clears class size gate):
    - ProductService: extract ProductLifecycleService + ProductMemoryService
    - MissionService: extract MissionExecutionService
    - ProjectService: extract ProjectSummaryService
-3. **[1-2 hr] Split 6 oversized functions** (clears hard gate, skip _get_default_templates_v103 data function):
+3. **[1-2 hr] Split 6 oversized functions** (clears function size gate, skip _get_default_templates_v103 data function):
    - write_360_memory, _generate_agent_protocol, _execute_vision_query, _register_event_handlers, close_project_and_update_memory, _generate_orchestrator_protocol, spawn_agent_job
-4. **[5 min] Add token comments to 5 hex constants in ProjectsView** (pattern compliance)
-5. **[5 min] Extract 2 inline hex values in ProjectReviewModal** (pattern compliance)
 
-Estimated total: 4-6 hours for full PASS.
+**Score improvement (needed to clear ≥9.0 overall):**
+
+4. **[30 min] Delete 23 dead backend methods** (improves dead code density from 7.5 to ~9.0):
+   - ContextRepository: 4, AgentJobRepository: 3, PortManager: 3, Model properties: 7, TemplateService: 2, Misc: 4
+   - Verify zero callers with grep before each deletion
+5. **[15 min] Delete 3 dead Vue computed properties** (MessageItem.vue senderColor, DashboardView.vue currentTime + agentsSpawned)
+6. **[20 min] Add !important justification comments to 24 instances** (improves frontend hygiene)
+
+**Optional (improves score but not required for PASS):**
+
+7. **[5 min] Add token comments to 5 hex constants in ProjectsView** (pattern compliance)
+8. **[5 min] Extract 2 inline hex values in ProjectReviewModal** (pattern compliance)
+9. **[10 min] Delete dead test artifacts** (test_auth.py phantom, run_auth_tests.py broken runner, test_project_service.py.backup, stale pyc)
+10. **[5 min] Fix WelcomeView version display** (add getProductInfo to api.js, change endpoint call)
+
+Estimated total for PASS: 5-7 hours (hard gates + score improvement).
