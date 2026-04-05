@@ -32,17 +32,17 @@
 | # | Dimension | 0950a Score | 0950m Score | Delta | Notes |
 |---|-----------|-------------|-------------|-------|-------|
 | 1 | Lint cleanliness | 7.5/10 | 8.5/10 | +1.0 | Ruff 1→0 (perfect). ESLint 17→11 (improved but still 3 over budget). All 11 are trivially fixable unused-var warnings. |
-| 2 | Dead code density | 8.0/10 | 9.0/10 | +1.0 | 7 dead backend methods deleted. 3 dead SCSS mixins deleted. 10 new unused frontend vars from 0950k composable extraction (ESLint-flagged). Zero dict-return regressions. |
-| 3 | Pattern compliance | 9.0/10 | 10/10 | +1.0 | 4 dict-return API endpoints converted to Pydantic models. CheckConstraint updated with idle/sleeping. All broad catches annotated. Zero dict-returns in services or tools. |
-| 4 | Tenant isolation | 9.0/10 | 9.5/10 | +0.5 | DB health endpoint now requires auth. CORS wildcards now rejected (not just warned). All DB queries filter by tenant_key. |
-| 5 | Security posture | 9.0/10 | 10/10 | +1.0 | All 3 SECURITY findings from 0950a resolved: DB health auth, CORS wildcard rejection, downloads.py auth pattern standardized. No secrets in source. |
-| 6 | Test health | 5.5/10 | 9.5/10 | +4.0 | 83 FE failures → 0. 11 BE failures → 0. 8 BE skips → 0. Zero skips in both suites. 2067 FE tests (was 1866). 652 BE tests pass with 0 failures. |
-| 7 | Frontend hygiene | 6.0/10 | 9.0/10 | +3.0 | ~60 hardcoded hex replaced with design tokens. 12 text-medium-emphasis → 0. 15 dialog headers + 14 footers converted. All !important justified. All Vue components under 1000 lines. |
+| 2 | Dead code density | 8.0/10 | 8.5/10 | +0.5 | 7 dead backend methods deleted. 3 dead SCSS mixins deleted. 10 new unused frontend vars from 0950k. 3 dead computed properties in Vue (senderColor, currentTime, agentsSpawned). 8 empty tests with zero assertions. |
+| 3 | Pattern compliance | 9.0/10 | 9.5/10 | +0.5 | 4 baseline dict-return endpoints converted to Pydantic. Zero dict-returns in services/tools. 5 additional success-dict API returns found (configuration.py x3, messages.py, serena.py) — not error-path but inconsistent. |
+| 4 | Tenant isolation | 9.0/10 | 9.5/10 | +0.5 | DB health endpoint now requires auth. CORS wildcards now rejected. 1 implicit tenant_key gap in tasks.py:256 (relies on context var instead of explicit parameter — works but fragile). |
+| 5 | Security posture | 9.0/10 | 9.5/10 | +0.5 | All 3 baseline SECURITY findings resolved. New findings: database_setup.py 3 endpoints without auth declaration (mitigated by middleware), serena toggle missing require_admin, CSRF exempt breadth on /api/download/ and /api/auth/ prefixes. |
+| 6 | Test health | 5.5/10 | 9.0/10 | +3.5 | 83 FE + 11 BE failures → 0. All skips eliminated. New findings: 4 conditional e2e skips (Playwright guard), 8 empty tests (zero assertions), 12 services with zero dedicated tests (6,129 lines, tested indirectly via facades), .backup test file. |
+| 7 | Frontend hygiene | 6.0/10 | 8.5/10 | +2.5 | ~60 hardcoded hex tokenized. 12 text-medium-emphasis → 0. Dialogs converted. Components under 1000 lines. New findings: 24 unjustified !important beyond the 5 from baseline, 32 hex values in JS constants (approved pattern but still hardcoded), 3 dead computed properties. |
 | 8 | Exception handling | 9.0/10 | 10/10 | +1.0 | BLE001 in database.py fixed. tool_accessor.py annotated. All broad catches across src/ and api/ have inline justification comments or noqa annotations. |
 | 9 | Code organization | 7.0/10 | 8.0/10 | +1.0 | God-classes: 9→3 (6 split). Oversized functions: 9→8 (3 fixed, 2 pre-existing found in extended scope). Remaining: ProductService 1550, MissionService 1121, ProjectService 1059 lines. |
-| 10 | Convention & docs | 9.0/10 | 9.5/10 | +0.5 | Stale docstring fixed. TODO resolved. Version now dynamic from package.json. Zero forbidden terminology. Zero AI signatures. Zero CE/SaaS boundary violations. |
+| 10 | Convention & docs | 9.0/10 | 9.0/10 | +0.0 | Stale docstring fixed. TODO resolved. Version dynamic from package.json. Zero forbidden terminology/AI signatures/boundary violations. New: WelcomeView version display bug (reads wrong endpoint — always blank). |
 
-**Overall Score: 9.3/10** (0950a baseline: 7.9, 0769 baseline: 8.5, target: ≥ 9.0)
+**Overall Score: 9.0/10** (0950a baseline: 7.9, 0769 baseline: 8.5, target: ≥ 9.0)
 
 ---
 
@@ -59,17 +59,17 @@
 | Zero unannotated broad exception catches | 0 | 0 | ✅ PASS |
 | Zero dict-returns in services | 0 | 0 | ✅ PASS |
 | Zero hardcoded hex colours in Vue components | 0 | 0 (all in named JS constants per 0950e pattern) | ✅ PASS |
-| Overall score ≥ 9.0/10 | ≥9.0 | 9.3 | ✅ PASS |
+| Overall score ≥ 9.0/10 | ≥9.0 | 9.0 | ⚠️ BORDERLINE |
 
-**Hard gate failures: 3 definitive + 1 borderline = FAIL**
+**Hard gate failures: 3 definitive + 2 borderline = FAIL**
 
 ---
 
 ### VERDICT: FAIL
 
-**Score 9.3/10 exceeds the 9.0 target, but 3 hard gates fail (ESLint budget, class size, function size).**
+**Score 9.0/10 meets the target (borderline), but 3 hard gates fail (ESLint budget, class size, function size).**
 
-The sprint achieved massive improvement — from 7.9 to 9.3 — and resolved 89 of the original 95 findings. The remaining failures are:
+The sprint achieved massive improvement — from 7.9 to 9.0 — and resolved 89 of the original 95 findings. The remaining failures are:
 
 1. **ESLint 11 > 8** — Regression from 0950k composable extraction. 10 unused variables left in parent components when logic was moved to composables. Estimated fix: <15 minutes.
 
@@ -130,13 +130,74 @@ The sprint achieved massive improvement — from 7.9 to 9.3 — and resolved 89 
    - `frontend/src/components/projects/ProjectReviewModal.vue:367,374` — hex values in return statements instead of named constants.
    - **Fix:** Extract to named constants with token comments. ~5 minutes.
 
+#### MEDIUM — Subagent Findings (not in baseline, newly discovered)
+
+**Security & API (Subagent 2):**
+
+4. **[database_setup.py — 3 endpoints without auth declaration]**
+   - `api/endpoints/database_setup.py:37,120,230` — POST test-connection, POST setup, GET verify have no `Depends(get_current_active_user)`. Auth middleware blocks them in practice, but the endpoints accept DB credentials in request body — if middleware is ever misconfigured, these become exposed.
+
+5. **[serena.py — missing admin check on system toggle]**
+   - `api/endpoints/serena.py:41` — POST `/api/serena/toggle` requires auth but not admin role. Any authenticated user can toggle a system-wide integration setting.
+
+6. **[CSRF exempt breadth]**
+   - `api/app.py:403-413` — `/api/download/` and `/api/auth/` prefixes are fully CSRF-exempt. The download prefix includes the state-changing `POST /api/download/generate-token`. The auth prefix includes API key management endpoints.
+
+7. **[5 success-dict API returns without Pydantic models]**
+   - `api/endpoints/configuration.py:137,163,249,279` — 4 config endpoints return raw `{"success": True/False}` dicts
+   - `api/endpoints/messages.py:132` — send endpoint returns raw dict
+   - `api/endpoints/serena.py:67` — toggle returns raw dict
+   - `api/endpoints/tasks.py:258` — summary returns raw dict
+   - configuration.py:163 is notable: partial failure returns HTTP 200 with `"success": False` in body.
+
+**Test Suite (Subagent 3):**
+
+8. **[4 conditional e2e skips]**
+   - `frontend/tests/e2e/memory-leak-detection.spec.ts:24,93,150,238` — `test.skip()` as data guard. Technically banned but defensible for Playwright.
+
+9. **[8 empty tests with zero assertions]**
+   - `tests/repositories/test_product_memory_repository.py:191,197` — 2 tests with docstring only
+   - `tests/unit/test_discovery_system.py:24,51,70` — 3 tests iterate with `pass`, no asserts
+   - `tests/startup/test_shutdown.py:72`, `tests/unit/test_startup.py:282`, `tests/test_oauth.py:72` — rely on "no exception = pass"
+
+10. **[12 services with zero dedicated test coverage — 6,129 untested lines]**
+    - HIGH: mission_service.py (1178), job_lifecycle_service.py (614), project_lifecycle_service.py (811), orchestration_agent_state_service.py (596), progress_service.py (609)
+    - MEDIUM: project_launch_service.py (430), project_deletion_service.py (535), project_closeout_service.py (402), task_conversion_service.py (404), user_auth_service.py (400)
+    - All tested indirectly through facade delegation, but no dedicated tests exist.
+
+11. **[Dead test artifacts]**
+    - `tests/integration/test_auth.py` — AuthTestSuite class not collected by pytest (not `Test*` prefix). 424 lines effectively dead.
+    - `tests/integration/run_auth_tests.py` — references 3 deleted test files. Broken runner.
+    - `tests/unit/test_project_service.py.backup` — 895-line backup file. Should be deleted.
+    - `tests/unit/__pycache__/test_frontend_config_service.cpython-312-pytest-9.0.2.pyc` — stale pyc from deleted file.
+
+**Frontend Hygiene (Subagent 4):**
+
+12. **[24 unjustified !important overrides beyond baseline]**
+    - TemplateManager.vue (4), ApiKeyManager.vue (2), DatabaseConnection.vue (1), MessageComposer.vue (2), StatusChip.vue (2), AgentExport.vue (2), TasksView.vue (4), ProjectsView.vue (5), App.vue (1), SetupWizardOverlay.vue (1), CertTrustModal.vue (2)
+    - 0950d justified the 5 from the baseline; these 24 are in other files not originally flagged.
+
+13. **[3 dead computed properties in Vue components]**
+    - `frontend/src/components/messages/MessageItem.vue:127` — `senderColor` computed never used in template (superseded by hex badge system)
+    - `frontend/src/views/DashboardView.vue:231` — `currentTime` ref + `updateClock()` interval running but never rendered
+    - `frontend/src/views/DashboardView.vue:265` — `agentsSpawned` ref fetched from API but never rendered
+
+**Convention (Subagent 5):**
+
+14. **[WelcomeView version display bug — always blank]**
+    - `frontend/src/views/WelcomeView.vue:499` reads `response.data?.version` from `GET /api/v1/stats/system`, but `SystemStatsResponse` has no `version` field. The correct endpoint is `GET /api/v1/settings/product-info` which returns `version: "1.0.0"`, but no `getProductInfo()` function exists in `api.js`.
+
 #### LOW (housekeeping)
 
-7. **[Migration note comment block — products.py:83-91]**
-   - 9-line comment block documenting deprecated vision fields (Handover 0128e). Convention says delete commented-out code. This is borderline — it's a migration reference, not dead code.
+15. **[Migration note comment block — products.py:83-91]**
+    - 9-line comment block documenting deprecated vision fields (Handover 0128e). Convention says delete commented-out code. This is borderline — it's a migration reference, not dead code.
 
-8. **[Pre-existing: api.js dynamic/static import overlap]**
-   - Vite warning about api.js being both dynamically and statically imported. Non-blocking, pre-existing.
+16. **[Pre-existing: api.js dynamic/static import overlap]**
+    - Vite warning about api.js being both dynamically and statically imported. Non-blocking, pre-existing.
+
+17. **[11 oversized Python test files + ~25 frontend test files >500 lines]**
+    - Largest: test_product_tuning_service.py (1239), conftest.py (1191), projects-state-transitions.spec.js (1051)
+    - LOW priority — test files have different splitting economics than source files.
 
 ---
 
@@ -144,7 +205,7 @@ The sprint achieved massive improvement — from 7.9 to 9.3 — and resolved 89 
 
 | Metric | 0950a (Start) | 0950m (End) | Change |
 |--------|---------------|-------------|--------|
-| Overall score | 7.9/10 | 9.3/10 | +1.4 |
+| Overall score | 7.9/10 | 9.0/10 | +1.1 |
 | Ruff issues | 1 | 0 | -1 |
 | ESLint warnings | 17 | 11 | -6 |
 | Frontend test failures | 83 | 0 | -83 |
@@ -153,7 +214,7 @@ The sprint achieved massive improvement — from 7.9 to 9.3 — and resolved 89 
 | God-classes >1000 lines | 9 | 3 | -6 |
 | Functions >200 lines | 9 | 8 | -1 |
 | Findings resolved | — | 89/95 | 94% |
-| Hard gates passing | 4/10 | 6/10 | +2 |
+| Hard gates passing | 4/10 | 5/10 | +1 |
 
 ---
 
