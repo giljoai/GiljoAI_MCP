@@ -480,7 +480,7 @@ watch(
 
 // Force width in temporary mode
 .navigation-drawer-container.v-navigation-drawer--temporary {
-  width: 180px !important;
+  width: 180px !important; /* !important: override Vuetify v-navigation-drawer inline width */
 }
 
 // ─── EDGE TOGGLE TAB ───
@@ -491,7 +491,7 @@ watch(
   width: 32px;
   height: 32px;
   background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), 0.15) !important;
+  border: 1px solid rgba(var(--v-border-color), 0.15) !important; /* !important: ensure border visibility over adjacent elevated surfaces */
   border-radius: $border-radius-sharp;
   display: flex;
   align-items: center;

@@ -26,12 +26,13 @@
     <!-- Debug Panel Dialog -->
     <v-dialog v-model="showDebugPanel" max-width="800" scrollable>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <v-icon start>mdi-bug</v-icon>
-          WebSocket Debug Panel
-          <v-spacer></v-spacer>
-          <v-btn icon="mdi-close" variant="text" aria-label="Close debug panel" @click="showDebugPanel = false"></v-btn>
-        </v-card-title>
+        <div class="dlg-header">
+          <v-icon class="dlg-icon">mdi-bug</v-icon>
+          <span class="dlg-title">WebSocket Debug Panel</span>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close debug panel" @click="showDebugPanel = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-divider></v-divider>
 
@@ -182,7 +183,7 @@
         <v-divider></v-divider>
 
         <!-- Test Actions -->
-        <v-card-actions>
+        <div class="dlg-footer" style="flex-wrap: wrap; justify-content: flex-start">
           <v-btn color="primary" variant="tonal" :disabled="isConnecting" @click="forceReconnect">
             <v-icon start>mdi-refresh</v-icon>
             Force Reconnect
@@ -212,7 +213,7 @@
             hide-details
             @update:model-value="toggleDebugMode"
           ></v-switch>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
   </div>

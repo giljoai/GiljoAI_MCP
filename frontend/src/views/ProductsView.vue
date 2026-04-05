@@ -1152,7 +1152,7 @@ onMounted(async () => {
 }
 
 .product-text-secondary {
-  color: var(--text-secondary) !important;
+  color: var(--text-secondary) !important; /* !important: override Vuetify text color classes on same element */
 }
 
 /* Vision doc tinted chips */
@@ -1195,8 +1195,8 @@ onMounted(async () => {
 @use '../styles/design-tokens' as *;
 /* Global branded tooltips - must be unscoped to affect tooltip overlays */
 .branded-tooltip {
-  background-color: rgba(255, 195, 0, 0.95) !important;
-  color: rgb(var(--v-theme-on-primary)) !important;
+  background-color: rgba(255, 195, 0, 0.95) !important; /* !important: unscoped — must override Vuetify tooltip defaults */
+  color: rgb(var(--v-theme-on-primary)) !important; /* !important: unscoped — must override Vuetify tooltip defaults */
   font-weight: 500;
   font-size: 0.875rem;
   padding: 6px 12px;

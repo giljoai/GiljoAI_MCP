@@ -1,6 +1,6 @@
 <template>
   <div class="donut-chart-wrapper">
-    <div class="text-caption text-medium-emphasis mb-2">{{ title }}</div>
+    <div class="text-caption text-muted-a11y mb-2">{{ title }}</div>
     <div class="donut-chart-container">
       <Doughnut
         v-if="hasData"
