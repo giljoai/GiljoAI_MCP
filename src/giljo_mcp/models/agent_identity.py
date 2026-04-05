@@ -299,7 +299,7 @@ class AgentExecution(Base):
         Index("idx_agent_executions_health", "health_status"),
         Index("idx_agent_executions_last_progress", "last_progress_at"),
         CheckConstraint(
-            "status IN ('waiting', 'working', 'blocked', 'complete', 'silent', 'decommissioned')",
+            "status IN ('waiting', 'working', 'blocked', 'complete', 'silent', 'decommissioned', 'idle', 'sleeping')",
             name="ck_agent_execution_status",
         ),
         CheckConstraint(

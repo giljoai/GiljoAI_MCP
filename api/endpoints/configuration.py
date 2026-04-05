@@ -42,6 +42,13 @@ class ConfigurationResponse(BaseModel):
     updated_at: datetime
 
 
+class SuccessResponse(BaseModel):
+    """Generic success response for operations that return a simple status message."""
+
+    success: bool = True
+    message: str
+
+
 class SystemConfigResponse(BaseModel):
     database: dict[str, Any]
     api: dict[str, Any]
@@ -172,7 +179,7 @@ async def reload_configuration(current_user: User = Depends(require_admin)):
     # Reload configuration
     state.config.reload()
 
-    return {"success": True, "message": "Configuration reloaded successfully"}
+    return SuccessResponse(message="Configuration reloaded successfully")
 
 
 @router.get("/tenant", response_model=dict[str, Any])
@@ -689,8 +696,8 @@ async def download_root_ca():
 
 
 @router.get("/health/database")
-async def test_database_connection():
-    """Test database connection"""
+async def check_database_health(current_user: User = Depends(get_current_active_user)):
+    """Test database connection (requires authentication)"""
     from api.app import state
 
     if not state.db_manager:
@@ -704,7 +711,7 @@ async def test_database_connection():
             is_healthy = await repo.execute_health_check(session)
 
             if is_healthy:
-                return {"success": True, "message": "Database connection successful"}
+                return SuccessResponse(message="Database connection successful")
             raise HTTPException(status_code=503, detail="Database health check failed")
 
     except (RuntimeError, OSError, ValueError) as e:

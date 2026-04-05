@@ -269,7 +269,7 @@ async def complete_message(
             message_data={"completed_by": agent_name, "result": result, "status": "completed"},
         )
 
-    return {"success": True, "message": "Message completed", "result": result}
+    return CompleteMessageResponse(success=True, message="Message completed", result=result)
 
 
 class BroadcastMessage(BaseModel):
