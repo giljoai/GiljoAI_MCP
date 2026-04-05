@@ -295,10 +295,18 @@ def _configure_middleware(app: FastAPI) -> None:
         ]
         logger.info(f"Using default CORS origins (no wildcards): {cors_origins}")
     else:
-        # Validate no wildcard patterns for security
-        has_wildcards = any("*" in origin for origin in cors_origins)
-        if has_wildcards:
-            logger.warning("CORS origins contain wildcards - this reduces security. Consider using explicit origins.")
+        # Reject wildcard patterns for security
+        safe_origins = [origin for origin in cors_origins if "*" not in origin]
+        if len(safe_origins) < len(cors_origins):
+            logger.warning("CORS wildcard entries removed from config — only explicit origins are allowed")
+            cors_origins = (
+                safe_origins
+                if safe_origins
+                else [
+                    "http://127.0.0.1:7272",
+                    "http://localhost:7272",
+                ]
+            )
 
     # Dynamic network adapter IP detection for CORS updates
     network_mode = config.get("security", {}).get("network", {}).get("mode", "localhost")

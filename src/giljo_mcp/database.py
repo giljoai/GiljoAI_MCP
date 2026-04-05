@@ -89,8 +89,9 @@ class DatabaseManager:
         """
         try:
             import psutil
-            ram_gb = psutil.virtual_memory().total / (1024 ** 3)
-        except (ImportError, Exception):
+
+            ram_gb = psutil.virtual_memory().total / (1024**3)
+        except Exception:  # noqa: BLE001 - Broad catch: psutil may be unavailable or raise any OS-level error
             return 20  # safe default when psutil unavailable
 
         if ram_gb <= 4:

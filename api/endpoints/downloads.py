@@ -18,9 +18,9 @@ from fastapi import APIRouter, Body, Cookie, Depends, Header, HTTPException, Que
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_db_session
+from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import AgentTemplate
+from src.giljo_mcp.models import AgentTemplate, User
 from src.giljo_mcp.tools.slash_command_templates import get_all_templates
 
 
@@ -460,6 +460,7 @@ async def get_bootstrap_prompt(
         pattern="^(claude_code|gemini_cli|codex_cli)$",
         description="Target CLI platform: claude_code, gemini_cli, or codex_cli",
     ),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """
@@ -475,6 +476,7 @@ async def get_bootstrap_prompt(
     Args:
         request: FastAPI request object
         platform: Target CLI platform (claude_code, gemini_cli, codex_cli)
+        current_user: Authenticated user (injected via Depends)
         db: Database session
 
     Returns:
@@ -492,7 +494,6 @@ async def get_bootstrap_prompt(
         curl http://localhost:7272/api/download/bootstrap-prompt?platform=claude_code \\
              -H "X-API-Key: $GILJO_API_KEY"
     """
-    from src.giljo_mcp.auth.dependencies import get_current_user
     from src.giljo_mcp.tools.slash_command_templates import (
         BOOTSTRAP_CLAUDE_CODE,
         BOOTSTRAP_CODEX_CLI,
@@ -504,19 +505,6 @@ async def get_bootstrap_prompt(
         "gemini_cli": BOOTSTRAP_GEMINI_CLI,
         "codex_cli": BOOTSTRAP_CODEX_CLI,
     }
-
-    # Authenticate (same pattern as generate_download_token)
-    try:
-        access_token = request.cookies.get("access_token")
-        x_api_key = request.headers.get("x-api-key")
-        authorization = request.headers.get("authorization")
-        current_user = await get_current_user(request, access_token, x_api_key, authorization, db)
-    except HTTPException as e:
-        logger.warning("Bootstrap prompt failed: Authentication required")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required to generate bootstrap prompt",
-        ) from e
 
     logger.info(
         f"Generating bootstrap prompt for user: {current_user.username} "
@@ -580,6 +568,7 @@ async def generate_download_token(
     request: Request,
     content_type: str | None = Query(None, pattern="^(slash_commands|agent_templates)$"),
     platform: str = Query(default="claude_code", description="Target platform: claude_code, codex_cli, gemini_cli"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
     body: dict | None = Body(None),
 ) -> dict:
@@ -595,6 +584,7 @@ async def generate_download_token(
     Args:
         request: FastAPI request object
         content_type: Type of content to download ('slash_commands' or 'agent_templates')
+        current_user: Authenticated user (injected via Depends)
         db: Database session
 
     Returns:
@@ -616,21 +606,6 @@ async def generate_download_token(
              -H "Content-Type: application/json" \\
              -d '{"content_type": "slash_commands"}'
     """
-    from src.giljo_mcp.auth.dependencies import get_current_user
-
-    # Get current user (enforces authentication)
-    try:
-        access_token = request.cookies.get("access_token")
-        x_api_key = request.headers.get("x-api-key")
-        authorization = request.headers.get("authorization")
-        current_user = await get_current_user(request, access_token, x_api_key, authorization, db)
-    except HTTPException as e:
-        logger.warning("Token generation failed: Authentication required")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required to generate download token",
-        ) from e
-
     # Derive content_type and platform from query or JSON body (compat with older tests)
     if not content_type and body:
         content_type = body.get("content_type")
