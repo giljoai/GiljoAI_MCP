@@ -95,10 +95,10 @@ describe('SerenaIntegrationCard.vue', () => {
       expect(text).toContain('Add Serena MCP tool instructions to agent prompts')
     })
 
-    it('displays "Enable Serena MCP" label', () => {
-      wrapper = mountComponent()
+    it('displays toggle button state label', () => {
+      wrapper = mountComponent({ enabled: false })
       const text = wrapper.text()
-      expect(text).toContain('Enable Serena MCP')
+      expect(text).toContain('Disabled')
     })
 
     it('displays GitHub Repository link', () => {

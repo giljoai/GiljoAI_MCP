@@ -278,18 +278,19 @@ describe('SetupWizardOverlay', () => {
       expect(wrapper.emitted('update:currentStep')).toBeUndefined()
     })
 
-    it('footer is not visible on step 3 (Step 4 has its own navigation)', () => {
+    it('footer is visible on step 3 with Back and Finish buttons', () => {
       const wrapper = mountOverlay({ currentStep: 3, selectedTools: [] })
       const footer = wrapper.find('.setup-wizard-footer')
 
-      expect(footer.exists()).toBe(false)
+      expect(footer.exists()).toBe(true)
     })
 
-    it('footer is absent on the last step (step 3)', () => {
+    it('shows "Finish" button on the last step (step 3)', () => {
       const wrapper = mountOverlay({ currentStep: 3 })
       const nextBtn = wrapper.find('.footer-btn-next')
 
-      expect(nextBtn.exists()).toBe(false)
+      expect(nextBtn.exists()).toBe(true)
+      expect(nextBtn.text()).toBe('Finish')
     })
 
     it('shows "Next" text on non-last steps', () => {
@@ -443,22 +444,23 @@ describe('SetupWizardOverlay', () => {
       expect(wrapper.find('.tool-card').exists()).toBe(false)
     })
 
-    it('renders 5 learning content sections', () => {
+    it('renders 6 learning content sections', () => {
       const wrapper = mountOverlay({ mode: 'learning' })
       const sections = wrapper.findAll('.learning-section')
 
-      expect(sections).toHaveLength(5)
+      expect(sections).toHaveLength(6)
     })
 
     it('renders section titles', () => {
       const wrapper = mountOverlay({ mode: 'learning' })
       const titles = wrapper.findAll('.section-title')
 
-      expect(titles[0].text()).toBe('Product Hierarchy')
-      expect(titles[1].text()).toBe('AI Coding Tools')
-      expect(titles[2].text()).toBe('Slash Commands')
-      expect(titles[3].text()).toBe('Agent Templates')
-      expect(titles[4].text()).toBe('Dashboard')
+      expect(titles[0].text()).toBe('How GiljoAI Works')
+      expect(titles[1].text()).toBe('Define Your Product')
+      expect(titles[2].text()).toBe('Projects and Missions')
+      expect(titles[3].text()).toBe('Skills and Agent Templates')
+      expect(titles[4].text()).toBe('360 Memory')
+      expect(titles[5].text()).toBe('Dashboard and Monitoring')
     })
 
     it('first section is expanded by default', () => {
