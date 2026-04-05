@@ -571,7 +571,7 @@ class ToolAccessor:
                 }
         except (ValidationError, ValueError):
             raise
-        except Exception:
+        except Exception:  # Broad catch: tool boundary, logs and re-raises
             logger.exception("Failed to stage bootstrap setup")
             raise
 
