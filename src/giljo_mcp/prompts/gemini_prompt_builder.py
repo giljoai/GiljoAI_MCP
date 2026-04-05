@@ -1,20 +1,20 @@
-"""Codex CLI execution prompt builder.
+"""Gemini CLI execution prompt builder.
 
-Extracted from ThinClientPromptGenerator (Handover 0950g).
-Builds implementation-phase prompts for Codex CLI subagent mode.
+Extracted from CodexPromptBuilder (Handover 0950 orchestrator fix).
+Builds implementation-phase prompts for Gemini CLI subagent mode.
 """
 
 
-class CodexPromptBuilder:
-    """Builds Codex CLI execution prompts for the implementation phase."""
+class GeminiPromptBuilder:
+    """Builds Gemini CLI execution prompts for the implementation phase."""
 
     def build_execution_prompt(self, orchestrator_id: str, project, agent_jobs: list, git_enabled: bool = False) -> str:
-        """Build Codex CLI subagent mode execution prompt (Handover 0838).
+        """Build Gemini CLI subagent mode execution prompt (Handover 0838).
 
-        Like Claude Code mode but uses spawn_agent() with 'gil-' prefix on agent names.
+        Uses Gemini subagent invocation syntax: @{agent_name} or /agent {agent_name}.
         """
         context_recap = [
-            "# GiljoAI Implementation Phase - Codex CLI Mode",
+            "# GiljoAI Implementation Phase - Gemini CLI Mode",
             "",
             "## FIRST ACTION (MANDATORY)",
             "Before anything else, verify MCP connection:",
@@ -59,7 +59,7 @@ class CodexPromptBuilder:
                 agent_spawn_lines.extend(
                     [
                         f"**{idx}. {agent.agent_name}**",
-                        f"   - Agent Name: `{agent.agent_name}` → Codex: `gil-{agent.agent_name}`",
+                        f"   - Agent Name: `{agent.agent_name}` (used as-is in Gemini)",
                         f"   - Agent Type: `{agent.agent_display_name}` (display category)",
                         f"   - Job ID: `{agent.job_id}`",
                         f"   - Status: {agent.status}",
@@ -74,44 +74,31 @@ class CodexPromptBuilder:
             "## Agent Jobs to Execute",
             "",
             "Below are the specialist agents spawned during staging.",
-            "Each has a unique job_id. In Codex CLI, ALL agent names require the 'gil-' prefix.",
             "",
             *agent_spawn_lines,
         ]
 
         spawning_section = [
-            "## How to Spawn Agents via Codex spawn_agent",
-            "",
-            "### CRITICAL: Template-First Spawning",
-            "The `agent=` parameter loads an INSTALLED agent template from",
-            "`~/.codex/agents/gil-{agent_name}.toml`. This template contains the agent's",
-            "developer_instructions, model config, and sandbox settings.",
-            "The agent ALREADY KNOWS its role — you do NOT re-explain it.",
-            "",
-            "### DO NOT spawn generic workers",
-            "- DO NOT spawn a generic/default Codex worker and instruct it to 'act as' a GiljoAI agent",
-            "- DO NOT re-explain the agent's role in instructions= (the template handles this)",
-            "- DO NOT override template behavior with lengthy instruction text",
-            "",
-            "### Always use 'gil-' prefix",
-            "The server returns agent_name WITHOUT the prefix. You MUST prepend 'gil-'.",
-            "Built-in Codex roles shadow unprefixed names.",
+            "## How to Spawn Agents in Gemini CLI",
             "",
             "### Spawning Template",
+            "Use subagent invocation with the agent_name directly:",
+            "",
             "```",
-            "spawn_agent(",
-            '    agent="gil-{agent_name}",  # loads ~/.codex/agents/gil-{agent_name}.toml',
-            '    instructions="""',
-            "    You are {agent_name} (job_id: {job_id})",
-            "    ",
-            '    First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}")',
-            "    Note: tenant_key is auto-injected by server from your API key session",
-            "    This returns your `mission` and `full_protocol`.",
-            "    Follow `full_protocol` for all lifecycle behavior.",
-            '    """',
-            ")",
+            "@{agent_name}",
+            "You are {agent_name} (job_id: {job_id})",
+            "",
+            'First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}")',
+            "Note: tenant_key is auto-injected by server from your API key session",
+            "This returns your `mission` and `full_protocol`.",
+            "Follow `full_protocol` for all lifecycle behavior.",
             "```",
-            "Keep instructions= MINIMAL — only the job_id and mission fetch call above.",
+            "",
+            "Or equivalently:",
+            "```",
+            "/agent {agent_name}",
+            "<instructions as above>",
+            "```",
             "",
         ]
 
@@ -121,17 +108,13 @@ class CodexPromptBuilder:
                 [
                     "### Example: First Agent",
                     "```",
-                    "spawn_agent(",
-                    f'    agent="gil-{first.agent_name}",  # gil- prefix!',
-                    '    instructions="""',
-                    f"    You are {first.agent_name} (job_id: {first.job_id})",
-                    "    ",
-                    f'    First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{first.job_id}")',
-                    "    Note: tenant_key is auto-injected by server from your API key session",
-                    "    This returns your `mission` and `full_protocol`.",
-                    "    Follow `full_protocol` for all lifecycle behavior.",
-                    '    """',
-                    ")",
+                    f"@{first.agent_name}",
+                    f"You are {first.agent_name} (job_id: {first.job_id})",
+                    "",
+                    f'First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{first.job_id}")',
+                    "Note: tenant_key is auto-injected by server from your API key session",
+                    "This returns your `mission` and `full_protocol`.",
+                    "Follow `full_protocol` for all lifecycle behavior.",
                     "```",
                     "",
                 ]
