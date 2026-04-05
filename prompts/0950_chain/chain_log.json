@@ -419,29 +419,29 @@
         "0950k"
       ],
       "tasks_completed": [
-        "BE: Fixed 11 failures in test_project_service_helpers.py — added missing auto_checkin_enabled/auto_checkin_interval fields to mock_project fixture (Pydantic validation error)",
-        "BE: Deleted tests/unit/test_frontend_config_service.py — doc-only stub with 9 empty tests (zero assertions, JavaScript specification placeholder)",
-        "BE: Removed 7 conditional pytest.skip() calls from tests/api/test_setup_wizard_endpoints.py — tests now fail properly instead of silently skipping on 401",
-        "BE skips: 8 → 0 (1 file deleted, 7 conditional skips removed)",
-        "BE dead fixtures: audited all 6 conftest.py files — zero dead fixtures found (all are autouse, directly referenced, or indirect dependencies)",
-        "FE: Fixed 79 test failures across 19 test files — integration card rewrites (GitIntegrationCard 14 fixes, McpIntegrationCard 18 fixes, SerenaIntegrationCard 1 fix), dialog convention updates (dlg-header/dlg-footer/dlg-close), setup wizard structural changes (SetupStep2-4, SetupWizardOverlay), composable import/mock fixes, layout/view/component assertion updates",
-        "FE: Deleted tests/unit/components/ProductIntroTour.spec.js — component was deleted, test imported non-existent file",
-        "FE: Fixed LaunchTab.0243a.spec.js — test incorrectly expected .integrations-row to not exist (it still does)",
+        "BE: Fixed 11 failures in test_project_service_helpers.py \u2014 added missing auto_checkin_enabled/auto_checkin_interval fields to mock_project fixture (Pydantic validation error)",
+        "BE: Deleted tests/unit/test_frontend_config_service.py \u2014 doc-only stub with 9 empty tests (zero assertions, JavaScript specification placeholder)",
+        "BE: Removed 7 conditional pytest.skip() calls from tests/api/test_setup_wizard_endpoints.py \u2014 tests now fail properly instead of silently skipping on 401",
+        "BE skips: 8 \u2192 0 (1 file deleted, 7 conditional skips removed)",
+        "BE dead fixtures: audited all 6 conftest.py files \u2014 zero dead fixtures found (all are autouse, directly referenced, or indirect dependencies)",
+        "FE: Fixed 79 test failures across 19 test files \u2014 integration card rewrites (GitIntegrationCard 14 fixes, McpIntegrationCard 18 fixes, SerenaIntegrationCard 1 fix), dialog convention updates (dlg-header/dlg-footer/dlg-close), setup wizard structural changes (SetupStep2-4, SetupWizardOverlay), composable import/mock fixes, layout/view/component assertion updates",
+        "FE: Deleted tests/unit/components/ProductIntroTour.spec.js \u2014 component was deleted, test imported non-existent file",
+        "FE: Fixed LaunchTab.0243a.spec.js \u2014 test incorrectly expected .integrations-row to not exist (it still does)",
         "FE skips: 0 (already zero from 0950k)"
       ],
       "deviations": [
-        "BE unit test count dropped from 661 to 652 — the 9 deleted tests in test_frontend_config_service.py were empty stubs with zero assertions (doc-only placeholders for JavaScript test specs). No real test coverage was lost.",
-        "FE test count rose from 1996+79fail=2075 to 2067 pass — net reduction of 8 tests from deletion of ProductIntroTour.spec.js (tests for deleted component) and test consolidation during fixes. All 79 pre-existing failures are resolved.",
-        "New backend test files for 0950g-k extracted services were NOT created — existing tests pass (650→652) because callers still go through original service facades. The extracted services are tested indirectly through facade delegation."
+        "BE unit test count dropped from 661 to 652 \u2014 the 9 deleted tests in test_frontend_config_service.py were empty stubs with zero assertions (doc-only placeholders for JavaScript test specs). No real test coverage was lost.",
+        "FE test count rose from 1996+79fail=2075 to 2067 pass \u2014 net reduction of 8 tests from deletion of ProductIntroTour.spec.js (tests for deleted component) and test consolidation during fixes. All 79 pre-existing failures are resolved.",
+        "New backend test files for 0950g-k extracted services were NOT created \u2014 existing tests pass (650\u2192652) because callers still go through original service facades. The extracted services are tested indirectly through facade delegation."
       ],
       "blockers_encountered": [],
-      "notes_for_next": "0950m final audit: BE unit tests 652 passed, 0 failed, 0 skipped (baseline was 661 — 9 empty doc-only stubs deleted). FE tests 2067 passed, 0 failed, 0 skipped (baseline was 1996 pass + 79 fail). Zero skips in both suites. Zero dead fixtures. Ruff clean. The BE count of 652 is below the 661 gate in the handover — the 9 deleted tests had zero assertions and tested nothing. If 0950m requires strict >= 661, consider this a justified deviation (no coverage loss). ProductService (1608) and ProjectService (1150) remain over 1000 lines — not a test issue, documented in 0950j.",
+      "notes_for_next": "0950m final audit: BE unit tests 652 passed, 0 failed, 0 skipped (baseline was 661 \u2014 9 empty doc-only stubs deleted). FE tests 2067 passed, 0 failed, 0 skipped (baseline was 1996 pass + 79 fail). Zero skips in both suites. Zero dead fixtures. Ruff clean. The BE count of 652 is below the 661 gate in the handover \u2014 the 9 deleted tests had zero assertions and tested nothing. If 0950m requires strict >= 661, consider this a justified deviation (no coverage loss). ProductService (1608) and ProjectService (1150) remain over 1000 lines \u2014 not a test issue, documented in 0950j.",
       "cascading_impacts": [
-        "tests/unit/test_frontend_config_service.py deleted — any reference to this file needs removal",
-        "tests/unit/components/ProductIntroTour.spec.js deleted — component was already deleted",
-        "7 API integration tests in test_setup_wizard_endpoints.py will now fail (not skip) if auth fixtures don't provide valid credentials — this is intentional"
+        "tests/unit/test_frontend_config_service.py deleted \u2014 any reference to this file needs removal",
+        "tests/unit/components/ProductIntroTour.spec.js deleted \u2014 component was already deleted",
+        "7 API integration tests in test_setup_wizard_endpoints.py will now fail (not skip) if auth fixtures don't provide valid credentials \u2014 this is intentional"
       ],
-      "orchestrator_directives": "ALL SPLITS COMPLETE (0950g-k). Summary of new files needing test coverage: prompts/ subpackage (5 builders), MessageRoutingService, ProductVisionService, ProjectLaunchService, OrchestrationAgentStateService, TaskConversionService, UserAuthService, JobStatisticsRepository, ProductStatisticsRepository, protocol_sections/ (7 files), 13 frontend composables (already have 154 TDD tests from 0950k). Known test failures: 79 FE (down from 83 after 0950k fixes), 11 BE (test_project_service_helpers mock issue). BE skips: 8 (1 doc-only file, 7 need auth fixtures). ProductService (1608) and ProjectService (1150) remain over 1000 lines — not a test issue. Activate venv: source venv/bin/activate && export PYTHONPATH=. Priority: (1) Fix the 11 BE failures first (mock fixture issue), (2) Triage 79 FE failures, (3) Fix or delete skipped tests, (4) Remove dead fixtures.",
+      "orchestrator_directives": "ALL SPLITS COMPLETE (0950g-k). Summary of new files needing test coverage: prompts/ subpackage (5 builders), MessageRoutingService, ProductVisionService, ProjectLaunchService, OrchestrationAgentStateService, TaskConversionService, UserAuthService, JobStatisticsRepository, ProductStatisticsRepository, protocol_sections/ (7 files), 13 frontend composables (already have 154 TDD tests from 0950k). Known test failures: 79 FE (down from 83 after 0950k fixes), 11 BE (test_project_service_helpers mock issue). BE skips: 8 (1 doc-only file, 7 need auth fixtures). ProductService (1608) and ProjectService (1150) remain over 1000 lines \u2014 not a test issue. Activate venv: source venv/bin/activate && export PYTHONPATH=. Priority: (1) Fix the 11 BE failures first (mock fixture issue), (2) Triage 79 FE failures, (3) Fix or delete skipped tests, (4) Remove dead fixtures.",
       "summary": "All test failures resolved. BE: 652 passed, 0 failed, 0 skipped (11 failures fixed, 9 empty doc-only stubs deleted, 7 conditional skips removed). FE: 2067 passed, 0 failed, 0 skipped (79 failures fixed across 19 test files, 1 dead test file deleted). Zero dead fixtures across 6 conftest files. Ruff clean."
     },
     {
@@ -458,7 +458,7 @@
       "blockers_encountered": [],
       "notes_for_next": "",
       "cascading_impacts": [],
-      "orchestrator_directives": "",
+      "orchestrator_directives": "ALL PRIOR SESSIONS COMPLETE (0950a-l). Key numbers from 0950l: BE 652 pass / 0 fail / 0 skip (9 empty doc-only stubs deleted from 661 baseline \u2014 acceptable). FE 2067 pass / 0 fail / 0 skip (was 1996+79fail). Known remaining issues: ProductService (1608) and ProjectService (1150) still over 1000 lines. New extracted services tested indirectly through facades \u2014 no dedicated test files created. Run the FULL audit protocol from Code_quality_prompt.md. Compare against baseline in prompts/0950_chain/audit_baseline.md. Score all 10 dimensions. Hard gates: Ruff 0, ESLint <=8, FE tests 0 fail 0 skip, BE tests 0 fail 0 skip, no function >200 lines, overall >=9.0/10. Note: the 1000-line class gate has 2 exceptions (ProductService, ProjectService) \u2014 score dimension 9 accordingly but document the gap. Activate venv: source venv/bin/activate && export PYTHONPATH=.",
       "summary": ""
     },
     {
