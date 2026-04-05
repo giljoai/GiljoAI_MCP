@@ -79,38 +79,30 @@
           <h2 class="text-h6">Startup</h2>
           <p class="text-body-2 text-muted-a11y mt-1">Setup wizard and getting started</p>
         </div>
-        <v-card variant="flat" class="smooth-border settings-card" data-test="startup-settings">
-          <v-card-text>
-            <p class="text-body-2 mb-4" style="color: var(--color-text-secondary);">
-              The setup wizard guides you through connecting AI coding tools and configuring GiljoAI MCP.
-            </p>
-            <v-btn
-              color="primary"
-              variant="flat"
-              prepend-icon="mdi-rocket-launch"
-              @click="router.push({ path: '/', query: { openSetup: 'true' } })"
-            >
-              Open Setup Wizard
-            </v-btn>
-            <v-btn
-              variant="text"
-              prepend-icon="mdi-book-open-variant"
-              class="ml-3"
-              @click="router.push({ path: '/', query: { openGuide: 'true' } })"
-            >
-              How to Use
-            </v-btn>
-            <v-btn
-              variant="text"
-              prepend-icon="mdi-help-circle-outline"
-              class="ml-3"
-              data-testid="startup-intro-help"
-              @click="openIntroTour"
-            >
-              What is GiljoAI MCP?
-            </v-btn>
-          </v-card-text>
-        </v-card>
+        <div class="startup-cards" data-test="startup-settings">
+          <div
+            class="startup-card smooth-border"
+            style="--card-accent: var(--brand-yellow, #ffc300)"
+            @click="router.push({ path: '/', query: { openSetup: 'true' } })"
+          >
+            <div class="startup-card-icon" style="background: rgba(255,195,0,0.1); color: var(--brand-yellow, #ffc300)">
+              <v-icon size="20">mdi-rocket-launch</v-icon>
+            </div>
+            <div class="startup-card-title">Setup Wizard</div>
+            <div class="startup-card-desc">Connect AI coding tools, install skills, and configure GiljoAI MCP.</div>
+          </div>
+          <div
+            class="startup-card smooth-border"
+            style="--card-accent: #5EC48E"
+            @click="router.push({ path: '/', query: { openGuide: 'true' } })"
+          >
+            <div class="startup-card-icon" style="background: rgba(94,196,142,0.12); color: #5EC48E">
+              <v-icon size="20">mdi-book-open-variant</v-icon>
+            </div>
+            <div class="startup-card-title">Learning</div>
+            <div class="startup-card-desc">Understand products, projects, agents, memory, and slash commands.</div>
+          </div>
+        </div>
       </v-window-item>
 
       <!-- Notification Settings -->
@@ -222,8 +214,6 @@
     </v-window>
     </div>
 
-    <!-- Product intro tour (shown on first Startup visit unless hidden) -->
-    <ProductIntroTour v-model="showIntroTour" />
   </v-container>
 </template>
 
@@ -237,7 +227,6 @@ import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import AgentExport from '@/components/AgentExport.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
-import ProductIntroTour from '@/components/settings/ProductIntroTour.vue'
 import McpIntegrationCard from '@/components/settings/integrations/McpIntegrationCard.vue'
 import SerenaIntegrationCard from '@/components/settings/integrations/SerenaIntegrationCard.vue'
 import GitIntegrationCard from '@/components/settings/integrations/GitIntegrationCard.vue'
@@ -254,8 +243,6 @@ const { showToast } = useToast()
 const activeTab = ref('startup')
 const serenaEnabled = ref(false)
 const toggling = ref(false)
-const showIntroTour = ref(false)
-const introTourShownThisSession = ref(false)
 
 // Git Integration state (system-level like Serena)
 // This state is shared with ContextPriorityConfig via props
@@ -359,8 +346,6 @@ onMounted(async () => {
   // This ensures events are captured even when TemplateManager tab is not active
   on('template:exported', handleTemplateExportEvent)
 
-  // Preface Startup with the product intro tour, unless user hid it
-  maybeShowIntroTour()
 })
 
 watch(activeTab, (newTab) => {
@@ -369,7 +354,6 @@ watch(activeTab, (newTab) => {
   if (currentQuery.tab !== newTab) {
     router.push({ query: { ...currentQuery, tab: newTab } })
   }
-  maybeShowIntroTour()
 })
 
 watch(
@@ -459,26 +443,6 @@ function handleTemplateExportEvent(data) {
   }
 }
 
-function isIntroTourHidden() {
-  try {
-    return localStorage.getItem('giljo_intro_tour_hidden') === '1'
-  } catch {
-    return false
-  }
-}
-
-function maybeShowIntroTour() {
-  if (introTourShownThisSession.value) return
-  if (activeTab.value !== 'startup') return
-  if (isIntroTourHidden()) return
-  showIntroTour.value = true
-  introTourShownThisSession.value = true
-}
-
-function openIntroTour() {
-  showIntroTour.value = true
-  introTourShownThisSession.value = true
-}
 </script>
 
 <style lang="scss" scoped>
@@ -490,6 +454,71 @@ function openIntroTour() {
 .settings-card {
   background: $elevation-raised;
   border-radius: $border-radius-rounded;
+}
+
+/* Startup quick-launch cards (mirrors Home page .quick-card) */
+.startup-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.startup-card {
+  background: rgb(var(--v-theme-surface));
+  border-radius: $border-radius-rounded;
+  padding: 20px;
+  cursor: pointer;
+  transition: all $transition-normal;
+  position: relative;
+  overflow: hidden;
+}
+
+.startup-card:hover {
+  transform: translateY(-3px);
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255,255,255,0.10)), 0 10px 20px -6px rgba(0,0,0,0.25);
+}
+
+.startup-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--card-accent, rgba(255,255,255,0.10));
+  opacity: 0;
+  transition: opacity $transition-normal;
+}
+
+.startup-card:hover::before {
+  opacity: 1;
+}
+
+.startup-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: $border-radius-default;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+}
+
+.startup-card-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.startup-card-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+@media (max-width: 599px) {
+  .startup-cards {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Integration page section labels (IBM Plex Mono uppercase) */

@@ -17,7 +17,7 @@
           <!-- Header -->
           <div class="setup-wizard-header">
             <h2 class="setup-wizard-title">
-              <template v-if="mode === 'learning'">How to Use GiljoAI MCP</template>
+              <template v-if="mode === 'learning'"><span class="setup-wizard-title-gradient">How to Use GiljoAI MCP</span></template>
               <template v-else><span class="setup-wizard-title-gradient">Setup</span></template>
             </h2>
             <v-btn
@@ -122,6 +122,7 @@
                     </div>
                   </Transition>
                 </div>
+                <p class="learning-closing">You can reopen this guide any time from User Settings.</p>
               </div>
             </template>
 
@@ -281,58 +282,63 @@ import SetupStep4Complete from './SetupStep4Complete.vue'
 
 const LEARNING_SECTIONS = [
   {
-    id: 'hierarchy',
-    icon: 'mdi-sitemap',
-    title: 'Product Hierarchy',
+    id: 'how-it-works',
+    icon: 'mdi-connection',
+    title: 'How GiljoAI Works',
     content: [
-      'Products are the top level — they represent a software product or system you are building.',
-      'Projects live inside Products. Each project is a focused unit of work (a feature, sprint, or initiative).',
-      'Jobs are created when you run an agent within a project. They track each AI coding session.',
-      'Agents execute inside jobs. Multiple agents can collaborate on a single job using chain strategies.',
+      'GiljoAI MCP is a passive context server. Your AI coding tool does all reasoning and coding using your own subscription. GiljoAI stores product knowledge, generates focused prompts, and serves coordination data so your agents stay aligned.',
+      'Your AI tool connects to GiljoAI as an MCP server over HTTP. Each tool gets its own API key and connection.',
+      'Use Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool simultaneously. If it can connect to an MCP server, GiljoAI accepts it.',
     ],
   },
   {
-    id: 'tools',
-    icon: 'mdi-console',
-    title: 'AI Coding Tools',
+    id: 'product',
+    icon: 'mdi-package-variant-closed',
+    title: 'Define Your Product',
     content: [
-      'GiljoAI MCP works with Claude Code, Codex CLI, and Gemini CLI via the MCP protocol.',
-      'Each tool connects to GiljoAI as an MCP server — your orchestration commands become tool calls.',
-      'You can use multiple tools simultaneously. Each gets its own API key and connection.',
-      'The MCP connection gives your AI agent access to project context, agent templates, and coordination tools.',
+      'Create a Product to represent the software you are building. Fill in context fields: description, tech stack, architecture, testing strategy, constraints, and more.',
+      'Enter context manually, or use a pre-generated prompt that lets your AI coding tool suggest what to include based on a vision document or product proposal.',
+      'Context settings let you toggle fields on or off and adjust depth per source. Keep prompts lean for simple tasks or load full detail for complex missions.',
     ],
   },
   {
-    id: 'commands',
+    id: 'projects',
+    icon: 'mdi-folder-open',
+    title: 'Projects and Missions',
+    content: [
+      'Create Projects inside a product. Each project is a focused unit of work such as a feature, sprint, or scaffolding effort. Stage a series of projects and activate one at a time.',
+      'Activate a project and GiljoAI generates a bootstrap prompt. Paste it into your CLI tool to kick off the orchestrator, which plans the mission and assigns agents from your templates.',
+      'Context is assembled per session from your product fields, 360 Memory, and optional integrations. Each agent gets exactly what it needs for its role.',
+    ],
+  },
+  {
+    id: 'skills',
     icon: 'mdi-slash-forward-box',
-    title: 'Slash Commands',
+    title: 'Skills and Agent Templates',
     content: [
-      '/gil_add — Add tasks or projects to the dashboard directly from your coding agent.',
-      '/gil_get_agents — Download agent templates with orchestration protocols into your workspace.',
-      'Slash commands are the primary way to interact with GiljoAI from within your AI coding tool.',
-      'Commands are context-aware: they know which product and project you are working in.',
+      'Two skills are installed on your machine during setup: /gil_add and /gil_get_agents (Claude Code, Gemini CLI) or $gil-add and $gil-get-agents (Codex CLI).',
+      'Use /gil_add to capture tasks or create projects mid-session without breaking flow. Use /gil_get_agents to fetch agent templates into your workspace for subagent spawning.',
+      'The Agent Template Manager lets you browse, customize, and create agent profiles with roles, expertise, and chain strategies. Templates export automatically for the right platform.',
     ],
   },
   {
-    id: 'agents',
-    icon: 'mdi-robot',
-    title: 'Agent Templates',
+    id: 'memory',
+    icon: 'mdi-brain',
+    title: '360 Memory',
     content: [
-      'Agent templates are pre-configured protocols that tell your AI coding tool how to work on a task.',
-      'Templates include chain strategies (sequential handovers, parallel work, orchestrator-gated flows).',
-      'The Agent Lab lets you browse, customize, and download templates for different workflow patterns.',
-      'Templates are tool-agnostic — the same strategy works with Claude Code, Codex CLI, or Gemini CLI.',
+      'Each completed project writes to 360 Memory automatically: what was built, key decisions, patterns discovered, what worked. This is not a plugin or integration. It is a core product behavior.',
+      'Your next project starts with accumulated context from previous ones. The orchestrator reads past memories alongside your product context and project description to plan each mission.',
+      'You control how many memories back agents read through the context settings. Optionally enrich memory with git commit history for the complete development timeline.',
     ],
   },
   {
     id: 'dashboard',
     icon: 'mdi-view-dashboard',
-    title: 'Dashboard',
+    title: 'Dashboard and Monitoring',
     content: [
-      'The Products page shows all your software products and their vision documents.',
-      'The Projects page lists active projects with status, progress, and linked jobs.',
-      'The Tasks page tracks technical debt, TODOs, and action items across all products.',
-      'Each page offers filtering, search, and quick actions to manage your development workflow.',
+      'The Products, Projects, Tasks, and Jobs pages let you manage your work and track technical debt across all products.',
+      'The Jobs page is where staging begins and agents execute. Watch their planning, to-do lists, and messages in real time.',
+      'A message inbox lets you talk directly to the orchestrator or broadcast to the entire agent team. All messages are logged in the MCP message system for auditability.',
     ],
   },
 ]
@@ -892,6 +898,13 @@ function handleDismiss() {
 
 .learning-line:last-child {
   margin-bottom: 0;
+}
+
+.learning-closing {
+  font-size: 0.8125rem;
+  color: $lightest-blue;
+  text-align: center;
+  margin-top: 16px;
 }
 
 /* Section expand transition */
