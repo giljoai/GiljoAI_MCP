@@ -32,9 +32,7 @@ from sqlalchemy.orm import selectinload
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
     BaseGiljoError,
-    ContextError,
     DatabaseError,
-    GiljoFileNotFoundError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -52,9 +50,7 @@ from src.giljo_mcp.schemas.service_responses import (
     DeleteResult,
     ProductStatistics,
     PurgeResult,
-    VisionUploadResult,
 )
-from src.giljo_mcp.tools.chunking import VISION_MAX_INGEST_TOKENS
 
 
 logger = logging.getLogger(__name__)
@@ -1274,200 +1270,6 @@ class ProductService:
             raise BaseGiljoError(
                 message=f"Failed to update git integration: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
-            ) from e
-
-    async def upload_vision_document(
-        self,
-        product_id: str,
-        content: str,
-        filename: str,
-        auto_chunk: bool = True,
-        max_tokens: int = VISION_MAX_INGEST_TOKENS,
-    ) -> VisionUploadResult:
-        """
-        Upload and optionally chunk vision document for product.
-
-        Uses VisionDocumentChunker for intelligent chunking at semantic boundaries.
-        Documents exceeding max_tokens are automatically split into chunks.
-
-        Args:
-            product_id: Product UUID
-            content: Document content (text/markdown)
-            filename: Document filename
-            auto_chunk: Auto-chunk if content exceeds max_tokens (default: True)
-            max_tokens: Max tokens per chunk (default: 25000 for 32K models)
-
-        Returns:
-            VisionUploadResult Pydantic model with document_id, document_name,
-            chunks_created, and total_tokens
-
-        Raises:
-            ValidationError: If product not found or validation fails
-            ResourceNotFoundError: If product not found
-            BaseGiljoError: If upload fails
-
-        Example:
-            >>> result = await service.upload_vision_document(
-            ...     product_id="abc-123",
-            ...     content="# Vision\\n...",
-            ...     filename="vision.md"
-            ... )
-            >>> print(f"Created {result.chunks_created} chunks")
-        """
-        try:
-            from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
-            from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
-
-            async with self._get_session() as session:
-                # Verify product exists and belongs to tenant
-                stmt = select(Product).where(
-                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
-                )
-                result = await session.execute(stmt)
-                product = result.scalar_one_or_none()
-
-                if not product:
-                    raise ResourceNotFoundError(
-                        message=f"Product {product_id} not found or access denied",
-                        context={"product_id": product_id, "tenant_key": self.tenant_key},
-                    )
-
-                # Create vision document via repository
-                vision_repo = VisionDocumentRepository(db_manager=self.db_manager)
-
-                # Calculate file size
-                file_size = len(content.encode("utf-8"))
-
-                # Create document (inline storage)
-                doc = await vision_repo.create(
-                    session=session,
-                    tenant_key=self.tenant_key,
-                    product_id=product_id,
-                    document_name=filename,
-                    content=content,
-                    document_type="vision",
-                    storage_type="inline",
-                    file_size=file_size,
-                    is_active=True,
-                    display_order=0,
-                )
-
-                await session.commit()
-
-                self._logger.info(f"Created vision document {doc.id} for product {product_id}")
-
-                # Multi-level summarization (Handover 0345e)
-                # Always generate summaries for large documents (no toggle check)
-                # Handover 0377: Summarize all documents (100 token minimum to skip empty/trivial files)
-                # Light=33%, Medium=66%, Full=100% (original)
-                total_tokens = len(content) // 4  # Rough estimate: 1 token ≈ 4 chars
-
-                # Generate multi-level summaries if document exceeds threshold
-                if total_tokens > 100:  # Summarize all non-trivial documents
-                    try:
-                        from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
-
-                        self._logger.info(f"Generating multi-level summaries for doc {doc.id}: {total_tokens} tokens")
-
-                        summarizer = VisionDocumentSummarizer()
-                        summaries = summarizer.summarize_multi_level(content)
-
-                        # Re-attach doc to session after previous commit (fixes detached state)
-                        session.add(doc)
-
-                        # Store summary levels (Handover 0352: light and medium only)
-                        doc.summary_light = summaries.light.summary
-                        doc.summary_medium = summaries.medium.summary
-                        doc.summary_light_tokens = summaries.light.tokens
-                        doc.summary_medium_tokens = summaries.medium.tokens
-                        doc.is_summarized = True
-                        doc.original_token_count = summaries.original_tokens
-
-                        # Backward compatibility: set summary_text to medium summary
-                        doc.summary_text = summaries.medium.summary
-                        doc.compression_ratio = (
-                            (summaries.original_tokens - summaries.medium.tokens) / summaries.original_tokens
-                            if summaries.original_tokens > 0
-                            else 0.0
-                        )
-
-                        await session.commit()
-
-                        self._logger.info(
-                            f"Vision document {doc.id} summarized: "
-                            f"Light={summaries.light.tokens} tokens, "
-                            f"Medium={summaries.medium.tokens} tokens "
-                            f"(from {summaries.original_tokens} tokens) "
-                            f"in {summaries.processing_time_ms}ms"
-                        )
-                    except (ImportError, ValueError, KeyError) as e:
-                        # Summarization failed but document created - log warning and continue
-                        self._logger.warning(f"Document {doc.id} created but summarization failed: {e}")
-
-                # Auto-chunk if enabled
-                chunks_created = 0
-                chunk_total_tokens = 0  # Track chunker's token count separately
-
-                if auto_chunk:
-                    chunker = VisionDocumentChunker(target_chunk_size=max_tokens)
-
-                    try:
-                        # Chunk the document
-                        chunk_result = await chunker.chunk_vision_document(
-                            session=session, tenant_key=self.tenant_key, vision_document_id=str(doc.id)
-                        )
-
-                        await session.commit()
-
-                        chunks_created = chunk_result["chunks_created"]
-                        chunk_total_tokens = chunk_result["total_tokens"]
-                        # Update total_tokens for return value (use chunker's accurate count)
-                        total_tokens = chunk_total_tokens
-
-                        self._logger.info(f"Chunked document {doc.id}: {chunks_created} chunks, {total_tokens} tokens")
-                    except (ContextError, GiljoFileNotFoundError, OSError) as e:
-                        # Chunking failed but document created
-                        self._logger.warning(f"Document {doc.id} created but chunking failed: {e}")
-
-                # Handover 0493: Auto-consolidation after upload
-                # Ensures light/medium summaries are always available
-                try:
-                    from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
-
-                    consolidation_service = ConsolidatedVisionService()
-                    await consolidation_service.consolidate_vision_documents(
-                        product_id=product_id,
-                        session=session,
-                        tenant_key=self.tenant_key,
-                        force=True,
-                    )
-                    self._logger.info(f"Auto-consolidated vision documents for product {product_id}")
-                except (ValidationError, ResourceNotFoundError, ValueError, KeyError) as e:
-                    # Consolidation failure should not fail the upload
-                    self._logger.warning(f"Auto-consolidation failed for product {product_id}: {e}")
-
-                # Handover 0731b: Return VisionUploadResult Pydantic model
-                return VisionUploadResult(
-                    document_id=str(doc.id),
-                    document_name=doc.document_name,
-                    chunks_created=chunks_created,
-                    total_tokens=total_tokens,
-                )
-
-        except ValueError as e:
-            self._logger.exception("Validation error uploading vision document")
-            raise ValidationError(
-                message=f"Validation error uploading vision document: {e!s}",
-                context={"product_id": product_id, "filename": filename},
-            ) from e
-        except ResourceNotFoundError:
-            # Re-raise resource not found errors as-is
-            raise
-        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
-            self._logger.exception("Failed to upload vision document")
-            raise BaseGiljoError(
-                message=f"Failed to upload vision document: {e!s}",
-                context={"product_id": product_id, "filename": filename, "tenant_key": self.tenant_key},
             ) from e
 
     # ============================================================================
