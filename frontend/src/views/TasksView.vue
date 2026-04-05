@@ -12,7 +12,7 @@
             </template>
             <div>
               <div class="font-weight-bold mb-1">Task Field Reference</div>
-              <div class="text-caption mb-2" style="color: #8895a8;">Instructions for /gil_add</div>
+              <div class="text-caption mb-2" style="color: var(--text-muted);">Instructions for /gil_add</div>
               <div><span class="font-weight-medium">title (required):</span> Free text</div>
               <div class="mt-1"><span class="font-weight-medium">description (recommended):</span> Free text</div>
               <div class="mt-1"><span class="font-weight-medium">status (optional):</span></div>
@@ -585,9 +585,9 @@ const hierarchicalTasks = computed(() => {
 function getStatusColor(status) {
   const colors = {
     pending: 'warning',
-    in_progress: '#fff', // exempt: Vuetify color prop requires hex ($color-surface)
+    in_progress: '#ffffff', // $color-surface — Vuetify color prop requires hex
     completed: 'success',
-    cancelled: '#c6298c', // exempt: Vuetify color prop requires hex ($color-status-failed)
+    cancelled: '#c6298c', // $color-status-failed — Vuetify color prop requires hex
   }
   return colors[status] || 'grey'
 }
@@ -937,8 +937,8 @@ onMounted(async () => {
 }
 
 .tinted-status-cancelled {
-  background: rgba(#c6298c, 0.12);
-  color: #c6298c; /* design-token-exempt: status semantic color */
+  background: rgba($color-status-failed, 0.12);
+  color: $color-status-failed;
 }
 
 /* 0870h: tinted priority pills */

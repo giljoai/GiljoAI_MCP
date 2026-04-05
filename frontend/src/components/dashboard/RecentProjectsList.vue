@@ -43,7 +43,7 @@ function hexToRgb(hex) {
 }
 
 function taxonomyStyle(project) {
-  const color = project.project_type_color || '#9e9e9e' /* design-token-exempt: dynamic taxonomy color */
+  const color = project.project_type_color || '#9e9e9e' // $color-text-muted — fallback for dynamic taxonomy color
   return {
     background: `rgba(${hexToRgb(color)}, 0.15)`,
     color,
@@ -126,13 +126,12 @@ function taxonomyStyle(project) {
   min-width: 68px;
   text-align: center;
 
-  /* design-token-exempt: status chip colors — functional semantic colors */
-  &.active { background: #ffffff; color: #333333; }
-  &.inactive { background: #9e9e9e; color: #1a237e; }
-  &.completed { background: #67bd6d; color: $color-background-primary; }
+  &.active { background: $color-surface; color: $color-text-dark; }
+  &.inactive { background: $color-text-muted; color: $color-text-on-muted; }
+  &.completed { background: $color-status-complete; color: $color-background-primary; }
   &.cancelled { background: $color-brand-yellow; color: $color-background-primary; }
-  &.terminated { background: #c6298c; color: $color-text-primary; }
-  &.staged { background: #ffc107; color: $color-background-primary; }
+  &.terminated { background: $color-status-failed; color: $color-text-primary; }
+  &.staged { background: $color-status-staged; color: $color-background-primary; }
 }
 
 .no-data-text {

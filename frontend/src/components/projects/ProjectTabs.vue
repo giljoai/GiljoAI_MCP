@@ -860,7 +860,7 @@ async function handleContinueWorking() {
   }
 
   .project-id {
-    color: #8895a8;
+    color: var(--text-muted);
   }
 }
 
@@ -896,8 +896,8 @@ async function handleContinueWorking() {
 
   &.active,
   &.active:hover {
-    background: rgba(255, 195, 0, 0.12);
-    color: #ffc300;
+    background: rgba($color-brand-yellow, 0.12);
+    color: $color-brand-yellow;
     box-shadow: none;
   }
 
