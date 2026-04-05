@@ -676,14 +676,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useToast } from '@/composables/useToast'
 import { useFormatDate } from '@/composables/useFormatDate'
 import { useVisionAnalysis } from '@/composables/useVisionAnalysis'
 import { useProductFormTabs } from '@/composables/useProductFormTabs'
 
 const { formatDate } = useFormatDate()
-const { showToast } = useToast()
-
 const props = defineProps({
   modelValue: {
     type: Boolean,
@@ -722,6 +719,7 @@ const formValid = ref(false)
 const formRef = ref(null)
 const visionFiles = ref([])
 
+// eslint-disable-next-line no-unused-vars -- tabOrder exposed on vm for test assertions
 const { dialogTab, tabOrder, isFirstTab, isLastTab, goNextTab, goPrevTab, resetTab } = useProductFormTabs()
 
 const {

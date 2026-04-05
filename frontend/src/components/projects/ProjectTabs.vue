@@ -420,7 +420,6 @@ const {
   memoryWritten,
   showContinueGuidance,
   projectDoneStatus,
-  allJobsTerminal,
   showCloseoutButton,
   showMemoryPending,
   openCloseoutModal,

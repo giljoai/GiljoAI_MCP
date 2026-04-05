@@ -436,7 +436,7 @@ async def _get_vision_document_with_session(
         )
 
 
-async def _execute_vision_query(
+async def _fetch_active_vision_docs(
     session: AsyncSession,
     product_id: str,
     tenant_key: str,
@@ -444,9 +444,28 @@ async def _execute_vision_query(
     offset: int,
     limit: Optional[int],
     db_manager: Optional[DatabaseManager],
-) -> dict[str, Any]:
-    """Execute the actual vision document query within a session context."""
-    # Fetch product to verify existence and get vision documents
+) -> tuple[Optional[list], Optional[dict[str, Any]]]:
+    """Fetch product, validate vision documents, and dispatch light/medium to summary.
+
+    Applies the guard-clause chain: product existence, presence of vision
+    documents, and active-document filter. For light/medium depth, calls
+    _get_summary_response directly and returns the result as the early-return
+    value.
+
+    Args:
+        session: Active async database session.
+        product_id: Product UUID (filtered by tenant_key for isolation).
+        tenant_key: Tenant isolation key.
+        chunking: Depth level — "light" and "medium" are handled here;
+                  "full" is passed back to the caller.
+        offset: Pagination offset forwarded to _get_summary_response.
+        limit: Pagination limit stored in error metadata.
+        db_manager: Database manager forwarded to _get_summary_response.
+
+    Returns:
+        (active_docs, None) when depth is "full" and active docs exist.
+        (None, response_dict) for all early-return paths (errors, light/medium).
+    """
     stmt = (
         select(Product)
         .options(selectinload(Product.vision_documents))
@@ -459,7 +478,7 @@ async def _execute_vision_query(
         logger.warning(
             "product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_vision_document"
         )
-        return {
+        return None, {
             "source": "vision_documents",
             "depth": chunking,
             "data": [],
@@ -476,10 +495,9 @@ async def _execute_vision_query(
             },
         }
 
-    # Check if product has vision documents
     if not product.vision_documents:
         logger.debug("no_vision_documents", product_id=product_id, operation="get_vision_document")
-        return {
+        return None, {
             "source": "vision_documents",
             "depth": chunking,
             "data": [],
@@ -495,11 +513,10 @@ async def _execute_vision_query(
             },
         }
 
-    # Get active vision documents
     active_docs = [doc for doc in product.vision_documents if doc.is_active]
     if not active_docs:
         logger.debug("no_active_vision_documents", product_id=product_id, operation="get_vision_document")
-        return {
+        return None, {
             "source": "vision_documents",
             "depth": chunking,
             "data": [],
@@ -516,38 +533,101 @@ async def _execute_vision_query(
         }
 
     # Handover 0377/0493/0842b: Prefer per-document summaries, fall back to consolidated
-    if chunking == "light":
-        return await _get_summary_response(
+    if chunking in ("light", "medium"):
+        response = await _get_summary_response(
             product=product,
-            depth="light",
+            depth=chunking,
             product_id=product_id,
             tenant_key=tenant_key,
             offset=offset,
             session=session,
             db_manager=db_manager,
         )
+        return None, response
 
-    if chunking == "medium":
-        return await _get_summary_response(
-            product=product,
-            depth="medium",
-            product_id=product_id,
-            tenant_key=tenant_key,
-            offset=offset,
-            session=session,
-            db_manager=db_manager,
-        )
+    return active_docs, None
+
+
+def _select_chunks_by_token_budget(
+    all_chunks: list,
+    offset: int,
+    max_chunks: int,
+    max_tokens: int,
+) -> list[dict[str, Any]]:
+    """Select chunks from a paginated window that fit within the token budget.
+
+    Iterates over all_chunks[offset : offset + max_chunks], accumulating
+    chunks until adding the next one would exceed max_tokens.
+
+    Handover 0493: Uses chunk.token_count (tiktoken) when available; falls
+    back to estimate_tokens(chunk.content) for legacy rows.
+
+    Args:
+        all_chunks: Full ordered list of MCPContextIndex rows.
+        offset: Number of leading chunks to skip.
+        max_chunks: Maximum number of chunks to consider from the window.
+        max_tokens: Hard token ceiling for the selected set.
+
+    Returns:
+        List of dicts with keys ``content``, ``chunk_order``, and ``tokens``.
+    """
+    total_chunks = len(all_chunks)
+    paginated_chunks = all_chunks[offset : offset + max_chunks] if offset < total_chunks else []
+
+    selected_chunks: list[dict[str, Any]] = []
+    total_tokens = 0
+
+    for chunk in paginated_chunks:
+        chunk_tokens = chunk.token_count if chunk.token_count else estimate_tokens(chunk.content)
+
+        if total_tokens + chunk_tokens > max_tokens:
+            logger.debug(
+                "token_budget_reached",
+                total_tokens=total_tokens,
+                max_tokens=max_tokens,
+                chunks_selected=len(selected_chunks),
+                operation="get_vision_document",
+            )
+            break
+
+        selected_chunks.append({"content": chunk.content, "chunk_order": chunk.chunk_order, "tokens": chunk_tokens})
+        total_tokens += chunk_tokens
+
+    return selected_chunks
+
+
+async def _execute_vision_query(
+    session: AsyncSession,
+    product_id: str,
+    tenant_key: str,
+    chunking: str,
+    offset: int,
+    limit: Optional[int],
+    db_manager: Optional[DatabaseManager],
+) -> dict[str, Any]:
+    """Execute the actual vision document query within a session context."""
+    active_docs, early_response = await _fetch_active_vision_docs(
+        session=session,
+        product_id=product_id,
+        tenant_key=tenant_key,
+        chunking=chunking,
+        offset=offset,
+        limit=limit,
+        db_manager=db_manager,
+    )
+    if early_response is not None:
+        return early_response
 
     # For "full" depth, use chunk-based pagination (existing logic below)
 
     # Get active chunked vision documents (reuse pattern from mission_planner)
-    chunked_docs = [doc for doc in product.vision_documents if doc.is_active and doc.chunked and doc.chunk_count > 0]
+    chunked_docs = [doc for doc in active_docs if doc.chunked and doc.chunk_count > 0]
 
     if not chunked_docs:
         logger.debug(
             "no_chunked_documents",
             product_id=product_id,
-            total_docs=len(product.vision_documents),
+            total_docs=len(active_docs),
             operation="get_vision_document",
         )
         return {
@@ -566,10 +646,8 @@ async def _execute_vision_query(
             },
         }
 
-    # Get vision_document_ids for query
-    vision_doc_ids = [doc.id for doc in chunked_docs]
-
     # Query chunks from mcp_context_index (reuse pattern from mission_planner)
+    vision_doc_ids = [doc.id for doc in chunked_docs]
     chunk_stmt = (
         select(MCPContextIndex)
         .where(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.vision_document_id.in_(vision_doc_ids))
@@ -603,36 +681,17 @@ async def _execute_vision_query(
             },
         }
 
-    # Apply depth filtering with pagination (full depth only)
     max_chunks = get_max_chunks(chunking) if limit is None else limit
     max_tokens = get_max_tokens(chunking)
     total_chunks = len(all_chunks)
 
-    # Apply pagination: skip offset chunks, take up to limit chunks
-    paginated_chunks = all_chunks[offset : offset + max_chunks] if offset < total_chunks else []
+    selected_chunks = _select_chunks_by_token_budget(
+        all_chunks=all_chunks,
+        offset=offset,
+        max_chunks=max_chunks,
+        max_tokens=max_tokens,
+    )
 
-    selected_chunks = []
-    total_tokens = 0
-
-    # Select chunks within budget
-    # Handover 0493: Use stored token_count (tiktoken) instead of chars/4 estimation
-    for chunk in paginated_chunks:
-        chunk_tokens = chunk.token_count if chunk.token_count else estimate_tokens(chunk.content)
-
-        if total_tokens + chunk_tokens > max_tokens:
-            logger.debug(
-                "token_budget_reached",
-                total_tokens=total_tokens,
-                max_tokens=max_tokens,
-                chunks_selected=len(selected_chunks),
-                operation="get_vision_document",
-            )
-            break
-
-        selected_chunks.append({"content": chunk.content, "chunk_order": chunk.chunk_order, "tokens": chunk_tokens})
-        total_tokens += chunk_tokens
-
-    # Calculate pagination metadata
     has_more = (offset + len(selected_chunks)) < total_chunks
     next_offset = offset + len(selected_chunks) if has_more else None
 
@@ -646,7 +705,7 @@ async def _execute_vision_query(
         returned_chunks=len(selected_chunks),
         total_chunks=total_chunks,
         has_more=has_more,
-        total_tokens=total_tokens,
+        total_tokens=sum(c["tokens"] for c in selected_chunks),
         max_tokens=max_tokens,
     )
 

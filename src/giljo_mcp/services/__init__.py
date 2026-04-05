@@ -8,18 +8,24 @@ Handover 0123 (Phase 2): TemplateService, TaskService, MessageService, Orchestra
 Handover 0127b: ProductService extracted from direct database access
 Handover 0322 (Phase 1/2): AuthService, UserService added
 Handover 0424b: OrgService added for organization management
+Handover 0950n: ProjectSummaryService extracted from ProjectService
+Handover 0950n: MissionOrchestrationService extracted from MissionService
 """
 
 from .auth_service import AuthService
 from .config_service import ConfigService
 from .message_routing_service import MessageRoutingService
 from .message_service import MessageService
+from .mission_orchestration_service import MissionOrchestrationService
 from .orchestration_service import OrchestrationService
 from .org_service import OrgService
+from .product_lifecycle_service import ProductLifecycleService
+from .product_memory_service import ProductMemoryService
 from .product_service import ProductService
 from .product_vision_service import ProductVisionService
 from .project_launch_service import ProjectLaunchService
 from .project_service import ProjectService
+from .project_summary_service import ProjectSummaryService
 from .task_conversion_service import TaskConversionService
 from .task_service import TaskService
 from .template_service import TemplateService
@@ -32,12 +38,16 @@ __all__ = [
     "ConfigService",
     "MessageRoutingService",
     "MessageService",
+    "MissionOrchestrationService",
     "OrchestrationService",
     "OrgService",
+    "ProductLifecycleService",
+    "ProductMemoryService",
     "ProductService",
     "ProductVisionService",
     "ProjectLaunchService",
     "ProjectService",
+    "ProjectSummaryService",
     "TaskConversionService",
     "TaskService",
     "TemplateService",
