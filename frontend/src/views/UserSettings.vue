@@ -82,10 +82,10 @@
         <div class="startup-cards" data-test="startup-settings">
           <div
             class="startup-card smooth-border"
-            style="--card-accent: var(--brand-yellow, #ffc300)"
+            style="--card-accent: var(--color-accent-primary)"
             @click="router.push({ path: '/', query: { openSetup: 'true' } })"
           >
-            <div class="startup-card-icon" style="background: rgba(255,195,0,0.1); color: var(--brand-yellow, #ffc300)">
+            <div class="startup-card-icon" style="background: rgba(255,195,0,0.1); color: var(--color-accent-primary)">
               <v-icon size="20">mdi-rocket-launch</v-icon>
             </div>
             <div class="startup-card-title">Setup Wizard</div>
@@ -93,10 +93,10 @@
           </div>
           <div
             class="startup-card smooth-border"
-            style="--card-accent: #5EC48E"
+            style="--card-accent: var(--agent-documenter-primary)"
             @click="router.push({ path: '/', query: { openGuide: 'true' } })"
           >
-            <div class="startup-card-icon" style="background: rgba(94,196,142,0.12); color: #5EC48E">
+            <div class="startup-card-icon" style="background: rgba(94,196,142,0.12); color: var(--agent-documenter-primary)">
               <v-icon size="20">mdi-book-open-variant</v-icon>
             </div>
             <div class="startup-card-title">Learning</div>
@@ -593,17 +593,17 @@ function handleTemplateExportEvent(data) {
   background: transparent;
   color: var(--text-muted);
   border: none;
-  --smooth-border-color: #2a4a6b;
+  --smooth-border-color: #{$color-pill-border};
 }
 
 .pill-toggle:hover {
-  color: #b0bec5;
+  color: $color-text-hover;
 }
 
 .pill-toggle--active,
 .pill-toggle--active:hover {
-  background: rgba(255, 195, 0, 0.12);
-  color: #ffc300;
+  background: rgba($color-brand-yellow, 0.12);
+  color: $color-brand-yellow;
   box-shadow: none;
 }
 

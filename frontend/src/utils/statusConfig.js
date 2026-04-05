@@ -5,62 +5,75 @@
  * Handover 0243c: Dynamic Status Display with real-time WebSocket updates
  */
 
+// Status color tokens — keep in sync with design-tokens.scss ($color-status-*)
+const STATUS_COLORS = {
+  WAITING: '#ffd700',     // $color-status-waiting
+  WORKING: '#ffffff',     // $color-status-working
+  BLOCKED: '#ff9800',     // $color-status-blocked
+  COMPLETE: '#67bd6d',    // $color-status-complete
+  IDLE: '#7a9bb5',        // $color-status-idle
+  SLEEPING: '#9b89b3',    // $color-status-sleeping
+  HANDED_OVER: '#9e9e9e', // $color-status-handed-over
+  DECOMMISSIONED: '#757575', // $color-status-decommissioned
+  FALLBACK: '#666666',    // Fallback muted
+}
+
 // JobsTab-specific status configuration (Handover 0243c)
 const statusConfig = {
   waiting: {
     label: 'Waiting.',
-    color: '#ffd700', // Yellow
+    color: STATUS_COLORS.WAITING,
     italic: true,
     chipColor: 'warning',
   },
   working: {
     label: 'Working',
-    color: '#ffffff', // White
+    color: STATUS_COLORS.WORKING,
     italic: true,
     chipColor: 'default',
   },
   blocked: {
     label: 'Needs Input',
-    color: '#ff9800', // Orange
+    color: STATUS_COLORS.BLOCKED,
     italic: false,
     chipColor: 'warning',
   },
   complete: {
     label: 'Complete',
-    color: '#67bd6d', // Green
+    color: STATUS_COLORS.COMPLETE,
     italic: false,
     chipColor: 'success',
   },
   // Handover 0880: Agent resting states
   idle: {
     label: 'Monitoring',
-    color: '#7a9bb5', // Muted blue-grey
+    color: STATUS_COLORS.IDLE,
     italic: true,
     chipColor: 'default',
   },
   sleeping: {
     label: 'Sleeping',
-    color: '#9b89b3', // Soft indigo
+    color: STATUS_COLORS.SLEEPING,
     italic: true,
     chipColor: 'default',
   },
   silent: {
     label: 'Silent',
-    color: '#ff9800', // Amber/Orange (warning, not error)
+    color: STATUS_COLORS.BLOCKED,
     italic: false,
     chipColor: 'warning',
   },
   // Handover 0506: Status after orchestrator hands over to successor
   handed_over: {
     label: 'Handed Over',
-    color: '#9e9e9e', // Grey
+    color: STATUS_COLORS.HANDED_OVER,
     italic: false,
     chipColor: 'default',
   },
   // Agent ID Swap: Status for old orchestrator after succession (ID swapped to decomm-xxx)
   decommissioned: {
     label: 'Decommissioned',
-    color: '#757575', // Dark grey
+    color: STATUS_COLORS.DECOMMISSIONED,
     italic: false,
     chipColor: 'default',
   },
@@ -81,7 +94,7 @@ export const getStatusLabel = (status) => {
  * @returns {string} Hex color code
  */
 export const getStatusColor = (status) => {
-  return statusConfig[status]?.color || '#666'
+  return statusConfig[status]?.color || STATUS_COLORS.FALLBACK
 }
 
 /**
