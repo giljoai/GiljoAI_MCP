@@ -290,7 +290,7 @@ export const useProductStore = defineStore('products', () => {
   /**
    * Handle product:learning:added event (no-op since 0700c migration to product_memory_entries table)
    */
-  function handleProductLearningAdded(payload) {
+  function handleProductLearningAdded(_payload) {
     // sequential_history migrated to product_memory_entries table (0700c)
     // This handler is kept for WebSocket event compat but does nothing
   }

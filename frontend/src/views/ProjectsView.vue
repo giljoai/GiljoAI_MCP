@@ -789,15 +789,6 @@ const projectData = ref({
   subseries: null,
 })
 
-const statusFilterOptions = computed(() => [
-  { label: 'All', value: 'all', count: activeProductProjects.value.length },
-  { label: 'Active', value: 'active', count: statusCounts.value.active },
-  { label: 'Inactive', value: 'inactive', count: statusCounts.value.inactive },
-  { label: 'Completed', value: 'completed', count: statusCounts.value.completed },
-  { label: 'Cancelled', value: 'cancelled', count: statusCounts.value.cancelled },
-  { label: 'Terminated', value: 'terminated', count: statusCounts.value.terminated },
-])
-
 // 0873: v-select items for filter bar dropdowns
 const statusSelectOptions = ['active', 'inactive', 'completed', 'cancelled', 'terminated']
 const typeSelectOptions = computed(() => {
@@ -1084,20 +1075,6 @@ const sortedProjects = computed(() => {
   })
 
   return sorted
-})
-
-// Count projects by status
-const statusCounts = computed(() => {
-  return {
-    active: activeProductProjects.value.filter((p) => p.status === 'active').length,
-    inactive: activeProductProjects.value.filter((p) => p.status === 'inactive').length,
-    completed: activeProductProjects.value.filter((p) => p.status === 'completed').length,
-    cancelled: activeProductProjects.value.filter((p) => p.status === 'cancelled').length,
-    terminated: activeProductProjects.value.filter((p) => p.status === 'terminated').length,
-    staged: activeProductProjects.value.filter(
-      (p) => p.staging_status === 'staged' || p.staging_status === 'staging_complete'
-    ).length,
-  }
 })
 
 // Deleted projects
