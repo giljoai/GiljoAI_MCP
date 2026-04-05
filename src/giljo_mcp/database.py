@@ -5,7 +5,7 @@ Provides connection pooling, tenant isolation, and production-ready database man
 """
 
 from contextlib import asynccontextmanager, contextmanager, suppress
-from typing import Any, Optional
+from typing import Optional
 from urllib.parse import quote_plus
 
 from sqlalchemy import Engine, create_engine
@@ -284,33 +284,6 @@ class DatabaseManager:
             password = quote_plus(password)
             return f"postgresql://{username}:{password}@{host}:{port}/{database}"
         return f"postgresql://{username}@{host}:{port}/{database}"
-
-    def apply_tenant_filter(self, query: Any, model: Any, tenant_key: Optional[str] = None) -> Any:
-        """
-        Apply tenant filtering to a query using TenantManager.
-
-        Args:
-            query: SQLAlchemy query object
-            model: Model class being queried
-            tenant_key: Specific tenant key or None to use current context
-
-        Returns:
-            Query with tenant filter applied
-        """
-        return TenantManager.apply_tenant_filter(query, model, tenant_key)
-
-    def ensure_tenant_isolation(self, entity: Any, tenant_key: Optional[str] = None) -> None:
-        """
-        Ensure entity belongs to the correct tenant.
-
-        Args:
-            entity: Entity to check
-            tenant_key: Expected tenant key (uses current context if None)
-
-        Raises:
-            PermissionError: If entity belongs to different tenant
-        """
-        TenantManager.ensure_tenant_isolation(entity, tenant_key)
 
     @asynccontextmanager
     async def get_tenant_session_async(self, tenant_key: str):
