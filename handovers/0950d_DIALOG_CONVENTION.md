@@ -315,4 +315,10 @@ No schema changes, no new dependencies, no logic changes.
 
 ## Progress Updates
 
-*(Agent updates this section during execution)*
+**2026-04-05 — Session Complete**
+
+- Phase 1: Replaced all 12 `text-medium-emphasis` with `text-muted-a11y` (0 remaining)
+- Phase 2: Converted 15 dialog headers → `.dlg-header` and 14 footers → `.dlg-footer` across 12 components
+- Phase 3: Added `!important` justification comments to 7 instances in 4 files
+- Phase 4: Verified — zero `text-medium-emphasis`, all remaining `v-card-title`/`v-card-actions` are non-dialog usage, tests 83 fail (pre-existing), build clean
+- **Status: COMPLETE**

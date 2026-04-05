@@ -37,11 +37,12 @@
     <!-- Edit Project Dialog -->
     <v-dialog v-model="showEditDialog" max-width="800" persistent scrollable>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <span>Edit Project</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="cancelEdit" />
-        </v-card-title>
+        <div class="dlg-header">
+          <span class="dlg-title">Edit Project</span>
+          <v-btn icon variant="text" class="dlg-close" @click="cancelEdit">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-card-text>
           <!-- Project ID Info -->
@@ -85,13 +86,13 @@
           </v-form>
         </v-card-text>
 
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="cancelEdit">Cancel</v-btn>
           <v-btn color="primary" variant="flat" :disabled="!formValid" @click="saveProject">
             Update
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
   </div>
