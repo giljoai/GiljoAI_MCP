@@ -307,8 +307,8 @@ const route = useRoute()
 const router = useRouter()
 
 const projectStateStore = useProjectStateStore()
-const { store: projectMessagesStore, loadMessages } = useProjectMessages()
-const { store: agentJobsStore, sortedJobs, loadJobs } = useAgentJobs()
+const { loadMessages } = useProjectMessages()
+const { sortedJobs, loadJobs } = useAgentJobs()
 
 // Integration status for LaunchTab (Handover 0427)
 const { gitEnabled, serenaEnabled } = useIntegrationStatus()
@@ -335,10 +335,6 @@ const agenticTool = computed(() => {
 /**
  * Navigate to integrations settings (moved from LaunchTab, Handover 0875)
  */
-function goToIntegrations() {
-  router.push({ path: '/settings', query: { tab: 'integrations' } })
-}
-
 /**
  * Execution Mode Toggle (Handover 0428: Moved from LaunchTab)
  * Default to null (unchecked) - user must select before staging

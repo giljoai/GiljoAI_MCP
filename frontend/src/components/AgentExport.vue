@@ -210,7 +210,7 @@ async function downloadZip(contentType, platform) {
 
 <style lang="scss" scoped>
 @use '../styles/design-tokens' as *;
-@import '../styles/intg-card';
+@use '../styles/intg-card';
 
 .gap-2 {
   gap: 8px;

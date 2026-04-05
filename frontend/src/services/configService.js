@@ -212,7 +212,7 @@ class ConfigService {
    */
   log(message, data = null) {
     if (this.debug) {
-      console.log(`[ConfigService] ${message}`, data || '')
+      console.warn(`[ConfigService] ${message}`, data || '')
     }
   }
 }
