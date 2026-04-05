@@ -118,16 +118,22 @@
     <!-- Delete Confirmation -->
     <v-dialog v-model="showDeleteDialog" max-width="400">
       <v-card v-draggable class="smooth-border">
-        <v-card-title>Delete Organization?</v-card-title>
+        <div class="dlg-header dlg-header--danger">
+          <v-icon class="dlg-icon">mdi-delete</v-icon>
+          <span class="dlg-title">Delete Organization?</span>
+          <v-btn icon variant="text" class="dlg-close" @click="showDeleteDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
         <v-card-text>
           Are you sure you want to delete <strong>{{ currentOrg?.name }}</strong
           >? This action cannot be undone.
         </v-card-text>
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
-          <v-btn data-test="delete-cancel" @click="showDeleteDialog = false">Cancel</v-btn>
-          <v-btn color="error" data-test="delete-confirm" @click="deleteOrg">Delete</v-btn>
-        </v-card-actions>
+          <v-btn variant="text" data-test="delete-cancel" @click="showDeleteDialog = false">Cancel</v-btn>
+          <v-btn color="error" variant="flat" data-test="delete-confirm" @click="deleteOrg">Delete</v-btn>
+        </div>
       </v-card>
     </v-dialog>
 

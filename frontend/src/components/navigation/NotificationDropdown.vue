@@ -123,7 +123,7 @@
             <!-- Timestamp and Unread Indicator -->
             <template v-slot:append>
               <div class="d-flex flex-column align-end">
-                <span class="text-caption text-medium-emphasis">
+                <span class="text-caption text-muted-a11y">
                   {{ formatTimestamp(notification.timestamp) }}
                 </span>
                 <v-icon
@@ -144,7 +144,7 @@
       <!-- Empty State -->
       <div v-else class="notification-empty pa-8 text-center">
         <v-icon icon="mdi-bell-outline" size="48" color="grey-lighten-1" class="mb-3" />
-        <div class="text-body-2 text-medium-emphasis">No notifications</div>
+        <div class="text-body-2 text-muted-a11y">No notifications</div>
       </div>
     </v-card>
   </v-menu>

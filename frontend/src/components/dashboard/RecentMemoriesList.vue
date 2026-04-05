@@ -30,18 +30,21 @@
     <!-- Memory Detail Dialog -->
     <v-dialog v-model="showDetail" max-width="640" scrollable>
       <v-card v-if="selectedMemory" class="smooth-border">
-        <v-card-title class="d-flex align-center ga-2 py-3">
-          <span>{{ selectedMemory.project_name }}</span>
-          <span
-            v-if="selectedMemory.entry_type"
-            class="memory-type-dialog"
-            :style="typeStyle(selectedMemory.entry_type)"
-          >
-            {{ humanizeType(selectedMemory.entry_type) }}
+        <div class="dlg-header">
+          <span class="dlg-title">
+            {{ selectedMemory.project_name }}
+            <span
+              v-if="selectedMemory.entry_type"
+              class="memory-type-dialog"
+              :style="typeStyle(selectedMemory.entry_type)"
+            >
+              {{ humanizeType(selectedMemory.entry_type) }}
+            </span>
           </span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" size="small" @click="showDetail = false" />
-        </v-card-title>
+          <v-btn icon variant="text" size="small" class="dlg-close" @click="showDetail = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
         <v-divider />
         <v-card-text class="pa-4">
           <div v-if="selectedMemory.product_name" class="text-caption mb-3 text-muted-a11y">
@@ -53,7 +56,7 @@
           <div class="text-body-2 text-pre-wrap" style="line-height: 1.6;">{{ selectedMemory.summary }}</div>
         </v-card-text>
         <v-divider v-if="selectedMemory.project_id" />
-        <v-card-actions v-if="selectedMemory.project_id">
+        <div v-if="selectedMemory.project_id" class="dlg-footer">
           <v-spacer />
           <v-btn
             variant="text"
@@ -63,7 +66,7 @@
           >
             View Project Review
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
   </div>
