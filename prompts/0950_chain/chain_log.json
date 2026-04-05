@@ -491,18 +491,41 @@
       "id": "0950n",
       "title": "Conditional Remediation (if 0950m FAIL)",
       "handover": "handovers/0950n_REMEDIATION.md",
-      "status": "pending",
-      "effort": "tbd",
+      "status": "complete",
+      "effort": "heavy",
       "depends_on": [
         "0950m"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "ESLint 11→1: deleted 7 unused vars (TemplateManager activeStats, ProductForm showToast, ProjectTabs allJobsTerminal, useProjectFilters.spec computed import, useVisionAnalysis.spec setupMode, WelcomeView firstName), suppressed 3 test-exposed vars with eslint-disable-next-line (ProjectsView activeProductProjects/filteredBySearch/filteredProjects, ProductForm tabOrder)",
+        "Dead code: deleted 23 dead backend methods — ContextRepository (create_chunk, get_chunks_by_product, get_chunk_by_id, delete_chunks_by_product), AgentJobRepository (get_job_by_job_id, get_active_jobs, decrement_waiting_increment_read), PortManager (get_postgres_port, validate_ports, get_environment_variables), model properties (APIKey.display_key, GitConfig.webhook_configured, SetupState.add_validation_failure, Product.has_product_memory, Product.all_documents_chunked, VisionDocument.needs_rechunking, AgentTemplate.variable_list), TemplateService (list_active_user_templates, get_template_by_role), misc (ProductMemoryRepository.update_entry, VisionDocumentRepository.count_by_product, TestingConfigGenerator.generate_for_agent, TemplateValidator.add_custom_rule)",
+        "God-class split: ProductService 1608→742 lines — extracted ProductLifecycleService (528 lines, 8 methods: activate/deactivate/delete/restore/purge/list_deleted/purge_expired + _emit_websocket_event) and ProductMemoryService (362 lines, 5 methods: get_product_statistics/get_cascade_impact/_build_product_memory_response/_ensure_product_memory_initialized/_get_product_metrics)",
+        "God-class split: MissionService 1178→799 lines — extracted MissionOrchestrationService (456 lines, 5 methods: get_orchestrator_instructions/_build_orchestrator_context/_check_staging_redirect/_build_orchestrator_response/_build_execution_mode_fields)",
+        "God-class split: ProjectService 1150→993 lines — extracted ProjectSummaryService (190 lines, get_project_summary)",
+        "Function split: write_360_memory 278→196 lines — extracted _resolve_project_and_product, _resolve_author_info, _fetch_git_commits_for_project, _check_and_emit_tuning_staleness",
+        "Function split: _generate_agent_protocol 252→87 lines — extracted _build_conditional_blocks, _build_worker_protocol_body",
+        "Function split: _execute_vision_query 227→126 lines — extracted _fetch_active_vision_docs, _select_chunks_by_token_budget",
+        "Function split: _register_event_handlers 226→98 lines — extracted _authenticate_ws_connection, _handle_ws_subscribe",
+        "Function split: close_project_and_update_memory 225→170 lines — extracted _fetch_project_and_product, _handle_force_close",
+        "Function split: _generate_orchestrator_protocol 215→18 lines — extracted _build_wake_pattern, _build_orchestrator_protocol_body",
+        "Function split: spawn_agent_job 212→167 lines — extracted _build_agent_prompt, _create_job_and_execution_records"
+      ],
+      "deviations": [
+        "_get_default_templates_v103 (266 lines) not split — data function (template definitions), not logic. Audit explicitly marked as skip.",
+        "3 ProjectsView variables (activeProductProjects, filteredBySearch, filteredProjects) and 1 ProductForm variable (tabOrder) kept in destructuring with eslint-disable-next-line — they are accessed by tests via wrapper.vm but not used in templates directly. Deleting them caused 20 test failures.",
+        "Backend test count 652 (vs 661 gate) — 9 empty doc-only stubs deleted in 0950l. No real coverage lost. Orchestrator pre-approved."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": "",
-      "cascading_impacts": [],
-      "orchestrator_directives": "0950m FAIL at 8.9/10. Four hard gates to fix: (1) ESLint 11\u2192<=8: delete unused vars/imports flagged by eslint. ~15 min. (2) 8 functions >200 lines: refactor or split. Check audit_final.md for exact locations. ~1-2 hr. (3) 23 dead backend methods: delete after grep confirms zero callers. ~30 min. (4) Classes >1000: ProductService 1550, MissionService 1121, ProjectService 1059 \u2014 extract more methods to bring under 1000. This is the hardest part. ~2-3 hr. Read full audit at prompts/0950_chain/audit_final.md for all details. Activate venv: source venv/bin/activate && export PYTHONPATH=. After fixes, re-run: ruff check src/ api/, eslint --max-warnings 8, vitest, pytest. ALL must pass green. If score reaches 9.0+ after your fixes, update Code_quality_prompt.md baseline.",
-      "summary": ""
+      "notes_for_next": "VERDICT: PASS — all 4 hard gate failures resolved. ESLint 1 (pre-existing v-html, DOMPurify-sanitized). Ruff 0. Frontend tests 2067/0/0. Backend tests 652/0/0. Startup OK. No class over 1000 lines (largest: OrchestrationService 934). No function over 200 lines (largest: write_360_memory 196, excluding data function _get_default_templates_v103 266). 23 dead backend methods removed. New service files: ProductLifecycleService, ProductMemoryService, MissionOrchestrationService, ProjectSummaryService. All use facade pattern — callers unchanged.",
+      "cascading_impacts": [
+        "New service files: product_lifecycle_service.py (528), product_memory_service.py (362), mission_orchestration_service.py (456), project_summary_service.py (190) — all exported from services/__init__.py",
+        "ProductService lifecycle/memory methods are now facades delegating to sub-services",
+        "MissionService.get_orchestrator_instructions is now a facade to MissionOrchestrationService",
+        "ProjectService.get_project_summary is now a facade to ProjectSummaryService",
+        "7 oversized functions now delegate to extracted helpers within the same files"
+      ],
+      "orchestrator_directives": "0950m FAIL at 8.9/10. Four hard gates to fix: (1) ESLint 11→<=8: delete unused vars/imports flagged by eslint. ~15 min. (2) 8 functions >200 lines: refactor or split. Check audit_final.md for exact locations. ~1-2 hr. (3) 23 dead backend methods: delete after grep confirms zero callers. ~30 min. (4) Classes >1000: ProductService 1550, MissionService 1121, ProjectService 1059 — extract more methods to bring under 1000. This is the hardest part. ~2-3 hr. Read full audit at prompts/0950_chain/audit_final.md for all details. Activate venv: source venv/bin/activate && export PYTHONPATH=. After fixes, re-run: ruff check src/ api/, eslint --max-warnings 8, vitest, pytest. ALL must pass green. If score reaches 9.0+ after your fixes, update Code_quality_prompt.md baseline.",
+      "summary": "PASS — all 4 hard gate failures resolved. ESLint 11→1, 3 god-classes split (ProductService 1608→742, MissionService 1178→799, ProjectService 1150→993), 7 oversized functions split (all under 200 lines), 23 dead backend methods deleted. All gates green: ruff 0, eslint 1, vitest 2067/0/0, pytest 652/0/0, startup OK. Commit 5f44b855."
     }
   ]
 }
