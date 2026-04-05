@@ -141,6 +141,7 @@ export const useUserStore = defineStore('user', () => {
       if (data.setup_complete !== undefined) currentUser.value.setup_complete = data.setup_complete
       if (data.setup_selected_tools !== undefined) currentUser.value.setup_selected_tools = data.setup_selected_tools
       if (data.setup_step_completed !== undefined) currentUser.value.setup_step_completed = data.setup_step_completed
+      if (data.learning_complete !== undefined) currentUser.value.learning_complete = data.learning_complete
     }
     return data
   }
