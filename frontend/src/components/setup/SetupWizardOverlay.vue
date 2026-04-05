@@ -554,7 +554,7 @@ function handleDismiss() {
 .setup-wizard-panel {
   position: relative;
   width: 100%;
-  max-width: 800px;
+  max-width: 810px;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
   background: $elevation-raised;
