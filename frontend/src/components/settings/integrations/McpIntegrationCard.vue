@@ -1,40 +1,37 @@
 <template>
-  <v-card variant="flat" class="smooth-border mb-4 integration-card">
-    <v-card-text class="d-flex flex-column h-100">
-      <div class="d-flex align-center mb-3">
-        <v-avatar size="40" rounded="0" class="mr-2">
-          <v-img
-            src="/giljo_YW_Face.svg"
-            alt="GiljoAI MCP"
-          />
-        </v-avatar>
-        <h3 class="text-h6 mb-0 mr-2">GiljoAI MCP Integration</h3>
-        <v-tooltip location="top" max-width="400">
-          <template #activator="{ props }">
-            <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
-          </template>
-          <span>Connect your AI coding agent to GiljoAI orchestration. Supports Claude Code, Codex CLI, and Gemini CLI. Creates an MCP integration CLI command for your AI coding agent of choice.</span>
-        </v-tooltip>
-      </div>
-      <p class="text-body-2 text-muted-a11y mb-0">
-        Attach GiljoAI MCP to your AI coding agents.
-      </p>
-
-      <div class="d-flex justify-center align-center flex-grow-1">
-        <AiToolConfigWizard />
-      </div>
-    </v-card-text>
-  </v-card>
+  <div
+    class="intg-card intg-card--clickable smooth-border"
+    style="--card-accent: var(--brand-yellow, #ffc300)"
+    @click="wizardRef?.open()"
+  >
+    <div class="intg-card-icon" style="background: rgba(255,195,0,0.1)">
+      <v-avatar size="24" rounded="0">
+        <v-img src="/giljo_YW_Face.svg" alt="GiljoAI MCP" />
+      </v-avatar>
+    </div>
+    <div class="d-flex align-center" style="gap: 8px; margin-bottom: 5px;">
+      <div class="intg-card-title" style="margin-bottom: 0">GiljoAI MCP</div>
+      <v-tooltip location="top" max-width="400">
+        <template #activator="{ props }">
+          <v-icon v-bind="props" size="small" style="color: #8895a8" @click.stop>mdi-help-circle-outline</v-icon>
+        </template>
+        <span>Connect your AI coding agent to GiljoAI orchestration. Supports Claude Code, Codex CLI, and Gemini CLI. Creates an MCP integration CLI command for your AI coding agent of choice.</span>
+      </v-tooltip>
+    </div>
+    <div class="intg-card-desc">Click to attach GiljoAI MCP to your AI coding agents using the Configurator.</div>
+    <div class="d-flex justify-center">
+      <AiToolConfigWizard ref="wizardRef" />
+    </div>
+  </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import AiToolConfigWizard from '@/components/AiToolConfigWizard.vue'
+
+const wizardRef = ref(null)
 </script>
 
 <style lang="scss" scoped>
-@use '../../../styles/design-tokens' as *;
-.integration-card {
-  background: $elevation-raised;
-  border-radius: $border-radius-rounded;
-}
+@import '../../../styles/intg-card';
 </style>
