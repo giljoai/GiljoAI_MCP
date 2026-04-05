@@ -544,12 +544,6 @@ class ConfigManager:
         if val := os.getenv("ENABLE_WEBSOCKET"):
             self.features.enable_websockets = val.lower() in ("true", "1", "yes")
 
-    # _detect_mode() method removed in v3.0
-    # No longer needed as mode detection is removed
-
-    # _apply_mode_settings() method removed in v3.0
-    # Bind address derived from install-time network choice (127.0.0.1 for localhost, 0.0.0.0 for LAN/WAN)
-
     def validate(self):
         """Validate configuration for correctness and consistency."""
         errors = []

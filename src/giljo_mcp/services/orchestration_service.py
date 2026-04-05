@@ -1404,7 +1404,7 @@ class OrchestrationService:
         Args:
             tenant_key: Tenant key for isolation (required)
             project_id: Filter by project UUID (optional)
-            status_filter: Filter by status (waiting, active, completed, failed) (optional)
+            status_filter: Filter by execution status (waiting, working, blocked, idle, sleeping, complete, silent, decommissioned) (optional)
             agent_display_name: Filter by agent display name (Orchestrator, Implementer, etc.) (optional)
             limit: Maximum results (default 100, max 500)
             offset: Pagination offset (default 0)
