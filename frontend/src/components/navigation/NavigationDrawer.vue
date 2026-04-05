@@ -566,7 +566,7 @@ watch(
   font-weight: 500;
 
   &:hover {
-    color: #ffed4e;
+    color: $color-brand-yellow-hover;
   }
 
   &--inactive {
@@ -629,39 +629,39 @@ watch(
 
 // Connection: opaque green background, bright green icon
 .nav-orb--connection {
-  background: rgba(103, 189, 109, 0.15);
-  color: #67bd6d;
+  background: rgba($color-accent-success, 0.15);
+  color: $color-accent-success;
 
   &:hover {
-    background: rgba(103, 189, 109, 0.25);
+    background: rgba($color-accent-success, 0.25);
   }
 }
 
 .nav-orb--connection.nav-orb--warning {
-  background: rgba(255, 195, 0, 0.15);
-  color: #ffc300;
+  background: rgba($color-brand-yellow, 0.15);
+  color: $color-brand-yellow;
 
   &:hover {
-    background: rgba(255, 195, 0, 0.25);
+    background: rgba($color-brand-yellow, 0.25);
   }
 }
 
 .nav-orb--connection.nav-orb--error {
-  background: rgba(198, 41, 140, 0.15);
-  color: #c6298c;
+  background: rgba($color-accent-danger, 0.15);
+  color: $color-accent-danger;
 
   &:hover {
-    background: rgba(198, 41, 140, 0.25);
+    background: rgba($color-accent-danger, 0.25);
   }
 }
 
 // Avatar: brand yellow background, dark initials
 .nav-orb--avatar {
-  background: rgba(255, 195, 0, 0.15);
-  color: #ffc300;
+  background: rgba($color-brand-yellow, 0.15);
+  color: $color-brand-yellow;
 
   &:hover {
-    background: rgba(255, 195, 0, 0.25);
+    background: rgba($color-brand-yellow, 0.25);
   }
 }
 

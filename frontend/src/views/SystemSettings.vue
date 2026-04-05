@@ -349,17 +349,17 @@ onMounted(async () => {
   background: transparent;
   color: var(--text-muted);
   border: none;
-  --smooth-border-color: #2a4a6b;
+  --smooth-border-color: #{$color-pill-border};
 }
 
 .pill-toggle:hover {
-  color: #b0bec5;
+  color: $color-text-hover;
 }
 
 .pill-toggle--active,
 .pill-toggle--active:hover {
-  background: rgba(255, 195, 0, 0.12);
-  color: #ffc300;
+  background: rgba($color-brand-yellow, 0.12);
+  color: $color-brand-yellow;
   box-shadow: none;
 }
 

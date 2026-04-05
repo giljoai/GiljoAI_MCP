@@ -1188,7 +1188,7 @@ async function copyToClipboard(text) {
       .auto-checkin-label {
         font-size: 0.78rem;
         font-weight: 600;
-        color: #8895a8;
+        color: var(--text-muted);
       }
 
       .auto-checkin-toggle {
@@ -1204,7 +1204,7 @@ async function copyToClipboard(text) {
 
       .auto-checkin-interval-label {
         font-size: 0.72rem;
-        color: #8895a8;
+        color: var(--text-muted);
       }
 
       .auto-checkin-btn-group {
@@ -1286,8 +1286,8 @@ async function copyToClipboard(text) {
             font-weight: 600;
             padding: 2px 8px;
             border-radius: $border-radius-default;
-            background-color: rgba(251, 192, 45, 0.15); // design-token-exempt: tinted amber phase badge
-            color: #FBC02D; // design-token-exempt: amber phase text
+            background-color: rgba($color-phase-amber, 0.15);
+            color: $color-phase-amber;
             white-space: nowrap;
 
             &--none {
@@ -1457,7 +1457,7 @@ async function copyToClipboard(text) {
         }
 
         .steps-skipped {
-          color: #ff9800; // design-token-exempt: status-blocked inline
+          color: $color-status-blocked;
           font-weight: 600;
         }
 
@@ -1480,13 +1480,13 @@ async function copyToClipboard(text) {
           font-weight: 600;
 
           &.zero {
-            background: rgba(103, 189, 109, 0.12);
-            color: #67bd6d; // design-token-exempt: status-complete
+            background: rgba($color-status-complete, 0.12);
+            color: $color-status-complete;
           }
 
           &.has-msgs {
-            background: rgba(255, 152, 0, 0.15);
-            color: #ff9800; // design-token-exempt: status-blocked
+            background: rgba($color-status-blocked, 0.15);
+            color: $color-status-blocked;
           }
         }
 

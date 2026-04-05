@@ -58,8 +58,8 @@
               <div
                 class="team-avatar"
                 :style="{
-                  background: tintedBg('#D4B08A'),
-                  color: '#D4B08A',
+                  background: hexToRgba(getAgentColor('orchestrator').hex, 0.15),
+                  color: getAgentColor('orchestrator').hex,
                 }"
               >
                 OR
@@ -106,7 +106,7 @@
       <!-- CONDITIONAL SECTION: Setup or Recent Projects -->
       <div v-if="!setupComplete" class="setup-cta-section">
         <div class="setup-cta smooth-border" @click="openSetupWithCertGate">
-          <v-icon size="24" color="#ffc300">mdi-rocket-launch</v-icon>
+          <v-icon size="24" style="color: var(--color-accent-primary)">mdi-rocket-launch</v-icon>
           <div class="setup-cta-text">
             <div class="setup-cta-title">{{ setupCtaLabel }}</div>
             <div class="setup-cta-desc">Configure AI tools, connect integrations, and learn the basics.</div>
@@ -161,6 +161,7 @@ import { useUserStore } from '@/stores/user'
 import { useProductStore } from '@/stores/products'
 import { useProjectStore } from '@/stores/projects'
 import { getAgentColor } from '@/config/agentColors'
+import { hexToRgba } from '@/utils/colorUtils'
 import api from '@/services/api'
 import GilMascot from '@/components/GilMascot.vue'
 import SetupWizardOverlay from '@/components/setup/SetupWizardOverlay.vue'
@@ -306,24 +307,27 @@ const activeTemplates = computed(() =>
 const emptySlots = computed(() => Math.max(0, totalSlots.value - activeTemplates.value.length - 1))
 
 function tintedBg(hex) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r},${g},${b},0.15)`
+  return hexToRgba(hex, 0.15)
 }
 
 // Quick-launch cards — adapt to product state
 const hasActiveProduct = computed(() => !!productStore.activeProduct)
 const activeProjectCount = computed(() => projectStore.activeProjects?.length ?? 0)
 
+// Card accent colors — traced to agentColors.js / design-tokens.scss
+const BRAND_YELLOW = '#ffc300' // $color-brand-yellow / var(--color-accent-primary)
+const COLOR_DOCUMENTER = getAgentColor('documenter').hex
+const COLOR_IMPLEMENTER = getAgentColor('implementer').hex
+const COLOR_REVIEWER = getAgentColor('reviewer').hex
+
 // Onboarding-aware quick launch card definitions
 const setupCard = {
   title: 'Quick Setup',
   description: 'Connect your AI coding tools and configure GiljoAI MCP.',
   icon: 'mdi-rocket-launch',
-  iconBg: 'rgba(255,195,0,0.1)',
-  iconColor: 'var(--brand-yellow, #ffc300)',
-  accent: 'var(--brand-yellow, #ffc300)',
+  iconBg: hexToRgba(BRAND_YELLOW, 0.1),
+  iconColor: 'var(--color-accent-primary)',
+  accent: 'var(--color-accent-primary)',
   action: openSetupWithCertGate,
 }
 
@@ -331,9 +335,9 @@ const learnCard = {
   title: 'Learn',
   description: 'Understand products, projects, agents, and slash commands.',
   icon: 'mdi-book-open-variant',
-  iconBg: 'rgba(94,196,142,0.12)',
-  iconColor: '#5EC48E',
-  accent: '#5EC48E',
+  iconBg: hexToRgba(COLOR_DOCUMENTER, 0.12),
+  iconColor: COLOR_DOCUMENTER,
+  accent: COLOR_DOCUMENTER,
   action: () => { showSetupOverlay.value = true },
 }
 
@@ -356,9 +360,9 @@ const quickCards = computed(() => {
         title: 'New Project',
         description: `Launch an orchestrated project with AI agents for ${productName}.`,
         icon: 'mdi-plus-circle-outline',
-        iconBg: 'rgba(255,195,0,0.1)',
-        iconColor: 'var(--brand-yellow, #ffc300)',
-        accent: 'var(--brand-yellow, #ffc300)',
+        iconBg: hexToRgba(BRAND_YELLOW, 0.1),
+        iconColor: 'var(--color-accent-primary)',
+        accent: 'var(--color-accent-primary)',
         badge: '/gil_add project',
         to: '/Projects',
       })
@@ -369,9 +373,9 @@ const quickCards = computed(() => {
           title: 'Active Projects',
           description: 'Monitor running orchestrations, agent status, and real-time progress.',
           icon: 'mdi-play-circle-outline',
-          iconBg: 'rgba(109,179,228,0.12)',
-          iconColor: '#6DB3E4',
-          accent: '#6DB3E4',
+          iconBg: hexToRgba(COLOR_IMPLEMENTER, 0.12),
+          iconColor: COLOR_IMPLEMENTER,
+          accent: COLOR_IMPLEMENTER,
           badge: `${activeProjectCount.value} active`,
           to: '/launch?via=jobs',
         })
@@ -380,9 +384,9 @@ const quickCards = computed(() => {
           title: 'New Product',
           description: 'Define another product to give your AI agents full context.',
           icon: 'mdi-package-variant-closed',
-          iconBg: 'rgba(94,196,142,0.12)',
-          iconColor: '#5EC48E',
-          accent: '#5EC48E',
+          iconBg: hexToRgba(COLOR_DOCUMENTER, 0.12),
+          iconColor: COLOR_DOCUMENTER,
+          accent: COLOR_DOCUMENTER,
           to: '/Products',
         })
       }
@@ -392,9 +396,9 @@ const quickCards = computed(() => {
         title: 'Task Board',
         description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
         icon: 'mdi-clipboard-check-outline',
-        iconBg: 'rgba(172,128,204,0.12)',
-        iconColor: '#AC80CC',
-        accent: '#AC80CC',
+        iconBg: hexToRgba(COLOR_REVIEWER, 0.12),
+        iconColor: COLOR_REVIEWER,
+        accent: COLOR_REVIEWER,
         to: '/Tasks',
       })
     }
@@ -415,9 +419,9 @@ const quickCards = computed(() => {
       title: 'New Product',
       description: 'Define a product to give your AI agents full context about what they\'re building.',
       icon: 'mdi-package-variant-closed',
-      iconBg: cards.length === 0 ? 'rgba(255,195,0,0.1)' : 'rgba(94,196,142,0.12)',
-      iconColor: cards.length === 0 ? 'var(--brand-yellow, #ffc300)' : '#5EC48E',
-      accent: cards.length === 0 ? 'var(--brand-yellow, #ffc300)' : '#5EC48E',
+      iconBg: cards.length === 0 ? hexToRgba(BRAND_YELLOW, 0.1) : hexToRgba(COLOR_DOCUMENTER, 0.12),
+      iconColor: cards.length === 0 ? 'var(--color-accent-primary)' : COLOR_DOCUMENTER,
+      accent: cards.length === 0 ? 'var(--color-accent-primary)' : COLOR_DOCUMENTER,
       to: '/Products',
     })
   }
@@ -426,9 +430,9 @@ const quickCards = computed(() => {
       title: 'Dashboard',
       description: 'View system stats, recent activity, and orchestration metrics at a glance.',
       icon: 'mdi-view-dashboard-outline',
-      iconBg: 'rgba(109,179,228,0.12)',
-      iconColor: '#6DB3E4',
-      accent: '#6DB3E4',
+      iconBg: hexToRgba(COLOR_IMPLEMENTER, 0.12),
+      iconColor: COLOR_IMPLEMENTER,
+      accent: COLOR_IMPLEMENTER,
       to: '/Dashboard',
     })
   }
@@ -437,9 +441,9 @@ const quickCards = computed(() => {
       title: 'Task Board',
       description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
       icon: 'mdi-clipboard-check-outline',
-      iconBg: 'rgba(172,128,204,0.12)',
-      iconColor: '#AC80CC',
-      accent: '#AC80CC',
+      iconBg: hexToRgba(COLOR_REVIEWER, 0.12),
+      iconColor: COLOR_REVIEWER,
+      accent: COLOR_REVIEWER,
       to: '/Tasks',
     })
   }
@@ -815,7 +819,7 @@ onMounted(async () => {
   align-items: center;
   gap: 4px;
   font-size: 0.7rem;
-  color: #ffc300;
+  color: $color-brand-yellow;
   cursor: pointer;
   opacity: 0.7;
   transition: opacity $transition-normal;
@@ -956,7 +960,7 @@ onMounted(async () => {
 
 .rp-link {
   font-size: 0.68rem;
-  color: #ffc300;
+  color: $color-brand-yellow;
   cursor: pointer;
   font-weight: 500;
   opacity: 0.7;
