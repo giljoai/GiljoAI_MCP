@@ -219,7 +219,7 @@ describe('ProjectReviewModal.vue', () => {
       wrapper = mountModal()
       await flushPromises()
 
-      const headerCloseBtn = wrapper.find('[aria-label="Close dialog"]')
+      const headerCloseBtn = wrapper.find('.dlg-close')
       await headerCloseBtn.trigger('click')
 
       expect(wrapper.emitted('close')).toBeTruthy()

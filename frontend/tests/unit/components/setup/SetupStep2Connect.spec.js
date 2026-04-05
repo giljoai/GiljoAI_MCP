@@ -180,17 +180,29 @@ describe('SetupStep2Connect', () => {
     expect(wrapper.text()).toContain('gemini mcp add')
   })
 
-  // 9. Connection status defaults to "Not connected"
-  it('shows default not-connected status indicator', async () => {
+  // 9. Connection status: waiting dot visible after key is generated
+  it('shows waiting status dot after key is generated', async () => {
+    api.apiKeys.getActive.mockResolvedValue({ data: [] })
     const wrapper = mountStep2()
     await flushPromises()
-    expect(wrapper.find('.status-indicator--waiting').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Not connected')
+
+    const buttons = wrapper.findAll('button')
+    const generateBtn = buttons.find((b) => b.text().includes('Generate API Key'))
+    await generateBtn.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.status-dot--waiting').exists()).toBe(true)
   })
 
-  // 10. Connection status updates on WebSocket event
-  it('updates connection status when WebSocket event fires', async () => {
+  // 10. Connection status updates on WebSocket event after key is generated
+  it('updates connection status dot to connected when WebSocket event fires', async () => {
+    api.apiKeys.getActive.mockResolvedValue({ data: [] })
     const wrapper = mountStep2({ selectedTools: ['claude_code'] })
+    await flushPromises()
+
+    const buttons = wrapper.findAll('button')
+    const generateBtn = buttons.find((b) => b.text().includes('Generate API Key'))
+    await generateBtn.trigger('click')
     await flushPromises()
 
     // Find the handler registered for setup:tool_connected
@@ -203,8 +215,7 @@ describe('SetupStep2Connect', () => {
     handler({ tool_name: 'claude_code' })
     await flushPromises()
 
-    expect(wrapper.find('.status-indicator--connected').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Connected')
+    expect(wrapper.find('.status-dot--connected').exists()).toBe(true)
   })
 
   // 11. "Next" disabled until >= 1 tool connected

@@ -15,6 +15,14 @@ vi.mock('@/services/api', () => ({
   },
 }))
 
+// Mock configService so CE user-limit guard does not fire during tests
+vi.mock('@/services/configService', () => ({
+  default: {
+    getEdition: () => 'saas',
+    fetchConfig: vi.fn().mockResolvedValue({}),
+  },
+}))
+
 describe('UserManager', () => {
   let wrapper
   let api

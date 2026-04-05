@@ -210,10 +210,9 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
       })
     })
 
-    it('integrations row moved to ProjectTabs (Handover 0875)', () => {
-      // Integration icons now live in ProjectTabs action-buttons-row, not LaunchTab
+    it('integrations row is rendered in LaunchTab', () => {
       const integrationsRow = wrapper.find('.integrations-row')
-      expect(integrationsRow.exists()).toBe(false)
+      expect(integrationsRow.exists()).toBe(true)
     })
 
     it('agents list is rendered without a card wrapper', () => {

@@ -37,6 +37,8 @@ def mock_project():
     project.cancellation_reason = None
     project.deactivation_reason = None
     project.early_termination = False
+    project.auto_checkin_enabled = False
+    project.auto_checkin_interval = 60
     project.created_at = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
     project.updated_at = datetime(2026, 1, 2, 12, 0, 0, tzinfo=timezone.utc)
     project.activated_at = datetime(2026, 1, 1, 13, 0, 0, tzinfo=timezone.utc)

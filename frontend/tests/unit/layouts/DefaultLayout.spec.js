@@ -163,7 +163,7 @@ describe('DefaultLayout.vue', () => {
       expect(vApp.exists()).toBe(true)
     })
 
-    it('should render AppBar component', async () => {
+    it('should render NavigationDrawer as the primary navigation component', async () => {
       api.auth.me.mockResolvedValue({
         data: { username: 'admin', role: 'admin' }
       })
@@ -175,8 +175,8 @@ describe('DefaultLayout.vue', () => {
       })
 
       await flushPromises()
-      const appBar = wrapper.findComponent({ name: 'AppBar' })
-      expect(appBar.exists()).toBe(true)
+      const navDrawer = wrapper.findComponent({ name: 'NavigationDrawer' })
+      expect(navDrawer.exists()).toBe(true)
     })
 
     it('should render NavigationDrawer component', async () => {
@@ -273,7 +273,7 @@ describe('DefaultLayout.vue', () => {
   })
 
   describe('Props Passing', () => {
-    it('should pass currentUser to AppBar component', async () => {
+    it('should pass currentUser to NavigationDrawer component', async () => {
       const mockUser = { username: 'admin', role: 'admin' }
       api.auth.me.mockResolvedValue({ data: mockUser })
 
@@ -284,8 +284,8 @@ describe('DefaultLayout.vue', () => {
       })
 
       await flushPromises()
-      const appBar = wrapper.findComponent({ name: 'AppBar' })
-      expect(appBar.props('currentUser')).toEqual(mockUser)
+      const navDrawer = wrapper.findComponent({ name: 'NavigationDrawer' })
+      expect(navDrawer.props('currentUser')).toEqual(mockUser)
     })
 
     it('should pass currentUser to NavigationDrawer component', async () => {
@@ -374,7 +374,7 @@ describe('DefaultLayout.vue', () => {
       expect(wrapper.vm.drawer).toBe(true)
     })
 
-    it('should toggle drawer when AppBar emits toggle-drawer event', async () => {
+    it('should toggle rail when NavigationDrawer emits toggle-rail event', async () => {
       api.auth.me.mockResolvedValue({
         data: { username: 'admin', role: 'admin' }
       })
@@ -387,12 +387,12 @@ describe('DefaultLayout.vue', () => {
 
       await flushPromises()
 
-      const initialDrawerState = wrapper.vm.drawer
-      const appBar = wrapper.findComponent({ name: 'AppBar' })
-      await appBar.vm.$emit('toggle-drawer')
+      const initialRailState = wrapper.vm.rail
+      const navDrawer = wrapper.findComponent({ name: 'NavigationDrawer' })
+      await navDrawer.vm.$emit('toggle-rail')
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.vm.drawer).toBe(!initialDrawerState)
+      expect(wrapper.vm.rail).toBe(!initialRailState)
     })
   })
 })
