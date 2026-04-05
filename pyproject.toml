@@ -84,6 +84,22 @@ Issues = "https://github.com/giljoai/giljo-mcp/issues"
 
 # Entry points intentionally omitted — CE installs via install.py, not pip install
 
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+exclude = [
+    ".git", ".venv", ".mypy_cache", ".pytest_cache", ".ruff_cache",
+    "__pycache__", "build", "dist", "node_modules", "migrations",
+    "temp", "backups", "logs", "data", ".serena", ".giljo-config",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "BLE", "PERF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["BLE001"]
+
 [tool.black]
 line-length = 120
 target-version = ['py310', 'py311', 'py312']
