@@ -1,27 +1,29 @@
 <template>
-  <v-card variant="flat" class="mb-4 smooth-border export-card">
-    <v-card-text>
-      <div class="d-flex align-center mb-3">
-        <v-icon size="28" class="mr-2" color="primary">mdi-export</v-icon>
-        <h3 class="text-h6 mb-0 mr-2">Skills and Agents Export</h3>
-        <v-tooltip location="top" max-width="400">
-          <template #activator="{ props }">
-            <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
-          </template>
-          <div>
-            Generates a combined bootstrap prompt that installs slash commands and agent templates in one step. Paste into your AI coding agent.
-            <br /><br />
-            After setup, use <code>/gil_get_agents</code> to update agent templates and
-            <code>/gil_add</code> to create tasks and projects from your AI coding agent.
-          </div>
-        </v-tooltip>
-      </div>
+  <div
+    class="intg-card smooth-border"
+    style="--card-accent: #5EC48E"
+  >
+    <div class="intg-card-icon" style="background: rgba(255,195,0,0.1); color: var(--brand-yellow, #ffc300)">
+      <v-icon size="20">mdi-export</v-icon>
+    </div>
+    <div class="d-flex align-center" style="gap: 8px; margin-bottom: 5px;">
+      <div class="intg-card-title" style="margin-bottom: 0">Skills and Agents Export</div>
+      <v-tooltip location="top" max-width="400">
+        <template #activator="{ props }">
+          <v-icon v-bind="props" size="small" style="color: #8895a8">mdi-help-circle-outline</v-icon>
+        </template>
+        <div>
+          Generates a combined bootstrap prompt that installs slash commands and agent templates in one step. Paste into your AI coding agent.
+          <br /><br />
+          After setup, use <code>/gil_get_agents</code> to update agent templates and
+          <code>/gil_add</code> to create tasks and projects from your AI coding agent.
+        </div>
+      </v-tooltip>
+    </div>
+    <div class="intg-card-desc">Generate a setup prompt for your AI coding agents.</div>
 
-      <p class="text-body-2 text-muted-a11y mb-4">
-        Generate a setup prompt for your AI coding agents.
-      </p>
-
-      <div class="d-flex flex-wrap justify-center mb-5" style="gap: 16px;">
+    <div class="intg-card-body">
+      <div class="d-flex flex-wrap justify-center mb-4" style="gap: 16px;">
         <div v-for="p in platforms" :key="p.id" class="d-flex align-center gap-2">
           <v-tooltip location="top">
             <template #activator="{ props: btnProps }">
@@ -49,14 +51,14 @@
         </div>
       </div>
 
-      <!-- Section 2: Manual Downloads (collapsed) -->
-      <v-expansion-panels variant="accordion" class="mb-4">
+      <!-- Manual Downloads (collapsed) -->
+      <v-expansion-panels variant="accordion">
         <v-expansion-panel>
           <v-expansion-panel-title class="manual-downloads-title">
             <div class="d-flex align-center text-light-blue" style="font-size: 0.8125rem;">
               <v-icon start size="small">mdi-download</v-icon>
               Manual Downloads
-              <span class="text-caption text-muted-a11y ml-2">(advanced)</span>
+              <span class="text-caption ml-2" style="color: #8895a8">(advanced)</span>
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
@@ -102,21 +104,16 @@
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
-
-    </v-card-text>
-  </v-card>
+    </div>
+  </div>
 </template>
 
 <script setup>
 import { reactive } from 'vue'
 import { useToast } from '@/composables/useToast'
+import { useClipboard } from '@/composables/useClipboard'
 
 const { showToast } = useToast()
-
-/**
- * Copy text to clipboard using shared composable.
- */
-import { useClipboard } from '@/composables/useClipboard'
 const { copy: clipboardCopy } = useClipboard()
 
 async function copyToClipboard(text) {
@@ -125,14 +122,12 @@ async function copyToClipboard(text) {
   return true
 }
 
-// Platform definitions
 const platforms = [
   { id: 'claude_code', label: 'Claude Code', buttonLabel: 'Claude Prompt', icon: '/claude_pix.svg', color: 'deep-orange', experimental: false },
   { id: 'codex_cli', label: 'Codex CLI', buttonLabel: 'Codex Prompt', icon: '/codex_logo.svg', color: 'green', experimental: true },
   { id: 'gemini_cli', label: 'Gemini CLI', buttonLabel: 'Gemini Prompt', icon: '/gemini-icon.svg', color: 'blue', experimental: true },
 ]
 
-// Loading states
 const setupLoading = reactive({
   claude_code: false,
   codex_cli: false,
@@ -141,11 +136,6 @@ const setupLoading = reactive({
 
 const downloadLoading = reactive({})
 
-
-
-/**
- * Generate the combined bootstrap prompt for a platform and copy to clipboard.
- */
 async function generateBootstrapPrompt(platform) {
   setupLoading[platform] = true
   try {
@@ -174,9 +164,6 @@ async function generateBootstrapPrompt(platform) {
   }
 }
 
-/**
- * Download a ZIP file directly for a content type and platform.
- */
 async function downloadZip(contentType, platform) {
   const key = `${contentType === 'slash_commands' ? 'slash' : 'agents'}_${platform}`
   downloadLoading[key] = true
@@ -223,19 +210,7 @@ async function downloadZip(contentType, platform) {
 
 <style lang="scss" scoped>
 @use '../styles/design-tokens' as *;
-
-.export-card {
-  background: $elevation-raised;
-  border-radius: $border-radius-rounded;
-}
-
-code {
-  background-color: rgba(var(--v-theme-on-surface), 0.05);
-  padding: 2px 6px;
-  border-radius: $border-radius-sharp;
-  font-family: 'Courier New', monospace;
-  font-size: 0.875em;
-}
+@import '../styles/intg-card';
 
 .gap-2 {
   gap: 8px;
