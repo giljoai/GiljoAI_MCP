@@ -8,25 +8,18 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def _generate_orchestrator_protocol(
-    job_id: str,
-    tenant_key: str,
+def _build_wake_pattern(
+    execution_mode: str,
     executor_id: str,
-    execution_mode: str = "multi_terminal",
+    tenant_key: str,
 ) -> str:
     """
-    Generate 3-phase orchestrator coordination protocol (Handover 0830, 0851).
+    Build the constellation-specific wake-and-check pattern block.
 
-    Handover 0851: Rewrote Phase 2 from passive/reactive menu to active TODO-driven
-    coordination loop. Orchestrator now actively works its TODO list on every wake-up
-    regardless of trigger source. Added constellation-specific coordination patterns.
-
-    Unlike the worker 5-phase lifecycle, the orchestrator coordinates rather than implements.
-    It reads pre-planned TODOs from staging — never replaces them with todo_items.
+    The returned string is already interpolated with executor_id and tenant_key.
     """
-    # --- Constellation-specific coordination patterns ---
     if execution_mode == "codex":
-        wake_pattern = """**CONSTELLATION: CODEX CLI**
+        raw = """**CONSTELLATION: CODEX CLI**
 Your subagents are Codex spawn_agent() processes. They run autonomously.
 
 **How to check on agents:**
@@ -46,7 +39,7 @@ Your subagents are Codex spawn_agent() processes. They run autonomously.
   - cmd: `timeout /t 20 /nobreak >nul`"""
 
     elif execution_mode == "claude-code":
-        wake_pattern = """**CONSTELLATION: CLAUDE CODE CLI**
+        raw = """**CONSTELLATION: CLAUDE CODE CLI**
 Your subagents are Claude Code Task() processes. They run autonomously.
 
 **How to check on agents:**
@@ -63,7 +56,7 @@ Your subagents are Claude Code Task() processes. They run autonomously.
   Regardless of trigger source, always run the full coordination loop."""
 
     elif execution_mode == "gemini":
-        wake_pattern = """**CONSTELLATION: GEMINI CLI**
+        raw = """**CONSTELLATION: GEMINI CLI**
 Your subagents are Gemini @agent processes. They run autonomously.
 
 **How to check on agents:**
@@ -81,7 +74,7 @@ Your subagents are Gemini @agent processes. They run autonomously.
 
     else:
         # multi_terminal or generic
-        wake_pattern = """**CONSTELLATION: MULTI-TERMINAL**
+        raw = """**CONSTELLATION: MULTI-TERMINAL**
 Your subagents run in separate terminals. The user mediates between terminals.
 
 **How you get woken up:**
@@ -92,9 +85,20 @@ Your subagents run in separate terminals. The user mediates between terminals.
 **On every wake-up**, regardless of what the user said, run the active coordination
 loop below. The user's message is a trigger — your TODO list is your authority."""
 
-    # Substitute executor_id and tenant_key into the wake pattern
-    wake_pattern = wake_pattern.replace("{executor_id}", executor_id).replace("{tenant_key}", tenant_key)
+    return raw.replace("{executor_id}", executor_id).replace("{tenant_key}", tenant_key)
 
+
+def _build_orchestrator_protocol_body(
+    job_id: str,
+    tenant_key: str,
+    executor_id: str,
+    wake_pattern: str,
+) -> str:
+    """
+    Render the complete 3-phase orchestrator protocol string.
+
+    All parameters are injected via f-string; no side effects.
+    """
     return f"""These are your coordination operating procedures. Follow them from startup through closeout.
 
 ## Orchestrator Coordination Protocol (3 Phases)
@@ -223,3 +227,23 @@ After completing a coordination loop with no actionable work remaining:
 **CRITICAL: MCP tools are NATIVE tool calls. Use them like Read/Write/Bash.**
 **Do NOT use curl, HTTP, or SDK calls.**
 """
+
+
+def _generate_orchestrator_protocol(
+    job_id: str,
+    tenant_key: str,
+    executor_id: str,
+    execution_mode: str = "multi_terminal",
+) -> str:
+    """
+    Generate 3-phase orchestrator coordination protocol (Handover 0830, 0851).
+
+    Handover 0851: Rewrote Phase 2 from passive/reactive menu to active TODO-driven
+    coordination loop. Orchestrator now actively works its TODO list on every wake-up
+    regardless of trigger source. Added constellation-specific coordination patterns.
+
+    Unlike the worker 5-phase lifecycle, the orchestrator coordinates rather than implements.
+    It reads pre-planned TODOs from staging — never replaces them with todo_items.
+    """
+    wake_pattern = _build_wake_pattern(execution_mode, executor_id, tenant_key)
+    return _build_orchestrator_protocol_body(job_id, tenant_key, executor_id, wake_pattern)

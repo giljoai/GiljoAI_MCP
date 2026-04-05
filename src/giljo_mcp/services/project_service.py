@@ -127,16 +127,19 @@ class ProjectService:
         self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-        # Facade sub-services (Handover 0769: ProjectService split, 0950i: launch extraction)
+        # Facade sub-services (Handover 0769: ProjectService split, 0950i: launch extraction,
+        #                      0950n: summary extraction)
         from src.giljo_mcp.services.project_closeout_service import ProjectCloseoutService
         from src.giljo_mcp.services.project_deletion_service import ProjectDeletionService
         from src.giljo_mcp.services.project_launch_service import ProjectLaunchService
         from src.giljo_mcp.services.project_lifecycle_service import ProjectLifecycleService
+        from src.giljo_mcp.services.project_summary_service import ProjectSummaryService
 
         self._lifecycle = ProjectLifecycleService(db_manager, tenant_manager, test_session, websocket_manager)
         self._closeout = ProjectCloseoutService(db_manager, tenant_manager, test_session, websocket_manager)
         self._deletion = ProjectDeletionService(db_manager, tenant_manager, test_session, websocket_manager)
         self._launch = ProjectLaunchService(db_manager, tenant_manager, test_session, websocket_manager)
+        self._summary = ProjectSummaryService(db_manager, tenant_manager, test_session, websocket_manager)
 
     def _get_session(self):
         """
@@ -193,13 +196,6 @@ class ProjectService:
         Raises:
             BaseGiljoError: When project creation fails
 
-        Example:
-            >>> project = await service.create_project(
-            ...     name="Build API",
-            ...     mission="Create RESTful API with FastAPI",
-            ...     description="User management API"
-            ... )
-            >>> print(project.id)
         """
         try:
             async with self._get_session() as session:
@@ -363,10 +359,6 @@ class ProjectService:
             ResourceNotFoundError: When project not found
             BaseGiljoError: When operation fails
 
-        Example:
-            >>> result = await service.get_project("abc-123", tenant_key="tenant-abc")
-            >>> print(result.name)
-            >>> print(f"Agents: {len(result.agents)}")
         """
         # SECURITY FIX: Require tenant_key (Handover 0424 Phase 0)
         if not tenant_key:
@@ -474,10 +466,6 @@ class ProjectService:
             ValidationError: When no tenant context is available
             BaseGiljoError: When operation fails
 
-        Example:
-            >>> result = await service.get_active_project()
-            >>> if result:
-            ...     print(f"Active project: {result['name']}")
         """
         try:
             # Get current tenant from context
@@ -567,10 +555,6 @@ class ProjectService:
             ValidationError: When no tenant context is available
             BaseGiljoError: When operation fails
 
-        Example:
-            >>> projects = await service.list_projects(status="active")
-            >>> for project in projects:
-            ...     print(project["name"])
         """
         try:
             # Use provided tenant_key or get from context
@@ -656,12 +640,6 @@ class ProjectService:
             ResourceNotFoundError: When project not found
             BaseGiljoError: When operation fails
 
-        Example:
-            >>> result = await service.update_project_mission(
-            ...     "abc-123",
-            ...     "Build comprehensive REST API with authentication",
-            ...     tenant_key="tenant-abc"
-            ... )
         """
         try:
             async with self._get_session() as session:
@@ -768,125 +746,8 @@ class ProjectService:
         return await self._lifecycle.cancel_staging(project_id, websocket_manager)
 
     async def get_project_summary(self, project_id: str) -> ProjectSummaryResult:
-        """
-        Generate project summary with metrics and status.
-
-        Returns comprehensive project overview including job statistics,
-        completion metrics, and activity timestamps for dashboard display.
-
-        Args:
-            project_id: Project UUID
-
-        Returns:
-            ProjectSummaryResponse data:
-            - Basic project info (id, name, status, mission)
-            - Agent job counts (pending/active/completed/failed)
-            - Mission completion percentage
-            - Timestamps (created, activated, last activity)
-            - Product context (id, name)
-
-        Raises:
-            ResourceNotFoundError: Project not found
-
-        Example:
-            >>> result = await service.get_project_summary("abc-123")
-            >>> print(result["completion_percentage"])  # 75.0
-        """
-        async with self._get_session() as session:
-            # Fetch project with product eager loading
-            result = await session.execute(
-                select(Project).where(
-                    and_(Project.id == project_id, Project.tenant_key == self.tenant_manager.get_current_tenant())
-                )
-            )
-            project = result.scalar_one_or_none()
-
-            if not project:
-                raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
-
-            # Get job counts by status (migrated to AgentExecution - Handover 0367a)
-            job_counts_result = await session.execute(
-                select(AgentExecution.status, func.count(AgentExecution.agent_id).label("count"))
-                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                .where(
-                    and_(
-                        AgentJob.project_id == project_id,
-                        AgentJob.tenant_key == self.tenant_manager.get_current_tenant(),
-                    )
-                )
-                .group_by(AgentExecution.status)
-            )
-            job_counts_raw = job_counts_result.all()
-
-            # Build job counts dict
-            job_counts = dict(job_counts_raw)
-
-            total_jobs = sum(job_counts.values())
-            completed_jobs = job_counts.get("complete", 0)
-            blocked_jobs = job_counts.get("blocked", 0)
-            active_jobs = job_counts.get("working", 0)
-            pending_jobs = job_counts.get("waiting", 0)
-
-            # Calculate completion percentage
-            completion_percentage = 0.0
-            if total_jobs > 0:
-                completion_percentage = (completed_jobs / total_jobs) * 100.0
-
-            # Get last activity timestamp (migrated to AgentExecution - Handover 0367a)
-            last_activity_result = await session.execute(
-                select(
-                    func.greatest(
-                        func.max(AgentExecution.completed_at),
-                        func.max(AgentExecution.started_at),
-                        func.max(AgentExecution.last_progress_at),
-                    )
-                )
-                .select_from(AgentExecution)
-                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                .where(
-                    and_(
-                        AgentJob.project_id == project_id,
-                        AgentJob.tenant_key == self.tenant_manager.get_current_tenant(),
-                    )
-                )
-            )
-            last_activity_at = last_activity_result.scalar()
-
-            # Get product info
-            product_name = ""
-            if project.product_id:
-                from giljo_mcp.models.products import Product
-
-                product_result = await session.execute(
-                    select(Product).where(
-                        and_(
-                            Product.id == project.product_id,
-                            Product.tenant_key == self.tenant_manager.get_current_tenant(),
-                        )
-                    )
-                )
-                product = product_result.scalar_one_or_none()
-                if product:
-                    product_name = product.name
-
-            # Build summary response
-            return ProjectSummaryResult(
-                id=project.id,
-                name=project.name,
-                status=project.status,
-                mission=project.mission,
-                total_jobs=total_jobs,
-                completed_jobs=completed_jobs,
-                blocked_jobs=blocked_jobs,
-                active_jobs=active_jobs,
-                pending_jobs=pending_jobs,
-                completion_percentage=completion_percentage,
-                created_at=project.created_at.isoformat() if project.created_at else None,
-                activated_at=project.activated_at.isoformat() if project.activated_at else None,
-                last_activity_at=last_activity_at.isoformat() if last_activity_at else None,
-                product_id=project.product_id or "",
-                product_name=product_name,
-            )
+        """Facade: delegates to ProjectSummaryService."""
+        return await self._summary.get_project_summary(project_id)
 
     async def get_closeout_data(self, project_id: str, db_session: Any | None = None) -> CloseoutData:
         """Facade: delegates to ProjectCloseoutService."""
@@ -903,15 +764,6 @@ class ProjectService:
     ) -> CloseoutPromptResult:
         """Facade: delegates to ProjectCloseoutService."""
         return await self._closeout.generate_closeout_prompt(project_id, tenant_key, db_session)
-
-    async def _get_project_for_tenant(self, project_id: str, tenant_key: str, session: Any) -> Project | None:
-        """
-        Fetch a project scoped to tenant for closeout operations.
-        """
-        result = await session.execute(
-            select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
-        )
-        return result.scalar_one_or_none()
 
     def _apply_project_updates(self, project, updates: dict[str, Any]) -> None:
         """Apply validated field updates to a project model.
@@ -1010,15 +862,6 @@ class ProjectService:
             ResourceNotFoundError: Project not found
             ProjectStateError: Cannot change execution mode after staging
 
-        Example:
-            >>> result = await service.update_project(
-            ...     "abc-123",
-            ...     {
-            ...         "name": "New Name",
-            ...         "description": "New Description",
-            ...         "mission": "New Mission"
-            ...     }
-            ... )
         """
         async with self._get_session() as session:
             # Fetch project
