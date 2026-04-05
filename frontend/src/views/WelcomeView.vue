@@ -26,7 +26,7 @@
           :key="card.title"
           class="quick-card smooth-border"
           :style="{ '--card-accent': card.accent, animationDelay: (0.15 + i * 0.07) + 's' }"
-          @click="$router.push(card.to)"
+          @click="card.action ? card.action() : $router.push(card.to)"
         >
           <div
             class="quick-card-icon"
@@ -185,6 +185,7 @@ const setupStep = ref(0)
 const forceSetupMode = ref(false)
 
 const setupComplete = computed(() => userStore.currentUser?.setup_complete ?? false)
+const learningComplete = computed(() => userStore.currentUser?.learning_complete ?? false)
 const setupOverlayMode = computed(() => {
   if (forceSetupMode.value) return 'setup'
   return setupComplete.value ? 'learning' : 'setup'
@@ -230,16 +231,30 @@ async function handleStepComplete({ step, data }) {
 }
 
 async function handleDismiss() {
+  const wasFirstTimeFinish = setupStep.value >= 3 && !setupComplete.value && !forceSetupMode.value
+  const wasLearningMode = setupOverlayMode.value === 'learning'
   showSetupOverlay.value = false
   forceSetupMode.value = false
 
+  // Mark learning guide as seen
+  if (wasLearningMode && !learningComplete.value) {
+    await userStore.updateSetupState({ learning_complete: true })
+  }
+
   // If the user reached the final step and dismisses, mark setup as complete
   // so the wizard doesn't reopen on every login
-  if (setupStep.value >= 3 && !setupComplete.value) {
+  if (wasFirstTimeFinish || (setupStep.value >= 3 && !setupComplete.value)) {
     await userStore.updateSetupState({
       setup_complete: true,
       setup_step_completed: 4,
     })
+
+    // After first-time setup, show the "How to Use" guide
+    if (wasFirstTimeFinish) {
+      setTimeout(() => {
+        showSetupOverlay.value = true
+      }, 600)
+    }
   }
 }
 
@@ -301,11 +316,43 @@ function tintedBg(hex) {
 const hasActiveProduct = computed(() => !!productStore.activeProduct)
 const activeProjectCount = computed(() => projectStore.activeProjects?.length ?? 0)
 
+// Onboarding-aware quick launch card definitions
+const setupCard = {
+  title: 'Quick Setup',
+  description: 'Connect your AI coding tools and configure GiljoAI MCP.',
+  icon: 'mdi-rocket-launch',
+  iconBg: 'rgba(255,195,0,0.1)',
+  iconColor: 'var(--brand-yellow, #ffc300)',
+  accent: 'var(--brand-yellow, #ffc300)',
+  action: openSetupWithCertGate,
+}
+
+const learnCard = {
+  title: 'Learn',
+  description: 'Understand products, projects, agents, and slash commands.',
+  icon: 'mdi-book-open-variant',
+  iconBg: 'rgba(94,196,142,0.12)',
+  iconColor: '#5EC48E',
+  accent: '#5EC48E',
+  action: () => { showSetupOverlay.value = true },
+}
+
 const quickCards = computed(() => {
+  // Active product: context-aware cards
   if (hasActiveProduct.value) {
     const productName = productStore.activeProduct?.name || 'your product'
-    const cards = [
-      {
+    const cards = []
+
+    // Prepend onboarding cards as needed (replace default slots)
+    if (!setupComplete.value) {
+      cards.push(setupCard, learnCard)
+    } else if (!learningComplete.value) {
+      cards.push(learnCard)
+    }
+
+    // Fill remaining slots with product-aware defaults
+    if (cards.length < 3) {
+      cards.push({
         title: 'New Project',
         description: `Launch an orchestrated project with AI agents for ${productName}.`,
         icon: 'mdi-plus-circle-outline',
@@ -314,30 +361,78 @@ const quickCards = computed(() => {
         accent: 'var(--brand-yellow, #ffc300)',
         badge: '/gil_add project',
         to: '/Projects',
-      },
-    ]
-    if (activeProjectCount.value > 0) {
-      cards.push({
-        title: 'Active Projects',
-        description: 'Monitor running orchestrations, agent status, and real-time progress.',
-        icon: 'mdi-play-circle-outline',
-        iconBg: 'rgba(109,179,228,0.12)',
-        iconColor: '#6DB3E4',
-        accent: '#6DB3E4',
-        badge: `${activeProjectCount.value} active`,
-        to: '/launch?via=jobs',
-      })
-    } else {
-      cards.push({
-        title: 'New Product',
-        description: 'Define another product to give your AI agents full context.',
-        icon: 'mdi-package-variant-closed',
-        iconBg: 'rgba(94,196,142,0.12)',
-        iconColor: '#5EC48E',
-        accent: '#5EC48E',
-        to: '/Products',
       })
     }
+    if (cards.length < 3) {
+      if (activeProjectCount.value > 0) {
+        cards.push({
+          title: 'Active Projects',
+          description: 'Monitor running orchestrations, agent status, and real-time progress.',
+          icon: 'mdi-play-circle-outline',
+          iconBg: 'rgba(109,179,228,0.12)',
+          iconColor: '#6DB3E4',
+          accent: '#6DB3E4',
+          badge: `${activeProjectCount.value} active`,
+          to: '/launch?via=jobs',
+        })
+      } else {
+        cards.push({
+          title: 'New Product',
+          description: 'Define another product to give your AI agents full context.',
+          icon: 'mdi-package-variant-closed',
+          iconBg: 'rgba(94,196,142,0.12)',
+          iconColor: '#5EC48E',
+          accent: '#5EC48E',
+          to: '/Products',
+        })
+      }
+    }
+    if (cards.length < 3) {
+      cards.push({
+        title: 'Task Board',
+        description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
+        icon: 'mdi-clipboard-check-outline',
+        iconBg: 'rgba(172,128,204,0.12)',
+        iconColor: '#AC80CC',
+        accent: '#AC80CC',
+        to: '/Tasks',
+      })
+    }
+    return cards
+  }
+
+  // No active product: onboarding + defaults
+  const cards = []
+
+  if (!setupComplete.value) {
+    cards.push(setupCard, learnCard)
+  } else if (!learningComplete.value) {
+    cards.push(learnCard)
+  }
+
+  if (cards.length < 3) {
+    cards.push({
+      title: 'New Product',
+      description: 'Define a product to give your AI agents full context about what they\'re building.',
+      icon: 'mdi-package-variant-closed',
+      iconBg: cards.length === 0 ? 'rgba(255,195,0,0.1)' : 'rgba(94,196,142,0.12)',
+      iconColor: cards.length === 0 ? 'var(--brand-yellow, #ffc300)' : '#5EC48E',
+      accent: cards.length === 0 ? 'var(--brand-yellow, #ffc300)' : '#5EC48E',
+      to: '/Products',
+    })
+  }
+  if (cards.length < 3) {
+    cards.push({
+      title: 'Dashboard',
+      description: 'View system stats, recent activity, and orchestration metrics at a glance.',
+      icon: 'mdi-view-dashboard-outline',
+      iconBg: 'rgba(109,179,228,0.12)',
+      iconColor: '#6DB3E4',
+      accent: '#6DB3E4',
+      to: '/Dashboard',
+    })
+  }
+  if (cards.length < 3) {
     cards.push({
       title: 'Task Board',
       description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
@@ -347,37 +442,8 @@ const quickCards = computed(() => {
       accent: '#AC80CC',
       to: '/Tasks',
     })
-    return cards
   }
-  return [
-    {
-      title: 'New Product',
-      description: 'Define a product to give your AI agents full context about what they\'re building.',
-      icon: 'mdi-package-variant-closed',
-      iconBg: 'rgba(255,195,0,0.1)',
-      iconColor: 'var(--brand-yellow, #ffc300)',
-      accent: 'var(--brand-yellow, #ffc300)',
-      to: '/Products',
-    },
-    {
-      title: 'Dashboard',
-      description: 'View system stats, recent activity, and orchestration metrics at a glance.',
-      icon: 'mdi-view-dashboard-outline',
-      iconBg: 'rgba(109,179,228,0.12)',
-      iconColor: '#6DB3E4',
-      accent: '#6DB3E4',
-      to: '/Dashboard',
-    },
-    {
-      title: 'Task Board',
-      description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
-      icon: 'mdi-clipboard-check-outline',
-      iconBg: 'rgba(172,128,204,0.12)',
-      iconColor: '#AC80CC',
-      accent: '#AC80CC',
-      to: '/Tasks',
-    },
-  ]
+  return cards
 })
 
 // Recent projects (from dashboard API)

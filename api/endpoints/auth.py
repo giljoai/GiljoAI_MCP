@@ -140,6 +140,7 @@ class UserProfileResponse(BaseModel):
     setup_complete: bool = False  # Handover 0855a: Setup wizard completed
     setup_selected_tools: list[str] | None = None  # Handover 0855a: Selected AI coding agents
     setup_step_completed: int = 0  # Handover 0855a: Last completed wizard step
+    learning_complete: bool = False  # How to Use guide completed
 
 
 # 0371: Removed UserListResponse - was only used by duplicate /users endpoint
@@ -172,6 +173,7 @@ class SetupStateUpdate(BaseModel):
     setup_selected_tools: list[str] | None = None
     setup_step_completed: int | None = Field(None, ge=0, le=4)
     setup_complete: bool | None = None
+    learning_complete: bool | None = None
 
 
 class APIKeyCreateResponse(BaseModel):
@@ -508,6 +510,7 @@ async def get_me(
         setup_complete=current_user.setup_complete,
         setup_selected_tools=current_user.setup_selected_tools,
         setup_step_completed=current_user.setup_step_completed,
+        learning_complete=current_user.learning_complete,
     )
 
 
@@ -524,12 +527,15 @@ async def update_setup_state(
         current_user.setup_step_completed = payload.setup_step_completed
     if payload.setup_complete is not None:
         current_user.setup_complete = payload.setup_complete
+    if payload.learning_complete is not None:
+        current_user.learning_complete = payload.learning_complete
     await db.commit()
     await db.refresh(current_user)
     return {
         "setup_complete": current_user.setup_complete,
         "setup_selected_tools": current_user.setup_selected_tools,
         "setup_step_completed": current_user.setup_step_completed,
+        "learning_complete": current_user.learning_complete,
     }
 
 
