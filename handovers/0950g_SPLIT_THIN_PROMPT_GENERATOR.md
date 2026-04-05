@@ -235,4 +235,18 @@ Do NOT spawn the next terminal. The orchestrator handles that.
 
 ## Progress Updates
 
-*(Agent updates this section during implementation)*
+**Status: COMPLETE**
+
+- [x] Phase 1: Mapped 1676-line file, discovered all callers, identified 4 dead methods
+- [x] Phase 2: Created `src/giljo_mcp/prompts/` subpackage with `__init__.py` re-exports
+- [x] Phase 3: Extracted ClaudePromptBuilder (335 lines, 8 sub-methods all under 200 lines)
+- [x] Phase 4: Extracted CodexPromptBuilder (406 lines — includes Codex, Gemini, multi-terminal)
+- [x] Phase 5: Extracted StagingPromptBuilder (224 lines — staging prompt, thin prompt, mission regen)
+- [x] Phase 6: Reduced ThinClientPromptGenerator to 691-line dispatcher
+- [x] Phase 7: All callers verified — no import changes needed (public interface unchanged)
+- [x] Phase 8: Startup OK, 650 tests passed (11 pre-existing failures), ruff clean
+
+**Deviations:**
+- `_build_ch2_startup` not in this file (in protocol_builder.py) — handover reference incorrect
+- Gemini + multi-terminal co-located in CodexPromptBuilder (not separate file)
+- 4 dead methods deleted (not in original scope but required for 800-line ceiling)
