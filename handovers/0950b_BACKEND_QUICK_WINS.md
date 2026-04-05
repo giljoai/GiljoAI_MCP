@@ -6,7 +6,7 @@
 **Priority:** High
 **Edition Scope:** CE
 **Estimated Complexity:** 2-3 hours
-**Status:** Not Started
+**Status:** Complete
 **Sprint:** 0950 Pre-Release Quality Sprint (chain: `prompts/0950_chain/chain_log.json`)
 
 ---
@@ -243,7 +243,8 @@ The full git history preserves all original code.
 
 *(Agent: fill this in as work proceeds)*
 
-### [Date] — 0950b
-**Status:** Not Started
-**Work Done:** —
-**Next Steps:** Read 0950a findings, run grep triage, work through task list.
+### 2026-04-05 — 0950b
+**Status:** Complete
+**Work Done:** All 13 findings resolved. 3 SECURITY: auth on DB health endpoint, CheckConstraint +idle/sleeping with incremental migration, CORS wildcard rejection. 2 HIGH: redundant except fixed, broad catch annotated. 6 MEDIUM: 4 dict-returns converted to Pydantic models, lifecycle TODO resolved (Option B), downloads auth refactored to Depends. 4 LOW: file permissions, stale comment, 3 broad catch annotations, ruff config added.
+**Validation:** ruff check clean, 650/661 tests pass (11 pre-existing failures in test_project_service_helpers.py assigned to 0950l), startup import OK.
+**Next Steps:** 0950f (dead code removal) is unblocked.

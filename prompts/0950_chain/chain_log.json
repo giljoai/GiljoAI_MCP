@@ -50,16 +50,35 @@
       "id": "0950b",
       "title": "Backend: Security + Dict-Returns + Exception Annotations",
       "handover": "handovers/0950b_BACKEND_QUICK_WINS.md",
-      "status": "pending",
+      "status": "complete",
       "effort": "light-medium",
       "depends_on": ["0950a"],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "SECURITY: Added Depends(get_current_active_user) to /health/database endpoint (configuration.py)",
+        "SECURITY: Added idle+sleeping to AgentExecution CheckConstraint + incremental migration (agent_identity.py, baseline_v35)",
+        "SECURITY: CORS wildcard entries now filtered out instead of just warned (app.py)",
+        "HIGH: Fixed redundant except (ImportError, Exception) → except Exception with BLE001 noqa (database.py)",
+        "HIGH: Annotated broad catch in tool_accessor.py:574",
+        "MEDIUM: Converted 4 dict-return endpoints to Pydantic response models (lifecycle.py, configuration.py x2, messages.py)",
+        "MEDIUM: Resolved lifecycle.py:68 TODO — ProductService handles project deactivation internally (Option B)",
+        "MEDIUM: Refactored downloads.py bootstrap-prompt and generate-token to use Depends(get_current_active_user)",
+        "LOW: Fixed file permissions (chmod -x on 10 __init__.py files, chmod +x on run_api.py)",
+        "LOW: Deleted stale # REMOVED: comment in users.py:26",
+        "LOW: Annotated 3 broad catches in downloads/content_generator.py",
+        "LOW: Added [tool.ruff] config section to pyproject.toml"
+      ],
+      "deviations": [
+        "Renamed test_database_connection → check_database_health to avoid PT028 ruff false positive (function name starts with test_)",
+        "Used venv instead of system Python for validation — system packages lack project dependencies"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": "",
-      "cascading_impacts": [],
+      "notes_for_next": "All 13 0950b findings resolved. Zero new test failures introduced — the 11 pre-existing failures in test_project_service_helpers.py remain (assigned to 0950l). Ruff passes clean. CORS wildcards are now actively rejected. The DB health endpoint now requires auth. The incremental migration 0950b_exec_status must be applied to running databases with: alembic upgrade head. 0950f (next in backend chain) can proceed — dead code removal is unblocked.",
+      "cascading_impacts": [
+        "The /health/database endpoint now requires authentication — any monitoring scripts calling it unauthenticated will need updating",
+        "CORS wildcard rejection means config.yaml entries with * are silently stripped — document this if needed"
+      ],
       "orchestrator_directives": "PRIORITY ORDER from 0950a audit: (1) SECURITY: Add auth to DB health endpoint config.py:691, fix AgentExecution CheckConstraint agent_identity.py:302 to include idle/sleeping, reject CORS wildcards app.py:298-301. (2) HIGH: Fix redundant except in database.py:93, annotate broad catch tool_accessor.py:574. (3) MEDIUM: Fix 4 dict-return endpoints (lifecycle.py:185, configuration.py:175+707, messages.py:272), fix file permissions (chmod -x on 10 files, chmod +x run_api.py), resolve TODO lifecycle.py:68, fix auth pattern in downloads.py:455-575. Read prompts/0950_chain/audit_baseline.md for full details. Use PYTHONPATH=. for pytest and startup check. Ruff needs installing: pip install ruff. sudo password and postgres password: 4010.",
-      "summary": ""
+      "summary": "All 13 assigned findings resolved: 3 SECURITY (auth on DB health, CheckConstraint +idle/sleeping, CORS wildcard rejection), 2 HIGH (redundant except, broad catch annotation), 6 MEDIUM (4 dict-returns to Pydantic models, lifecycle TODO, downloads auth pattern), 4 LOW (file permissions, stale comment, 3 broad catch annotations, ruff config). Zero new test failures. Ruff clean. Startup OK."
     },
     {
       "id": "0950c",
@@ -94,7 +113,7 @@
       "id": "0950d",
       "title": "Frontend: Dialog Convention + text-medium-emphasis",
       "handover": "handovers/0950d_DIALOG_CONVENTION.md",
-      "status": "pending",
+      "status": "in_progress",
       "effort": "medium",
       "depends_on": ["0950c"],
       "tasks_completed": [],
