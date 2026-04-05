@@ -460,7 +460,6 @@ const filterStatus = ref(null)
 const {
   templates,
   loading,
-  activeStats,
   previewContent,
   editingTemplate,
   filteredTemplates,

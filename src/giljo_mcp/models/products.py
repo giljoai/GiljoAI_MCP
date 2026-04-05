@@ -209,18 +209,6 @@ class Product(Base):
         """Check if product has config data in any of the normalized tables."""
         return bool(self.tech_stack or self.architecture or self.test_config or self.core_features)
 
-    # Handover 0135: Product Memory helper methods
-    @property
-    def has_product_memory(self) -> bool:
-        """Check if product has product_memory populated beyond defaults"""
-        if not self.product_memory:
-            return False
-        # Consider it populated if any top-level key has data beyond empty defaults
-        # Note: sequential_history moved to product_memory_entries table (0700c)
-        has_github = bool(self.product_memory.get("github", {}))
-        has_context = bool(self.product_memory.get("context", {}))
-        return has_github or has_context
-
     def get_memory_field(self, field_path: str, default: Any = None) -> Any:
         """
         Get memory field using dot notation (e.g., 'github.enabled')
@@ -261,16 +249,6 @@ class Product(Base):
         if not hasattr(self, "vision_documents") or not self.vision_documents:
             return False
         return any(doc.is_active for doc in self.vision_documents)
-
-    @property
-    def all_documents_chunked(self) -> bool:
-        """Check if all active vision documents have been chunked"""
-        if not self.has_vision_documents:
-            return False
-        active_docs = [doc for doc in self.vision_documents if doc.is_active]
-        if not active_docs:
-            return False
-        return all(doc.chunked for doc in active_docs)
 
     # Handover 0128e: Migration helper properties (replaces deprecated fields)
     @property
@@ -573,53 +551,6 @@ class VisionDocument(Base):
             name="ck_vision_doc_chunked_consistency",
         ),
     )
-
-    @property
-    def needs_rechunking(self) -> bool:
-        """
-        Check if document needs rechunking based on content changes.
-
-        Returns:
-            True if content_hash is None or content has changed since last chunking
-        """
-        if not self.chunked:
-            return True
-
-        if self.content_hash is None:
-            return True
-
-        # Calculate current content hash
-        import hashlib
-
-        content = ""
-
-        if self.storage_type == "file" and self.vision_path:
-            try:
-                from pathlib import Path
-
-                path = Path(self.vision_path)
-                if path.exists():
-                    content = path.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
-                return True
-        elif self.storage_type == "inline" and self.vision_document:
-            content = self.vision_document
-        elif self.storage_type == "hybrid":
-            # For hybrid, combine both sources
-            if self.vision_path:
-                try:
-                    from pathlib import Path
-
-                    path = Path(self.vision_path)
-                    if path.exists():
-                        content += path.read_text(encoding="utf-8")
-                except (OSError, UnicodeDecodeError):
-                    pass  # nosec B110 - file read fallback
-            if self.vision_document:
-                content += self.vision_document
-
-        current_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
-        return current_hash != self.content_hash
 
     def __repr__(self) -> str:
         return f"<VisionDocument(id={self.id}, name='{self.document_name}', product_id='{self.product_id}')>"

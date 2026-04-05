@@ -267,11 +267,6 @@ class APIKey(Base):
     def __repr__(self) -> str:
         return f"<APIKey(id={self.id}, name={self.name}, user_id={self.user_id}, active={self.is_active})>"
 
-    @property
-    def display_key(self) -> str:
-        """Get display-friendly version of key (prefix only)"""
-        return f"{self.key_prefix}..."
-
 
 class ApiKeyIpLog(Base):
     """
