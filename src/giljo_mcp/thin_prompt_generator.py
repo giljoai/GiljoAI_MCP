@@ -1,42 +1,19 @@
-"""
-Thin Client Prompt Generator (Handover 0088, 0315)
+"""Thin Client Prompt Generator (Handover 0088, 0315, 0950g)
 
-REPLACES: OrchestratorPromptGenerator (prompt_generator.py)
-
-KEY DIFFERENCE: Generates ~600 token prompts with MCP tool references (Handover 0315).
+Generates thin orchestrator prompts (~600 tokens) with MCP tool references.
 Orchestrators fetch context on-demand via MCP tools (context prioritization enabled).
 
 Architecture (Handover 0315):
-- User configures priorities (Handover 0313) and depth (Handover 0314)
+- User configures priorities (0313) and depth (0314)
 - Generator creates thin prompt listing available MCP tools by priority
 - Orchestrator fetches context on-demand via MCP tool calls
-- Simple handover available via UI button (simple-handover REST endpoint) when context reset needed (0461c)
 
-Token Reduction:
-- Fat Prompt (v1.0): ~3500 tokens (inline context embedded in prompt)
-- Thin Prompt (v2.0): ~600 tokens (MCP tool references only)
-- Reduction: ~82% token savings on initial prompt
-
-MCP Tools (Handover 0280-0281 Monolithic Context):
-- get_orchestrator_instructions(job_id): Complete mission with prioritized context (tenant auto-injected)
-
-Priority System (Handover 0313):
-- Priority 1 (CRITICAL): Fetch first, essential for mission planning
-- Priority 2 (IMPORTANT): Fetch if budget allows, enhances quality
-- Priority 3 (NICE_TO_HAVE): Fetch if extra budget, provides additional context
-- Priority 4 (EXCLUDED): Not listed in prompt, ignored by orchestrator
-
-Depth Configuration (Handover 0314):
-- vision_documents: "none" | "light" | "medium" | "full"
-- memory_last_n_projects: 1 | 3 | 5 | 10
-- git_commits: 10 | 25 | 50 | 100
-- agent_templates: "type_only" | "full"
-- tech_stack_sections: "required" | "all"
-- architecture_depth: "overview" | "detailed"
+Platform-specific prompt builders extracted to giljo_mcp.prompts/ (Handover 0950g):
+- ClaudePromptBuilder: Claude Code CLI execution prompts
+- CodexPromptBuilder: Codex, Gemini, and multi-terminal execution prompts
+- StagingPromptBuilder: Staging-phase prompts and mission regeneration
 
 Author: GiljoAI Development Team
-Date: 2025-11-02 (Initial), 2025-11-17 (Handover 0315)
-Priority: CRITICAL - Enables Commercial Product
 """
 
 import logging
@@ -50,8 +27,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.models import Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.prompts.claude_prompt_builder import ClaudePromptBuilder
+from src.giljo_mcp.prompts.codex_prompt_builder import CodexPromptBuilder
+from src.giljo_mcp.prompts.staging_prompt_builder import StagingPromptBuilder
 
 
 logger = logging.getLogger(__name__)
@@ -77,8 +57,7 @@ def build_continuation_prompt(
     project_name: str | None = None,
     product_id: str | None = None,
 ) -> str:
-    """
-    Build a continuation prompt for orchestrator session refresh.
+    """Build a continuation prompt for orchestrator session refresh.
 
     Canonical prompt builder for all handover paths (REST endpoint, slash command,
     ThinClientPromptGenerator). Reads MCP URL from config including external_host
@@ -94,7 +73,6 @@ def build_continuation_prompt(
     Returns:
         Continuation prompt string
     """
-    # Resolve MCP URL from config (supports external_host for public IP)
     config = get_config()
     mcp_host = config.get_nested("services.external_host") or config.server.api_host
 
@@ -102,10 +80,7 @@ def build_continuation_prompt(
     mcp_proto = _get_ssl_protocol()
     mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}/mcp"
 
-    # Build project display
     project_display = f' "{project_name}"' if project_name else ""
-
-    # Build product_id display for fetch_context call
     product_param = product_id if product_id else "<fetch from project>"
 
     return f"""I am Orchestrator for Project{project_display} (CONTINUATION SESSION).
@@ -173,12 +148,10 @@ def build_retirement_prompt(
     git_enabled: bool = False,
     project_taxonomy: str = "",
 ) -> str:
-    """
-    Build a retirement prompt for the old orchestrator terminal session.
+    """Build a retirement prompt for the old orchestrator terminal session.
 
     This prompt instructs the orchestrator to write rich session context to 360 Memory
-    before the terminal session ends. The orchestrator has the actual context (decisions,
-    progress, blockers) that a bare-bones DB stats dump cannot capture.
+    before the terminal session ends.
 
     Args:
         project_id: Project UUID
@@ -193,7 +166,6 @@ def build_retirement_prompt(
     """
     project_display = f' "{project_name}"' if project_name else ""
 
-    # Build git closeout commit instruction (only when git integration + git history enabled)
     git_closeout_section = ""
     if git_enabled:
         tag = project_taxonomy or project_name or project_id[:8]
@@ -290,45 +262,25 @@ class ThinPromptResponse:
 
 
 class ThinClientPromptGenerator:
-    """
-    Generates thin client prompts for orchestrators.
-
-    CRITICAL: This enables the context prioritization and orchestration feature.
+    """Generates thin client prompts for orchestrators.
 
     Architecture:
     - Prompt contains only identity (~10 lines, 50 tokens)
     - Mission fetched via get_orchestrator_instructions() MCP tool
     - Field priorities applied at fetch time, not embed time
 
-    Workflow:
-    1. Create orchestrator job in database
-    2. Store basic mission placeholder
-    3. Generate thin prompt with orchestrator_id
-    4. Return prompt to user
-    5. User pastes into Claude Code CLI
-    6. Orchestrator calls get_orchestrator_instructions(job_id)
-    7. MCP tool generates condensed mission with field priorities (6K tokens)
-
-    Benefits:
-    - Professional UX (copy 10 lines, not 3000)
-    - context prioritization and orchestration ACTIVE (applied by MCP tool)
-    - Dynamic mission updates possible
-    - Commercial-grade appearance
-
-    Note: Mission condensation happens in the MCP tool get_orchestrator_instructions(),
-    not here. This generator just creates the thin prompt and placeholder job.
+    Platform-specific prompt builders are in giljo_mcp.prompts/ (0950g):
+    - ClaudePromptBuilder: Claude Code CLI mode
+    - CodexPromptBuilder: Codex/Gemini/multi-terminal modes
+    - StagingPromptBuilder: Staging and mission regeneration
     """
 
     def __init__(self, db: AsyncSession, tenant_key: str):
-        """
-        Initialize thin client prompt generator.
-
-        Args:
-            db: Database session
-            tenant_key: Tenant isolation key
-        """
         self.db = db
         self.tenant_key = tenant_key
+        self._claude_builder = ClaudePromptBuilder()
+        self._codex_builder = CodexPromptBuilder()
+        self._staging_builder = StagingPromptBuilder()
 
     async def generate(
         self,
@@ -336,21 +288,10 @@ class ThinClientPromptGenerator:
         user_id: str | None = None,
         tool: str = "universal",
         field_toggles: dict[str, bool | None] = None,
-        depth_config: dict[str, Any | None] = None,  # NEW PARAMETER (Handover 0315)
-        continuation_mode: bool = False,  # NEW PARAMETER (Handover 0461c)
+        depth_config: dict[str, Any | None] = None,
+        continuation_mode: bool = False,
     ) -> dict[str, Any]:
-        """
-        Generate a thin orchestrator prompt for a specified project.
-
-        Handover 0088: Uses metadata JSONB column for storing field_toggles,
-        user_id, tool, and other thin client data.
-
-        Handover 0315: Generates thin prompts (~600 tokens) that reference MCP tools
-        for on-demand context fetching, replacing fat prompts (~3500 tokens) with
-        inline context.
-
-        Handover 0461c: Added continuation_mode parameter for session handover.
-        When True, generates continuation prompt that reads 360 Memory.
+        """Generate a thin orchestrator prompt for a specified project.
 
         Args:
             project_id: Project UUID
@@ -358,12 +299,11 @@ class ThinClientPromptGenerator:
             tool: AI coding agent (claude-code, codex, gemini, universal)
             field_toggles: Optional field toggle config (True=enabled, False=disabled)
             depth_config: Optional depth configuration (v2.0 depth settings)
-            continuation_mode: If True, generate continuation prompt (reads 360 Memory instead of re-staging)
+            continuation_mode: If True, generate continuation prompt (reads 360 Memory)
 
         Returns:
             Dict with orchestrator_id and thin_prompt
         """
-        # Fetch project using tenant_key from instance
         project_stmt = select(Project).where(and_(Project.id == project_id, Project.tenant_key == self.tenant_key))
         project_result = await self.db.execute(project_stmt)
         project = project_result.scalar_one_or_none()
@@ -371,10 +311,74 @@ class ThinClientPromptGenerator:
         if not project:
             raise ValueError(f"Project {project_id} not found")
 
-        # Fetch product for context injection
         product = await self._fetch_product(project_id)
 
-        # Handover 0840d: Fetch user toggle and depth config from normalized tables/columns
+        field_toggles, depth_config = await self._resolve_user_config(user_id, field_toggles, depth_config)
+
+        orchestrator_id, agent_id, execution_id = await self._find_or_create_orchestrator(
+            project_id, project, field_toggles, depth_config, user_id, tool
+        )
+
+        if continuation_mode:
+            thin_prompt = self._generate_continuation_prompt(
+                project_name=project.name,
+                agent_id=agent_id,
+                orchestrator_id=orchestrator_id,
+                project_id=project_id,
+                product_id=str(product.id) if product else None,
+                mcp_url="",
+            )
+        else:
+            thin_prompt = self._staging_builder.build_thin_prompt(
+                orchestrator_id=orchestrator_id,
+                agent_id=agent_id,
+                project_id=project_id,
+                project=project,
+                product=product,
+                tool=tool,
+                field_toggles=field_toggles or {},
+                depth_config=depth_config,
+                user_id=user_id,
+            )
+
+        estimated_tokens = len(thin_prompt) // 4
+
+        logger.info(
+            f"[ThinPromptGenerator] Generated thin prompt for {orchestrator_id}: "
+            f"~{estimated_tokens} tokens (target: 600, reduction from fat: ~{3500 - estimated_tokens})"
+        )
+
+        regenerated_mission = self._staging_builder.regenerate_mission(
+            product=product, project=project, field_toggles=field_toggles or {}, user_id=user_id
+        )
+
+        estimated_mission_tokens = len(regenerated_mission) // 4 if regenerated_mission else 0
+
+        if regenerated_mission:
+            logger.info(
+                f"[ThinPromptGenerator] Regenerated orchestrator instructions for {orchestrator_id}: "
+                f"~{estimated_mission_tokens} tokens (reflects current toggle config)"
+            )
+        else:
+            logger.warning(f"[ThinPromptGenerator] Mission regeneration returned empty for {orchestrator_id}")
+
+        return {
+            "orchestrator_id": orchestrator_id,
+            "agent_id": agent_id,
+            "execution_id": execution_id,
+            "thin_prompt": thin_prompt,
+            "estimated_prompt_tokens": estimated_tokens,
+            "mission": regenerated_mission,
+            "estimated_mission_tokens": estimated_mission_tokens,
+        }
+
+    async def _resolve_user_config(
+        self,
+        user_id: str | None,
+        field_toggles: dict[str, bool | None] | None,
+        depth_config: dict[str, Any | None] | None,
+    ) -> tuple[dict | None, dict]:
+        """Resolve field toggles and depth config from user preferences if not provided."""
         if user_id and (not field_toggles or not depth_config):
             from src.giljo_mcp.models.auth import User, UserFieldPriority
 
@@ -383,7 +387,6 @@ class ThinClientPromptGenerator:
             user = user_result.scalar_one_or_none()
 
             if user:
-                # Build field_toggles from user_field_priorities table
                 if not field_toggles:
                     prio_result = await self.db.execute(
                         select(UserFieldPriority).where(
@@ -400,7 +403,6 @@ class ThinClientPromptGenerator:
                         field_toggles["product_core"] = True
                         field_toggles["project_description"] = True
 
-                # Build depth_config from columns
                 if not depth_config:
                     depth_config = {
                         "vision_documents": user.depth_vision_documents,
@@ -411,7 +413,6 @@ class ThinClientPromptGenerator:
                         "architecture_depth": user.depth_architecture,
                     }
 
-        # Apply defaults for depth_config if still not set
         if not depth_config:
             depth_config = {
                 "vision_documents": "medium",
@@ -422,19 +423,31 @@ class ThinClientPromptGenerator:
                 "architecture_depth": "overview",
             }
 
-        # Handover 0111 - Issue #2: Check for existing active orchestrator BEFORE creating new one
-        # This prevents duplicate orchestrator creation on every "Stage Project" button click
-        # Handover 0367c-2: Use AgentExecution only (no fallback to MCPAgentJob)
-        # FIX 2 (Handover 0485): Use exclusion-based filter (finds: waiting, working, complete, blocked)
+        return field_toggles, depth_config
+
+    async def _find_or_create_orchestrator(
+        self,
+        project_id: str,
+        project: Project,
+        field_toggles: dict | None,
+        depth_config: dict,
+        user_id: str | None,
+        tool: str,
+    ) -> tuple[str, str, int]:
+        """Find existing orchestrator or create a new one.
+
+        Returns:
+            Tuple of (orchestrator_id, agent_id, execution_id)
+        """
         existing_exec_stmt = (
             select(AgentExecution)
-            .options(joinedload(AgentExecution.job))  # Eager load for job_metadata access
+            .options(joinedload(AgentExecution.job))
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
             .where(
                 AgentJob.project_id == project_id,
                 AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == self.tenant_key,
-                ~AgentExecution.status.in_(["decommissioned"]),  # Handover 0491: Simplified statuses
+                ~AgentExecution.status.in_(["decommissioned"]),
             )
             .order_by(AgentExecution.started_at.desc())
         )
@@ -443,15 +456,10 @@ class ThinClientPromptGenerator:
         existing_execution = existing_exec_result.scalars().first()
 
         if existing_execution:
-            # Reuse existing active orchestrator
-            orchestrator_id = existing_execution.job_id  # WHAT - work order ID
-            agent_id = existing_execution.agent_id  # WHO - executor ID (for MCP tool calls)
-            execution_id = existing_execution.id  # UNIQUE row ID - for frontend Map key
+            orchestrator_id = existing_execution.job_id
+            agent_id = existing_execution.agent_id
+            execution_id = existing_execution.id
 
-            # BUG FIX (Handover 0275): Update job_metadata when reusing orchestrator
-            # Handover 0367c-2: Update AgentJob.job_metadata (persistent work order metadata)
-
-            # Update parent AgentJob metadata
             if existing_execution.job:
                 existing_execution.job.job_metadata = {
                     "field_toggles": field_toggles or {},
@@ -468,34 +476,25 @@ class ThinClientPromptGenerator:
                 f"for project {project_id} - metadata updated"
             )
         else:
-            # No active orchestrator exists - create new one
             logger.info(
                 f"[ThinPromptGenerator] Creating NEW orchestrator for project {project_id} "
                 f"(no active orchestrator found)"
             )
 
-            # Store project mission as placeholder
-            # IMPORTANT: The REAL condensed mission (with context prioritization) is generated
-            # by the MCP tool get_orchestrator_instructions() when the orchestrator calls it.
-            # This placeholder ensures the job exists in the database for MCP lookup.
             placeholder_mission = project.mission or f"Orchestrator mission for project: {project.name}"
-
-            # Generate orchestrator_id (full UUID for consistency)
             orchestrator_id = str(uuid4())
             agent_id = str(uuid4())
 
-            # Handover 0366: Create dual-model pattern (AgentJob + AgentExecution)
-            # Step 1: Create AgentJob (work order - persistent across succession)
             agent_job = AgentJob(
                 job_id=orchestrator_id,
                 tenant_key=self.tenant_key,
                 project_id=project_id,
-                mission=placeholder_mission,  # Placeholder - real mission from MCP tool
+                mission=placeholder_mission,
                 job_type="orchestrator",
                 status="active",
                 job_metadata={
                     "field_toggles": field_toggles or {},
-                    "depth_config": depth_config,  # Handover 0315
+                    "depth_config": depth_config,
                     "user_id": user_id,
                     "tool": tool,
                     "created_via": "thin_client_generator",
@@ -503,483 +502,36 @@ class ThinClientPromptGenerator:
             )
             self.db.add(agent_job)
 
-            # Step 2: Create AgentExecution (executor instance)
             agent_execution = AgentExecution(
                 agent_id=agent_id,
                 job_id=orchestrator_id,
                 tenant_key=self.tenant_key,
-                agent_display_name="orchestrator",  # Lowercase for frontend compatibility
-                agent_name="orchestrator",  # Type key for color lookup
+                agent_display_name="orchestrator",
+                agent_name="orchestrator",
                 status="waiting",
                 progress=0,
                 tool_type=tool,
             )
             self.db.add(agent_execution)
 
-            # Handover 0425: Set project staging_status to 'staging' when orchestrator is created
-            # This enables the Staged column in ProjectsView to show "Yes"
             project.staging_status = "staging"
             project.updated_at = datetime.now(timezone.utc)
 
             await self.db.commit()
             await self.db.refresh(agent_job)
             await self.db.refresh(agent_execution)
-            await self.db.refresh(project)  # Refresh project to get updated staging_status
+            await self.db.refresh(project)
 
-            # Get execution_id after refresh (DB assigns id)
-            execution_id = agent_execution.id  # UNIQUE row ID - for frontend Map key
+            execution_id = agent_execution.id
 
             logger.info(
                 f"[ThinPromptGenerator] Created orchestrator {orchestrator_id}, project staging_status='staged'"
             )
 
-        # Handover 0461c: Generate continuation prompt if continuation_mode enabled
-        if continuation_mode:
-            # Get MCP server URL
-            config = get_config()
-            mcp_host = self._get_external_host()
-            mcp_port = config.server.api_port
-            mcp_proto = self._get_protocol()
-            mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}"
-
-            thin_prompt = self._generate_continuation_prompt(
-                project_name=project.name,
-                agent_id=agent_id,
-                orchestrator_id=orchestrator_id,
-                project_id=project_id,
-                product_id=str(product.id) if product else None,
-                mcp_url=mcp_url,
-            )
-        else:
-            # Handover 0315: Generate thin prompt with MCP tool references (NOT fat prompt)
-            # Handover 0388: Pass agent_id for correct MCP tool call in prompt
-            thin_prompt = await self._generate_thin_prompt(
-                orchestrator_id=orchestrator_id,
-                agent_id=agent_id,  # WHO - executor ID for MCP tool calls
-                project_id=project_id,
-                project=project,
-                product=product,
-                tool=tool,
-                field_toggles=field_toggles or {},
-                depth_config=depth_config,
-                user_id=user_id,
-            )
-
-        # Estimate prompt tokens (rough: 1 token ≈ 4 characters)
-        estimated_tokens = len(thin_prompt) // 4
-
-        logger.info(
-            f"[ThinPromptGenerator] Generated thin prompt for {orchestrator_id}: "
-            f"~{estimated_tokens} tokens (target: 600, reduction from fat: ~{3500 - estimated_tokens})"
-        )
-
-        # Handover 0276: Regenerate orchestrator instructions with current settings
-        # This enables "Stage Project refresh" - when user changes field toggles
-        # and clicks "Stage Project" again, they get updated instructions immediately
-        regenerated_mission = await self._regenerate_mission(
-            product=product, project=project, field_toggles=field_toggles or {}, user_id=user_id
-        )
-
-        # Estimate tokens
-        estimated_mission_tokens = len(regenerated_mission) // 4 if regenerated_mission else 0
-
-        if regenerated_mission:
-            logger.info(
-                f"[ThinPromptGenerator] Regenerated orchestrator instructions for {orchestrator_id}: "
-                f"~{estimated_mission_tokens} tokens (reflects current toggle config)"
-            )
-        else:
-            logger.warning(f"[ThinPromptGenerator] Mission regeneration returned empty for {orchestrator_id}")
-
-        return {
-            "orchestrator_id": orchestrator_id,  # WHAT - work order/job ID (backward compat)
-            "agent_id": agent_id,  # WHO - executor ID for MCP tool calls (Handover 0388)
-            "execution_id": execution_id,  # UNIQUE row ID - for frontend Map key (prevents duplicates)
-            "thin_prompt": thin_prompt,
-            "estimated_prompt_tokens": estimated_tokens,
-            # Handover 0276: Include regenerated mission in response
-            "mission": regenerated_mission,
-            "estimated_mission_tokens": estimated_mission_tokens,
-        }
-
-    async def _regenerate_mission(
-        self, product: Product, project: Project, field_toggles: dict[str, bool], user_id: str | None
-    ) -> str:
-        """
-        Regenerate orchestrator mission with current toggle config.
-
-        Handover 0276: Enables "Stage Project refresh" - user changes settings,
-        clicks "Stage Project", gets updated instructions immediately.
-
-        Args:
-            product: Product model with vision and config
-            project: Project model with description
-            field_toggles: Field toggle config (True=enabled, False=disabled)
-            user_id: User ID for audit trail
-
-        Returns:
-            Regenerated mission string with current context
-        """
-        try:
-            mission_parts = []
-
-            # Product description (always include if available)
-            if product and product.description:
-                mission_parts.append(f"## Product\n{product.description}")
-
-            # Project description
-            if project.description:
-                mission_parts.append(f"## Project Goal\n{project.description}")
-
-            # Project mission (if exists)
-            if project.mission:
-                mission_parts.append(f"## Mission\n{project.mission}")
-
-            # Tech stack (from product_tech_stacks table, Handover 0840c)
-            if field_toggles.get("tech_stack", True) and product and product.tech_stack:
-                ts = product.tech_stack
-                tech_parts = []
-                if ts.programming_languages:
-                    tech_parts.append(f"Languages: {ts.programming_languages}")
-                if ts.frontend_frameworks:
-                    tech_parts.append(f"Frontend: {ts.frontend_frameworks}")
-                if ts.backend_frameworks:
-                    tech_parts.append(f"Backend: {ts.backend_frameworks}")
-                if tech_parts:
-                    mission_parts.append(f"## Tech Stack\n{chr(10).join(tech_parts)}")
-
-            # Architecture (from product_architectures table, Handover 0840c)
-            if field_toggles.get("architecture", True) and product and product.architecture:
-                arch = product.architecture
-                if arch.primary_pattern:
-                    mission_parts.append(f"## Architecture\n{arch.primary_pattern}")
-
-            # Join all parts
-            if mission_parts:
-                regenerated = "\n\n".join(mission_parts)
-                logger.debug(
-                    f"[ThinPromptGenerator] Mission regenerated: {len(mission_parts)} sections, "
-                    f"{len(regenerated)} chars"
-                )
-                return regenerated
-            # Fallback if no parts available
-            logger.warning("[ThinPromptGenerator] No mission parts available for regeneration")
-            return project.mission or f"Mission for project: {project.name}"
-
-        except Exception:  # Broad catch: prompt fallback, returns safe default
-            logger.exception("[ThinPromptGenerator] Failed to regenerate mission")
-            # Return project mission as fallback
-            return project.mission or f"Mission for project: {project.name}"
-
-    def _build_thin_prompt(self, orchestrator_id: str, project_id: str, project_name: str, tool: str) -> str:
-        """
-        Build thin client prompt (~10 lines).
-
-        This is THE critical output - must be concise and professional.
-
-        Includes MCP connection details (Amendment C).
-        """
-        # Get MCP server configuration
-        config = get_config()
-
-        # Use external_host (user-facing IP) not api_host (bind address 0.0.0.0)
-        mcp_host = config.get_nested("services.external_host") or config.server.api_host
-
-        mcp_port = config.server.api_port
-        mcp_proto = self._get_protocol()
-        mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}"
-
-        # Generate API key hint (if configured)
-        api_key_configured = bool(config.server.api_key)
-        auth_note = "(authenticated)" if api_key_configured else "(check config.yaml for API key)"
-
-        return f"""I am Orchestrator for GiljoAI Project "{project_name}".
-
-IDENTITY:
-- Orchestrator ID: {orchestrator_id}
-- Project ID: {project_id}
-
-MCP CONNECTION:
-- Server URL: {mcp_url}
-- Tool Prefix: mcp__giljo_mcp__
-- Auth Status: {auth_note}
-
-YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
-You are STAGING the project by creating a mission plan. You will NOT execute the work yourself.
-Your job is to: 1) Analyze requirements, 2) Create mission plan, 3) Assign work to specialist agents.
-
-MCP TOOLS AVAILABLE (ALL start with "mcp__giljo_mcp__"):
-✓ health_check() - Verify MCP connection
-✓ get_orchestrator_instructions(job_id) - Fetch context (tenant auto-injected by server)
-✓ update_project_mission(project_id, mission) - Save mission plan
-✓ spawn_agent_job(agent_display_name, agent_name, mission, project_id) - Create agents
-✓ get_workflow_status(project_id) - Check spawned agents
-✓ send_message(to_agents, content, project_id, message_type, priority) - Send message to agents (use agent_id UUIDs in to_agents)
-
-STARTUP SEQUENCE:
-1. Verify MCP: mcp__giljo_mcp__health_check()
-2. Fetch context: mcp__giljo_mcp__get_orchestrator_instructions('{orchestrator_id}')
-   └─► Returns: Project.description (user requirements), Product context, Agent templates
-   └─► Note: tenant_key auto-injected by server from your API key session
-3. CREATE MISSION: Analyze requirements → Generate execution plan (context prioritization and orchestration)
-4. PERSIST MISSION: mcp__giljo_mcp__update_project_mission('{project_id}', your_created_mission)
-   └─► Saves to Project.mission field for UI display
-5. SPAWN AGENTS: mcp__giljo_mcp__spawn_agent_job() to create specialist agent jobs
-   └─► Agents will EXECUTE the work (not you)
-   └─► SAVE each spawn response's agent_id - needed for UUID-based messaging later
-6. SIGNAL COMPLETE: mcp__giljo_mcp__send_message() to broadcast staging done
-   └─► Message: "STAGING_COMPLETE: Mission created, N agents spawned: [list agent names]"
-   └─► This enables the Implement button in UI (required for workflow)
-
-MESSAGING RULE: Always use agent_id UUIDs in send_message(to_agents=[...]).
-Each spawn_agent_job() returns an agent_id UUID. Never use display names in to_agents.
-
-CRITICAL DISTINCTIONS:
-- Project.description = User-written requirements (READ THIS for context)
-- Project.mission = YOUR OUTPUT (condensed execution plan you CREATE in Step 3)
-- Agent jobs = Specialist agents who will DO THE ACTUAL WORK (you coordinate them)
-
-CONNECTION TROUBLESHOOTING:
-If MCP fails: Check server running at {mcp_url}/health
-Logs: ~/.giljo_mcp/logs/mcp_adapter.log
-
-Begin by verifying MCP connection, then fetch context and CREATE the mission plan.
-"""
-
-    async def _generate_thin_prompt(
-        self,
-        orchestrator_id: str,
-        agent_id: str,  # Handover 0388: WHO - executor ID (for identity tracking, NOT MCP tool calls)
-        project_id: str,
-        project: Any,
-        product: Any,
-        tool: str,
-        field_toggles: dict[str, bool],
-        depth_config: dict[str, Any],
-        user_id: str | None = None,
-    ) -> str:
-        """
-        Generate thin prompt listing available MCP tools (Handover 0315).
-
-        Returns ~600 token prompt (vs ~3500 in fat prompt) that references MCP tools
-        for on-demand context fetching.
-
-        Args:
-            orchestrator_id: Job ID (WHAT - work order UUID)
-            agent_id: Agent execution ID (WHO - executor UUID, for identity tracking only)
-            project_id: Project UUID
-            project: Project model
-            product: Product model
-            tool: AI coding agent (claude-code, codex, gemini, universal)
-            field_toggles: User field toggle config (True=enabled, False=disabled)
-            depth_config: User depth configuration (vision_documents, memory_last_n_projects, etc.)
-
-        Returns:
-            Thin prompt with MCP tool references
-        """
-        # Monolithic Context Architecture (Handover 0280-0281)
-        # All context fetched via single MCP tool: get_orchestrator_instructions()
-        # Priority filtering and depth configuration applied server-side
-
-        # Get MCP server configuration
-        config = get_config()
-
-        # Use external_host (user-facing IP) not api_host (bind address 0.0.0.0)
-        mcp_host = config.get_nested("services.external_host") or config.server.api_host
-
-        mcp_port = config.server.api_port
-        mcp_proto = self._get_protocol()
-        mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}"
-
-        # Generate API key hint (if configured)
-        api_key_configured = bool(config.server.api_key)
-        auth_note = "(authenticated)" if api_key_configured else "(check config.yaml for API key)"
-
-        # Build thin prompt with MCP tool reference (Monolithic Context Architecture)
-        # Handover 0388: Updated IDENTITY to show agent_id (WHO) and job_id (WHAT) separately
-        prompt = f"""I am Orchestrator for GiljoAI Project "{project.name}".
-
-IDENTITY:
-- Orchestrator Agent ID: {agent_id}
-- Job ID: {orchestrator_id}
-- Project ID: {project_id}
-
-MCP CONNECTION:
-- Server URL: {mcp_url}
-- Tool Prefix: mcp__giljo_mcp__
-- Auth Status: {auth_note}
-
-YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
-You are STAGING the project by creating a mission plan. You will NOT execute the work yourself.
-Your job is to: 1) Analyze requirements, 2) Create mission plan, 3) Assign work to specialist agents.
-
-PROJECT CONTEXT (Inline - ~200 tokens):
-- Name: {project.name}
-- Description: {project.description or "(No description provided)"}
-- Mission: {project.mission or "(Mission will be created by you)"}
-
-WORKFLOW:
-1. Verify MCP connection: mcp__giljo_mcp__health_check()
-   → Expected: {{"status": "healthy", "database": "connected"}}
-   → If failed: STOP and report error - do NOT proceed
-2. Fetch complete context: mcp__giljo_mcp__get_orchestrator_instructions('{orchestrator_id}')
-   → Returns configured context (vision, tech stack, architecture, memory, git history, templates)
-   → User toggle/depth configuration automatically applied server-side
-   → Depth configuration (chunking, commit count, etc.) pre-configured
-   → Note: tenant_key auto-injected by server from your API key session
-3. Create condensed mission plan from fetched context
-4. Persist mission: mcp__giljo_mcp__update_project_mission('{project_id}', mission)
-5. Spawn specialist agents: mcp__giljo_mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}')
-   → SAVE each response's agent_id UUID - needed for UUID-based messaging
-6. Monitor: mcp__giljo_mcp__get_workflow_status('{project_id}')
-7. Signal complete: mcp__giljo_mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
-   → This broadcast enables the Implement button in UI (REQUIRED)
-
-Claude Code: Use TodoWrite tool to track workflow progress.
-
-MESSAGING RULE: Always use agent_id UUIDs in send_message(to_agents=[...]).
-Each spawn_agent_job() returns an agent_id UUID. Never use display names in to_agents.
-
-CRITICAL DISTINCTIONS:
-- Project.description = User-written requirements (already provided above)
-- Project.mission = YOUR OUTPUT (condensed execution plan you CREATE in Step 2)
-- Agent jobs = Specialist agents who will DO THE ACTUAL WORK (you coordinate them)
-
-MCP CORE TOOLS (Always Available - tenant_key auto-injected by server):
-✓ mcp__giljo_mcp__health_check() - Verify MCP connection
-✓ mcp__giljo_mcp__get_orchestrator_instructions('{orchestrator_id}') - Fetch complete prioritized context
-✓ mcp__giljo_mcp__update_project_mission('{project_id}', mission) - Save mission plan
-✓ mcp__giljo_mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}') - Create agents (returns agent_id UUID)
-✓ mcp__giljo_mcp__get_workflow_status('{project_id}') - Check spawned agents
-✓ mcp__giljo_mcp__send_message(to_agents, content, project_id, message_type, priority) - Send message (use agent_id UUIDs in to_agents)
-
-CONNECTION TROUBLESHOOTING:
-If MCP fails: Check server running at {mcp_url}/health
-Logs: ~/.giljo_mcp/logs/mcp_adapter.log
-
-Begin by verifying MCP connection, then fetch complete context, and CREATE the mission plan.
-"""
-
-        return prompt
-
-    async def _inject_360_memory(self, session, product_id: str, tenant_key: str, product: Any | None = None) -> str:
-        """
-        Inject 360 Memory System context into prompt.
-
-        Updated in Handover 0390b: Reads count from product_memory_entries table.
-
-        ALWAYS included in orchestrator prompts to provide cumulative product knowledge.
-
-        Args:
-            session: AsyncSession for database access
-            product_id: Product UUID
-            tenant_key: Tenant identifier
-            product: Optional Product model (for objectives from JSONB)
-
-        Returns:
-            Formatted 360 memory section (always present, even if no history)
-
-        Examples:
-            With history:
-                ## 360 Memory System
-                Product has 5 previous project history entries.
-                Review these to inform decisions and avoid past mistakes.
-
-            Without history:
-                ## 360 Memory System
-                No previous project history yet. You're starting fresh.
-        """
-        from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
-
-        # Get count from table (fetch limited set for count)
-        repo = ProductMemoryRepository()
-        entries = await repo.get_entries_for_context(
-            session=session,
-            product_id=product_id,
-            tenant_key=tenant_key,
-            limit=100,  # Reasonable limit for counting
-        )
-        history_count = len(entries)
-
-        # Get objectives from JSONB (still in product_memory)
-        objectives = []
-        if product and product.product_memory:
-            context_data = product.product_memory.get("context", {})
-            objectives = context_data.get("objectives", []) if isinstance(context_data, dict) else []
-
-        # Build memory section
-        memory_lines = ["\n## 360 Memory System"]
-
-        if history_count > 0:
-            memory_lines.append(f"Product has {history_count} previous project history entries.")
-            memory_lines.append("Review these to inform decisions and avoid past mistakes.")
-        else:
-            memory_lines.append("No previous project history yet. You're starting fresh.")
-
-        # Add objectives if available
-        if objectives:
-            memory_lines.append("\nProduct Objectives:")
-            memory_lines.extend([f"- {obj}" for obj in objectives[:3]])  # Limit to top 3 objectives
-
-        memory_lines.append("\nAccess via: fetch_context(categories=['memory_360']) MCP tool")
-
-        return "\n".join(memory_lines)
-
-    def _inject_git_instructions(self, product) -> str:
-        """
-        Inject Git integration instructions into prompt (CONDITIONAL).
-
-        Only included when product.product_memory.git_integration.enabled = True.
-        Provides git command instructions for agents to run locally using user's credentials.
-
-        Args:
-            product: Product model with product_memory JSONB field
-
-        Returns:
-            Formatted git integration section (empty string if disabled)
-
-        Examples:
-            Git enabled:
-                ## Git Integration
-                Use git commands for additional context:
-                - git log --oneline -20 main
-                - git log --since="1 week ago" --pretty=format:"%h - %s (%an, %ar)"
-
-            Git disabled:
-                "" (empty string)
-        """
-        if not product or not product.product_memory:
-            return ""
-
-        git_config = product.product_memory.get("git_integration", {})
-
-        # Return empty string if git integration disabled or not configured
-        if not git_config.get("enabled", False):
-            return ""
-
-        # Extract config with defaults
-        commit_limit = git_config.get("commit_limit", 20)
-        default_branch = git_config.get("default_branch", "")
-
-        # Build branch reference (only if specified)
-        branch_ref = f" {default_branch}" if default_branch else ""
-
-        # Build git instructions section
-        git_lines = [
-            "\n## Git Integration",
-            "Use git commands for additional context:",
-            f"- git log --oneline -{commit_limit}{branch_ref}",
-            '- git log --since="1 week ago" --pretty=format:"%h - %s (%an, %ar)"',
-            "- git show --stat HEAD~5..HEAD",
-            "",
-            "Combine git history with 360 Memory for full context.",
-        ]
-
-        return "\n".join(git_lines)
+        return orchestrator_id, agent_id, execution_id
 
     async def _fetch_product(self, project_id: str) -> Any | None:
-        """
-        Fetch product for a given project.
+        """Fetch product for a given project.
 
         Args:
             project_id: Project UUID
@@ -990,7 +542,6 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         from src.giljo_mcp.models.products import Product
         from src.giljo_mcp.models.projects import Project as ProjectModel
 
-        # Fetch project first
         project_stmt = select(ProjectModel).where(
             and_(ProjectModel.id == project_id, ProjectModel.tenant_key == self.tenant_key)
         )
@@ -1000,8 +551,6 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         if not project:
             return None
 
-        # Fetch product via project.product_id (eagerly load relationships
-        # needed by _regenerate_mission — tech_stack, architecture, vision_documents)
         from sqlalchemy.orm import selectinload
 
         product_stmt = (
@@ -1019,100 +568,17 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         return product
 
     async def _fetch_project(self, project_id: str) -> Any | None:
-        """
-        Fetch project by ID.
-
-        Args:
-            project_id: Project UUID
-
-        Returns:
-            Project model or None if not found
-        """
+        """Fetch project by ID."""
         from src.giljo_mcp.models.projects import Project as ProjectModel
 
         project_stmt = select(ProjectModel).where(
             and_(ProjectModel.id == project_id, ProjectModel.tenant_key == self.tenant_key)
         )
         project_result = await self.db.execute(project_stmt)
-        project = project_result.scalar_one_or_none()
-
-        return project
-
-    async def _build_thin_prompt_with_memory(
-        self,
-        session,
-        orchestrator_id: str,
-        project_id: str,
-        project_name: str,
-        tool: str,
-        product,
-        field_toggles: dict[str, bool | None] = None,
-    ) -> str:
-        """
-        Build thin client prompt WITH 360 Memory, Git integration, and Agent templates.
-
-        Updated in Handover 0390b: Now async, reads memory count from table.
-
-        This extends _build_thin_prompt with context injection.
-
-        Args:
-            session: AsyncSession for database access
-            orchestrator_id: Orchestrator job UUID
-            project_id: Project UUID
-            project_name: Project display name
-            tool: AI coding agent (claude-code, codex, gemini, universal)
-            product: Product model for context injection
-            field_toggles: Optional user field toggle config
-
-        Returns:
-            Enhanced thin prompt with memory, git, and agent template sections
-        """
-        # Get base prompt (existing logic)
-        base_prompt = self._build_thin_prompt(
-            orchestrator_id=orchestrator_id,
-            project_id=project_id,
-            project_name=project_name,
-            tool=tool,
-        )
-
-        # Inject 360 Memory (ALWAYS) - now async
-        memory_section = await self._inject_360_memory(
-            session=session,
-            product_id=str(product.id),
-            tenant_key=product.tenant_key,
-            product=product,
-        )
-
-        # Inject Git integration (CONDITIONAL)
-        git_section = self._inject_git_instructions(product)
-
-        # Handover 0306: Inject Agent Templates (CONDITIONAL - based on priority)
-        # Handover 0246c: Agent templates returned inline by get_orchestrator_instructions()
-        agent_section = ""  # Templates included in orchestrator instructions response
-
-        # Insert injections BEFORE "YOUR ROLE" section
-        # This places context EARLY in the prompt for maximum impact
-        insertion_marker = "YOUR ROLE: PROJECT STAGING"
-
-        if insertion_marker in base_prompt:
-            # Split at marker and insert context
-            before_role, after_role = base_prompt.split(insertion_marker, 1)
-            enhanced_prompt = (
-                before_role + memory_section + git_section + agent_section + "\n" + insertion_marker + after_role
-            )
-        else:
-            # Fallback: append at end if marker not found
-            enhanced_prompt = base_prompt + memory_section + git_section + agent_section
-
-        return enhanced_prompt
+        return project_result.scalar_one_or_none()
 
     def _get_external_host(self) -> str:
-        """
-        Get external MCP server host from config.
-
-        Returns external_host for user-facing connections,
-        falls back to api_host if not configured.
-        """
+        """Get external MCP server host from config."""
         config = get_config()
         return config.get_nested("services.external_host") or config.server.api_host
 
@@ -1121,18 +587,12 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         return _get_ssl_protocol()
 
     async def generate_staging_prompt(self, orchestrator_id: str, project_id: str, agent_id: str = None) -> str:
-        """
-        Generate thin-client orchestrator staging prompt (Handover 0415).
-
-        Minimal prompt that provides identity credentials and instructs orchestrator
-        to fetch complete workflow guide from orchestrator_protocol field via MCP.
-
-        Handover 0429 Phase 4: Returns continuation prompt for instance > 1.
+        """Generate thin-client orchestrator staging prompt (Handover 0415).
 
         Args:
             orchestrator_id: Job ID (WHAT - work order UUID)
             project_id: Project UUID
-            agent_id: Agent execution ID (WHO - executor UUID for MCP tool calls, Handover 0388)
+            agent_id: Agent execution ID (WHO - executor UUID for MCP tool calls)
 
         Returns:
             Thin staging prompt (~113 tokens) OR continuation prompt for successors
@@ -1146,7 +606,6 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         if not project or not product:
             raise ValueError(f"Project {project_id} or its product not found")
 
-        # Handover 0388: If agent_id not provided, fetch from database
         execution = None
         if not agent_id:
             exec_stmt = (
@@ -1162,10 +621,8 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
             if execution:
                 agent_id = execution.agent_id
             else:
-                # Fallback: use orchestrator_id if no execution found (legacy)
-                agent_id = orchestrator_id
+                agent_id = orchestrator_id  # Fallback (legacy)
         else:
-            # If agent_id provided, fetch execution (for potential future use)
             exec_stmt = select(AgentExecution).where(
                 AgentExecution.agent_id == agent_id,
                 AgentExecution.tenant_key == self.tenant_key,
@@ -1173,45 +630,28 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
             exec_result = await self.db.execute(exec_stmt)
             execution = exec_result.scalars().first()
 
-        # Get MCP server URL
         config = get_config()
         mcp_host = self._get_external_host()
         mcp_port = config.server.api_port
         mcp_proto = self._get_protocol()
         mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}"
 
-        # Handover 0415: Thin client prompt with explicit "YOUR" labels
-        # Handover 0424: Added health_check as mandatory first step
-        # Handover 0431: Removed self_identity fetch - now included in get_orchestrator_instructions() response
-        prompt = f"""You are the ORCHESTRATOR for project "{project.name}"
-
-YOUR IDENTITY (use these in all MCP calls):
-  YOUR Agent ID: {agent_id}
-  YOUR Job ID: {orchestrator_id}
-  THE Project ID: {project_id}
-
-MCP Server: {mcp_url}
-Note: tenant_key is auto-injected by server from your API key session (secure server-side isolation)
-
-START NOW:
-1. Verify MCP: mcp__giljo_mcp__health_check()
-   → Expected: {{"status": "healthy"}} - If failed, STOP and report error
-2. Fetch instructions: mcp__giljo_mcp__get_orchestrator_instructions(job_id='{orchestrator_id}')
-   → Response includes orchestrator_protocol (5-chapter workflow) AND orchestrator_identity (behavioral guidance)
-"""
-
-        return prompt
+        return self._staging_builder.build_staging_prompt(
+            project=project,
+            product=product,
+            orchestrator_id=orchestrator_id,
+            project_id=project_id,
+            agent_id=agent_id,
+            mcp_url=mcp_url,
+        )
 
     def generate_implementation_prompt(self, prompt_type: str, **kwargs) -> str:
         """Generate an implementation prompt by type.
 
         Args:
-            prompt_type: One of 'multi_terminal_orchestrator', 'claude_code_execution'
+            prompt_type: One of 'multi_terminal_orchestrator', 'claude_code_execution',
+                         'codex_execution', 'gemini_execution'
             **kwargs: Parameters passed to the underlying builder
-                - orchestrator_id: str
-                - project: Project model
-                - agent_jobs: list of AgentExecution
-                - git_enabled: bool
 
         Returns:
             The generated prompt string
@@ -1220,10 +660,10 @@ START NOW:
             ValueError: If prompt_type is unknown
         """
         builders = {
-            "multi_terminal_orchestrator": self._build_multi_terminal_orchestrator_prompt,
-            "claude_code_execution": self._build_claude_code_execution_prompt,
-            "codex_execution": self._build_codex_execution_prompt,
-            "gemini_execution": self._build_gemini_execution_prompt,
+            "multi_terminal_orchestrator": self._codex_builder.build_multi_terminal_prompt,
+            "claude_code_execution": self._claude_builder.build_execution_prompt,
+            "codex_execution": self._codex_builder.build_execution_prompt,
+            "gemini_execution": self._codex_builder.build_gemini_execution_prompt,
         }
         builder = builders.get(prompt_type)
         if not builder:
@@ -1239,20 +679,7 @@ START NOW:
         product_id: str | None,
         mcp_url: str,
     ) -> str:
-        """
-        Generate continuation prompt. Delegates to module-level build_continuation_prompt().
-
-        Args:
-            project_name: Project display name
-            agent_id: Agent execution ID (WHO)
-            orchestrator_id: Job ID (WHAT)
-            project_id: Project UUID
-            product_id: Product UUID (for fetch_context call)
-            mcp_url: MCP server URL (ignored - resolved from config by canonical builder)
-
-        Returns:
-            Continuation prompt string
-        """
+        """Generate continuation prompt. Delegates to module-level build_continuation_prompt()."""
         return build_continuation_prompt(
             project_id=project_id,
             agent_id=agent_id,
@@ -1260,709 +687,3 @@ START NOW:
             project_name=project_name,
             product_id=product_id,
         )
-
-    def _build_claude_code_execution_prompt(
-        self, orchestrator_id: str, project, agent_jobs: list, git_enabled: bool = False
-    ) -> str:
-        """
-        Build Claude Code subagent mode execution prompt.
-
-        Orchestrator spawns sub-agents using Task tool.
-        Sub-agents receive identity via instructions string.
-
-        Used by GET /api/prompts/implementation/{project_id} endpoint.
-        """
-        # SECTION 1: Context Recap
-        context_recap = [
-            "# GiljoAI Implementation Phase - Claude Code CLI Mode",
-            "",
-            "## FIRST ACTION (MANDATORY)",
-            "Before anything else, verify MCP connection:",
-            "```python",
-            "mcp__giljo_mcp__health_check()",
-            "```",
-            'Expected: `{"status": "healthy"}` - If failed, STOP and report error',
-            "",
-            "## Who You Are",
-            f"You are Orchestrator (job_id: {orchestrator_id}) for project '{project.name}'",
-            f"Project ID: {project.id}",
-            f"Product ID: {project.product_id}",
-            "",
-            "## Your Execution Plan (from Staging)",
-            "",
-            "Fetch your stored execution plan from staging:",
-            "```python",
-            f'mcp__giljo_mcp__get_agent_mission(job_id="{orchestrator_id}")',
-            "```",
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "",
-            "This returns your plan with:",
-            "- Agent execution order (sequential/parallel/hybrid)",
-            "- Dependency graph between agents",
-            "- Coordination checkpoints",
-            "- Success criteria for each phase",
-            "",
-            "Follow this plan to coordinate agents.",
-            "",
-            "## What You've Already Done",
-            "In a PREVIOUS session, you completed staging:",
-            "- Analyzed project requirements",
-            "- Created mission plan",
-            f"- Spawned {len(agent_jobs) if agent_jobs else 0} specialist agents",
-            "",
-            "## Current State",
-            "All agent jobs are in waiting status, ready for execution.",
-            "Your job now: Spawn and coordinate these agents to complete the project.",
-            "---",
-            "",
-        ]
-
-        # SECTION 2: Agent Jobs List
-        agent_spawn_lines = []
-        if agent_jobs:
-            for idx, agent in enumerate(agent_jobs, 1):
-                mission = getattr(agent.job, "mission", None) or "(No mission assigned)"
-                mission_summary = mission[:100] + "..." if len(mission) > 100 else mission
-
-                agent_spawn_lines.extend(
-                    [
-                        f"**{idx}. {agent.agent_name}**",
-                        f"   - Agent Name: `{agent.agent_name}` (matches .claude/agents/{agent.agent_name}.md)",
-                        f"   - Agent Type: `{agent.agent_display_name}` (display category)",
-                        f"   - Job ID: `{agent.job_id}`",
-                        f"   - Status: {agent.status}",
-                        f"   - Mission Summary: {mission_summary}",
-                        "",
-                    ]
-                )
-        else:
-            agent_spawn_lines.append("(No agents spawned yet - use spawn_agent_job() first)")
-
-        agent_list_section = [
-            "## Agent Jobs to Execute",
-            "",
-            "Below are the specialist agents spawned during staging.",
-            "Each has a unique job_id and agent_display_name.",
-            "",
-            *agent_spawn_lines,
-        ]
-
-        # SECTION 3: Task Tool Spawning Template
-        spawning_section = [
-            "## How to Spawn Agents via Task Tool",
-            "",
-            "### Spawning Template",
-            "Use this exact syntax to spawn each agent in parallel:",
-            "",
-            "```python",
-            "Task(",
-            '    subagent_type="{agent_name}",  # CRITICAL: Use agent_name (template filename)',
-            '    instructions="""',
-            "    You are {agent_name} (job_id: {job_id})",
-            "    ",
-            '    First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}")',
-            "    Note: tenant_key is auto-injected by server from your API key session",
-            "    This returns your `mission` and `full_protocol`.",
-            "    Follow `full_protocol` for all lifecycle behavior",
-            "    (startup, planning, progress, messaging, completion, error handling).",
-            '    """',
-            ")",
-            "```",
-            "",
-        ]
-
-        # Add concrete example if agents exist
-        if agent_jobs:
-            first = agent_jobs[0]
-            spawning_section.extend(
-                [
-                    "### Example: First Agent",
-                    "```python",
-                    "Task(",
-                    f'    subagent_type="{first.agent_name}",',
-                    '    instructions="""',
-                    f"    You are {first.agent_name} (job_id: {first.job_id})",
-                    "    ",
-                    f'    First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{first.job_id}")',
-                    "    Note: tenant_key is auto-injected by server from your API key session",
-                    "    This returns your `mission` and `full_protocol`.",
-                    "    Follow `full_protocol` for all lifecycle behavior",
-                    "    (startup, planning, progress, messaging, completion, error handling).",
-                    '    """',
-                    ")",
-                    "```",
-                    "",
-                    "**Task Tool Parameter Naming**:",
-                    "- Task(subagent_type=X) uses agent_name value",
-                    "- agent_name: Template filename (e.g., 'tdd-implementor')",
-                    "- Do NOT use agent_display_name (e.g., 'implementer') - it will fail",
-                    "",
-                    "### Spawning Strategy",
-                    "**Spawning Mode**: Use foreground (default) when you need to observe agent output in real-time. Use `run_in_background=true` for independent parallel agents — poll status via `get_workflow_status()`. Background execution is fully supported and reliable.",
-                    "",
-                    "Choose spawning approach based on job requirements:",
-                    "- **Sequential**: Spawn one agent, wait for completion, then next (best for dependent tasks)",
-                    "- **Parallel**: Multiple Task() calls in single message (best for independent tasks)",
-                    "",
-                    "Each agent runs independently and coordinates via MCP server.",
-                    "",
-                ]
-            )
-
-        # SECTION 4: Monitoring Instructions
-        monitoring_section = [
-            "## Monitoring Agent Progress",
-            "",
-            "### mcp__giljo_mcp__get_workflow_status()",
-            "Check all agent statuses:",
-            "```python",
-            f'mcp__giljo_mcp__get_workflow_status(project_id="{project.id}")',
-            "```",
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "",
-            "Returns:",
-            "```json",
-            "{",
-            '  "agents": [',
-            '    {"job_id": "...", "status": "working", "progress": 45},',
-            '    {"job_id": "...", "status": "blocked", "block_reason": "..."}',
-            "  ]",
-            "}",
-            "```",
-            "",
-            "### Handle Blockers",
-            "- When agent status is 'blocked', read their messages",
-            "- Respond via mcp__giljo_mcp__send_message(to_agents=['<agent-id-uuid>'], ...) using agent_id UUID",
-            "- Update their next_instruction field if needed",
-            "",
-            "### Message Handling",
-            "- Agents report progress via mcp__giljo_mcp__report_progress() and mcp__giljo_mcp__send_message()",
-            "- Monitor messages for questions or blockers",
-            "- Respond promptly to keep workflow moving",
-            "- ALWAYS use agent_id UUIDs in to_agents (from spawn_agent_job responses), never display names",
-            "",
-        ]
-
-        # SECTION 5: Context Refresh Capability
-        context_refresh_section = [
-            "## Refreshing Your Context",
-            "",
-            "If you need to re-read your orchestrator mission:",
-            "```python",
-            f'mcp__giljo_mcp__get_orchestrator_instructions(job_id="{orchestrator_id}")',
-            "```",
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "",
-            "This MCP tool fetches your original staging mission and context.",
-            "Use this if you lose track of project objectives or need to verify requirements.",
-            "",
-        ]
-
-        # SECTION 6: CLI Mode Constraints
-        cli_constraints_section = [
-            "## CLI Mode Constraints",
-            "",
-            "**WARNING: Agent Template Files Required**",
-            "- Each agent_name needs a file: `.claude/agents/{agent_name}.md`",
-            '- If file is missing: "Subagent type not found" error',
-            '- Example: agent_name="<agent_name>" requires `.claude/agents/<agent_name>.md`',
-            "",
-            "**WARNING: Exact Naming Required**",
-            "- Task tool parameter `subagent_type` expects `agent_name`, NOT `agent_display_name`",
-            "- agent_name: Template filename (see allowed_agent_names in instructions)",
-            '- agent_display_name: Display category (e.g., "implementer")',
-            '- Using agent_display_name will fail with "Subagent type not found"',
-            "",
-            "**WARNING: MCP Communication Only**",
-            "- All agents run in THIS terminal (Claude Code CLI mode)",
-            "- Coordination happens via MCP server (not direct communication)",
-            "- All MCP tools have tenant_key auto-injected by server from API key session",
-            "",
-        ]
-
-        # SECTION 7: Completion Instructions
-        git_closeout_lines = []
-        if git_enabled:
-            tag = getattr(project, "taxonomy_alias", None) or project.name
-            git_closeout_lines = [
-                "### Git Closeout Commit",
-                "Before calling complete_job, create a closeout commit to preserve project history:",
-                "```bash",
-                f'git commit --allow-empty -m "closeout({tag}): {project.name}',
-                "",
-                "Completed: <today YYYY-MM-DD>",
-                "Key outcomes:",
-                '- <list each concrete outcome>"',
-                "```",
-                f'This makes project history searchable via `git log --grep="closeout"` or `git log --grep="{tag}"`.',
-                "",
-            ]
-
-        completion_section = [
-            "## When You're Done",
-            "",
-            "### Verify Sub-Agents Completed",
-            "1. Check all agents via mcp__giljo_mcp__get_workflow_status()",
-            "2. Ensure all have status='complete' (no failures or blockers)",
-            "3. Review final deliverables",
-            "",
-            "### If Agents Are NOT Complete (CLOSEOUT_BLOCKED Recovery)",
-            "",
-            "If `get_workflow_status()` shows agents not in 'complete' or 'decommissioned' status,",
-            "you MUST resolve them before closeout. For each non-complete agent:",
-            "",
-            "1. **Drain their messages:**",
-            '   `mcp__giljo_mcp__receive_messages(agent_id="<their_agent_id>")`',
-            "   Record any important content for the 360 Memory summary.",
-            "",
-            "2. **Process incomplete todos** — mark remaining items as completed or skipped:",
-            "   ```python",
-            "   mcp__giljo_mcp__report_progress(",
-            '       job_id="<their_job_id>",',
-            "       todo_items=[",
-            '           ...keep completed items as "completed",',
-            '           ...mark remaining pending/in_progress items as "skipped"',
-            "       ]",
-            "   )",
-            "   ```",
-            '   NOTE: This will fail on agents already in "complete" status. If it fails, skip this step.',
-            "",
-            "3. **Force-complete the agent** (ONLY if NOT already 'complete'):",
-            "   ```python",
-            "   mcp__giljo_mcp__complete_job(",
-            '       job_id="<their_job_id>",',
-            '       result={"summary": "Force-completed by orchestrator during closeout.", "status": "force_completed"}',
-            "   )",
-            "   ```",
-            '   Do NOT call complete_job() on agents already in "complete" status.',
-            "",
-            "Skip agents in status 'decommissioned'.",
-            "After all agents are resolved, proceed with closeout below.",
-            "",
-            *git_closeout_lines,
-            "### Complete Your Orchestrator Job",
-            "When all sub-agents are done and project is complete:",
-            "```python",
-            f'mcp__giljo_mcp__complete_job(job_id="{orchestrator_id}")',
-            "```",
-            "",
-            "### Handover (if needed)",
-            "If you reach context limits before completion:",
-            "- Use the Hand Over button in the UI to reset your context",
-            "- Your session context will be saved to 360 Memory",
-            "- You'll receive a continuation prompt to continue work",
-            "",
-        ]
-
-        # Combine all sections
-        all_sections = (
-            context_recap
-            + agent_list_section
-            + spawning_section
-            + monitoring_section
-            + context_refresh_section
-            + cli_constraints_section
-            + completion_section
-        )
-
-        return "\n".join(all_sections)
-
-    def _build_codex_execution_prompt(
-        self, orchestrator_id: str, project, agent_jobs: list, git_enabled: bool = False
-    ) -> str:
-        """
-        Build Codex CLI subagent mode execution prompt (Handover 0838).
-
-        Like Claude Code mode but uses spawn_agent() with 'gil-' prefix on agent names.
-        """
-        context_recap = [
-            "# GiljoAI Implementation Phase - Codex CLI Mode",
-            "",
-            "## FIRST ACTION (MANDATORY)",
-            "Before anything else, verify MCP connection:",
-            "```python",
-            "mcp__giljo_mcp__health_check()",
-            "```",
-            'Expected: `{"status": "healthy"}` - If failed, STOP and report error',
-            "",
-            "## Who You Are",
-            f"You are Orchestrator (job_id: {orchestrator_id}) for project '{project.name}'",
-            f"Project ID: {project.id}",
-            f"Product ID: {project.product_id}",
-            "",
-            "## Your Execution Plan (from Staging)",
-            "",
-            "Fetch your stored execution plan from staging:",
-            "```python",
-            f'mcp__giljo_mcp__get_agent_mission(job_id="{orchestrator_id}")',
-            "```",
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "",
-            "Follow this plan to coordinate agents.",
-            "",
-            "## What You've Already Done",
-            "In a PREVIOUS session, you completed staging:",
-            "- Analyzed project requirements",
-            "- Created mission plan",
-            f"- Spawned {len(agent_jobs) if agent_jobs else 0} specialist agents",
-            "",
-            "## Current State",
-            "All agent jobs are in waiting status, ready for execution.",
-            "Your job now: Spawn and coordinate these agents to complete the project.",
-            "---",
-            "",
-        ]
-
-        agent_spawn_lines = []
-        if agent_jobs:
-            for idx, agent in enumerate(agent_jobs, 1):
-                mission = getattr(agent.job, "mission", None) or "(No mission assigned)"
-                mission_summary = mission[:100] + "..." if len(mission) > 100 else mission
-                agent_spawn_lines.extend(
-                    [
-                        f"**{idx}. {agent.agent_name}**",
-                        f"   - Agent Name: `{agent.agent_name}` → Codex: `gil-{agent.agent_name}`",
-                        f"   - Agent Type: `{agent.agent_display_name}` (display category)",
-                        f"   - Job ID: `{agent.job_id}`",
-                        f"   - Status: {agent.status}",
-                        f"   - Mission Summary: {mission_summary}",
-                        "",
-                    ]
-                )
-        else:
-            agent_spawn_lines.append("(No agents spawned yet - use spawn_agent_job() first)")
-
-        agent_list_section = [
-            "## Agent Jobs to Execute",
-            "",
-            "Below are the specialist agents spawned during staging.",
-            "Each has a unique job_id. In Codex CLI, ALL agent names require the 'gil-' prefix.",
-            "",
-            *agent_spawn_lines,
-        ]
-
-        spawning_section = [
-            "## How to Spawn Agents via Codex spawn_agent",
-            "",
-            "### CRITICAL: Template-First Spawning",
-            "The `agent=` parameter loads an INSTALLED agent template from",
-            "`~/.codex/agents/gil-{agent_name}.toml`. This template contains the agent's",
-            "developer_instructions, model config, and sandbox settings.",
-            "The agent ALREADY KNOWS its role — you do NOT re-explain it.",
-            "",
-            "### DO NOT spawn generic workers",
-            "- DO NOT spawn a generic/default Codex worker and instruct it to 'act as' a GiljoAI agent",
-            "- DO NOT re-explain the agent's role in instructions= (the template handles this)",
-            "- DO NOT override template behavior with lengthy instruction text",
-            "",
-            "### Always use 'gil-' prefix",
-            "The server returns agent_name WITHOUT the prefix. You MUST prepend 'gil-'.",
-            "Built-in Codex roles shadow unprefixed names.",
-            "",
-            "### Spawning Template",
-            "```",
-            "spawn_agent(",
-            '    agent="gil-{agent_name}",  # loads ~/.codex/agents/gil-{agent_name}.toml',
-            '    instructions="""',
-            "    You are {agent_name} (job_id: {job_id})",
-            "    ",
-            '    First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}")',
-            "    Note: tenant_key is auto-injected by server from your API key session",
-            "    This returns your `mission` and `full_protocol`.",
-            "    Follow `full_protocol` for all lifecycle behavior.",
-            '    """',
-            ")",
-            "```",
-            "Keep instructions= MINIMAL — only the job_id and mission fetch call above.",
-            "",
-        ]
-
-        if agent_jobs:
-            first = agent_jobs[0]
-            spawning_section.extend(
-                [
-                    "### Example: First Agent",
-                    "```",
-                    "spawn_agent(",
-                    f'    agent="gil-{first.agent_name}",  # gil- prefix!',
-                    '    instructions="""',
-                    f"    You are {first.agent_name} (job_id: {first.job_id})",
-                    "    ",
-                    f'    First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{first.job_id}")',
-                    "    Note: tenant_key is auto-injected by server from your API key session",
-                    "    This returns your `mission` and `full_protocol`.",
-                    "    Follow `full_protocol` for all lifecycle behavior.",
-                    '    """',
-                    ")",
-                    "```",
-                    "",
-                ]
-            )
-
-        monitoring_section = [
-            "## Monitoring Agent Progress",
-            "",
-            "### mcp__giljo_mcp__get_workflow_status()",
-            "Check all agent statuses:",
-            "```python",
-            f'mcp__giljo_mcp__get_workflow_status(project_id="{project.id}")',
-            "```",
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "",
-        ]
-
-        context_refresh_section = [
-            "## Refreshing Your Context",
-            "",
-            "If you need to re-read your orchestrator mission:",
-            "```python",
-            f'mcp__giljo_mcp__get_orchestrator_instructions(job_id="{orchestrator_id}")',
-            "```",
-            "",
-        ]
-
-        git_closeout_lines = []
-        if git_enabled:
-            tag = getattr(project, "taxonomy_alias", None) or project.name
-            git_closeout_lines = [
-                "### Git Closeout Commit",
-                "Before calling complete_job, create a closeout commit:",
-                "```bash",
-                f'git commit --allow-empty -m "closeout({tag}): {project.name}',
-                "",
-                "Completed: <today YYYY-MM-DD>",
-                "Key outcomes:",
-                '- <list each concrete outcome>"',
-                "```",
-                "",
-            ]
-
-        completion_section = [
-            "## When You're Done",
-            "",
-            "1. Check all agents via mcp__giljo_mcp__get_workflow_status()",
-            "2. Ensure all have status='complete'",
-            "3. Review final deliverables",
-            *git_closeout_lines,
-            "### Complete Your Orchestrator Job",
-            "```python",
-            f'mcp__giljo_mcp__complete_job(job_id="{orchestrator_id}")',
-            "```",
-            "",
-        ]
-
-        all_sections = (
-            context_recap
-            + agent_list_section
-            + spawning_section
-            + monitoring_section
-            + context_refresh_section
-            + completion_section
-        )
-        return "\n".join(all_sections)
-
-    def _build_gemini_execution_prompt(
-        self, orchestrator_id: str, project, agent_jobs: list, git_enabled: bool = False
-    ) -> str:
-        """
-        Build Gemini CLI subagent mode execution prompt (Handover 0838).
-
-        Uses Gemini subagent invocation syntax: @{agent_name} or /agent {agent_name}.
-        """
-        context_recap = [
-            "# GiljoAI Implementation Phase - Gemini CLI Mode",
-            "",
-            "## FIRST ACTION (MANDATORY)",
-            "Before anything else, verify MCP connection:",
-            "```python",
-            "mcp__giljo_mcp__health_check()",
-            "```",
-            'Expected: `{"status": "healthy"}` - If failed, STOP and report error',
-            "",
-            "## Who You Are",
-            f"You are Orchestrator (job_id: {orchestrator_id}) for project '{project.name}'",
-            f"Project ID: {project.id}",
-            f"Product ID: {project.product_id}",
-            "",
-            "## Your Execution Plan (from Staging)",
-            "",
-            "Fetch your stored execution plan from staging:",
-            "```python",
-            f'mcp__giljo_mcp__get_agent_mission(job_id="{orchestrator_id}")',
-            "```",
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "",
-            "Follow this plan to coordinate agents.",
-            "",
-            "## What You've Already Done",
-            "In a PREVIOUS session, you completed staging:",
-            "- Analyzed project requirements",
-            "- Created mission plan",
-            f"- Spawned {len(agent_jobs) if agent_jobs else 0} specialist agents",
-            "",
-            "## Current State",
-            "All agent jobs are in waiting status, ready for execution.",
-            "Your job now: Spawn and coordinate these agents to complete the project.",
-            "---",
-            "",
-        ]
-
-        agent_spawn_lines = []
-        if agent_jobs:
-            for idx, agent in enumerate(agent_jobs, 1):
-                mission = getattr(agent.job, "mission", None) or "(No mission assigned)"
-                mission_summary = mission[:100] + "..." if len(mission) > 100 else mission
-                agent_spawn_lines.extend(
-                    [
-                        f"**{idx}. {agent.agent_name}**",
-                        f"   - Agent Name: `{agent.agent_name}` (used as-is in Gemini)",
-                        f"   - Agent Type: `{agent.agent_display_name}` (display category)",
-                        f"   - Job ID: `{agent.job_id}`",
-                        f"   - Status: {agent.status}",
-                        f"   - Mission Summary: {mission_summary}",
-                        "",
-                    ]
-                )
-        else:
-            agent_spawn_lines.append("(No agents spawned yet - use spawn_agent_job() first)")
-
-        agent_list_section = [
-            "## Agent Jobs to Execute",
-            "",
-            "Below are the specialist agents spawned during staging.",
-            "",
-            *agent_spawn_lines,
-        ]
-
-        spawning_section = [
-            "## How to Spawn Agents in Gemini CLI",
-            "",
-            "### Spawning Template",
-            "Use subagent invocation with the agent_name directly:",
-            "",
-            "```",
-            "@{agent_name}",
-            "You are {agent_name} (job_id: {job_id})",
-            "",
-            'First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}")',
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "This returns your `mission` and `full_protocol`.",
-            "Follow `full_protocol` for all lifecycle behavior.",
-            "```",
-            "",
-            "Or equivalently:",
-            "```",
-            "/agent {agent_name}",
-            "<instructions as above>",
-            "```",
-            "",
-        ]
-
-        if agent_jobs:
-            first = agent_jobs[0]
-            spawning_section.extend(
-                [
-                    "### Example: First Agent",
-                    "```",
-                    f"@{first.agent_name}",
-                    f"You are {first.agent_name} (job_id: {first.job_id})",
-                    "",
-                    f'First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{first.job_id}")',
-                    "Note: tenant_key is auto-injected by server from your API key session",
-                    "This returns your `mission` and `full_protocol`.",
-                    "Follow `full_protocol` for all lifecycle behavior.",
-                    "```",
-                    "",
-                ]
-            )
-
-        monitoring_section = [
-            "## Monitoring Agent Progress",
-            "",
-            "### mcp__giljo_mcp__get_workflow_status()",
-            "Check all agent statuses:",
-            "```python",
-            f'mcp__giljo_mcp__get_workflow_status(project_id="{project.id}")',
-            "```",
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "",
-        ]
-
-        context_refresh_section = [
-            "## Refreshing Your Context",
-            "",
-            "If you need to re-read your orchestrator mission:",
-            "```python",
-            f'mcp__giljo_mcp__get_orchestrator_instructions(job_id="{orchestrator_id}")',
-            "```",
-            "",
-        ]
-
-        git_closeout_lines = []
-        if git_enabled:
-            tag = getattr(project, "taxonomy_alias", None) or project.name
-            git_closeout_lines = [
-                "### Git Closeout Commit",
-                "Before calling complete_job, create a closeout commit:",
-                "```bash",
-                f'git commit --allow-empty -m "closeout({tag}): {project.name}',
-                "",
-                "Completed: <today YYYY-MM-DD>",
-                "Key outcomes:",
-                '- <list each concrete outcome>"',
-                "```",
-                "",
-            ]
-
-        completion_section = [
-            "## When You're Done",
-            "",
-            "1. Check all agents via mcp__giljo_mcp__get_workflow_status()",
-            "2. Ensure all have status='complete'",
-            "3. Review final deliverables",
-            *git_closeout_lines,
-            "### Complete Your Orchestrator Job",
-            "```python",
-            f'mcp__giljo_mcp__complete_job(job_id="{orchestrator_id}")',
-            "```",
-            "",
-        ]
-
-        all_sections = (
-            context_recap
-            + agent_list_section
-            + spawning_section
-            + monitoring_section
-            + context_refresh_section
-            + completion_section
-        )
-        return "\n".join(all_sections)
-
-    def _build_multi_terminal_orchestrator_prompt(
-        self, orchestrator_id: str, project, agent_jobs: list, git_enabled: bool = False
-    ) -> str:
-        """
-        Build multi-terminal orchestrator implementation prompt (Handover 0830).
-
-        Genuinely thin: identity + single instruction to call get_agent_mission().
-        All behavioral protocol, team state, and tool catalog live server-side
-        in get_agent_mission() response — never baked into the prompt.
-        """
-        lines = [
-            "# GiljoAI Implementation Phase - Orchestrator",
-            "",
-            "## FIRST ACTION (MANDATORY)",
-            "Verify MCP connection:",
-            "```",
-            "mcp__giljo_mcp__health_check()",
-            "```",
-            "",
-            f"You are the ORCHESTRATOR for project '{project.name}'.",
-            f"Job ID: `{orchestrator_id}` | Project ID: `{project.id}`",
-            "",
-            "Call `get_agent_mission` to receive your current team state and operating protocol:",
-            "```",
-            f'mcp__giljo_mcp__get_agent_mission(job_id="{orchestrator_id}")',
-            "```",
-        ]
-        return "\n".join(lines)
