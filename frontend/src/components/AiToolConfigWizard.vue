@@ -8,13 +8,13 @@
     </template>
 
     <v-card v-draggable class="smooth-border">
-      <v-card-title class="d-flex align-center justify-space-between">
-        <div class="d-flex align-center">
-          <v-img src="/giljo_YW_Face.svg" width="32" height="32" class="mr-2" />
-          <span>MCP Configuration Tool</span>
-        </div>
-        <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="showWizard = false" />
-      </v-card-title>
+      <div class="dlg-header">
+        <v-img src="/giljo_YW_Face.svg" width="32" height="32" class="dlg-icon" style="flex-shrink: 0" />
+        <span class="dlg-title">MCP Configuration Tool</span>
+        <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="showWizard = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </div>
 
       <v-card-text>
         <!-- Tool Selection: Logo + Name + Radio -->
