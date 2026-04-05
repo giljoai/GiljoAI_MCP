@@ -332,13 +332,13 @@ function canCopyPrompt(agent) {
 }
 
 .msg-badge.zero {
-  background: rgba(103, 189, 109, 0.12);
-  color: #67bd6d; /* design-token-exempt: status-complete */
+  background: rgba($color-status-complete, 0.12);
+  color: $color-status-complete;
 }
 
 .msg-badge.has-msgs {
-  background: rgba(255, 152, 0, 0.15);
-  color: #ff9800; /* design-token-exempt: status-blocked */
+  background: rgba($color-status-blocked, 0.15);
+  color: $color-status-blocked;
 }
 
 /* Disabled rows in Claude Code mode */

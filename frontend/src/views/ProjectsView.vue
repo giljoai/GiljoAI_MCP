@@ -168,7 +168,7 @@
             <v-icon
               v-if="isProjectStaged(item)"
               size="18"
-              color="#67bd6d"
+              style="color: var(--color-accent-success)"
               aria-label="Staged"
             >mdi-check</v-icon>
             <span v-else class="staged-dash">—</span>
@@ -758,17 +758,23 @@ function projectIdBadgeStyle(color) {
   }
 }
 
-/* design-token-exempt: dynamic JS color lookup used in template :style bindings */
+// Status dot colors — traced to design-tokens.scss
+const DOT_SURFACE = '#ffffff'   // $color-surface
+const DOT_MUTED = '#9e9e9e'     // $color-text-muted
+const DOT_SUCCESS = '#4caf50'   // $color-status-success
+const DOT_WARNING = '#fb8c00'   // $color-status-warning
+const DOT_ERROR = '#f44336'     // $color-status-error
+
 function statusDotColor(status) {
   const colors = {
-    active: '#ffffff', /* design-token-exempt: $color-surface */
-    inactive: '#9e9e9e', /* design-token-exempt: $color-text-muted */
-    completed: '#4caf50', /* design-token-exempt: $color-status-success */
-    cancelled: '#fb8c00', /* design-token-exempt: $color-status-warning */
-    terminated: '#f44336', /* design-token-exempt: $color-status-error */
-    deleted: '#f44336', /* design-token-exempt: $color-status-error */
+    active: DOT_SURFACE,
+    inactive: DOT_MUTED,
+    completed: DOT_SUCCESS,
+    cancelled: DOT_WARNING,
+    terminated: DOT_ERROR,
+    deleted: DOT_ERROR,
   }
-  return colors[status] || '#9e9e9e' /* design-token-exempt: $color-text-muted */
+  return colors[status] || DOT_MUTED
 }
 
 // Form data

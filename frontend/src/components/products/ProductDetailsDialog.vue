@@ -479,18 +479,20 @@ const AI_SUMMARY_COLORS = {
   medium: getAgentColor('tester').hex,
 }
 
+const FALLBACK_MUTED = '#8895a8' // var(--text-muted)
+
 function docSummaryStyle(level) {
-  const hex = DOC_SUMMARY_COLORS[level] || '#8895a8'
+  const hex = DOC_SUMMARY_COLORS[level] || FALLBACK_MUTED
   return { background: hexToRgba(hex, 0.15), color: hex }
 }
 
 function consolidatedSummaryStyle(level) {
-  const hex = CONSOLIDATED_SUMMARY_COLORS[level] || '#8895a8'
+  const hex = CONSOLIDATED_SUMMARY_COLORS[level] || FALLBACK_MUTED
   return { background: hexToRgba(hex, 0.15), color: hex }
 }
 
 function aiSummaryStyle(level) {
-  const hex = AI_SUMMARY_COLORS[level] || '#8895a8'
+  const hex = AI_SUMMARY_COLORS[level] || FALLBACK_MUTED
   return { background: hexToRgba(hex, 0.15), color: hex }
 }
 
