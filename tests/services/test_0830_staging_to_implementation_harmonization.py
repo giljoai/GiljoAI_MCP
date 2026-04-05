@@ -83,7 +83,8 @@ class TestThinPromptStrippedToFifteenLines:
         mock_session = AsyncMock()
         gen = ThinClientPromptGenerator(db=mock_session, tenant_key="tenant-test")
         orchestrator_id = str(uuid4())
-        return gen._build_multi_terminal_orchestrator_prompt(
+        return gen.generate_implementation_prompt(
+            prompt_type="multi_terminal_orchestrator",
             orchestrator_id=orchestrator_id,
             project=project,
             agent_jobs=[],
