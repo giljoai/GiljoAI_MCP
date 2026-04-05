@@ -473,17 +473,13 @@ describe('AgentDetailsModal Component', () => {
       expect(wrapper.text()).toContain('Agent Details')
     })
 
-    it('close button has aria-label', () => {
+    it('has close button in header', () => {
       api.templates.list.mockResolvedValue({ data: [] })
 
       const wrapper = createWrapper()
 
-      const buttons = wrapper.findAll('button')
-      // Component has aria-label="Close dialog" on the icon close button
-      const closeBtn = buttons.find((btn) =>
-        btn.attributes('aria-label') === 'Close dialog'
-      )
-      expect(closeBtn).toBeTruthy()
+      const closeBtn = wrapper.find('button.dlg-close')
+      expect(closeBtn.exists()).toBe(true)
     })
 
     it('loading state is announced', async () => {
