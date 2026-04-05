@@ -37,7 +37,7 @@ describe('useVisionAnalysis', () => {
   })
 
   it('resetAnalysisState resets all analysis flags', () => {
-    const { resetAnalysisState, analysisInProgress, analysisAgentConnected, analysisHintVisible, setupMode } =
+    const { resetAnalysisState, analysisInProgress, analysisAgentConnected, analysisHintVisible } =
       useVisionAnalysis(patchProductForm)
 
     analysisInProgress.value = true

@@ -290,16 +290,6 @@ class TemplateValidator:
             # Log error but don't fail validation
             pass  # nosec B110
 
-    def add_custom_rule(self, rule: ValidationRule):
-        """
-        Add a custom validation rule.
-
-        Args:
-            rule: Custom ValidationRule instance
-        """
-        with self._lock:
-            self.rules.append(rule)
-
     def clear_cache(self, template_id: str | None = None):
         """
         Clear validation cache.

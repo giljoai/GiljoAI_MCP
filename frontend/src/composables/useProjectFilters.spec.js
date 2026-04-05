@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useProjectFilters } from './useProjectFilters'
 
 describe('useProjectFilters', () => {
