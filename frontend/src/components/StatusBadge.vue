@@ -10,6 +10,8 @@
 
 <script setup>
 import { computed } from 'vue'
+import { getAgentColor } from '@/config/agentColors'
+import { hexToRgba } from '@/utils/colorUtils'
 
 const props = defineProps({
   status: {
@@ -20,24 +22,23 @@ const props = defineProps({
   },
 })
 
-// Status colors unchanged — tinted style (rgba bg + bright text)
+// Project status colors — traced to design-tokens.scss
+const COLOR_IMPLEMENTER = getAgentColor('implementer').hex // #6DB3E4 — $color-agent-implementor
+const COLOR_MUTED = '#9e9e9e' // $color-text-muted
+const COLOR_SUCCESS = '#67bd6d' // $color-status-complete / $color-accent-success
+const COLOR_BLOCKED = '#ff9800' // $color-status-blocked
+const COLOR_ANALYZER = getAgentColor('analyzer').hex // #E07872 — $color-agent-analyzer
+
 const STATUS_CONFIG = {
-  active: { label: 'Active', color: '#6DB3E4' },
-  inactive: { label: 'Inactive', color: '#9e9e9e' },
-  completed: { label: 'Completed', color: '#67bd6d' },
-  cancelled: { label: 'Cancelled', color: '#ff9800' },
-  terminated: { label: 'Terminated', color: '#e07872' },
-  deleted: { label: 'Deleted', color: '#e07872' },
+  active: { label: 'Active', color: COLOR_IMPLEMENTER },
+  inactive: { label: 'Inactive', color: COLOR_MUTED },
+  completed: { label: 'Completed', color: COLOR_SUCCESS },
+  cancelled: { label: 'Cancelled', color: COLOR_BLOCKED },
+  terminated: { label: 'Terminated', color: COLOR_ANALYZER },
+  deleted: { label: 'Deleted', color: COLOR_ANALYZER },
 }
 
-function hexToRgb(hex) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `${r}, ${g}, ${b}`
-}
-
-const config = computed(() => STATUS_CONFIG[props.status] || { label: props.status, color: '#9e9e9e' })
+const config = computed(() => STATUS_CONFIG[props.status] || { label: props.status, color: COLOR_MUTED })
 const statusLabel = computed(() => config.value.label)
 
 const badgeStyle = computed(() => {
@@ -46,7 +47,7 @@ const badgeStyle = computed(() => {
     return { background: bg, color: textColor || color }
   }
   return {
-    background: `rgba(${hexToRgb(color)}, 0.15)`,
+    background: hexToRgba(color, 0.15),
     color,
   }
 })

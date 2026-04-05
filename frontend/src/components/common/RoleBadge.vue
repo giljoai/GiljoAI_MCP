@@ -20,11 +20,13 @@ const props = defineProps({
   },
 })
 
+const TEXT_MUTED = '#8895a8' // var(--text-muted)
+
 const ROLE_COLORS = {
   owner: getAgentColor('reviewer').hex,
   admin: getAgentColor('implementer').hex,
   member: getAgentColor('documenter').hex,
-  viewer: '#8895a8',
+  viewer: TEXT_MUTED,
 }
 
 const SIZE_CONFIG = {

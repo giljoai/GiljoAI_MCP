@@ -356,7 +356,7 @@ defineExpose({
 }
 
 .configurator-pill {
-  --smooth-border-color: #ffc300;
+  --smooth-border-color: #{$color-brand-yellow};
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -366,7 +366,7 @@ defineExpose({
   font-size: 0.82rem;
   font-weight: 500;
   background: transparent;
-  color: #ffc300;
+  color: $color-brand-yellow;
   border: none;
   cursor: pointer;
   transition: background $transition-fast;
@@ -374,6 +374,6 @@ defineExpose({
 }
 
 .configurator-pill:hover {
-  background: rgba(255, 195, 0, 0.12);
+  background: rgba($color-brand-yellow, 0.12);
 }
 </style>
