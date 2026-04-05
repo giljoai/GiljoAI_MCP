@@ -469,12 +469,6 @@ const search = ref('')
 const filterCategory = ref(null)
 const filterStatus = ref(null)
 
-function clearFilters() {
-  search.value = ''
-  filterCategory.value = null
-  filterStatus.value = null
-}
-
 // Dialogs
 const editDialog = ref(false)
 const deleteDialog = ref(false)
@@ -592,7 +586,6 @@ const remainingUserSlots = computed(() => {
   }
   return Math.max(0, (activeStats.value.userLimit || 7) - (activeStats.value.userActive || 0))
 })
-const systemReservedSlots = computed(() => activeStats.value.systemReserved ?? 1)
 const userAgentLimit = computed(() => activeStats.value.userLimit ?? 7)
 
 // Methods
