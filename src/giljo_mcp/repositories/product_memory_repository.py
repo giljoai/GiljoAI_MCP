@@ -232,38 +232,6 @@ class ProductMemoryRepository:
             )
         return count
 
-    async def update_entry(
-        self,
-        session: AsyncSession,
-        entry_id: UUID,
-        tenant_key: str,
-        **kwargs,
-    ) -> ProductMemoryEntry | None:
-        """
-        Update an existing entry.
-
-        Args:
-            session: Database session
-            entry_id: Entry UUID
-            tenant_key: Tenant isolation key
-            **kwargs: Fields to update
-
-        Returns:
-            Updated entry or None if not found
-        """
-        entry = await self.get_entry_by_id(session, entry_id, tenant_key)
-        if not entry:
-            return None
-
-        for key, value in kwargs.items():
-            if hasattr(entry, key):
-                setattr(entry, key, value)
-
-        entry.updated_at = datetime.now(timezone.utc)
-        await session.flush()
-        await session.refresh(entry)
-        return entry
-
     async def get_entries_for_context(
         self,
         session: AsyncSession,

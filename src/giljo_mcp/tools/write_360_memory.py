@@ -45,6 +45,159 @@ logger = logging.getLogger(__name__)
 SKIP_STATUSES = {"decommissioned"}
 
 
+async def _resolve_project_and_product(
+    session: AsyncSession,
+    project_id: str,
+    tenant_key: str,
+) -> tuple[Any, Any]:
+    """
+    Fetch the Project and its associated Product from the database.
+
+    Both queries are filtered by tenant_key for isolation. Raises
+    ResourceNotFoundError if either record is missing or belongs to
+    a different tenant. Raises ValidationError if the project has no
+    linked product.
+
+    Returns:
+        Tuple of (project, product) ORM instances.
+    """
+    project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
+    project_result = await session.execute(project_stmt)
+    project = project_result.scalar_one_or_none()
+    if iscoroutine(project):
+        project = await project
+
+    if not project:
+        raise ResourceNotFoundError("Project not found or unauthorized for tenant")
+
+    if getattr(project, "tenant_key", None) != tenant_key:
+        raise ResourceNotFoundError("Project not found or unauthorized for tenant")
+
+    if not project.product_id:
+        raise ValidationError("Project not associated with product")
+
+    product_stmt = select(Product).where(
+        Product.id == project.product_id,
+        Product.tenant_key == tenant_key,
+    )
+    product_result = await session.execute(product_stmt)
+    product = product_result.scalar_one_or_none()
+    if iscoroutine(product):
+        product = await product
+
+    if not product:
+        raise ResourceNotFoundError("Product not found for project")
+
+    return project, product
+
+
+async def _resolve_author_info(
+    session: AsyncSession,
+    author_job_id: str | None,
+    tenant_key: str,
+) -> dict[str, Any]:
+    """
+    Resolve the display name and job type for the agent writing the entry.
+
+    Queries the most-recent AgentExecution for author_job_id, filtered by
+    tenant_key. Returns a dict with ``author_name`` and ``author_type`` keys,
+    or an empty dict when no author_job_id is provided.
+    """
+    if not author_job_id:
+        return {}
+
+    execution_stmt = (
+        select(AgentExecution)
+        .options(joinedload(AgentExecution.job))
+        .where(
+            AgentExecution.job_id == author_job_id,
+            AgentExecution.tenant_key == tenant_key,
+        )
+        .order_by(AgentExecution.started_at.desc())
+        .limit(1)
+    )
+    execution_result = await session.execute(execution_stmt)
+    execution = execution_result.scalar_one_or_none()
+
+    if not execution:
+        return {"author_name": None, "author_type": None}
+
+    return {
+        "author_name": execution.agent_name or execution.agent_display_name,
+        "author_type": execution.job.job_type if execution.job else None,
+    }
+
+
+async def _fetch_git_commits_for_project(
+    product_memory: dict[str, Any],
+    project: Any,
+) -> list[dict[str, Any]]:
+    """
+    Fetch GitHub commits for the project if git integration is configured.
+
+    Reads git config from product_memory and calls _fetch_github_commits when
+    both ``repo_name`` and ``repo_owner`` are present. Returns an empty list
+    when git integration is disabled or not configured.
+    """
+    git_config = _get_git_config(product_memory)
+    if not (git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner")):
+        return []
+
+    commits = await _fetch_github_commits(
+        repo_name=git_config.get("repo_name"),
+        repo_owner=git_config.get("repo_owner"),
+        access_token=git_config.get("access_token"),
+        project_created_at=project.created_at,
+        project_completed_at=project.completed_at or datetime.now(timezone.utc),
+    )
+    return commits or []
+
+
+async def _check_and_emit_tuning_staleness(
+    db_manager: DatabaseManager,
+    tenant_key: str,
+    product: Any,
+    websocket_manager: Any = None,
+) -> None:
+    """
+    Check whether the product's context tuning is stale and notify via WebSocket.
+
+    Performs a lightweight integer comparison via ProductTuningService. Emits
+    a ``notification:new`` WebSocket event when the product is due for a
+    context review. Errors are caught and logged at DEBUG level so they never
+    interrupt the calling flow.
+    """
+    try:
+        from giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        tuning_service = ProductTuningService(
+            db_manager=db_manager,
+            tenant_key=tenant_key,
+        )
+        staleness = await tuning_service.check_tuning_staleness(
+            product_id=str(product.id),
+            user_id=str(product.tenant_key),
+        )
+        if staleness.get("is_stale"):
+            await emit_websocket_event(
+                event_type="notification:new",
+                tenant_key=tenant_key,
+                product_id=str(product.id),
+                data={
+                    "type": "context_tuning",
+                    "title": "Context Review Suggested",
+                    "message": (
+                        f"{staleness['projects_since_tune']} projects completed since your last "
+                        f"context review. Tune your product context?"
+                    ),
+                    "severity": "info",
+                    "metadata": {"product_id": str(product.id), "product_name": product.name},
+                },
+            )
+    except (RuntimeError, ValueError, KeyError, OSError) as staleness_err:
+        logger.debug(f"Tuning staleness check skipped: {staleness_err}")
+
+
 async def _check_closeout_readiness(
     session: AsyncSession,
     project_id: str,
@@ -300,36 +453,13 @@ async def write_360_memory(
         session_ctx = db_manager.get_session_async() if owns_session else _provided_session(session)
 
         async with session_ctx as active_session:
-            # Get project with tenant isolation
-            project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
-            project_result = await active_session.execute(project_stmt)
-            project = project_result.scalar_one_or_none()
-            if iscoroutine(project):
-                project = await project
-
-            if not project:
-                raise ResourceNotFoundError("Project not found or unauthorized for tenant")
-
-            if getattr(project, "tenant_key", None) != tenant_key:
-                raise ResourceNotFoundError("Project not found or unauthorized for tenant")
-
-            if not project.product_id:
-                raise ValidationError("Project not associated with product")
-
-            # Get product with tenant isolation
-            product_stmt = select(Product).where(
-                Product.id == project.product_id,
-                Product.tenant_key == tenant_key,
+            project, product = await _resolve_project_and_product(
+                session=active_session,
+                project_id=project_id,
+                tenant_key=tenant_key,
             )
-            product_result = await active_session.execute(product_stmt)
-            product = product_result.scalar_one_or_none()
-            if iscoroutine(product):
-                product = await product
 
-            if not product:
-                raise ResourceNotFoundError("Product not found for project")
-
-            # Handover 0431: Pre-closeout verification
+            # Handover 0431: Pre-closeout verification.
             # Only enforce readiness check for project_completion (not handover_closeout).
             # Handovers document incomplete work in 360 memory rather than requiring clean state.
             if author_job_id and entry_type == "project_completion":
@@ -352,58 +482,27 @@ async def write_360_memory(
                         **verification_result,
                     }
 
-            # Get or initialize product_memory for git config
             product_memory: dict[str, Any] = product.product_memory or {}
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
-            # Get git configuration and fetch commits if enabled
-            git_config = _get_git_config(product_memory)
-            git_commits: list[dict[str, Any | None]] = None
+            git_commits = await _fetch_git_commits_for_project(
+                product_memory=product_memory,
+                project=project,
+            )
 
-            if git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner"):
-                git_commits = await _fetch_github_commits(
-                    repo_name=git_config.get("repo_name"),
-                    repo_owner=git_config.get("repo_owner"),
-                    access_token=git_config.get("access_token"),
-                    project_created_at=project.created_at,
-                    project_completed_at=project.completed_at or datetime.now(timezone.utc),
-                )
-
-            if git_commits is None:
-                git_commits = []
-
-            # Initialize repository
             repo = ProductMemoryRepository()
-
-            # Get next sequence number atomically
             sequence_number = await repo.get_next_sequence(
                 session=active_session,
                 product_id=UUID(product.id),
             )
 
-            # Get author information if job_id provided
-            author_name = None
-            author_type = None
-            if author_job_id:
-                # Query the current execution for this job to get agent_name
-                execution_stmt = (
-                    select(AgentExecution)
-                    .options(joinedload(AgentExecution.job))
-                    .where(
-                        AgentExecution.job_id == author_job_id,
-                        AgentExecution.tenant_key == tenant_key,
-                    )
-                    .order_by(AgentExecution.started_at.desc())
-                    .limit(1)
-                )
-                execution_result = await active_session.execute(execution_stmt)
-                execution = execution_result.scalar_one_or_none()
-                if execution:
-                    author_name = execution.agent_name or execution.agent_display_name
-                    author_type = execution.job.job_type if execution.job else None
+            author_info = await _resolve_author_info(
+                session=active_session,
+                author_job_id=author_job_id,
+                tenant_key=tenant_key,
+            )
 
-            # Create entry in product_memory_entries table
             entry = await repo.create_entry(
                 session=active_session,
                 tenant_key=tenant_key,
@@ -419,8 +518,8 @@ async def write_360_memory(
                 decisions_made=decisions_made,
                 git_commits=git_commits,
                 author_job_id=UUID(author_job_id) if author_job_id else None,
-                author_name=author_name,
-                author_type=author_type,
+                author_name=author_info.get("author_name"),
+                author_type=author_info.get("author_type"),
             )
 
             if owns_session:
@@ -431,7 +530,6 @@ async def write_360_memory(
                 f"(sequence: {sequence_number}, type: {entry_type}, commits: {len(git_commits)})"
             )
 
-            # Emit WebSocket event (Handover 0390c Phase 4)
             await emit_websocket_event(
                 event_type="product:memory:updated",
                 tenant_key=tenant_key,
@@ -439,38 +537,13 @@ async def write_360_memory(
                 data={"entry": entry.to_dict()},
             )
 
-            # Handover 0831: Check tuning staleness after memory write (lightweight integer comparison)
-            try:
-                from giljo_mcp.services.product_tuning_service import ProductTuningService
+            # Handover 0831: Check tuning staleness after memory write.
+            await _check_and_emit_tuning_staleness(
+                db_manager=db_manager,
+                tenant_key=tenant_key,
+                product=product,
+            )
 
-                tuning_service = ProductTuningService(
-                    db_manager=db_manager,
-                    tenant_key=tenant_key,
-                )
-                staleness = await tuning_service.check_tuning_staleness(
-                    product_id=str(product.id),
-                    user_id=str(product.tenant_key),
-                )
-                if staleness.get("is_stale"):
-                    await emit_websocket_event(
-                        event_type="notification:new",
-                        tenant_key=tenant_key,
-                        product_id=str(product.id),
-                        data={
-                            "type": "context_tuning",
-                            "title": "Context Review Suggested",
-                            "message": (
-                                f"{staleness['projects_since_tune']} projects completed since your last "
-                                f"context review. Tune your product context?"
-                            ),
-                            "severity": "info",
-                            "metadata": {"product_id": str(product.id), "product_name": product.name},
-                        },
-                    )
-            except (RuntimeError, ValueError, KeyError, OSError) as staleness_err:
-                logger.debug(f"Tuning staleness check skipped: {staleness_err}")
-
-            # Build success response with optional verification details
             result = {
                 "sequence_number": sequence_number,
                 "entry_id": str(entry.id),
@@ -479,10 +552,8 @@ async def write_360_memory(
                 "message": "360 Memory entry written successfully",
             }
 
-            # Include verification details if author_job_id was provided (Handover 0431)
+            # Include verification details if author_job_id was provided (Handover 0431).
             if author_job_id:
-                # Re-run verification to get the summary counts for the response
-                # (we know it passed at this point, so just get the verified dict)
                 _, verification_result = await _check_closeout_readiness(
                     session=active_session,
                     project_id=project_id,

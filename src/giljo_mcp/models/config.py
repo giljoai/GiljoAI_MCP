@@ -162,11 +162,6 @@ class GitConfig(Base):
             return False
         return not (self.auth_method == "token" and not self.password_encrypted)
 
-    @property
-    def webhook_configured(self) -> bool:
-        """Check if webhook is properly configured"""
-        return bool(self.webhook_url and self.webhook_secret)
-
     def __repr__(self) -> str:
         return f"<GitConfig(id={self.id}, repo_url='{self.repo_url}')>"
 
@@ -434,22 +429,6 @@ class SetupState(Base):
 
         session.flush()
         return state
-
-    def add_validation_failure(self, message: str) -> None:
-        """
-        Add a validation failure message.
-
-        Args:
-            message: Error message describing the validation failure
-        """
-        if self.validation_failures is None:
-            self.validation_failures = []
-
-        failures = list(self.validation_failures)  # Convert to mutable list
-        failures.append({"message": message, "timestamp": datetime.now(timezone.utc).isoformat()})
-        self.validation_failures = failures
-        self.validation_passed = False
-        self.last_validation_at = datetime.now(timezone.utc)
 
     def __repr__(self) -> str:
         return f"<SetupState(id={self.id}, tenant_key='{self.tenant_key}', db_initialized={self.database_initialized})>"
