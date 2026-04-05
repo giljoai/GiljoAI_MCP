@@ -5,21 +5,41 @@
   "created": "2026-04-05",
   "target_score": 9.0,
   "mode": "orchestrator-gated-v3",
+  "credentials": {
+    "sudo_password": "4010",
+    "postgres_password": "4010",
+    "note": "Temporary credentials for this sprint run. Will be changed after completion."
+  },
   "sessions": [
     {
       "id": "0950a",
       "title": "Comprehensive Audit: Establish Baseline Score",
       "handover": "handovers/0950a_AUDIT_BASELINE.md",
-      "status": "pending",
+      "status": "complete",
       "effort": "medium",
       "depends_on": [],
-      "tasks_completed": [],
-      "deviations": [],
-      "blockers_encountered": [],
-      "notes_for_next": "",
-      "cascading_impacts": [],
+      "tasks_completed": [
+        "Ran all 7 automated checks (ruff, eslint, build, boundary, frontend tests, backend tests, startup import)",
+        "Launched 5 parallel audit subagents (backend source, API/security, test suite, frontend hygiene, conventions)",
+        "Scored all 10 dimensions of the quality rubric",
+        "Compiled 95 findings with file:line, severity, and target session assignments",
+        "Wrote audit_baseline.md to prompts/0950_chain/"
+      ],
+      "deviations": [
+        "Ruff 0.15.9 installed fresh (not in venv) — reported 11 EXE rules not in baseline version. Excluded from core comparison but noted.",
+        "Subagent 3 (test suite) ran long; test failure analysis supplemented by direct investigation"
+      ],
+      "blockers_encountered": [
+        "Ruff and pytest not pre-installed in venv — installed during session",
+        "PYTHONPATH needed for startup import check and pytest"
+      ],
+      "notes_for_next": "Overall score dropped to 7.9/10 from 8.5 baseline. Primary drivers: 94 test failures (83 FE + 11 BE), ESLint 17 warnings (budget 8), and accumulated frontend hygiene debt. 0950b should prioritize the 3 SECURITY findings first. The AgentExecution CheckConstraint mismatch (idle/sleeping not in constraint) is the highest-risk item — verify whether the migration actually enforces the constraint before writing a fix. Test failures (0950l) are the biggest single score impact but are downstream in the chain.",
+      "cascading_impacts": [
+        "Frontend test failure count (83) is higher than expected — 0950l may need more time than originally estimated",
+        "ESLint warnings (17) are well over budget — 0950c must remove at least 9 warnings to meet budget of 8"
+      ],
       "orchestrator_directives": "",
-      "summary": ""
+      "summary": "Baseline audit complete. Score: 7.9/10 (down from 8.5). 95 findings across 4 severity levels: 3 SECURITY, 8 HIGH, 62 MEDIUM, 22 LOW. Output: prompts/0950_chain/audit_baseline.md"
     },
     {
       "id": "0950b",
@@ -33,7 +53,7 @@
       "blockers_encountered": [],
       "notes_for_next": "",
       "cascading_impacts": [],
-      "orchestrator_directives": "",
+      "orchestrator_directives": "PRIORITY ORDER from 0950a audit: (1) SECURITY: Add auth to DB health endpoint config.py:691, fix AgentExecution CheckConstraint agent_identity.py:302 to include idle/sleeping, reject CORS wildcards app.py:298-301. (2) HIGH: Fix redundant except in database.py:93, annotate broad catch tool_accessor.py:574. (3) MEDIUM: Fix 4 dict-return endpoints (lifecycle.py:185, configuration.py:175+707, messages.py:272), fix file permissions (chmod -x on 10 files, chmod +x run_api.py), resolve TODO lifecycle.py:68, fix auth pattern in downloads.py:455-575. Read prompts/0950_chain/audit_baseline.md for full details. Use PYTHONPATH=. for pytest and startup check. Ruff needs installing: pip install ruff. sudo password and postgres password: 4010.",
       "summary": ""
     },
     {
@@ -48,7 +68,7 @@
       "blockers_encountered": [],
       "notes_for_next": "",
       "cascading_impacts": [],
-      "orchestrator_directives": "",
+      "orchestrator_directives": "From 0950a audit: 17 ESLint warnings (budget 8). 15 are unused vars/imports across 8 components, 2 are console.log. Also fix 4 Sass @import -> @use deprecations (AgentExport.vue, McpIntegrationCard.vue, SerenaIntegrationCard.vue, GitIntegrationCard.vue). Also extract hardcoded version from AppBar.vue:134 to use package.json. Read prompts/0950_chain/audit_baseline.md for full finding details with file:line references. NOTE: 0950b is running in parallel on backend — do NOT touch any Python files.",
       "summary": ""
     },
     {
