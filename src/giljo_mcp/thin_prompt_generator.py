@@ -10,7 +10,9 @@ Architecture (Handover 0315):
 
 Platform-specific prompt builders extracted to giljo_mcp.prompts/ (Handover 0950g):
 - ClaudePromptBuilder: Claude Code CLI execution prompts
-- CodexPromptBuilder: Codex, Gemini, and multi-terminal execution prompts
+- CodexPromptBuilder: Codex CLI execution prompts
+- GeminiPromptBuilder: Gemini CLI execution prompts
+- MultiTerminalPromptBuilder: Platform-agnostic multi-terminal orchestrator prompts
 - StagingPromptBuilder: Staging-phase prompts and mission regeneration
 
 Author: GiljoAI Development Team
@@ -31,6 +33,8 @@ from src.giljo_mcp.models import Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.prompts.claude_prompt_builder import ClaudePromptBuilder
 from src.giljo_mcp.prompts.codex_prompt_builder import CodexPromptBuilder
+from src.giljo_mcp.prompts.gemini_prompt_builder import GeminiPromptBuilder
+from src.giljo_mcp.prompts.multi_terminal_prompt_builder import MultiTerminalPromptBuilder
 from src.giljo_mcp.prompts.staging_prompt_builder import StagingPromptBuilder
 
 
@@ -271,7 +275,9 @@ class ThinClientPromptGenerator:
 
     Platform-specific prompt builders are in giljo_mcp.prompts/ (0950g):
     - ClaudePromptBuilder: Claude Code CLI mode
-    - CodexPromptBuilder: Codex/Gemini/multi-terminal modes
+    - CodexPromptBuilder: Codex CLI mode
+    - GeminiPromptBuilder: Gemini CLI mode
+    - MultiTerminalPromptBuilder: Platform-agnostic multi-terminal mode
     - StagingPromptBuilder: Staging and mission regeneration
     """
 
@@ -280,6 +286,8 @@ class ThinClientPromptGenerator:
         self.tenant_key = tenant_key
         self._claude_builder = ClaudePromptBuilder()
         self._codex_builder = CodexPromptBuilder()
+        self._gemini_builder = GeminiPromptBuilder()
+        self._multi_terminal_builder = MultiTerminalPromptBuilder()
         self._staging_builder = StagingPromptBuilder()
 
     async def generate(
@@ -660,10 +668,10 @@ class ThinClientPromptGenerator:
             ValueError: If prompt_type is unknown
         """
         builders = {
-            "multi_terminal_orchestrator": self._codex_builder.build_multi_terminal_prompt,
+            "multi_terminal_orchestrator": self._multi_terminal_builder.build_execution_prompt,
             "claude_code_execution": self._claude_builder.build_execution_prompt,
             "codex_execution": self._codex_builder.build_execution_prompt,
-            "gemini_execution": self._codex_builder.build_gemini_execution_prompt,
+            "gemini_execution": self._gemini_builder.build_execution_prompt,
         }
         builder = builders.get(prompt_type)
         if not builder:
