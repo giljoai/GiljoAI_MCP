@@ -225,11 +225,12 @@
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="editDialog" max-width="900px" persistent retain-focus scrollable>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <span class="text-h5">{{ editingTemplate.id ? 'Edit' : 'Create' }} Template</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="closeEditDialog" />
-        </v-card-title>
+        <div class="dlg-header">
+          <span class="dlg-title">{{ editingTemplate.id ? 'Edit' : 'Create' }} Template</span>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="closeEditDialog">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-card-text>
           <v-container>
@@ -351,25 +352,26 @@
           </v-container>
         </v-card-text>
 
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" @click="closeEditDialog"> Cancel </v-btn>
           <v-btn color="primary" variant="flat" :loading="saving" @click="saveTemplateAndPreview">
             Save and Generate Preview
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteDialog" max-width="500px" persistent retain-focus>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <v-icon color="error" class="mr-2">mdi-alert</v-icon>
-          <span class="text-h5">Permanently Delete Template</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="deleteDialog = false" />
-        </v-card-title>
+        <div class="dlg-header dlg-header--danger">
+          <v-icon class="dlg-icon">mdi-alert</v-icon>
+          <span class="dlg-title">Permanently Delete Template</span>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="deleteDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
         <v-card-text>
           <v-alert type="error" variant="tonal" class="mb-4">
             <strong>This action cannot be undone.</strong>
@@ -382,25 +384,26 @@
             This will remove the template and all its version history.
           </p>
         </v-card-text>
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
           <v-btn color="error" variant="flat" :loading="deleting" @click="deleteTemplate">
             Delete Permanently
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
     <!-- Reset Confirmation Dialog -->
     <v-dialog v-model="resetDialog" max-width="600px" persistent retain-focus>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <v-icon color="warning" class="mr-2">mdi-alert</v-icon>
-          <span class="text-h5">Confirm Reset to Default</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="resetDialog = false" />
-        </v-card-title>
+        <div class="dlg-header dlg-header--warning">
+          <v-icon class="dlg-icon">mdi-alert</v-icon>
+          <span class="dlg-title">Confirm Reset to Default</span>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="resetDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
         <v-card-text>
           <p class="mb-4">
             Are you sure you want to reset the template "{{ resettingTemplate?.name }}" to the
@@ -414,13 +417,13 @@
             This action creates a backup in version history before resetting.
           </p>
         </v-card-text>
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" @click="resetDialog = false">Cancel</v-btn>
           <v-btn color="warning" variant="flat" :loading="resetting" @click="resetTemplate">
             Reset to Default
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 

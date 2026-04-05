@@ -809,7 +809,7 @@ async function regenerateConsolidation() {
   flex-direction: column;
   max-height: min(80vh, 900px);
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10) !important; /* !important: :deep() must override Vuetify v-card inline box-shadow */
 }
 
 :deep(.product-details-body) {
@@ -818,7 +818,7 @@ async function regenerateConsolidation() {
 }
 
 :deep(.doc-entry-card) {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10) !important; /* !important: :deep() must override Vuetify v-card inline box-shadow */
 }
 
 .detail-section {

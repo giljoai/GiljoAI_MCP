@@ -93,7 +93,7 @@
           <template v-slot:loading>
             <div class="text-center pa-4">
               <v-progress-circular indeterminate color="primary" size="48" />
-              <p class="text-body-2 text-medium-emphasis mt-2">Loading tasks...</p>
+              <p class="text-body-2 text-muted-a11y mt-2">Loading tasks...</p>
             </div>
           </template>
 
@@ -229,7 +229,7 @@
                     mdi-alert
                   </v-icon>
                   <span v-if="item.due_date">{{ formatDate(item.due_date) }}</span>
-                  <span v-else class="text-medium-emphasis">Set date</span>
+                  <span v-else class="text-muted-a11y">Set date</span>
                 </div>
               </template>
               <v-card class="compact-date-picker">
@@ -319,12 +319,13 @@
     <!-- Create/Edit Task Dialog -->
     <v-dialog v-model="showTaskDialog" max-width="600" persistent scrollable>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
-          <span>{{ editingTask ? 'Edit Task' : 'Create Task' }}</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="cancelTask" />
-        </v-card-title>
+        <div class="dlg-header">
+          <v-icon class="dlg-icon">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
+          <span class="dlg-title">{{ editingTask ? 'Edit Task' : 'Create Task' }}</span>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="cancelTask">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-card-text>
           <v-form ref="taskForm">
@@ -381,13 +382,13 @@
           </v-form>
         </v-card-text>
 
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" @click="cancelTask"> Cancel </v-btn>
           <v-btn color="primary" variant="flat" :loading="saving" @click="saveTask">
             {{ editingTask ? 'Update' : 'Create' }}
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
@@ -418,7 +419,7 @@
       <p class="text-body-1 mb-2">
         Convert task <strong>"{{ conversionTaskName }}"</strong> to a project?
       </p>
-      <p class="text-body-2 text-medium-emphasis">
+      <p class="text-body-2 text-muted-a11y">
         This will create a new project in the active product with the task's title and
         description.
       </p>

@@ -214,10 +214,13 @@
     <!-- Gemini Subagent Notice Dialog -->
     <v-dialog v-model="showGeminiNotice" max-width="520">
       <v-card class="smooth-border">
-        <v-card-title class="d-flex align-center ga-2">
-          <v-icon color="warning">mdi-alert-circle</v-icon>
-          Gemini Subagent Mode
-        </v-card-title>
+        <div class="dlg-header dlg-header--warning">
+          <v-icon class="dlg-icon">mdi-alert-circle</v-icon>
+          <span class="dlg-title">Gemini Subagent Mode</span>
+          <v-btn icon variant="text" class="dlg-close" @click="showGeminiNotice = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
         <v-card-text class="gemini-dialog-body">
           <p>
             The Gemini CLI does not maintain an active orchestrator while subagents are executing.
@@ -234,10 +237,10 @@
             Stay attentive during execution so you can intervene quickly and not waste tokens.
           </p>
         </v-card-text>
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" @click="showGeminiNotice = false">Got it</v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
