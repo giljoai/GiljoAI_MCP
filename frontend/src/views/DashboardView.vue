@@ -120,27 +120,27 @@
 
     <!-- Mini Stats Row (6 compact counters) -->
     <div class="mini-stats main-window-reveal main-window-delay-6">
-      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-documenter-primary, #5EC48E)">
+      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-documenter-primary)">
         <div class="mini-stat-label">Active</div>
         <div class="mini-stat-value">{{ miniStats.active }}</div>
       </div>
-      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-implementer-primary, #6DB3E4)">
+      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-implementer-primary)">
         <div class="mini-stat-label">Tasks</div>
         <div class="mini-stat-value">{{ miniStats.tasks }}</div>
       </div>
-      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-analyzer-primary, #E07872)">
+      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-analyzer-primary)">
         <div class="mini-stat-label">API Calls</div>
         <div class="mini-stat-value">{{ miniStats.apiCalls }}</div>
       </div>
-      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-reviewer-primary, #AC80CC)">
+      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-reviewer-primary)">
         <div class="mini-stat-label">MCP Calls</div>
         <div class="mini-stat-value">{{ miniStats.mcpCalls }}</div>
       </div>
-      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-tester-primary, #EDBA4A)">
+      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-tester-primary)">
         <div class="mini-stat-label">Exec: Auto</div>
         <div class="mini-stat-value">{{ miniStats.execAuto }}</div>
       </div>
-      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-orchestrator-primary, #D4B08A)">
+      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-orchestrator-primary)">
         <div class="mini-stat-label">Exec: Supervised</div>
         <div class="mini-stat-value">{{ miniStats.execSupervised }}</div>
       </div>
@@ -265,18 +265,24 @@ const mcpCallCount = ref(0)
 const agentsSpawned = ref(0)
 const recentCommits = ref([])
 
-// Status colors — harmonized with StatusBadge.vue
+// Status colors — traced to design-tokens.scss
+const COLOR_SURFACE = '#ffffff'  // $color-surface
+const COLOR_MUTED = '#9e9e9e'    // $color-text-muted
+const COLOR_COMPLETE = '#67bd6d' // $color-status-complete
+const COLOR_BRAND = '#ffc300'    // $color-brand-yellow
+const COLOR_FAILED = '#c6298c'   // $color-status-failed
+const COLOR_STAGED = '#ffc107'   // $color-status-staged
+
 const statusColors = {
-  active: '#ffffff', /* design-token-exempt: chart color — $color-surface */
-  inactive: '#9e9e9e', /* design-token-exempt: chart color — $color-text-muted */
-  completed: '#67bd6d', /* design-token-exempt: chart color — $color-status-complete */
-  cancelled: '#ffc300', /* design-token-exempt: chart color — $color-brand-yellow */
-  terminated: '#c6298c', /* design-token-exempt: chart color — $color-status-failed */
-  staged: '#ffc107', /* design-token-exempt: chart color — closest $color-brand-yellow */
+  active: COLOR_SURFACE,
+  inactive: COLOR_MUTED,
+  completed: COLOR_COMPLETE,
+  cancelled: COLOR_BRAND,
+  terminated: COLOR_FAILED,
+  staged: COLOR_STAGED,
 }
 
-// Default fallback color
-const defaultAgentColor = '#9e9e9e' /* design-token-exempt: chart color — $color-text-muted */
+const defaultAgentColor = COLOR_MUTED
 
 // Helper: build segments array from data
 function buildSegments(entries, total) {
@@ -301,7 +307,7 @@ const statusPill = computed(() => {
     entries.push({
       label: status.charAt(0).toUpperCase() + status.slice(1),
       count,
-      color: statusColors[status] || '#9e9e9e',
+      color: statusColors[status] || COLOR_MUTED,
     })
   }
   const total = entries.reduce((a, e) => a + e.count, 0)
@@ -313,7 +319,7 @@ const taxonomyPill = computed(() => {
   const entries = dist.map(item => ({
     label: item.label || 'Untyped',
     count: item.count || 0,
-    color: item.color || '#9e9e9e',
+    color: item.color || COLOR_MUTED,
   }))
   const total = entries.reduce((a, e) => a + e.count, 0)
   return { total, segments: buildSegments(entries, total) }

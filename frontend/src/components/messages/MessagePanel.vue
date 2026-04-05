@@ -326,8 +326,8 @@ onUnmounted(() => {
   border-radius: $border-radius-default;
   font-size: 0.72rem;
   font-weight: 600;
-  background: rgba(109, 179, 228, 0.15);
-  color: #6DB3E4;
+  background: var(--agent-implementor-tinted);
+  color: $color-agent-implementor;
   min-width: 24px;
 }
 
@@ -341,12 +341,12 @@ onUnmounted(() => {
 }
 
 .connection-live {
-  background: rgba(103, 189, 109, 0.15);
-  color: #67bd6d;
+  background: rgba($color-accent-success, 0.15);
+  color: $color-accent-success;
 }
 
 .connection-off {
-  background: rgba(224, 120, 114, 0.15);
-  color: #E07872;
+  background: var(--agent-analyzer-tinted);
+  color: $color-agent-analyzer;
 }
 </style>

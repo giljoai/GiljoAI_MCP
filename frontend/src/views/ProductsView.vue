@@ -151,7 +151,7 @@
                       <div v-if="product.vision_documents?.length > 0" class="mt-2 d-flex ga-1 flex-wrap">
                         <span
                           class="vision-chip"
-                          :style="getVisionChunkedCount(product) > 0 ? 'background: rgba(103,189,109,0.15); color: #67bd6d' : 'background: rgba(255,152,0,0.15); color: #ff9800'"
+                          :style="getVisionChunkedCount(product) > 0 ? 'background: rgba(103,189,109,0.15); color: var(--color-accent-success)' : 'background: rgba(255,152,0,0.15); color: var(--status-blocked)'"
                         >
                           <v-icon size="12" class="mr-1">mdi-file-document</v-icon>
                           {{ product.vision_documents.length }} docs
@@ -159,7 +159,7 @@
                         <span
                           v-if="getVisionChunkedCount(product) > 0"
                           class="vision-chip"
-                          style="background: rgba(109,179,228,0.15); color: #6DB3E4"
+                          style="background: var(--agent-implementor-tinted); color: var(--agent-implementor-primary)"
                         >
                           <v-icon size="12" class="mr-1">mdi-database</v-icon>
                           {{ getVisionTotalChunks(product) }} chunks
@@ -1147,8 +1147,8 @@ onMounted(async () => {
 }
 
 .product-status-active {
-  background: rgba(103, 189, 109, 0.15);
-  color: #67bd6d;
+  background: rgba($color-accent-success, 0.15);
+  color: $color-accent-success;
 }
 
 .product-text-secondary {
