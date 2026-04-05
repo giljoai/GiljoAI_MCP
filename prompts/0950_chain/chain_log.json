@@ -149,7 +149,7 @@
       "blockers_encountered": [],
       "notes_for_next": "",
       "cascading_impacts": [],
-      "orchestrator_directives": "",
+      "orchestrator_directives": "0950d COMPLETE. All dialog conversions done. Files edited by 0950d: DonutChart.vue, MessageDetailView.vue, NotificationDropdown.vue, TasksView.vue, ProjectsView.vue, RecentMemoriesList.vue, ProjectTabs.vue, ProductForm.vue, ForgotPasswordPin.vue, TemplateManager.vue, AiToolConfigWizard.vue, ConnectionStatus.vue, UserManager.vue, ProjectLaunchView.vue, OrganizationSettings.vue, ProductDetailsDialog.vue, AgentTableView.vue, NavigationDrawer.vue. From audit findings #16-30: ~30 hardcoded hex colors across ~12 files + 3 dead SCSS mixins. Key targets: RecentProjectsList.vue (7 hex), StatusBadge.vue (5), RoleBadge.vue (1), MessagePanel.vue (3), NavigationDrawer.vue (5), WelcomeView.vue (agent palette), SetupStep2Connect.vue (2), statusConfig.js (full color map), SystemSettings.vue (3), UserSettings.vue (3), AiToolConfigWizard.vue (1), BroadcastPanel.vue (1). Delete 3 dead SCSS mixins in agent-colors.scss. 0950g is running in parallel on backend — do NOT touch Python files.",
       "summary": ""
     },
     {
@@ -198,7 +198,7 @@
       "blockers_encountered": [],
       "notes_for_next": "",
       "cascading_impacts": [],
-      "orchestrator_directives": "",
+      "orchestrator_directives": "0950f COMPLETE. 7 dead methods deleted, no cascading issues. This is the first god-class split — take extra care. ThinClientPromptGenerator is 1676 lines with 2 functions over 200 lines (_build_claude_code_execution_prompt 304 lines, generate 271 lines). Create src/giljo_mcp/prompts/ subpackage. Extract platform-specific builders. Main dispatcher should stay under 600 lines. CRITICAL: grep ALL callers before moving any method. Run startup check + tests after each extraction. 0950e is running in parallel on frontend — do NOT touch Vue/JS files. Activate venv: source venv/bin/activate && export PYTHONPATH=. IMPORTANT: install.py does NOT import from thin_prompt_generator — safe to refactor.",
       "summary": ""
     },
     {
