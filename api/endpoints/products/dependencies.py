@@ -9,6 +9,7 @@ from fastapi import Depends
 from api.dependencies import get_tenant_key
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.services import ProductService
+from src.giljo_mcp.services.product_vision_service import ProductVisionService
 
 
 async def get_db_manager() -> DatabaseManager:
@@ -38,3 +39,20 @@ async def get_product_service(
         ProductService instance configured for the current tenant
     """
     return ProductService(db_manager=db_manager, tenant_key=tenant_key)
+
+
+async def get_product_vision_service(
+    tenant_key: str = Depends(get_tenant_key),
+    db_manager: DatabaseManager = Depends(get_db_manager),
+) -> ProductVisionService:
+    """
+    Get ProductVisionService instance with tenant isolation.
+
+    Args:
+        tenant_key: Tenant key from request context
+        db_manager: Database manager instance
+
+    Returns:
+        ProductVisionService instance configured for the current tenant
+    """
+    return ProductVisionService(db_manager=db_manager, tenant_key=tenant_key)

@@ -384,12 +384,17 @@ class TestIntegrationMethodExceptions:
 
     @pytest.mark.asyncio
     async def test_upload_vision_document_raises_not_found_error(self, mock_db_manager):
-        """Should raise ResourceNotFoundError when product not found."""
+        """Should raise ResourceNotFoundError when product not found.
+
+        Handover 0950i: upload_vision_document moved to ProductVisionService.
+        """
+        from src.giljo_mcp.services.product_vision_service import ProductVisionService
+
         db_manager, session = mock_db_manager
 
         session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
-        service = ProductService(db_manager, "test-tenant")
+        service = ProductVisionService(db_manager, "test-tenant")
 
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await service.upload_vision_document(
@@ -397,10 +402,6 @@ class TestIntegrationMethodExceptions:
             )
 
         assert "not found" in exc_info.value.message.lower() or "access denied" in exc_info.value.message.lower()
-
-    # NOTE: upload_vision_document doesn't raise ValidationError for empty filename/content
-    # It creates a document successfully with empty content. Validation would need to be
-    # added to the method if we want to enforce non-empty content.
 
 
 # ============================================================================
