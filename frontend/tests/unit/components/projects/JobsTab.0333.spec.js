@@ -21,6 +21,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createVuetify } from 'vuetify'
 import JobsTab from '@/components/projects/JobsTab.vue'
 import { useUserStore } from '@/stores/user'
+import { useProjectStateStore } from '@/stores/projectStateStore'
 
 const vuetify = createVuetify()
 
@@ -88,6 +89,11 @@ describe('JobsTab shouldShowCopyButton behavior (0333 Phase 3)', () => {
       id: 'user-1',
       tenant_key: 'tenant-123',
     }
+
+    // Seed projectStateStore with stagingComplete=true so shouldShowCopyButton
+    // (moved to usePlayButton composable) progresses past the staging guard.
+    const projectStateStore = useProjectStateStore()
+    projectStateStore.setStagingComplete('proj-123', true)
 
     mockShowToast = vi.fn()
   })
