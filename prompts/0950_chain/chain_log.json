@@ -32,17 +32,17 @@
         "Wrote audit_baseline.md to prompts/0950_chain/"
       ],
       "deviations": [
-        "Ruff 0.15.9 installed fresh (not in venv) — reported 11 EXE rules not in baseline version. Excluded from core comparison but noted.",
+        "Ruff 0.15.9 installed fresh (not in venv) \u2014 reported 11 EXE rules not in baseline version. Excluded from core comparison but noted.",
         "Subagent 3 (test suite) ran long; test failure analysis supplemented by direct investigation"
       ],
       "blockers_encountered": [
-        "Ruff and pytest not pre-installed in venv — installed during session",
+        "Ruff and pytest not pre-installed in venv \u2014 installed during session",
         "PYTHONPATH needed for startup import check and pytest"
       ],
-      "notes_for_next": "Overall score dropped to 7.9/10 from 8.5 baseline. Primary drivers: 94 test failures (83 FE + 11 BE), ESLint 17 warnings (budget 8), and accumulated frontend hygiene debt. 0950b should prioritize the 3 SECURITY findings first. The AgentExecution CheckConstraint mismatch (idle/sleeping not in constraint) is the highest-risk item — verify whether the migration actually enforces the constraint before writing a fix. Test failures (0950l) are the biggest single score impact but are downstream in the chain.",
+      "notes_for_next": "Overall score dropped to 7.9/10 from 8.5 baseline. Primary drivers: 94 test failures (83 FE + 11 BE), ESLint 17 warnings (budget 8), and accumulated frontend hygiene debt. 0950b should prioritize the 3 SECURITY findings first. The AgentExecution CheckConstraint mismatch (idle/sleeping not in constraint) is the highest-risk item \u2014 verify whether the migration actually enforces the constraint before writing a fix. Test failures (0950l) are the biggest single score impact but are downstream in the chain.",
       "cascading_impacts": [
-        "Frontend test failure count (83) is higher than expected — 0950l may need more time than originally estimated",
-        "ESLint warnings (17) are well over budget — 0950c must remove at least 9 warnings to meet budget of 8"
+        "Frontend test failure count (83) is higher than expected \u2014 0950l may need more time than originally estimated",
+        "ESLint warnings (17) are well over budget \u2014 0950c must remove at least 9 warnings to meet budget of 8"
       ],
       "orchestrator_directives": "",
       "summary": "Baseline audit complete. Score: 7.9/10 (down from 8.5). 95 findings across 4 severity levels: 3 SECURITY, 8 HIGH, 62 MEDIUM, 22 LOW. Output: prompts/0950_chain/audit_baseline.md"
@@ -53,15 +53,17 @@
       "handover": "handovers/0950b_BACKEND_QUICK_WINS.md",
       "status": "complete",
       "effort": "light-medium",
-      "depends_on": ["0950a"],
+      "depends_on": [
+        "0950a"
+      ],
       "tasks_completed": [
         "SECURITY: Added Depends(get_current_active_user) to /health/database endpoint (configuration.py)",
         "SECURITY: Added idle+sleeping to AgentExecution CheckConstraint + incremental migration (agent_identity.py, baseline_v35)",
         "SECURITY: CORS wildcard entries now filtered out instead of just warned (app.py)",
-        "HIGH: Fixed redundant except (ImportError, Exception) → except Exception with BLE001 noqa (database.py)",
+        "HIGH: Fixed redundant except (ImportError, Exception) \u2192 except Exception with BLE001 noqa (database.py)",
         "HIGH: Annotated broad catch in tool_accessor.py:574",
         "MEDIUM: Converted 4 dict-return endpoints to Pydantic response models (lifecycle.py, configuration.py x2, messages.py)",
-        "MEDIUM: Resolved lifecycle.py:68 TODO — ProductService handles project deactivation internally (Option B)",
+        "MEDIUM: Resolved lifecycle.py:68 TODO \u2014 ProductService handles project deactivation internally (Option B)",
         "MEDIUM: Refactored downloads.py bootstrap-prompt and generate-token to use Depends(get_current_active_user)",
         "LOW: Fixed file permissions (chmod -x on 10 __init__.py files, chmod +x on run_api.py)",
         "LOW: Deleted stale # REMOVED: comment in users.py:26",
@@ -69,14 +71,14 @@
         "LOW: Added [tool.ruff] config section to pyproject.toml"
       ],
       "deviations": [
-        "Renamed test_database_connection → check_database_health to avoid PT028 ruff false positive (function name starts with test_)",
-        "Used venv instead of system Python for validation — system packages lack project dependencies"
+        "Renamed test_database_connection \u2192 check_database_health to avoid PT028 ruff false positive (function name starts with test_)",
+        "Used venv instead of system Python for validation \u2014 system packages lack project dependencies"
       ],
       "blockers_encountered": [],
-      "notes_for_next": "All 13 0950b findings resolved. Zero new test failures introduced — the 11 pre-existing failures in test_project_service_helpers.py remain (assigned to 0950l). Ruff passes clean. CORS wildcards are now actively rejected. The DB health endpoint now requires auth. The incremental migration 0950b_exec_status must be applied to running databases with: alembic upgrade head. 0950f (next in backend chain) can proceed — dead code removal is unblocked.",
+      "notes_for_next": "All 13 0950b findings resolved. Zero new test failures introduced \u2014 the 11 pre-existing failures in test_project_service_helpers.py remain (assigned to 0950l). Ruff passes clean. CORS wildcards are now actively rejected. The DB health endpoint now requires auth. The incremental migration 0950b_exec_status must be applied to running databases with: alembic upgrade head. 0950f (next in backend chain) can proceed \u2014 dead code removal is unblocked.",
       "cascading_impacts": [
-        "The /health/database endpoint now requires authentication — any monitoring scripts calling it unauthenticated will need updating",
-        "CORS wildcard rejection means config.yaml entries with * are silently stripped — document this if needed"
+        "The /health/database endpoint now requires authentication \u2014 any monitoring scripts calling it unauthenticated will need updating",
+        "CORS wildcard rejection means config.yaml entries with * are silently stripped \u2014 document this if needed"
       ],
       "orchestrator_directives": "PRIORITY ORDER from 0950a audit: (1) SECURITY: Add auth to DB health endpoint config.py:691, fix AgentExecution CheckConstraint agent_identity.py:302 to include idle/sleeping, reject CORS wildcards app.py:298-301. (2) HIGH: Fix redundant except in database.py:93, annotate broad catch tool_accessor.py:574. (3) MEDIUM: Fix 4 dict-return endpoints (lifecycle.py:185, configuration.py:175+707, messages.py:272), fix file permissions (chmod -x on 10 files, chmod +x run_api.py), resolve TODO lifecycle.py:68, fix auth pattern in downloads.py:455-575. Read prompts/0950_chain/audit_baseline.md for full details. Use PYTHONPATH=. for pytest and startup check. Ruff needs installing: pip install ruff. sudo password and postgres password: 4010.",
       "summary": "All 13 assigned findings resolved: 3 SECURITY (auth on DB health, CheckConstraint +idle/sleeping, CORS wildcard rejection), 2 HIGH (redundant except, broad catch annotation), 6 MEDIUM (4 dict-returns to Pydantic models, lifecycle TODO, downloads auth pattern), 4 LOW (file permissions, stale comment, 3 broad catch annotations, ruff config). Zero new test failures. Ruff clean. Startup OK."
@@ -87,28 +89,30 @@
       "handover": "handovers/0950c_ESLINT_COMMENTED_CODE.md",
       "status": "complete",
       "effort": "light",
-      "depends_on": ["0950a"],
+      "depends_on": [
+        "0950a"
+      ],
       "tasks_completed": [
-        "Fixed 16 of 17 ESLint warnings (17 → 1, budget 8): removed 15 unused vars/imports across 8 components, changed 2 console.log to console.warn, renamed 1 unused param to _payload",
-        "Fixed 4 Sass @import → @use deprecations (AgentExport.vue, McpIntegrationCard.vue, SerenaIntegrationCard.vue, GitIntegrationCard.vue) — build now emits zero Sass deprecation warnings",
+        "Fixed 16 of 17 ESLint warnings (17 \u2192 1, budget 8): removed 15 unused vars/imports across 8 components, changed 2 console.log to console.warn, renamed 1 unused param to _payload",
+        "Fixed 4 Sass @import \u2192 @use deprecations (AgentExport.vue, McpIntegrationCard.vue, SerenaIntegrationCard.vue, GitIntegrationCard.vue) \u2014 build now emits zero Sass deprecation warnings",
         "Extracted hardcoded version 'Beta 1.0.0' from AppBar.vue to dynamic import from package.json",
-        "Scanned Vue/JS files for commented-out code — none found",
+        "Scanned Vue/JS files for commented-out code \u2014 none found",
         "Fixed 6 test regressions caused by dead code removal (3 ProjectsView, 1 AgentTableView, 2 AgentMissionEditModal)",
         "Skipped Python files per orchestrator directive (0950b running in parallel)"
       ],
       "deviations": [
-        "1 ESLint warning remains (vue/no-v-html in DatabaseConnection.vue) — eslint-disable-next-line comment not suppressing in this eslint-plugin-vue version. Content is DOMPurify-sanitized, no XSS risk. 1 warning is well within budget of 8.",
-        "Removing statusFilterOptions cascaded to statusCounts being unused — deleted both. Test 'filters counts by active product' kept but statusCounts assertion removed.",
-        "No commented-out code found in Vue/JS files — Phase 4 was a no-op"
+        "1 ESLint warning remains (vue/no-v-html in DatabaseConnection.vue) \u2014 eslint-disable-next-line comment not suppressing in this eslint-plugin-vue version. Content is DOMPurify-sanitized, no XSS risk. 1 warning is well within budget of 8.",
+        "Removing statusFilterOptions cascaded to statusCounts being unused \u2014 deleted both. Test 'filters counts by active product' kept but statusCounts assertion removed.",
+        "No commented-out code found in Vue/JS files \u2014 Phase 4 was a no-op"
       ],
       "blockers_encountered": [],
       "notes_for_next": "0950d: Components edited by 0950c (avoid simultaneous edits): TemplateManager.vue, RecentProjectsList.vue, AgentTableView.vue, AgentJobModal.vue, AgentMissionEditModal.vue, ProjectTabs.vue, ProjectsView.vue, DatabaseConnection.vue, AppBar.vue, AgentExport.vue, McpIntegrationCard.vue, SerenaIntegrationCard.vue, GitIntegrationCard.vue. Also edited: configService.js, websocket.js, products.js. ESLint is now at 1 warning (budget 8). The remaining v-html in DatabaseConnection.vue:122 is safe (DOMPurify-sanitized). Frontend test count unchanged at 83 failures (pre-existing).",
       "cascading_impacts": [
-        "statusCounts computed removed from ProjectsView.vue — if 0950d or 0950e needs status counts, they must re-add it",
-        "goToIntegrations function removed from ProjectTabs.vue — was dead code, but if 0950d adds navigation UI to integrations tab it needs a new function"
+        "statusCounts computed removed from ProjectsView.vue \u2014 if 0950d or 0950e needs status counts, they must re-add it",
+        "goToIntegrations function removed from ProjectTabs.vue \u2014 was dead code, but if 0950d adds navigation UI to integrations tab it needs a new function"
       ],
-      "orchestrator_directives": "From 0950a audit: 17 ESLint warnings (budget 8). 15 are unused vars/imports across 8 components, 2 are console.log. Also fix 4 Sass @import -> @use deprecations (AgentExport.vue, McpIntegrationCard.vue, SerenaIntegrationCard.vue, GitIntegrationCard.vue). Also extract hardcoded version from AppBar.vue:134 to use package.json. Read prompts/0950_chain/audit_baseline.md for full finding details with file:line references. NOTE: 0950b is running in parallel on backend — do NOT touch any Python files.",
-      "summary": "ESLint warnings reduced from 17 to 1 (budget 8). Fixed 4 Sass @import deprecations. Extracted AppBar version from package.json. No commented-out code found in frontend. 6 test regressions from dead code removal fixed — test count unchanged at 83 pre-existing failures."
+      "orchestrator_directives": "From 0950a audit: 17 ESLint warnings (budget 8). 15 are unused vars/imports across 8 components, 2 are console.log. Also fix 4 Sass @import -> @use deprecations (AgentExport.vue, McpIntegrationCard.vue, SerenaIntegrationCard.vue, GitIntegrationCard.vue). Also extract hardcoded version from AppBar.vue:134 to use package.json. Read prompts/0950_chain/audit_baseline.md for full finding details with file:line references. NOTE: 0950b is running in parallel on backend \u2014 do NOT touch any Python files.",
+      "summary": "ESLint warnings reduced from 17 to 1 (budget 8). Fixed 4 Sass @import deprecations. Extracted AppBar version from package.json. No commented-out code found in frontend. 6 test regressions from dead code removal fixed \u2014 test count unchanged at 83 pre-existing failures."
     },
     {
       "id": "0950d",
@@ -116,7 +120,9 @@
       "handover": "handovers/0950d_DIALOG_CONVENTION.md",
       "status": "complete",
       "effort": "medium",
-      "depends_on": ["0950c"],
+      "depends_on": [
+        "0950c"
+      ],
       "tasks_completed": [
         "Replaced all 12 text-medium-emphasis usages with text-muted-a11y (DonutChart, MessageDetailView, NotificationDropdown, TasksView x3, ProjectsView x4)",
         "Converted 15 dialog v-card-title to .dlg-header across 12 components (RecentMemoriesList, ProjectTabs, ProductForm, ForgotPasswordPin, TemplateManager x3, AiToolConfigWizard, ConnectionStatus, UserManager x4, TasksView, ProjectsView x3, ProjectLaunchView, OrganizationSettings)",
@@ -126,17 +132,17 @@
         "Added !important justification comments to 7 instances across 4 files (ProductDetailsDialog x2, AgentTableView, NavigationDrawer x2, ProductsView x3)"
       ],
       "deviations": [
-        "AiToolConfigWizard has header-only conversion (no footer needed — dialog has no action buttons, uses copy-to-clipboard workflow)",
-        "ConnectionStatus debug dialog footer uses flex-wrap + justify-start override style since it has 4 action buttons plus a switch — not a standard Cancel/Action layout",
+        "AiToolConfigWizard has header-only conversion (no footer needed \u2014 dialog has no action buttons, uses copy-to-clipboard workflow)",
+        "ConnectionStatus debug dialog footer uses flex-wrap + justify-start override style since it has 4 action buttons plus a switch \u2014 not a standard Cancel/Action layout",
         "UserManager status toggle dialog uses dynamic header variant (:class binding) since it toggles between activate (plain) and deactivate (warning)"
       ],
       "blockers_encountered": [],
-      "notes_for_next": "0950e: Vue files edited by 0950d — plan hex sweep accordingly: DonutChart.vue, MessageDetailView.vue, NotificationDropdown.vue, TasksView.vue, ProjectsView.vue, RecentMemoriesList.vue, ProjectTabs.vue, ProductForm.vue, ForgotPasswordPin.vue, TemplateManager.vue, AiToolConfigWizard.vue, ConnectionStatus.vue, UserManager.vue, ProjectLaunchView.vue, OrganizationSettings.vue, ProductDetailsDialog.vue, AgentTableView.vue, NavigationDrawer.vue, ProductsView.vue. Zero text-medium-emphasis remaining. All dialog modals now use .dlg-header/.dlg-footer. All !important have justification comments. Frontend test count unchanged at 83 failures (pre-existing). Build passes clean.",
+      "notes_for_next": "0950e: Vue files edited by 0950d \u2014 plan hex sweep accordingly: DonutChart.vue, MessageDetailView.vue, NotificationDropdown.vue, TasksView.vue, ProjectsView.vue, RecentMemoriesList.vue, ProjectTabs.vue, ProductForm.vue, ForgotPasswordPin.vue, TemplateManager.vue, AiToolConfigWizard.vue, ConnectionStatus.vue, UserManager.vue, ProjectLaunchView.vue, OrganizationSettings.vue, ProductDetailsDialog.vue, AgentTableView.vue, NavigationDrawer.vue, ProductsView.vue. Zero text-medium-emphasis remaining. All dialog modals now use .dlg-header/.dlg-footer. All !important have justification comments. Frontend test count unchanged at 83 failures (pre-existing). Build passes clean.",
       "cascading_impacts": [
-        "Dialog headers now use .dlg-header divs instead of v-card-title — tests that query v-card-title inside dialogs will need updating (assigned to 0950l)"
+        "Dialog headers now use .dlg-header divs instead of v-card-title \u2014 tests that query v-card-title inside dialogs will need updating (assigned to 0950l)"
       ],
-      "orchestrator_directives": "0950c COMPLETE. Files edited by 0950c (avoid re-editing unless necessary): TemplateManager.vue, RecentProjectsList.vue, AgentTableView.vue, AgentJobModal.vue, AgentMissionEditModal.vue, ProjectTabs.vue, ProjectsView.vue, DatabaseConnection.vue, AppBar.vue, AgentExport.vue, McpIntegrationCard.vue, SerenaIntegrationCard.vue, GitIntegrationCard.vue. NOTE: statusCounts computed was removed from ProjectsView.vue by 0950c. goToIntegrations was removed from ProjectTabs.vue. 0950b may still be running on backend — do NOT touch Python files. From audit: 12 text-medium-emphasis usages, ~12 dialog anatomy violations, 5 unjustified !important. See audit_baseline.md findings #31-51 for exact file:line locations. Activate venv before any commands: source venv/bin/activate && export PYTHONPATH=.",
-      "summary": "All 22 findings (#31-51) resolved. Replaced 12 text-medium-emphasis with text-muted-a11y. Converted 15 dialog headers and 14 dialog footers to .dlg-header/.dlg-footer convention across 12 components. Added !important justifications to 7 instances in 4 files. Zero new test failures — 83 pre-existing unchanged. Build clean."
+      "orchestrator_directives": "0950c COMPLETE. Files edited by 0950c (avoid re-editing unless necessary): TemplateManager.vue, RecentProjectsList.vue, AgentTableView.vue, AgentJobModal.vue, AgentMissionEditModal.vue, ProjectTabs.vue, ProjectsView.vue, DatabaseConnection.vue, AppBar.vue, AgentExport.vue, McpIntegrationCard.vue, SerenaIntegrationCard.vue, GitIntegrationCard.vue. NOTE: statusCounts computed was removed from ProjectsView.vue by 0950c. goToIntegrations was removed from ProjectTabs.vue. 0950b may still be running on backend \u2014 do NOT touch Python files. From audit: 12 text-medium-emphasis usages, ~12 dialog anatomy violations, 5 unjustified !important. See audit_baseline.md findings #31-51 for exact file:line locations. Activate venv before any commands: source venv/bin/activate && export PYTHONPATH=.",
+      "summary": "All 22 findings (#31-51) resolved. Replaced 12 text-medium-emphasis with text-muted-a11y. Converted 15 dialog headers and 14 dialog footers to .dlg-header/.dlg-footer convention across 12 components. Added !important justifications to 7 instances in 4 files. Zero new test failures \u2014 83 pre-existing unchanged. Build clean."
     },
     {
       "id": "0950e",
@@ -144,9 +150,11 @@
       "handover": "handovers/0950e_HEX_COLOR_SWEEP.md",
       "status": "complete",
       "effort": "medium",
-      "depends_on": ["0950d"],
+      "depends_on": [
+        "0950d"
+      ],
       "tasks_completed": [
-        "DEAD SCSS: Deleted 3 dead mixins from agent-colors.scss (agent-card-border, chat-head-badge, status-badge) — zero @include usages",
+        "DEAD SCSS: Deleted 3 dead mixins from agent-colors.scss (agent-card-border, chat-head-badge, status-badge) \u2014 zero @include usages",
         "TOKENS: Added 15 new SCSS variables to design-tokens.scss ($color-accent-success, $color-accent-danger, $color-accent-special, $color-status-idle/sleeping/decommissioned/staged, $color-brand-yellow-hover, $color-text-on-muted, $color-text-hover, $color-pill-border, $color-indicator-disconnected, $color-card-git/serena, $color-phase-amber)",
         "HEX SWEEP: Replaced hardcoded hex in 12 core files (findings #19-30): RecentProjectsList, StatusBadge, RoleBadge, MessagePanel, NavigationDrawer, WelcomeView, SetupStep2Connect, statusConfig.js, SystemSettings, UserSettings, AiToolConfigWizard, BroadcastPanel",
         "HEX SWEEP: Extended sweep to 15 additional files: MessagesView, DashboardView, ProductsView, TasksView, ProjectsView, AgentTableView, GitIntegrationCard, McpIntegrationCard, SerenaIntegrationCard, AgentExport, ProjectTabs, ProductDetailsDialog, ProductTuningReview, JobsTab, MessageItem",
@@ -156,18 +164,18 @@
         "CLEANUP: Replaced local hexToRgb in StatusBadge with hexToRgba from @/utils/colorUtils. Replaced local tintedBg in WelcomeView with hexToRgba"
       ],
       "deviations": [
-        "statusConfig.js treated as a JS token definition file (like agentColors.js) — hex values defined in named STATUS_COLORS constant map at top of file, not imported from external source",
-        "theme.js and constants.js not modified — they are Vuetify theme config and swatch palette definitions respectively, functionally token definition files",
-        "rgba() background values in template inline styles (e.g. rgba(103,189,109,0.15)) partially remain where no CSS variable equivalent exists — the color: values were all tokenized",
+        "statusConfig.js treated as a JS token definition file (like agentColors.js) \u2014 hex values defined in named STATUS_COLORS constant map at top of file, not imported from external source",
+        "theme.js and constants.js not modified \u2014 they are Vuetify theme config and swatch palette definitions respectively, functionally token definition files",
+        "rgba() background values in template inline styles (e.g. rgba(103,189,109,0.15)) partially remain where no CSS variable equivalent exists \u2014 the color: values were all tokenized",
         "Vuetify color prop hex values (e.g. color='#ffffff') kept as named constants with // $token-name comments since Vuetify props don't support CSS variables"
       ],
       "blockers_encountered": [],
       "notes_for_next": "0950k: Large components with complex style sections: WelcomeView.vue (960+ lines, 28 card definitions with agent colors), JobsTab.vue (1500+ lines style block with nested selectors), ProductsView.vue (1200+ lines), ProjectTabs.vue (900+ lines). These are candidates for component splits. The following files were edited by 0950e and should be handled carefully: StatusBadge.vue (now imports getAgentColor + hexToRgba), WelcomeView.vue (now imports hexToRgba), ProductTuningReview.vue (now imports getAgentColor + hexToRgba), GitIntegrationCard.vue (now imports hexToRgba), SerenaIntegrationCard.vue (now imports hexToRgba). Frontend test count unchanged at 83 failures (pre-existing). Build passes clean. Main chunk 738.24 KB (unchanged).",
       "cascading_impacts": [
-        "StatusBadge.vue now uses getAgentColor() for active (#6DB3E4) and terminated (#E07872) status colors — if agent colors change, project status badge colors change too",
-        "WelcomeView.vue card definitions now use getAgentColor() imports — card accent colors are dynamic, not hardcoded"
+        "StatusBadge.vue now uses getAgentColor() for active (#6DB3E4) and terminated (#E07872) status colors \u2014 if agent colors change, project status badge colors change too",
+        "WelcomeView.vue card definitions now use getAgentColor() imports \u2014 card accent colors are dynamic, not hardcoded"
       ],
-      "orchestrator_directives": "0950d COMPLETE. All dialog conversions done. Files edited by 0950d: DonutChart.vue, MessageDetailView.vue, NotificationDropdown.vue, TasksView.vue, ProjectsView.vue, RecentMemoriesList.vue, ProjectTabs.vue, ProductForm.vue, ForgotPasswordPin.vue, TemplateManager.vue, AiToolConfigWizard.vue, ConnectionStatus.vue, UserManager.vue, ProjectLaunchView.vue, OrganizationSettings.vue, ProductDetailsDialog.vue, AgentTableView.vue, NavigationDrawer.vue. From audit findings #16-30: ~30 hardcoded hex colors across ~12 files + 3 dead SCSS mixins. Key targets: RecentProjectsList.vue (7 hex), StatusBadge.vue (5), RoleBadge.vue (1), MessagePanel.vue (3), NavigationDrawer.vue (5), WelcomeView.vue (agent palette), SetupStep2Connect.vue (2), statusConfig.js (full color map), SystemSettings.vue (3), UserSettings.vue (3), AiToolConfigWizard.vue (1), BroadcastPanel.vue (1). Delete 3 dead SCSS mixins in agent-colors.scss. 0950g is running in parallel on backend — do NOT touch Python files.",
+      "orchestrator_directives": "0950d COMPLETE. All dialog conversions done. Files edited by 0950d: DonutChart.vue, MessageDetailView.vue, NotificationDropdown.vue, TasksView.vue, ProjectsView.vue, RecentMemoriesList.vue, ProjectTabs.vue, ProductForm.vue, ForgotPasswordPin.vue, TemplateManager.vue, AiToolConfigWizard.vue, ConnectionStatus.vue, UserManager.vue, ProjectLaunchView.vue, OrganizationSettings.vue, ProductDetailsDialog.vue, AgentTableView.vue, NavigationDrawer.vue. From audit findings #16-30: ~30 hardcoded hex colors across ~12 files + 3 dead SCSS mixins. Key targets: RecentProjectsList.vue (7 hex), StatusBadge.vue (5), RoleBadge.vue (1), MessagePanel.vue (3), NavigationDrawer.vue (5), WelcomeView.vue (agent palette), SetupStep2Connect.vue (2), statusConfig.js (full color map), SystemSettings.vue (3), UserSettings.vue (3), AiToolConfigWizard.vue (1), BroadcastPanel.vue (1). Delete 3 dead SCSS mixins in agent-colors.scss. 0950g is running in parallel on backend \u2014 do NOT touch Python files.",
       "summary": "All 15 audit findings (#16-30) resolved plus 15 additional violations found in extended sweep. Deleted 3 dead SCSS mixins. Added 15 new design tokens. Replaced ~60 hardcoded hex colors across 27 Vue/JS files with SCSS variables, CSS custom properties, or named JS constants. Zero inline hex remaining in <style> blocks or <template> inline styles (outside token definition files). Build clean. Main chunk 738.24 KB (unchanged). 83 pre-existing frontend test failures unchanged."
     },
     {
@@ -176,16 +184,18 @@
       "handover": "handovers/0950f_STALE_DOCSTRINGS.md",
       "status": "complete",
       "effort": "light",
-      "depends_on": ["0950b"],
+      "depends_on": [
+        "0950b"
+      ],
       "tasks_completed": [
-        "DEAD CODE: Deleted TenantManager.inherit_tenant_key (tenant.py) — zero callers",
-        "DEAD CODE: Deleted DatabaseManager.apply_tenant_filter wrapper (database.py) — zero callers, TenantManager version used directly",
-        "DEAD CODE: Deleted DatabaseManager.ensure_tenant_isolation wrapper (database.py) — zero callers, TenantManager version used directly",
-        "DEAD CODE: Deleted SetupState.mark_completed (models/config.py) — zero callers, flagged since 0740",
-        "DEAD CODE: Deleted SetupState.add_validation_warning (models/config.py) — zero callers",
-        "DEAD CODE: Deleted SetupState.clear_validation_failures (models/config.py) — zero callers, flagged since 0740",
-        "DEAD CODE: Deleted VisionDocument.update_content_hash (models/products.py) — zero callers, flagged since 0740",
-        "STALE DOCSTRING: Fixed orchestration_service.py:1407 — status_filter docstring listed 'active, completed, failed', updated to valid execution statuses",
+        "DEAD CODE: Deleted TenantManager.inherit_tenant_key (tenant.py) \u2014 zero callers",
+        "DEAD CODE: Deleted DatabaseManager.apply_tenant_filter wrapper (database.py) \u2014 zero callers, TenantManager version used directly",
+        "DEAD CODE: Deleted DatabaseManager.ensure_tenant_isolation wrapper (database.py) \u2014 zero callers, TenantManager version used directly",
+        "DEAD CODE: Deleted SetupState.mark_completed (models/config.py) \u2014 zero callers, flagged since 0740",
+        "DEAD CODE: Deleted SetupState.add_validation_warning (models/config.py) \u2014 zero callers",
+        "DEAD CODE: Deleted SetupState.clear_validation_failures (models/config.py) \u2014 zero callers, flagged since 0740",
+        "DEAD CODE: Deleted VisionDocument.update_content_hash (models/products.py) \u2014 zero callers, flagged since 0740",
+        "STALE DOCSTRING: Fixed orchestration_service.py:1407 \u2014 status_filter docstring listed 'active, completed, failed', updated to valid execution statuses",
         "TOMBSTONE: Removed 4 tombstone comment lines in config_manager.py:547-551 (_detect_mode and _apply_mode_settings removed-in-v3.0 markers)",
         "CLEANUP: Removed unused 'Any' import from database.py (became unused after wrapper deletion)",
         "AUDIT: All 8 bare pass statements in src/giljo_mcp/ confirmed intentional (docstring examples, annotated except blocks, config fallback)",
@@ -193,15 +203,15 @@
         "AUDIT: 1 '(legacy)' comment in thin_prompt_generator.py:1165 confirmed accurate (fallback for pre-0358b data)"
       ],
       "deviations": [
-        "template_seeder.py:221 _get_default_templates_v103 (266 lines, finding #69) — not modified; it is a data function, not a code hygiene issue. Noted for 0950g-j if refactoring scope expands."
+        "template_seeder.py:221 _get_default_templates_v103 (266 lines, finding #69) \u2014 not modified; it is a data function, not a code hygiene issue. Noted for 0950g-j if refactoring scope expands."
       ],
       "blockers_encountered": [],
-      "notes_for_next": "All 10 assigned findings resolved (7 dead methods deleted, 1 stale docstring fixed, 1 tombstone removed, plus 1 cascading unused import fix). Zero new test failures — the 11 pre-existing failures in test_project_service_helpers.py remain (assigned to 0950l). Ruff passes clean. install.py imports verified. The assigned_to parameter in tool_accessor.py and task_service.py docstrings says 'not implemented yet' — this is accurate since the Task model field was removed in handover 0076. If assigned_to support is added in a future handover, update those 3 docstrings.",
+      "notes_for_next": "All 10 assigned findings resolved (7 dead methods deleted, 1 stale docstring fixed, 1 tombstone removed, plus 1 cascading unused import fix). Zero new test failures \u2014 the 11 pre-existing failures in test_project_service_helpers.py remain (assigned to 0950l). Ruff passes clean. install.py imports verified. The assigned_to parameter in tool_accessor.py and task_service.py docstrings says 'not implemented yet' \u2014 this is accurate since the Task model field was removed in handover 0076. If assigned_to support is added in a future handover, update those 3 docstrings.",
       "cascading_impacts": [
-        "DatabaseManager no longer exposes apply_tenant_filter() or ensure_tenant_isolation() — any code calling db_manager.apply_tenant_filter() must call TenantManager.apply_tenant_filter() directly (no current callers exist)",
-        "SetupState no longer has mark_completed(), add_validation_warning(), or clear_validation_failures() — install.py verified unaffected"
+        "DatabaseManager no longer exposes apply_tenant_filter() or ensure_tenant_isolation() \u2014 any code calling db_manager.apply_tenant_filter() must call TenantManager.apply_tenant_filter() directly (no current callers exist)",
+        "SetupState no longer has mark_completed(), add_validation_warning(), or clear_validation_failures() \u2014 install.py verified unaffected"
       ],
-      "orchestrator_directives": "0950b COMPLETE. All 13 findings resolved. Key changes by 0950b: DB health endpoint now requires auth, CORS wildcards rejected, 4 dict-return endpoints converted to Pydantic models, file permissions fixed, CheckConstraint migration added. From audit findings #9-15 + #69 + #74 + #94: Delete 7 dead backend methods (tenant.py:193, database.py:287+301, config.py:438+466+481, products.py:624), fix stale docstring orchestration_service.py:1407, remove tombstone comments config_manager.py:547-551, template_seeder.py:221 _get_default_templates_v103 is a data function — low priority but note it's 266 lines. Activate venv: source venv/bin/activate && export PYTHONPATH=. IMPORTANT: install.py imports from models and seeds demo data — verify any model changes don't break install.py imports.",
+      "orchestrator_directives": "0950b COMPLETE. All 13 findings resolved. Key changes by 0950b: DB health endpoint now requires auth, CORS wildcards rejected, 4 dict-return endpoints converted to Pydantic models, file permissions fixed, CheckConstraint migration added. From audit findings #9-15 + #69 + #74 + #94: Delete 7 dead backend methods (tenant.py:193, database.py:287+301, config.py:438+466+481, products.py:624), fix stale docstring orchestration_service.py:1407, remove tombstone comments config_manager.py:547-551, template_seeder.py:221 _get_default_templates_v103 is a data function \u2014 low priority but note it's 266 lines. Activate venv: source venv/bin/activate && export PYTHONPATH=. IMPORTANT: install.py imports from models and seeds demo data \u2014 verify any model changes don't break install.py imports.",
       "summary": "All 10 assigned findings resolved: 7 dead methods deleted (tenant.py, database.py x2, config.py x3, products.py), 1 stale agent-status docstring fixed (orchestration_service.py), 1 tombstone comment block removed (config_manager.py), 1 cascading unused import cleaned (database.py). Audited 8 bare pass statements (all intentional), 3 'not implemented' markers (all accurate), 1 '(legacy)' label (accurate). Zero new test failures. Ruff clean. install.py imports verified."
     },
     {
@@ -210,32 +220,34 @@
       "handover": "handovers/0950g_SPLIT_THIN_PROMPT_GENERATOR.md",
       "status": "complete",
       "effort": "heavy",
-      "depends_on": ["0950f"],
+      "depends_on": [
+        "0950f"
+      ],
       "tasks_completed": [
         "Created src/giljo_mcp/prompts/ subpackage with __init__.py re-exports",
-        "Extracted ClaudePromptBuilder (claude_prompt_builder.py, 335 lines) — _build_claude_code_execution_prompt split into 8 sub-methods (all under 200 lines)",
-        "Extracted CodexPromptBuilder (codex_prompt_builder.py, 406 lines) — _build_codex_execution_prompt, _build_gemini_execution_prompt, _build_multi_terminal_orchestrator_prompt",
-        "Extracted StagingPromptBuilder (staging_prompt_builder.py, 224 lines) — _generate_thin_prompt, _regenerate_mission, generate_staging_prompt build logic",
-        "Deleted 4 dead methods (~250 lines): _build_thin_prompt, _build_thin_prompt_with_memory, _inject_360_memory, _inject_git_instructions — all were unreachable (only called by each other)",
+        "Extracted ClaudePromptBuilder (claude_prompt_builder.py, 335 lines) \u2014 _build_claude_code_execution_prompt split into 8 sub-methods (all under 200 lines)",
+        "Extracted CodexPromptBuilder (codex_prompt_builder.py, 406 lines) \u2014 _build_codex_execution_prompt, _build_gemini_execution_prompt, _build_multi_terminal_orchestrator_prompt",
+        "Extracted StagingPromptBuilder (staging_prompt_builder.py, 224 lines) \u2014 _generate_thin_prompt, _regenerate_mission, generate_staging_prompt build logic",
+        "Deleted 4 dead methods (~250 lines): _build_thin_prompt, _build_thin_prompt_with_memory, _inject_360_memory, _inject_git_instructions \u2014 all were unreachable (only called by each other)",
         "Refactored generate() from 271 lines to 91 lines by extracting _resolve_user_config (52 lines) and _find_or_create_orchestrator (104 lines)",
-        "ThinClientPromptGenerator reduced from 1676 lines to 691 lines — dispatcher pattern, public interface unchanged",
+        "ThinClientPromptGenerator reduced from 1676 lines to 691 lines \u2014 dispatcher pattern, public interface unchanged",
         "Updated test_0830 to call generate_implementation_prompt() instead of private _build_multi_terminal_orchestrator_prompt()",
         "Removed unused Product import from thin_prompt_generator.py top-level (Product still imported locally in _fetch_product)"
       ],
       "deviations": [
-        "_build_ch2_startup is in protocol_builder.py, NOT thin_prompt_generator.py — handover incorrectly listed it for staging extraction. No action needed.",
+        "_build_ch2_startup is in protocol_builder.py, NOT thin_prompt_generator.py \u2014 handover incorrectly listed it for staging extraction. No action needed.",
         "Gemini and multi-terminal prompts placed in CodexPromptBuilder (not a separate file) since they follow the same pattern. Handover listed 3 builder files; Gemini+multi-terminal are small enough to co-locate with Codex.",
-        "Deleted 4 dead methods not explicitly listed in handover scope — required to meet 800-line ceiling and discovered during Phase 1 mapping."
+        "Deleted 4 dead methods not explicitly listed in handover scope \u2014 required to meet 800-line ceiling and discovered during Phase 1 mapping."
       ],
       "blockers_encountered": [],
-      "notes_for_next": "thin_prompt_generator.py is now 691 lines (was 1676). Public interface unchanged — all callers (api/endpoints/prompts.py, simple_handover.py) use the same import paths. New import paths for direct builder access: src.giljo_mcp.prompts.claude_prompt_builder.ClaudePromptBuilder, src.giljo_mcp.prompts.codex_prompt_builder.CodexPromptBuilder, src.giljo_mcp.prompts.staging_prompt_builder.StagingPromptBuilder. The __init__.py re-exports all builders + ThinClientPromptGenerator. Zero new test failures (11 pre-existing in test_project_service_helpers.py remain for 0950l). Ruff clean. Startup OK. The 0830 test suite (27 tests) passes after updating the private method call to use the public dispatcher.",
+      "notes_for_next": "thin_prompt_generator.py is now 691 lines (was 1676). Public interface unchanged \u2014 all callers (api/endpoints/prompts.py, simple_handover.py) use the same import paths. New import paths for direct builder access: src.giljo_mcp.prompts.claude_prompt_builder.ClaudePromptBuilder, src.giljo_mcp.prompts.codex_prompt_builder.CodexPromptBuilder, src.giljo_mcp.prompts.staging_prompt_builder.StagingPromptBuilder. The __init__.py re-exports all builders + ThinClientPromptGenerator. Zero new test failures (11 pre-existing in test_project_service_helpers.py remain for 0950l). Ruff clean. Startup OK. The 0830 test suite (27 tests) passes after updating the private method call to use the public dispatcher.",
       "cascading_impacts": [
-        "generate_implementation_prompt() now delegates to ClaudePromptBuilder/CodexPromptBuilder — if 0950h-j add new prompt types, add the builder method and update the dispatcher map",
-        "StagingPromptBuilder.regenerate_mission() is now a non-async method (was async in original but never awaited DB) — callers should not await it",
-        "4 dead methods deleted (_build_thin_prompt, _build_thin_prompt_with_memory, _inject_360_memory, _inject_git_instructions) — if any test references these directly, it needs updating (none found)"
+        "generate_implementation_prompt() now delegates to ClaudePromptBuilder/CodexPromptBuilder \u2014 if 0950h-j add new prompt types, add the builder method and update the dispatcher map",
+        "StagingPromptBuilder.regenerate_mission() is now a non-async method (was async in original but never awaited DB) \u2014 callers should not await it",
+        "4 dead methods deleted (_build_thin_prompt, _build_thin_prompt_with_memory, _inject_360_memory, _inject_git_instructions) \u2014 if any test references these directly, it needs updating (none found)"
       ],
-      "orchestrator_directives": "0950f COMPLETE. 7 dead methods deleted, no cascading issues. This is the first god-class split — take extra care. ThinClientPromptGenerator is 1676 lines with 2 functions over 200 lines (_build_claude_code_execution_prompt 304 lines, generate 271 lines). Create src/giljo_mcp/prompts/ subpackage. Extract platform-specific builders. Main dispatcher should stay under 600 lines. CRITICAL: grep ALL callers before moving any method. Run startup check + tests after each extraction. 0950e is running in parallel on frontend — do NOT touch Vue/JS files. Activate venv: source venv/bin/activate && export PYTHONPATH=. IMPORTANT: install.py does NOT import from thin_prompt_generator — safe to refactor.",
-      "summary": "Split ThinClientPromptGenerator (1676 lines) into prompts/ subpackage. Created 3 builder classes: ClaudePromptBuilder (335 lines, 8 sub-methods), CodexPromptBuilder (406 lines, Codex+Gemini+multi-terminal), StagingPromptBuilder (224 lines, staging prompt+mission regen). Deleted 4 dead methods (~250 lines of unreachable code). Refactored generate() from 271 to 91 lines. Final dispatcher: 691 lines. Public interface unchanged — zero caller modifications needed. Zero new test failures. Ruff clean. Startup OK."
+      "orchestrator_directives": "0950f COMPLETE. 7 dead methods deleted, no cascading issues. This is the first god-class split \u2014 take extra care. ThinClientPromptGenerator is 1676 lines with 2 functions over 200 lines (_build_claude_code_execution_prompt 304 lines, generate 271 lines). Create src/giljo_mcp/prompts/ subpackage. Extract platform-specific builders. Main dispatcher should stay under 600 lines. CRITICAL: grep ALL callers before moving any method. Run startup check + tests after each extraction. 0950e is running in parallel on frontend \u2014 do NOT touch Vue/JS files. Activate venv: source venv/bin/activate && export PYTHONPATH=. IMPORTANT: install.py does NOT import from thin_prompt_generator \u2014 safe to refactor.",
+      "summary": "Split ThinClientPromptGenerator (1676 lines) into prompts/ subpackage. Created 3 builder classes: ClaudePromptBuilder (335 lines, 8 sub-methods), CodexPromptBuilder (406 lines, Codex+Gemini+multi-terminal), StagingPromptBuilder (224 lines, staging prompt+mission regen). Deleted 4 dead methods (~250 lines of unreachable code). Refactored generate() from 271 to 91 lines. Final dispatcher: 691 lines. Public interface unchanged \u2014 zero caller modifications needed. Zero new test failures. Ruff clean. Startup OK."
     },
     {
       "id": "0950h",
@@ -243,12 +255,14 @@
       "handover": "handovers/0950h_SPLIT_MESSAGE_SERVICE.md",
       "status": "complete",
       "effort": "heavy",
-      "depends_on": ["0950g"],
+      "depends_on": [
+        "0950g"
+      ],
       "tasks_completed": [
-        "Created src/giljo_mcp/services/message_routing_service.py (863 lines) — MessageRoutingService with send_message, broadcast, broadcast_to_project, recipient resolution, auto-block, WebSocket event emission",
+        "Created src/giljo_mcp/services/message_routing_service.py (863 lines) \u2014 MessageRoutingService with send_message, broadcast, broadcast_to_project, recipient resolution, auto-block, WebSocket event emission",
         "Extracted 11 methods from MessageService: send_message, _validate_send_message_inputs, _resolve_message_recipients, _resolve_sender_display_name, _persist_messages, _check_staging_broadcast_directive, _handle_send_message_side_effects, _auto_block_completed_recipients, _broadcast_message_events, broadcast, broadcast_to_project",
         "Refactored list_messages: extracted _build_list_query (79 lines) and _format_list_message (18 lines), public method reduced to 46 lines",
-        "MessageService reduced from 1790 lines to 874 lines — retains get_messages, receive_messages, list_messages, complete_message, get_message_status",
+        "MessageService reduced from 1790 lines to 874 lines \u2014 retains get_messages, receive_messages, list_messages, complete_message, get_message_status",
         "Updated api/endpoints/messages.py: send_message, send_message_from_ui, broadcast_message endpoints now use MessageRoutingService via get_message_routing_service dependency",
         "Updated api/endpoints/dependencies.py: added get_message_routing_service dependency",
         "Updated src/giljo_mcp/tools/tool_accessor.py: added _message_routing_service, send_message delegates to routing service",
@@ -259,18 +273,18 @@
       ],
       "deviations": [
         "_persist_messages and _handle_send_message_side_effects moved to MessageRoutingService (not kept in MessageService) because they are exclusively called by send_message and have no other consumers",
-        "list_messages public method is 46 lines (target was under 40) — includes docstring and exception handling; the body logic is well under 40 lines",
-        "OrchestrationService, MissionService, ProgressService store _message_service but never call any methods on it — only extract _websocket_manager. No changes needed to those files."
+        "list_messages public method is 46 lines (target was under 40) \u2014 includes docstring and exception handling; the body logic is well under 40 lines",
+        "OrchestrationService, MissionService, ProgressService store _message_service but never call any methods on it \u2014 only extract _websocket_manager. No changes needed to those files."
       ],
       "blockers_encountered": [],
-      "notes_for_next": "MessageService is now 874 lines (was 1790). MessageRoutingService is 863 lines. Public interface split: CRUD/read/ack/complete operations stay on MessageService, send/broadcast/routing operations on MessageRoutingService. Import paths: callers of send_message/broadcast must now import from giljo_mcp.services.message_routing_service.MessageRoutingService. Callers of get_messages/receive_messages/list_messages/complete_message/get_message_status continue to use MessageService unchanged. OrchestrationService stores _message_service but never calls methods on it — only extracts _websocket_manager attribute. If 0950i touches ProductService or ProjectService and they call message routing, use MessageRoutingService. The 11 pre-existing test failures in test_project_service_helpers.py remain (assigned to 0950l). Ruff clean. Startup OK.",
+      "notes_for_next": "MessageService is now 874 lines (was 1790). MessageRoutingService is 863 lines. Public interface split: CRUD/read/ack/complete operations stay on MessageService, send/broadcast/routing operations on MessageRoutingService. Import paths: callers of send_message/broadcast must now import from giljo_mcp.services.message_routing_service.MessageRoutingService. Callers of get_messages/receive_messages/list_messages/complete_message/get_message_status continue to use MessageService unchanged. OrchestrationService stores _message_service but never calls methods on it \u2014 only extracts _websocket_manager attribute. If 0950i touches ProductService or ProjectService and they call message routing, use MessageRoutingService. The 11 pre-existing test failures in test_project_service_helpers.py remain (assigned to 0950l). Ruff clean. Startup OK.",
       "cascading_impacts": [
-        "send_message() is now on MessageRoutingService, not MessageService — any code calling message_service.send_message() must switch to message_routing_service.send_message()",
-        "broadcast() and broadcast_to_project() are now on MessageRoutingService — same import update required",
+        "send_message() is now on MessageRoutingService, not MessageService \u2014 any code calling message_service.send_message() must switch to message_routing_service.send_message()",
+        "broadcast() and broadcast_to_project() are now on MessageRoutingService \u2014 same import update required",
         "New dependency: api/endpoints/dependencies.py now exports get_message_routing_service",
         "tool_accessor.py now has _message_routing_service in addition to _message_service"
       ],
-      "orchestrator_directives": "0950g COMPLETE. ThinClientPromptGenerator split 1676→691 lines. New prompts/ subpackage. NOTE: StagingPromptBuilder.regenerate_mission() is now non-async. MessageService is 1730 lines — extract routing/recipient/broadcast logic into message_routing_service.py. Split oversized list_messages. Target under 900 lines. Grep ALL callers before moving. Activate venv: source venv/bin/activate && export PYTHONPATH=. 0950k running in parallel on frontend — do NOT touch Vue/JS files.",
+      "orchestrator_directives": "0950g COMPLETE. ThinClientPromptGenerator split 1676\u2192691 lines. New prompts/ subpackage. NOTE: StagingPromptBuilder.regenerate_mission() is now non-async. MessageService is 1730 lines \u2014 extract routing/recipient/broadcast logic into message_routing_service.py. Split oversized list_messages. Target under 900 lines. Grep ALL callers before moving. Activate venv: source venv/bin/activate && export PYTHONPATH=. 0950k running in parallel on frontend \u2014 do NOT touch Vue/JS files.",
       "summary": "Split MessageService (1790 lines) into MessageService (874 lines, CRUD/read/ack/complete) and MessageRoutingService (863 lines, send/broadcast/routing). Extracted 11 methods. Refactored list_messages with _build_list_query helper. Updated all callers: api/endpoints/messages.py (3 endpoints), tool_accessor.py (send_message delegation), dependencies.py (new factory), __init__.py (re-export). Updated 5 unit tests. Tenant isolation verified on all 28 queries. Zero new test failures. Ruff clean. Startup OK."
     },
     {
@@ -279,13 +293,15 @@
       "handover": "handovers/0950i_SPLIT_PRODUCT_PROJECT.md",
       "status": "pending",
       "effort": "heavy",
-      "depends_on": ["0950h"],
+      "depends_on": [
+        "0950h"
+      ],
       "tasks_completed": [],
       "deviations": [],
       "blockers_encountered": [],
       "notes_for_next": "",
       "cascading_impacts": [],
-      "orchestrator_directives": "",
+      "orchestrator_directives": "0950h COMPLETE. MessageService split 1790\u2192874 lines. MessageRoutingService created (863 lines). KEY: send_message/broadcast now on MessageRoutingService \u2014 if ProductService or ProjectService calls these, use message_routing_service not message_service. ProductService is 1743 lines \u2014 extract vision upload/processing into product_vision_service.py. ProjectService is 1298 lines \u2014 extract launch_project (219 lines) into project_launch_service.py. Both under 1000 lines. Grep ALL callers. source venv/bin/activate && export PYTHONPATH=. 0950k may still be running on frontend \u2014 do NOT touch Vue/JS files.",
       "summary": ""
     },
     {
@@ -294,7 +310,9 @@
       "handover": "handovers/0950j_SPLIT_ORCH_STATS_TASK_USER.md",
       "status": "pending",
       "effort": "heavy",
-      "depends_on": ["0950i"],
+      "depends_on": [
+        "0950i"
+      ],
       "tasks_completed": [],
       "deviations": [],
       "blockers_encountered": [],
@@ -309,13 +327,15 @@
       "handover": "handovers/0950k_FRONTEND_COMPONENT_SPLITS.md",
       "status": "pending",
       "effort": "heavy",
-      "depends_on": ["0950e"],
+      "depends_on": [
+        "0950e"
+      ],
       "tasks_completed": [],
       "deviations": [],
       "blockers_encountered": [],
       "notes_for_next": "",
       "cascading_impacts": [],
-      "orchestrator_directives": "0950e COMPLETE. ~60 hex colors replaced with design tokens, 3 dead SCSS mixins deleted, 15 new tokens added. From 0950e notes: Large component candidates for splitting: WelcomeView.vue (960+ lines), JobsTab.vue (1500+ lines), ProductsView.vue (1200+ lines), ProjectTabs.vue (900+ lines). Find all Vue components over 1000 lines and split them. Use TDD for new composables. Follow design system conventions. 0950h running in parallel on backend — do NOT touch Python files.",
+      "orchestrator_directives": "0950e COMPLETE. ~60 hex colors replaced with design tokens, 3 dead SCSS mixins deleted, 15 new tokens added. From 0950e notes: Large component candidates for splitting: WelcomeView.vue (960+ lines), JobsTab.vue (1500+ lines), ProductsView.vue (1200+ lines), ProjectTabs.vue (900+ lines). Find all Vue components over 1000 lines and split them. Use TDD for new composables. Follow design system conventions. 0950h running in parallel on backend \u2014 do NOT touch Python files.",
       "summary": ""
     },
     {
@@ -324,7 +344,10 @@
       "handover": "handovers/0950l_TEST_MAINTENANCE.md",
       "status": "pending",
       "effort": "medium",
-      "depends_on": ["0950j", "0950k"],
+      "depends_on": [
+        "0950j",
+        "0950k"
+      ],
       "tasks_completed": [],
       "deviations": [],
       "blockers_encountered": [],
@@ -339,7 +362,9 @@
       "handover": "handovers/0950m_FINAL_AUDIT.md",
       "status": "pending",
       "effort": "medium",
-      "depends_on": ["0950l"],
+      "depends_on": [
+        "0950l"
+      ],
       "tasks_completed": [],
       "deviations": [],
       "blockers_encountered": [],
@@ -354,7 +379,9 @@
       "handover": "handovers/0950n_REMEDIATION.md",
       "status": "conditional",
       "effort": "tbd",
-      "depends_on": ["0950m"],
+      "depends_on": [
+        "0950m"
+      ],
       "tasks_completed": [],
       "deviations": [],
       "blockers_encountered": [],
