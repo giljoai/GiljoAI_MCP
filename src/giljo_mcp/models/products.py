@@ -621,45 +621,6 @@ class VisionDocument(Base):
         current_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         return current_hash != self.content_hash
 
-    def update_content_hash(self) -> str:
-        """
-        Update content_hash based on current content.
-
-        Returns:
-            The new content hash (SHA-256)
-        """
-        import hashlib
-
-        content = ""
-
-        if self.storage_type == "file" and self.vision_path:
-            try:
-                from pathlib import Path
-
-                path = Path(self.vision_path)
-                if path.exists():
-                    content = path.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
-                pass  # nosec B110 - file read fallback
-        elif self.storage_type == "inline" and self.vision_document:
-            content = self.vision_document
-        elif self.storage_type == "hybrid":
-            # For hybrid, combine both sources
-            if self.vision_path:
-                try:
-                    from pathlib import Path
-
-                    path = Path(self.vision_path)
-                    if path.exists():
-                        content += path.read_text(encoding="utf-8")
-                except (OSError, UnicodeDecodeError):
-                    pass  # nosec B110 - file read fallback
-            if self.vision_document:
-                content += self.vision_document
-
-        self.content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
-        return self.content_hash
-
     def __repr__(self) -> str:
         return f"<VisionDocument(id={self.id}, name='{self.document_name}', product_id='{self.product_id}')>"
 
