@@ -1,88 +1,71 @@
 <template>
-  <v-card variant="flat" class="smooth-border mb-4 integration-card">
-    <v-card-text>
-      <div class="d-flex align-center mb-3">
-        <v-icon size="40" class="mr-2" color="white">mdi-github</v-icon>
-        <div class="d-flex align-center">
-          <h3 class="text-h6 mb-0 mr-2">Git + GiljoAI 360 Memory</h3>
-          <v-tooltip location="top" max-width="400">
-            <template #activator="{ props }">
-              <v-icon v-bind="props" size="small" color="medium-emphasis"
-                >mdi-help-circle-outline</v-icon
-              >
-            </template>
-            <div>
-              <strong>Cumulative product knowledge tracking</strong>
-              <p class="mt-2 mb-0">
-                When enabled, GiljoAI captures git commit history at project closeout and stores
-                it in 360 Memory. This provides orchestrators with cumulative context across all
-                projects, including what was built, decisions made, and implementation patterns
-                used.
-              </p>
-              <p class="mt-2 mb-0 text-caption">
-                <strong>Note:</strong> Git must be configured on your system with access to your
-                repositories. 360 Memory is always added to the project.
-              </p>
-            </div>
-          </v-tooltip>
+  <div
+    class="intg-card smooth-border"
+    style="--card-accent: #90CAF9"
+  >
+    <div class="intg-card-icon" style="background: rgba(144,202,249,0.12); color: #90CAF9">
+      <v-icon size="20">mdi-git</v-icon>
+    </div>
+    <div class="d-flex align-center" style="gap: 8px; margin-bottom: 5px;">
+      <div class="intg-card-title" style="margin-bottom: 0">Git + 360 Memory</div>
+      <v-tooltip location="top" max-width="400">
+        <template #activator="{ props }">
+          <v-icon v-bind="props" size="small" style="color: #8895a8">mdi-help-circle-outline</v-icon>
+        </template>
+        <div>
+          <strong>Cumulative product knowledge tracking</strong>
+          <p class="mt-2 mb-0">
+            When enabled, GiljoAI captures git commit history at project closeout and stores
+            it in 360 Memory. This provides orchestrators with cumulative context across all
+            projects, including what was built, decisions made, and implementation patterns
+            used.
+          </p>
+          <p class="mt-2 mb-0 text-caption">
+            <strong>Note:</strong> Git must be configured on your system with access to your
+            repositories. 360 Memory is always added to the project.
+          </p>
         </div>
-        <v-spacer />
-        <v-switch
-          :model-value="enabled"
-          :loading="loading"
-          hide-details
-          density="compact"
-          data-testid="github-integration-toggle"
-          class="git-toggle-inline"
-          @update:model-value="$emit('update:enabled', $event)"
-        />
-      </div>
+      </v-tooltip>
+    </div>
+    <div class="intg-card-desc">Automatically include git commit history in project summaries.</div>
 
-      <p class="text-body-2 text-muted-a11y mb-3">
-        Enable to automatically include git commit history in project summaries.
-      </p>
-
-      <div class="d-flex align-center mb-3">
-        <v-btn
-          variant="text"
-          size="small"
-          color="light-blue"
-          href="https://docs.github.com/en/get-started/quickstart/set-up-git"
-          target="_blank"
-        >
-          <v-icon start>mdi-book-open-variant</v-icon>
-          GitHub Setup Guide
-        </v-btn>
-      </div>
-
-    </v-card-text>
-  </v-card>
+    <div class="intg-card-body d-flex flex-column align-center">
+      <v-btn
+        :color="enabled ? 'success' : 'primary'"
+        :variant="enabled ? 'flat' : 'outlined'"
+        size="small"
+        :loading="loading"
+        data-testid="github-integration-toggle"
+        class="intg-toggle-pill"
+        @click="$emit('update:enabled', !enabled)"
+      >
+        <v-icon v-if="enabled" start size="16">mdi-check</v-icon>
+        {{ enabled ? 'Enabled' : 'Disabled' }}
+      </v-btn>
+      <v-btn
+        variant="text"
+        size="small"
+        color="light-blue"
+        href="https://docs.github.com/en/get-started/quickstart/set-up-git"
+        target="_blank"
+        class="mt-2"
+      >
+        <v-icon start>mdi-book-open-variant</v-icon>
+        GitHub Setup Guide
+      </v-btn>
+    </div>
+  </div>
 </template>
 
 <script setup>
 defineProps({
-  enabled: {
-    type: Boolean,
-    default: false,
-  },
-  loading: {
-    type: Boolean,
-    default: false,
-  },
+  enabled: { type: Boolean, default: false },
+  loading: { type: Boolean, default: false },
 })
 
 defineEmits(['update:enabled'])
 </script>
 
 <style lang="scss" scoped>
-@use '../../../styles/design-tokens' as *;
-.integration-card {
-  background: $elevation-raised;
-  border-radius: $border-radius-rounded;
-}
-
-/* Make Git toggle inline */
-.git-toggle-inline {
-  flex: 0 0 auto;
-}
+@import '../../../styles/intg-card';
 </style>
