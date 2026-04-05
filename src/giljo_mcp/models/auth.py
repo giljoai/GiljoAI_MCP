@@ -112,6 +112,7 @@ class User(Base):
     setup_complete = Column(Boolean, default=False, nullable=False, server_default="false")
     setup_selected_tools = Column(JSONB, nullable=True)
     setup_step_completed = Column(Integer, default=0, nullable=False, server_default="0")
+    learning_complete = Column(Boolean, default=False, nullable=False, server_default="false")
 
     # System user flag (for auto-login localhost user)
     is_system_user = Column(Boolean, default=False, nullable=False)
