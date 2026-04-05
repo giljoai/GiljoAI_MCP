@@ -17,6 +17,8 @@ from .message_service import MessageService
 from .orchestration_service import OrchestrationService
 from .org_service import OrgService
 from .product_service import ProductService
+from .product_vision_service import ProductVisionService
+from .project_launch_service import ProjectLaunchService
 from .project_service import ProjectService
 from .task_service import TaskService
 from .template_service import TemplateService
@@ -31,6 +33,8 @@ __all__ = [
     "OrchestrationService",
     "OrgService",
     "ProductService",
+    "ProductVisionService",
+    "ProjectLaunchService",
     "ProjectService",
     "TaskService",
     "TemplateService",

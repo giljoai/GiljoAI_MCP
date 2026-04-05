@@ -127,14 +127,16 @@ class ProjectService:
         self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-        # Facade sub-services (Handover 0769: ProjectService split)
+        # Facade sub-services (Handover 0769: ProjectService split, 0950i: launch extraction)
         from src.giljo_mcp.services.project_closeout_service import ProjectCloseoutService
         from src.giljo_mcp.services.project_deletion_service import ProjectDeletionService
+        from src.giljo_mcp.services.project_launch_service import ProjectLaunchService
         from src.giljo_mcp.services.project_lifecycle_service import ProjectLifecycleService
 
         self._lifecycle = ProjectLifecycleService(db_manager, tenant_manager, test_session, websocket_manager)
         self._closeout = ProjectCloseoutService(db_manager, tenant_manager, test_session, websocket_manager)
         self._deletion = ProjectDeletionService(db_manager, tenant_manager, test_session, websocket_manager)
+        self._launch = ProjectLaunchService(db_manager, tenant_manager, test_session, websocket_manager)
 
     def _get_session(self):
         """
@@ -1073,219 +1075,14 @@ class ProjectService:
         launch_config: dict[str, Any | None] = None,
         websocket_manager: Any | None = None,
     ) -> ProjectLaunchResult:
-        """
-        Launch project orchestrator.
-
-        Creates orchestrator agent job and generates thin-client launch prompt.
-        Activates the project if not already active.
-        Fetches user field_priority_config and depth_config to pass to orchestrator.
-
-        Args:
-            project_id: Project UUID
-            user_id: Optional user ID for fetching field priorities and depth config
-            launch_config: Optional launch configuration
-            websocket_manager: Optional WebSocket manager for real-time updates
-
-        Returns:
-            ProjectLaunchResponse data:
-            - project_id: Project UUID
-            - orchestrator_job_id: Created orchestrator job UUID
-            - launch_prompt: Thin-client prompt for starting orchestrator
-            - status: Project status after launch
-
-        Raises:
-            ResourceNotFoundError: Project not found
-            ProjectStateError: Cannot activate project (propagated from activate_project)
-
-        Example:
-            >>> result = await service.launch_project("abc-123", user_id="user-456")
-            >>> print(result["orchestrator_job_id"])
-        """
-        async with self._get_session() as session:
-            # Fetch project
-            result = await session.execute(
-                select(Project).where(
-                    and_(Project.id == project_id, Project.tenant_key == self.tenant_manager.get_current_tenant())
-                )
-            )
-            project = result.scalar_one_or_none()
-
-            if not project:
-                raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
-
-            # Activate project if not already active (raises exceptions on error)
-            if project.status != "active":
-                await self.activate_project(project_id, websocket_manager=websocket_manager)
-
-            # Handover 0840d: Fetch user field toggles and depth from normalized tables/columns
-            field_toggles = {}
-            depth_config = None
-
-            if user_id:
-                from src.giljo_mcp.models.auth import User, UserFieldPriority
-
-                user_stmt = select(User).where(
-                    and_(User.id == user_id, User.tenant_key == self.tenant_manager.get_current_tenant())
-                )
-                user_result = await session.execute(user_stmt)
-                user = user_result.scalar_one_or_none()
-
-                if user:
-                    # Build field_toggles from user_field_priorities table
-                    prio_result = await session.execute(
-                        select(UserFieldPriority).where(
-                            and_(
-                                UserFieldPriority.user_id == user_id,
-                                UserFieldPriority.tenant_key == self.tenant_manager.get_current_tenant(),
-                            )
-                        )
-                    )
-                    rows = prio_result.scalars().all()
-                    if rows:
-                        from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
-
-                        field_toggles = dict(DEFAULT_CATEGORY_TOGGLES)
-                        for row in rows:
-                            field_toggles[row.category] = row.enabled
-                        field_toggles["product_core"] = True
-                        field_toggles["project_description"] = True
-
-                    # Build depth_config from columns
-                    depth_config = {
-                        "vision_documents": user.depth_vision_documents,
-                        "memory_last_n_projects": user.depth_memory_last_n,
-                        "git_commits": user.depth_git_commits,
-                        "agent_templates": user.depth_agent_templates,
-                        "tech_stack_sections": user.depth_tech_stack_sections,
-                        "architecture_depth": user.depth_architecture,
-                    }
-
-            # Apply defaults for depth_config if not set
-            if not depth_config:
-                depth_config = {
-                    "vision_documents": "medium",
-                    "memory_last_n_projects": 3,
-                    "git_commits": 25,
-                    "agent_templates": "type_only",
-                    "tech_stack_sections": "all",
-                    "architecture_depth": "overview",
-                }
-
-            # FIX 3 (Handover 0485): Check for existing orchestrator BEFORE creating new one
-            # This prevents duplicate orchestrators when launch_project() is called multiple times
-            tenant_key = self.tenant_manager.get_current_tenant()
-
-            existing_orch_stmt = (
-                select(AgentExecution)
-                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                .where(
-                    AgentJob.project_id == project_id,
-                    AgentExecution.agent_display_name == "orchestrator",
-                    AgentExecution.tenant_key == tenant_key,
-                    ~AgentExecution.status.in_(["decommissioned"]),  # Handover 0491: Simplified statuses
-                )
-                .order_by(AgentExecution.started_at.desc())
-            )
-            existing_orch_result = await session.execute(existing_orch_stmt)
-            existing_orchestrator = existing_orch_result.scalars().first()
-
-            if existing_orchestrator:
-                # Reuse existing orchestrator instead of creating new one
-                self._logger.info(
-                    f"[LAUNCH] Reusing existing orchestrator {existing_orchestrator.job_id} "
-                    f"for project {project_id} (status={existing_orchestrator.status})"
-                )
-
-                # Return existing orchestrator info (do NOT create new one)
-                return ProjectLaunchResult(
-                    project_id=project.id,
-                    orchestrator_job_id=existing_orchestrator.job_id,
-                    launch_prompt=f"""Launch orchestrator for project: {project.name}
-
-Project ID: {project.id}
-Mission: {project.mission}
-Orchestrator Job ID: {existing_orchestrator.job_id}
-
-This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool to fetch full mission details.
-""",
-                    status=project.status,
-                    staging_status=project.staging_status,
-                )
-
-            # No existing orchestrator found - create new one
-
-            # Create AgentJob (work order) - stores mission ONCE (Handover 0358a)
-            orchestrator_job_id = str(uuid4())
-            agent_job = AgentJob(
-                job_id=orchestrator_job_id,
-                tenant_key=tenant_key,
-                project_id=project_id,
-                mission=project.mission or f"Orchestrator mission for project: {project.name}",
-                job_type="orchestrator",
-                status="active",
-                job_metadata={
-                    "field_toggles": field_toggles,
-                    "depth_config": depth_config,
-                    "user_id": user_id,
-                    "created_via": "project_service_launch",
-                },
-            )
-            session.add(agent_job)
-
-            # Create AgentExecution (executor) - first instance (Handover 0358a)
-            agent_execution = AgentExecution(
-                agent_id=str(uuid4()),
-                job_id=orchestrator_job_id,
-                tenant_key=tenant_key,
-                agent_display_name="orchestrator",  # Lowercase for frontend compatibility
-                agent_name="orchestrator",  # Type key for color lookup
-                status="waiting",
-                progress=0,
-                health_status="unknown",
-            )
-            session.add(agent_execution)
-
-            # Set staging_status to 'staging' when orchestrator is launched
-            project.staging_status = "staging"
-            project.updated_at = datetime.now(timezone.utc)
-
-            await session.flush()  # Get the IDs without committing
-
-            # Generate thin-client launch prompt
-            launch_prompt = f"""Launch orchestrator for project: {project.name}
-
-Project ID: {project.id}
-Mission: {project.mission}
-Orchestrator Job ID: {orchestrator_job_id}
-
-This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool to fetch full mission details.
-"""
-
-            await session.commit()
-
-            self._logger.info(f"Launched project {project_id} with orchestrator job {orchestrator_job_id}")
-
-            # Broadcast WebSocket event
-            if websocket_manager:
-                try:
-                    project_data = _build_ws_project_data(project)
-                    project_data["staging_status"] = project.staging_status
-                    project_data["orchestrator_job_id"] = orchestrator_job_id
-                    await websocket_manager.broadcast_project_update(
-                        project_id=project.id,
-                        update_type="launched",
-                        project_data=project_data,
-                    )
-                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
-                    self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
-
-            return ProjectLaunchResult(
-                project_id=project.id,
-                orchestrator_job_id=orchestrator_job_id,
-                launch_prompt=launch_prompt,
-                status=project.status,
-                staging_status=project.staging_status,
-            )
+        """Facade: delegates to ProjectLaunchService (Handover 0950i)."""
+        return await self._launch.launch_project(
+            project_id,
+            user_id,
+            launch_config,
+            websocket_manager,
+            project_service=self,
+        )
 
     async def restore_project(self, project_id: str, tenant_key: str) -> OperationResult:
         """Facade: delegates to ProjectDeletionService."""
@@ -1316,43 +1113,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
     # ============================================================================
     # Private Helper Methods
     # ============================================================================
-
-    async def _broadcast_memory_update(
-        self,
-        project_id: str,
-        project_name: str,
-        sequence_number: int,
-        summary: str,
-        tenant_key: str,
-    ) -> None:
-        """Broadcast memory update via WebSocketManager (in-process)."""
-        self._logger.info(
-            f"[WEBSOCKET DEBUG] Broadcasting memory update for project {project_id} (sequence: {sequence_number})"
-        )
-
-        if not self._websocket_manager:
-            self._logger.debug("[WEBSOCKET] No WebSocket manager available for project:memory_updated")
-            return
-
-        summary_preview = (summary[:200] + "...") if len(summary) > 200 else summary
-
-        try:
-            await self._websocket_manager.broadcast_to_tenant(
-                tenant_key=tenant_key,
-                event_type="project:memory_updated",
-                data={
-                    "project_id": project_id,
-                    "project_name": project_name,
-                    "sequence_number": sequence_number,
-                    "summary_preview": summary_preview,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                },
-            )
-        except Exception as ws_error:  # Broad catch: WebSocket resilience, non-critical broadcast
-            self._logger.error(
-                f"[WEBSOCKET ERROR] Failed to broadcast project:memory_updated: {ws_error}",
-                exc_info=True,
-            )
 
     async def _broadcast_mission_update(self, project_id: str, mission: str, tenant_key: str) -> None:
         """
