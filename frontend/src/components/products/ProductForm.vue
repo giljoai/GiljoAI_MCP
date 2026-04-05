@@ -1,13 +1,13 @@
 <template>
   <v-dialog v-model="isOpen" max-width="950" persistent retain-focus scrollable>
     <v-card v-draggable class="product-form-card smooth-border">
-      <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">{{ isEdit ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
-        <span>{{ isEdit ? 'Edit Product' : 'Create New Product' }}</span>
-        <v-spacer />
-
-        <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="closeDialog" />
-      </v-card-title>
+      <div class="dlg-header">
+        <v-icon class="dlg-icon">{{ isEdit ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
+        <span class="dlg-title">{{ isEdit ? 'Edit Product' : 'Create New Product' }}</span>
+        <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="closeDialog">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </div>
 
       <v-divider></v-divider>
 
@@ -675,7 +675,7 @@
 
       <v-divider></v-divider>
 
-      <v-card-actions>
+      <div class="dlg-footer">
         <v-spacer></v-spacer>
         <v-btn variant="text" :disabled="isFirstTab" @click="goPrevTab">Back</v-btn>
         <v-btn
@@ -692,7 +692,7 @@
             {{ isEdit ? 'Save Changes' : isLastTab ? 'Create Product' : 'Next' }}
           </template>
         </v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>

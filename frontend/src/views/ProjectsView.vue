@@ -267,7 +267,7 @@
           <template v-slot:no-data>
             <div class="text-center py-8">
               <v-icon size="48" color="medium-emphasis" class="mb-4">mdi-folder-open</v-icon>
-              <p class="text-body-2 text-medium-emphasis">No projects found</p>
+              <p class="text-body-2 text-muted-a11y">No projects found</p>
               <v-btn size="small" color="primary" class="mt-4" @click="showCreateDialog = true">
                 Create First Project
               </v-btn>
@@ -280,12 +280,13 @@
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="showCreateDialog" max-width="800" persistent retain-focus scrollable>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <span>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</span>
-          <v-spacer />
+        <div class="dlg-header">
+          <span class="dlg-title">{{ editingProject ? 'Edit Project' : 'Create New Project' }}</span>
           <AgentTipsDialog />
-          <v-btn icon="mdi-close" variant="text" aria-label="Close dialog" @click="cancelEdit" />
-        </v-card-title>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close dialog" @click="cancelEdit">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-card-text>
           <!-- Save Error Alert (Handover 0440d) -->
@@ -318,7 +319,7 @@
           </v-alert>
 
           <!-- Project metadata (plain text, no alert box) -->
-          <div v-if="editingProject" class="text-caption text-medium-emphasis mb-4">
+          <div v-if="editingProject" class="text-caption text-muted-a11y mb-4">
             <div>Project ID: <span class="font-mono">{{ editingProject.id }}</span></div>
             <div>
               Created: {{ formatDateTime(editingProject.created_at) }}
@@ -478,13 +479,13 @@
           <AddTypeModal v-model="showAddTypeModal" @type-created="handleTypeCreated" />
         </v-card-text>
 
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="cancelEdit">Cancel</v-btn>
           <v-btn color="primary" variant="flat" :disabled="!formValid" @click="saveProject">
             {{ editingProject ? 'Update' : 'Create' }}
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
@@ -559,16 +560,12 @@
     <!-- Deleted Projects Modal -->
     <v-dialog v-model="showDeletedDialog" max-width="800" persistent retain-focus scrollable>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <span>Deleted Projects ({{ deletedProjects.length }})</span>
-          <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            aria-label="Close dialog"
-            @click="showDeletedDialog = false"
-          />
-        </v-card-title>
+        <div class="dlg-header dlg-header--warning">
+          <span class="dlg-title">Deleted Projects ({{ deletedProjects.length }})</span>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close dialog" @click="showDeletedDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-card-text>
           <v-alert
@@ -590,7 +587,7 @@
 
               <div class="flex-grow-1">
                 <div class="font-weight-bold">{{ project.name }}</div>
-                <div class="text-caption text-medium-emphasis">
+                <div class="text-caption text-muted-a11y">
                   {{ project.id }}
                 </div>
               </div>
@@ -625,13 +622,13 @@
             </v-list-item>
           </v-list>
 
-          <div v-else class="text-center py-8 text-medium-emphasis">
+          <div v-else class="text-center py-8 text-muted-a11y">
             <v-icon size="48" class="mb-4">mdi-folder-open</v-icon>
             <p>No deleted projects</p>
           </div>
         </v-card-text>
 
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer></v-spacer>
           <v-btn
             color="error"
@@ -645,23 +642,19 @@
             Delete All
           </v-btn>
           <v-btn variant="text" @click="showDeletedDialog = false">Close</v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
     <!-- Mission Viewer Dialog -->
     <v-dialog v-model="showMissionDialog" max-width="800" persistent retain-focus scrollable>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <span>Full Mission Text</span>
-          <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            aria-label="Close dialog"
-            @click="showMissionDialog = false"
-          />
-        </v-card-title>
+        <div class="dlg-header">
+          <span class="dlg-title">Full Mission Text</span>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close dialog" @click="showMissionDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-card-text>
           <v-sheet
@@ -672,10 +665,10 @@
           </v-sheet>
         </v-card-text>
 
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="showMissionDialog = false">Close</v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 

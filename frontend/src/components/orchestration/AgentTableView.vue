@@ -275,7 +275,7 @@ function canCopyPrompt(agent) {
 
 .agent-table-view :deep(.v-data-table__th) {
   @include table-header-label;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important; /* !important: :deep() must override Vuetify data-table header border */
 }
 
 .agent-table-view :deep(.v-data-table__td) {

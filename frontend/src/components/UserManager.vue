@@ -122,10 +122,13 @@
     <!-- Create/Edit User Dialog -->
     <v-dialog v-model="showUserDialog" max-width="600" persistent scrollable>
       <v-card v-draggable class="smooth-border">
-        <v-card-title>
-          <v-icon class="mr-2">{{ isEditMode ? 'mdi-pencil' : 'mdi-account-plus' }}</v-icon>
-          {{ isEditMode ? 'Edit User' : 'Create New User' }}
-        </v-card-title>
+        <div class="dlg-header">
+          <v-icon class="dlg-icon">{{ isEditMode ? 'mdi-pencil' : 'mdi-account-plus' }}</v-icon>
+          <span class="dlg-title">{{ isEditMode ? 'Edit User' : 'Create New User' }}</span>
+          <v-btn icon variant="text" class="dlg-close" @click="closeUserDialog">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-card-text>
           <v-form ref="formRef" @submit.prevent="saveUser">
@@ -185,23 +188,26 @@
           </v-form>
         </v-card-text>
 
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" :disabled="saving" @click="closeUserDialog"> Cancel </v-btn>
-          <v-btn color="primary" :loading="saving" @click="saveUser">
+          <v-btn color="primary" variant="flat" :loading="saving" @click="saveUser">
             {{ isEditMode ? 'Update' : 'Create' }}
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
     <!-- Change Password Dialog -->
     <v-dialog v-model="showPasswordDialog" max-width="500" persistent>
       <v-card v-draggable class="smooth-border">
-        <v-card-title>
-          <v-icon class="mr-2">mdi-key-variant</v-icon>
-          Change Password
-        </v-card-title>
+        <div class="dlg-header">
+          <v-icon class="dlg-icon">mdi-key-variant</v-icon>
+          <span class="dlg-title">Change Password</span>
+          <v-btn icon variant="text" class="dlg-close" @click="closePasswordDialog">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
@@ -218,25 +224,28 @@
           />
         </v-card-text>
 
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" :disabled="changingPassword" @click="closePasswordDialog">
             Cancel
           </v-btn>
-          <v-btn color="primary" :loading="changingPassword" @click="changePassword">
+          <v-btn color="primary" variant="flat" :loading="changingPassword" @click="changePassword">
             Change Password
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
     <!-- Reset Password Confirmation Dialog -->
     <v-dialog v-model="showResetPasswordDialog" max-width="500">
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="bg-warning">
-          <v-icon class="mr-2">mdi-lock-reset</v-icon>
-          Reset User Password?
-        </v-card-title>
+        <div class="dlg-header dlg-header--warning">
+          <v-icon class="dlg-icon">mdi-lock-reset</v-icon>
+          <span class="dlg-title">Reset User Password?</span>
+          <v-btn icon variant="text" class="dlg-close" @click="closeResetPasswordDialog">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-card-text class="pt-6">
           <p class="text-body-1 mb-2">You are about to reset the password for:</p>
@@ -261,27 +270,30 @@
           </v-alert>
         </v-card-text>
 
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" :disabled="resettingPassword" @click="closeResetPasswordDialog">
             Cancel
           </v-btn>
-          <v-btn color="warning" :loading="resettingPassword" @click="confirmResetPassword">
+          <v-btn color="warning" variant="flat" :loading="resettingPassword" @click="confirmResetPassword">
             Reset Password
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
     <!-- Status Toggle Confirmation Dialog -->
     <v-dialog v-model="showStatusDialog" max-width="500">
       <v-card v-draggable class="smooth-border">
-        <v-card-title :class="statusUser?.is_active ? 'bg-warning' : 'bg-success'">
-          <v-icon class="mr-2">
+        <div :class="['dlg-header', statusUser?.is_active ? 'dlg-header--warning' : '']">
+          <v-icon class="dlg-icon">
             {{ statusUser?.is_active ? 'mdi-account-off' : 'mdi-account-check' }}
           </v-icon>
-          {{ statusUser?.is_active ? 'Deactivate' : 'Activate' }} User?
-        </v-card-title>
+          <span class="dlg-title">{{ statusUser?.is_active ? 'Deactivate' : 'Activate' }} User?</span>
+          <v-btn icon variant="text" class="dlg-close" @click="closeStatusDialog">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-card-text class="pt-6">
           <p class="text-body-1 mb-2">
@@ -303,19 +315,20 @@
           </v-alert>
         </v-card-text>
 
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" :disabled="togglingStatus" @click="closeStatusDialog">
             Cancel
           </v-btn>
           <v-btn
             :color="statusUser?.is_active ? 'warning' : 'success'"
+            variant="flat"
             :loading="togglingStatus"
             @click="confirmToggleStatus"
           >
             {{ statusUser?.is_active ? 'Deactivate' : 'Activate' }}
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
