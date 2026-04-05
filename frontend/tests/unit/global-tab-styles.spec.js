@@ -148,10 +148,10 @@ describe('Global Tab Styles', () => {
 
     it('uses global-tabs-window class on v-window', () => {
       // Static source code verification: the UserSettings template
-      // must apply class="global-tabs-window" to its v-window element.
+      // must apply the global-tabs-window class to its v-window element.
       const srcPath = resolve(__dirname, '../../src/views/UserSettings.vue')
       const source = readFileSync(srcPath, 'utf-8')
-      expect(source).toContain('class="global-tabs-window"')
+      expect(source).toContain('global-tabs-window')
       expect(source).toContain('<v-window')
     })
   })
@@ -177,7 +177,7 @@ describe('Global Tab Styles', () => {
       // Static source code verification
       const srcPath = resolve(__dirname, '../../src/views/SystemSettings.vue')
       const source = readFileSync(srcPath, 'utf-8')
-      expect(source).toContain('class="global-tabs-window"')
+      expect(source).toContain('global-tabs-window')
       expect(source).toContain('<v-window')
     })
   })

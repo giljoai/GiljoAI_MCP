@@ -102,8 +102,6 @@ async def test_patch_setup_state_full_update(api_client, auth_headers):
             "setup_complete": False,
         },
     )
-    if response.status_code == 401:
-        pytest.skip("No authenticated session available in test environment")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
     data = response.json()
     assert data["setup_step_completed"] == 2
@@ -119,8 +117,6 @@ async def test_patch_setup_state_partial_step_only(api_client, auth_headers):
         headers=auth_headers,
         json={"setup_step_completed": 3},
     )
-    if response.status_code == 401:
-        pytest.skip("No authenticated session available in test environment")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
     data = response.json()
     assert data["setup_step_completed"] == 3
@@ -134,8 +130,6 @@ async def test_patch_setup_state_complete_flag(api_client, auth_headers):
         headers=auth_headers,
         json={"setup_complete": True, "setup_step_completed": 4},
     )
-    if response.status_code == 401:
-        pytest.skip("No authenticated session available in test environment")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
     data = response.json()
     assert data["setup_complete"] is True
@@ -150,8 +144,6 @@ async def test_patch_setup_state_invalid_step_rejected(api_client, auth_headers)
         headers=auth_headers,
         json={"setup_step_completed": 5},
     )
-    if response.status_code == 401:
-        pytest.skip("No authenticated session available in test environment")
     assert response.status_code == 422, f"Expected 422, got {response.status_code}: {response.text}"
 
 
@@ -172,8 +164,6 @@ async def test_get_active_api_keys_empty(api_client, auth_headers):
         "/api/auth/api-keys/active",
         headers=auth_headers,
     )
-    if response.status_code == 401:
-        pytest.skip("No authenticated session available in test environment")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
     data = response.json()
     assert isinstance(data, list)
@@ -194,8 +184,6 @@ async def test_get_me_includes_setup_fields(api_client, auth_headers):
         "/api/auth/me",
         headers=auth_headers,
     )
-    if response.status_code == 401:
-        pytest.skip("No authenticated session available in test environment")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
     data = response.json()
 
@@ -221,8 +209,6 @@ async def test_setup_state_roundtrip(api_client, auth_headers):
             "setup_complete": False,
         },
     )
-    if patch_response.status_code == 401:
-        pytest.skip("No authenticated session available in test environment")
     assert patch_response.status_code == 200
 
     # Read back via /me
