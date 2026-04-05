@@ -143,6 +143,7 @@
 import { ref, computed } from 'vue'
 import { getApiBaseURL } from '@/config/api'
 import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
 
 defineProps({
   modelValue: { type: Boolean, required: true },
@@ -151,6 +152,7 @@ defineProps({
 const emit = defineEmits(['update:modelValue', 'continue'])
 
 const { copy: clipboardCopy } = useClipboard()
+const { showToast } = useToast()
 
 const downloading = ref(false)
 const downloadError = ref('')
@@ -219,13 +221,16 @@ async function downloadCert() {
 }
 
 async function copyCommand(text, which) {
-  await clipboardCopy(text)
+  const success = await clipboardCopy(text)
   if (which === 'node') {
     copiedNode.value = true
     setTimeout(() => { copiedNode.value = false }, 2000)
   } else {
     copiedOs.value = true
     setTimeout(() => { copiedOs.value = false }, 2000)
+  }
+  if (success) {
+    showToast({ message: 'Copied to clipboard', type: 'success', duration: 2000 })
   }
 }
 
