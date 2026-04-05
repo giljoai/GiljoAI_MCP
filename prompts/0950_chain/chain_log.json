@@ -249,7 +249,7 @@
       "blockers_encountered": [],
       "notes_for_next": "",
       "cascading_impacts": [],
-      "orchestrator_directives": "",
+      "orchestrator_directives": "0950g COMPLETE. ThinClientPromptGenerator split 1676→691 lines. New prompts/ subpackage. NOTE: StagingPromptBuilder.regenerate_mission() is now non-async. MessageService is 1730 lines — extract routing/recipient/broadcast logic into message_routing_service.py. Split oversized list_messages. Target under 900 lines. Grep ALL callers before moving. Activate venv: source venv/bin/activate && export PYTHONPATH=. 0950k running in parallel on frontend — do NOT touch Vue/JS files.",
       "summary": ""
     },
     {
@@ -294,7 +294,7 @@
       "blockers_encountered": [],
       "notes_for_next": "",
       "cascading_impacts": [],
-      "orchestrator_directives": "",
+      "orchestrator_directives": "0950e COMPLETE. ~60 hex colors replaced with design tokens, 3 dead SCSS mixins deleted, 15 new tokens added. From 0950e notes: Large component candidates for splitting: WelcomeView.vue (960+ lines), JobsTab.vue (1500+ lines), ProductsView.vue (1200+ lines), ProjectTabs.vue (900+ lines). Find all Vue components over 1000 lines and split them. Use TDD for new composables. Follow design system conventions. 0950h running in parallel on backend — do NOT touch Python files.",
       "summary": ""
     },
     {
