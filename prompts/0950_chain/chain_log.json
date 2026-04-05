@@ -10,6 +10,11 @@
     "postgres_password": "4010",
     "note": "Temporary credentials for this sprint run. Will be changed after completion."
   },
+  "environment": {
+    "venv_activate": "source /media/patrik/Work/GiljoAI_MCP/venv/bin/activate",
+    "pythonpath": "export PYTHONPATH=/media/patrik/Work/GiljoAI_MCP",
+    "note": "ALWAYS activate venv before running pytest, ruff, or python commands. Tools also available at ~/.local/bin/ if venv activation fails. Run: source venv/bin/activate && export PYTHONPATH=. before any Python work."
+  },
   "sessions": [
     {
       "id": "0950a",
@@ -97,7 +102,7 @@
       "blockers_encountered": [],
       "notes_for_next": "",
       "cascading_impacts": [],
-      "orchestrator_directives": "",
+      "orchestrator_directives": "0950c COMPLETE. Files edited by 0950c (avoid re-editing unless necessary): TemplateManager.vue, RecentProjectsList.vue, AgentTableView.vue, AgentJobModal.vue, AgentMissionEditModal.vue, ProjectTabs.vue, ProjectsView.vue, DatabaseConnection.vue, AppBar.vue, AgentExport.vue, McpIntegrationCard.vue, SerenaIntegrationCard.vue, GitIntegrationCard.vue. NOTE: statusCounts computed was removed from ProjectsView.vue by 0950c. goToIntegrations was removed from ProjectTabs.vue. 0950b may still be running on backend — do NOT touch Python files. From audit: 12 text-medium-emphasis usages, ~12 dialog anatomy violations, 5 unjustified !important. See audit_baseline.md findings #31-51 for exact file:line locations. Activate venv before any commands: source venv/bin/activate && export PYTHONPATH=.",
       "summary": ""
     },
     {
