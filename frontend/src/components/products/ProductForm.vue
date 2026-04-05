@@ -12,7 +12,6 @@
       <v-divider></v-divider>
 
       <v-card-text style="min-height: 400px; max-height: 600px; overflow-y: auto">
-        <!-- Tabbed interface for product configuration (button-toggle style like Settings) -->
         <v-btn-toggle
           v-model="dialogTab"
           mandatory
@@ -57,12 +56,10 @@
         <div class="bordered-tabs-content smooth-border">
           <v-form ref="formRef" v-model="formValid">
             <v-window v-model="dialogTab" class="global-tabs-window">
-            <!-- Product Setup Tab -->
             <v-window-item value="setup">
               <div class="text-subtitle-1 mb-1">Product Setup</div>
               <div class="text-caption text-warning mb-4">Always used as context source by orchestrator.</div>
 
-              <!-- Product Name -->
               <v-text-field
                 v-model="productForm.name"
                 label="Product Name"
@@ -73,7 +70,6 @@
                 class="mb-4 mt-2"
               ></v-text-field>
 
-              <!-- Vision Documents Section -->
               <div class="text-subtitle-2 mt-2 mb-1">Vision Documents</div>
               <div class="text-caption text-muted-a11y mb-4">
                 Optionally included as context source by orchestrator.
@@ -81,7 +77,6 @@
               </div>
 
 
-              <!-- Upload error alert -->
               <v-alert
                 v-if="visionUploadError"
                 type="error"
@@ -94,7 +89,6 @@
                 {{ visionUploadError }}
               </v-alert>
 
-              <!-- Upload progress indicator -->
               <v-alert
                 v-if="uploadingVision"
                 type="info"
@@ -114,7 +108,6 @@
                 />
               </v-alert>
 
-              <!-- Existing Documents (shown after upload) -->
               <div v-if="existingVisionDocuments.length > 0" class="mb-4">
                 <div class="text-subtitle-2 mb-2">
                   Existing Documents ({{ existingVisionDocuments.length }})
@@ -154,7 +147,6 @@
                 </v-list>
               </div>
 
-              <!-- File Upload Component -->
               <v-file-input
                 v-model="visionFiles"
                 accept=".txt,.md,.markdown"
@@ -172,7 +164,6 @@
                 @update:model-value="onFilesAttached"
               ></v-file-input>
 
-              <!-- Mode Selection (appears after vision docs are uploaded) -->
               <template v-if="existingVisionDocuments.length > 0">
                 <div class="text-subtitle-2 mt-6 mb-2">How would you like to set up this product?</div>
                 <v-radio-group v-model="setupMode" hide-details class="mb-2">
@@ -236,7 +227,6 @@
                 </div>
               </v-alert>
 
-              <!-- Custom Extraction Instructions (expandable) -->
               <v-expansion-panels v-if="setupMode === 'ai' && existingVisionDocuments.length > 0" variant="accordion" class="mt-2">
                 <v-expansion-panel>
                   <v-expansion-panel-title class="text-body-2 py-2" style="min-height: 40px;">
@@ -258,12 +248,10 @@
               </v-expansion-panels>
             </v-window-item>
 
-            <!-- Product Info Tab -->
             <v-window-item value="info">
               <div class="text-subtitle-1 mb-1">Product Information</div>
               <div class="text-caption text-warning mb-4">Always used as context source by orchestrator.</div>
 
-              <!-- Codebase Folder -->
               <v-text-field
                 v-model="productForm.projectPath"
                 label="Codebase Folder (optional)"
@@ -276,7 +264,6 @@
                 class="mb-4"
               ></v-text-field>
 
-              <!-- Description -->
               <v-textarea
                 v-model="productForm.description"
                 label="Product Description"
@@ -289,7 +276,6 @@
                 class="mb-4"
               ></v-textarea>
 
-              <!-- Core Features -->
               <v-textarea
                 v-model="productForm.coreFeatures"
                 hint="Main functionality and capabilities of this product"
@@ -321,7 +307,6 @@
               </v-textarea>
             </v-window-item>
 
-            <!-- Tech Stack Tab -->
             <v-window-item value="tech">
               <div class="text-subtitle-1 mb-1">Technology Stack Configuration</div>
               <div class="text-caption text-warning mb-4">
@@ -488,7 +473,6 @@
               </div>
             </v-window-item>
 
-            <!-- Architecture Tab -->
             <v-window-item value="arch">
               <div class="text-subtitle-1 mb-1">Architecture & Design Patterns</div>
               <div class="text-caption text-warning mb-4">
@@ -575,7 +559,6 @@
               </v-textarea>
             </v-window-item>
 
-            <!-- Testing Tab -->
             <v-window-item value="features">
               <div class="text-subtitle-1 mb-1">Quality Standards & Testing Configuration</div>
               <div class="text-caption text-warning mb-4">
@@ -583,7 +566,6 @@
                 <v-chip size="x-small" color="success" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
               </div>
 
-              <!-- Quality Standards -->
               <v-textarea
                 v-model="productForm.testConfig.quality_standards"
                 placeholder="e.g., Code review required, 80% coverage, zero critical bugs, all tests passing before merge"
@@ -600,7 +582,6 @@
                 </template>
               </v-textarea>
 
-              <!-- Testing Strategy Dropdown -->
               <v-select
                 v-model="productForm.testConfig.test_strategy"
                 :items="testingStrategies"
@@ -616,7 +597,6 @@
                   <span>Testing Strategy & Approach</span>
                 </template>
 
-                <!-- Enhanced dropdown items with icons and subtitles -->
                 <template #item="{ props, item }">
                   <v-list-item v-bind="props">
                     <template #prepend>
@@ -627,7 +607,6 @@
                   </v-list-item>
                 </template>
 
-                <!-- Enhanced selection display with icon -->
                 <template #selection="{ item }">
                   <div class="d-flex align-center">
                     <v-icon :icon="item.raw.icon" size="small" class="mr-2"></v-icon>
@@ -636,7 +615,6 @@
                 </template>
               </v-select>
 
-              <!-- Coverage Target Slider -->
               <div class="mb-4">
                 <label class="text-caption text-muted-a11y">
                   Test Coverage Target: {{ productForm.testConfig.coverage_target }}%
@@ -651,7 +629,6 @@
                 ></v-slider>
               </div>
 
-              <!-- Testing Frameworks -->
               <v-textarea
                 v-model="productForm.testConfig.testing_frameworks"
                 placeholder="pytest, pytest-asyncio, Playwright, coverage.py"
@@ -699,12 +676,13 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useFormatDate } from '@/composables/useFormatDate'
-import { useProductStore } from '@/stores/products'
+import { useVisionAnalysis } from '@/composables/useVisionAnalysis'
+import { useProductFormTabs } from '@/composables/useProductFormTabs'
 
 const { formatDate } = useFormatDate()
+const { showToast } = useToast()
 
 const props = defineProps({
   modelValue: {
@@ -739,27 +717,26 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'remove-vision', 'clear-upload-error', 'upload-vision-files'])
 
-const { copy: copyToClipboard } = useClipboard()
-const { showToast } = useToast()
-
-// State
 const saving = ref(false)
 const formValid = ref(false)
 const formRef = ref(null)
-const dialogTab = ref('setup')
 const visionFiles = ref([])
 
-// Vision analysis prompt state (Handover 0842d)
-const analysisBannerDismissed = ref(false)
-const analysisPromptCopied = ref(false)
-const promptFallbackText = ref(null) // Shown when clipboard copy fails
+const { dialogTab, tabOrder, isFirstTab, isLastTab, goNextTab, goPrevTab, resetTab } = useProductFormTabs()
 
-// Setup mode and analysis state (Handover 0842i)
-const setupMode = ref('manual')
-const analysisInProgress = ref(false)
-const analysisAgentConnected = ref(false)
-const analysisHintVisible = ref(false)
-let analysisHintTimer = null
+const {
+  analysisBannerDismissed,
+  analysisPromptCopied,
+  promptFallbackText,
+  setupMode,
+  analysisInProgress,
+  analysisAgentConnected,
+  analysisHintVisible,
+  resetAnalysisState,
+  stageAnalysis: runStageAnalysis,
+  onVisionAnalysisStarted,
+  onVisionAnalysisComplete,
+} = useVisionAnalysis((formData) => { productForm.value = formData })
 
 // Product form data — single source of truth for the default shape
 function getDefaultFormState() {
@@ -796,64 +773,14 @@ function getDefaultFormState() {
 
 const productForm = ref(getDefaultFormState())
 
-// Testing strategies
 const testingStrategies = [
-  {
-    value: 'TDD',
-    title: 'TDD (Test-Driven Development)',
-    subtitle: 'Write tests before implementation code',
-    icon: 'mdi-test-tube',
-  },
-  {
-    value: 'BDD',
-    title: 'BDD (Behavior-Driven Development)',
-    subtitle: 'Tests based on user stories and behavior specs',
-    icon: 'mdi-comment-text-multiple',
-  },
-  {
-    value: 'Integration-First',
-    title: 'Integration-First',
-    subtitle: 'Focus on testing component interactions',
-    icon: 'mdi-connection',
-  },
-  {
-    value: 'E2E-First',
-    title: 'E2E-First',
-    subtitle: 'Prioritize end-to-end user workflow tests',
-    icon: 'mdi-path',
-  },
-  {
-    value: 'Manual',
-    title: 'Manual Testing',
-    subtitle: 'User-driven QA and exploratory testing',
-    icon: 'mdi-human-male',
-  },
-  {
-    value: 'Hybrid',
-    title: 'Hybrid Approach',
-    subtitle: 'Combination of multiple testing strategies',
-    icon: 'mdi-view-grid-plus',
-  },
+  { value: 'TDD', title: 'TDD (Test-Driven Development)', subtitle: 'Write tests before implementation code', icon: 'mdi-test-tube' },
+  { value: 'BDD', title: 'BDD (Behavior-Driven Development)', subtitle: 'Tests based on user stories and behavior specs', icon: 'mdi-comment-text-multiple' },
+  { value: 'Integration-First', title: 'Integration-First', subtitle: 'Focus on testing component interactions', icon: 'mdi-connection' },
+  { value: 'E2E-First', title: 'E2E-First', subtitle: 'Prioritize end-to-end user workflow tests', icon: 'mdi-path' },
+  { value: 'Manual', title: 'Manual Testing', subtitle: 'User-driven QA and exploratory testing', icon: 'mdi-human-male' },
+  { value: 'Hybrid', title: 'Hybrid Approach', subtitle: 'Combination of multiple testing strategies', icon: 'mdi-view-grid-plus' },
 ]
-
-// Tab navigation
-const tabOrder = ['setup', 'info', 'tech', 'arch', 'features']
-const isFirstTab = computed(() => tabOrder.indexOf(dialogTab.value) === 0)
-const isLastTab = computed(() => tabOrder.indexOf(dialogTab.value) === tabOrder.length - 1)
-
-function goNextTab() {
-  const idx = tabOrder.indexOf(dialogTab.value)
-  if (idx >= 0 && idx < tabOrder.length - 1) {
-    dialogTab.value = tabOrder[idx + 1]
-  }
-}
-
-function goPrevTab() {
-  const idx = tabOrder.indexOf(dialogTab.value)
-  if (idx > 0) {
-    dialogTab.value = tabOrder[idx - 1]
-  }
-}
 
 // Computed v-model for dialog
 const isOpen = computed({
@@ -865,7 +792,6 @@ const isOpen = computed({
 const platformValidationError = ref('')
 const isAllPlatformSelected = computed(() => productForm.value.targetPlatforms.includes('all'))
 
-// Methods
 function closeDialog() {
   emit('cancel')
   emit('update:modelValue', false)
@@ -873,11 +799,7 @@ function closeDialog() {
 
 function saveProduct() {
   if (!formValid.value) return
-
-  // Handover 0425: Validate platforms before saving
-  if (!validatePlatforms()) {
-    return
-  }
+  if (!validatePlatforms()) return
 
   saving.value = true
 
@@ -894,10 +816,7 @@ function saveProduct() {
     extraction_custom_instructions: productForm.value.extractionCustomInstructions,
   }
 
-  // Vision files are uploaded on attach, not on save
   emit('save', { productData })
-
-  // Note: Parent component should set saving = false after async operation completes
 }
 
 function deleteVisionDocument(doc) {
@@ -905,54 +824,24 @@ function deleteVisionDocument(doc) {
 }
 
 
-// Vision analysis prompt — product must already be saved (UUID exists via upload-on-attach)
-async function stageAnalysis() {
-  const productId = props.product?.id
-  if (!productId) {
-    console.warn('[ProductForm] stageAnalysis called but no product ID available. product:', props.product)
-    return
-  }
-
-  const productName = productForm.value.name || 'this product'
-  const prompt = `Analyze the vision document for product "${productName}" and populate its configuration.\nUse the gil_get_vision_doc tool with product_id "${productId}" to read the document and extraction instructions, then call gil_write_product with the extracted fields.`
-
-  promptFallbackText.value = null
-  const didCopy = await copyToClipboard(prompt)
-
-  if (didCopy) {
-    analysisPromptCopied.value = true
-    showToast({ message: 'Analysis prompt copied — paste into your AI coding agent', type: 'success', timeout: 4000 })
-    setTimeout(() => { analysisPromptCopied.value = false }, 3000)
-  } else {
-    promptFallbackText.value = prompt
-    showToast({ message: 'Clipboard unavailable — copy the prompt manually below', type: 'warning', timeout: 5000 })
-  }
-
-  analysisInProgress.value = true
-
-  // Start the "taking too long?" hint timer (60 seconds)
-  analysisHintVisible.value = false
-  clearTimeout(analysisHintTimer)
-  analysisHintTimer = setTimeout(() => { analysisHintVisible.value = true }, 60000)
+function stageAnalysis() {
+  return runStageAnalysis(productForm.value, props.product?.id)
 }
 
-// Upload files immediately on attachment
 function onFilesAttached(files) {
   if (!files || files.length === 0) return
   if (!productForm.value.name?.trim()) return
 
   emit('upload-vision-files', { productName: productForm.value.name, files: [...files] })
-  visionFiles.value = [] // Clear local files — parent handles upload
+  visionFiles.value = []
 }
 
 // Handover 0425: Platform selection handlers
 function handleAllPlatformChange(value) {
   platformValidationError.value = ''
   if (value && productForm.value.targetPlatforms.includes('all')) {
-    // When "All" is selected, clear other selections
     productForm.value.targetPlatforms = ['all']
   } else if (!value) {
-    // When "All" is deselected, remove it from array
     productForm.value.targetPlatforms = productForm.value.targetPlatforms.filter(p => p !== 'all')
   }
   validatePlatforms()
@@ -960,7 +849,6 @@ function handleAllPlatformChange(value) {
 
 function handlePlatformChange() {
   platformValidationError.value = ''
-  // If "All" is selected and user selects another platform, deselect "All"
   if (productForm.value.targetPlatforms.includes('all') && productForm.value.targetPlatforms.length > 1) {
     productForm.value.targetPlatforms = productForm.value.targetPlatforms.filter(p => p !== 'all')
   }
@@ -968,168 +856,87 @@ function handlePlatformChange() {
 }
 
 function validatePlatforms() {
-  if (productForm.value.targetPlatforms.length === 0) {
-    platformValidationError.value = 'At least one platform must be selected'
-    formValid.value = false
-    return false
-  }
-  platformValidationError.value = ''
-  return true
+  const valid = productForm.value.targetPlatforms.length > 0
+  platformValidationError.value = valid ? '' : 'At least one platform must be selected'
+  if (!valid) formValid.value = false
+  return valid
 }
 
-// Load product data when editing, or reset to defaults
 function loadProductData() {
-  if (props.isEdit && props.product) {
-    const p = props.product
-    const ts = p.tech_stack || {}
-    const arch = p.architecture || {}
-    const tc = p.test_config || {}
-
-    productForm.value = {
-      name: p.name || '',
-      description: p.description || '',
-      projectPath: p.project_path || '',
-      targetPlatforms: p.target_platforms || ['all'],
-      techStack: {
-        programming_languages: ts.programming_languages || '',
-        frontend_frameworks: ts.frontend_frameworks || '',
-        backend_frameworks: ts.backend_frameworks || '',
-        databases_storage: ts.databases_storage || '',
-        infrastructure: ts.infrastructure || '',
-      },
-      architecture: {
-        primary_pattern: arch.primary_pattern || '',
-        design_patterns: arch.design_patterns || '',
-        api_style: arch.api_style || '',
-        architecture_notes: arch.architecture_notes || '',
-        coding_conventions: arch.coding_conventions || '',
-      },
-      coreFeatures: p.core_features || '',
-      brandGuidelines: p.brand_guidelines || '',
-      testConfig: {
-        quality_standards: tc.quality_standards || '',
-        test_strategy: tc.test_strategy || 'TDD',
-        coverage_target: tc.coverage_target || 80,
-        testing_frameworks: tc.testing_frameworks || '',
-      },
-      extractionCustomInstructions: p.extraction_custom_instructions || '',
-    }
-  } else {
+  if (!props.isEdit || !props.product) {
     productForm.value = getDefaultFormState()
+    return
+  }
+  const p = props.product
+  const ts = p.tech_stack || {}
+  const arch = p.architecture || {}
+  const tc = p.test_config || {}
+  productForm.value = {
+    name: p.name || '',
+    description: p.description || '',
+    projectPath: p.project_path || '',
+    targetPlatforms: p.target_platforms || ['all'],
+    techStack: {
+      programming_languages: ts.programming_languages || '',
+      frontend_frameworks: ts.frontend_frameworks || '',
+      backend_frameworks: ts.backend_frameworks || '',
+      databases_storage: ts.databases_storage || '',
+      infrastructure: ts.infrastructure || '',
+    },
+    architecture: {
+      primary_pattern: arch.primary_pattern || '',
+      design_patterns: arch.design_patterns || '',
+      api_style: arch.api_style || '',
+      architecture_notes: arch.architecture_notes || '',
+      coding_conventions: arch.coding_conventions || '',
+    },
+    coreFeatures: p.core_features || '',
+    brandGuidelines: p.brand_guidelines || '',
+    testConfig: {
+      quality_standards: tc.quality_standards || '',
+      test_strategy: tc.test_strategy || 'TDD',
+      coverage_target: tc.coverage_target || 80,
+      testing_frameworks: tc.testing_frameworks || '',
+    },
+    extractionCustomInstructions: p.extraction_custom_instructions || '',
   }
 }
-
-// Reset state when dialog opens/closes
-watch(
-  () => props.modelValue,
-  (newVal) => {
-    if (newVal) {
-      // Dialog opening — reset local state only (upload progress is owned by parent)
-      dialogTab.value = 'setup'
-      visionFiles.value = []
-      saving.value = false
-      analysisBannerDismissed.value = false
-      setupMode.value = 'manual'
-      analysisInProgress.value = false
-      analysisAgentConnected.value = false
-      analysisHintVisible.value = false
-      clearTimeout(analysisHintTimer)
-      loadProductData()
-    }
-  },
-)
-
-// Also watch for product changes (only reload in edit mode — during create, the
-// product prop is set by silent-save and we must not overwrite the user's form)
-watch(
-  () => props.product,
-  () => {
-    if (props.modelValue && props.isEdit) {
-      loadProductData()
-    }
-  },
-  { deep: true },
-)
-
-// Reset analysis lock when switching back to manual mode (Handover 0842i)
-watch(setupMode, (newMode) => {
-  if (newMode === 'manual') {
-    analysisInProgress.value = false
-    analysisAgentConnected.value = false
-    analysisHintVisible.value = false
-    clearTimeout(analysisHintTimer)
+watch(() => props.modelValue, (newVal) => {
+  if (newVal) {
+    resetTab()
+    visionFiles.value = []
+    saving.value = false
+    analysisBannerDismissed.value = false
+    setupMode.value = 'manual'
+    resetAnalysisState()
+    loadProductData()
   }
 })
 
-// Listen for vision:analysis_started WebSocket event (agent called gil_get_vision_doc)
-function onVisionAnalysisStarted(event) {
-  const productId = event.detail?.product_id
-  if (productId && productId === props.product?.id) {
-    analysisAgentConnected.value = true
-  }
+watch(() => props.product, () => {
+  if (props.modelValue && props.isEdit) loadProductData()
+}, { deep: true })
+
+watch(setupMode, (newMode) => {
+  if (newMode === 'manual') resetAnalysisState()
+})
+
+function handleVisionAnalysisStarted(event) {
+  onVisionAnalysisStarted(event, props.product?.id)
 }
 
-// Listen for vision:analysis_complete WebSocket event to unlock the UI
-const productStore = useProductStore()
-
-async function onVisionAnalysisComplete(event) {
-  const productId = event.detail?.product_id
-  if (productId && productId === props.product?.id) {
-    analysisHintVisible.value = false
-    clearTimeout(analysisHintTimer)
-
-    // Fetch updated product with AI-populated fields from the API
-    const updated = await productStore.fetchProductById(productId)
-    if (updated) {
-      const ts = updated.tech_stack || {}
-      const arch = updated.architecture || {}
-      const tc = updated.test_config || {}
-
-      productForm.value = {
-        name: updated.name || productForm.value.name,
-        description: updated.description || '',
-        projectPath: updated.project_path || '',
-        targetPlatforms: updated.target_platforms || ['all'],
-        techStack: {
-          programming_languages: ts.programming_languages || '',
-          frontend_frameworks: ts.frontend_frameworks || '',
-          backend_frameworks: ts.backend_frameworks || '',
-          databases_storage: ts.databases_storage || '',
-          infrastructure: ts.infrastructure || '',
-        },
-        architecture: {
-          primary_pattern: arch.primary_pattern || '',
-          design_patterns: arch.design_patterns || '',
-          api_style: arch.api_style || '',
-          architecture_notes: arch.architecture_notes || '',
-          coding_conventions: arch.coding_conventions || '',
-        },
-        coreFeatures: updated.core_features || '',
-        brandGuidelines: updated.brand_guidelines || '',
-        testConfig: {
-          quality_standards: tc.quality_standards || '',
-          test_strategy: tc.test_strategy || 'TDD',
-          coverage_target: tc.coverage_target || 80,
-          testing_frameworks: tc.testing_frameworks || '',
-        },
-        extractionCustomInstructions: updated.extraction_custom_instructions || '',
-      }
-    }
-
-    // Unlock the UI
-    analysisInProgress.value = false
-    analysisAgentConnected.value = false
-  }
+function handleVisionAnalysisComplete(event) {
+  return onVisionAnalysisComplete(event, props.product?.id)
 }
 
 onMounted(() => {
-  window.addEventListener('vision-analysis-started', onVisionAnalysisStarted)
-  window.addEventListener('vision-analysis-complete', onVisionAnalysisComplete)
+  window.addEventListener('vision-analysis-started', handleVisionAnalysisStarted)
+  window.addEventListener('vision-analysis-complete', handleVisionAnalysisComplete)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('vision-analysis-started', onVisionAnalysisStarted)
-  window.removeEventListener('vision-analysis-complete', onVisionAnalysisComplete)
+  window.removeEventListener('vision-analysis-started', handleVisionAnalysisStarted)
+  window.removeEventListener('vision-analysis-complete', handleVisionAnalysisComplete)
 })
 </script>
 

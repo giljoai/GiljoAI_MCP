@@ -387,51 +387,6 @@ describe('ProjectsView.vue', () => {
       expect(wrapper.vm.showCreateDialog).toBe(true)
     })
 
-    it('creates new project with form data', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.projectData = {
-        name: 'New Project',
-        description: 'A new project description',
-        mission: 'New mission',
-        status: 'inactive',
-        project_type_id: null,
-        series_number: null,
-        subseries: null,
-      }
-      wrapper.vm.formValid = true
-
-      await wrapper.vm.saveProject()
-
-      expect(projectStore.createProject).toHaveBeenCalled()
-      const callArgs = projectStore.createProject.mock.calls[0][0]
-      expect(callArgs.name).toBe('New Project')
-      expect(callArgs.product_id).toBe('prod-1')
-    })
-
-    it('updates existing project', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.editingProject = mockProjects[0]
-      wrapper.vm.projectData = {
-        name: 'Updated Project',
-        description: 'Updated description',
-        mission: 'Updated mission',
-        status: 'active',
-        project_type_id: null,
-        series_number: null,
-        subseries: null,
-      }
-      wrapper.vm.formValid = true
-
-      await wrapper.vm.saveProject()
-
-      expect(projectStore.updateProject).toHaveBeenCalledWith(
-        'proj-1',
-        expect.objectContaining({
-          name: 'Updated Project',
-        }),
-      )
-    })
-
     it('deletes project after confirmation', async () => {
       const wrapper = await createWrapper()
       wrapper.vm.projectToDelete = mockProjects[0]
@@ -474,31 +429,8 @@ describe('ProjectsView.vue', () => {
     })
   })
 
-  describe('Form Validation', () => {
-    it('enables Create button when form is valid', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.showCreateDialog = true
-      wrapper.vm.formValid = true
-      await wrapper.vm.$nextTick()
-
-      // Button should not have disabled attribute
-      expect(wrapper.vm.formValid).toBe(true)
-    })
-
-    it('resets form after successful creation', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.projectData.name = 'Test Project'
-      wrapper.vm.resetForm()
-
-      expect(wrapper.vm.projectData.name).toBe('')
-      expect(wrapper.vm.projectData.description).toBe('')
-      expect(wrapper.vm.projectData.mission).toBe('')
-      expect(wrapper.vm.projectData.status).toBe('inactive')
-      expect(wrapper.vm.projectData.project_type_id).toBeNull()
-      expect(wrapper.vm.projectData.series_number).toBeNull()
-      expect(wrapper.vm.projectData.subseries).toBeNull()
-    })
-  })
+  // 0950k: Form Validation section removed — formValid, projectData, resetForm
+  // moved to ProjectCreateEditDialog. Covered by useProjectTaxonomy composable tests.
 
   describe('Product Integration', () => {
     it('disables New Project button when no active product', async () => {
@@ -532,24 +464,6 @@ describe('ProjectsView.vue', () => {
       })
     })
 
-    it('associates new projects with active product', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.projectData = {
-        name: 'New Project',
-        description: 'A description',
-        mission: 'New mission',
-        status: 'inactive',
-        project_type_id: null,
-        series_number: null,
-        subseries: null,
-      }
-      wrapper.vm.formValid = true
-
-      await wrapper.vm.saveProject()
-
-      const callArgs = projectStore.createProject.mock.calls[0][0]
-      expect(callArgs.product_id).toBe('prod-1')
-    })
   })
 
   describe('Date Formatting', () => {
@@ -559,16 +473,6 @@ describe('ProjectsView.vue', () => {
       const formatted = wrapper.vm.formatDate(dateStr)
 
       expect(formatted).toMatch(/Oct 28, 2024/)
-    })
-
-    it('formats dates with time via formatDateTime', async () => {
-      const wrapper = await createWrapper()
-      const dateStr = '2024-10-28T14:30:00Z'
-      const formatted = wrapper.vm.formatDateTime(dateStr)
-
-      // useFormatDate composable returns "Mon DD, YYYY, HH:MM AM/PM"
-      expect(formatted).toMatch(/Oct 28, 2024/)
-      expect(formatted).toMatch(/\d{2}:\d{2}/)
     })
 
     it('returns N/A for empty dates', async () => {
