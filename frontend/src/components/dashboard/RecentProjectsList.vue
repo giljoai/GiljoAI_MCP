@@ -50,14 +50,6 @@ function taxonomyStyle(project) {
   }
 }
 
-function statusClass(status) {
-  return status ? status.toLowerCase() : ''
-}
-
-function capitalize(str) {
-  if (!str) return ''
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
 </script>
 
 <style scoped lang="scss">

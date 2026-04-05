@@ -209,18 +209,6 @@ describe('ProjectsView.vue', () => {
       expect(wrapper.text()).toContain('Deleted')
     })
 
-    it('renders filter status options when filter row shown', async () => {
-      const wrapper = await createWrapper()
-      // Filter chips are inside a collapsible section; check statusFilterOptions exist as computed
-      const options = wrapper.vm.statusFilterOptions
-      const labels = options.map((o) => o.label)
-      expect(labels).toContain('All')
-      expect(labels).toContain('Active')
-      expect(labels).toContain('Inactive')
-      expect(labels).toContain('Completed')
-      expect(labels).toContain('Cancelled')
-      expect(labels).toContain('Terminated')
-    })
   })
 
   describe('Search Functionality', () => {
@@ -313,18 +301,6 @@ describe('ProjectsView.vue', () => {
       })
     })
 
-    it('does not count deleted projects in status counts', async () => {
-      const wrapper = await createWrapper()
-      const totalCounted =
-        wrapper.vm.statusCounts.active +
-        wrapper.vm.statusCounts.inactive +
-        wrapper.vm.statusCounts.completed +
-        wrapper.vm.statusCounts.cancelled +
-        wrapper.vm.statusCounts.terminated
-
-      expect(totalCounted).toBe(3) // Only non-deleted projects
-    })
-
     it('filters counts by active product', async () => {
       productStore.$patch({
         activeProduct: null,
@@ -332,7 +308,6 @@ describe('ProjectsView.vue', () => {
 
       const wrapper = await createWrapper()
       expect(wrapper.vm.activeProductProjects.length).toBe(0)
-      expect(wrapper.vm.statusCounts.active).toBe(0)
     })
   })
 

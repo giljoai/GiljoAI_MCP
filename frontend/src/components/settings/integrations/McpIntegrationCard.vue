@@ -33,5 +33,5 @@ const wizardRef = ref(null)
 </script>
 
 <style lang="scss" scoped>
-@import '../../../styles/intg-card';
+@use '../../../styles/intg-card';
 </style>
