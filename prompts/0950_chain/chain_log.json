@@ -156,16 +156,35 @@
       "id": "0950f",
       "title": "Backend: Stale Docstrings + Dead Pass Statements",
       "handover": "handovers/0950f_STALE_DOCSTRINGS.md",
-      "status": "pending",
+      "status": "complete",
       "effort": "light",
       "depends_on": ["0950b"],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "DEAD CODE: Deleted TenantManager.inherit_tenant_key (tenant.py) — zero callers",
+        "DEAD CODE: Deleted DatabaseManager.apply_tenant_filter wrapper (database.py) — zero callers, TenantManager version used directly",
+        "DEAD CODE: Deleted DatabaseManager.ensure_tenant_isolation wrapper (database.py) — zero callers, TenantManager version used directly",
+        "DEAD CODE: Deleted SetupState.mark_completed (models/config.py) — zero callers, flagged since 0740",
+        "DEAD CODE: Deleted SetupState.add_validation_warning (models/config.py) — zero callers",
+        "DEAD CODE: Deleted SetupState.clear_validation_failures (models/config.py) — zero callers, flagged since 0740",
+        "DEAD CODE: Deleted VisionDocument.update_content_hash (models/products.py) — zero callers, flagged since 0740",
+        "STALE DOCSTRING: Fixed orchestration_service.py:1407 — status_filter docstring listed 'active, completed, failed', updated to valid execution statuses",
+        "TOMBSTONE: Removed 4 tombstone comment lines in config_manager.py:547-551 (_detect_mode and _apply_mode_settings removed-in-v3.0 markers)",
+        "CLEANUP: Removed unused 'Any' import from database.py (became unused after wrapper deletion)",
+        "AUDIT: All 8 bare pass statements in src/giljo_mcp/ confirmed intentional (docstring examples, annotated except blocks, config fallback)",
+        "AUDIT: 3 'not yet implemented' markers confirmed accurate (assigned_to param genuinely not wired up since Task model field removed in 0076)",
+        "AUDIT: 1 '(legacy)' comment in thin_prompt_generator.py:1165 confirmed accurate (fallback for pre-0358b data)"
+      ],
+      "deviations": [
+        "template_seeder.py:221 _get_default_templates_v103 (266 lines, finding #69) — not modified; it is a data function, not a code hygiene issue. Noted for 0950g-j if refactoring scope expands."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": "",
-      "cascading_impacts": [],
+      "notes_for_next": "All 10 assigned findings resolved (7 dead methods deleted, 1 stale docstring fixed, 1 tombstone removed, plus 1 cascading unused import fix). Zero new test failures — the 11 pre-existing failures in test_project_service_helpers.py remain (assigned to 0950l). Ruff passes clean. install.py imports verified. The assigned_to parameter in tool_accessor.py and task_service.py docstrings says 'not implemented yet' — this is accurate since the Task model field was removed in handover 0076. If assigned_to support is added in a future handover, update those 3 docstrings.",
+      "cascading_impacts": [
+        "DatabaseManager no longer exposes apply_tenant_filter() or ensure_tenant_isolation() — any code calling db_manager.apply_tenant_filter() must call TenantManager.apply_tenant_filter() directly (no current callers exist)",
+        "SetupState no longer has mark_completed(), add_validation_warning(), or clear_validation_failures() — install.py verified unaffected"
+      ],
       "orchestrator_directives": "0950b COMPLETE. All 13 findings resolved. Key changes by 0950b: DB health endpoint now requires auth, CORS wildcards rejected, 4 dict-return endpoints converted to Pydantic models, file permissions fixed, CheckConstraint migration added. From audit findings #9-15 + #69 + #74 + #94: Delete 7 dead backend methods (tenant.py:193, database.py:287+301, config.py:438+466+481, products.py:624), fix stale docstring orchestration_service.py:1407, remove tombstone comments config_manager.py:547-551, template_seeder.py:221 _get_default_templates_v103 is a data function — low priority but note it's 266 lines. Activate venv: source venv/bin/activate && export PYTHONPATH=. IMPORTANT: install.py imports from models and seeds demo data — verify any model changes don't break install.py imports.",
-      "summary": ""
+      "summary": "All 10 assigned findings resolved: 7 dead methods deleted (tenant.py, database.py x2, config.py x3, products.py), 1 stale agent-status docstring fixed (orchestration_service.py), 1 tombstone comment block removed (config_manager.py), 1 cascading unused import cleaned (database.py). Audited 8 bare pass statements (all intentional), 3 'not implemented' markers (all accurate), 1 '(legacy)' label (accurate). Zero new test failures. Ruff clean. install.py imports verified."
     },
     {
       "id": "0950g",
