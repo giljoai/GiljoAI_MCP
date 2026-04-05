@@ -20,6 +20,7 @@ from src.giljo_mcp.schemas.service_responses import (
     SendMessageResult,
     WorkflowStatus,
 )
+from src.giljo_mcp.services.message_routing_service import MessageRoutingService
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.services.product_service import ProductService
@@ -113,7 +114,12 @@ class ToolAccessor:
         self._message_service = MessageService(
             db_manager,
             tenant_manager,
-            websocket_manager=websocket_manager,  # Pass WebSocket manager
+            websocket_manager=websocket_manager,
+        )
+        self._message_routing_service = MessageRoutingService(
+            db_manager,
+            tenant_manager,
+            websocket_manager=websocket_manager,
         )
         self._orchestration_service = OrchestrationService(
             db_manager,
@@ -261,7 +267,7 @@ class ToolAccessor:
         """Delegate to OrchestrationService (Handover 0451)"""
         return await self._orchestration_service.update_agent_mission(job_id, tenant_key, mission)
 
-    # Message Tools (delegates to MessageService)
+    # Message Tools (delegates to MessageService / MessageRoutingService)
 
     async def send_message(
         self,
@@ -273,8 +279,8 @@ class ToolAccessor:
         from_agent: str | None = None,
         tenant_key: str | None = None,
     ) -> SendMessageResult:
-        """Send message to one or more agents (delegates to MessageService)"""
-        return await self._message_service.send_message(
+        """Send message to one or more agents (delegates to MessageRoutingService)"""
+        return await self._message_routing_service.send_message(
             to_agents=to_agents,
             content=content,
             project_id=project_id,
