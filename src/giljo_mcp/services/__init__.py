@@ -12,6 +12,7 @@ Handover 0424b: OrgService added for organization management
 
 from .auth_service import AuthService
 from .config_service import ConfigService
+from .message_routing_service import MessageRoutingService
 from .message_service import MessageService
 from .orchestration_service import OrchestrationService
 from .org_service import OrgService
@@ -25,6 +26,7 @@ from .user_service import UserService
 __all__ = [
     "AuthService",
     "ConfigService",
+    "MessageRoutingService",
     "MessageService",
     "OrchestrationService",
     "OrgService",

@@ -241,16 +241,37 @@
       "id": "0950h",
       "title": "God-Class Split: MessageService",
       "handover": "handovers/0950h_SPLIT_MESSAGE_SERVICE.md",
-      "status": "pending",
+      "status": "complete",
       "effort": "heavy",
       "depends_on": ["0950g"],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Created src/giljo_mcp/services/message_routing_service.py (863 lines) — MessageRoutingService with send_message, broadcast, broadcast_to_project, recipient resolution, auto-block, WebSocket event emission",
+        "Extracted 11 methods from MessageService: send_message, _validate_send_message_inputs, _resolve_message_recipients, _resolve_sender_display_name, _persist_messages, _check_staging_broadcast_directive, _handle_send_message_side_effects, _auto_block_completed_recipients, _broadcast_message_events, broadcast, broadcast_to_project",
+        "Refactored list_messages: extracted _build_list_query (79 lines) and _format_list_message (18 lines), public method reduced to 46 lines",
+        "MessageService reduced from 1790 lines to 874 lines — retains get_messages, receive_messages, list_messages, complete_message, get_message_status",
+        "Updated api/endpoints/messages.py: send_message, send_message_from_ui, broadcast_message endpoints now use MessageRoutingService via get_message_routing_service dependency",
+        "Updated api/endpoints/dependencies.py: added get_message_routing_service dependency",
+        "Updated src/giljo_mcp/tools/tool_accessor.py: added _message_routing_service, send_message delegates to routing service",
+        "Updated src/giljo_mcp/services/__init__.py: added MessageRoutingService export",
+        "Updated src/giljo_mcp/services/dto.py: docstring reference updated to MessageRoutingService",
+        "Updated tests/unit/test_broadcast_deadlock_retry.py: 5 tests updated to use MessageRoutingService",
+        "Tenant isolation verified: all 28 queries across both files pass tenant_key filtering"
+      ],
+      "deviations": [
+        "_persist_messages and _handle_send_message_side_effects moved to MessageRoutingService (not kept in MessageService) because they are exclusively called by send_message and have no other consumers",
+        "list_messages public method is 46 lines (target was under 40) — includes docstring and exception handling; the body logic is well under 40 lines",
+        "OrchestrationService, MissionService, ProgressService store _message_service but never call any methods on it — only extract _websocket_manager. No changes needed to those files."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": "",
-      "cascading_impacts": [],
+      "notes_for_next": "MessageService is now 874 lines (was 1790). MessageRoutingService is 863 lines. Public interface split: CRUD/read/ack/complete operations stay on MessageService, send/broadcast/routing operations on MessageRoutingService. Import paths: callers of send_message/broadcast must now import from giljo_mcp.services.message_routing_service.MessageRoutingService. Callers of get_messages/receive_messages/list_messages/complete_message/get_message_status continue to use MessageService unchanged. OrchestrationService stores _message_service but never calls methods on it — only extracts _websocket_manager attribute. If 0950i touches ProductService or ProjectService and they call message routing, use MessageRoutingService. The 11 pre-existing test failures in test_project_service_helpers.py remain (assigned to 0950l). Ruff clean. Startup OK.",
+      "cascading_impacts": [
+        "send_message() is now on MessageRoutingService, not MessageService — any code calling message_service.send_message() must switch to message_routing_service.send_message()",
+        "broadcast() and broadcast_to_project() are now on MessageRoutingService — same import update required",
+        "New dependency: api/endpoints/dependencies.py now exports get_message_routing_service",
+        "tool_accessor.py now has _message_routing_service in addition to _message_service"
+      ],
       "orchestrator_directives": "0950g COMPLETE. ThinClientPromptGenerator split 1676→691 lines. New prompts/ subpackage. NOTE: StagingPromptBuilder.regenerate_mission() is now non-async. MessageService is 1730 lines — extract routing/recipient/broadcast logic into message_routing_service.py. Split oversized list_messages. Target under 900 lines. Grep ALL callers before moving. Activate venv: source venv/bin/activate && export PYTHONPATH=. 0950k running in parallel on frontend — do NOT touch Vue/JS files.",
-      "summary": ""
+      "summary": "Split MessageService (1790 lines) into MessageService (874 lines, CRUD/read/ack/complete) and MessageRoutingService (863 lines, send/broadcast/routing). Extracted 11 methods. Refactored list_messages with _build_list_query helper. Updated all callers: api/endpoints/messages.py (3 endpoints), tool_accessor.py (send_message delegation), dependencies.py (new factory), __init__.py (re-export). Updated 5 unit tests. Tenant isolation verified on all 28 queries. Zero new test failures. Ruff clean. Startup OK."
     },
     {
       "id": "0950i",

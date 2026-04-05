@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 @dataclass
 class BroadcastMessageContext:
-    """Groups the parameters of MessageService._broadcast_message_events."""
+    """Groups the parameters of MessageRoutingService._broadcast_message_events."""
 
     session: AsyncSession
     messages: list
