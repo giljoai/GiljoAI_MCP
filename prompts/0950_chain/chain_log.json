@@ -15,6 +15,7 @@
     "pythonpath": "export PYTHONPATH=/media/patrik/Work/GiljoAI_MCP",
     "note": "ALWAYS activate venv before running pytest, ruff, or python commands. Tools also available at ~/.local/bin/ if venv activation fails. Run: source venv/bin/activate && export PYTHONPATH=. before any Python work."
   },
+  "parallel_warning": "Multiple agents may run in parallel on different tracks (frontend vs backend). If you are running in parallel with another agent: (1) Do NOT touch files outside your assigned scope. (2) When writing to chain_log.json, read the file fresh first to avoid overwriting the other agent's updates. (3) If you get a git merge conflict on chain_log.json, re-read the file and re-apply only YOUR session entry. (4) Use git pull before committing to pick up the other agent's commits.",
   "sessions": [
     {
       "id": "0950a",
@@ -141,16 +142,33 @@
       "id": "0950e",
       "title": "Frontend: Hardcoded Hex Color Sweep",
       "handover": "handovers/0950e_HEX_COLOR_SWEEP.md",
-      "status": "pending",
+      "status": "complete",
       "effort": "medium",
       "depends_on": ["0950d"],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "DEAD SCSS: Deleted 3 dead mixins from agent-colors.scss (agent-card-border, chat-head-badge, status-badge) — zero @include usages",
+        "TOKENS: Added 15 new SCSS variables to design-tokens.scss ($color-accent-success, $color-accent-danger, $color-accent-special, $color-status-idle/sleeping/decommissioned/staged, $color-brand-yellow-hover, $color-text-on-muted, $color-text-hover, $color-pill-border, $color-indicator-disconnected, $color-card-git/serena, $color-phase-amber)",
+        "HEX SWEEP: Replaced hardcoded hex in 12 core files (findings #19-30): RecentProjectsList, StatusBadge, RoleBadge, MessagePanel, NavigationDrawer, WelcomeView, SetupStep2Connect, statusConfig.js, SystemSettings, UserSettings, AiToolConfigWizard, BroadcastPanel",
+        "HEX SWEEP: Extended sweep to 15 additional files: MessagesView, DashboardView, ProductsView, TasksView, ProjectsView, AgentTableView, GitIntegrationCard, McpIntegrationCard, SerenaIntegrationCard, AgentExport, ProjectTabs, ProductDetailsDialog, ProductTuningReview, JobsTab, MessageItem",
+        "PATTERN: <style> blocks use SCSS variables ($color-*) or CSS custom properties (var(--agent-*, --text-muted, --color-accent-*)). Template inline styles use CSS vars. JS scripts use named constants with // $token-name comments tracing to design-tokens.scss",
+        "CLEANUP: Replaced all var(--brand-yellow, #ffc300) fallbacks with var(--color-accent-primary) since --brand-yellow was never defined",
+        "CLEANUP: Removed all design-token-exempt comments (not an official exemption category)",
+        "CLEANUP: Replaced local hexToRgb in StatusBadge with hexToRgba from @/utils/colorUtils. Replaced local tintedBg in WelcomeView with hexToRgba"
+      ],
+      "deviations": [
+        "statusConfig.js treated as a JS token definition file (like agentColors.js) — hex values defined in named STATUS_COLORS constant map at top of file, not imported from external source",
+        "theme.js and constants.js not modified — they are Vuetify theme config and swatch palette definitions respectively, functionally token definition files",
+        "rgba() background values in template inline styles (e.g. rgba(103,189,109,0.15)) partially remain where no CSS variable equivalent exists — the color: values were all tokenized",
+        "Vuetify color prop hex values (e.g. color='#ffffff') kept as named constants with // $token-name comments since Vuetify props don't support CSS variables"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": "",
-      "cascading_impacts": [],
+      "notes_for_next": "0950k: Large components with complex style sections: WelcomeView.vue (960+ lines, 28 card definitions with agent colors), JobsTab.vue (1500+ lines style block with nested selectors), ProductsView.vue (1200+ lines), ProjectTabs.vue (900+ lines). These are candidates for component splits. The following files were edited by 0950e and should be handled carefully: StatusBadge.vue (now imports getAgentColor + hexToRgba), WelcomeView.vue (now imports hexToRgba), ProductTuningReview.vue (now imports getAgentColor + hexToRgba), GitIntegrationCard.vue (now imports hexToRgba), SerenaIntegrationCard.vue (now imports hexToRgba). Frontend test count unchanged at 83 failures (pre-existing). Build passes clean. Main chunk 738.24 KB (unchanged).",
+      "cascading_impacts": [
+        "StatusBadge.vue now uses getAgentColor() for active (#6DB3E4) and terminated (#E07872) status colors — if agent colors change, project status badge colors change too",
+        "WelcomeView.vue card definitions now use getAgentColor() imports — card accent colors are dynamic, not hardcoded"
+      ],
       "orchestrator_directives": "0950d COMPLETE. All dialog conversions done. Files edited by 0950d: DonutChart.vue, MessageDetailView.vue, NotificationDropdown.vue, TasksView.vue, ProjectsView.vue, RecentMemoriesList.vue, ProjectTabs.vue, ProductForm.vue, ForgotPasswordPin.vue, TemplateManager.vue, AiToolConfigWizard.vue, ConnectionStatus.vue, UserManager.vue, ProjectLaunchView.vue, OrganizationSettings.vue, ProductDetailsDialog.vue, AgentTableView.vue, NavigationDrawer.vue. From audit findings #16-30: ~30 hardcoded hex colors across ~12 files + 3 dead SCSS mixins. Key targets: RecentProjectsList.vue (7 hex), StatusBadge.vue (5), RoleBadge.vue (1), MessagePanel.vue (3), NavigationDrawer.vue (5), WelcomeView.vue (agent palette), SetupStep2Connect.vue (2), statusConfig.js (full color map), SystemSettings.vue (3), UserSettings.vue (3), AiToolConfigWizard.vue (1), BroadcastPanel.vue (1). Delete 3 dead SCSS mixins in agent-colors.scss. 0950g is running in parallel on backend — do NOT touch Python files.",
-      "summary": ""
+      "summary": "All 15 audit findings (#16-30) resolved plus 15 additional violations found in extended sweep. Deleted 3 dead SCSS mixins. Added 15 new design tokens. Replaced ~60 hardcoded hex colors across 27 Vue/JS files with SCSS variables, CSS custom properties, or named JS constants. Zero inline hex remaining in <style> blocks or <template> inline styles (outside token definition files). Build clean. Main chunk 738.24 KB (unchanged). 83 pre-existing frontend test failures unchanged."
     },
     {
       "id": "0950f",
