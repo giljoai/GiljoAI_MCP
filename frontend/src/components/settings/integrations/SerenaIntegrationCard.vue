@@ -68,5 +68,5 @@ defineEmits(['update:enabled'])
 </script>
 
 <style lang="scss" scoped>
-@import '../../../styles/intg-card';
+@use '../../../styles/intg-card';
 </style>

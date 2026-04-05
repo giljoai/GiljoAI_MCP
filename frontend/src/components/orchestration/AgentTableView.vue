@@ -106,7 +106,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useStalenessMonitor } from '@/composables/useStalenessMonitor'
 import api from '@/services/api'
-import { hexToRgba, getAgentBadgeStyle } from '@/utils/colorUtils'
+import { getAgentBadgeStyle } from '@/utils/colorUtils'
 import StatusChip from '@/components/StatusBoard/StatusChip.vue'
 import ActionIcons from '@/components/StatusBoard/ActionIcons.vue'
 /**
@@ -147,7 +147,6 @@ const emit = defineEmits(['row-click', 'launch-agent'])
 
 // Reuse shared logic from composable (NO DUPLICATION)
 const {
-  getAgentDisplayNameColor,
   getAgentAbbreviation,
 } = useAgentData(computed(() => props.agents))
 

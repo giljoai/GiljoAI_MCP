@@ -131,7 +131,7 @@
             />
             <v-card-text class="pa-5 text-body-2">
               <div class="font-weight-bold mb-3">GiljoAI MCP</div>
-              Beta 1.0.0<br />
+              Beta {{ appVersion }}<br />
               Community Edition<br />
               License: {{ licenseStatus }}<br /><br />
               GiljoAI Community License v1.1<br />
@@ -171,6 +171,7 @@ import ActiveProductDisplay from '@/components/ActiveProductDisplay.vue'
 import UserProfileDialog from '@/components/UserProfileDialog.vue'
 import NotificationDropdown from '@/components/navigation/NotificationDropdown.vue'
 import RoleBadge from '@/components/common/RoleBadge.vue'
+import { version as appVersion } from '../../../package.json'
 import api from '@/services/api'
 import configService from '@/services/configService'
 import setupService from '@/services/setupService'

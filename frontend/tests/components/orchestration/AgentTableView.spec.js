@@ -403,7 +403,6 @@ describe('AgentTableView.vue', () => {
       wrapper = mountComponent()
 
       // Verify composable methods are available on the component instance
-      expect(typeof wrapper.vm.getAgentDisplayNameColor).toBe('function')
       expect(typeof wrapper.vm.getAgentAbbreviation).toBe('function')
     })
 

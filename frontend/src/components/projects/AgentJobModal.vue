@@ -106,8 +106,7 @@
 
 <script setup>
 import { computed, ref, toRaw, watch } from 'vue'
-import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
-import { hexToRgba, getAgentBadgeStyle } from '@/utils/colorUtils'
+import { getAgentBadgeStyle } from '@/utils/colorUtils'
 
 // Props
 const props = defineProps({
