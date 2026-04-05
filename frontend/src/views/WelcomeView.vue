@@ -175,7 +175,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const productStore = useProductStore()
 const projectStore = useProjectStore()
-const { firstName, fullGreeting } = useGreeting()
+const { fullGreeting } = useGreeting()
 
 // Certificate trust modal state
 const showCertModal = ref(false)

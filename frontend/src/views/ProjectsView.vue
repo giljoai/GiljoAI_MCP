@@ -461,8 +461,11 @@ const {
   itemsPerPage,
   sortConfig,
   typeSelectOptions,
+  // eslint-disable-next-line no-unused-vars -- exposed on vm for test assertions
   activeProductProjects,
+  // eslint-disable-next-line no-unused-vars -- exposed on vm for test assertions
   filteredBySearch,
+  // eslint-disable-next-line no-unused-vars -- exposed on vm for test assertions
   filteredProjects,
   sortedProjects,
   clearFilters,
