@@ -1,0 +1,98 @@
+/* Integration cards — shared style for Settings > Integrations tab.
+   Two variants:
+     .intg-card--clickable : full card click, lift on hover (single-action cards)
+     (default)             : container with accent bar, no lift (interactive children) */
+
+.intg-card {
+  background: rgb(var(--v-theme-surface));
+  border-radius: 16px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s;
+  height: 100%;
+}
+
+.intg-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--card-accent, rgba(255,255,255,0.10));
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.intg-card:hover::before {
+  opacity: 1;
+}
+
+/* Clickable variant — lift on hover */
+.intg-card--clickable {
+  cursor: pointer;
+}
+
+.intg-card--clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255,255,255,0.10)), 0 10px 20px -6px rgba(0,0,0,0.25);
+}
+
+/* Icon block */
+.intg-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+}
+
+/* Title */
+.intg-card-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+/* Description */
+.intg-card-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+/* Header row (icon + title + spacer + toggle) for container cards */
+.intg-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.intg-card-header .intg-card-icon {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.intg-card-header .intg-card-title {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+/* Body content area */
+.intg-card-body {
+  padding-top: 4px;
+}
+
+/* Toggle pill button (Enable / Enabled) */
+.intg-toggle-pill {
+  text-transform: none;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+  border-radius: 20px;
+  min-width: 100px;
+}
