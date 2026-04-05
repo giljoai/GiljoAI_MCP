@@ -6,7 +6,7 @@
 :root {
   // Dark theme (default)
   --color-bg-primary: #0e1c2d;
-  --color-bg-secondary: #182739;
+  --color-bg-secondary: #12202e;
   --color-bg-elevated: #1e3147;
   --color-border: #315074;
   --color-text-primary: #e1e1e1;
@@ -140,13 +140,13 @@ body {
   user-select: none;
 }
 
-// Accessible muted text (WCAG AA 4.98:1 on #182739)
+// Accessible muted text (WCAG AA 4.98:1 on #12202e)
 // Replaces per-component scoped *-text-muted classes.
 .text-muted-a11y {
   color: var(--text-muted) !important;
 }
 
-// Accessible secondary text (WCAG AA 6.56:1 on #182739)
+// Accessible secondary text (WCAG AA 6.56:1 on #12202e)
 // Replaces inline style="color: #a3aac4" in templates.
 .text-secondary-a11y {
   color: var(--text-secondary) !important;

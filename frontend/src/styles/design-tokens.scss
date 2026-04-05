@@ -174,7 +174,7 @@ $color-orchestrator-card-background: rgba(255, 255, 255, 0.05); // Light overlay
 $color-orchestrator-card-border: rgba(255, 255, 255, 0.1); // Light border
 
 // Scrollbar colors (V1 palette — intentional hex, not faded rgba)
-$color-scrollbar-track-background: #182739; // bg-raised
+$color-scrollbar-track-background: #12202e; // bg-raised
 $color-scrollbar-thumb-background: #315074; // matches border-subtle palette
 $color-scrollbar-thumb-hover-background: #8f97b7; // bright on hover
 
@@ -183,7 +183,7 @@ $color-scrollbar-thumb-hover-background: #8f97b7; // bright on hover
 // =========================================================================
 
 $elevation-flat: #0e1c2d; // Base surface
-$elevation-raised: #182739; // Cards, panels
+$elevation-raised: #12202e; // Cards, panels (harmonized with Vuetify surface)
 $elevation-elevated: #1e3147; // Modals, dropdowns
 $elevation-overlay: #243b53; // Overlays, popovers
 
