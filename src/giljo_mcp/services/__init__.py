@@ -20,8 +20,10 @@ from .product_service import ProductService
 from .product_vision_service import ProductVisionService
 from .project_launch_service import ProjectLaunchService
 from .project_service import ProjectService
+from .task_conversion_service import TaskConversionService
 from .task_service import TaskService
 from .template_service import TemplateService
+from .user_auth_service import UserAuthService
 from .user_service import UserService
 
 
@@ -36,7 +38,9 @@ __all__ = [
     "ProductVisionService",
     "ProjectLaunchService",
     "ProjectService",
+    "TaskConversionService",
     "TaskService",
     "TemplateService",
+    "UserAuthService",
     "UserService",
 ]
