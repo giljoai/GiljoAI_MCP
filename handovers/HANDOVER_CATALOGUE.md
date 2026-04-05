@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-04-02 (Archive 0842g/0847/0900 COMPLETE, catalogue reconciled with ROADMAP.md)
+**Last Updated:** 2026-04-05 (Archive 0907/0908 COMPLETE, remove completed entries from Active section)
 
 ---
 
@@ -19,9 +19,9 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE, **0769a-g sprint COMPLETE (2026-03-30)**. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800-0869 | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. **0841 COMPLETE.** **0842a-f, 0842g, 0842h, 0842i-m COMPLETE.** **0843 COMPLETE.** **0834b COMPLETE.** **0844 NOT STARTED.** **0846a-c COMPLETE.** **0847 COMPLETE.** **0855a-g COMPLETE.** **0860a-d COMPLETE (CE: PASS WITH REVIEW ITEMS, SaaS: PASS).** |
+| 0800-0869 | Enhancement & Feature Series | 0800-0843 ALL COMPLETE. **0844 DEFERRED (post-launch).** 0846-0860 ALL COMPLETE. |
 | 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE. 0873a-o COMPLETE. 0874a-c COMPLETE. 0875 COMPLETE. 0880 COMPLETE.** All design system work done. Branch: feature/0873-style-centralization. |
-| 0900-0999 | Infrastructure & DevEx | **0900 COMPLETE.** **0901 COMPLETE.** **0902 COMPLETE (0902a-d all COMPLETE).** **0903 NOT STARTED.** **0904 COMPLETE.** **0905 COMPLETE.** **0906 COMPLETE.** **0907 NOT STARTED.** |
+| 0900-0999 | Infrastructure & DevEx | 0900-0902 COMPLETE. **0903 DEFERRED (post-launch).** 0904-0908 COMPLETE. **0950a-n Pre-Release Quality Sprint ACTIVE.** |
 
 ---
 
@@ -31,26 +31,27 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0844 | Tenant Data Export/Import (Series Coordinator) | Not Started | Medium | Series of 3 sub-handovers. Sequential: 0844a → manual gate → 0844b → manual gate → 0844c. |
-| 0844a | Tenant Export Service | Not Started | Medium | Backend export engine: 31 models, field stripping, vision file bundling, ZIP creation, REPEATABLE READ, SHA-256 checksums. 1-2 sessions. |
-| 0844b | Tenant Import Service + Schema Diff | Not Started | Medium | Backend import: schema compatibility analysis, UPSERT pipeline, topological sort, vision file extraction, TSVECTOR regen. Heaviest phase, 2-3 sessions. Depends on 0844a. |
-| 0844c | Tenant Data Frontend | Not Started | Medium | Vue component in Database tab: export/import UI, compatibility report dialog, stale backup warning, WebSocket progress. 1 session. Depends on 0844a+b. |
-| 0901 | Dashboard Scope Simplification | **COMPLETE** | Low | Removed product selector from CE dashboard. All-tenant stats only. |
-| 0902 | Single-Port Frontend Serving | **COMPLETE** | High | CE release blocker. Serve built frontend from FastAPI on port 7272. 8 hours. |
-| 0902a | Backend Static Mount + Middleware | **COMPLETE** | High | FastAPI static mount, SPA fallback, middleware exemptions. 2 hours. |
-| 0902b | Frontend Port Fixes | **COMPLETE** | High | Fix 13 hardcoded port references + portConfig utility. 1.5 hours. |
-| 0902c | Startup/Install Mode Toggle | **COMPLETE** | High | Production detection, --dev flag, install.py prompt. Depends on 0902a+b. 2 hours. |
-| 0902d | Testing + Documentation | **COMPLETE** | High | Backend/frontend tests, doc updates. Depends on 0902a+b+c. 1.5 hours. |
-| 0903 | Streamlined CLI Install | Not Started | Medium | Post-launch. `pip install giljo-mcp` → `giljo-mcp init` → paste MCP command → done. Supersedes 0409. Depends on 0902. 12-16 hours. |
-| 0904 | Orchestrator Auto Check-in | **COMPLETE** | Medium | Multi-terminal only. Toggle + interval buttons (30/60/90s) on Jobs tab. DB columns, API, frontend wired. |
-| 0905 | Dependency Cleanup & Lazy Imports | **COMPLETE** | Medium | Remove unused aiohttp, redundant explicit deps. Lazy-load vision summarizer (167 MB numpy/scipy off startup). |
-| 0906 | install.py --dev Flag | **COMPLETE** | Medium | Gate pre-commit + NLTK behind --dev flag. Fix duplicate demo seeding. Update README. |
-| 0907 | MCP Bootstrap Setup Tool (`giljo_setup`) | Not Started | High | Single MCP tool provisions slash commands + agent templates via binary ZIP download. Eliminates browser from first-time setup. 4-6 hours. |
+| 0950a | Comprehensive Audit: Establish Baseline Score | Not Started | High | Read-only audit. 10-dimension scoring. No code changes. |
+| 0950b | Backend: Security + Dict-Returns + Exception Annotations | Not Started | High | Quick wins. Depends on 0950a. |
+| 0950c | Frontend: ESLint Budget + Commented-Out Code | Not Started | High | Quick wins. Depends on 0950a. Parallel with 0950b. |
+| 0950d | Frontend: Dialog Convention + text-medium-emphasis | Not Started | Medium | Depends on 0950c. |
+| 0950e | Frontend: Hardcoded Hex Color Sweep | Not Started | Medium | Depends on 0950d. |
+| 0950f | Backend: Stale Docstrings + Dead Pass Statements | Not Started | Medium | Depends on 0950b. |
+| 0950g | God-Class Split: ThinClientPromptGenerator | Not Started | High | Heavy. Depends on 0950f. |
+| 0950h | God-Class Split: MessageService | Not Started | High | Heavy. Depends on 0950g. |
+| 0950i | God-Class Split: ProductService + ProjectService | Not Started | High | Heavy. Depends on 0950h. |
+| 0950j | God-Class Split: OrchestrationService + ProtocolBuilder + 3 more | Not Started | High | Heavy. Depends on 0950i. |
+| 0950k | Frontend: God-Component Splits | Not Started | High | Heavy. Depends on 0950e. Parallel with backend track. |
+| 0950l | Test Suite: Fix Skips, Dead Fixtures, Coverage Gaps | Not Started | High | Depends on 0950j + 0950k. |
+| 0950m | Final Audit: Full Re-Run + PASS/FAIL Verdict | Not Started | Critical | Depends on all prior. Target >= 9.0/10. |
+| 0950n | Conditional Remediation | Conditional | Critical | Only if 0950m FAILs. |
 
 ### Deferred (Still in Root Folder)
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
+| 0844 | Tenant Data Export/Import (Series: 0844a-c) | Deferred | Medium | Post-launch. 3 sequential sub-handovers (export → import → frontend). |
+| 0903 | Streamlined CLI Install | Deferred | Medium | Post-launch. `pip install giljo-mcp` → `giljo-mcp init` flow. |
 | 1014 | Security Event Auditing | Deferred | Medium | Enterprise compliance. No requirement yet. |
 | TODO_vision | Vision Summarizer LLM Upgrade | Deferred | Low | Phase 1 incomplete. Current Sumy works. |
 
@@ -62,6 +63,8 @@
 | 0842g | Per-Document AI Summary Badges | 2026-04-02 | COMPLETE (`e0ad3058`) — Per-document AI summary badge row on vision doc cards. API extension + frontend UI. |
 | 0847 | Tool-Aware Orchestrator Protocol | 2026-04-02 | COMPLETE (`8a9de0d2`) — Orchestrator protocol fully tool-aware. Codex/Gemini get native-only language, no Claude refs. |
 | 0900 | WebSocket Debug Panel Simplification | 2026-04-02 | COMPLETE — Extracted ConnectionDebugDialog from ConnectionStatus, simplified to Connection Health panel in navbar orb. |
+| 0908 | How to Use Modal Rewrite (6 chapters) | 2026-04-04 | COMPLETE (`47dc1fcd`, `f8a87bf9`) — Rewrote How to Use modal to 6-chapter user journey, retired What is GiljoAI onboarding, redesigned integration cards. |
+| 0907 | MCP Bootstrap Setup Tool (`giljo_setup`) | 2026-04-04 | COMPLETE (`db26b68b`, `ad5b8fa2`) — Single MCP tool provisions slash commands + agent templates via binary ZIP download. |
 | 0842h | Frontend Tests — Tuning Icon & Vision Analysis Banner | 2026-04-03 | COMPLETE (`6e60c48b`) — 20 Vitest tests across 2 spec files. Tuning state logic + badge props + tooltip text + ProductForm banner rendering. |
 | 0841 | Slash Command Optimization (/gil_add) | 2026-04-01 | COMPLETE (`48376d20`) — Slim slash command templates, platform-aware signoff, project taxonomy improvements. |
 | 0842L | Post-Implementation Audit & Cleanup | 2026-04-01 | COMPLETE (`8304eac6`) — Dead code removal, zombie cleanup, backward compat bloat removed. Branch merged to master. |
@@ -232,6 +235,8 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0908 | How to Use Modal Rewrite (6 chapters) | **COMPLETE** (2026-04-04, `47dc1fcd`, 6-chapter user journey, retired What is GiljoAI, integration card redesign) |
+| 0907 | MCP Bootstrap Setup Tool (`giljo_setup`) | **COMPLETE** (2026-04-04, `db26b68b`, single MCP tool provisions slash commands + agent templates via ZIP) |
 | 0841 | Slash Command Optimization (/gil_add) | **COMPLETE** (2026-04-01, `48376d20`, slim templates, platform-aware signoff) |
 | 0842L | Post-Implementation Audit & Cleanup | **COMPLETE** (2026-04-01, `8304eac6`, dead code + zombie removal, backward compat bloat removed) |
 | 0842m | Pre-Existing Bug Fixes | **COMPLETE** (2026-04-01, `2f72e7a7`, config.services AttributeError + network_mode passthrough) |
