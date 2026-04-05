@@ -60,16 +60,30 @@
       "id": "0950c",
       "title": "Frontend: ESLint Budget + Commented-Out Code",
       "handover": "handovers/0950c_ESLINT_COMMENTED_CODE.md",
-      "status": "pending",
+      "status": "complete",
       "effort": "light",
       "depends_on": ["0950a"],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Fixed 16 of 17 ESLint warnings (17 → 1, budget 8): removed 15 unused vars/imports across 8 components, changed 2 console.log to console.warn, renamed 1 unused param to _payload",
+        "Fixed 4 Sass @import → @use deprecations (AgentExport.vue, McpIntegrationCard.vue, SerenaIntegrationCard.vue, GitIntegrationCard.vue) — build now emits zero Sass deprecation warnings",
+        "Extracted hardcoded version 'Beta 1.0.0' from AppBar.vue to dynamic import from package.json",
+        "Scanned Vue/JS files for commented-out code — none found",
+        "Fixed 6 test regressions caused by dead code removal (3 ProjectsView, 1 AgentTableView, 2 AgentMissionEditModal)",
+        "Skipped Python files per orchestrator directive (0950b running in parallel)"
+      ],
+      "deviations": [
+        "1 ESLint warning remains (vue/no-v-html in DatabaseConnection.vue) — eslint-disable-next-line comment not suppressing in this eslint-plugin-vue version. Content is DOMPurify-sanitized, no XSS risk. 1 warning is well within budget of 8.",
+        "Removing statusFilterOptions cascaded to statusCounts being unused — deleted both. Test 'filters counts by active product' kept but statusCounts assertion removed.",
+        "No commented-out code found in Vue/JS files — Phase 4 was a no-op"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": "",
-      "cascading_impacts": [],
+      "notes_for_next": "0950d: Components edited by 0950c (avoid simultaneous edits): TemplateManager.vue, RecentProjectsList.vue, AgentTableView.vue, AgentJobModal.vue, AgentMissionEditModal.vue, ProjectTabs.vue, ProjectsView.vue, DatabaseConnection.vue, AppBar.vue, AgentExport.vue, McpIntegrationCard.vue, SerenaIntegrationCard.vue, GitIntegrationCard.vue. Also edited: configService.js, websocket.js, products.js. ESLint is now at 1 warning (budget 8). The remaining v-html in DatabaseConnection.vue:122 is safe (DOMPurify-sanitized). Frontend test count unchanged at 83 failures (pre-existing).",
+      "cascading_impacts": [
+        "statusCounts computed removed from ProjectsView.vue — if 0950d or 0950e needs status counts, they must re-add it",
+        "goToIntegrations function removed from ProjectTabs.vue — was dead code, but if 0950d adds navigation UI to integrations tab it needs a new function"
+      ],
       "orchestrator_directives": "From 0950a audit: 17 ESLint warnings (budget 8). 15 are unused vars/imports across 8 components, 2 are console.log. Also fix 4 Sass @import -> @use deprecations (AgentExport.vue, McpIntegrationCard.vue, SerenaIntegrationCard.vue, GitIntegrationCard.vue). Also extract hardcoded version from AppBar.vue:134 to use package.json. Read prompts/0950_chain/audit_baseline.md for full finding details with file:line references. NOTE: 0950b is running in parallel on backend — do NOT touch any Python files.",
-      "summary": ""
+      "summary": "ESLint warnings reduced from 17 to 1 (budget 8). Fixed 4 Sass @import deprecations. Extracted AppBar version from package.json. No commented-out code found in frontend. 6 test regressions from dead code removal fixed — test count unchanged at 83 pre-existing failures."
     },
     {
       "id": "0950d",
