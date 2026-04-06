@@ -32,6 +32,11 @@
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0909 | discovery MCP Tool | **COMPLETE** | Medium | Single MCP tool with category switch for system discovery. Renamed from gil_discovery. |
+| 0910 | Documentation Overhaul (Series Coordinator) | Not Started | High | Complete /docs rewrite for CE release. 4 sub-handovers. |
+| 0910a | Archive Stale Docs + Create Scaffold | Not Started | High | Move 135 stale docs to archive, create scaffold files. |
+| 0910b | Product Overview + User Guide | Not Started | High | Write PRODUCT_OVERVIEW.md and USER_GUIDE.md from code inspection. |
+| 0910c | Installation Guide + MCP Tools Reference | Not Started | High | Write INSTALLATION_GUIDE.md and MCP_TOOLS_REFERENCE.md. |
+| 0910d | Architecture + README Hub + Verification | Not Started | High | Write ARCHITECTURE.md, README_FIRST.md hub, verify all docs. |
 | 0950a | Comprehensive Audit: Establish Baseline Score | Not Started | High | Read-only audit. 10-dimension scoring. No code changes. |
 | 0950b | Backend: Security + Dict-Returns + Exception Annotations | Not Started | High | Quick wins. Depends on 0950a. |
 | 0950c | Frontend: ESLint Budget + Commented-Out Code | Not Started | High | Quick wins. Depends on 0950a. Parallel with 0950b. |

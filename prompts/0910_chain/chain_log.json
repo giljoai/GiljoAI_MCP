@@ -1,0 +1,74 @@
+{
+  "chain_id": "0910",
+  "title": "Documentation Overhaul for CE Release",
+  "branch": "feature/0910-documentation-overhaul",
+  "created": "2026-04-06",
+  "mode": "orchestrator-gated-v3",
+  "environment": {
+    "venv_activate": "source /media/patrik/Work/GiljoAI_MCP/venv/bin/activate",
+    "pythonpath": "export PYTHONPATH=/media/patrik/Work/GiljoAI_MCP",
+    "note": "Activate venv before any code inspection commands."
+  },
+  "sessions": [
+    {
+      "id": "0910a",
+      "title": "Archive Stale Docs + Create Scaffold",
+      "handover": "handovers/0910a_ARCHIVE_AND_SCAFFOLD.md",
+      "status": "pending",
+      "effort": "light",
+      "depends_on": [],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": "",
+      "cascading_impacts": [],
+      "orchestrator_directives": "",
+      "summary": ""
+    },
+    {
+      "id": "0910b",
+      "title": "Product Overview + User Guide",
+      "handover": "handovers/0910b_PRODUCT_OVERVIEW_USER_GUIDE.md",
+      "status": "pending",
+      "effort": "heavy",
+      "depends_on": ["0910a"],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": "",
+      "cascading_impacts": [],
+      "orchestrator_directives": "",
+      "summary": ""
+    },
+    {
+      "id": "0910c",
+      "title": "Installation Guide + MCP Tools Reference",
+      "handover": "handovers/0910c_INSTALLATION_MCP_TOOLS.md",
+      "status": "pending",
+      "effort": "heavy",
+      "depends_on": ["0910a"],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": "",
+      "cascading_impacts": [],
+      "orchestrator_directives": "",
+      "summary": ""
+    },
+    {
+      "id": "0910d",
+      "title": "Architecture + README Hub + Verification",
+      "handover": "handovers/0910d_ARCHITECTURE_HUB_VERIFY.md",
+      "status": "pending",
+      "effort": "medium",
+      "depends_on": ["0910b", "0910c"],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": "",
+      "cascading_impacts": [],
+      "orchestrator_directives": "",
+      "summary": ""
+    }
+  ]
+}
