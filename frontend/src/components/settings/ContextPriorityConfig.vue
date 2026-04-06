@@ -134,7 +134,7 @@
               location="bottom"
             >
               <template #activator="{ props }">
-                <v-icon v-bind="props" size="small" color="primary" class="ml-1">mdi-information-outline</v-icon>
+                <v-icon v-bind="props" size="small" color="primary" class="ml-1">mdi-help-circle-outline</v-icon>
               </template>
             </v-tooltip>
           </div>
@@ -394,12 +394,16 @@ function navigateToIntegrations() {
   router.push({ name: 'UserSettings', query: { tab: 'integrations' } })
 }
 
-// Handover 0408: Force git_history OFF when git integration is disabled
+// Handover 0408: Sync git_history toggle with git integration state
 watch(() => props.gitIntegrationEnabled, (enabled) => {
   if (!configLoaded.value) return
 
   if (!enabled && config.value.git_history?.enabled) {
     config.value.git_history.enabled = false
+    saveConfig()
+  } else if (enabled && !config.value.git_history?.enabled) {
+    config.value.git_history.enabled = true
+    config.value.git_history.count = 5
     saveConfig()
   }
 }, { immediate: true })
