@@ -1,5 +1,7 @@
 # GiljoAI MCP: Product Overview
 
+*Last updated: 2026-04-06*
+
 ## What Is GiljoAI MCP
 
 GiljoAI MCP is a context engineering platform for AI-assisted software development. It acts as a passive context server: it stores product knowledge, generates focused prompts, and coordinates agents via the Model Context Protocol (MCP). It does not write code or reason about your codebase. Your AI coding tool does that work using your own subscription. GiljoAI provides the orchestration layer that keeps every agent session aligned with your product.
