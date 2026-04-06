@@ -6,7 +6,7 @@
       <v-tooltip location="bottom" max-width="360">
         <template #activator="{ props }">
           <v-icon v-bind="props" size="small" class="ml-2" color="medium-emphasis"
-            >mdi-information-outline</v-icon
+            >mdi-help-circle-outline</v-icon
           >
         </template>
         <span
@@ -165,8 +165,8 @@
               />
               <v-tooltip v-if="!item.is_active && remainingUserSlots === 0" location="top">
                 <template v-slot:activator="{ props }">
-                  <v-icon v-bind="props" color="warning" size="small" class="ml-1">
-                    mdi-information-outline
+                  <v-icon v-bind="props" size="small" class="ml-1">
+                    mdi-help-circle-outline
                   </v-icon>
                 </template>
                 <span>

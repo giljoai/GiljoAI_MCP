@@ -13,14 +13,18 @@
           <v-icon v-bind="props" size="small" style="color: var(--text-muted)">mdi-help-circle-outline</v-icon>
         </template>
         <div>
-          Generates a combined bootstrap prompt that installs slash commands and agent templates in one step. Paste into your AI coding agent.
+          Once the MCP server is registered in your AI coding tool, run <code>giljo_setup</code> to install agents and skills in one step.
           <br /><br />
           After setup, use <code>/gil_get_agents</code> to update agent templates and
           <code>/gil_add</code> to create tasks and projects from your AI coding agent.
         </div>
       </v-tooltip>
     </div>
-    <div class="intg-card-desc">Generate a setup prompt for your AI coding agents.</div>
+    <div class="intg-card-desc d-flex align-center flex-wrap" style="gap: 6px;">
+      <span>run</span>
+      <span class="setup-cmd">giljo_setup</span>
+      <span>or</span>
+    </div>
 
     <div class="intg-card-body">
       <div class="d-flex flex-wrap justify-center mb-4" style="gap: 16px;">
@@ -246,5 +250,12 @@ async function downloadZip(contentType, platform) {
 
 .export-icon-btn:disabled {
   cursor: wait;
+}
+
+.setup-cmd {
+  color: var(--brand-yellow, #ffc300);
+  font-family: monospace;
+  font-weight: 600;
+  font-size: 0.875rem;
 }
 </style>
