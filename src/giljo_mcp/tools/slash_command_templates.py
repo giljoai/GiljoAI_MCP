@@ -65,7 +65,7 @@ description: "Add a task or project to the GiljoAI dashboard. Routes to task (te
 
 ## Project parameters
 - `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — must match a pre-configured type), `series_number` (optional int 1-9999 — auto-assigned if omitted)
-- **Before creating a project**, call `gil_discovery(category="project_types")` to see available types. Only use types returned — unknown types are silently ignored.
+- **Before creating a project**, call `discovery(category="project_types")` to see available types. Only use types returned — unknown types are silently ignored.
 
 ## Modes
 
@@ -206,7 +206,7 @@ tools:
   - mcp_giljo_mcp_get_agent_result
   - mcp_giljo_mcp_write_360_memory
   - mcp_giljo_mcp_close_project_and_update_memory
-  - mcp_giljo_mcp_gil_discovery
+  - mcp_giljo_mcp_discovery
 ---
 ```
 
@@ -510,7 +510,7 @@ description: "Add a task or project to the GiljoAI dashboard"
 
 ## Project parameters
 - `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — must match a pre-configured type), `series_number` (optional int 1-9999 — auto-assigned if omitted)
-- **Before creating a project**, call `gil_discovery(category="project_types")` to see available types. Only use types returned — unknown types are silently ignored.
+- **Before creating a project**, call `discovery(category="project_types")` to see available types. Only use types returned — unknown types are silently ignored.
 
 ## Modes
 
