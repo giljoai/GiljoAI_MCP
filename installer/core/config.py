@@ -271,7 +271,7 @@ MCP_INSTALLER_SECRET_KEY={self.generate_secret_key()}
 # =============================================================================
 # CORS CONFIGURATION
 # =============================================================================
-CORS_ORIGINS=http://localhost:*,http://127.0.0.1:*
+CORS_ORIGINS=http://localhost:7274,http://127.0.0.1:7274,http://localhost:7272,http://127.0.0.1:7272
 
 # =============================================================================
 # FEATURE FLAGS (v3.0: Core features always enabled)

@@ -225,11 +225,12 @@
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="editDialog" max-width="900px" persistent retain-focus scrollable>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <span class="text-h5">{{ editingTemplate.id ? 'Edit' : 'Create' }} Template</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="closeEditDialog" />
-        </v-card-title>
+        <div class="dlg-header">
+          <span class="dlg-title">{{ editingTemplate.id ? 'Edit' : 'Create' }} Template</span>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="closeEditDialog">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-card-text>
           <v-container>
@@ -351,25 +352,26 @@
           </v-container>
         </v-card-text>
 
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" @click="closeEditDialog"> Cancel </v-btn>
           <v-btn color="primary" variant="flat" :loading="saving" @click="saveTemplateAndPreview">
             Save and Generate Preview
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteDialog" max-width="500px" persistent retain-focus>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <v-icon color="error" class="mr-2">mdi-alert</v-icon>
-          <span class="text-h5">Permanently Delete Template</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="deleteDialog = false" />
-        </v-card-title>
+        <div class="dlg-header dlg-header--danger">
+          <v-icon class="dlg-icon">mdi-alert</v-icon>
+          <span class="dlg-title">Permanently Delete Template</span>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="deleteDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
         <v-card-text>
           <v-alert type="error" variant="tonal" class="mb-4">
             <strong>This action cannot be undone.</strong>
@@ -382,25 +384,26 @@
             This will remove the template and all its version history.
           </p>
         </v-card-text>
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
           <v-btn color="error" variant="flat" :loading="deleting" @click="deleteTemplate">
             Delete Permanently
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
     <!-- Reset Confirmation Dialog -->
     <v-dialog v-model="resetDialog" max-width="600px" persistent retain-focus>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <v-icon color="warning" class="mr-2">mdi-alert</v-icon>
-          <span class="text-h5">Confirm Reset to Default</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="resetDialog = false" />
-        </v-card-title>
+        <div class="dlg-header dlg-header--warning">
+          <v-icon class="dlg-icon">mdi-alert</v-icon>
+          <span class="dlg-title">Confirm Reset to Default</span>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="resetDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
         <v-card-text>
           <p class="mb-4">
             Are you sure you want to reset the template "{{ resettingTemplate?.name }}" to the
@@ -414,13 +417,13 @@
             This action creates a backup in version history before resetting.
           </p>
         </v-card-text>
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" @click="resetDialog = false">Cancel</v-btn>
           <v-btn color="warning" variant="flat" :loading="resetting" @click="resetTemplate">
             Reset to Default
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
@@ -437,6 +440,7 @@ import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
 import { hexToRgba } from '@/utils/colorUtils'
+import { useTemplateData } from '@/composables/useTemplateData'
 
 // Handover 0335: WebSocket setup for real-time export status updates
 const { on, off } = useWebSocketV2()
@@ -445,62 +449,43 @@ const { showToast } = useToast()
 const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
 
 // Handover 0335: Inject template export event from parent (UserSettings.vue)
-// This allows receiving export events even when this component is not mounted
-// (v-window-item lazy loads components)
 const templateExportEvent = inject('templateExportEvent', ref(null))
 
-// Reactive data
-const templates = ref([])
-const loading = ref(false)
-const saving = ref(false)
-const deleting = ref(false)
-const activeStats = ref({
-  totalActive: null,
-  totalCapacity: null,
-  userActive: 0,
-  userLimit: 7,
-  remainingUserSlots: 7,
-  systemReserved: 1,
-}) // Tracks system reservation + user slots
-const previewContent = ref('') // Handover 0103: Preview window content
-
-// Search and filters
+// Search and filters (owned here, passed into composable)
 const search = ref('')
 const filterCategory = ref(null)
 const filterStatus = ref(null)
 
-function clearFilters() {
-  search.value = ''
-  filterCategory.value = null
-  filterStatus.value = null
-}
+// Template data composable
+const {
+  templates,
+  loading,
+  previewContent,
+  editingTemplate,
+  filteredTemplates,
+  generatedName,
+  totalActiveAgents,
+  totalCapacity,
+  remainingUserSlots,
+  userAgentLimit,
+  loadTemplates,
+  loadActiveCount,
+  resetEditingTemplate,
+} = useTemplateData(search, filterCategory, filterStatus)
+
+// Dialog loading states
+const saving = ref(false)
+const deleting = ref(false)
+const resetting = ref(false)
 
 // Dialogs
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 const resetDialog = ref(false)
 
-// Template being edited
-const editingTemplate = ref({
-  id: null,
-  name: '',
-  role: '',
-  cli_tool: 'claude',
-  custom_suffix: '',
-  background_color: '',
-  description: '',
-  user_instructions: '',
-  model: 'sonnet',
-  tools: null,
-})
-
-// Template being deleted
+// Template being deleted / reset
 const deletingTemplate = ref(null)
-
-// Template being reset
 const resettingTemplate = ref(null)
-const resetting = ref(false)
-
 
 // Table configuration
 const headers = [
@@ -512,10 +497,8 @@ const headers = [
   { title: 'Actions', key: 'actions', sortable: false, width: '4%', align: 'center' },
 ]
 
-// Categories
 const categories = ['role', 'project_type', 'custom']
 
-// Role options (for category = 'role')
 const roleOptions = [
   'analyzer',
   'designer',
@@ -533,161 +516,27 @@ const statusOptions = [
   { title: 'Draft', value: 'draft' },
 ]
 
-// Computed
-// System orchestrator row (always first, not editable)
-const orchestratorRow = {
-  id: '__orchestrator__',
-  name: 'orchestrator',
-  role: 'orchestrator',
-  is_active: true,
-  export_status: null,
-  last_exported_at: null,
-  updated_at: null,
-  may_be_stale: false,
-  _system: true,
-}
-
-const filteredTemplates = computed(() => {
-  let filtered = templates.value
-
-  if (filterCategory.value) {
-    filtered = filtered.filter((t) => t.category === filterCategory.value)
-  }
-
-  if (filterStatus.value) {
-    filtered = filtered.filter((t) => t.status === filterStatus.value)
-  }
-
-  // Only prepend orchestrator when no filters are active
-  if (!filterCategory.value && !filterStatus.value) {
-    return [orchestratorRow, ...filtered]
-  }
-  return filtered
-})
-
-// Computed properties for Handover 0103 modal
-const generatedName = computed(() => {
-  const role = editingTemplate.value.role
-  const suffix = editingTemplate.value.custom_suffix
-  if (!role) return ''
-  if (!suffix) return role
-  // Slugify: lowercase, hyphens only
-  const cleanSuffix = suffix
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/\s+/g, '-')
-  return `${role}-${cleanSuffix}`
-})
-
-const totalActiveAgents = computed(() => activeStats.value.totalActive)
-const totalCapacity = computed(() => {
-  if (activeStats.value.totalCapacity !== null) {
-    return activeStats.value.totalCapacity
-  }
-  return (activeStats.value.userLimit || 7) + (activeStats.value.systemReserved || 1)
-})
-const remainingUserSlots = computed(() => {
-  if (typeof activeStats.value.remainingUserSlots === 'number') {
-    return Math.max(0, activeStats.value.remainingUserSlots)
-  }
-  return Math.max(0, (activeStats.value.userLimit || 7) - (activeStats.value.userActive || 0))
-})
-const systemReservedSlots = computed(() => activeStats.value.systemReserved ?? 1)
-const userAgentLimit = computed(() => activeStats.value.userLimit ?? 7)
-
-// Methods
-const loadTemplates = async () => {
-  loading.value = true
-  try {
-    // Load ALL templates (active and inactive) - no filter to get both
-    const response = await api.templates.list()
-    // Map backend fields to frontend fields
-    templates.value = (response.data || []).filter((t) => !t.is_system_role)
-  } catch (error) {
-    console.error('Failed to load templates:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-// Handover 0075: Load active agent count
-const loadActiveCount = async () => {
-  try {
-    const response = await api.templates.activeCount()
-    const data = response.data || {}
-    // Backend returns: { active_count, limit (7), available }
-    // +1 for system-reserved orchestrator slot in totals
-    const userActive = data.active_count ?? 0
-    const userLimit = data.limit ?? 7
-    const systemReserved = 1
-    activeStats.value = {
-      totalActive: userActive + systemReserved,
-      totalCapacity: userLimit + systemReserved,
-      userActive,
-      userLimit,
-      remainingUserSlots: Math.max(0, userLimit - userActive),
-      systemReserved,
-    }
-  } catch (error) {
-    console.error('[TEMPLATE MANAGER] Failed to load active count:', error)
-    activeStats.value = {
-      ...activeStats.value,
-      totalActive: activeStats.value.totalActive ?? activeStats.value.systemReserved,
-    }
-  }
-}
-
 // Handover 0075: Handle active toggle with validation
 const handleToggleActive = async (template, newValue) => {
   try {
-    // Attempt to update
-    await api.templates.update(template.id, {
-      is_active: newValue,
-    })
-
-    // Update local template state
+    await api.templates.update(template.id, { is_active: newValue })
     template.is_active = newValue
-
-    // Reload active count
     await loadActiveCount()
-
-    // Show toast notification
     if (newValue) {
-      // Activation succeeded - warn about re-export
       showToast({ message: 'Agent activated - re-export required', type: 'warning' })
-      // Mark export as stale (for Option C badge)
-      localStorage.setItem('agent_export_stale', 'true')
     } else {
-      // Deactivation succeeded
       showToast({ message: 'Agent deactivated', type: 'info' })
-      localStorage.setItem('agent_export_stale', 'true')
     }
+    localStorage.setItem('agent_export_stale', 'true')
   } catch (error) {
-    // Validation failed (8-agent limit)
     const errorMsg = error.response?.data?.detail || 'Failed to update agent'
     showToast({ message: errorMsg, type: 'error' })
-
-    // Revert toggle (template state not changed on error)
-    // No need to revert as we only update on success
-
-    // Reload templates to ensure sync
     await loadTemplates()
   }
 }
 
 const openCreateDialog = () => {
-  editingTemplate.value = {
-    id: null,
-    name: '',
-    role: '',
-    cli_tool: 'claude',
-    custom_suffix: '',
-    background_color: '',
-    description: '',
-    user_instructions: '',
-    model: 'sonnet',
-    tools: null,
-  }
+  resetEditingTemplate()
   previewContent.value = ''
   editDialog.value = true
 }
@@ -705,7 +554,6 @@ const editTemplate = async (template) => {
   previewContent.value = ''
   editDialog.value = true
 
-  // Auto-load preview for existing templates
   if (template.id) {
     try {
       const previewResponse = await api.templates.preview(template.id, {})
@@ -735,18 +583,7 @@ const duplicateTemplate = (template) => {
 const closeEditDialog = () => {
   editDialog.value = false
   previewContent.value = ''
-  editingTemplate.value = {
-    id: null,
-    name: '',
-    role: '',
-    cli_tool: 'claude',
-    custom_suffix: '',
-    background_color: '',
-    description: '',
-    user_instructions: '',
-    model: 'sonnet',
-    tools: null,
-  }
+  resetEditingTemplate()
 }
 
 // Handover 0103: Handle role change (auto-set background_color)
@@ -797,16 +634,17 @@ const saveTemplateAndPreview = async () => {
       templateId = response.data.id
     }
 
-    // Generate preview
     const previewResponse = await api.templates.preview(templateId, {})
     previewContent.value = previewResponse.data.preview
-
     await loadTemplates()
-    // Don't close dialog - show preview instead
   } catch (error) {
     console.error('Failed to save template:', error)
     previewContent.value = ''
-    showToast({ message: error.response?.data?.detail || 'Failed to save template. Check your connection and try again.', type: 'error', title: 'Error' })
+    showToast({
+      message: error.response?.data?.detail || 'Failed to save template. Check your connection and try again.',
+      type: 'error',
+      title: 'Error',
+    })
   } finally {
     saving.value = false
   }
@@ -831,9 +669,7 @@ const deleteTemplate = async () => {
   }
 }
 
-const getCategoryColor = (role) => {
-  return getAgentColorConfig(role).hex
-}
+const getCategoryColor = (role) => getAgentColorConfig(role).hex
 
 const formatDate = (date) => {
   if (!date) return 'N/A'
@@ -852,74 +688,45 @@ const resetTemplate = async () => {
     await loadTemplates()
     resetDialog.value = false
     resettingTemplate.value = null
-    // Show success notification
   } catch (error) {
     console.error('Failed to reset template:', error)
-    // Show error notification
   } finally {
     resetting.value = false
   }
 }
 
-// Handover 0335: Handle template export WebSocket event (Enhanced with debugging)
+// Handover 0335: Handle template export WebSocket event
 const handleTemplateExported = (data) => {
-  // Normalize payload - WebSocket store flattens nested data structure
-  // Backend sends: { type, data: { tenant_key, template_ids, ... }, timestamp }
-  // Store normalizes to: { type, tenant_key, template_ids, ..., timestamp }
-  const tenantKey = data.tenant_key
-  const templateIds = data.template_ids
-  const exportedAt = data.exported_at
-  // Validate required fields
-  if (!tenantKey || !templateIds || !exportedAt) {
-    return
-  }
+  const { tenant_key: tenantKey, template_ids: templateIds, exported_at: exportedAt } = data
+  if (!tenantKey || !templateIds || !exportedAt) return
+  if (tenantKey !== currentTenantKey.value) return
 
-  // Multi-tenant isolation check
-  if (tenantKey !== currentTenantKey.value) {
-    return
-  }
-
-  // Update local template state with new export timestamp
   const templateIdSet = new Set(templateIds)
   templates.value.forEach((template) => {
     if (templateIdSet.has(template.id)) {
       template.last_exported_at = exportedAt
-      template.may_be_stale = false // Clear staleness indicator
+      template.may_be_stale = false
     }
   })
-
 }
-
 
 // Lifecycle
 onMounted(() => {
   loadTemplates()
-  loadActiveCount() // Handover 0075: Load active agent count
-
-  // Handover 0335: Subscribe to template export WebSocket events
-  // Pattern matches JobsTab and LaunchTab (working components)
+  loadActiveCount()
   on('template:exported', handleTemplateExported)
 })
 
 onUnmounted(() => {
-  // Handover 0335: Cleanup WebSocket subscription
   off('template:exported', handleTemplateExported)
 })
 
 // Handover 0335: Watch for export events from parent (UserSettings.vue)
-// This handles the case where export happens on a different tab and this component
-// was not mounted at the time of the WebSocket event
 watch(
   templateExportEvent,
   (newEvent) => {
     if (!newEvent) return
-
-    // Validate tenant_key matches current user
-    if (newEvent.tenant_key !== currentTenantKey.value) {
-      return
-    }
-
-    // Process the event just like the direct WebSocket handler
+    if (newEvent.tenant_key !== currentTenantKey.value) return
     handleTemplateExported(newEvent)
   },
   { deep: true }

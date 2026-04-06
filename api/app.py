@@ -295,10 +295,18 @@ def _configure_middleware(app: FastAPI) -> None:
         ]
         logger.info(f"Using default CORS origins (no wildcards): {cors_origins}")
     else:
-        # Validate no wildcard patterns for security
-        has_wildcards = any("*" in origin for origin in cors_origins)
-        if has_wildcards:
-            logger.warning("CORS origins contain wildcards - this reduces security. Consider using explicit origins.")
+        # Reject wildcard patterns for security
+        safe_origins = [origin for origin in cors_origins if "*" not in origin]
+        if len(safe_origins) < len(cors_origins):
+            logger.warning("CORS wildcard entries removed from config — only explicit origins are allowed")
+            cors_origins = (
+                safe_origins
+                if safe_origins
+                else [
+                    "http://127.0.0.1:7272",
+                    "http://localhost:7272",
+                ]
+            )
 
     # Dynamic network adapter IP detection for CORS updates
     network_mode = config.get("security", {}).get("network", {}).get("mode", "localhost")
@@ -515,6 +523,173 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(org_members.transfer_router, prefix="/api/organizations", tags=["organization-transfer"])
 
 
+async def _authenticate_ws_connection(
+    websocket: WebSocket,
+    client_id: str,
+    api_key: Optional[str],
+    token: Optional[str],
+) -> Optional[dict]:
+    """Authenticate an incoming WebSocket connection and return the auth context.
+
+    Obtains a short-lived database session (None in setup mode), delegates to
+    authenticate_websocket, validates that a tenant_key is present for normal
+    connections, and then cleans up the session.  On failure the connection is
+    closed with code 1008 and None is returned.
+
+    Args:
+        websocket: The incoming WebSocket connection (not yet accepted).
+        client_id: Caller-supplied client identifier.
+        api_key: Optional API-key query param.
+        token: Optional JWT query param.
+
+    Returns:
+        auth_context dict on success, or None if the connection was rejected.
+    """
+    try:
+        session = None
+        session_cm = None
+        if state.db_manager:
+            session_cm = state.db_manager.get_session_async()
+            session = await session_cm.__aenter__()
+
+        try:
+            auth_result = await authenticate_websocket(websocket, db=session)
+
+            await websocket.accept()
+
+            user_info = auth_result.get("user", {})
+            is_setup = auth_result.get("context") == "setup"
+            tenant_key_from_user = user_info.get("tenant_key")
+
+            if not tenant_key_from_user and not is_setup:
+                logger.error(f"WebSocket rejected for {client_id}: missing tenant_key in auth context")
+                await websocket.close(code=1008, reason="Missing tenant key")
+                return None
+
+            logger.info(
+                f"[WS AUTH DEBUG] auth_result keys: {list(auth_result.keys())}, "
+                f"user_info keys: {list(user_info.keys())}, tenant_key={tenant_key_from_user}"
+            )
+            auth_context = {
+                "user": user_info,
+                "context": auth_result.get("context", "normal"),
+                "tenant_key": tenant_key_from_user,
+            }
+            if token:
+                auth_context["auth_type"] = "jwt"
+            elif api_key:
+                auth_context["auth_type"] = "api_key"
+            else:
+                auth_context["auth_type"] = "setup"
+
+            await state.websocket_manager.connect(websocket, client_id, auth_context=auth_context)
+            state.connections[client_id] = websocket
+
+            auth_type = auth_context.get("auth_type", "setup")
+            logger.info(
+                f"WebSocket connected: {client_id} "
+                f"(context: {auth_result.get('context', 'normal')}, auth_type: {auth_type})"
+            )
+            return auth_context
+
+        finally:
+            if session_cm is not None:
+                await session_cm.__aexit__(None, None, None)
+
+    except WebSocketException as e:
+        logger.warning(f"WebSocket authentication failed for {client_id}: {e.reason}")
+        await websocket.close(code=1008, reason=e.reason or "Unauthorized")
+        return None
+
+
+async def _handle_ws_subscribe(
+    websocket: WebSocket,
+    client_id: str,
+    data: dict,
+    auth_context: dict,
+) -> None:
+    """Handle a WebSocket subscribe message with tenant isolation enforcement.
+
+    Resolves the tenant_key for the requested entity by querying the database,
+    denies the subscription when the tenant cannot be resolved, and blocks
+    cross-tenant subscriptions (Handover 0769a security fix).
+
+    Args:
+        websocket: Active WebSocket connection.
+        client_id: Caller-supplied client identifier.
+        data: Parsed JSON message containing ``entity_type`` and ``entity_id``.
+        auth_context: Auth context dict from _authenticate_ws_connection,
+                      must contain ``tenant_key``.
+    """
+    entity_type = data.get("entity_type")
+    entity_id = data.get("entity_id")
+
+    try:
+        tenant_key = None
+        if state.db_manager:
+            async with state.db_manager.get_session_async() as session:
+                if entity_type == "project":
+                    stmt = select(Project).where(Project.id == entity_id)
+                    result = await session.execute(stmt)
+                    project = result.scalar_one_or_none()
+                    if project:
+                        tenant_key = project.tenant_key
+                elif entity_type == "agent":
+                    stmt = select(AgentJob).where(AgentJob.job_id == entity_id)
+                    result = await session.execute(stmt)
+                    agent_job = result.scalar_one_or_none()
+                    if agent_job:
+                        tenant_key = agent_job.tenant_key
+                elif entity_type == "message":
+                    stmt = select(Message).where(Message.id == entity_id)
+                    result = await session.execute(stmt)
+                    message = result.scalar_one_or_none()
+                    if message:
+                        tenant_key = message.tenant_key
+
+        if not tenant_key:
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "error": "subscription_denied",
+                    "message": f"Cannot resolve tenant for {entity_type}:{entity_id}",
+                    "entity_type": entity_type,
+                    "entity_id": entity_id,
+                }
+            )
+            return
+
+        if tenant_key != auth_context.get("tenant_key"):
+            logger.warning(
+                f"Cross-tenant subscription blocked: user tenant={auth_context.get('tenant_key')}, "
+                f"entity tenant={tenant_key}"
+            )
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "error": "subscription_denied",
+                    "message": "Cross-tenant subscription not allowed",
+                    "entity_type": entity_type,
+                    "entity_id": entity_id,
+                }
+            )
+            return
+
+        await state.websocket_manager.subscribe(client_id, entity_type, entity_id, tenant_key)
+        await websocket.send_json({"type": "subscribed", "entity_type": entity_type, "entity_id": entity_id})
+
+    except HTTPException as e:
+        await websocket.send_json(
+            {
+                "type": "error",
+                "error": "subscription_denied",
+                "message": str(e.detail),
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+            }
+        )
+
+
 def _register_event_handlers(app: FastAPI) -> None:
     """Register route handlers, WebSocket endpoint, and exception handlers.
 
@@ -546,17 +721,14 @@ def _register_event_handlers(app: FastAPI) -> None:
         """Health check endpoint"""
         checks = {"api": "healthy", "database": "unknown", "websocket": "unknown"}
 
-        # Check database
         if state.db_manager:
             try:
                 async with state.db_manager.get_session_async() as session:
                     await session.execute(text("SELECT 1"))
                     checks["database"] = "healthy"
             except (ConnectionError, TimeoutError, RuntimeError, OSError) as e:
-                # Database errors from connection/query
                 checks["database"] = f"unhealthy: {e!s}"
 
-        # Check WebSocket manager
         if state.websocket_manager:
             checks["websocket"] = "healthy"
             checks["active_connections"] = len(state.connections)
@@ -570,156 +742,31 @@ def _register_event_handlers(app: FastAPI) -> None:
         websocket: WebSocket, client_id: str, api_key: Optional[str] = Query(None), token: Optional[str] = Query(None)
     ):
         """WebSocket endpoint for real-time updates with authentication"""
-
-        # STEP 1: Authenticate using unified WebSocket authentication
-        # Handle setup mode (db_manager can be None)
-        try:
-            # Get database session (None during setup mode)
-            session = None
-            session_cm = None  # Store context manager instance
-            if state.db_manager:
-                # CRITICAL: Store the context manager instance
-                session_cm = state.db_manager.get_session_async()
-                session = await session_cm.__aenter__()
-
-            try:
-                auth_result = await authenticate_websocket(websocket, db=session)
-
-                # STEP 2: Accept connection with authentication result
-                await websocket.accept()
-
-                # STEP 3: Store connection with authentication context
-                user_info = auth_result.get("user", {})
-                is_setup = auth_result.get("context") == "setup"
-                tenant_key_from_user = user_info.get("tenant_key")
-
-                # Reject non-setup connections missing tenant_key (Handover 0054)
-                if not tenant_key_from_user and not is_setup:
-                    logger.error(f"WebSocket rejected for {client_id}: missing tenant_key in auth context")
-                    await websocket.close(code=1008, reason="Missing tenant key")
-                    return
-
-                logger.info(
-                    f"[WS AUTH DEBUG] auth_result keys: {list(auth_result.keys())}, user_info keys: {list(user_info.keys())}, tenant_key={tenant_key_from_user}"
-                )
-                auth_context = {
-                    "user": user_info,
-                    "context": auth_result.get("context", "normal"),  # 'setup' or 'normal'
-                    "tenant_key": tenant_key_from_user,  # CRITICAL: Extract for WebSocket filtering
-                }
-                # Determine auth type from query parameters
-                if token:
-                    auth_context["auth_type"] = "jwt"
-                elif api_key:
-                    auth_context["auth_type"] = "api_key"
-                else:
-                    auth_context["auth_type"] = "setup"
-
-                await state.websocket_manager.connect(websocket, client_id, auth_context=auth_context)
-                state.connections[client_id] = websocket
-
-                # Log successful connection
-                auth_type = auth_context.get("auth_type", "setup")
-                logger.info(
-                    f"WebSocket connected: {client_id} (context: {auth_result.get('context', 'normal')}, auth_type: {auth_type})"
-                )
-
-            finally:
-                # Clean up session if created - use SAME context manager instance
-                if session_cm is not None:
-                    await session_cm.__aexit__(None, None, None)
-
-        except WebSocketException as e:
-            # REJECT CONNECTION IMMEDIATELY
-            logger.warning(f"WebSocket authentication failed for {client_id}: {e.reason}")
-            await websocket.close(code=1008, reason=e.reason or "Unauthorized")
+        auth_context = await _authenticate_ws_connection(
+            websocket=websocket,
+            client_id=client_id,
+            api_key=api_key,
+            token=token,
+        )
+        if auth_context is None:
             return
 
         try:
             while True:
                 data = await websocket.receive_json()
 
-                # Handle different message types
                 if data.get("type") == "ping":
                     await websocket.send_json({"type": "pong"})
 
                 elif data.get("type") == "subscribe":
-                    # Subscribe to project/agent updates with authorization
-                    entity_type = data.get("entity_type")
-                    entity_id = data.get("entity_id")
-
-                    try:
-                        # Resolve tenant key for ALL entity types (tenant isolation)
-                        tenant_key = None
-                        if state.db_manager:
-                            async with state.db_manager.get_session_async() as session:
-                                if entity_type == "project":
-                                    stmt = select(Project).where(Project.id == entity_id)
-                                    result = await session.execute(stmt)
-                                    project = result.scalar_one_or_none()
-                                    if project:
-                                        tenant_key = project.tenant_key
-                                elif entity_type == "agent":
-                                    stmt = select(AgentJob).where(AgentJob.job_id == entity_id)
-                                    result = await session.execute(stmt)
-                                    agent_job = result.scalar_one_or_none()
-                                    if agent_job:
-                                        tenant_key = agent_job.tenant_key
-                                elif entity_type == "message":
-                                    stmt = select(Message).where(Message.id == entity_id)
-                                    result = await session.execute(stmt)
-                                    message = result.scalar_one_or_none()
-                                    if message:
-                                        tenant_key = message.tenant_key
-
-                        # Deny subscription if tenant can't be resolved
-                        if not tenant_key:
-                            await websocket.send_json(
-                                {
-                                    "type": "error",
-                                    "error": "subscription_denied",
-                                    "message": f"Cannot resolve tenant for {entity_type}:{entity_id}",
-                                    "entity_type": entity_type,
-                                    "entity_id": entity_id,
-                                }
-                            )
-                            continue
-
-                        # Cross-tenant subscription blocked (Handover 0769a: security fix)
-                        if tenant_key != auth_context.get("tenant_key"):
-                            logger.warning(
-                                f"Cross-tenant subscription blocked: user tenant={auth_context.get('tenant_key')}, "
-                                f"entity tenant={tenant_key}"
-                            )
-                            await websocket.send_json(
-                                {
-                                    "type": "error",
-                                    "error": "subscription_denied",
-                                    "message": "Cross-tenant subscription not allowed",
-                                    "entity_type": entity_type,
-                                    "entity_id": entity_id,
-                                }
-                            )
-                            continue
-
-                        await state.websocket_manager.subscribe(client_id, entity_type, entity_id, tenant_key)
-                        await websocket.send_json(
-                            {"type": "subscribed", "entity_type": entity_type, "entity_id": entity_id}
-                        )
-                    except HTTPException as e:
-                        # Send authorization error to client
-                        await websocket.send_json(
-                            {
-                                "type": "error",
-                                "error": "subscription_denied",
-                                "message": str(e.detail),
-                                "entity_type": entity_type,
-                                "entity_id": entity_id,
-                            }
-                        )
+                    await _handle_ws_subscribe(
+                        websocket=websocket,
+                        client_id=client_id,
+                        data=data,
+                        auth_context=auth_context,
+                    )
 
                 elif data.get("type") == "unsubscribe":
-                    # Unsubscribe from updates
                     entity_type = data.get("entity_type")
                     entity_id = data.get("entity_id")
                     await state.websocket_manager.unsubscribe(client_id, entity_type, entity_id)

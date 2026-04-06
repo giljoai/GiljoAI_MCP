@@ -260,4 +260,12 @@ Do NOT spawn the next terminal. The orchestrator handles that.
 
 ## Progress Updates
 
-*(Agent updates this section during implementation)*
+**Status: COMPLETE**
+
+- MessageService: 1790 → 874 lines (CRUD/read/ack/complete)
+- MessageRoutingService: 863 lines (send/broadcast/routing)
+- 11 methods extracted, list_messages refactored with _build_list_query
+- All callers updated (messages.py, tool_accessor.py, dependencies.py)
+- 5 unit tests updated to use MessageRoutingService
+- Tenant isolation verified: 28 queries pass
+- Zero new test failures, ruff clean, startup OK

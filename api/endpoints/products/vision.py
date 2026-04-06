@@ -16,7 +16,6 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_tenant_key
-from api.endpoints.dependencies import get_product_service
 from api.schemas.vision_document import VisionDocumentResponse
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.exceptions import (
@@ -25,8 +24,9 @@ from src.giljo_mcp.exceptions import (
     ValidationError,
 )
 from src.giljo_mcp.models import User
-from src.giljo_mcp.services.product_service import ProductService
+from src.giljo_mcp.services.product_vision_service import ProductVisionService
 
+from .dependencies import get_product_vision_service
 from .models import VisionChunk
 
 
@@ -41,7 +41,7 @@ async def upload_vision_document(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
     tenant_key: str = Depends(get_tenant_key),
-    product_service: ProductService = Depends(get_product_service),
+    vision_service: ProductVisionService = Depends(get_product_vision_service),
 ) -> dict:
     """
     Upload vision document for product with automatic chunking.
@@ -79,9 +79,9 @@ async def upload_vision_document(
         content = await file.read()
         content_str = content.decode("utf-8")
 
-        # Upload via ProductService (uses injected dependency)
+        # Upload via ProductVisionService (Handover 0950i: extracted from ProductService)
         # Handover 0731d: returns VisionUploadResult Pydantic model
-        result = await product_service.upload_vision_document(
+        result = await vision_service.upload_vision_document(
             product_id=product_id,
             content=content_str,
             filename=file.filename,

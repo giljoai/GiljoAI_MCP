@@ -542,9 +542,9 @@ describe('ProductDeleteDialog Component', () => {
       const wrapper = createWrapper()
       await flushPromises()
 
-      const icon = wrapper.find('.v-card-title .v-icon')
-      expect(icon.exists()).toBe(true)
-      expect(icon.text()).toContain('mdi-delete')
+      const baseDialog = wrapper.findComponent({ name: 'BaseDialog' })
+      expect(baseDialog.exists()).toBe(true)
+      expect(baseDialog.props('icon')).toBe('mdi-delete')
     })
   })
 })

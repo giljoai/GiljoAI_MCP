@@ -189,14 +189,29 @@ tools:
   - grep_search
   - list_directory
   - read_many_files
-  - mcp_giljo_mcp_*
+  - mcp_giljo_mcp_health_check
+  - mcp_giljo_mcp_get_agent_mission
+  - mcp_giljo_mcp_send_message
+  - mcp_giljo_mcp_receive_messages
+  - mcp_giljo_mcp_report_progress
+  - mcp_giljo_mcp_complete_job
+  - mcp_giljo_mcp_set_agent_status
+  - mcp_giljo_mcp_create_task
+  - mcp_giljo_mcp_get_workflow_status
+  - mcp_giljo_mcp_fetch_context
+  - mcp_giljo_mcp_reactivate_job
+  - mcp_giljo_mcp_dismiss_reactivation
+  - mcp_giljo_mcp_spawn_agent_job
+  - mcp_giljo_mcp_get_agent_result
+  - mcp_giljo_mcp_write_360_memory
+  - mcp_giljo_mcp_close_project_and_update_memory
 ---
 ```
 
 CRITICAL format rules:
 - `kind` MUST be `local` (not `agent`) — matches Gemini built-in agent format
 - Tool names: `run_shell_command` (NOT `shell`), `grep_search` (NOT `search`)
-- MCP tools: use `mcp_giljo_mcp_*` (server-specific wildcard, proven to work)
+- MCP tools: list each tool literally — Gemini CLI does NOT support wildcards
 - `model: inherit` uses the parent session's model; `/gil_get_agents` rewrites this to user's choice
 - Colors are NOT supported — omit any color fields
 

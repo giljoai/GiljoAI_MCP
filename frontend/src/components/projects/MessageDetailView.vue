@@ -2,7 +2,7 @@
   <div class="message-detail" data-test="audit-message-detail" data-testid="message-detail">
     <h3 class="text-subtitle-1 mb-2">Message Details</h3>
 
-    <div v-if="!message" class="text-body-2 text-medium-emphasis">
+    <div v-if="!message" class="text-body-2 text-muted-a11y">
       Select a message to inspect its details.
     </div>
 
@@ -42,7 +42,7 @@
 
       <v-divider class="my-3" />
 
-      <div class="text-caption text-medium-emphasis mb-1">
+      <div class="text-caption text-muted-a11y mb-1">
         Content
       </div>
       <pre class="message-body">

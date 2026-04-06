@@ -9,9 +9,10 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from api.endpoints.dependencies import get_message_service
+from api.endpoints.dependencies import get_message_routing_service, get_message_service
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.services.message_routing_service import MessageRoutingService
 from src.giljo_mcp.services.message_service import MessageService
 
 
@@ -54,13 +55,13 @@ class MessageSendRequest(BaseModel):
 async def send_message(
     message: MessageSend,
     current_user: User = Depends(get_current_active_user),
-    message_service: MessageService = Depends(get_message_service),
+    routing_service: MessageRoutingService = Depends(get_message_routing_service),
 ):
     """Send a message to agents"""
     from api.app import state
 
     # Service raises exceptions on error
-    result = await message_service.send_message(
+    result = await routing_service.send_message(
         to_agents=message.to_agents,
         content=message.content,
         project_id=message.project_id,
@@ -106,19 +107,18 @@ async def send_message(
 async def send_message_from_ui(
     payload: MessageSendRequest,
     current_user: User = Depends(get_current_active_user),
-    message_service: MessageService = Depends(get_message_service),
+    routing_service: MessageRoutingService = Depends(get_message_routing_service),
 ):
     """
     Unified endpoint for UI messaging (broadcast and direct) - Handover 0299.
 
-    Uses the same MessageService that MCP tools use, providing a single
-    entry point for both broadcast (to_agents=['all']) and direct messages.
+    Uses MessageRoutingService for both broadcast (to_agents=['all']) and direct messages.
 
     Returns:
         dict with success, message_id, and to_agents fields
     """
     # Service raises exceptions on error
-    result = await message_service.send_message(
+    result = await routing_service.send_message(
         to_agents=payload.to_agents,
         content=payload.content,
         project_id=payload.project_id,
@@ -269,7 +269,7 @@ async def complete_message(
             message_data={"completed_by": agent_name, "result": result, "status": "completed"},
         )
 
-    return {"success": True, "message": "Message completed", "result": result}
+    return CompleteMessageResponse(success=True, message="Message completed", result=result)
 
 
 class BroadcastMessage(BaseModel):
@@ -283,7 +283,7 @@ class BroadcastMessage(BaseModel):
 async def broadcast_message(
     broadcast: BroadcastMessage,
     current_user: User = Depends(get_current_active_user),
-    message_service: MessageService = Depends(get_message_service),
+    routing_service: MessageRoutingService = Depends(get_message_routing_service),
 ):
     """Broadcast message to all active agents in a project"""
     from api.app import state
@@ -293,7 +293,7 @@ async def broadcast_message(
         raise HTTPException(status_code=503, detail="Database not available")
 
     # SECURITY: Explicit tenant_key prevents cross-tenant broadcast
-    message_result = await message_service.broadcast(
+    message_result = await routing_service.broadcast(
         content=broadcast.content,
         project_id=broadcast.project_id,
         priority=broadcast.priority,

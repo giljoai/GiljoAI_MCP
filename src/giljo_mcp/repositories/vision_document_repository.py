@@ -278,35 +278,6 @@ class VisionDocumentRepository:
 
             await session.flush()
 
-    async def count_by_product(
-        self, session: AsyncSession, tenant_key: str, product_id: str, active_only: bool = True
-    ) -> int:
-        """
-        Count vision documents for a product.
-
-        Args:
-            session: Async database session
-            tenant_key: Tenant key for isolation
-            product_id: Product ID to count documents for
-            active_only: If True, only count active documents (default: True)
-
-        Returns:
-            Number of vision documents
-        """
-        from sqlalchemy import func
-
-        stmt = (
-            select(func.count())
-            .select_from(VisionDocument)
-            .where(VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product_id)
-        )
-
-        if active_only:
-            stmt = stmt.where(VisionDocument.is_active)
-
-        result = await session.execute(stmt)
-        return result.scalar()
-
     # -------------------------------------------------------------------------
     # VisionDocumentSummary methods (Handover 0842a)
     # -------------------------------------------------------------------------

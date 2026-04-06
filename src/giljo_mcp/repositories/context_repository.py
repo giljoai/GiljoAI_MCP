@@ -5,9 +5,8 @@ Provides agentic vision chunking storage and retrieval with full-text search.
 All operations enforce tenant isolation for security.
 """
 
-from sqlalchemy import func, select, text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
 from src.giljo_mcp.models import MCPContextIndex
 
@@ -24,46 +23,6 @@ class ContextRepository:
     def __init__(self, db_manager):
         self.db = db_manager
         self.context_index_repo = BaseRepository(MCPContextIndex, db_manager)
-
-    # MCPContextIndex operations
-
-    def create_chunk(
-        self,
-        session: Session,
-        tenant_key: str,
-        product_id: str,
-        content: str,
-        keywords: list[str],
-        token_count: int,
-        chunk_order: int,
-        summary: str | None = None,
-    ) -> MCPContextIndex:
-        """
-        Create a context chunk.
-
-        Args:
-            session: Database session
-            tenant_key: Tenant key for isolation
-            product_id: Product this chunk belongs to
-            content: Chunk content
-            keywords: List of keywords for search
-            token_count: Estimated token count
-            chunk_order: Sequential order of chunk
-            summary: Optional LLM-generated summary
-
-        Returns:
-            Created MCPContextIndex instance
-        """
-        return self.context_index_repo.create(
-            session,
-            tenant_key,
-            product_id=product_id,
-            content=content,
-            keywords=keywords,
-            token_count=token_count,
-            chunk_order=chunk_order,
-            summary=summary,
-        )
 
     async def search_chunks(
         self, session: AsyncSession, tenant_key: str, product_id: str, query: str, limit: int = 10
@@ -123,77 +82,6 @@ class ContextRepository:
                 chunks.append(chunk)
 
         return chunks
-
-    async def get_chunks_by_product(
-        self, session: AsyncSession, tenant_key: str, product_id: str
-    ) -> list[MCPContextIndex]:
-        """
-        Get all chunks for a product ordered by chunk_order.
-
-        Args:
-            session: Async database session
-            tenant_key: Tenant key for isolation
-            product_id: Product ID to retrieve chunks for
-
-        Returns:
-            List of MCPContextIndex instances ordered by chunk_order
-        """
-        result = await session.execute(
-            select(MCPContextIndex)
-            .where(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == product_id)
-            .order_by(MCPContextIndex.chunk_order)
-        )
-        return list(result.scalars().all())
-
-    async def get_chunk_by_id(self, session: AsyncSession, tenant_key: str, chunk_id: str) -> MCPContextIndex | None:
-        """
-        Get a specific chunk by chunk_id.
-
-        Args:
-            session: Async database session
-            tenant_key: Tenant key for isolation
-            chunk_id: Chunk ID to retrieve
-
-        Returns:
-            MCPContextIndex instance or None if not found
-        """
-        result = await session.execute(
-            select(MCPContextIndex).where(
-                MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.chunk_id == chunk_id
-            )
-        )
-        return result.scalar_one_or_none()
-
-    async def delete_chunks_by_product(self, session: AsyncSession, tenant_key: str, product_id: str) -> int:
-        """
-        Delete all chunks for a product.
-
-        Args:
-            session: Async database session
-            tenant_key: Tenant key for isolation
-            product_id: Product ID to delete chunks for
-
-        Returns:
-            Number of chunks deleted
-        """
-        from sqlalchemy import delete
-
-        # Count first
-        count_result = await session.execute(
-            select(func.count())
-            .select_from(MCPContextIndex)
-            .where(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == product_id)
-        )
-        count = count_result.scalar()
-
-        # Then delete
-        await session.execute(
-            delete(MCPContextIndex).where(
-                MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == product_id
-            )
-        )
-
-        return count
 
     async def delete_chunks_by_vision_document(
         self, session: AsyncSession, tenant_key: str, vision_document_id: str

@@ -195,11 +195,6 @@ const isValid = computed(() => {
   return trimmed.length > 0 && trimmed.length <= 50000
 })
 
-const agentColor = computed(() => {
-  // Use background color from agent if available, otherwise default to primary
-  return props.agent?.background_color || 'primary'
-})
-
 const executionCount = computed(() => {
   return props.agent?.execution_count || 1
 })
