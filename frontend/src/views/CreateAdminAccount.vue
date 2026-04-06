@@ -120,7 +120,7 @@
                   <span class="text-caption">Meets password requirements</span>
                   <v-tooltip location="top" max-width="300">
                     <template #activator="{ props }">
-                      <v-icon v-bind="props" size="16" class="ml-1">mdi-information-outline</v-icon>
+                      <v-icon v-bind="props" size="16" class="ml-1">mdi-help-circle-outline</v-icon>
                     </template>
                     <span class="text-caption"
                       >At least 12 characters, one uppercase, one lowercase, one digit, and one
