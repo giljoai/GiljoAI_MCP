@@ -630,7 +630,7 @@ class OrchestrationService:
             and_(
                 AgentTodoItem.job_id == job_id,
                 AgentTodoItem.tenant_key == tenant_key,
-                AgentTodoItem.status != "completed",
+                AgentTodoItem.status.notin_(["completed", "skipped"]),
             )
         )
         todo_res = await session.execute(todo_query)
