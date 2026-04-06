@@ -280,6 +280,9 @@ class ToolAccessor:
             "mission": project.mission,
             "status": project.status,
             "product_id": project.product_id,
+            "project_type": project_type or "",
+            "series_number": project.series_number or 0,
+            "taxonomy_alias": project.taxonomy_alias,
             "created_at": project.created_at.isoformat() if project.created_at else None,
             "message": f"Project '{project.name}' created successfully",
         }
