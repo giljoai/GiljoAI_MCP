@@ -309,14 +309,13 @@ def render_codex_agent(template: AgentTemplate) -> dict[str, object]:
 # TOML format reference string for Codex AI coding agent configuration
 CODEX_TOML_FORMAT_REFERENCE = """\
 # Codex AI coding agent configuration (add to ~/.codex/config.toml)
-# Each agent is a [agents.<name>] section.
+# Each agent is a [agents.<name>] section. All GiljoAI agents use the gil- prefix.
 #
-# [agents.implementer-frontend]
+# [agents.gil-implementer]
+# config_file = "agents/gil-implementer.toml"
 # model = "gpt-5.2-codex"
-# reasoning_effort = "medium"
-# instructions = \"\"\"
-# <developer_instructions content here>
-# \"\"\"
+# model_reasoning_effort = "medium"
+# nickname_candidates = ["gil-implementer"]
 #
 # Multiple agents can be defined in the same config.toml file.
 # Existing sections not managed by GiljoAI should be preserved.
