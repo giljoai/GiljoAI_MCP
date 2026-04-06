@@ -1,5 +1,7 @@
 # GiljoAI MCP: Installation Guide
 
+*Last updated: 2026-04-06*
+
 GiljoAI MCP is a self-hosted AI agent orchestration platform. This guide covers
 installing the server, completing the setup wizard, and connecting your AI coding tools.
 

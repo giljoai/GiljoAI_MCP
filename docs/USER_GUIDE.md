@@ -1,5 +1,7 @@
 # GiljoAI MCP: User Guide
 
+*Last updated: 2026-04-06*
+
 This guide covers every page and UI element in GiljoAI MCP. Read from top to bottom on first use, or jump to the section you need.
 
 ---

@@ -1,5 +1,7 @@
 # GiljoAI MCP: Architecture
 
+*Last updated: 2026-04-06*
+
 This document describes the technical architecture of GiljoAI MCP for developers
 working on or integrating with the platform.
 
