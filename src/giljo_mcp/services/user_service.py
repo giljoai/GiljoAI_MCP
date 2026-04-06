@@ -336,6 +336,17 @@ class UserService:
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
+        # Check for duplicate username if changing username
+        if "username" in updates and updates["username"] and updates["username"] != user.username:
+            stmt = select(User).where(User.username == updates["username"])
+            result = await session.execute(stmt)
+            existing_user = result.scalar_one_or_none()
+            if existing_user:
+                raise ValidationError(
+                    message=f"Username '{updates['username']}' already taken",
+                    context={"username": updates["username"], "user_id": user_id},
+                )
+
         # Check for duplicate email if changing email
         if "email" in updates and updates["email"] and updates["email"] != user.email:
             stmt = select(User).where(User.email == updates["email"])
@@ -348,7 +359,7 @@ class UserService:
                 )
 
         # Apply updates (only allowed fields)
-        allowed_fields = {"email", "full_name", "is_active"}
+        allowed_fields = {"username", "email", "full_name", "is_active"}
         for field, value in updates.items():
             if field in allowed_fields:
                 setattr(user, field, value)
