@@ -700,6 +700,8 @@ async def fetch_context(
         "Close project and update 360 Memory with sequential history entry. "
         "Called by: ORCHESTRATOR at project completion. Triggers WebSocket "
         "'product_memory_updated' event for UI updates. "
+        "All agents MUST be in 'complete' or 'decommissioned' status before calling. "
+        "If blocked, resolve each agent via report_progress + complete_job first. "
         "IMPORTANT: Before calling, run `git log --oneline` for the project branch "
         "and pass the commits as git_commits. Each entry needs: sha, message, author. "
         "Optional fields: date (ISO 8601), files_changed (int), lines_added (int)."
@@ -711,7 +713,6 @@ async def close_project_and_update_memory(
     key_outcomes: list[str],
     decisions_made: list[str],
     git_commits: list[dict] = None,
-    force: bool = False,
     ctx: Context = None,
 ) -> dict:
     """Close project and update 360 Memory."""
@@ -720,7 +721,7 @@ async def close_project_and_update_memory(
         "summary": summary,
         "key_outcomes": key_outcomes,
         "decisions_made": decisions_made,
-        "force": force,
+        "force": False,
     }
     if git_commits is not None:
         kwargs["git_commits"] = git_commits
