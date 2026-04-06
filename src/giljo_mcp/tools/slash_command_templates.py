@@ -64,7 +64,8 @@ description: "Add a task or project to the GiljoAI dashboard. Routes to task (te
 - `title` (required), `description` (optional), `priority` (low|medium|high|critical, default: medium), `category` (frontend|backend|database|infra|docs|general, default: general)
 
 ## Project parameters
-- `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — label e.g. "Frontend" OR abbreviation e.g. "FE", "TST"), `series_number` (optional int 1-9999 — auto-assigned if omitted)
+- `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — must match a pre-configured type), `series_number` (optional int 1-9999 — auto-assigned if omitted)
+- **Before creating a project**, call `gil_discovery(category="project_types")` to see available types. Only use types returned — unknown types are silently ignored.
 
 ## Modes
 
@@ -508,7 +509,8 @@ description: "Add a task or project to the GiljoAI dashboard"
 - `title` (required), `description` (optional), `priority` (low|medium|high|critical, default: medium), `category` (frontend|backend|database|infra|docs|general, default: general)
 
 ## Project parameters
-- `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — label e.g. "Frontend" OR abbreviation e.g. "FE", "TST"), `series_number` (optional int 1-9999 — auto-assigned if omitted)
+- `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — must match a pre-configured type), `series_number` (optional int 1-9999 — auto-assigned if omitted)
+- **Before creating a project**, call `gil_discovery(category="project_types")` to see available types. Only use types returned — unknown types are silently ignored.
 
 ## Modes
 
