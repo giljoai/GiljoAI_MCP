@@ -110,7 +110,7 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
     description=(
         "Create a new project bound to the active product. "
         "Projects are classified by taxonomy: project_type + series_number forming a serial like FE-0001. "
-        "Call gil_discovery(category='project_types') first to see valid types. "
+        "Call discovery(category='project_types') first to see valid types. "
         "Project is created as inactive. Use the web dashboard to activate and launch."
     ),
 )
@@ -320,7 +320,7 @@ async def health_check(ctx: Context = None) -> dict:
         "Valid categories: 'project_types'. Returns items with abbreviation, label, color."
     ),
 )
-async def gil_discovery(
+async def discovery(
     category: str,
     ctx: Context = None,
 ) -> dict:
