@@ -119,7 +119,7 @@
         :aria-live="connectionTestResult.success ? 'polite' : 'assertive'"
         data-test="test-result"
       >
-        <div v-html="formatTestResultMessage(connectionTestResult)"></div>
+        <div v-html="formatTestResultMessage(connectionTestResult)"></div> <!-- DOMPurify-sanitized -->
       </v-alert>
     </v-card-text>
 

@@ -8,13 +8,13 @@
     </template>
 
     <v-card v-draggable class="smooth-border">
-      <v-card-title class="d-flex align-center justify-space-between">
-        <div class="d-flex align-center">
-          <v-img src="/giljo_YW_Face.svg" width="32" height="32" class="mr-2" />
-          <span>MCP Configuration Tool</span>
-        </div>
-        <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="showWizard = false" />
-      </v-card-title>
+      <div class="dlg-header">
+        <v-img src="/giljo_YW_Face.svg" width="32" height="32" class="dlg-icon" style="flex-shrink: 0" />
+        <span class="dlg-title">MCP Configuration Tool</span>
+        <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="showWizard = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </div>
 
       <v-card-text>
         <!-- Tool Selection: Logo + Name + Radio -->
@@ -356,7 +356,7 @@ defineExpose({
 }
 
 .configurator-pill {
-  --smooth-border-color: #ffc300;
+  --smooth-border-color: #{$color-brand-yellow};
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -366,7 +366,7 @@ defineExpose({
   font-size: 0.82rem;
   font-weight: 500;
   background: transparent;
-  color: #ffc300;
+  color: $color-brand-yellow;
   border: none;
   cursor: pointer;
   transition: background $transition-fast;
@@ -374,6 +374,6 @@ defineExpose({
 }
 
 .configurator-pill:hover {
-  background: rgba(255, 195, 0, 0.12);
+  background: rgba($color-brand-yellow, 0.12);
 }
 </style>

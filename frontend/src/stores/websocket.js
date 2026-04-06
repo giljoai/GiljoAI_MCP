@@ -672,7 +672,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
    */
   function log(message, data = null) {
     if (config.debug) {
-      console.log(`[WebSocketV2] ${message}`, data || '')
+      console.warn(`[WebSocketV2] ${message}`, data || '')
     }
 
     // Add to event history

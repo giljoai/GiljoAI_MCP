@@ -137,6 +137,14 @@ class ProductActivationResponse(BaseModel):
     deactivated_projects: list[str] = Field(default_factory=list, description="IDs of projects that were auto-paused")
 
 
+class ProductPurgeResponse(BaseModel):
+    """Response for permanent product deletion (purge)"""
+
+    success: bool = True
+    product_name: str
+    message: str
+
+
 class ProductDeleteResponse(BaseModel):
     """Enhanced response for product deletion"""
 

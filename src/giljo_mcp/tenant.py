@@ -190,24 +190,6 @@ class TenantManager:
         return hash_obj.hexdigest()[:8]
 
     @classmethod
-    def inherit_tenant_key(cls, parent_entity: Any) -> Optional[str]:
-        """
-        Inherit tenant key from a parent entity.
-
-        Args:
-            parent_entity: Entity with tenant_key attribute
-
-        Returns:
-            The tenant key from parent or current context
-        """
-        # Try to get from parent entity
-        if hasattr(parent_entity, "tenant_key"):
-            return parent_entity.tenant_key
-
-        # Fall back to current context
-        return cls.get_current_tenant()
-
-    @classmethod
     def apply_tenant_filter(cls, query: Any, model: Any, tenant_key: Optional[str] = None) -> Any:
         """
         Apply tenant filtering to a SQLAlchemy query.

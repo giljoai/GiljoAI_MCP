@@ -120,13 +120,6 @@ class AgentTemplate(Base):
     )
 
     @property
-    def variable_list(self) -> list[str]:
-        """Get list of variables in template"""
-        import re
-
-        return re.findall(r"\{(\w+)\}", self.system_instructions or "")
-
-    @property
     def may_be_stale(self) -> bool:
         """
         Check if template may be stale (modified after last export).

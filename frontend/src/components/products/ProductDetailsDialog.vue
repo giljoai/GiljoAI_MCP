@@ -479,18 +479,20 @@ const AI_SUMMARY_COLORS = {
   medium: getAgentColor('tester').hex,
 }
 
+const FALLBACK_MUTED = '#8895a8' // var(--text-muted)
+
 function docSummaryStyle(level) {
-  const hex = DOC_SUMMARY_COLORS[level] || '#8895a8'
+  const hex = DOC_SUMMARY_COLORS[level] || FALLBACK_MUTED
   return { background: hexToRgba(hex, 0.15), color: hex }
 }
 
 function consolidatedSummaryStyle(level) {
-  const hex = CONSOLIDATED_SUMMARY_COLORS[level] || '#8895a8'
+  const hex = CONSOLIDATED_SUMMARY_COLORS[level] || FALLBACK_MUTED
   return { background: hexToRgba(hex, 0.15), color: hex }
 }
 
 function aiSummaryStyle(level) {
-  const hex = AI_SUMMARY_COLORS[level] || '#8895a8'
+  const hex = AI_SUMMARY_COLORS[level] || FALLBACK_MUTED
   return { background: hexToRgba(hex, 0.15), color: hex }
 }
 
@@ -809,7 +811,7 @@ async function regenerateConsolidation() {
   flex-direction: column;
   max-height: min(80vh, 900px);
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10) !important; /* !important: :deep() must override Vuetify v-card inline box-shadow */
 }
 
 :deep(.product-details-body) {
@@ -818,7 +820,7 @@ async function regenerateConsolidation() {
 }
 
 :deep(.doc-entry-card) {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10) !important; /* !important: :deep() must override Vuetify v-card inline box-shadow */
 }
 
 .detail-section {

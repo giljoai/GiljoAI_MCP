@@ -205,24 +205,6 @@ Use TDD (Test-Driven Development): Write tests first, then implement code to mak
 Apply TDD approach: Write tests first, then implement code.
 """
 
-    @classmethod
-    def generate_for_agent(cls, testing_config: dict[str, Any | None], agent_display_name: str) -> str:
-        """
-        Generate agent-specific testing guidance.
-
-        Args:
-            testing_config: Product testing configuration
-            agent_display_name: Type of agent (tester, implementer, reviewer, architect, etc.)
-
-        Returns:
-            Testing context appropriate for the agent type
-        """
-        if agent_display_name in ["tester", "implementer"]:
-            return cls.generate_context(testing_config, detail_level="full")
-        if agent_display_name in ["reviewer"]:
-            return cls.generate_context(testing_config, detail_level="standards")
-        return cls.generate_context(testing_config, detail_level="summary")
-
 
 class TestingConfigValidator:
     """Validate testing configuration structure."""
