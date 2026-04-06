@@ -492,6 +492,46 @@ class ToolAccessor:
 
         return await OrchestrationService.health_check()
 
+    async def discovery(self, category: str, tenant_key: str) -> dict[str, Any]:
+        """Query available system categories for the current tenant.
+
+        Args:
+            category: What to look up. Valid: 'project_types'.
+            tenant_key: Tenant isolation key.
+
+        Returns:
+            Dict with category, items, count, and a usage hint.
+
+        Raises:
+            ValidationError: If category is unknown.
+        """
+        valid_categories = ["project_types"]
+
+        if category not in valid_categories:
+            raise ValidationError(
+                f"Unknown category '{category}'. Valid categories: {', '.join(valid_categories)}",
+                context={"valid_categories": valid_categories},
+            )
+
+        from api.endpoints.project_types.crud_ops import list_project_types, seed_default_project_types
+
+        async with self.db_manager.session() as session:
+            await seed_default_project_types(session, tenant_key)
+            types = await list_project_types(session, tenant_key)
+            return {
+                "category": "project_types",
+                "items": [
+                    {
+                        "abbreviation": t.abbreviation,
+                        "label": t.label,
+                        "color": t.color,
+                    }
+                    for t in types
+                ],
+                "count": len(types),
+                "hint": "Use the abbreviation value as project_type when calling create_project",
+            }
+
     async def generate_download_token(
         self, content_type: str, tenant_key: str, platform: str = "claude_code"
     ) -> dict[str, Any]:
