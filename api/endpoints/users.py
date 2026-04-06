@@ -62,6 +62,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     """Request model for updating user profile"""
 
+    username: str | None = Field(None, min_length=3, max_length=64)
     email: EmailStr | None = None
     full_name: str | None = Field(None, max_length=255)
     is_active: bool | None = None
@@ -431,6 +432,8 @@ async def update_user(
 
     # Build updates dict (only include non-None values)
     updates = {}
+    if user_data.username is not None:
+        updates["username"] = user_data.username
     if user_data.email is not None:
         updates["email"] = user_data.email
     if user_data.full_name is not None:
