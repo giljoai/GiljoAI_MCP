@@ -9,13 +9,6 @@ describe('GitIntegrationCard.vue', () => {
   let vuetify
   let wrapper
 
-  const defaultConfig = {
-    use_in_prompts: false,
-    include_commit_history: true,
-    max_commits: 50,
-    branch_strategy: 'main',
-  }
-
   beforeEach(() => {
     vuetify = createVuetify({
       components,
@@ -34,9 +27,8 @@ describe('GitIntegrationCard.vue', () => {
     return mount(GitIntegrationCard, {
       props: {
         enabled: false,
-        config: { ...defaultConfig },
         loading: false,
-        ...props
+        ...props,
       },
       global: {
         plugins: [vuetify],
@@ -51,28 +43,29 @@ describe('GitIntegrationCard.vue', () => {
       expect(wrapper.vm).toBeDefined()
     })
 
-    it('renders as a v-card', () => {
+    it('renders as an intg-card div', () => {
       wrapper = mountComponent()
       const html = wrapper.html()
-      expect(html).toContain('variant="flat"')
+      expect(html).toContain('intg-card')
+      expect(html).toContain('smooth-border')
     })
 
-    it('displays "Git + GiljoAI 360 Memory" title', () => {
+    it('displays "Git + 360 Memory" title', () => {
       wrapper = mountComponent()
       const text = wrapper.text()
-      expect(text).toContain('Git + GiljoAI 360 Memory')
+      expect(text).toContain('Git + 360 Memory')
     })
 
     it('displays description about commit tracking', () => {
       wrapper = mountComponent()
       const text = wrapper.text()
-      expect(text).toContain('Enable to automatically include git commit history in project summaries')
+      expect(text).toContain('Automatically include git commit history in project summaries')
     })
 
-    it('displays git icon (mdi-github)', () => {
+    it('displays git icon (mdi-git)', () => {
       wrapper = mountComponent()
-      const text = wrapper.text()
-      expect(text).toContain('mdi-github')
+      const html = wrapper.html()
+      expect(html).toContain('mdi-git')
     })
 
     it('displays subtitle about orchestrator context', () => {
@@ -95,11 +88,11 @@ describe('GitIntegrationCard.vue', () => {
     })
   })
 
-  describe('Toggle Switch', () => {
-    it('has enable/disable toggle switch', () => {
+  describe('Toggle Button', () => {
+    it('has enable/disable toggle button', () => {
       wrapper = mountComponent()
       const html = wrapper.html()
-      expect(html).toContain('v-switch')
+      expect(html).toContain('data-testid="github-integration-toggle"')
     })
 
     it('toggle emits update:enabled event', async () => {
@@ -110,10 +103,16 @@ describe('GitIntegrationCard.vue', () => {
       expect(emitted).toBeTruthy()
     })
 
-    it('displays "Enable Git Integration" label', () => {
-      wrapper = mountComponent()
+    it('displays "Disabled" label when disabled', () => {
+      wrapper = mountComponent({ enabled: false })
       const text = wrapper.text()
-      expect(text).toContain('Enable Git Integration')
+      expect(text).toContain('Disabled')
+    })
+
+    it('displays "Enabled" label when enabled', () => {
+      wrapper = mountComponent({ enabled: true })
+      const text = wrapper.text()
+      expect(text).toContain('Enabled')
     })
 
     it('toggle shows loading state when loading prop is true', () => {
@@ -123,38 +122,35 @@ describe('GitIntegrationCard.vue', () => {
     })
   })
 
-  describe('Info Alert', () => {
-    it('has info alert about git configuration', () => {
-      wrapper = mountComponent()
-      const text = wrapper.text()
-      expect(text).toContain('Git configuration is your responsibility')
-    })
-
+  describe('GitHub Setup Guide Link', () => {
     it('displays GitHub Setup Guide link button', () => {
       wrapper = mountComponent()
       const text = wrapper.text()
       expect(text).toContain('GitHub Setup Guide')
     })
 
-    it('info alert is visible when loading', () => {
-      wrapper = mountComponent({ loading: true })
-      const text = wrapper.text()
-      expect(text).toContain('Git configuration is your responsibility')
+    it('link points to GitHub docs', () => {
+      wrapper = mountComponent()
+      const html = wrapper.html()
+      expect(html).toContain('docs.github.com')
+    })
+
+    it('link opens in new tab', () => {
+      wrapper = mountComponent()
+      const html = wrapper.html()
+      expect(html).toContain('target="_blank"')
     })
   })
 
   describe('Fallback Info (when disabled)', () => {
-    it('shows info about enabling git integration', () => {
+    it('shows description about git commit history', () => {
       wrapper = mountComponent({ enabled: false })
-
       const text = wrapper.text()
-      // Component shows description about including git commit history
-      expect(text).toContain('Enable to automatically include git commit history')
+      expect(text).toContain('Automatically include git commit history')
     })
 
     it('mentions 360 Memory', () => {
       wrapper = mountComponent({ enabled: false })
-
       const text = wrapper.text()
       expect(text).toContain('360 Memory')
     })
@@ -163,40 +159,19 @@ describe('GitIntegrationCard.vue', () => {
   describe('Tooltip Content', () => {
     it('tooltip contains information about cumulative product knowledge', () => {
       wrapper = mountComponent()
-
       const text = wrapper.text()
       expect(text).toContain('Cumulative product knowledge tracking')
     })
   })
 
   describe('Edge Cases', () => {
-    it('handles empty config prop gracefully', () => {
-      wrapper = mountComponent({ enabled: true, config: {} })
+    it('handles enabled=true gracefully', () => {
+      wrapper = mountComponent({ enabled: true })
       expect(wrapper.exists()).toBe(true)
     })
 
-    it('handles null config values', async () => {
-      wrapper = mountComponent({
-        enabled: true,
-        config: { use_in_prompts: null, include_commit_history: null }
-      })
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.exists()).toBe(true)
-    })
-
-    it('handles undefined config prop', () => {
-      wrapper = mount(GitIntegrationCard, {
-        props: {
-          enabled: false,
-          loading: false
-          // config not provided - uses default
-        },
-        global: {
-          plugins: [vuetify],
-        },
-      })
-
+    it('handles enabled=false gracefully', () => {
+      wrapper = mountComponent({ enabled: false })
       expect(wrapper.exists()).toBe(true)
     })
 
@@ -214,30 +189,26 @@ describe('GitIntegrationCard.vue', () => {
   })
 
   describe('Accessibility', () => {
-    it('card has div wrapper structure', () => {
+    it('card has intg-card wrapper structure', () => {
       wrapper = mountComponent()
-
       const html = wrapper.html()
-      expect(html).toContain('variant="flat"')
+      expect(html).toContain('intg-card')
     })
 
-    it('toggle switch exists', () => {
+    it('toggle button exists', () => {
       wrapper = mountComponent()
-
       const html = wrapper.html()
-      expect(html).toContain('v-switch')
+      expect(html).toContain('data-testid="github-integration-toggle"')
     })
 
     it('buttons are accessible', () => {
       wrapper = mountComponent()
-
       const html = wrapper.html()
       expect(html).toContain('<button')
     })
 
     it('external link has target blank', () => {
       wrapper = mountComponent()
-
       const html = wrapper.html()
       expect(html).toContain('target="_blank"')
     })
@@ -246,23 +217,26 @@ describe('GitIntegrationCard.vue', () => {
   describe('Visual Elements', () => {
     it('displays git icon in html', () => {
       wrapper = mountComponent()
-
       const html = wrapper.html()
-      expect(html).toContain('mdi-github')
+      expect(html).toContain('mdi-git')
     })
 
-    it('uses outlined card variant', () => {
+    it('applies card accent color style', () => {
       wrapper = mountComponent()
+      const html = wrapper.html()
+      expect(html).toContain('--card-accent')
+    })
 
+    it('toggle button uses outlined variant when disabled', () => {
+      wrapper = mountComponent({ enabled: false })
+      const html = wrapper.html()
+      expect(html).toContain('variant="outlined"')
+    })
+
+    it('toggle button uses flat variant when enabled', () => {
+      wrapper = mountComponent({ enabled: true })
       const html = wrapper.html()
       expect(html).toContain('variant="flat"')
-    })
-
-    it('uses tonal card variant for controls section', () => {
-      wrapper = mountComponent()
-
-      const html = wrapper.html()
-      expect(html).toContain('variant="tonal"')
     })
   })
 
@@ -270,30 +244,25 @@ describe('GitIntegrationCard.vue', () => {
     it('enabled prop defaults to false', () => {
       wrapper = mount(GitIntegrationCard, {
         props: {
-          config: defaultConfig,
-          loading: false
+          loading: false,
         },
         global: {
           plugins: [vuetify],
         },
       })
-
-      expect(wrapper.exists()).toBe(true)
+      expect(wrapper.props('enabled')).toBe(false)
     })
 
     it('loading prop defaults to false', () => {
       wrapper = mount(GitIntegrationCard, {
         props: {
           enabled: false,
-          config: defaultConfig
         },
         global: {
           plugins: [vuetify],
         },
       })
-
-      expect(wrapper.exists()).toBe(true)
+      expect(wrapper.props('loading')).toBe(false)
     })
   })
-
 })

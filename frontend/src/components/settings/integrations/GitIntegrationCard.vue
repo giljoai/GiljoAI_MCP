@@ -1,16 +1,16 @@
 <template>
   <div
     class="intg-card smooth-border"
-    style="--card-accent: #90CAF9"
+    :style="{ '--card-accent': cardGitColor }"
   >
-    <div class="intg-card-icon" style="background: rgba(144,202,249,0.12); color: #90CAF9">
+    <div class="intg-card-icon" :style="{ background: cardGitBg, color: cardGitColor }">
       <v-icon size="20">mdi-git</v-icon>
     </div>
     <div class="d-flex align-center" style="gap: 8px; margin-bottom: 5px;">
       <div class="intg-card-title" style="margin-bottom: 0">Git + 360 Memory</div>
       <v-tooltip location="top" max-width="400">
         <template #activator="{ props }">
-          <v-icon v-bind="props" size="small" style="color: #8895a8">mdi-help-circle-outline</v-icon>
+          <v-icon v-bind="props" size="small" style="color: var(--text-muted)">mdi-help-circle-outline</v-icon>
         </template>
         <div>
           <strong>Cumulative product knowledge tracking</strong>
@@ -58,6 +58,11 @@
 </template>
 
 <script setup>
+import { hexToRgba } from '@/utils/colorUtils'
+
+const cardGitColor = '#90CAF9' // $color-card-git
+const cardGitBg = hexToRgba(cardGitColor, 0.12)
+
 defineProps({
   enabled: { type: Boolean, default: false },
   loading: { type: Boolean, default: false },
@@ -67,5 +72,5 @@ defineEmits(['update:enabled'])
 </script>
 
 <style lang="scss" scoped>
-@import '../../../styles/intg-card';
+@use '../../../styles/intg-card';
 </style>

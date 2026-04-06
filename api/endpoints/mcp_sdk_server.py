@@ -109,6 +109,8 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
 @mcp.tool(
     description=(
         "Create a new project bound to the active product. "
+        "Projects are classified by taxonomy: project_type (e.g. SCAFFOLD, FE, BE, TST, INFRA, DOCS) "
+        "+ series_number (e.g. 1) forming a serial like SCAFFOLD-0001. "
         "Project is created as inactive. Use the web dashboard to activate and launch."
     ),
 )
@@ -119,7 +121,18 @@ async def create_project(
     series_number: int = 0,
     ctx: Context = None,
 ) -> dict:
-    """Create a new project bound to the active product."""
+    """Create a new project bound to the active product.
+
+    Args:
+        name: Project name (required)
+        description: Human-written project description
+        project_type: Taxonomy type abbreviation (e.g. FE, BE, INFRA, DOCS).
+            Must match a pre-existing category configured in the dashboard.
+            If the type is not recognized, the project is created without taxonomy.
+            Combined with series_number to form the project serial (e.g. FE-0001).
+        series_number: Sequential number within the type series (1-9999).
+            Forms serial like TYPE-0001. Use 0 for auto-assign.
+    """
     params = {
         "name": name,
         "description": description,

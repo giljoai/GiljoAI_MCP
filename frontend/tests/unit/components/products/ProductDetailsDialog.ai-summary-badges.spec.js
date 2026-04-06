@@ -53,9 +53,9 @@ describe('ProductDetailsDialog AI summary badges', () => {
     const summaryToggle = toggles.find((button) => button.text().includes('Summary Previews'))
     await summaryToggle.trigger('click')
 
-    expect(wrapper.text()).toContain('AI summaries')
-    expect(wrapper.text()).toContain('33% · 4.2K tokens')
-    expect(wrapper.text()).toContain('66% · 10.8K tokens')
+    expect(wrapper.text()).toContain('AI-generated summaries')
+    expect(wrapper.text()).toContain('Light · 4.2K tokens')
+    expect(wrapper.text()).toContain('Medium · 10.8K tokens')
   })
 
   it('hides per-document AI summary badges when AI summaries do not exist', () => {

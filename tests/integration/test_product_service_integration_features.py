@@ -20,6 +20,7 @@ from src.giljo_mcp.schemas.service_responses import (
     VisionUploadResult,
 )
 from src.giljo_mcp.services.product_service import ProductService
+from src.giljo_mcp.services.product_vision_service import ProductVisionService
 
 
 @pytest.mark.asyncio
@@ -156,16 +157,20 @@ class TestVisionDocumentIntegration:
     """Integration tests for vision document handling"""
 
     async def test_upload_vision_document_integration(self, db_manager):
-        """Test vision document upload with real database"""
+        """Test vision document upload with real database.
+
+        Handover 0950i: upload_vision_document moved to ProductVisionService.
+        """
         tenant_key = str(uuid4())
-        service = ProductService(db_manager, tenant_key)
+        product_service = ProductService(db_manager, tenant_key)
+        vision_service = ProductVisionService(db_manager, tenant_key)
 
         # Create product (0731b: returns Product ORM model)
-        product_result = await service.create_product(name="Vision Product")
+        product_result = await product_service.create_product(name="Vision Product")
         product_id = str(product_result.id)
 
-        # Upload vision document (0731b: returns VisionUploadResult Pydantic model)
-        upload_result = await service.upload_vision_document(
+        # Upload vision document (0950i: via ProductVisionService)
+        upload_result = await vision_service.upload_vision_document(
             product_id=product_id,
             content="# Product Vision\n\nThis is our product vision statement.",
             filename="product_vision.md",
@@ -184,11 +189,14 @@ class TestVisionDocumentIntegration:
             assert len(vision_docs) >= 1
 
     async def test_upload_vision_to_nonexistent_product(self, db_manager):
-        """Test vision upload fails for non-existent product"""
+        """Test vision upload fails for non-existent product.
+
+        Handover 0950i: upload_vision_document moved to ProductVisionService.
+        """
         from src.giljo_mcp.exceptions import ResourceNotFoundError
 
         tenant_key = str(uuid4())
-        service = ProductService(db_manager, tenant_key)
+        service = ProductVisionService(db_manager, tenant_key)
 
         # Should raise ResourceNotFoundError for non-existent product
         with pytest.raises(ResourceNotFoundError) as exc_info:

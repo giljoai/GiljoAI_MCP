@@ -12,7 +12,7 @@
             </template>
             <div>
               <div class="font-weight-bold mb-1">Task Field Reference</div>
-              <div class="text-caption mb-2" style="color: #8895a8;">Instructions for /gil_add</div>
+              <div class="text-caption mb-2" style="color: var(--text-muted);">Instructions for /gil_add</div>
               <div><span class="font-weight-medium">title (required):</span> Free text</div>
               <div class="mt-1"><span class="font-weight-medium">description (recommended):</span> Free text</div>
               <div class="mt-1"><span class="font-weight-medium">status (optional):</span></div>
@@ -93,7 +93,7 @@
           <template v-slot:loading>
             <div class="text-center pa-4">
               <v-progress-circular indeterminate color="primary" size="48" />
-              <p class="text-body-2 text-medium-emphasis mt-2">Loading tasks...</p>
+              <p class="text-body-2 text-muted-a11y mt-2">Loading tasks...</p>
             </div>
           </template>
 
@@ -202,14 +202,6 @@
             </div>
           </template>
 
-          <!-- Created By User Column (Phase 4) -->
-          <template v-slot:item.created_by_user_id="{ item }">
-            <v-chip size="small" variant="outlined">
-              <v-icon start size="small">mdi-account-circle</v-icon>
-              {{ getUserName(item.created_by_user_id) }}
-            </v-chip>
-          </template>
-
           <!-- Due Date Column - Inline Calendar Picker -->
           <template v-slot:item.due_date="{ item }">
             <v-menu
@@ -229,7 +221,7 @@
                     mdi-alert
                   </v-icon>
                   <span v-if="item.due_date">{{ formatDate(item.due_date) }}</span>
-                  <span v-else class="text-medium-emphasis">Set date</span>
+                  <span v-else class="text-muted-a11y">Set date</span>
                 </div>
               </template>
               <v-card class="compact-date-picker">
@@ -319,12 +311,13 @@
     <!-- Create/Edit Task Dialog -->
     <v-dialog v-model="showTaskDialog" max-width="600" persistent scrollable>
       <v-card v-draggable class="smooth-border">
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
-          <span>{{ editingTask ? 'Edit Task' : 'Create Task' }}</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="cancelTask" />
-        </v-card-title>
+        <div class="dlg-header">
+          <v-icon class="dlg-icon">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
+          <span class="dlg-title">{{ editingTask ? 'Edit Task' : 'Create Task' }}</span>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="cancelTask">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
         <v-card-text>
           <v-form ref="taskForm">
@@ -381,13 +374,13 @@
           </v-form>
         </v-card-text>
 
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" @click="cancelTask"> Cancel </v-btn>
           <v-btn color="primary" variant="flat" :loading="saving" @click="saveTask">
             {{ editingTask ? 'Update' : 'Create' }}
           </v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
@@ -418,7 +411,7 @@
       <p class="text-body-1 mb-2">
         Convert task <strong>"{{ conversionTaskName }}"</strong> to a project?
       </p>
-      <p class="text-body-2 text-medium-emphasis">
+      <p class="text-body-2 text-muted-a11y">
         This will create a new project in the active product with the task's title and
         description.
       </p>
@@ -472,31 +465,20 @@
 import { ref, computed, onMounted } from 'vue'
 import { useTaskStore } from '@/stores/tasks'
 import { useProductStore } from '@/stores/products'
-import { useUserStore } from '@/stores/user'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { format, isAfter } from 'date-fns'
 import api from '@/services/api'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import { useToast } from '@/composables/useToast'
+import { useTaskFilters } from '@/composables/useTaskFilters'
+import { useTaskCrud } from '@/composables/useTaskCrud'
 
 // Stores
 const taskStore = useTaskStore()
 const productStore = useProductStore()
-const userStore = useUserStore()
-const { showToast } = useToast()
-
-// State
-const search = ref('')
-const statusFilter = ref(null)
-const priorityFilter = ref(null)
-const categoryFilter = ref(null)
-const showTaskDialog = ref(false)
-const showCreateDialog = ref(false)
-const editingTask = ref(null)
+// Template ref for form validation (must stay in view — template ref)
 const taskForm = ref(null)
-const saving = ref(false)
 
-// Dialog state
+// Dialog state (conversion / delete / success / error stay in view)
 const showNoProductDialog = ref(false)
 const showConversionConfirmDialog = ref(false)
 const showDeleteConfirmDialog = ref(false)
@@ -509,24 +491,12 @@ const currentDeletingTask = ref(null)
 const successMessage = ref('')
 const errorMessage = ref('')
 
-// Current task form
-const currentTask = ref({
-  title: '',
-  description: '',
-  status: 'pending',
-  priority: 'medium',
-  category: 'general',
-  due_date: null,
-})
-
 // Table headers
 const headers = [
   { title: 'Status', key: 'status', width: '140', align: 'center' },
   { title: 'Priority', key: 'priority', width: '110' },
   { title: 'Task', key: 'title' },
   { title: 'Category', key: 'category', width: '120', align: 'center' },
-  // Hidden for now - may be relevant in future
-  // { title: 'Created By', key: 'created_by_user_id', width: '150' },
   { title: 'Due Date', key: 'due_date', width: '120' },
   { title: 'Convert', key: 'convert', width: '80', align: 'center', sortable: false },
   { title: 'Actions', key: 'actions', sortable: false, width: '120' },
@@ -550,43 +520,69 @@ const userFilteredTasks = computed(() => {
   return tasks.value.filter((task) => task.product_id === productId)
 })
 
-const filteredTasks = computed(() => {
-  // Start with user-filtered tasks (Phase 4)
-  let filteredList = userFilteredTasks.value
+// Filters composable — receives product-scoped task list
+const { search, statusFilter, priorityFilter, categoryFilter, filteredTasks, clearFilters } =
+  useTaskFilters(userFilteredTasks)
 
-  // Then filter by product if one is selected
-  const productId = productStore.effectiveProductId
-  if (productId) {
-    filteredList = filteredList.filter((t) => t.product_id === productId)
+// Hierarchy feature disabled — return filtered tasks directly
+const hierarchicalTasks = computed(() => filteredTasks.value)
+
+// CRUD composable
+const {
+  showTaskDialog,
+  showCreateDialog,
+  editingTask,
+  saving,
+  currentTask,
+  editTask,
+  cancelTask,
+  saveTask: _saveTask,
+  handleNewTask: _handleNewTask,
+  completeTask,
+  updateTaskField: _updateTaskField,
+  updateTaskDueDate: _updateTaskDueDate,
+} = useTaskCrud()
+
+// Wrap handleNewTask to show the no-product dialog when needed
+function handleNewTask() {
+  const result = _handleNewTask()
+  if (result?.noProduct) {
+    showNoProductDialog.value = true
   }
+}
 
-  if (statusFilter.value) {
-    filteredList = filteredList.filter((t) => t.status === statusFilter.value)
+// Wrap updateTaskField to show the error dialog on failure
+async function updateTaskField(task, field, value) {
+  try {
+    await _updateTaskField(task, field, value)
+  } catch {
+    errorMessage.value = `Failed to update ${field}. Please try again.`
+    showErrorDialog.value = true
   }
+}
 
-  if (priorityFilter.value) {
-    filteredList = filteredList.filter((t) => t.priority === priorityFilter.value)
+// Wrap updateTaskDueDate to show the error dialog on failure
+async function updateTaskDueDate(task, newDate) {
+  try {
+    await _updateTaskDueDate(task, newDate)
+  } catch {
+    errorMessage.value = 'Failed to update due date. Please try again.'
+    showErrorDialog.value = true
   }
+}
 
-  if (categoryFilter.value) {
-    filteredList = filteredList.filter((t) => t.category === categoryFilter.value)
-  }
-
-  return filteredList
-})
-
-// Hierarchy feature disabled - return filtered tasks directly
-const hierarchicalTasks = computed(() => {
-  return filteredTasks.value
-})
+// Delegate saveTask with form ref and fetchTasks callback
+async function saveTask() {
+  await _saveTask(taskForm, fetchTasks)
+}
 
 // Methods
 function getStatusColor(status) {
   const colors = {
     pending: 'warning',
-    in_progress: '#fff', // exempt: Vuetify color prop requires hex ($color-surface)
+    in_progress: '#ffffff', // $color-surface — Vuetify color prop requires hex
     completed: 'success',
-    cancelled: '#c6298c', // exempt: Vuetify color prop requires hex ($color-status-failed)
+    cancelled: '#c6298c', // $color-status-failed — Vuetify color prop requires hex
   }
   return colors[status] || 'grey'
 }
@@ -611,59 +607,11 @@ function isOverdue(date) {
   return isAfter(new Date(), new Date(date))
 }
 
-function clearFilters() {
-  search.value = ''
-  statusFilter.value = null
-  priorityFilter.value = null
-  categoryFilter.value = null
-}
-
-function editTask(task) {
-  editingTask.value = task
-  currentTask.value = { ...task }
-  showTaskDialog.value = true
-}
-
-async function completeTask(task) {
-  try {
-    await taskStore.updateTask(task.id, { status: 'completed' })
-  } catch (error) {
-    console.error('Failed to complete task:', error)
-    showToast({ message: 'Failed to complete task. Please try again.', type: 'error' })
-  }
-}
-
-// Inline editing helper functions
-async function updateTaskField(task, field, value) {
-  try {
-    await taskStore.updateTask(task.id, { [field]: value })
-  } catch (error) {
-    console.error(`Failed to update task ${field}:`, error)
-    errorMessage.value = `Failed to update ${field}. Please try again.`
-    showErrorDialog.value = true
-  }
-}
-
-async function updateTaskDueDate(task, newDate) {
-  try {
-    // Format date as YYYY-MM-DD
-    const formattedDate = newDate ? format(new Date(newDate), 'yyyy-MM-dd') : null
-    await taskStore.updateTask(task.id, { due_date: formattedDate })
-  } catch (error) {
-    console.error('Failed to update due date:', error)
-    errorMessage.value = 'Failed to update due date. Please try again.'
-    showErrorDialog.value = true
-  }
-}
-
 async function convertTaskToProject(task) {
-  // Check if there's an active product using effectiveProductId
   if (!productStore.effectiveProductId) {
     showNoProductDialog.value = true
     return
   }
-
-  // Show conversion confirmation dialog
   conversionTaskName.value = task.title
   currentConvertingTask.value = task
   showConversionConfirmDialog.value = true
@@ -672,22 +620,16 @@ async function convertTaskToProject(task) {
 async function confirmConversion() {
   showConversionConfirmDialog.value = false
   const task = currentConvertingTask.value
-
   if (!task) return
 
   try {
     const response = await api.tasks.convertToProject(task.id)
     await taskStore.fetchTasks()
-
-    // Show success dialog
     successMessage.value = `Task successfully converted to project: ${response.data.name}`
     showSuccessDialog.value = true
   } catch (error) {
     console.error('Error converting task to project:', error)
-    const errorMsg = error.response?.data?.detail || 'Failed to convert task to project'
-
-    // Show error dialog
-    errorMessage.value = errorMsg
+    errorMessage.value = error.response?.data?.detail || 'Failed to convert task to project'
     showErrorDialog.value = true
   }
 
@@ -695,7 +637,6 @@ async function confirmConversion() {
 }
 
 async function deleteTask(task) {
-  // Show branded delete confirmation dialog
   deleteTaskName.value = task.title
   currentDeletingTask.value = task
   showDeleteConfirmDialog.value = true
@@ -704,7 +645,6 @@ async function deleteTask(task) {
 async function confirmDelete() {
   showDeleteConfirmDialog.value = false
   const task = currentDeletingTask.value
-
   if (!task) return
 
   try {
@@ -720,88 +660,20 @@ async function confirmDelete() {
   currentDeletingTask.value = null
 }
 
-function cancelTask() {
-  showTaskDialog.value = false
-  showCreateDialog.value = false
-  editingTask.value = null
-  currentTask.value = {
-    title: '',
-    description: '',
-    status: 'pending',
-    priority: 'medium',
-    category: 'general',
-    due_date: null,
-  }
-}
-
-function handleNewTask() {
-  if (!productStore.effectiveProductId) {
-    showNoProductDialog.value = true
-    return
-  }
-  showTaskDialog.value = true
-}
-
-async function saveTask() {
-  const { valid } = await taskForm.value.validate()
-  if (!valid) return
-
-  saving.value = true
-  try {
-    if (editingTask.value) {
-      // Exclude parent_task_id from updates (feature not used)
-      const { parent_task_id: _parent_task_id, ...taskData } = currentTask.value
-      await taskStore.updateTask(editingTask.value.id, taskData)
-    } else {
-      // Add current product_id to new task
-      const productId = productStore.effectiveProductId
-      if (productId) {
-        currentTask.value.product_id = productId
-      }
-      // Exclude parent_task_id from creation (feature not used)
-      const { parent_task_id: _parent_task_id, ...taskData } = currentTask.value
-      await taskStore.createTask(taskData)
-    }
-    cancelTask()
-    // Phase 4: Refresh tasks to show updates
-    await fetchTasks()
-  } catch (error) {
-    console.error('Failed to save task:', error)
-    showToast({ message: 'Failed to save task. Please try again.', type: 'error' })
-  } finally {
-    saving.value = false
-  }
-}
-
-// Helper function to get user name
-function getUserName(userId) {
-  if (!userId) return 'Unknown'
-  // If it's the current user, return their username
-  if (userStore.currentUser?.id === userId) {
-    return userStore.currentUser.username
-  }
-  // Otherwise return a placeholder (could be enhanced with user lookup API later)
-  return 'User'
-}
-
 async function fetchTasks() {
   const params = {}
-
   if (productStore.currentProductId) {
     params.product_id = productStore.currentProductId
   }
-
   await taskStore.fetchTasks(params)
 }
 
-// Watch for dialog trigger
 onMounted(() => {
   if (showCreateDialog.value) {
     showTaskDialog.value = true
   }
 })
 
-// Lifecycle
 onMounted(async () => {
   try {
     await fetchTasks()
@@ -936,8 +808,8 @@ onMounted(async () => {
 }
 
 .tinted-status-cancelled {
-  background: rgba(#c6298c, 0.12);
-  color: #c6298c; /* design-token-exempt: status semantic color */
+  background: rgba($color-status-failed, 0.12);
+  color: $color-status-failed;
 }
 
 /* 0870h: tinted priority pills */

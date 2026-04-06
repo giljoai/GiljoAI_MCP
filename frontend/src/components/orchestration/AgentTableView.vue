@@ -106,7 +106,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useStalenessMonitor } from '@/composables/useStalenessMonitor'
 import api from '@/services/api'
-import { hexToRgba, getAgentBadgeStyle } from '@/utils/colorUtils'
+import { getAgentBadgeStyle } from '@/utils/colorUtils'
 import StatusChip from '@/components/StatusBoard/StatusChip.vue'
 import ActionIcons from '@/components/StatusBoard/ActionIcons.vue'
 /**
@@ -147,7 +147,6 @@ const emit = defineEmits(['row-click', 'launch-agent'])
 
 // Reuse shared logic from composable (NO DUPLICATION)
 const {
-  getAgentDisplayNameColor,
   getAgentAbbreviation,
 } = useAgentData(computed(() => props.agents))
 
@@ -276,7 +275,7 @@ function canCopyPrompt(agent) {
 
 .agent-table-view :deep(.v-data-table__th) {
   @include table-header-label;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important; /* !important: :deep() must override Vuetify data-table header border */
 }
 
 .agent-table-view :deep(.v-data-table__td) {
@@ -333,13 +332,13 @@ function canCopyPrompt(agent) {
 }
 
 .msg-badge.zero {
-  background: rgba(103, 189, 109, 0.12);
-  color: #67bd6d; /* design-token-exempt: status-complete */
+  background: rgba($color-status-complete, 0.12);
+  color: $color-status-complete;
 }
 
 .msg-badge.has-msgs {
-  background: rgba(255, 152, 0, 0.15);
-  color: #ff9800; /* design-token-exempt: status-blocked */
+  background: rgba($color-status-blocked, 0.15);
+  color: $color-status-blocked;
 }
 
 /* Disabled rows in Claude Code mode */
