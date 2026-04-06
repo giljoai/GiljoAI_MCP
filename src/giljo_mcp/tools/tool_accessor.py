@@ -515,7 +515,7 @@ class ToolAccessor:
 
         from api.endpoints.project_types.crud_ops import ensure_default_types_seeded, list_project_types
 
-        async with self.db_manager.session() as session:
+        async with self.db_manager.get_session_async() as session:
             await ensure_default_types_seeded(session, tenant_key)
             types = await list_project_types(session, tenant_key)
             return {
