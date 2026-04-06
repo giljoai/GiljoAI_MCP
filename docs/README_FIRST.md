@@ -1,5 +1,7 @@
 # GiljoAI MCP Documentation
 
+*Last updated: 2026-04-06*
+
 ## Getting Started
 
 - [Product Overview](PRODUCT_OVERVIEW.md): What GiljoAI MCP is, how it works, and who it is for.
@@ -14,7 +16,6 @@
 - [MCP Tools Reference](MCP_TOOLS_REFERENCE.md): All 29 MCP tools with parameters, descriptions, and examples.
 - [Architecture](ARCHITECTURE.md): Tech stack, system diagram, and developer-facing technical overview.
 
-## Licensing and Editions
+## Release History
 
-- [Edition Isolation Guide](EDITION_ISOLATION_GUIDE.md): Community Edition vs SaaS Edition directory rules and code placement.
 - [Changelog](CHANGELOG.md): Release history.
