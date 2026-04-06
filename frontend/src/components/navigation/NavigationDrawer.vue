@@ -37,6 +37,7 @@
           width="auto"
           max-width="120"
           class="nav-logo-full"
+          :class="{ 'nav-logo-full--attention': !hasProduct }"
         />
         <v-img
           v-else
@@ -45,6 +46,7 @@
           height="28"
           width="28"
           class="nav-logo-icon"
+          :class="{ 'nav-logo-icon--attention': !hasProduct }"
         />
       </div>
 
@@ -81,6 +83,7 @@
         :title="item.title"
         :value="item.name"
         :disabled="item.disabled"
+        :class="{ 'nav-item--attention': item.attention }"
         color="primary"
         role="listitem"
         :exact="true"
@@ -404,6 +407,9 @@ const jobsIcon = computed(() => {
 })
 
 // Navigation items
+const hasProduct = computed(() => !!productsStore.activeProduct)
+const hasProject = computed(() => (projectStore.projects?.length ?? 0) > 0)
+
 const navigationItems = computed(() => {
   const activeProj = projectStore.activeProject
   const jobsPath = activeProj
@@ -413,8 +419,8 @@ const navigationItems = computed(() => {
   return [
     { name: 'Home', path: '/home', title: 'Home', icon: 'mdi-home' },
     { name: 'Dashboard', path: '/Dashboard', title: 'Dashboard', icon: 'mdi-view-dashboard' },
-    { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant' },
-    { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
+    { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant', attention: !hasProduct.value },
+    { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple', attention: hasProduct.value && !hasProject.value },
     { name: 'Jobs', path: jobsPath, title: 'Jobs', customIcon: jobsIcon.value },
     { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
   ]
@@ -578,6 +584,41 @@ watch(
       color: $color-brand-yellow;
     }
   }
+}
+
+// ─── ATTENTION ANIMATIONS ───
+@keyframes navAttentionNudge {
+  0%, 100% {
+    transform: translateX(0);
+    background: transparent;
+  }
+  50% {
+    transform: translateX(2px);
+    background: rgba(255, 195, 0, 0.09);
+  }
+}
+
+@keyframes logoAttention {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 8px rgba(255, 195, 0, 0.45));
+  }
+}
+
+.nav-logo-full--attention {
+  animation: logoAttention 2.8s ease-in-out 1s infinite;
+}
+
+.nav-logo-icon--attention {
+  animation: logoAttention 2.8s ease-in-out 1s infinite;
+}
+
+.nav-item--attention {
+  animation: navAttentionNudge 2.8s ease-in-out 1s infinite;
 }
 
 // ─── NAV ITEMS ───

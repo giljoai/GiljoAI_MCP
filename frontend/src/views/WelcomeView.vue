@@ -25,6 +25,7 @@
           v-for="(card, i) in quickCards"
           :key="card.title"
           class="quick-card smooth-border"
+          :class="{ 'quick-card--attention': card.attention }"
           :style="{ '--card-accent': card.accent, animationDelay: (0.15 + i * 0.07) + 's' }"
           @click="card.action ? card.action() : $router.push(card.to)"
         >
@@ -315,6 +316,7 @@ function tintedBg(hex) {
 // Quick-launch cards — adapt to product state
 const hasActiveProduct = computed(() => !!productStore.activeProduct)
 const activeProjectCount = computed(() => projectStore.activeProjects?.length ?? 0)
+const hasAnyProject = computed(() => (projectStore.projects?.length ?? 0) > 0)
 
 // Onboarding-aware quick launch card definitions
 const setupCard = {
@@ -337,112 +339,102 @@ const learnCard = {
   action: () => { showSetupOverlay.value = true },
 }
 
+// Reusable card definitions
+const dashboardCard = {
+  title: 'Dashboard',
+  description: 'View system stats, recent activity, and orchestration metrics at a glance.',
+  icon: 'mdi-view-dashboard-outline',
+  iconBg: 'rgba(109,179,228,0.12)',
+  iconColor: '#6DB3E4',
+  accent: '#6DB3E4',
+  to: '/Dashboard',
+}
+
+const newProjectCard = computed(() => ({
+  title: 'New Project',
+  description: 'Create and launch a project with your Agent team or directly from your AI tool.',
+  icon: 'mdi-plus-circle-outline',
+  iconBg: 'rgba(255,195,0,0.1)',
+  iconColor: 'var(--brand-yellow, #ffc300)',
+  accent: 'var(--brand-yellow, #ffc300)',
+  badge: '/gil_add project',
+  to: '/Projects',
+  attention: !hasAnyProject.value,
+}))
+
+const newProductCard = computed(() => ({
+  title: 'New Product',
+  description: 'Define a product to give your AI agents full context about what they\'re building.',
+  icon: 'mdi-package-variant-closed',
+  iconBg: 'rgba(255,195,0,0.1)',
+  iconColor: 'var(--brand-yellow, #ffc300)',
+  accent: 'var(--brand-yellow, #ffc300)',
+  to: '/Products',
+  attention: true,
+}))
+
+const taskBoardCard = {
+  title: 'Task Board',
+  description: 'Track technical debt, scope creep captures, and tasks or directly from your AI tool.',
+  icon: 'mdi-clipboard-check-outline',
+  iconBg: 'rgba(172,128,204,0.12)',
+  iconColor: '#AC80CC',
+  accent: '#AC80CC',
+  badge: '/gil_add task',
+  to: '/Tasks',
+}
+
+const activeProjectsCard = computed(() => ({
+  title: 'Active Projects',
+  description: 'Monitor running orchestrations, agent status, and real-time progress.',
+  icon: 'mdi-play-circle-outline',
+  iconBg: 'rgba(109,179,228,0.12)',
+  iconColor: '#6DB3E4',
+  accent: '#6DB3E4',
+  badge: `${activeProjectCount.value} active`,
+  to: '/launch?via=jobs',
+}))
+
 const quickCards = computed(() => {
-  // Active product: context-aware cards
-  if (hasActiveProduct.value) {
-    const productName = productStore.activeProduct?.name || 'your product'
-    const cards = []
-
-    // Prepend onboarding cards as needed (replace default slots)
-    if (!setupComplete.value) {
-      cards.push(setupCard, learnCard)
-    } else if (!learningComplete.value) {
-      cards.push(learnCard)
-    }
-
-    // Fill remaining slots with product-aware defaults
-    if (cards.length < 3) {
-      cards.push({
-        title: 'New Project',
-        description: `Launch an orchestrated project with AI agents for ${productName}.`,
-        icon: 'mdi-plus-circle-outline',
-        iconBg: 'rgba(255,195,0,0.1)',
-        iconColor: 'var(--brand-yellow, #ffc300)',
-        accent: 'var(--brand-yellow, #ffc300)',
-        badge: '/gil_add project',
-        to: '/Projects',
-      })
-    }
-    if (cards.length < 3) {
-      if (activeProjectCount.value > 0) {
-        cards.push({
-          title: 'Active Projects',
-          description: 'Monitor running orchestrations, agent status, and real-time progress.',
-          icon: 'mdi-play-circle-outline',
-          iconBg: 'rgba(109,179,228,0.12)',
-          iconColor: '#6DB3E4',
-          accent: '#6DB3E4',
-          badge: `${activeProjectCount.value} active`,
-          to: '/launch?via=jobs',
-        })
-      } else {
-        cards.push({
-          title: 'New Product',
-          description: 'Define another product to give your AI agents full context.',
-          icon: 'mdi-package-variant-closed',
-          iconBg: 'rgba(94,196,142,0.12)',
-          iconColor: '#5EC48E',
-          accent: '#5EC48E',
-          to: '/Products',
-        })
-      }
-    }
-    if (cards.length < 3) {
-      cards.push({
-        title: 'Task Board',
-        description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
-        icon: 'mdi-clipboard-check-outline',
-        iconBg: 'rgba(172,128,204,0.12)',
-        iconColor: '#AC80CC',
-        accent: '#AC80CC',
-        to: '/Tasks',
-      })
-    }
-    return cards
-  }
-
-  // No active product: onboarding + defaults
   const cards = []
 
+  // Priority 1: Incomplete setup
   if (!setupComplete.value) {
-    cards.push(setupCard, learnCard)
-  } else if (!learningComplete.value) {
+    cards.push(setupCard)
+  }
+
+  // Priority 2: Incomplete learning
+  if (!learningComplete.value && cards.length < 3) {
     cards.push(learnCard)
   }
 
-  if (cards.length < 3) {
-    cards.push({
-      title: 'New Product',
-      description: 'Define a product to give your AI agents full context about what they\'re building.',
-      icon: 'mdi-package-variant-closed',
-      iconBg: cards.length === 0 ? 'rgba(255,195,0,0.1)' : 'rgba(94,196,142,0.12)',
-      iconColor: cards.length === 0 ? 'var(--brand-yellow, #ffc300)' : '#5EC48E',
-      accent: cards.length === 0 ? 'var(--brand-yellow, #ffc300)' : '#5EC48E',
-      to: '/Products',
-    })
+  // Priority 3: No product
+  if (!hasActiveProduct.value && cards.length < 3) {
+    cards.push(newProductCard.value)
   }
-  if (cards.length < 3) {
-    cards.push({
-      title: 'Dashboard',
-      description: 'View system stats, recent activity, and orchestration metrics at a glance.',
-      icon: 'mdi-view-dashboard-outline',
-      iconBg: 'rgba(109,179,228,0.12)',
-      iconColor: '#6DB3E4',
-      accent: '#6DB3E4',
-      to: '/Dashboard',
-    })
+
+  // Priority 4: No project (only if product exists)
+  if (hasActiveProduct.value && !hasAnyProject.value && cards.length < 3) {
+    cards.push(newProjectCard.value)
   }
+
+  // All onboarding complete — fill remaining slots
   if (cards.length < 3) {
-    cards.push({
-      title: 'Task Board',
-      description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
-      icon: 'mdi-clipboard-check-outline',
-      iconBg: 'rgba(172,128,204,0.12)',
-      iconColor: '#AC80CC',
-      accent: '#AC80CC',
-      to: '/Tasks',
-    })
+    if (activeProjectCount.value > 0) {
+      // Active project: Active Projects, Dashboard, Task Board
+      const readyCards = [activeProjectsCard.value, dashboardCard, taskBoardCard]
+      for (const c of readyCards) {
+        if (cards.length < 3) cards.push(c)
+      }
+    } else {
+      // No active project: Dashboard, New Project, Task Board
+      const readyCards = [dashboardCard, newProjectCard.value, taskBoardCard]
+      for (const c of readyCards) {
+        if (cards.length < 3) cards.push(c)
+      }
+    }
   }
+
   return cards
 })
 
@@ -741,6 +733,14 @@ onMounted(async () => {
   box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255,255,255,0.10)), 0 10px 20px -6px rgba(0,0,0,0.25);
 }
 
+.quick-card--attention {
+  animation: fadeSlideUp 0.45s ease-out both, attentionNudge 2.8s ease-in-out 1.2s infinite;
+}
+
+.quick-card--attention::before {
+  opacity: 1;
+}
+
 .quick-card::before {
   content: '';
   position: absolute;
@@ -779,7 +779,8 @@ onMounted(async () => {
 }
 
 .quick-card-badge {
-  display: inline-block;
+  display: block;
+  text-align: center;
   margin-top: 10px;
   padding: 2px 8px;
   background: rgba(255,255,255,0.05);
@@ -1014,6 +1015,17 @@ onMounted(async () => {
 @keyframes glowPulse {
   0%, 100% { opacity: 0.8; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.06); }
+}
+
+@keyframes attentionNudge {
+  0%, 100% {
+    transform: translateY(0);
+    box-shadow: inset 0 0 0 1px rgba(255, 195, 0, 0.18), 0 0 0 0 rgba(255, 195, 0, 0);
+  }
+  50% {
+    transform: translateY(-2px);
+    box-shadow: inset 0 0 0 1px rgba(255, 195, 0, 0.38), 0 0 18px -4px rgba(255, 195, 0, 0.22);
+  }
 }
 
 /* ═══ RESPONSIVE ═══ */
