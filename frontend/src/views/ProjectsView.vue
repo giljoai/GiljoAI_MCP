@@ -740,8 +740,8 @@ function onClearMissionConfirmed() {
   showClearMissionDialog.value = false
 }
 
-function onTypeCreated(newType) {
-  projectTypes.value.push(newType)
+function onTypeCreated() {
+  // No-op: useProjectTaxonomy.handleTypeCreated already pushes to projectTypes
 }
 
 // Lifecycle
