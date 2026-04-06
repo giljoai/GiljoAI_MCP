@@ -214,10 +214,12 @@ class ToolAccessor:
 
         # Resolve optional type label to project_type_id (Handover 0837b)
         project_type_id = None
+        resolved_type_label = ""
         if project_type:
             resolved_type = await self._project_service.get_project_type_by_label(project_type, effective_tenant_key)
             if resolved_type:
                 project_type_id = resolved_type.id
+                resolved_type_label = resolved_type.abbreviation or project_type
 
         # Resolve product_id from active product if not explicitly provided
         if not product_id:
@@ -280,11 +282,18 @@ class ToolAccessor:
             "mission": project.mission,
             "status": project.status,
             "product_id": project.product_id,
-            "project_type": project_type or "",
+            "project_type": resolved_type_label,
             "series_number": project.series_number or 0,
             "taxonomy_alias": project.taxonomy_alias,
             "created_at": project.created_at.isoformat() if project.created_at else None,
-            "message": f"Project '{project.name}' created successfully",
+            "message": f"Project '{project.name}' created successfully"
+            + (
+                f". NOTE: project_type '{project_type}' is not a recognized category — "
+                "project created without taxonomy. Add the category in the dashboard first, "
+                "then assign it to this project."
+                if project_type and not project_type_id
+                else ""
+            ),
         }
 
     async def update_project_mission(self, project_id: str, mission: str) -> dict[str, Any]:
