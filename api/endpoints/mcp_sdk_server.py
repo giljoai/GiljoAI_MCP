@@ -109,8 +109,8 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
 @mcp.tool(
     description=(
         "Create a new project bound to the active product. "
-        "Projects are classified by taxonomy: project_type (e.g. SCAFFOLD, FE, BE, TST, INFRA, DOCS) "
-        "+ series_number (e.g. 1) forming a serial like SCAFFOLD-0001. "
+        "Projects are classified by taxonomy: project_type + series_number forming a serial like FE-0001. "
+        "Call gil_discovery(category='project_types') first to see valid types. "
         "Project is created as inactive. Use the web dashboard to activate and launch."
     ),
 )
@@ -311,6 +311,25 @@ async def health_check(ctx: Context = None) -> dict:
     """Check MCP server health status."""
     accessor = _get_tool_accessor()
     return await accessor.health_check()
+
+
+@mcp.tool(
+    description=(
+        "Discover available system categories and configuration for the current tenant. "
+        "Call this BEFORE creating projects to see valid project_type values. "
+        "Valid categories: 'project_types'. Returns items with abbreviation, label, color."
+    ),
+)
+async def gil_discovery(
+    category: str,
+    ctx: Context = None,
+) -> dict:
+    """Query available system categories.
+
+    Args:
+        category: What to look up. Valid values: 'project_types'.
+    """
+    return await _call_tool(ctx, "discovery", {"category": category})
 
 
 @mcp.tool(
