@@ -594,7 +594,7 @@ onUnmounted(() => {
 }
 
 .stat-pill-label {
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-muted);
@@ -603,14 +603,14 @@ onUnmounted(() => {
 
 .stat-pill-value {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 1.25rem;
+  font-size: 1.4rem;
   font-weight: 500;
   margin-bottom: 10px;
   line-height: 1;
   color: $color-text-primary;
 
   small {
-    font-size: 0.6rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
     font-weight: 400;
     margin-left: 4px;
