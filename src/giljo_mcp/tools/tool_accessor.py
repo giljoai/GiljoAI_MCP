@@ -822,6 +822,7 @@ class ToolAccessor:
         decisions_made: list[str],
         tenant_key: str,
         force: bool = False,
+        git_commits: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """
         Close project and update product memory with sequential history entries (Handover 0138+).
@@ -836,6 +837,7 @@ class ToolAccessor:
             decisions_made: List of important decisions made
             tenant_key: Tenant isolation key
             force: If True, auto-decommission active agents and close anyway
+            git_commits: Agent-supplied git commits (from local git log)
 
         Returns:
             Success/error response with learning_id and sequence number
@@ -851,6 +853,7 @@ class ToolAccessor:
             tenant_key=tenant_key,
             db_manager=self.db_manager,
             force=force,
+            git_commits=git_commits,
         )
 
     async def write_360_memory(
@@ -862,6 +865,7 @@ class ToolAccessor:
         decisions_made: list[str],
         entry_type: str = "project_completion",
         author_job_id: str | None = None,
+        git_commits: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """
         Write a 360 memory entry for project completion or handover (Handover 0412).
@@ -877,6 +881,7 @@ class ToolAccessor:
             decisions_made: 3-5 architectural/design decisions
             entry_type: Type of entry ("project_completion", "handover_closeout", or "session_handover")
             author_job_id: Job ID of agent writing entry (optional)
+            git_commits: Agent-supplied git commits (from local git log)
 
         Returns:
             Success/error response with sequence number
@@ -892,6 +897,7 @@ class ToolAccessor:
             decisions_made=decisions_made,
             entry_type=entry_type,
             author_job_id=author_job_id,
+            git_commits=git_commits,
             db_manager=self.db_manager,
         )
 
