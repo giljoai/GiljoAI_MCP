@@ -395,8 +395,11 @@ function navigateToIntegrations() {
 }
 
 // Handover 0408: Sync git_history toggle with git integration state
-watch(() => props.gitIntegrationEnabled, (enabled) => {
+// Only react to actual changes (no immediate) so we don't override
+// the user's manual toggle choice on every settings page load.
+watch(() => props.gitIntegrationEnabled, (enabled, oldEnabled) => {
   if (!configLoaded.value) return
+  if (enabled === oldEnabled) return
 
   if (!enabled && config.value.git_history?.enabled) {
     config.value.git_history.enabled = false
@@ -406,7 +409,7 @@ watch(() => props.gitIntegrationEnabled, (enabled) => {
     config.value.git_history.count = 5
     saveConfig()
   }
-}, { immediate: true })
+})
 
 async function fetchVisionStats() {
   fetchingVisionStats.value = true
