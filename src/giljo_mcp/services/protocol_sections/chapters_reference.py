@@ -41,7 +41,9 @@ Example:
 
 Built-in Codex roles shadow unprefixed names — always use gil- prefix.
 
-DO NOT spawn a generic/default worker and instruct it to "act as" a GiljoAI agent.
+NEVER spawn a generic/default worker and instruct it to "act as" a GiljoAI agent.
+NEVER use agent='worker', agent='implementer', agent='tester', or any unprefixed built-in name.
+If a gil-* template is missing or unavailable, STOP and report the error. Do not substitute.
 The instructions= parameter should contain ONLY:
   - The job_id
   - The MCP call: mcp__giljo-mcp__get_agent_mission(job_id="...")
