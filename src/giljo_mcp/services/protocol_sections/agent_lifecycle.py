@@ -107,8 +107,8 @@ def _build_orchestrator_protocol_body(
 
 1. Read the `current_team_state` field from this response — it is live-queried, not stale.
 2. Read your pre-planned coordination TODOs (written during staging, waiting for you).
-   **DO NOT replace them** with a new list.
-   If additional tasks are needed mid-implementation, use `todo_append` — **NEVER** `todo_items`.
+   **DO NOT drop any items.** To update statuses, use `todo_items` with the FULL list (all items, updated statuses).
+   To add genuinely NEW tasks discovered mid-implementation, use `todo_append`.
 3. Report to user:
    - Agent names, statuses, and phase order (from `current_team_state`)
    - Your TODO list with current status of each item
@@ -131,8 +131,8 @@ completing, an unblock event, or any other trigger — execute this loop:
 3. PROCESS   → Handle any messages (blockers, completions, requests)
 4. ADVANCE   → Look at your TODO list. Find the next actionable item.
                Can you advance it? Do so. Is it blocked? Note why.
-5. REPORT    → report_progress() with your updated todo_items
-               (use todo_append for NEW items only, never todo_items)
+5. REPORT    → report_progress(todo_items=[...full list with updated statuses...])
+               (use todo_append ONLY for genuinely NEW tasks, not status updates)
 6. DECIDE    → Are there still incomplete TODOs?
                YES with actionable work → continue loop from step 1
                YES but waiting on agents → tell user what you're waiting for
@@ -165,9 +165,9 @@ completing, an unblock event, or any other trigger — execute this loop:
   → `mcp__giljo_mcp__send_message(to_agents=['all'], content="...", from_agent="{executor_id}", project_id="...", message_type="broadcast")`
 
 **PROGRESS REPORTING (MANDATORY after every coordination action):**
-  → `mcp__giljo_mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_append=[...])`
-  → Only use `todo_append` for genuinely NEW tasks discovered mid-implementation
-  → **NEVER** use `todo_items` — it will wipe your pre-planned coordination TODOs
+  → To update statuses: `report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_items=[...FULL list with updated statuses...])`
+  → To add NEW tasks: `report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_append=[...new items only...])`
+  → **CRITICAL:** `todo_items` REPLACES the entire list — always include ALL items (completed + in_progress + pending), never a partial list
   → The dashboard displays your TODO list — keep it current
 
 ### RESTING STATES (between coordination loops)
@@ -243,7 +243,7 @@ def _generate_orchestrator_protocol(
     regardless of trigger source. Added constellation-specific coordination patterns.
 
     Unlike the worker 5-phase lifecycle, the orchestrator coordinates rather than implements.
-    It reads pre-planned TODOs from staging — never replaces them with todo_items.
+    It reads pre-planned TODOs from staging and updates statuses via todo_items (full list).
     """
     wake_pattern = _build_wake_pattern(execution_mode, executor_id, tenant_key)
     return _build_orchestrator_protocol_body(job_id, tenant_key, executor_id, wake_pattern)
