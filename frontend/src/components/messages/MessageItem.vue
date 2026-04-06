@@ -102,9 +102,11 @@ const isUser = computed(() => displaySender.value === 'User')
 const isOrchestrator = computed(() => displaySender.value === 'Orchestrator')
 
 // Sender appearance — agent color tokens
+const TEXT_MUTED = '#8895a8' // var(--text-muted)
+
 const senderHex = computed(() => {
   if (isBroadcast.value) return getAgentColor('tester').hex
-  if (isSystem.value) return '#8895a8'
+  if (isSystem.value) return TEXT_MUTED
   if (isUser.value) return getAgentColor('reviewer').hex
   if (isOrchestrator.value) return getAgentColor('orchestrator').hex
   return getAgentColor('implementer').hex
@@ -145,7 +147,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 }
 
 const priorityChipStyle = computed(() => {
-  const hex = PRIORITY_COLORS[props.message.priority] || '#8895a8'
+  const hex = PRIORITY_COLORS[props.message.priority] || TEXT_MUTED
   return {
     backgroundColor: hexToRgba(hex, 0.15),
     color: hex,
@@ -162,7 +164,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 const statusChipStyle = computed(() => {
-  const hex = STATUS_COLORS[props.message.status] || '#8895a8'
+  const hex = STATUS_COLORS[props.message.status] || TEXT_MUTED
   return {
     backgroundColor: hexToRgba(hex, 0.15),
     color: hex,

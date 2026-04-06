@@ -1,9 +1,9 @@
 <template>
   <div
     class="intg-card smooth-border"
-    style="--card-accent: #CE93D8"
+    :style="{ '--card-accent': cardSerenaColor }"
   >
-    <div class="intg-card-icon" style="background: rgba(206,147,216,0.12)">
+    <div class="intg-card-icon" :style="{ background: hexToRgba(cardSerenaColor, 0.12) }">
       <v-avatar size="24" rounded="0">
         <v-img src="/Serena.png" alt="Serena MCP" />
       </v-avatar>
@@ -12,7 +12,7 @@
       <div class="intg-card-title" style="margin-bottom: 0">Serena MCP</div>
       <v-tooltip location="top" max-width="400">
         <template #activator="{ props }">
-          <v-icon v-bind="props" size="small" style="color: #8895a8">mdi-help-circle-outline</v-icon>
+          <v-icon v-bind="props" size="small" style="color: var(--text-muted)">mdi-help-circle-outline</v-icon>
         </template>
         <div>
           <strong>Intelligent codebase understanding and navigation</strong>
@@ -53,12 +53,16 @@
         <v-icon start>mdi-github</v-icon>
         GitHub Repository
       </v-btn>
-      <span class="text-caption mt-1" style="color: #8895a8">Credit: Oraios</span>
+      <span class="text-caption mt-1" style="color: var(--text-muted)">Credit: Oraios</span>
     </div>
   </div>
 </template>
 
 <script setup>
+import { hexToRgba } from '@/utils/colorUtils'
+
+const cardSerenaColor = '#CE93D8' // $color-card-serena
+
 defineProps({
   enabled: { type: Boolean, default: false },
   loading: { type: Boolean, default: false },
@@ -68,5 +72,5 @@ defineEmits(['update:enabled'])
 </script>
 
 <style lang="scss" scoped>
-@import '../../../styles/intg-card';
+@use '../../../styles/intg-card';
 </style>

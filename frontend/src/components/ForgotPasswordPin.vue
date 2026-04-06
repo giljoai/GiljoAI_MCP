@@ -9,19 +9,13 @@
   >
     <v-card v-draggable class="smooth-border">
       <!-- Header -->
-      <v-card-title class="d-flex align-center pa-4">
-        <v-icon class="mr-2" color="primary">mdi-lock-reset</v-icon>
-        <span>{{ stage === 'pin' ? 'Forgot Password?' : 'Reset Password' }}</span>
-        <v-spacer />
-        <v-btn
-          icon="mdi-close"
-          variant="text"
-          size="small"
-          :disabled="loading"
-          aria-label="Close dialog"
-          @click="handleClose"
-        />
-      </v-card-title>
+      <div class="dlg-header">
+        <v-icon class="dlg-icon" color="primary">mdi-lock-reset</v-icon>
+        <span class="dlg-title">{{ stage === 'pin' ? 'Forgot Password?' : 'Reset Password' }}</span>
+        <v-btn icon variant="text" size="small" class="dlg-close" :disabled="loading" aria-label="Close dialog" @click="handleClose">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </div>
 
       <v-divider />
 
@@ -221,10 +215,10 @@
 
       <v-divider />
 
-      <v-card-actions class="pa-4">
+      <div class="dlg-footer">
         <v-spacer />
         <v-btn variant="text" :disabled="loading" @click="handleClose"> Cancel </v-btn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>

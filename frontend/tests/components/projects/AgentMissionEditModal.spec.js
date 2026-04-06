@@ -486,27 +486,6 @@ describe('AgentMissionEditModal.vue', () => {
   })
 
   describe('Computed Properties', () => {
-    it('computes agent color from agent prop', async () => {
-      wrapper = createWrapper({ modelValue: true })
-      await nextTick()
-
-      expect(wrapper.vm.agentColor).toBe('primary')
-    })
-
-    it('defaults agent color to primary when not provided', async () => {
-      const agentWithoutColor = {
-        id: 'job-789',
-        agent_name: 'Agent',
-        agent_type: 'reviewer',
-        mission: 'Test',
-      }
-
-      wrapper = createWrapper({ modelValue: true, agent: agentWithoutColor })
-      await nextTick()
-
-      expect(wrapper.vm.agentColor).toBe('primary')
-    })
-
     it('computes isOpen from modelValue prop', async () => {
       wrapper = createWrapper({ modelValue: true })
       await nextTick()

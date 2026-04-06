@@ -12,7 +12,9 @@ from .agent_job_repository import AgentJobRepository
 from .base import BaseRepository
 from .configuration_repository import ConfigurationRepository
 from .context_repository import ContextRepository
+from .job_statistics_repository import JobStatisticsRepository
 from .product_memory_repository import ProductMemoryRepository
+from .product_statistics_repository import ProductStatisticsRepository
 from .statistics_repository import StatisticsRepository
 from .vision_document_repository import VisionDocumentRepository
 
@@ -22,7 +24,9 @@ __all__ = [
     "BaseRepository",
     "ConfigurationRepository",
     "ContextRepository",
+    "JobStatisticsRepository",
     "ProductMemoryRepository",
+    "ProductStatisticsRepository",
     "StatisticsRepository",
     "VisionDocumentRepository",
 ]

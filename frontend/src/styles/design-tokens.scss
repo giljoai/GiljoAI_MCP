@@ -68,6 +68,10 @@ $color-status-blocked: #ff9800; // Orange - matches statusConfig.js
 // =========================================================================
 
 $color-status-handed-over: #9e9e9e; // Grey for handed-over status
+$color-status-idle: #7a9bb5; // Muted blue-grey for idle/monitoring
+$color-status-sleeping: #9b89b3; // Soft indigo for sleeping
+$color-status-decommissioned: #757575; // Dark grey for decommissioned
+$color-status-staged: #ffc107; // Amber for staged project status
 $color-status-success: #4caf50; // Material green — generic success (not agent status)
 $color-status-error: #f44336; // Material red — generic error
 $color-status-warning: #ff9800; // Material orange — generic warning
@@ -77,12 +81,23 @@ $color-status-info: #2196f3; // Material blue — generic info
 // 5d. COLOR TOKENS - Brand Colors
 // =========================================================================
 
+$color-accent-success: #67bd6d; // Success green — matches --color-accent-success
+$color-accent-danger: #c6298c; // Danger magenta — matches --color-accent-danger
+$color-accent-special: #8b5cf6; // Purple special — matches --color-accent-special
 $color-brand-yellow: #ffc300; // GiljoAI brand yellow
+$color-brand-yellow-hover: #ffed4e; // Lighter yellow for hover states
 $color-text-muted: #9e9e9e; // Muted / disabled text
 $color-text-dark: #333333; // Dark text on light backgrounds
+$color-text-on-muted: #1a237e; // Dark indigo text on grey backgrounds
+$color-text-hover: #b0bec5; // Blue-grey hover text color
 $color-surface: #ffffff; // Light surface / white
 $color-border-subtle: rgba(0, 0, 0, 0.12); // Subtle dark border
 $color-border-light: rgba(255, 255, 255, 0.12); // Subtle light border
+$color-pill-border: #2a4a6b; // Muted blue border for pill toggles
+$color-indicator-disconnected: #e05252; // Red status dot for disconnected state
+$color-card-git: #90CAF9; // Light blue for Git integration card
+$color-card-serena: #CE93D8; // Light purple for Serena integration card
+$color-phase-amber: #FBC02D; // Amber text for phase display
 
 // =========================================================================
 // 5c. COLOR TOKENS - Brand Gradients

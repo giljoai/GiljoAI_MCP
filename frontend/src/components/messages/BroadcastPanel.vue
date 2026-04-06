@@ -392,6 +392,8 @@ const formatTime = (timestamp: string): string => {
   return formatDate(date)
 }
 
+const TEXT_MUTED = '#8895a8' // var(--text-muted)
+
 const STATUS_COLORS: Record<string, string> = {
   delivered: getStatusColor('complete'),
   completed: getStatusColor('complete'),
@@ -400,7 +402,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 const getStatusHex = (status: string): string => {
-  return STATUS_COLORS[status] || '#8895a8'
+  return STATUS_COLORS[status] || TEXT_MUTED
 }
 
 const getStatusBadgeStyle = (status: string) => {
@@ -513,8 +515,8 @@ onMounted(() => {
 
 .pill-btn.active,
 .pill-btn.active:hover {
-  background: rgba(255, 195, 0, 0.12);
-  color: #ffc300;
+  background: rgba($color-brand-yellow, 0.12);
+  color: $color-brand-yellow;
   box-shadow: none;
 }
 

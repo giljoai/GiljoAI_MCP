@@ -246,7 +246,7 @@ describe('UserManager.vue - Handover 0028 Email and Created Date Fields', () => 
 
       expect(api.auth.register).toHaveBeenCalledWith({
         username: 'testuser',
-        email: '',
+        email: null,
         password: 'password123',
         role: 'developer'
       })
@@ -333,7 +333,7 @@ describe('UserManager.vue - Handover 0028 Email and Created Date Fields', () => 
 
       expect(api.auth.updateUser).toHaveBeenCalledWith(2, {
         username: 'developer',
-        email: '',
+        email: null,
         role: 'developer',
         is_active: true
       })

@@ -162,11 +162,6 @@ class GitConfig(Base):
             return False
         return not (self.auth_method == "token" and not self.password_encrypted)
 
-    @property
-    def webhook_configured(self) -> bool:
-        """Check if webhook is properly configured"""
-        return bool(self.webhook_url and self.webhook_secret)
-
     def __repr__(self) -> str:
         return f"<GitConfig(id={self.id}, repo_url='{self.repo_url}')>"
 
@@ -434,56 +429,6 @@ class SetupState(Base):
 
         session.flush()
         return state
-
-    def mark_completed(self, setup_version: str | None = None) -> None:
-        """
-        Mark setup as completed.
-
-        Args:
-            setup_version: Optional version string to set
-        """
-        self.completed = True
-        self.completed_at = datetime.now(timezone.utc)
-        if setup_version:
-            self.setup_version = setup_version
-
-    def add_validation_failure(self, message: str) -> None:
-        """
-        Add a validation failure message.
-
-        Args:
-            message: Error message describing the validation failure
-        """
-        if self.validation_failures is None:
-            self.validation_failures = []
-
-        failures = list(self.validation_failures)  # Convert to mutable list
-        failures.append({"message": message, "timestamp": datetime.now(timezone.utc).isoformat()})
-        self.validation_failures = failures
-        self.validation_passed = False
-        self.last_validation_at = datetime.now(timezone.utc)
-
-    def add_validation_warning(self, message: str) -> None:
-        """
-        Add a validation warning message.
-
-        Args:
-            message: Warning message
-        """
-        if self.validation_warnings is None:
-            self.validation_warnings = []
-
-        warnings = list(self.validation_warnings)  # Convert to mutable list
-        warnings.append({"message": message, "timestamp": datetime.now(timezone.utc).isoformat()})
-        self.validation_warnings = warnings
-        self.last_validation_at = datetime.now(timezone.utc)
-
-    def clear_validation_failures(self) -> None:
-        """Clear all validation failures and warnings."""
-        self.validation_failures = []
-        self.validation_warnings = []
-        self.validation_passed = True
-        self.last_validation_at = datetime.now(timezone.utc)
 
     def __repr__(self) -> str:
         return f"<SetupState(id={self.id}, tenant_key='{self.tenant_key}', db_initialized={self.database_initialized})>"

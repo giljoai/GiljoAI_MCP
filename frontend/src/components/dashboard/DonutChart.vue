@@ -1,6 +1,6 @@
 <template>
   <div class="donut-chart-wrapper">
-    <div class="text-caption text-medium-emphasis mb-2">{{ title }}</div>
+    <div class="text-caption text-muted-a11y mb-2">{{ title }}</div>
     <div class="donut-chart-container">
       <Doughnut
         v-if="hasData"
@@ -21,6 +21,10 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Doughnut } from 'vue-chartjs'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
+
+// Chart color constants — traced to design-tokens.scss
+const CHART_WHITE = '#FFFFFF'   // $color-surface
+const CHART_TOOLTIP_BG = '#1e3147' // $elevation-elevated
 
 const props = defineProps({
   title: {
@@ -50,7 +54,7 @@ const formattedData = computed(() => ({
       backgroundColor: props.chartData.colors || [],
       borderColor: 'rgba(0, 0, 0, 0.3)', // exempt: chart-specific color
       borderWidth: 1,
-      hoverBorderColor: '#FFFFFF', // exempt: chart-specific color
+      hoverBorderColor: CHART_WHITE,
       hoverBorderWidth: 2,
     },
   ],
@@ -80,8 +84,8 @@ const chartOptions = computed(() => ({
       },
     },
     tooltip: {
-      backgroundColor: '#1e3147', // exempt: chart-specific color ($elevation-elevated)
-      titleColor: '#FFFFFF', // exempt: chart-specific color
+      backgroundColor: CHART_TOOLTIP_BG,
+      titleColor: CHART_WHITE,
       bodyColor: 'rgba(255, 255, 255, 0.9)', // exempt: chart-specific color
       borderColor: 'rgba(255, 255, 255, 0.3)', // exempt: chart-specific color
       borderWidth: 1,

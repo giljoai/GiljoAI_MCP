@@ -62,10 +62,11 @@ def _codex_agents_to_toml(agents: list[dict]) -> list[tuple[str, str]]:
         instructions = instructions.replace('"""', '\\"\\"\\"')
 
         toml_content = (
-            f'name = "{name}"\n'
+            f'name = "{slug}"\n'
             f'description = "{agent.get("description", "")}"\n'
+            f'nickname_candidates = ["{slug}"]\n'
             f'model = "{agent.get("suggested_model", "gpt-5.2-codex")}"\n'
-            f'reasoning_effort = "{agent.get("suggested_reasoning_effort", "medium")}"\n'
+            f'model_reasoning_effort = "{agent.get("suggested_reasoning_effort", "medium")}"\n'
             f'developer_instructions = """\n{instructions}\n"""\n'
         )
         entries.append((f"agents/{slug}.toml", toml_content))

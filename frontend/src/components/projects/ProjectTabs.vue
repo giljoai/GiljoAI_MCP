@@ -214,10 +214,13 @@
     <!-- Gemini Subagent Notice Dialog -->
     <v-dialog v-model="showGeminiNotice" max-width="520">
       <v-card class="smooth-border">
-        <v-card-title class="d-flex align-center ga-2">
-          <v-icon color="warning">mdi-alert-circle</v-icon>
-          Gemini Subagent Mode
-        </v-card-title>
+        <div class="dlg-header dlg-header--warning">
+          <v-icon class="dlg-icon">mdi-alert-circle</v-icon>
+          <span class="dlg-title">Gemini Subagent Mode</span>
+          <v-btn icon variant="text" class="dlg-close" @click="showGeminiNotice = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
         <v-card-text class="gemini-dialog-body">
           <p>
             The Gemini CLI does not maintain an active orchestrator while subagents are executing.
@@ -234,10 +237,10 @@
             Stay attentive during execution so you can intervene quickly and not waste tokens.
           </p>
         </v-card-text>
-        <v-card-actions>
+        <div class="dlg-footer">
           <v-spacer />
           <v-btn variant="text" @click="showGeminiNotice = false">Got it</v-btn>
-        </v-card-actions>
+        </div>
       </v-card>
     </v-dialog>
 
@@ -263,10 +266,10 @@ import { useWebSocketStore } from '@/stores/websocket'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { useProjectMessages } from '@/composables/useProjectMessages'
 import { useProjectStateStore } from '@/stores/projectStateStore'
-import { useNotificationStore } from '@/stores/notifications'
 import { useIntegrationStatus } from '@/composables/useIntegrationStatus'
 import { useToast } from '@/composables/useToast'
 import { useClipboard } from '@/composables/useClipboard'
+import { useProjectCloseout } from '@/composables/useProjectCloseout'
 import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
@@ -302,13 +305,12 @@ const emit = defineEmits([
  */
 const tabsStore = useProjectTabsStore()
 const wsStore = useWebSocketStore()
-const notificationStore = useNotificationStore()
 const route = useRoute()
 const router = useRouter()
 
 const projectStateStore = useProjectStateStore()
-const { store: projectMessagesStore, loadMessages } = useProjectMessages()
-const { store: agentJobsStore, sortedJobs, loadJobs } = useAgentJobs()
+const { loadMessages } = useProjectMessages()
+const { sortedJobs, loadJobs } = useAgentJobs()
 
 // Integration status for LaunchTab (Handover 0427)
 const { gitEnabled, serenaEnabled } = useIntegrationStatus()
@@ -335,10 +337,6 @@ const agenticTool = computed(() => {
 /**
  * Navigate to integrations settings (moved from LaunchTab, Handover 0875)
  */
-function goToIntegrations() {
-  router.push({ path: '/settings', query: { tab: 'integrations' } })
-}
-
 /**
  * Execution Mode Toggle (Handover 0428: Moved from LaunchTab)
  * Default to null (unchecked) - user must select before staging
@@ -417,19 +415,23 @@ const projectWithUpdatedMode = computed(() => ({
   execution_mode: executionMode.value,
 }))
 
-// Closeout modal state (Handover 0361)
-const showCloseoutModal = ref(false)
-
-// 360 memory gate: prevent closeout button before memory is written (Handover 0820)
-const memoryWritten = ref(false)
-
-// Continue-working guidance state (Handover 0819a)
-const showContinueGuidance = ref(false)
-
-const projectDoneStatus = computed(() => {
-  const status = props.project?.status
-  if (['completed', 'terminated', 'cancelled'].includes(status)) return status
-  return null
+const {
+  showCloseoutModal,
+  memoryWritten,
+  showContinueGuidance,
+  projectDoneStatus,
+  showCloseoutButton,
+  showMemoryPending,
+  openCloseoutModal,
+  handleCloseoutComplete,
+  handleContinueWorking,
+  reset: resetCloseout,
+  cleanup: cleanupCloseout,
+} = useProjectCloseout({
+  project: computed(() => props.project),
+  projectId,
+  sortedJobs,
+  onComplete: () => emit('project-updated'),
 })
 
 /**
@@ -452,37 +454,6 @@ const hasActiveOrchestrator = computed(() => {
   return Boolean(state?.stagingComplete)
 })
 
-/**
- * Computed: All agent jobs (including orchestrator) have reached terminal status
- * Handover 0361, 0425, 0820: Extracted from showCloseoutButton for reuse
- */
-const allJobsTerminal = computed(() => {
-  if (['completed', 'terminated', 'cancelled'].includes(props.project?.status)) return false
-  const jobs = sortedJobs.value || []
-  if (!jobs.length) return false
-  const isTerminal = (status) => status === 'complete' || status === 'completed' || status === 'decommissioned'
-  const allTerminal = jobs.every((job) => isTerminal(job.status))
-  if (!allTerminal) return false
-  const orchestrator = jobs.find((job) => job.agent_display_name === 'orchestrator')
-  return Boolean(orchestrator && isTerminal(orchestrator.status))
-})
-
-/**
- * Computed: Show closeout button only after 360 memory has been written
- * Handover 0820: Gate on memoryWritten to prevent "No 360 memory entries found"
- */
-const showCloseoutButton = computed(() => {
-  if (!allJobsTerminal.value) return false
-  // No product association means no 360 memory can be written - skip gate
-  if (!props.project?.product_id) return true
-  return memoryWritten.value
-})
-
-const showMemoryPending = computed(() => {
-  if (!allJobsTerminal.value) return false
-  if (!props.project?.product_id) return false
-  return !memoryWritten.value
-})
 
 function showError(message) {
   showToast({ message: message || 'Unexpected error', type: 'error' })
@@ -554,8 +525,7 @@ watch(
     if (oldPid && oldPid !== pid) {
       tabsStore.isLaunched = false
       projectStateStore.setLaunched(pid, false)
-      clearTimeout(memoryCheckTimeout)
-      memoryWritten.value = false
+      resetCloseout(pid, oldPid)
     }
 
     wsStore.subscribeToProject(pid)
@@ -566,7 +536,6 @@ watch(
 
 let unsubscribeConnectionListener = null
 let unsubscribeMemory = null
-let memoryCheckTimeout = null
 onMounted(() => {
   unsubscribeConnectionListener = wsStore.onConnectionChange((connectionEvent) => {
     if (connectionEvent?.state === 'connected' && connectionEvent?.isReconnect) {
@@ -574,7 +543,6 @@ onMounted(() => {
     }
   })
 
-  // Handover 0820: Listen for 360 memory writes to ungate closeout button
   try {
     unsubscribeMemory = wsStore.on('product:memory:updated', (payload) => {
       const entryProjectId = payload?.entry?.project_id
@@ -586,50 +554,6 @@ onMounted(() => {
     console.warn('[ProjectTabs] Failed to subscribe to memory events')
   }
 })
-
-// Auto-dismiss continue-working guidance when orchestrator starts working (Handover 0819a)
-watch(() => sortedJobs.value, (jobs) => {
-  if (showContinueGuidance.value && jobs?.length) {
-    const orchestrator = jobs.find((j) => j.agent_display_name === 'orchestrator')
-    if (orchestrator && orchestrator.status === 'working') {
-      showContinueGuidance.value = false
-    }
-  }
-})
-
-// Handover 0820: Check API for existing 360 memory when all jobs become terminal (handles page refresh)
-watch(allJobsTerminal, async (terminal) => {
-  clearTimeout(memoryCheckTimeout)
-  if (!terminal || memoryWritten.value) return
-  const productId = props.project?.product_id
-  if (!productId) return
-  try {
-    const res = await api.products.getMemoryEntries(productId, {
-      project_id: projectId.value,
-      limit: 1,
-    })
-    if (res.data?.entries?.length > 0) {
-      memoryWritten.value = true
-      return
-    }
-  } catch {
-    memoryWritten.value = true
-    return
-  }
-  // Memory not yet written - retry once after 60s, then fail open
-  memoryCheckTimeout = setTimeout(async () => {
-    if (memoryWritten.value) return
-    try {
-      await api.products.getMemoryEntries(productId, {
-        project_id: projectId.value,
-        limit: 1,
-      })
-      memoryWritten.value = true  // fail open regardless of result
-    } catch {
-      memoryWritten.value = true
-    }
-  }, 60_000)
-}, { immediate: true })
 
 // Handover 0440c: Update browser tab title when project loads
 watch(
@@ -649,8 +573,7 @@ onBeforeUnmount(() => {
   }
   unsubscribeConnectionListener?.()
   unsubscribeMemory?.()
-  clearTimeout(memoryCheckTimeout)
-  // Handover 0440c: Reset browser tab title
+  cleanupCloseout()
   document.title = 'GiljoAI MCP'
 })
 
@@ -795,34 +718,6 @@ async function handleLaunchJobs() {
   }
 }
 
-/**
- * Open closeout modal (Handover 0361)
- */
-function openCloseoutModal() {
-  showCloseoutModal.value = true
-}
-
-/**
- * Handle project closeout completion (Handover 0819a)
- * Stays on page and refreshes data so status banner appears
- */
-async function handleCloseoutComplete() {
-  showCloseoutModal.value = false
-  notificationStore.clearForProject(projectId.value)
-  showToast({ message: 'Project closed out successfully', type: 'success' })
-  emit('project-updated')
-}
-
-/**
- * Handle continue working from CloseoutModal (Handover 0819a)
- * Shows guidance text, refreshes agent statuses
- */
-async function handleContinueWorking() {
-  showCloseoutModal.value = false
-  showContinueGuidance.value = true
-  showToast({ message: 'Project resumed - agents ready for work', type: 'success' })
-  emit('project-updated')
-}
 </script>
 
 <style scoped lang="scss">
@@ -861,7 +756,7 @@ async function handleContinueWorking() {
   }
 
   .project-id {
-    color: #8895a8;
+    color: var(--text-muted);
   }
 }
 
@@ -897,8 +792,8 @@ async function handleContinueWorking() {
 
   &.active,
   &.active:hover {
-    background: rgba(255, 195, 0, 0.12);
-    color: #ffc300;
+    background: rgba($color-brand-yellow, 0.12);
+    color: $color-brand-yellow;
     box-shadow: none;
   }
 
