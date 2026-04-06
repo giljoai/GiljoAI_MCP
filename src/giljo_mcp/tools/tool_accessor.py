@@ -69,15 +69,17 @@ def _build_setup_instructions(platform: str, download_url: str) -> dict[str, Any
                 "file": "~/.codex/config.toml",
                 "action": "merge_toml_section",
                 "section": "features",
-                "value": {"default_mode_request_user_input": True},
-                "reason": "Required for interactive skill menus",
+                "value": {"default_mode_request_user_input": True, "multi_agent": True},
+                "reason": "Required for interactive skill menus and multi-agent spawning",
             },
             {
                 "file": "~/.codex/config.toml",
                 "action": "register_agents",
                 "reason": (
-                    "Register each gil-*.toml file under [agents.<name>] with "
-                    "config_file = 'agents/<name>.toml' (relative path, not absolute)"
+                    "Register each gil-*.toml file as [agents.gil-<name>] with "
+                    "config_file = 'agents/gil-<name>.toml' (relative path), "
+                    "model = 'gpt-5.2-codex', model_reasoning_effort = 'medium', "
+                    "nickname_candidates = ['gil-<name>']"
                 ),
             },
         ],
