@@ -513,10 +513,10 @@ class ToolAccessor:
                 context={"valid_categories": valid_categories},
             )
 
-        from api.endpoints.project_types.crud_ops import list_project_types, seed_default_project_types
+        from api.endpoints.project_types.crud_ops import ensure_default_types_seeded, list_project_types
 
         async with self.db_manager.session() as session:
-            await seed_default_project_types(session, tenant_key)
+            await ensure_default_types_seeded(session, tenant_key)
             types = await list_project_types(session, tenant_key)
             return {
                 "category": "project_types",
