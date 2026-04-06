@@ -190,7 +190,6 @@
         @click="showGeminiNotice = true"
       >
         Gemini subagent: no active orchestrator during execution
-        <v-icon end size="x-small">mdi-information-outline</v-icon>
       </v-chip>
     </div>
 
