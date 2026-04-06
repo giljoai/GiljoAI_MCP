@@ -126,8 +126,10 @@ async def create_project(
     Args:
         name: Project name (required)
         description: Human-written project description
-        project_type: Taxonomy type abbreviation (e.g. SCAFFOLD, FE, BE, TST, INFRA, DOCS).
-            Combined with series_number to form the project serial (e.g. SCAFFOLD-0001).
+        project_type: Taxonomy type abbreviation (e.g. FE, BE, INFRA, DOCS).
+            Must match a pre-existing category configured in the dashboard.
+            If the type is not recognized, the project is created without taxonomy.
+            Combined with series_number to form the project serial (e.g. FE-0001).
         series_number: Sequential number within the type series (1-9999).
             Forms serial like TYPE-0001. Use 0 for auto-assign.
     """
