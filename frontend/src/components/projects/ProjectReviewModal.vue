@@ -364,14 +364,14 @@ const missionText = computed(() => {
 const statusColor = computed(() => {
   const s = projectData.value?.status
   if (s === 'completed') return 'success'
-  if (s === 'active') return '#fff' // exempt: Vuetify color prop requires hex
+  if (s === 'active') return '#ffffff' // $color-surface — Vuetify color prop requires hex
   if (s === 'terminated') return 'warning'
   if (s === 'cancelled') return 'grey'
   return 'primary'
 })
 
 const statusTextStyle = computed(() => {
-  if (projectData.value?.status === 'active') return { color: '#333' } // exempt: dynamic inline style
+  if (projectData.value?.status === 'active') return { color: '#333333' } // $color-text-dark — dark text on light badge
   return {}
 })
 

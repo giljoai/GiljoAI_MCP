@@ -9,6 +9,7 @@ from fastapi import Depends
 from api.dependencies import get_tenant_key
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.services import AuthService, UserService
+from src.giljo_mcp.services.message_routing_service import MessageRoutingService
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.product_service import ProductService
 from src.giljo_mcp.services.task_service import TaskService
@@ -124,6 +125,19 @@ async def get_message_service(
     # Set tenant context for this request
     tenant_manager.set_current_tenant(tenant_key)
     return MessageService(db_manager=db_manager, tenant_manager=tenant_manager, websocket_manager=websocket_manager)
+
+
+async def get_message_routing_service(
+    tenant_key: str = Depends(get_tenant_key),
+    db_manager: DatabaseManager = Depends(get_db_manager),
+    tenant_manager: TenantManager = Depends(get_tenant_manager),
+    websocket_manager=Depends(get_websocket_manager),
+) -> MessageRoutingService:
+    """Get MessageRoutingService instance for message sending, routing, and broadcasting."""
+    tenant_manager.set_current_tenant(tenant_key)
+    return MessageRoutingService(
+        db_manager=db_manager, tenant_manager=tenant_manager, websocket_manager=websocket_manager
+    )
 
 
 async def get_product_service(

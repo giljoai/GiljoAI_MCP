@@ -1,16 +1,16 @@
 <template>
   <div
     class="intg-card smooth-border"
-    style="--card-accent: #5EC48E"
+    style="--card-accent: var(--agent-documenter-primary)"
   >
-    <div class="intg-card-icon" style="background: rgba(255,195,0,0.1); color: var(--brand-yellow, #ffc300)">
+    <div class="intg-card-icon" style="background: rgba(255,195,0,0.1); color: var(--color-accent-primary)">
       <v-icon size="20">mdi-export</v-icon>
     </div>
     <div class="d-flex align-center" style="gap: 8px; margin-bottom: 5px;">
       <div class="intg-card-title" style="margin-bottom: 0">Skills and Agents Export</div>
       <v-tooltip location="top" max-width="400">
         <template #activator="{ props }">
-          <v-icon v-bind="props" size="small" style="color: #8895a8">mdi-help-circle-outline</v-icon>
+          <v-icon v-bind="props" size="small" style="color: var(--text-muted)">mdi-help-circle-outline</v-icon>
         </template>
         <div>
           Generates a combined bootstrap prompt that installs slash commands and agent templates in one step. Paste into your AI coding agent.
@@ -58,7 +58,7 @@
             <div class="d-flex align-center text-light-blue" style="font-size: 0.8125rem;">
               <v-icon start size="small">mdi-download</v-icon>
               Manual Downloads
-              <span class="text-caption ml-2" style="color: #8895a8">(advanced)</span>
+              <span class="text-caption ml-2" style="color: var(--text-muted)">(advanced)</span>
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
@@ -210,7 +210,7 @@ async function downloadZip(contentType, platform) {
 
 <style lang="scss" scoped>
 @use '../styles/design-tokens' as *;
-@import '../styles/intg-card';
+@use '../styles/intg-card';
 
 .gap-2 {
   gap: 8px;
@@ -222,7 +222,7 @@ async function downloadZip(contentType, platform) {
 }
 
 .export-icon-btn {
-  --smooth-border-color: #ffc300;
+  --smooth-border-color: #{$color-brand-yellow};
   display: inline-flex;
   align-items: center;
   justify-content: center;

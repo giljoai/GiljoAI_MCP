@@ -151,7 +151,7 @@
                       <div v-if="product.vision_documents?.length > 0" class="mt-2 d-flex ga-1 flex-wrap">
                         <span
                           class="vision-chip"
-                          :style="getVisionChunkedCount(product) > 0 ? 'background: rgba(103,189,109,0.15); color: #67bd6d' : 'background: rgba(255,152,0,0.15); color: #ff9800'"
+                          :style="getVisionChunkedCount(product) > 0 ? 'background: rgba(103,189,109,0.15); color: var(--color-accent-success)' : 'background: rgba(255,152,0,0.15); color: var(--status-blocked)'"
                         >
                           <v-icon size="12" class="mr-1">mdi-file-document</v-icon>
                           {{ product.vision_documents.length }} docs
@@ -159,7 +159,7 @@
                         <span
                           v-if="getVisionChunkedCount(product) > 0"
                           class="vision-chip"
-                          style="background: rgba(109,179,228,0.15); color: #6DB3E4"
+                          style="background: var(--agent-implementor-tinted); color: var(--agent-implementor-primary)"
                         >
                           <v-icon size="12" class="mr-1">mdi-database</v-icon>
                           {{ getVisionTotalChunks(product) }} chunks
@@ -339,6 +339,8 @@ import { useSettingsStore } from '@/stores/settings'
 import { useNotificationStore } from '@/stores/notifications'
 import { useToast } from '@/composables/useToast'
 import { useFormatDate } from '@/composables/useFormatDate'
+import { useProductActivation } from '@/composables/useProductActivation'
+import { useProductSoftDelete } from '@/composables/useProductSoftDelete'
 import api from '@/services/api'
 import ActivationWarningDialog from '@/components/products/ActivationWarningDialog.vue'
 import ProductDeleteDialog from '@/components/products/ProductDeleteDialog.vue'
@@ -375,17 +377,26 @@ const detailsVisionDocuments = ref([])
 const cascadeImpact = ref(null)
 const loadingCascadeImpact = ref(false)
 
-// Handover 0050: Activation warning dialog state
-const showActivationWarning = ref(false)
-const pendingActivation = ref(null)
-const currentActiveProduct = ref(null)
+const {
+  showActivationWarning,
+  pendingActivation,
+  currentActiveProduct,
+  toggleProductActivation,
+  confirmActivation,
+  cancelActivation,
+} = useProductActivation(() => loadProducts())
 
-// Soft delete recovery state
-const showDeletedProductsDialog = ref(false)
-const deletedProducts = ref([])
-const restoringProductId = ref(null)
-const purgingProductId = ref(null)
-const purgingAllProducts = ref(false)
+const {
+  showDeletedProductsDialog,
+  deletedProducts,
+  restoringProductId,
+  purgingProductId,
+  purgingAllProducts,
+  loadDeletedProducts,
+  restoreProduct,
+  purgeDeletedProduct,
+  purgeAllDeletedProducts,
+} = useProductSoftDelete(() => loadProducts())
 
 // Sort options
 const sortOptions = [
@@ -453,16 +464,12 @@ const productStats = computed(() => {
   }
 })
 
-// Methods
-
-// Handover 0320: Single source of truth for active product detection
-// Uses productStore.activeProduct.id instead of product.is_active from array
+// Methods — Handover 0320: Single source of truth — uses activeProduct.id not product.is_active
 function isProductActive(product) {
   return productStore.activeProduct?.id === product.id
 }
 
 function getCompletedProjectsCount(product) {
-  // Calculate completed projects: total - unfinished
   const totalProjects = product.project_count || 0
   const unfinishedProjects = product.unfinished_projects || 0
   return Math.max(0, totalProjects - unfinishedProjects)
@@ -478,96 +485,6 @@ function getVisionTotalChunks(product) {
   if (!product.vision_documents) return 0
   return product.vision_documents.reduce((sum, doc) => sum + (doc.chunk_count || 0), 0)
 }
-
-// Handover 0050: Enhanced activation with warning dialog
-async function toggleProductActivation(product) {
-  try {
-    // Handover 0320: Use store as single source of truth for active product
-    if (isProductActive(product)) {
-      // Deactivating - no warning needed
-      await api.products.deactivate(product.id)
-      await productStore.fetchActiveProduct()
-
-      showToast({
-        message: `${product.name} deactivated`,
-        type: 'info',
-        timeout: 3000,
-      })
-
-      await loadProducts()
-    } else {
-      // Activating - check if there's currently an active product FIRST
-      // Use store as single source of truth (Handover 0320)
-      const currentActive = productStore.activeProduct
-
-      if (currentActive && currentActive.id !== product.id) {
-        // There's already an active product - show warning BEFORE activating
-        currentActiveProduct.value = currentActive
-        pendingActivation.value = product
-        showActivationWarning.value = true
-        // Don't proceed yet - wait for user confirmation via confirmActivation()
-        return
-      }
-
-      // No active product - proceed with activation
-      await api.products.activate(product.id)
-      await productStore.fetchActiveProduct()
-
-      showToast({
-        message: `${product.name} activated`,
-        type: 'success',
-        timeout: 3000,
-      })
-
-      await loadProducts()
-    }
-  } catch (error) {
-    console.error('Failed to toggle product activation:', error)
-    showToast({
-      message: 'Failed to change product status. Try again or refresh the page.',
-      type: 'error',
-      timeout: 5000,
-    })
-  }
-}
-
-// Handover 0050: Confirm activation after warning
-async function confirmActivation(_productId) {
-  try {
-    // User confirmed - NOW actually activate the product
-    await api.products.activate(pendingActivation.value.id)
-    await productStore.fetchActiveProduct()
-
-    showToast({
-      message: `${pendingActivation.value?.name} activated`,
-      type: 'success',
-      timeout: 3000,
-    })
-
-    await loadProducts()
-
-    // Close dialog
-    showActivationWarning.value = false
-    pendingActivation.value = null
-    currentActiveProduct.value = null
-  } catch (error) {
-    console.error('Failed to confirm activation:', error)
-    showToast({
-      message: 'Failed to activate product. Try again or refresh the page.',
-      type: 'error',
-      timeout: 5000,
-    })
-  }
-}
-
-// Handover 0050: Cancel activation
-function cancelActivation() {
-  // User cancelled - just close dialog, activation never happened
-  showActivationWarning.value = false
-  pendingActivation.value = null
-  currentActiveProduct.value = null
-}
-
 
 // Handover 0320: Handler for ProductForm remove-vision event (delete existing document)
 async function removeVisionDocument(doc) {
@@ -596,38 +513,21 @@ async function removeVisionDocument(doc) {
 }
 
 // Handover 0508: Validate vision files before upload
-function validateVisionFile(file) {
-  const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+function validateVisionFiles() {
+  if (!visionFiles.value || visionFiles.value.length === 0) return true
+
+  const MAX_FILE_SIZE = 10 * 1024 * 1024
   const ALLOWED_EXTENSIONS = ['.md', '.txt', '.markdown']
 
-  // Validate file size
-  if (file.size > MAX_FILE_SIZE) {
-    return `File too large. Maximum size is 10MB (${(file.size / 1024 / 1024).toFixed(1)}MB provided).`
-  }
-
-  // Validate file type
-  const hasValidExtension = ALLOWED_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))
-
-  if (!hasValidExtension) {
-    return `Invalid file type. Please upload .md or .txt files.`
-  }
-
-  return null // Valid
-}
-
-function validateVisionFiles() {
-  if (!visionFiles.value || visionFiles.value.length === 0) {
-    return true // No files to validate
-  }
-
   for (const file of visionFiles.value) {
-    const error = validateVisionFile(file)
+    let error = null
+    if (file.size > MAX_FILE_SIZE) {
+      error = `File too large. Maximum size is 10MB (${(file.size / 1024 / 1024).toFixed(1)}MB provided).`
+    } else if (!ALLOWED_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))) {
+      error = `Invalid file type. Please upload .md or .txt files.`
+    }
     if (error) {
-      showToast({
-        message: error,
-        type: 'error',
-        timeout: 7000,
-      })
+      showToast({ message: error, type: 'error', timeout: 7000 })
       return false
     }
   }
@@ -954,113 +854,6 @@ async function loadProducts() {
   }
 }
 
-async function loadDeletedProducts() {
-  try {
-    const response = await api.products.getDeletedProducts()
-    deletedProducts.value = response.data || []
-  } catch (error) {
-    console.error('Failed to load deleted products:', error)
-    deletedProducts.value = []
-  }
-}
-
-async function restoreProduct(productId) {
-  if (restoringProductId.value) return // Prevent double-click
-
-  const product = deletedProducts.value.find((p) => p.id === productId)
-  restoringProductId.value = productId
-  try {
-    await api.products.restoreProduct(productId)
-
-    showToast({
-      message: `${product?.name || 'Product'} restored successfully`,
-      type: 'success',
-      timeout: 3000,
-    })
-
-    // Reload both lists
-    await loadProducts()
-    await loadDeletedProducts()
-
-    // Close dialog if no more deleted products
-    if (deletedProducts.value.length === 0) {
-      showDeletedProductsDialog.value = false
-    }
-  } catch (error) {
-    console.error('Failed to restore product:', error)
-    showToast({
-      message: 'Failed to restore product. Try again or refresh the page.',
-      type: 'error',
-      timeout: 5000,
-    })
-  } finally {
-    restoringProductId.value = null
-  }
-}
-
-async function purgeDeletedProduct(productId) {
-  if (purgingProductId.value) return
-
-  const product = deletedProducts.value.find((p) => p.id === productId)
-  purgingProductId.value = productId
-  try {
-    await api.products.purge(productId)
-
-    showToast({
-      message: `${product?.name || 'Product'} permanently deleted.`,
-      type: 'warning',
-      timeout: 3000,
-    })
-
-    await loadProducts()
-    await loadDeletedProducts()
-
-    if (deletedProducts.value.length === 0) {
-      showDeletedProductsDialog.value = false
-    }
-  } catch (error) {
-    console.error('Failed to purge product:', error)
-    showToast({
-      message: 'Failed to permanently delete product. Try again or refresh the page.',
-      type: 'error',
-      timeout: 5000,
-    })
-  } finally {
-    purgingProductId.value = null
-  }
-}
-
-async function purgeAllDeletedProducts() {
-  if (purgingAllProducts.value) return
-
-  purgingAllProducts.value = true
-  try {
-    const ids = deletedProducts.value.map((p) => p.id)
-    for (const id of ids) {
-      await api.products.purge(id)
-    }
-
-    showToast({
-      message: `${ids.length} product(s) permanently deleted.`,
-      type: 'warning',
-      timeout: 3000,
-    })
-
-    await loadProducts()
-    await loadDeletedProducts()
-    showDeletedProductsDialog.value = false
-  } catch (error) {
-    console.error('Failed to purge all products:', error)
-    showToast({
-      message: 'Failed to delete all products. Try again or refresh the page.',
-      type: 'error',
-      timeout: 5000,
-    })
-  } finally {
-    purgingAllProducts.value = false
-  }
-}
-
 onMounted(async () => {
   await loadProducts()
   // Load field toggle configuration (Handover 0049, 0820)
@@ -1147,12 +940,12 @@ onMounted(async () => {
 }
 
 .product-status-active {
-  background: rgba(103, 189, 109, 0.15);
-  color: #67bd6d;
+  background: rgba($color-accent-success, 0.15);
+  color: $color-accent-success;
 }
 
 .product-text-secondary {
-  color: var(--text-secondary) !important;
+  color: var(--text-secondary) !important; /* !important: override Vuetify text color classes on same element */
 }
 
 /* Vision doc tinted chips */
@@ -1195,8 +988,8 @@ onMounted(async () => {
 @use '../styles/design-tokens' as *;
 /* Global branded tooltips - must be unscoped to affect tooltip overlays */
 .branded-tooltip {
-  background-color: rgba(255, 195, 0, 0.95) !important;
-  color: rgb(var(--v-theme-on-primary)) !important;
+  background-color: rgba(255, 195, 0, 0.95) !important; /* !important: unscoped — must override Vuetify tooltip defaults */
+  color: rgb(var(--v-theme-on-primary)) !important; /* !important: unscoped — must override Vuetify tooltip defaults */
   font-weight: 500;
   font-size: 0.875rem;
   padding: 6px 12px;

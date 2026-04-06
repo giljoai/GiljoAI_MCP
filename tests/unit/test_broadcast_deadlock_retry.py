@@ -22,6 +22,7 @@ from src.giljo_mcp.models import Message, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.tasks import MessageRecipient
 from src.giljo_mcp.repositories.message_repository import MessageRepository
+from src.giljo_mcp.services.message_routing_service import MessageRoutingService
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.utils.db_retry import with_deadlock_retry
 
@@ -111,7 +112,7 @@ class TestBroadcastRecipientSorting:
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
-        service = MessageService(db_manager, mock_tenant_manager)
+        service = MessageRoutingService(db_manager, mock_tenant_manager)
 
         await service.send_message(
             to_agents=["all"],
@@ -173,7 +174,7 @@ class TestSendPathDeadlockRetry:
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
-        service = MessageService(db_manager, mock_tenant_manager)
+        service = MessageRoutingService(db_manager, mock_tenant_manager)
 
         with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock) as mock_sleep:
             await service.send_message(
@@ -228,7 +229,7 @@ class TestSendPathDeadlockRetry:
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
-        service = MessageService(db_manager, mock_tenant_manager)
+        service = MessageRoutingService(db_manager, mock_tenant_manager)
 
         # Wrap _handle_send_message_side_effects to mark counter phase entry
         original_side_effects = service._handle_send_message_side_effects
@@ -285,7 +286,7 @@ class TestSendPathDeadlockRetry:
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
-        service = MessageService(db_manager, mock_tenant_manager)
+        service = MessageRoutingService(db_manager, mock_tenant_manager)
 
         with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock) as mock_sleep:
             with pytest.raises(OperationalError):
@@ -608,7 +609,7 @@ class TestSendPathBatchIntegration:
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
-        service = MessageService(db_manager, mock_tenant_manager)
+        service = MessageRoutingService(db_manager, mock_tenant_manager)
 
         msg1 = Mock(spec=Message)
         msg2 = Mock(spec=Message)

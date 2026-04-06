@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -75,23 +75,6 @@ class AgentJobRepository:
             phase=phase,
         )
 
-    async def get_job_by_job_id(self, session: AsyncSession, tenant_key: str, job_id: str) -> AgentJob | None:
-        """
-        Get a job by its job_id.
-
-        Args:
-            session: Async database session
-            tenant_key: Tenant key for isolation
-            job_id: AgentJob ID to retrieve
-
-        Returns:
-            AgentJob instance or None if not found
-        """
-        result = await session.execute(
-            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
-        )
-        return result.scalar_one_or_none()
-
     async def update_status(
         self,
         session: AsyncSession,
@@ -135,22 +118,6 @@ class AgentJobRepository:
             await session.flush()
             return True
         return False
-
-    async def get_active_jobs(self, session: AsyncSession, tenant_key: str) -> list[AgentJob]:
-        """
-        Get all active jobs.
-
-        Args:
-            session: Async database session
-            tenant_key: Tenant key for isolation
-
-        Returns:
-            List of active AgentJob instances
-        """
-        stmt = select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.status == "active")
-        stmt = stmt.order_by(AgentJob.created_at)
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
 
     # ============================================================================
     # Agent Execution & AgentJob Methods (Handover 1011 - Phase 4)
@@ -341,37 +308,3 @@ class AgentJobRepository:
         )
         await session.execute(stmt)
         await session.commit()
-
-    async def decrement_waiting_increment_read(
-        self,
-        session: AsyncSession,
-        agent_id: str,
-        tenant_key: str,
-    ) -> None:
-        """
-        Atomically decrement waiting count and increment read count.
-
-        Uses GREATEST(0, count-1) to prevent negative values.
-
-        Args:
-            session: Async database session
-            agent_id: Agent ID to update counters for
-            tenant_key: Tenant key for isolation (REQUIRED)
-
-        Example:
-            >>> await repo.decrement_waiting_increment_read(session, "agent-123", "tenant-1")
-        """
-        from giljo_mcp.models.agent_identity import AgentExecution
-
-        stmt = (
-            update(AgentExecution)
-            .where(
-                AgentExecution.agent_id == agent_id,
-                AgentExecution.tenant_key == tenant_key,
-            )
-            .values(
-                messages_waiting_count=func.greatest(0, AgentExecution.messages_waiting_count - 1),
-                messages_read_count=AgentExecution.messages_read_count + 1,
-            )
-        )
-        await session.execute(stmt)

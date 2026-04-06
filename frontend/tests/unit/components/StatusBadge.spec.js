@@ -60,7 +60,7 @@ describe('StatusBadge.vue', () => {
   describe('Computed Properties', () => {
     it('returns correct config for active status', () => {
       const wrapper = createWrapper({ status: 'active' })
-      expect(wrapper.vm.config.color).toBe('#67bd6d')
+      expect(wrapper.vm.config.color).toBe('#6DB3E4')
     })
 
     it('returns correct config for inactive status', () => {
@@ -70,7 +70,7 @@ describe('StatusBadge.vue', () => {
 
     it('returns correct config for terminated status', () => {
       const wrapper = createWrapper({ status: 'terminated' })
-      expect(wrapper.vm.config.color).toBe('#e07872')
+      expect(wrapper.vm.config.color).toBe('#E07872')
     })
 
     it('returns fallback config for unknown status via computed', () => {
@@ -78,7 +78,7 @@ describe('StatusBadge.vue', () => {
         props: { status: 'active' },
         global: { plugins: [vuetify] },
       })
-      expect(wrapper.vm.config.color).toBe('#67bd6d')
+      expect(wrapper.vm.config.color).toBe('#6DB3E4')
     })
   })
 

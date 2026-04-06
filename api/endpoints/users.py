@@ -22,8 +22,6 @@ from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-
-# REMOVED: PlainTextResponse import (no longer needed)
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from api.endpoints.dependencies import get_db_manager, get_user_service

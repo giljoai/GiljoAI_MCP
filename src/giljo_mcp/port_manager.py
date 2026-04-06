@@ -307,64 +307,6 @@ class PortManager:
 
         return self.find_available_port(self.config.frontend_port, self.config.frontend_alternatives)
 
-    def get_postgres_port(self) -> int:
-        """
-        Get the PostgreSQL port.
-
-        Returns:
-            PostgreSQL port number
-        """
-        return self.config.postgres_port
-
-    def validate_ports(self) -> list[str]:
-        """
-        Validate port configuration for conflicts and issues.
-
-        Returns:
-            List of validation errors (empty if valid)
-        """
-        errors = []
-
-        # Check port ranges
-        all_ports = {
-            "API": self.config.api_port,
-            "Frontend": self.config.frontend_port,
-            "PostgreSQL": self.config.postgres_port,
-        }
-
-        for name, port in all_ports.items():
-            if not 1024 <= port <= 65535:
-                errors.append(f"{name} port {port} is out of valid range (1024-65535)")
-
-        # Check for conflicts (same port used for different services)
-        ports_list = list(all_ports.values())
-        if len(ports_list) != len(set(ports_list)):
-            # Find duplicates
-            seen = {}
-            for name, port in all_ports.items():
-                if port in seen:
-                    errors.append(f"Port conflict: {name} and {seen[port]} both use port {port}")
-                else:
-                    seen[port] = name
-
-        return errors
-
-    def get_environment_variables(self) -> dict[str, str]:
-        """
-        Get environment variables for current port configuration.
-
-        Useful for setting up processes or containers.
-
-        Returns:
-            Dictionary of environment variables
-        """
-        return {
-            "GILJO_API_PORT": str(self.config.api_port),
-            "GILJO_FRONTEND_PORT": str(self.config.frontend_port),
-            "POSTGRES_PORT": str(self.config.postgres_port),
-            "VITE_API_PORT": str(self.config.api_port),  # For frontend build
-        }
-
 
 # Convenience functions
 def get_port_manager(config_path: Path | None = None) -> PortManager:

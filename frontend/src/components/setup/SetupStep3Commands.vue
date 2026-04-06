@@ -93,8 +93,8 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useWebSocketStore } from '@/stores/websocket'
 
-/* design-token-exempt: Vuetify color props require raw values, not SCSS vars or CSS custom properties */
-const COLOR_MUTED = '#8f97b7' // $lightest-blue
+// Vuetify color props — traced to design-tokens.scss
+const COLOR_MUTED = '#8f97b7' // $color-scrollbar-thumb-hover-background (lightest-blue)
 const COLOR_SUCCESS = '#6bcf7f' // $gradient-brand-end
 
 const TOOL_META = {

@@ -31,6 +31,125 @@ from src.giljo_mcp.tools._memory_helpers import (
 
 logger = logging.getLogger(__name__)
 
+# Statuses that do not block closeout (aligned with write_360_memory.SKIP_STATUSES)
+_SKIP_STATUSES = {"decommissioned"}
+# Statuses considered "active" — agents not yet finished
+_ACTIVE_STATUSES = {"waiting", "working", "blocked", "silent"}
+
+
+async def _fetch_project_and_product(
+    session: AsyncSession,
+    project_id: str,
+    tenant_key: str,
+) -> tuple[Any, Any]:
+    """
+    Fetch the Project and its associated Product from the database.
+
+    Both queries are filtered by tenant_key for tenant isolation. Raises
+    ResourceNotFoundError if either record is missing or belongs to a
+    different tenant. Raises ValidationError when the project has no
+    linked product.
+
+    Returns:
+        Tuple of (project, product) ORM instances.
+    """
+    project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
+    project_result = await session.execute(project_stmt)
+    project = project_result.scalar_one_or_none()
+    if iscoroutine(project):
+        project = await project
+
+    if not project:
+        raise ResourceNotFoundError("Project not found or unauthorized for tenant")
+
+    if getattr(project, "tenant_key", None) != tenant_key:
+        raise ResourceNotFoundError("Project not found or unauthorized for tenant")
+
+    if not project.product_id:
+        raise ValidationError("Project not associated with product")
+
+    product_stmt = select(Product).where(
+        Product.id == project.product_id,
+        Product.tenant_key == tenant_key,
+    )
+    product_result = await session.execute(product_stmt)
+    product = product_result.scalar_one_or_none()
+    if iscoroutine(product):
+        product = await product
+
+    if not product:
+        raise ResourceNotFoundError("Product not found for project")
+
+    return project, product
+
+
+async def _handle_force_close(
+    session: AsyncSession,
+    project_id: str,
+    tenant_key: str,
+    force: bool,
+    blockers: list,
+) -> None:
+    """
+    Handle force-close path: guard against orchestrator self-decommission, then decommission agents.
+
+    When force=True and agents are still active, checks that the calling orchestrator
+    is not among them (raising ProjectStateError if so), then calls
+    _force_decommission_agents to set all remaining active agents to 'decommissioned'.
+    Does nothing when force=False or when all agents are already ready.
+
+    Args:
+        session: Active database session.
+        project_id: Project UUID being closed.
+        tenant_key: Tenant isolation key.
+        force: Whether force-close was requested by the caller.
+        blockers: List of blocker dicts from _check_agent_readiness; empty means no action needed.
+    """
+    if not blockers or not force:
+        return
+
+    orch_stmt = (
+        select(AgentExecution)
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+        .where(
+            and_(
+                AgentJob.project_id == project_id,
+                AgentExecution.tenant_key == tenant_key,
+                AgentExecution.agent_display_name == "orchestrator",
+                AgentExecution.status.in_(_ACTIVE_STATUSES),
+            )
+        )
+    )
+    orch_result = await session.execute(orch_stmt)
+    active_orchestrator = orch_result.scalar_one_or_none()
+
+    if active_orchestrator:
+        raise ProjectStateError(
+            "Cannot force-close: orchestrator is still active and would be decommissioned",
+            context={
+                "status": "ORCHESTRATOR_SELF_DECOMMISSION_BLOCKED",
+                "message": (
+                    "force=true will decommission ALL active agents including the orchestrator. "
+                    "Complete your own job first, then the project will close cleanly."
+                ),
+                "required_sequence": [
+                    f"1. complete_job(job_id='{active_orchestrator.job_id}') -- complete yourself first",
+                    "2. write_360_memory(...) -- write memory entry (if not already written)",
+                    "3. close_project_and_update_memory(force=false) -- should now pass since all agents are complete",
+                ],
+                "hint": "Or use write_360_memory() + complete_job() and let the frontend handle project archival.",
+            },
+        )
+
+    decommissioned = await _force_decommission_agents(session, project_id, tenant_key)
+    if decommissioned:
+        logger.warning(
+            "Force-closed project %s: auto-decommissioned %d agent(s): %s",
+            project_id,
+            len(decommissioned),
+            ", ".join(decommissioned),
+        )
+
 
 async def close_project_and_update_memory(
     project_id: str,
@@ -93,32 +212,11 @@ async def close_project_and_update_memory(
         session_ctx = db_manager.get_session_async() if owns_session else _provided_session(session)
 
         async with session_ctx as active_session:
-            project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
-            project_result = await active_session.execute(project_stmt)
-            project = project_result.scalar_one_or_none()
-            if iscoroutine(project):
-                project = await project
-
-            if not project:
-                raise ResourceNotFoundError("Project not found or unauthorized for tenant")
-
-            if getattr(project, "tenant_key", None) != tenant_key:
-                raise ResourceNotFoundError("Project not found or unauthorized for tenant")
-
-            if not project.product_id:
-                raise ValidationError("Project not associated with product")
-
-            product_stmt = select(Product).where(
-                Product.id == project.product_id,
-                Product.tenant_key == tenant_key,
+            project, product = await _fetch_project_and_product(
+                session=active_session,
+                project_id=project_id,
+                tenant_key=tenant_key,
             )
-            product_result = await active_session.execute(product_stmt)
-            product = product_result.scalar_one_or_none()
-            if iscoroutine(product):
-                product = await product
-
-            if not product:
-                raise ResourceNotFoundError("Product not found for project")
 
             # Closeout readiness gate: verify all agents are finished
             is_ready, blockers = await _check_agent_readiness(active_session, project_id, tenant_key)
@@ -133,50 +231,14 @@ async def close_project_and_update_memory(
                     },
                 )
 
-            if not is_ready and force:
-                # Guard: Block force-close if orchestrator is still active (Handover 0824)
-                # The calling orchestrator would decommission itself, making complete_job() impossible
-                orch_stmt = (
-                    select(AgentExecution)
-                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                    .where(
-                        and_(
-                            AgentJob.project_id == project_id,
-                            AgentExecution.tenant_key == tenant_key,
-                            AgentExecution.agent_display_name == "orchestrator",
-                            AgentExecution.status.in_(_ACTIVE_STATUSES),
-                        )
-                    )
-                )
-                orch_result = await active_session.execute(orch_stmt)
-                active_orchestrator = orch_result.scalar_one_or_none()
-
-                if active_orchestrator:
-                    raise ProjectStateError(
-                        "Cannot force-close: orchestrator is still active and would be decommissioned",
-                        context={
-                            "status": "ORCHESTRATOR_SELF_DECOMMISSION_BLOCKED",
-                            "message": (
-                                "force=true will decommission ALL active agents including the orchestrator. "
-                                "Complete your own job first, then the project will close cleanly."
-                            ),
-                            "required_sequence": [
-                                f"1. complete_job(job_id='{active_orchestrator.job_id}') -- complete yourself first",
-                                "2. write_360_memory(...) -- write memory entry (if not already written)",
-                                "3. close_project_and_update_memory(force=false) -- should now pass since all agents are complete",
-                            ],
-                            "hint": "Or use write_360_memory() + complete_job() and let the frontend handle project archival.",
-                        },
-                    )
-
-                decommissioned = await _force_decommission_agents(active_session, project_id, tenant_key)
-                if decommissioned:
-                    logger.warning(
-                        "Force-closed project %s: auto-decommissioned %d agent(s): %s",
-                        project_id,
-                        len(decommissioned),
-                        ", ".join(decommissioned),
-                    )
+            # Handover 0824: force-close guard + agent decommission
+            await _handle_force_close(
+                session=active_session,
+                project_id=project_id,
+                tenant_key=tenant_key,
+                force=force,
+                blockers=blockers,
+            )
 
             product_memory: dict[str, Any] = product.product_memory or {}
             if not isinstance(product_memory, dict):
@@ -257,12 +319,6 @@ async def close_project_and_update_memory(
     except Exception as exc:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to close project and update memory", extra={"error": str(exc)})
         raise
-
-
-# Statuses that do not block closeout (aligned with write_360_memory.SKIP_STATUSES)
-_SKIP_STATUSES = {"decommissioned"}
-# Statuses considered "active" — agents not yet finished
-_ACTIVE_STATUSES = {"waiting", "working", "blocked", "silent"}
 
 
 async def _check_agent_readiness(

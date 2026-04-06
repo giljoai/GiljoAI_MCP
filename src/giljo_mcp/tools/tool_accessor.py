@@ -20,6 +20,7 @@ from src.giljo_mcp.schemas.service_responses import (
     SendMessageResult,
     WorkflowStatus,
 )
+from src.giljo_mcp.services.message_routing_service import MessageRoutingService
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.services.product_service import ProductService
@@ -68,18 +69,45 @@ def _build_setup_instructions(platform: str, download_url: str) -> dict[str, Any
                 "file": "~/.codex/config.toml",
                 "action": "merge_toml_section",
                 "section": "features",
-                "value": {"default_mode_request_user_input": True},
-                "reason": "Required for interactive skill menus",
+                "value": {"default_mode_request_user_input": True, "multi_agent": True},
+                "reason": "Required for interactive skill menus and multi-agent spawning",
             },
             {
                 "file": "~/.codex/config.toml",
                 "action": "register_agents",
                 "reason": (
-                    "Register each gil-*.toml file under [agents.<name>] with "
-                    "config_file = 'agents/<name>.toml' (relative path, not absolute)"
+                    "Register each gil-*.toml file as [agents.gil-<name>] with "
+                    "config_file = 'agents/gil-<name>.toml' (relative path), "
+                    "model = 'gpt-5.2-codex', model_reasoning_effort = 'medium', "
+                    "nickname_candidates = ['gil-<name>']"
                 ),
             },
         ],
+        "config_merge_rules": {
+            "CRITICAL": (
+                "config.toml is the user's primary Codex configuration. A corrupt config.toml "
+                "will crash Codex on startup (skills/list TUI failure). Follow these rules strictly:"
+            ),
+            "rules": [
+                "NEVER overwrite config.toml — always read-then-merge",
+                "Use a TOML parser to read existing config, merge new sections, write back",
+                "Do NOT use string substitution, regex, or PowerShell text manipulation",
+                "Preserve ALL existing sections not managed by GiljoAI (MCP servers, user prefs, etc.)",
+                "TOML values must NOT have doubled quotes — 'agents/gil-analyzer.toml' not ''agents/gil-analyzer.toml''",
+                "Back up config.toml before writing: copy to config_backup.toml",
+                "After writing, validate the file parses: python -c \"import tomllib; tomllib.load(open('config.toml','rb'))\"",
+            ],
+            "safe_merge_example": (
+                "In Python: import tomllib, tomli_w; "
+                "config = tomllib.load(open(path, 'rb')); "
+                "config.setdefault('agents', {})['gil-analyzer'] = {"
+                "'config_file': 'agents/gil-analyzer.toml', "
+                "'model': 'gpt-5.2-codex', "
+                "'model_reasoning_effort': 'medium', "
+                "'nickname_candidates': ['gil-analyzer']}; "
+                "tomli_w.dump(config, open(path, 'wb'))"
+            ),
+        },
         "cleanup": "rm giljo_setup.zip",
         "post_install": "Restart your CLI tool to activate skills and agent templates.",
     }
@@ -113,7 +141,12 @@ class ToolAccessor:
         self._message_service = MessageService(
             db_manager,
             tenant_manager,
-            websocket_manager=websocket_manager,  # Pass WebSocket manager
+            websocket_manager=websocket_manager,
+        )
+        self._message_routing_service = MessageRoutingService(
+            db_manager,
+            tenant_manager,
+            websocket_manager=websocket_manager,
         )
         self._orchestration_service = OrchestrationService(
             db_manager,
@@ -181,10 +214,12 @@ class ToolAccessor:
 
         # Resolve optional type label to project_type_id (Handover 0837b)
         project_type_id = None
+        resolved_type_label = ""
         if project_type:
             resolved_type = await self._project_service.get_project_type_by_label(project_type, effective_tenant_key)
             if resolved_type:
                 project_type_id = resolved_type.id
+                resolved_type_label = resolved_type.abbreviation or project_type
 
         # Resolve product_id from active product if not explicitly provided
         if not product_id:
@@ -247,8 +282,18 @@ class ToolAccessor:
             "mission": project.mission,
             "status": project.status,
             "product_id": project.product_id,
+            "project_type": resolved_type_label,
+            "series_number": project.series_number or 0,
+            "taxonomy_alias": project.taxonomy_alias,
             "created_at": project.created_at.isoformat() if project.created_at else None,
-            "message": f"Project '{project.name}' created successfully",
+            "message": f"Project '{project.name}' created successfully"
+            + (
+                f". NOTE: project_type '{project_type}' is not a recognized category — "
+                "project created without taxonomy. Add the category in the dashboard first, "
+                "then assign it to this project."
+                if project_type and not project_type_id
+                else ""
+            ),
         }
 
     async def update_project_mission(self, project_id: str, mission: str) -> dict[str, Any]:
@@ -261,7 +306,7 @@ class ToolAccessor:
         """Delegate to OrchestrationService (Handover 0451)"""
         return await self._orchestration_service.update_agent_mission(job_id, tenant_key, mission)
 
-    # Message Tools (delegates to MessageService)
+    # Message Tools (delegates to MessageService / MessageRoutingService)
 
     async def send_message(
         self,
@@ -273,8 +318,8 @@ class ToolAccessor:
         from_agent: str | None = None,
         tenant_key: str | None = None,
     ) -> SendMessageResult:
-        """Send message to one or more agents (delegates to MessageService)"""
-        return await self._message_service.send_message(
+        """Send message to one or more agents (delegates to MessageRoutingService)"""
+        return await self._message_routing_service.send_message(
             to_agents=to_agents,
             content=content,
             project_id=project_id,
@@ -571,7 +616,7 @@ class ToolAccessor:
                 }
         except (ValidationError, ValueError):
             raise
-        except Exception:
+        except Exception:  # Broad catch: tool boundary, logs and re-raises
             logger.exception("Failed to stage bootstrap setup")
             raise
 

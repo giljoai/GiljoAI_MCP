@@ -74,12 +74,12 @@ describe('SetupStep4Complete', () => {
       expect(subtitle.text()).toContain('connected and ready')
     })
 
-    it('renders a "Go to Dashboard" link', () => {
+    it('renders a "Go to Home" link', () => {
       const wrapper = mountStep4()
       const dashboardLink = wrapper.find('.dashboard-link')
 
       expect(dashboardLink.exists()).toBe(true)
-      expect(dashboardLink.text()).toBe('Go to Dashboard')
+      expect(dashboardLink.text()).toBe('Go to Home')
     })
   })
 
@@ -123,7 +123,7 @@ describe('SetupStep4Complete', () => {
       expect(events[0][0]).toEqual({ action: 'tasks', route: '/tasks' })
     })
 
-    it('click "Go to Dashboard" emits complete with dashboard action and route', async () => {
+    it('click "Go to Home" emits complete with home action and route', async () => {
       const wrapper = mountStep4()
       const dashboardLink = wrapper.find('.dashboard-link')
 
@@ -132,7 +132,7 @@ describe('SetupStep4Complete', () => {
       const events = wrapper.emitted('complete')
       expect(events).toBeTruthy()
       expect(events).toHaveLength(1)
-      expect(events[0][0]).toEqual({ action: 'dashboard', route: '/dashboard' })
+      expect(events[0][0]).toEqual({ action: 'home', route: '/home' })
     })
   })
 })
