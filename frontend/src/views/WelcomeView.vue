@@ -25,6 +25,7 @@
           v-for="(card, i) in quickCards"
           :key="card.title"
           class="quick-card smooth-border"
+          :class="{ 'quick-card--attention': card.attention }"
           :style="{ '--card-accent': card.accent, animationDelay: (0.15 + i * 0.07) + 's' }"
           @click="card.action ? card.action() : $router.push(card.to)"
         >
@@ -58,8 +59,8 @@
               <div
                 class="team-avatar"
                 :style="{
-                  background: hexToRgba(getAgentColor('orchestrator').hex, 0.15),
-                  color: getAgentColor('orchestrator').hex,
+                  background: tintedBg('#D4B08A'),
+                  color: '#D4B08A',
                 }"
               >
                 OR
@@ -106,7 +107,7 @@
       <!-- CONDITIONAL SECTION: Setup or Recent Projects -->
       <div v-if="!setupComplete" class="setup-cta-section">
         <div class="setup-cta smooth-border" @click="openSetupWithCertGate">
-          <v-icon size="24" style="color: var(--color-accent-primary)">mdi-rocket-launch</v-icon>
+          <v-icon size="24" color="#ffc300">mdi-rocket-launch</v-icon>
           <div class="setup-cta-text">
             <div class="setup-cta-title">{{ setupCtaLabel }}</div>
             <div class="setup-cta-desc">Configure AI tools, connect integrations, and learn the basics.</div>
@@ -161,8 +162,6 @@ import { useUserStore } from '@/stores/user'
 import { useProductStore } from '@/stores/products'
 import { useProjectStore } from '@/stores/projects'
 import { getAgentColor } from '@/config/agentColors'
-import { hexToRgba } from '@/utils/colorUtils'
-import { useGreeting } from '@/composables/useGreeting'
 import api from '@/services/api'
 import GilMascot from '@/components/GilMascot.vue'
 import SetupWizardOverlay from '@/components/setup/SetupWizardOverlay.vue'
@@ -175,7 +174,6 @@ const router = useRouter()
 const userStore = useUserStore()
 const productStore = useProductStore()
 const projectStore = useProjectStore()
-const { fullGreeting } = useGreeting()
 
 // Certificate trust modal state
 const showCertModal = ref(false)
@@ -309,27 +307,25 @@ const activeTemplates = computed(() =>
 const emptySlots = computed(() => Math.max(0, totalSlots.value - activeTemplates.value.length - 1))
 
 function tintedBg(hex) {
-  return hexToRgba(hex, 0.15)
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},0.15)`
 }
 
 // Quick-launch cards — adapt to product state
 const hasActiveProduct = computed(() => !!productStore.activeProduct)
 const activeProjectCount = computed(() => projectStore.activeProjects?.length ?? 0)
-
-// Card accent colors — traced to agentColors.js / design-tokens.scss
-const BRAND_YELLOW = '#ffc300' // $color-brand-yellow / var(--color-accent-primary)
-const COLOR_DOCUMENTER = getAgentColor('documenter').hex
-const COLOR_IMPLEMENTER = getAgentColor('implementer').hex
-const COLOR_REVIEWER = getAgentColor('reviewer').hex
+const hasAnyProject = computed(() => (projectStore.projects?.length ?? 0) > 0)
 
 // Onboarding-aware quick launch card definitions
 const setupCard = {
   title: 'Quick Setup',
   description: 'Connect your AI coding tools and configure GiljoAI MCP.',
   icon: 'mdi-rocket-launch',
-  iconBg: hexToRgba(BRAND_YELLOW, 0.1),
-  iconColor: 'var(--color-accent-primary)',
-  accent: 'var(--color-accent-primary)',
+  iconBg: 'rgba(255,195,0,0.1)',
+  iconColor: 'var(--brand-yellow, #ffc300)',
+  accent: 'var(--brand-yellow, #ffc300)',
   action: openSetupWithCertGate,
 }
 
@@ -337,118 +333,108 @@ const learnCard = {
   title: 'Learn',
   description: 'Understand products, projects, agents, and slash commands.',
   icon: 'mdi-book-open-variant',
-  iconBg: hexToRgba(COLOR_DOCUMENTER, 0.12),
-  iconColor: COLOR_DOCUMENTER,
-  accent: COLOR_DOCUMENTER,
+  iconBg: 'rgba(94,196,142,0.12)',
+  iconColor: '#5EC48E',
+  accent: '#5EC48E',
   action: () => { showSetupOverlay.value = true },
 }
 
+// Reusable card definitions
+const dashboardCard = {
+  title: 'Dashboard',
+  description: 'View system stats, recent activity, and orchestration metrics at a glance.',
+  icon: 'mdi-view-dashboard-outline',
+  iconBg: 'rgba(109,179,228,0.12)',
+  iconColor: '#6DB3E4',
+  accent: '#6DB3E4',
+  to: '/Dashboard',
+}
+
+const newProjectCard = computed(() => ({
+  title: 'New Project',
+  description: 'Create and launch a project with your Agent team or directly from your AI tool.',
+  icon: 'mdi-plus-circle-outline',
+  iconBg: 'rgba(255,195,0,0.1)',
+  iconColor: 'var(--brand-yellow, #ffc300)',
+  accent: 'var(--brand-yellow, #ffc300)',
+  badge: '/gil_add project',
+  to: '/Projects',
+  attention: !hasAnyProject.value,
+}))
+
+const newProductCard = computed(() => ({
+  title: 'New Product',
+  description: 'Define a product to give your AI agents full context about what they\'re building.',
+  icon: 'mdi-package-variant-closed',
+  iconBg: 'rgba(255,195,0,0.1)',
+  iconColor: 'var(--brand-yellow, #ffc300)',
+  accent: 'var(--brand-yellow, #ffc300)',
+  to: '/Products',
+  attention: true,
+}))
+
+const taskBoardCard = {
+  title: 'Task Board',
+  description: 'Track technical debt, scope creep captures, and tasks or directly from your AI tool.',
+  icon: 'mdi-clipboard-check-outline',
+  iconBg: 'rgba(172,128,204,0.12)',
+  iconColor: '#AC80CC',
+  accent: '#AC80CC',
+  badge: '/gil_add task',
+  to: '/Tasks',
+}
+
+const activeProjectsCard = computed(() => ({
+  title: 'Active Projects',
+  description: 'Monitor running orchestrations, agent status, and real-time progress.',
+  icon: 'mdi-play-circle-outline',
+  iconBg: 'rgba(109,179,228,0.12)',
+  iconColor: '#6DB3E4',
+  accent: '#6DB3E4',
+  badge: `${activeProjectCount.value} active`,
+  to: '/launch?via=jobs',
+}))
+
 const quickCards = computed(() => {
-  // Active product: context-aware cards
-  if (hasActiveProduct.value) {
-    const productName = productStore.activeProduct?.name || 'your product'
-    const cards = []
-
-    // Prepend onboarding cards as needed (replace default slots)
-    if (!setupComplete.value) {
-      cards.push(setupCard, learnCard)
-    } else if (!learningComplete.value) {
-      cards.push(learnCard)
-    }
-
-    // Fill remaining slots with product-aware defaults
-    if (cards.length < 3) {
-      cards.push({
-        title: 'New Project',
-        description: `Launch an orchestrated project with AI agents for ${productName}.`,
-        icon: 'mdi-plus-circle-outline',
-        iconBg: hexToRgba(BRAND_YELLOW, 0.1),
-        iconColor: 'var(--color-accent-primary)',
-        accent: 'var(--color-accent-primary)',
-        badge: '/gil_add project',
-        to: '/Projects',
-      })
-    }
-    if (cards.length < 3) {
-      if (activeProjectCount.value > 0) {
-        cards.push({
-          title: 'Active Projects',
-          description: 'Monitor running orchestrations, agent status, and real-time progress.',
-          icon: 'mdi-play-circle-outline',
-          iconBg: hexToRgba(COLOR_IMPLEMENTER, 0.12),
-          iconColor: COLOR_IMPLEMENTER,
-          accent: COLOR_IMPLEMENTER,
-          badge: `${activeProjectCount.value} active`,
-          to: '/launch?via=jobs',
-        })
-      } else {
-        cards.push({
-          title: 'New Product',
-          description: 'Define another product to give your AI agents full context.',
-          icon: 'mdi-package-variant-closed',
-          iconBg: hexToRgba(COLOR_DOCUMENTER, 0.12),
-          iconColor: COLOR_DOCUMENTER,
-          accent: COLOR_DOCUMENTER,
-          to: '/Products',
-        })
-      }
-    }
-    if (cards.length < 3) {
-      cards.push({
-        title: 'Task Board',
-        description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
-        icon: 'mdi-clipboard-check-outline',
-        iconBg: hexToRgba(COLOR_REVIEWER, 0.12),
-        iconColor: COLOR_REVIEWER,
-        accent: COLOR_REVIEWER,
-        to: '/Tasks',
-      })
-    }
-    return cards
-  }
-
-  // No active product: onboarding + defaults
   const cards = []
 
+  // Priority 1: Incomplete setup
   if (!setupComplete.value) {
-    cards.push(setupCard, learnCard)
-  } else if (!learningComplete.value) {
+    cards.push(setupCard)
+  }
+
+  // Priority 2: Incomplete learning
+  if (!learningComplete.value && cards.length < 3) {
     cards.push(learnCard)
   }
 
-  if (cards.length < 3) {
-    cards.push({
-      title: 'New Product',
-      description: 'Define a product to give your AI agents full context about what they\'re building.',
-      icon: 'mdi-package-variant-closed',
-      iconBg: cards.length === 0 ? hexToRgba(BRAND_YELLOW, 0.1) : hexToRgba(COLOR_DOCUMENTER, 0.12),
-      iconColor: cards.length === 0 ? 'var(--color-accent-primary)' : COLOR_DOCUMENTER,
-      accent: cards.length === 0 ? 'var(--color-accent-primary)' : COLOR_DOCUMENTER,
-      to: '/Products',
-    })
+  // Priority 3: No product
+  if (!hasActiveProduct.value && cards.length < 3) {
+    cards.push(newProductCard.value)
   }
-  if (cards.length < 3) {
-    cards.push({
-      title: 'Dashboard',
-      description: 'View system stats, recent activity, and orchestration metrics at a glance.',
-      icon: 'mdi-view-dashboard-outline',
-      iconBg: hexToRgba(COLOR_IMPLEMENTER, 0.12),
-      iconColor: COLOR_IMPLEMENTER,
-      accent: COLOR_IMPLEMENTER,
-      to: '/Dashboard',
-    })
+
+  // Priority 4: No project (only if product exists)
+  if (hasActiveProduct.value && !hasAnyProject.value && cards.length < 3) {
+    cards.push(newProjectCard.value)
   }
+
+  // All onboarding complete — fill remaining slots
   if (cards.length < 3) {
-    cards.push({
-      title: 'Task Board',
-      description: 'Track technical debt, scope creep captures, and fine-grained tasks.',
-      icon: 'mdi-clipboard-check-outline',
-      iconBg: hexToRgba(COLOR_REVIEWER, 0.12),
-      iconColor: COLOR_REVIEWER,
-      accent: COLOR_REVIEWER,
-      to: '/Tasks',
-    })
+    if (activeProjectCount.value > 0) {
+      // Active project: Active Projects, Dashboard, Task Board
+      const readyCards = [activeProjectsCard.value, dashboardCard, taskBoardCard]
+      for (const c of readyCards) {
+        if (cards.length < 3) cards.push(c)
+      }
+    } else {
+      // No active project: Dashboard, New Project, Task Board
+      const readyCards = [dashboardCard, newProjectCard.value, taskBoardCard]
+      for (const c of readyCards) {
+        if (cards.length < 3) cards.push(c)
+      }
+    }
   }
+
   return cards
 })
 
@@ -462,6 +448,110 @@ function handleReviewProject(project) {
 // Version
 const appVersion = ref('')
 
+// User name and greeting
+const firstName = computed(() => {
+  const name = userStore.currentUser?.full_name || userStore.currentUser?.username || 'Friend'
+  return String(name).split(' ')[0]
+})
+
+const fullGreeting = computed(() => {
+  const name = firstName.value
+  const hour = new Date().getHours()
+
+  // WITH COMMA - Direct address greetings (vocative case)
+  const withComma = {
+    morning: [
+      'Good morning, {name}!',
+      'Morning, {name}!',
+      'Rise and shine, {name}!',
+      'Top of the morning, {name}!',
+      'Wakey wakey, {name}!',
+    ],
+    afternoon: [
+      'Good afternoon, {name}!',
+      'Hello there, {name}!',
+      'Hey there, {name}!',
+      'Howdy, {name}!',
+      'Greetings, {name}!',
+    ],
+    evening: [
+      'Good evening, {name}!',
+      'Evening, {name}!',
+      'Hey there, {name}!',
+      'Salutations, {name}!',
+    ],
+    general: [
+      'Welcome back, {name}!',
+      'Hey, {name}!',
+      'Howdy, {name}!',
+      'Ahoy, {name}!',
+      'Yo, {name}!',
+      'Greetings, {name}!',
+    ],
+  }
+
+  // WITHOUT COMMA - Name flows naturally into phrase
+  const withoutComma = {
+    morning: [
+      'Ready to conquer the day {name}?',
+      'Time to shine {name}!',
+      'Another beautiful morning awaits {name}!',
+    ],
+    afternoon: [
+      'Great to see you {name}!',
+      'Nice to have you back {name}!',
+      'Good to see you {name}!',
+    ],
+    evening: [
+      'Great to see you {name}!',
+      'Nice to see you {name}!',
+      'Glad you stopped by {name}!',
+    ],
+    general: [
+      'Great to see you {name}!',
+      'Good to have you back {name}!',
+      'Look who showed up... {name}!',
+      'There you are {name}!',
+    ],
+  }
+
+  // FUN CASUAL - Energetic oddball greetings
+  const funCasual = [
+    "Let's get crackalackin' {name}!",
+    "Let's do this {name}!",
+    "Ready to rock {name}?",
+    "Let's roll {name}!",
+    "Game on {name}!",
+    "Let's crush it {name}!",
+    "Time to make magic {name}!",
+    "Adventure awaits {name}!",
+    "Buckle up {name}!",
+    "Let's build something awesome {name}!",
+    "Ready to rumble {name}?",
+    "Let's make it happen {name}!",
+    "Fire it up {name}!",
+    "Here we go {name}!",
+    "Showtime {name}!",
+  ]
+
+  function choose(arr) {
+    return arr[Math.floor(Math.random() * arr.length)]
+  }
+
+  // Determine time-based category
+  const timeKey = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 22 ? 'evening' : 'general'
+
+  // Build pool: 40% with comma, 30% without comma, 30% fun casual
+  const pool = [
+    ...withComma[timeKey],
+    ...withComma[timeKey],  // Double weight for time-appropriate
+    ...withoutComma[timeKey],
+    ...funCasual,
+  ]
+
+  const msg = choose(pool)
+  return msg.replace('{name}', name)
+})
 
 onMounted(async () => {
   try {
@@ -643,6 +733,14 @@ onMounted(async () => {
   box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255,255,255,0.10)), 0 10px 20px -6px rgba(0,0,0,0.25);
 }
 
+.quick-card--attention {
+  animation: fadeSlideUp 0.45s ease-out both, attentionNudge 2.8s ease-in-out 1.2s infinite;
+}
+
+.quick-card--attention::before {
+  opacity: 1;
+}
+
 .quick-card::before {
   content: '';
   position: absolute;
@@ -681,7 +779,8 @@ onMounted(async () => {
 }
 
 .quick-card-badge {
-  display: inline-block;
+  display: block;
+  text-align: center;
   margin-top: 10px;
   padding: 2px 8px;
   background: rgba(255,255,255,0.05);
@@ -717,7 +816,7 @@ onMounted(async () => {
   align-items: center;
   gap: 4px;
   font-size: 0.7rem;
-  color: $color-brand-yellow;
+  color: #ffc300;
   cursor: pointer;
   opacity: 0.7;
   transition: opacity $transition-normal;
@@ -858,7 +957,7 @@ onMounted(async () => {
 
 .rp-link {
   font-size: 0.68rem;
-  color: $color-brand-yellow;
+  color: #ffc300;
   cursor: pointer;
   font-weight: 500;
   opacity: 0.7;
@@ -916,6 +1015,17 @@ onMounted(async () => {
 @keyframes glowPulse {
   0%, 100% { opacity: 0.8; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.06); }
+}
+
+@keyframes attentionNudge {
+  0%, 100% {
+    transform: translateY(0);
+    box-shadow: inset 0 0 0 1px rgba(255, 195, 0, 0.18), 0 0 0 0 rgba(255, 195, 0, 0);
+  }
+  50% {
+    transform: translateY(-2px);
+    box-shadow: inset 0 0 0 1px rgba(255, 195, 0, 0.38), 0 0 18px -4px rgba(255, 195, 0, 0.22);
+  }
 }
 
 /* ═══ RESPONSIVE ═══ */
