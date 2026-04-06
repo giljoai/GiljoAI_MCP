@@ -83,6 +83,31 @@ def _build_setup_instructions(platform: str, download_url: str) -> dict[str, Any
                 ),
             },
         ],
+        "config_merge_rules": {
+            "CRITICAL": (
+                "config.toml is the user's primary Codex configuration. A corrupt config.toml "
+                "will crash Codex on startup (skills/list TUI failure). Follow these rules strictly:"
+            ),
+            "rules": [
+                "NEVER overwrite config.toml — always read-then-merge",
+                "Use a TOML parser to read existing config, merge new sections, write back",
+                "Do NOT use string substitution, regex, or PowerShell text manipulation",
+                "Preserve ALL existing sections not managed by GiljoAI (MCP servers, user prefs, etc.)",
+                "TOML values must NOT have doubled quotes — 'agents/gil-analyzer.toml' not ''agents/gil-analyzer.toml''",
+                "Back up config.toml before writing: copy to config_backup.toml",
+                "After writing, validate the file parses: python -c \"import tomllib; tomllib.load(open('config.toml','rb'))\"",
+            ],
+            "safe_merge_example": (
+                "In Python: import tomllib, tomli_w; "
+                "config = tomllib.load(open(path, 'rb')); "
+                "config.setdefault('agents', {})['gil-analyzer'] = {"
+                "'config_file': 'agents/gil-analyzer.toml', "
+                "'model': 'gpt-5.2-codex', "
+                "'model_reasoning_effort': 'medium', "
+                "'nickname_candidates': ['gil-analyzer']}; "
+                "tomli_w.dump(config, open(path, 'wb'))"
+            ),
+        },
         "cleanup": "rm giljo_setup.zip",
         "post_install": "Restart your CLI tool to activate skills and agent templates.",
     }
