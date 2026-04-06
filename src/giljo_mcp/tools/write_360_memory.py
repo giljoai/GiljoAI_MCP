@@ -386,6 +386,7 @@ async def write_360_memory(
     decisions_made: list[str],
     entry_type: str = "project_completion",
     author_job_id: str | None = None,
+    git_commits: list[dict[str, Any]] | None = None,
     db_manager: DatabaseManager | None = None,
     session: AsyncSession | None = None,
 ) -> dict[str, Any]:
@@ -403,6 +404,8 @@ async def write_360_memory(
         decisions_made: 3-5 architectural/design decisions
         entry_type: Type of entry ("project_completion", "handover_closeout", or "session_handover")
         author_job_id: Job ID of agent writing entry (optional)
+        git_commits: Agent-supplied commits from local git log. When provided,
+            skips the GitHub API fetch entirely (passive server model).
         db_manager: Database manager (dependency injection)
         session: Optional existing session
 
@@ -486,10 +489,18 @@ async def write_360_memory(
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
-            git_commits = await _fetch_git_commits_for_project(
-                product_memory=product_memory,
-                project=project,
-            )
+            # Use agent-supplied commits (passive server); fall back to GitHub API
+            if git_commits is not None:
+                logger.info(
+                    "Using %d agent-supplied git commits for project %s",
+                    len(git_commits),
+                    project_id,
+                )
+            else:
+                git_commits = await _fetch_git_commits_for_project(
+                    product_memory=product_memory,
+                    project=project,
+                )
 
             repo = ProductMemoryRepository()
             sequence_number = await repo.get_next_sequence(
