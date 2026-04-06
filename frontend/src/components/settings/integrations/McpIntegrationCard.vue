@@ -1,7 +1,7 @@
 <template>
   <div
     class="intg-card intg-card--clickable smooth-border"
-    style="--card-accent: var(--brand-yellow, #ffc300)"
+    style="--card-accent: var(--color-accent-primary)"
     @click="wizardRef?.open()"
   >
     <div class="intg-card-icon" style="background: rgba(255,195,0,0.1)">
@@ -13,7 +13,7 @@
       <div class="intg-card-title" style="margin-bottom: 0">GiljoAI MCP</div>
       <v-tooltip location="top" max-width="400">
         <template #activator="{ props }">
-          <v-icon v-bind="props" size="small" style="color: #8895a8" @click.stop>mdi-help-circle-outline</v-icon>
+          <v-icon v-bind="props" size="small" style="color: var(--text-muted)" @click.stop>mdi-help-circle-outline</v-icon>
         </template>
         <span>Connect your AI coding agent to GiljoAI orchestration. Supports Claude Code, Codex CLI, and Gemini CLI. Creates an MCP integration CLI command for your AI coding agent of choice.</span>
       </v-tooltip>
@@ -33,5 +33,5 @@ const wizardRef = ref(null)
 </script>
 
 <style lang="scss" scoped>
-@import '../../../styles/intg-card';
+@use '../../../styles/intg-card';
 </style>

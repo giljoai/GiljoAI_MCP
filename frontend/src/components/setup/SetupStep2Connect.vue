@@ -226,8 +226,8 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
-/* design-token-exempt: Vuetify color prop requires hex values */
-const COLOR_MUTED = '#8f97b7' // $lightest-blue
+// Vuetify color props — traced to design-tokens.scss
+const COLOR_MUTED = '#8f97b7' // $color-scrollbar-thumb-hover-background (lightest-blue)
 const COLOR_SUCCESS = '#6bcf7f' // $gradient-brand-end
 import api from '@/services/api'
 import { useClipboard } from '@/composables/useClipboard'
@@ -714,13 +714,13 @@ onUnmounted(() => {
 }
 
 .status-dot--waiting {
-  background: #e05252;
-  box-shadow: 0 0 8px 3px rgba(224, 82, 82, 0.5);
+  background: $color-indicator-disconnected;
+  box-shadow: 0 0 8px 3px rgba($color-indicator-disconnected, 0.5);
 }
 
 .status-dot--connected {
-  background: #4caf50;
-  box-shadow: 0 0 8px 3px rgba(76, 175, 80, 0.5);
+  background: $color-status-success;
+  box-shadow: 0 0 8px 3px rgba($color-status-success, 0.5);
 }
 
 .instruction-text {

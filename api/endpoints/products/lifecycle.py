@@ -25,6 +25,7 @@ from .models import (
     CascadeImpact,
     ProductActivationResponse,
     ProductDeleteResponse,
+    ProductPurgeResponse,
     ProductResponse,
     VisionDocumentStatsResponse,
 )
@@ -65,8 +66,8 @@ async def activate_product(
         # Build ProductResponse
         product_response = _build_product_response(product, stats, override_active=True)
 
-        # TODO: Query for deactivated projects when ProjectService integration is complete
-        # For now, return empty list as projects will be handled in future handover
+        # Project deactivation is handled internally by ProductService.activate_product();
+        # the frontend polls project state separately after activation.
         deactivated_projects = []
 
         return ProductActivationResponse(
@@ -182,7 +183,7 @@ async def purge_product(
     """
     logger.info(f"User {current_user.username} permanently deleting product {product_id}")
     result = await service.purge_product(product_id)
-    return {"success": True, **result}
+    return ProductPurgeResponse(**result)
 
 
 @router.post("/{product_id}/restore", response_model=ProductResponse)

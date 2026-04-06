@@ -15,7 +15,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.colored_logger import get_colored_logger
 from src.giljo_mcp.models import User
-from src.giljo_mcp.repositories.statistics_repository import StatisticsRepository
+from src.giljo_mcp.repositories.job_statistics_repository import JobStatisticsRepository
+from src.giljo_mcp.repositories.product_statistics_repository import ProductStatisticsRepository
 
 
 logger = get_colored_logger(__name__)
@@ -156,44 +157,45 @@ async def get_dashboard_stats(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    stats_repo = StatisticsRepository(state.db_manager)
+    job_repo = JobStatisticsRepository(state.db_manager)
+    product_repo = ProductStatisticsRepository(state.db_manager)
     async with state.db_manager.get_session_async() as session:
-        project_status_dist = await stats_repo.get_project_status_distribution(
+        project_status_dist = await product_repo.get_project_status_distribution(
             session,
             tenant_key,
             product_id=product_id,
         )
-        taxonomy_dist = await stats_repo.get_project_taxonomy_distribution(
+        taxonomy_dist = await product_repo.get_project_taxonomy_distribution(
             session,
             tenant_key,
             product_id=product_id,
         )
-        agent_role_dist = await stats_repo.get_agent_role_distribution(
+        agent_role_dist = await job_repo.get_agent_role_distribution(
             session,
             tenant_key,
             product_id=product_id,
         )
-        recent_projects = await stats_repo.get_recent_projects(
+        recent_projects = await product_repo.get_recent_projects(
             session,
             tenant_key,
             product_id=product_id,
         )
-        recent_memories = await stats_repo.get_recent_memory_entries(
+        recent_memories = await product_repo.get_recent_memory_entries(
             session,
             tenant_key,
             product_id=product_id,
         )
-        task_status_dist = await stats_repo.get_task_status_distribution(
+        task_status_dist = await product_repo.get_task_status_distribution(
             session,
             tenant_key,
             product_id=product_id,
         )
-        execution_mode_dist = await stats_repo.get_execution_mode_distribution(
+        execution_mode_dist = await product_repo.get_execution_mode_distribution(
             session,
             tenant_key,
             product_id=product_id,
         )
-        products = await stats_repo.get_product_project_counts(
+        products = await product_repo.get_product_project_counts(
             session,
             tenant_key,
         )
@@ -223,9 +225,9 @@ async def get_call_counts(request: Request, current_user: User = Depends(get_cur
     db_mcp_calls = 0
 
     if state.db_manager:
-        stats_repo = StatisticsRepository(state.db_manager)
+        job_repo = JobStatisticsRepository(state.db_manager)
         async with state.db_manager.get_session_async() as session:
-            metrics = await stats_repo.get_api_metrics(session, tenant_key)
+            metrics = await job_repo.get_api_metrics(session, tenant_key)
             if metrics:
                 db_api_calls = metrics.total_api_calls
                 db_mcp_calls = metrics.total_mcp_calls
@@ -251,28 +253,29 @@ async def get_system_statistics(request: Request, current_user: User = Depends(g
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    stats_repo = StatisticsRepository(state.db_manager)
+    job_repo = JobStatisticsRepository(state.db_manager)
+    product_repo = ProductStatisticsRepository(state.db_manager)
     async with state.db_manager.get_session_async() as session:
-        total_projects = await stats_repo.count_total_projects(session, tenant_key)
-        active_projects = await stats_repo.count_projects_by_status(session, tenant_key, "active")
-        completed_projects = await stats_repo.count_projects_by_status(session, tenant_key, "completed")
-        total_agents = await stats_repo.count_total_agents(session, tenant_key)
-        active_agents = await stats_repo.count_active_agents(session, tenant_key)
-        total_messages = await stats_repo.count_total_messages(session, tenant_key)
-        pending_messages = await stats_repo.count_messages_by_status(session, tenant_key, "pending")
-        total_tasks = await stats_repo.count_total_tasks(session, tenant_key)
-        completed_tasks = await stats_repo.count_completed_tasks(session, tenant_key)
+        total_projects = await product_repo.count_total_projects(session, tenant_key)
+        active_projects = await product_repo.count_projects_by_status(session, tenant_key, "active")
+        completed_projects = await product_repo.count_projects_by_status(session, tenant_key, "completed")
+        total_agents = await job_repo.count_total_agents(session, tenant_key)
+        active_agents = await job_repo.count_active_agents(session, tenant_key)
+        total_messages = await product_repo.count_total_messages(session, tenant_key)
+        pending_messages = await product_repo.count_messages_by_status(session, tenant_key, "pending")
+        total_tasks = await product_repo.count_total_tasks(session, tenant_key)
+        completed_tasks = await product_repo.count_completed_tasks(session, tenant_key)
 
         db_size = 0
 
         uptime = (datetime.now(timezone.utc) - startup_time).total_seconds()
 
-        total_agents_spawned = await stats_repo.count_total_agents(session, tenant_key)
+        total_agents_spawned = await job_repo.count_total_agents(session, tenant_key)
 
-        total_jobs_completed = await stats_repo.count_completed_agents(session, tenant_key)
+        total_jobs_completed = await job_repo.count_completed_agents(session, tenant_key)
 
-        projects_staged = await stats_repo.count_projects_staged(session, tenant_key)
-        projects_cancelled = await stats_repo.count_projects_by_status(session, tenant_key, "cancelled")
+        projects_staged = await product_repo.count_projects_staged(session, tenant_key)
+        projects_cancelled = await product_repo.count_projects_by_status(session, tenant_key, "cancelled")
 
         return SystemStatsResponse(
             total_projects=total_projects,
@@ -313,23 +316,24 @@ async def get_project_statistics(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    stats_repo = StatisticsRepository(state.db_manager)
+    job_repo = JobStatisticsRepository(state.db_manager)
+    product_repo = ProductStatisticsRepository(state.db_manager)
     async with state.db_manager.get_session_async() as session:
-        projects = await stats_repo.get_projects_with_pagination(
+        projects = await product_repo.get_projects_with_pagination(
             session, tenant_key, status=status, limit=limit, offset=offset
         )
 
         stats = []
         for project in projects:
-            agent_count = await stats_repo.count_agents_for_project(session, tenant_key, project.id)
+            agent_count = await job_repo.count_agents_for_project(session, tenant_key, project.id)
 
-            message_count = await stats_repo.count_messages_for_project(session, tenant_key, project.id)
+            message_count = await product_repo.count_messages_for_project(session, tenant_key, project.id)
 
-            task_count = await stats_repo.count_tasks_for_project(session, tenant_key, project.id)
+            task_count = await product_repo.count_tasks_for_project(session, tenant_key, project.id)
 
-            completed_task_count = await stats_repo.count_completed_tasks_for_project(session, tenant_key, project.id)
+            completed_task_count = await product_repo.count_completed_tasks_for_project(session, tenant_key, project.id)
 
-            last_message = await stats_repo.get_last_activity_for_project(session, tenant_key, project.id)
+            last_message = await product_repo.get_last_activity_for_project(session, tenant_key, project.id)
 
             # Calculate duration
             end_time = project.updated_at if project.status == "completed" else datetime.now(timezone.utc)
@@ -366,18 +370,19 @@ async def get_project_statistics_by_id(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    stats_repo = StatisticsRepository(state.db_manager)
+    job_repo = JobStatisticsRepository(state.db_manager)
+    product_repo = ProductStatisticsRepository(state.db_manager)
     async with state.db_manager.get_session_async() as session:
         # Direct single-project query instead of fetching all projects (N+1 fix)
-        project = await stats_repo.get_project_by_id(session, tenant_key, project_id)
+        project = await product_repo.get_project_by_id(session, tenant_key, project_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
-        agent_count = await stats_repo.count_agents_for_project(session, tenant_key, project.id)
-        message_count = await stats_repo.count_messages_for_project(session, tenant_key, project.id)
-        task_count = await stats_repo.count_tasks_for_project(session, tenant_key, project.id)
-        completed_task_count = await stats_repo.count_completed_tasks_for_project(session, tenant_key, project.id)
-        last_message = await stats_repo.get_last_activity_for_project(session, tenant_key, project.id)
+        agent_count = await job_repo.count_agents_for_project(session, tenant_key, project.id)
+        message_count = await product_repo.count_messages_for_project(session, tenant_key, project.id)
+        task_count = await product_repo.count_tasks_for_project(session, tenant_key, project.id)
+        completed_task_count = await product_repo.count_completed_tasks_for_project(session, tenant_key, project.id)
+        last_message = await product_repo.get_last_activity_for_project(session, tenant_key, project.id)
 
         end_time = project.updated_at if project.status == "completed" else datetime.now(timezone.utc)
         duration = (end_time - project.created_at).total_seconds()
@@ -414,17 +419,17 @@ async def get_agent_statistics(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    stats_repo = StatisticsRepository(state.db_manager)
+    job_repo = JobStatisticsRepository(state.db_manager)
     async with state.db_manager.get_session_async() as session:
-        agent_executions = await stats_repo.get_agent_executions_with_filters(
+        agent_executions = await job_repo.get_agent_executions_with_filters(
             session, tenant_key, project_id=project_id, status=status, limit=limit
         )
 
         stats = []
         for agent_execution in agent_executions:
-            sent_count = await stats_repo.count_messages_sent_by_agent(session, tenant_key, agent_execution.agent_name)
+            sent_count = await job_repo.count_messages_sent_by_agent(session, tenant_key, agent_execution.agent_name)
 
-            received_count = await stats_repo.count_messages_received_by_agent(
+            received_count = await job_repo.count_messages_received_by_agent(
                 session, tenant_key, agent_execution.agent_name
             )
 
@@ -433,9 +438,9 @@ async def get_agent_statistics(
 
             avg_response_time = None  # No real metric available yet
 
-            last_sent = await stats_repo.get_last_message_sent_by_agent(session, tenant_key, agent_execution.agent_name)
+            last_sent = await job_repo.get_last_message_sent_by_agent(session, tenant_key, agent_execution.agent_name)
 
-            agent_job = await stats_repo.get_agent_job_by_job_id(session, tenant_key, agent_execution.job_id)
+            agent_job = await job_repo.get_agent_job_by_job_id(session, tenant_key, agent_execution.job_id)
 
             created_ts = agent_execution.started_at or (
                 agent_execution.job.created_at if agent_job else agent_execution.started_at
@@ -479,7 +484,7 @@ async def get_message_statistics(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    stats_repo = StatisticsRepository(state.db_manager)
+    product_repo = ProductStatisticsRepository(state.db_manager)
     async with state.db_manager.get_session_async() as session:
         now = datetime.now(timezone.utc)
         if time_range == "1h":
@@ -493,21 +498,21 @@ async def get_message_statistics(
         else:
             since = None
 
-        total = await stats_repo.count_messages_with_filters(session, tenant_key, project_id=project_id, since=since)
+        total = await product_repo.count_messages_with_filters(session, tenant_key, project_id=project_id, since=since)
 
-        pending = await stats_repo.count_messages_by_status_with_filters(
+        pending = await product_repo.count_messages_by_status_with_filters(
             session, tenant_key, status="pending", project_id=project_id, since=since
         )
 
-        acknowledged = await stats_repo.count_messages_by_status_with_filters(
+        acknowledged = await product_repo.count_messages_by_status_with_filters(
             session, tenant_key, status="acknowledged", project_id=project_id, since=since
         )
 
-        completed = await stats_repo.count_messages_by_status_with_filters(
+        completed = await product_repo.count_messages_by_status_with_filters(
             session, tenant_key, status="completed", project_id=project_id, since=since
         )
 
-        failed = await stats_repo.count_messages_by_status_with_filters(
+        failed = await product_repo.count_messages_by_status_with_filters(
             session, tenant_key, status="failed", project_id=project_id, since=since
         )
 
@@ -562,11 +567,11 @@ async def get_performance_metrics(current_user: User = Depends(get_current_activ
 
     db_query_time = 0
     if state.db_manager:
-        stats_repo = StatisticsRepository(state.db_manager)
+        job_repo = JobStatisticsRepository(state.db_manager)
         db_start = time.time()
         try:
             async with state.db_manager.get_session_async() as session:
-                await stats_repo.execute_health_check(session)
+                await job_repo.execute_health_check(session)
             db_query_time = (time.time() - db_start) * 1000
         except (SQLAlchemyError, OSError):
             logger.exception("Database health check failed")
@@ -602,10 +607,10 @@ async def get_detailed_health(current_user: User = Depends(get_current_active_us
     health["checks_passed"] += 1
 
     if state.db_manager:
-        stats_repo = StatisticsRepository(state.db_manager)
+        job_repo = JobStatisticsRepository(state.db_manager)
         try:
             async with state.db_manager.get_session_async() as session:
-                await stats_repo.execute_health_check(session)
+                await job_repo.execute_health_check(session)
             health["components"]["database"] = {"status": "healthy"}
             health["checks_passed"] += 1
         except (RuntimeError, OSError) as e:

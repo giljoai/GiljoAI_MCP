@@ -320,4 +320,23 @@ Do NOT spawn the next terminal. The orchestrator handles that.
 
 ## Progress Updates
 
-*(Agent updates this section during implementation)*
+### 2026-04-05 — Session Complete
+
+**ProductService split:**
+- Created `product_vision_service.py` (309 lines) with `upload_vision_document` + 3 helper methods
+- ProductService: 1806 → 1608 lines (−198)
+- Deviation: Target was <1000 but only one vision method existed
+
+**ProjectService split:**
+- Created `project_launch_service.py` (430 lines) with `launch_project` decomposed into 6 sub-methods
+- Deleted dead `_broadcast_memory_update` (37 lines)
+- ProjectService: 1390 → 1147 lines (−243)
+- Deviation: Target was <900 but remaining methods are tightly coupled
+
+**Verification:**
+- All DB queries in new files filter by `tenant_key`
+- No method exceeds 200 lines
+- `ruff check src/ api/` — all checks passed
+- `python -c "from api.app import create_app; print('OK')"` — OK
+- `pytest tests/unit/` — 650 passed, 11 pre-existing failures (0950l)
+- Zero new test failures introduced

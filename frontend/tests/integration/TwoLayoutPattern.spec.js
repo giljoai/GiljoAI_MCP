@@ -257,11 +257,9 @@ describe('Two-Layout Authentication Pattern - Integration Tests', () => {
 
       await flushPromises()
 
-      // DefaultLayout should have AppBar and NavigationDrawer
-      const appBar = wrapper.findComponent({ name: 'AppBar' })
+      // DefaultLayout should have NavigationDrawer (AppBar is no longer a top-level layout component)
       const navDrawer = wrapper.findComponent({ name: 'NavigationDrawer' })
 
-      expect(appBar.exists()).toBe(true)
       expect(navDrawer.exists()).toBe(true)
       expect(wrapper.html()).toContain('Dashboard Page')
     })
@@ -282,11 +280,9 @@ describe('Two-Layout Authentication Pattern - Integration Tests', () => {
 
       await flushPromises()
 
-      // DefaultLayout should have AppBar and NavigationDrawer
-      const appBar = wrapper.findComponent({ name: 'AppBar' })
+      // DefaultLayout should have NavigationDrawer (AppBar is no longer a top-level layout component)
       const navDrawer = wrapper.findComponent({ name: 'NavigationDrawer' })
 
-      expect(appBar.exists()).toBe(true)
       expect(navDrawer.exists()).toBe(true)
       expect(wrapper.html()).toContain('Settings Page')
     })
@@ -498,11 +494,9 @@ describe('Two-Layout Authentication Pattern - Integration Tests', () => {
 
       await flushPromises()
 
-      // Should use DefaultLayout for admin routes
-      const appBar = wrapper.findComponent({ name: 'AppBar' })
+      // Should use DefaultLayout for admin routes (NavigationDrawer is the top-level nav component)
       const navDrawer = wrapper.findComponent({ name: 'NavigationDrawer' })
 
-      expect(appBar.exists()).toBe(true)
       expect(navDrawer.exists()).toBe(true)
       expect(router.currentRoute.value.path).toBe('/admin/settings')
     })

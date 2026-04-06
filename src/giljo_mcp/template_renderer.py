@@ -272,7 +272,22 @@ def render_gemini_agent(template: AgentTemplate) -> str:
             "grep_search",
             "list_directory",
             "read_many_files",
-            "mcp_giljo_mcp_*",
+            "mcp_giljo_mcp_health_check",
+            "mcp_giljo_mcp_get_agent_mission",
+            "mcp_giljo_mcp_send_message",
+            "mcp_giljo_mcp_receive_messages",
+            "mcp_giljo_mcp_report_progress",
+            "mcp_giljo_mcp_complete_job",
+            "mcp_giljo_mcp_set_agent_status",
+            "mcp_giljo_mcp_create_task",
+            "mcp_giljo_mcp_get_workflow_status",
+            "mcp_giljo_mcp_fetch_context",
+            "mcp_giljo_mcp_reactivate_job",
+            "mcp_giljo_mcp_dismiss_reactivation",
+            "mcp_giljo_mcp_spawn_agent_job",
+            "mcp_giljo_mcp_get_agent_result",
+            "mcp_giljo_mcp_write_360_memory",
+            "mcp_giljo_mcp_close_project_and_update_memory",
         ],
     }
 
@@ -309,14 +324,13 @@ def render_codex_agent(template: AgentTemplate) -> dict[str, object]:
 # TOML format reference string for Codex AI coding agent configuration
 CODEX_TOML_FORMAT_REFERENCE = """\
 # Codex AI coding agent configuration (add to ~/.codex/config.toml)
-# Each agent is a [agents.<name>] section.
+# Each agent is a [agents.<name>] section. All GiljoAI agents use the gil- prefix.
 #
-# [agents.implementer-frontend]
+# [agents.gil-implementer]
+# config_file = "agents/gil-implementer.toml"
 # model = "gpt-5.2-codex"
-# reasoning_effort = "medium"
-# instructions = \"\"\"
-# <developer_instructions content here>
-# \"\"\"
+# model_reasoning_effort = "medium"
+# nickname_candidates = ["gil-implementer"]
 #
 # Multiple agents can be defined in the same config.toml file.
 # Existing sections not managed by GiljoAI should be preserved.

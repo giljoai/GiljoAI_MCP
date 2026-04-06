@@ -45,8 +45,8 @@
             <span
               class="tuning-chip"
               :style="getSectionData(sectionKey).drift_detected
-                ? 'background: rgba(224,120,114,0.15); color: #E07872'
-                : 'background: rgba(103,189,109,0.15); color: #67bd6d'"
+                ? { background: hexToRgba(COLOR_ANALYZER, 0.15), color: COLOR_ANALYZER }
+                : { background: hexToRgba(COLOR_SUCCESS, 0.15), color: COLOR_SUCCESS }"
               :aria-label="getSectionData(sectionKey).drift_detected ? 'Drift detected' : 'No drift'"
             >
               <v-icon start size="14">
@@ -127,7 +127,7 @@
                 :class="[
                   'pa-3 smooth-border review-value-card',
                 ]"
-                :style="hasValueChanged(sectionKey) ? '--smooth-border-color: #EDBA4A' : ''"
+                :style="hasValueChanged(sectionKey) ? { '--smooth-border-color': COLOR_TESTER } : {}"
               >
                 <div class="text-body-2 text-pre-wrap">
                   {{ getSectionData(sectionKey).proposed_value || 'No change proposed' }}
@@ -231,6 +231,13 @@
 import { ref, computed } from 'vue'
 import { apiClient } from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { getAgentColor } from '@/config/agentColors'
+import { hexToRgba } from '@/utils/colorUtils'
+
+// Semantic color tokens for tuning review chips
+const COLOR_SUCCESS = '#67bd6d'     // $color-status-complete / $color-accent-success
+const COLOR_TESTER = getAgentColor('tester').hex  // $color-agent-tester
+const COLOR_ANALYZER = getAgentColor('analyzer').hex // $color-agent-analyzer
 
 const props = defineProps({
   productId: {
@@ -324,13 +331,13 @@ function getSectionIcon(sectionKey) {
 function getConfidenceStyle(confidence) {
   switch (confidence?.toLowerCase()) {
     case 'high':
-      return 'background: rgba(103,189,109,0.15); color: #67bd6d'
+      return { background: hexToRgba(COLOR_SUCCESS, 0.15), color: COLOR_SUCCESS }
     case 'medium':
-      return 'background: rgba(237,186,74,0.15); color: #EDBA4A'
+      return { background: hexToRgba(COLOR_TESTER, 0.15), color: COLOR_TESTER }
     case 'low':
-      return 'background: rgba(224,120,114,0.15); color: #E07872'
+      return { background: hexToRgba(COLOR_ANALYZER, 0.15), color: COLOR_ANALYZER }
     default:
-      return 'background: rgba(255,255,255,0.05); color: var(--text-muted)'
+      return { background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }
   }
 }
 

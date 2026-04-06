@@ -109,7 +109,7 @@ class CascadeImpact(BaseModel):
 class VisionUploadResult(BaseModel):
     """Vision document upload result.
 
-    Fields match ProductService.upload_vision_document() output.
+    Fields match ProductVisionService.upload_vision_document() output.
     """
 
     document_id: str

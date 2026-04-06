@@ -6,7 +6,7 @@
 **Priority:** Medium
 **Edition Scope:** CE
 **Estimated Complexity:** 1-2 hours
-**Status:** Not Started
+**Status:** Complete
 **Sprint:** 0950 Pre-Release Quality Sprint (chain: `prompts/0950_chain/chain_log.json`)
 
 ---
@@ -242,7 +242,13 @@ git restore src/giljo_mcp/<path/to/file>.py
 
 *(Agent: fill this in as work proceeds)*
 
-### [Date] — 0950f
-**Status:** Not Started
-**Work Done:** —
-**Next Steps:** Read 0950b notes, run grep sweep, triage and fix findings.
+### 2026-04-05 — 0950f
+**Status:** Complete
+**Work Done:**
+- Deleted 7 dead methods: TenantManager.inherit_tenant_key, DatabaseManager.apply_tenant_filter, DatabaseManager.ensure_tenant_isolation, SetupState.mark_completed, SetupState.add_validation_warning, SetupState.clear_validation_failures, VisionDocument.update_content_hash
+- Fixed stale docstring in orchestration_service.py:1407 (agent status list)
+- Removed 4 tombstone comment lines in config_manager.py:547-551
+- Cleaned unused `Any` import from database.py (cascaded from wrapper deletion)
+- Audited all bare pass statements (8 found, all intentional), "not implemented" markers (3 found, all accurate), and "(legacy)" labels (1 found, accurate)
+- Validated: ruff clean, 650 tests pass (11 pre-existing failures unchanged), install.py imports verified
+**Next Steps:** None — session complete. 0950g is unblocked.
