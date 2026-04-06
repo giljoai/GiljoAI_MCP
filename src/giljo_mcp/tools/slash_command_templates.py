@@ -205,6 +205,7 @@ tools:
   - mcp_giljo_mcp_get_agent_result
   - mcp_giljo_mcp_write_360_memory
   - mcp_giljo_mcp_close_project_and_update_memory
+  - mcp_giljo_mcp_gil_discovery
 ---
 ```
 
