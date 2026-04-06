@@ -1,5 +1,7 @@
 # GiljoAI MCP: Tools Reference
 
+*Last updated: 2026-04-06*
+
 ## Overview
 
 GiljoAI MCP exposes 29 tools to connected AI coding tools. Every tool requires a
