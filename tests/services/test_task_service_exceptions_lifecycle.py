@@ -305,7 +305,7 @@ async def test_convert_to_project_raises_validation_error_no_active_product(
 @pytest.mark.asyncio
 async def test_convert_to_project_raises_exception_on_database_error(task_service):
     """Test convert_to_project raises BaseGiljoError on database errors"""
-    with patch.object(task_service, "_convert_to_project_impl", side_effect=Exception("DB error")):
+    with patch.object(task_service._conversion, "_convert_to_project_impl", side_effect=Exception("DB error")):
         with pytest.raises(BaseGiljoError) as exc_info:
             await task_service.convert_to_project(
                 task_id=str(uuid4()),
@@ -383,7 +383,7 @@ async def test_get_summary_raises_validation_error_no_tenant_context(db_manager,
 @pytest.mark.asyncio
 async def test_get_summary_raises_exception_on_database_error(task_service):
     """Test get_summary raises BaseGiljoError on database errors"""
-    with patch.object(task_service, "_get_summary_impl", side_effect=Exception("DB error")):
+    with patch.object(task_service._conversion, "_get_summary_impl", side_effect=Exception("DB error")):
         with pytest.raises(BaseGiljoError) as exc_info:
             await task_service.get_summary()
 
