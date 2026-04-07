@@ -16,6 +16,7 @@ from uuid import uuid4
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.config.defaults import (
     DEFAULT_FIELD_PRIORITY,
@@ -70,64 +71,128 @@ SECTION_FIELD_MAP: dict[str, dict[str, str]] = {
     "target_platforms": {"type": "direct", "field": "target_platforms"},
 }
 
-# Evidence sources per section for the comparison prompt
-SECTION_EVIDENCE_SOURCES: dict[str, list[str]] = {
-    "description": ["summary", "key_outcomes"],
-    "tech_stack": ["deliverables", "decisions_made", "git_commits"],
-    "architecture": ["decisions_made"],
-    "core_features": ["key_outcomes", "deliverables"],
-    "codebase_structure": ["deliverables"],
-    "database_type": ["decisions_made"],
-    "backend_framework": ["deliverables", "decisions_made"],
-    "frontend_framework": ["deliverables", "decisions_made"],
-    "coding_conventions": ["decisions_made"],
-    "brand_guidelines": ["decisions_made", "deliverables"],
-    "quality_standards": ["metrics", "decisions_made"],
-    "target_platforms": ["decisions_made", "deliverables"],
-    "vision_documents": ["summary"],
-}
+TUNING_PROMPT_TEMPLATE = """You are reviewing a product's stored context for accuracy after recent development work.
 
+## Product
+- Name: {product_name}
+- ID: {product_id}
+{project_path_line}
+## MCP Tools Available
+- `fetch_context(categories, product_id)` — retrieve product context (tenant_key is auto-injected, do not pass it)
+- `submit_tuning_review(product_id, proposals, overall_summary)` — submit approved changes
 
-TUNING_PROMPT_TEMPLATE = """You are reviewing a product's context for accuracy after recent development work.
+## Phase 1: RESEARCH (do this silently — no output to user yet)
 
-## Your Task
-Compare the CURRENT PRODUCT CONTEXT against RECENT PROJECT HISTORY below.
-For each section, determine if the current description is still accurate.
+Ground yourself in the actual codebase before making any judgments.{project_path_instruction}
 
-## Current Product Context
-{current_context}
+1. File structure:  Run `ls` in the project root, `ls static/` or equivalent
+2. Dependencies:   Read requirements.txt (or package.json, go.mod, etc.)
+3. Entry point:    Read the first 60 lines of the main backend file to see imports, config, and patterns
+4. Tests:          Run the test discovery command (e.g., `pytest --co -q`) to list tests without executing
+5. Git history:    Run `git log --oneline -15` to see recent changes
+6. Project memory: Call `fetch_context(categories=["memory_360"], product_id="{product_id}")` to get recent project closeout summaries — these describe what was built, decisions made, and outcomes
 
-## Recent Project History (360 Memory — last {lookback_count} projects)
-{memory_entries}
+If you cannot run terminal commands (e.g., web-based agent), skip steps 1-5 and rely on project memory from step 6.
 
-{git_section}
+Do NOT present findings yet. Move to Phase 2.
 
-## Instructions
-1. For each section, compare what the product context claims against
-   what actually happened in recent projects.
-2. Flag sections where the context is stale, incomplete, or contradicted
-   by project outcomes.
-3. Distinguish between intentional product evolution (update the context)
-   and temporary project-specific details (don't update).
-4. When proposing changes, write the COMPLETE replacement value for
-   the section, not a diff or partial edit.
+## Phase 2: QUICK SCAN (brief output to user)
 
-## Required Action
-When your analysis is complete, call the submit_tuning_review MCP tool with
-your findings. Use this exact structure:
+Based on your research, give the user a short summary:
 
-- product_id: "{product_id}"
-- proposals: array with one entry per section analyzed
-  - section: the section key ({section_keys})
-  - drift_detected: true/false
-  - current_summary: brief note on what the current context says
-  - evidence: what the project history/git shows that differs
-  - proposed_value: the full replacement text (or current text if no drift)
-  - confidence: "high" / "medium" / "low"
-  - reasoning: one-sentence explanation
-- overall_summary: one-paragraph summary of the product's context health
+```
+Scanned the codebase and project history.
 
-Do NOT output the analysis as text. Call the MCP tool with structured results."""
+Sections with likely drift:
+- <section_name>: <one-line reason>
+- <section_name>: <one-line reason>
+
+Sections that look current:
+- <section_name>, <section_name>, ...
+
+Want to review the flagged sections? Or walk through all of them?
+```
+
+Wait for the user to respond before continuing.
+
+## Phase 3: INTERACTIVE REVIEW (one section at a time)
+
+For each section the user wants to review, present this format:
+
+```
+### <Section Name>
+
+**Current value:**
+<the stored value as-is>
+
+**What I found:**
+<evidence from code, git log, or project memory that differs>
+
+**Drift detected:** Yes / No
+
+**Proposed update:**
+<full replacement text — or "No change needed">
+
+Does this look right? Want to adjust the wording before I save it?
+```
+
+RULES:
+- Wait for user approval before moving to the next section
+- If the user provides alternative wording, use their version
+- If the user says "skip", exclude that section from the final submission
+- If the user says "looks good" or similar, mark it as approved and move on
+- Keep proposed values factual and concise — avoid marketing language
+- Write the COMPLETE replacement value, not a diff or partial edit
+
+## Phase 4: SUBMIT
+
+After all sections are reviewed, confirm with the user:
+
+```
+Ready to submit N approved updates:
+- <section>: <brief change summary>
+- <section>: <brief change summary>
+
+Submitting now.
+```
+
+Then call:
+
+submit_tuning_review(
+  product_id="{product_id}",
+  proposals=[
+    {{
+      "section": "<section_key>",
+      "drift_detected": true|false,
+      "current_summary": "<what it said before>",
+      "evidence": "<what code/git/memory shows>",
+      "proposed_value": "<the approved replacement text>",
+      "confidence": "high|medium|low",
+      "reasoning": "<one sentence>"
+    }}
+  ],
+  overall_summary="<one paragraph on context health>"
+)
+
+Confidence levels:
+- "high" = verified by reading code or running commands
+- "medium" = inferred from project memory / git log only
+- "low" = best guess, could not verify
+
+Only include sections the user explicitly approved. Do not include skipped sections.
+If no sections have drift, tell the user "Everything looks current, no updates needed" and skip the submit call.
+{vision_note}
+## Sections to Review
+
+{current_context}"""
+
+VISION_DOCS_NOTE = """
+## Vision Documents — Special Handling
+Vision Documents are historical records of original product intent.
+Do NOT propose replacing them. Instead, note any divergence between the
+vision and current reality, and suggest updates to other sections
+(like Description or Core Features) to reflect the current state.
+"""
 
 
 class ProductTuningService:
@@ -159,11 +224,19 @@ class ProductTuningService:
         return self.db_manager.get_session_async()
 
     async def _get_product(self, session: AsyncSession, product_id: str) -> Product:
-        stmt = select(Product).where(
-            and_(
-                Product.id == product_id,
-                Product.tenant_key == self.tenant_key,
-                Product.deleted_at.is_(None),
+        stmt = (
+            select(Product)
+            .options(
+                selectinload(Product.tech_stack),
+                selectinload(Product.architecture),
+                selectinload(Product.test_config),
+            )
+            .where(
+                and_(
+                    Product.id == product_id,
+                    Product.tenant_key == self.tenant_key,
+                    Product.deleted_at.is_(None),
+                )
             )
         )
         result = await session.execute(stmt)
@@ -256,68 +329,16 @@ class ProductTuningService:
             else:
                 continue
 
+            header = f"### {label}\n**Section key:** `{section}`"
+
             if value is None:
-                parts.append(f"### {label}\n(not set)")
+                parts.append(f"{header}\n(not set)")
             elif isinstance(value, list):
-                parts.append(f"### {label}\n{', '.join(str(v) for v in value)}")
+                parts.append(f"{header}\n{', '.join(str(v) for v in value)}")
             else:
-                parts.append(f"### {label}\n{value}")
+                parts.append(f"{header}\n{value}")
 
         return "\n\n".join(parts) if parts else "(no context sections selected)"
-
-    def _serialize_memory_entries(self, entries: list[dict[str, Any]], sections: list[str]) -> str:
-        """Serialize 360 memory entries, focusing on evidence relevant to selected sections."""
-        if not entries:
-            return "(no project history available yet)"
-
-        parts = []
-        for entry in entries:
-            project_name = entry.get("project_name", "Unknown project")
-            entry_parts = [f"### Project: {project_name}"]
-
-            relevant_fields = set()
-            for section in sections:
-                relevant_fields.update(SECTION_EVIDENCE_SOURCES.get(section, []))
-
-            for field in sorted(relevant_fields):
-                value = entry.get(field)
-                if not value:
-                    continue
-                label = field.replace("_", " ").title()
-                if isinstance(value, list):
-                    if value and isinstance(value[0], dict):
-                        items = "\n".join(f"- {item.get('message', str(item))}" for item in value[:10])
-                    else:
-                        items = "\n".join(f"- {v}" for v in value)
-                    entry_parts.append(f"**{label}:**\n{items}")
-                elif isinstance(value, dict):
-                    items = "\n".join(f"- {k}: {v}" for k, v in value.items())
-                    entry_parts.append(f"**{label}:**\n{items}")
-                else:
-                    entry_parts.append(f"**{label}:** {value}")
-
-            parts.append("\n".join(entry_parts))
-
-        return "\n\n---\n\n".join(parts)
-
-    def _serialize_git_section(self, entries: list[dict[str, Any]]) -> str:
-        """Extract git commits from 360 memory entries."""
-        all_commits = []
-        for entry in entries:
-            commits = entry.get("git_commits", [])
-            if commits:
-                all_commits.extend(commits)
-
-        if not all_commits:
-            return ""
-
-        commit_lines = []
-        for commit in all_commits[:25]:
-            sha = commit.get("sha", "")[:8]
-            message = commit.get("message", "")
-            commit_lines.append(f"- {sha}: {message}")
-
-        return "## Git Activity\n" + "\n".join(commit_lines)
 
     async def assemble_tuning_prompt(
         self,
@@ -342,7 +363,7 @@ class ProductTuningService:
         """
         async with self._get_session() as session:
             product = await self._get_product(session, product_id)
-            toggle_config, depth_config = await self._get_user_configs(session, user_id)
+            toggle_config, _ = await self._get_user_configs(session, user_id)
 
             eligible = self._get_eligible_sections(toggle_config)
             valid_sections = [s for s in sections if s in eligible]
@@ -353,41 +374,31 @@ class ProductTuningService:
                     context={"requested": sections, "eligible": eligible},
                 )
 
-            # Get depth settings
-            depths = depth_config if isinstance(depth_config, dict) else depth_config.get("depths", {})
-            lookback = depths.get("memory_last_n_projects", 3)
+            current_context = self._serialize_current_context(product, valid_sections)
+            vision_note = VISION_DOCS_NOTE if "vision_documents" in valid_sections else ""
 
-            # Fetch 360 memory entries
-            memory_entries = await self._memory_repo.get_entries_for_context(
-                session=session,
-                product_id=product_id,
-                tenant_key=self.tenant_key,
-                limit=lookback,
+            path = getattr(product, "project_path", None) or ""
+            project_path_line = f"- Project Path: {path}\n" if path else ""
+            project_path_instruction = (
+                f"\nThe project is located at: {path}\nRun all file and git commands from that directory."
+                if path
+                else "\nUse the current working directory for file and git commands."
             )
 
-            # Check git integration
-            git_config = product.product_memory.get("git_integration", {}) if product.product_memory else {}
-            git_enabled = git_config.get("enabled", False)
-
-            # Serialize sections
-            current_context = self._serialize_current_context(product, valid_sections)
-            memory_text = self._serialize_memory_entries(memory_entries, valid_sections)
-            git_section = self._serialize_git_section(memory_entries) if git_enabled else ""
-
             prompt = TUNING_PROMPT_TEMPLATE.format(
-                current_context=current_context,
-                lookback_count=lookback,
-                memory_entries=memory_text,
-                git_section=git_section,
+                product_name=product.name,
                 product_id=product_id,
-                section_keys=", ".join(valid_sections),
+                project_path_line=project_path_line,
+                project_path_instruction=project_path_instruction,
+                current_context=current_context,
+                vision_note=vision_note,
             )
 
             return {
                 "prompt": prompt,
                 "sections_included": valid_sections,
-                "lookback_depth": lookback,
-                "git_enabled": git_enabled,
+                "lookback_depth": None,
+                "git_enabled": False,
             }
 
     async def get_eligible_sections(self, product_id: str, user_id: str) -> list[str]:
