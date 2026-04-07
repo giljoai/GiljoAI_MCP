@@ -703,9 +703,9 @@ class ProjectDetail(BaseModel):
     product_id: Optional[str] = None
     tenant_key: str
     execution_mode: Optional[str] = None
-    # Handover 0904: Orchestrator auto check-in
+    # Handover 0904/0960: Orchestrator auto check-in
     auto_checkin_enabled: bool = False
-    auto_checkin_interval: int = 60
+    auto_checkin_interval: int = 10
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     completed_at: Optional[str] = None
@@ -831,9 +831,9 @@ class ProjectData(BaseModel):
     mission: Optional[str] = None
     description: Optional[str] = None
     execution_mode: Optional[str] = None
-    # Handover 0904: Orchestrator auto check-in
+    # Handover 0904/0960: Orchestrator auto check-in
     auto_checkin_enabled: bool = False
-    auto_checkin_interval: int = 60
+    auto_checkin_interval: int = 10
     cancellation_reason: Optional[str] = None
     deactivation_reason: Optional[str] = None
     early_termination: bool = False

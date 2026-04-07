@@ -419,7 +419,7 @@ const isSubagentMode = computed(() => {
 
 /** Handover 0904: Auto check-in state (multi-terminal only) */
 const autoCheckinEnabled = ref(props.project?.auto_checkin_enabled ?? false)
-const autoCheckinInterval = ref(props.project?.auto_checkin_interval ?? 60)
+const autoCheckinInterval = ref(props.project?.auto_checkin_interval ?? 10)
 
 const showAutoCheckin = computed(() => {
   if (isSubagentMode.value) return false
@@ -453,7 +453,7 @@ async function onAutoCheckinIntervalChange(val) {
     autoCheckinInterval.value = val
   } catch (err) {
     console.error('[JobsTab] Failed to update auto check-in interval:', err)
-    autoCheckinInterval.value = props.project?.auto_checkin_interval ?? 60
+    autoCheckinInterval.value = props.project?.auto_checkin_interval ?? 10
     showToast({ message: 'Failed to update check-in interval', type: 'error', timeout: 4000 })
   }
 }

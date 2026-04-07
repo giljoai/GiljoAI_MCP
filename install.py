@@ -2558,7 +2558,7 @@ class UnifiedInstaller:
                                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS setup_step_completed INTEGER NOT NULL DEFAULT 0",
                                 # Handover 0904: Orchestrator auto check-in
                                 "ALTER TABLE projects ADD COLUMN IF NOT EXISTS auto_checkin_enabled BOOLEAN NOT NULL DEFAULT false",
-                                "ALTER TABLE projects ADD COLUMN IF NOT EXISTS auto_checkin_interval INTEGER NOT NULL DEFAULT 60",
+                                "ALTER TABLE projects ADD COLUMN IF NOT EXISTS auto_checkin_interval INTEGER NOT NULL DEFAULT 10",
                             ]
 
                             for stmt_text in reconcile_statements:

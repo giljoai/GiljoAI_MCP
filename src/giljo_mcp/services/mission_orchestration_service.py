@@ -423,7 +423,7 @@ class MissionOrchestrationService:
 
         # Handover 0904: Read auto check-in settings from project
         auto_checkin_enabled = getattr(project, "auto_checkin_enabled", False)
-        auto_checkin_interval = getattr(project, "auto_checkin_interval", 60)
+        auto_checkin_interval = getattr(project, "auto_checkin_interval", 10)
 
         orchestrator_protocol = _build_orchestrator_protocol(
             cli_mode=cli_mode,
