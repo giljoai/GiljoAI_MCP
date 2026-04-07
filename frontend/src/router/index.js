@@ -172,6 +172,17 @@ const routes = [
     },
   },
   {
+    path: '/guide',
+    name: 'UserGuide',
+    component: () => import('@/views/UserGuideView.vue'),
+    meta: {
+      layout: 'default',
+      title: 'User Guide',
+      showInNav: false,
+      requiresAuth: true,
+    },
+  },
+  {
     path: '/admin/settings',
     name: 'SystemSettings',
     component: () => import('@/views/SystemSettings.vue'),

@@ -1,6 +1,6 @@
 # GiljoAI MCP: User Guide
 
-*Last updated: 2026-04-06*
+*Last updated: 2026-04-07*
 
 This guide covers every page and UI element in GiljoAI MCP. Read from top to bottom on first use, or jump to the section you need.
 
@@ -103,15 +103,19 @@ If you upload a vision document before filling in context fields, GiljoAI create
 
 ### Context Fields
 
-The product form includes fields that become part of agent context at session start:
+The product form is organized into four tabs. Fields that are toggled on in User Settings > Context become part of agent context at session start:
 
+**Product Info tab:**
 - **Description:** What the product does and who it is for.
-- **Tech Stack:** Languages, frameworks, libraries, and infrastructure.
-- **Architecture:** System design, data flow, and component relationships.
-- **Testing Strategy:** Testing approach, frameworks, and coverage expectations.
-- **Constraints:** Performance targets, compliance requirements, and hard limits.
+- **Core Features:** Main functionality and capabilities.
+- **Brand & Design Guidelines:** Visual style, colors, and fonts for frontend work.
+- **Codebase Folder:** Local path to the codebase (used during tuning).
 
-Additional fields may appear based on your field toggle configuration in User Settings.
+**Tech Stack tab:** Programming languages, frontend frameworks, backend frameworks, databases and storage, infrastructure and DevOps, target platforms.
+
+**Architecture tab:** Primary architecture pattern, design patterns and principles, API style and communication, architecture notes, coding conventions and standards.
+
+**Testing tab:** Quality standards, testing strategy, coverage target, testing frameworks and tools.
 
 ### Vision Documents
 
@@ -121,10 +125,18 @@ Vision documents can be used to pre-populate context fields: during setup, Giljo
 
 ### Tuning
 
-Click the tune icon on a product card to open the Tuning dialog. Tuning lets you review and adjust which context fields are active, their depth settings, and how many 360 Memory entries agents read. If the tune icon shows a dot badge:
+Click the tune icon on a product card to open the Tuning dialog. Tuning lets you update product context fields when they have drifted from the actual codebase.
 
-- **Warning dot (amber):** Tuning proposals are ready for your review.
-- **Info dot (blue):** A context tuning notification has arrived since your last review.
+The workflow:
+
+1. Select the sections you want to retune (description, tech stack, architecture, core features, codebase structure, etc.)
+2. Click **Generate Tuning Prompt** — a structured prompt is produced and can be copied to your clipboard
+3. Paste the prompt into your CLI tool (Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool)
+4. The agent scans the codebase, checks for drift between the stored context and the actual code, and presents findings section by section
+5. Approve or reject each section's proposed changes in the CLI conversation
+6. Approved changes are applied directly to the product fields in GiljoAI MCP — no separate review step in the dashboard
+
+The `context_tuning` notification in the bell menu appears after a tuning pass applies changes to a product.
 
 Only one product can be active at a time. Activating a new product while another is active shows a confirmation dialog.
 
@@ -204,7 +216,7 @@ An agent with `working` status shows a breathing glow animation on its badge and
 
 ### Auto Check-In
 
-In multi-terminal execution mode, an Auto Check-In control bar appears after staging. This feature sends a periodic check-in message to agents that are sleeping. You can toggle it on or off and set the interval in minutes. Auto check-in does not appear in CLI subagent modes (Claude Code CLI, Codex CLI, Gemini CLI), where the orchestrator manages agent communication directly.
+In multi-terminal execution mode, an Auto Check-In slider appears after staging. Drag the slider to set an interval (Off, 5, 10, 15, 20, 30, 40, or 60 minutes). When set to any interval other than Off, the orchestrator automatically checks in on sleeping agents at that cadence. Set it to Off to disable. Auto check-in does not appear in CLI subagent modes (Claude Code CLI, Codex CLI, Gemini CLI), where the orchestrator manages agent communication directly.
 
 ---
 
@@ -309,7 +321,7 @@ Click the bell to open the notification dropdown. Notification types include:
 | `message_received` | An agent sent a message requiring attention |
 | `connection_lost` | WebSocket connection was lost |
 | `connection_restored` | WebSocket connection was restored |
-| `context_tuning` | Context tuning proposals are ready for a product |
+| `context_tuning` | Context fields were updated after a tuning pass |
 | `vision_analysis` | A vision document was processed |
 
 Click "Mark all read" to clear the unread badge. Click a notification to navigate to the related project if one is linked. Click the message body to expand or collapse long notification text.
