@@ -782,10 +782,10 @@ class ProjectService:
                 context={"project_id": str(project.id)},
             )
 
-        # Handover 0904: Validate auto check-in interval (must be 30, 60, or 90)
-        if "auto_checkin_interval" in updates and updates["auto_checkin_interval"] not in (30, 60, 90):
+        # Handover 0904/0960: Validate auto check-in interval (minutes)
+        if "auto_checkin_interval" in updates and updates["auto_checkin_interval"] not in (5, 10, 15, 20, 30, 40, 60):
             raise ValidationError(
-                message="auto_checkin_interval must be 30, 60, or 90 seconds",
+                message="auto_checkin_interval must be one of: 5, 10, 15, 20, 30, 40, 60 minutes",
                 error_code="VALIDATION_ERROR",
                 context={"project_id": str(project.id), "value": updates["auto_checkin_interval"]},
             )

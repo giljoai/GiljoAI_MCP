@@ -336,10 +336,10 @@ END OF IMPLEMENTATION PHASE REFERENCE
 
 
 def _build_ch6_auto_checkin(interval: int) -> str:
-    """Build CH6: AUTO CHECK-IN PROTOCOL for multi-terminal orchestrator self-polling (Handover 0904).
+    """Build CH6: AUTO CHECK-IN PROTOCOL for multi-terminal orchestrator self-polling (Handover 0904/0960).
 
     Args:
-        interval: Check-in interval in seconds (30, 60, or 90).
+        interval: Check-in interval in minutes (5, 10, 15, 20, 30, 40, or 60).
     """
     return f"""════════════════════════════════════════════════════════════════════════════
                 CH6: AUTO CHECK-IN PROTOCOL
@@ -350,9 +350,9 @@ ORCHESTRATOR SELF-MONITORING MODE (Enabled by user)
 After dispatching all agents to their terminals:
 
 1. Set your status:
-   set_agent_status(job_id, status="sleeping", reason="Auto check-in active, interval: {interval}s")
+   set_agent_status(job_id, status="sleeping", reason="Auto check-in active, interval: {interval} min")
 
-2. Wait {interval} seconds (use your tool's native sleep/pause capability).
+2. Wait {interval} minutes (use your tool's native sleep/pause capability).
 
 3. Wake and check in:
    a. Call receive_messages() — process any agent reports, questions, or completions

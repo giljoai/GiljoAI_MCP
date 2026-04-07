@@ -70,7 +70,7 @@ def _build_orchestrator_protocol(
     product_id: str | None = None,
     tool: str = "claude-code",
     auto_checkin_enabled: bool = False,
-    auto_checkin_interval: int = 60,
+    auto_checkin_interval: int = 10,
 ) -> dict:
     """
     Build chapter-based orchestrator protocol.
@@ -89,7 +89,7 @@ def _build_orchestrator_protocol(
         product_id: Product UUID for fetch calls (Handover 0823)
         tool: Platform identifier for platform-specific spawning rules (Handover 0838)
         auto_checkin_enabled: Enable CH6 auto check-in protocol (Handover 0904)
-        auto_checkin_interval: Check-in interval in seconds (Handover 0904)
+        auto_checkin_interval: Check-in interval in minutes (Handover 0904/0960)
 
     Returns:
         Dict with chapter keys and navigation_hint
