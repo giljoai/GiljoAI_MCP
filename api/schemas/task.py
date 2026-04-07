@@ -8,7 +8,7 @@ Provides request/response models for:
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -23,10 +23,12 @@ class TaskCreate(BaseModel):
 
     title: str = Field(..., min_length=1, max_length=255, description="Task title")
     description: Optional[str] = Field(None, description="Task description")
-    status: Optional[str] = Field(
+    status: Optional[Literal["pending", "in_progress", "completed", "blocked", "cancelled", "converted"]] = Field(
         None, description="Task status: pending, in_progress, completed, blocked, cancelled, converted"
     )
-    priority: Optional[str] = Field(None, description="Task priority: low, medium, high, critical")
+    priority: Optional[Literal["low", "medium", "high", "critical"]] = Field(
+        None, description="Task priority: low, medium, high, critical"
+    )
     category: Optional[str] = Field(None, max_length=100, description="Task category")
     product_id: str = Field(..., description="Product ID (required - Handover 0433)")
     project_id: Optional[str] = Field(None, description="Associated project ID")
@@ -48,10 +50,12 @@ class TaskUpdate(BaseModel):
 
     title: Optional[str] = Field(None, min_length=1, max_length=255, description="Task title")
     description: Optional[str] = Field(None, description="Task description")
-    status: Optional[str] = Field(
+    status: Optional[Literal["pending", "in_progress", "completed", "blocked", "cancelled", "converted"]] = Field(
         None, description="Task status: pending, in_progress, completed, blocked, cancelled, converted"
     )
-    priority: Optional[str] = Field(None, description="Task priority: low, medium, high, critical")
+    priority: Optional[Literal["low", "medium", "high", "critical"]] = Field(
+        None, description="Task priority: low, medium, high, critical"
+    )
     category: Optional[str] = Field(None, max_length=100, description="Task category")
     # Handover 0076: Removed assigned_to_user_id field
     estimated_effort: Optional[float] = Field(None, ge=0, description="Estimated effort in hours")
@@ -140,4 +144,6 @@ class TaskResponse(BaseModel):
 class StatusUpdate(BaseModel):
     """Schema for status-only updates."""
 
-    status: str = Field(..., description="New task status")
+    status: Literal["pending", "in_progress", "completed", "blocked", "cancelled", "converted"] = Field(
+        ..., description="New task status"
+    )

@@ -895,3 +895,239 @@ class TestTenantIsolation:
             )
 
         MockPS.assert_called_once_with(db_manager, TENANT_KEY)
+
+
+# ============================================================================
+# TEST CLASS 7: ProductService Allowlist + Validation Guards (0962a)
+# ============================================================================
+
+
+class TestBuildUpdateKwargsTargetPlatforms:
+    """Test that target_platforms string is converted to a list, not stored as-is."""
+
+    def test_target_platforms_string_converts_to_list(self):
+        """A comma-separated target_platforms string must be split into a list."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        service = ProductTuningService.__new__(ProductTuningService)
+        proposals = [
+            {
+                "section": "target_platforms",
+                "drift_detected": True,
+                "proposed_value": "windows, linux, macos",
+            }
+        ]
+        kwargs, sections = service._build_update_kwargs(proposals)
+
+        assert kwargs["target_platforms"] == ["windows", "linux", "macos"]
+        assert "target_platforms" in sections
+
+
+class TestProductServiceAllowlist:
+    """Test that update_product silently ignores fields not in the allowlist."""
+
+    def test_allowlist_excludes_tenant_key(self):
+        """update_product must not write tenant_key even if it is passed as a kwarg."""
+        from src.giljo_mcp.services.product_service import _ALLOWED_PRODUCT_FIELDS
+
+        assert "tenant_key" not in _ALLOWED_PRODUCT_FIELDS
+
+    def test_allowlist_excludes_deleted_at(self):
+        """update_product must not write deleted_at even if it is passed as a kwarg."""
+        from src.giljo_mcp.services.product_service import _ALLOWED_PRODUCT_FIELDS
+
+        assert "deleted_at" not in _ALLOWED_PRODUCT_FIELDS
+
+    def test_allowlist_contains_all_expected_fields(self):
+        """Allowlist must contain exactly the intended writable fields.
+
+        quality_standards is intentionally absent — it is written via product_test_configs
+        (the canonical location). The products.quality_standards column is legacy and
+        deferred for removal in the next baseline squash (Handover 0962d).
+        """
+        from src.giljo_mcp.services.product_service import _ALLOWED_PRODUCT_FIELDS
+
+        expected = {
+            "name",
+            "description",
+            "project_path",
+            "core_features",
+            "brand_guidelines",
+            "extraction_custom_instructions",
+            "target_platforms",
+        }
+        assert _ALLOWED_PRODUCT_FIELDS == expected
+
+
+class TestValidateProposals:
+    """Test _validate_proposals input validation including proposed_value checks."""
+
+    def test_rejects_integer_proposed_value(self):
+        """proposed_value must be str, dict, list, or None — integer is invalid."""
+        from src.giljo_mcp.tools.submit_tuning_review import _validate_proposals
+
+        proposals = [
+            {
+                "section": "description",
+                "drift_detected": True,
+                "proposed_value": 42,
+            }
+        ]
+        errors = _validate_proposals(proposals)
+
+        assert any("proposed_value" in e for e in errors)
+        assert any("int" in e for e in errors)
+
+    def test_rejects_proposed_value_over_10000_chars(self):
+        """proposed_value strings longer than 10000 characters must be rejected."""
+        from src.giljo_mcp.tools.submit_tuning_review import _validate_proposals
+
+        proposals = [
+            {
+                "section": "description",
+                "drift_detected": True,
+                "proposed_value": "x" * 10001,
+            }
+        ]
+        errors = _validate_proposals(proposals)
+
+        assert any("proposed_value" in e for e in errors)
+        assert any("10000" in e for e in errors)
+
+    def test_accepts_proposed_value_at_10000_chars(self):
+        """proposed_value string of exactly 10000 characters must be accepted."""
+        from src.giljo_mcp.tools.submit_tuning_review import _validate_proposals
+
+        proposals = [
+            {
+                "section": "description",
+                "drift_detected": True,
+                "proposed_value": "x" * 10000,
+            }
+        ]
+        errors = _validate_proposals(proposals)
+
+        assert not any("proposed_value" in e for e in errors)
+
+    def test_accepts_none_proposed_value(self):
+        """proposed_value of None must be accepted."""
+        from src.giljo_mcp.tools.submit_tuning_review import _validate_proposals
+
+        proposals = [
+            {
+                "section": "description",
+                "drift_detected": True,
+                "proposed_value": None,
+            }
+        ]
+        errors = _validate_proposals(proposals)
+
+        assert not any("proposed_value" in e for e in errors)
+
+    def test_accepts_dict_proposed_value(self):
+        """proposed_value of dict type must be accepted."""
+        from src.giljo_mcp.tools.submit_tuning_review import _validate_proposals
+
+        proposals = [
+            {
+                "section": "tech_stack",
+                "drift_detected": True,
+                "proposed_value": {"programming_languages": "Python"},
+            }
+        ]
+        errors = _validate_proposals(proposals)
+
+        assert not any("proposed_value" in e for e in errors)
+
+    def test_accepts_list_proposed_value_for_target_platforms(self):
+        """proposed_value list of strings must be accepted for target_platforms section."""
+        from src.giljo_mcp.tools.submit_tuning_review import _validate_proposals
+
+        proposals = [
+            {
+                "section": "target_platforms",
+                "drift_detected": True,
+                "proposed_value": ["windows", "linux", "macos"],
+            }
+        ]
+        errors = _validate_proposals(proposals)
+
+        assert not any("proposed_value" in e for e in errors)
+
+    def test_rejects_list_with_non_string_items_for_target_platforms(self):
+        """target_platforms proposed_value list must contain only strings."""
+        from src.giljo_mcp.tools.submit_tuning_review import _validate_proposals
+
+        proposals = [
+            {
+                "section": "target_platforms",
+                "drift_detected": True,
+                "proposed_value": ["windows", 123],
+            }
+        ]
+        errors = _validate_proposals(proposals)
+
+        assert any("proposed_value" in e for e in errors)
+
+
+class TestRelationSectionStringRejection:
+    """Test that relation sections (tech_stack, architecture) reject string proposed_value."""
+
+    def test_relation_section_with_string_value_is_skipped(self):
+        """When a relation section has a string value, it must be skipped — not applied."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        service = ProductTuningService.__new__(ProductTuningService)
+        service._logger = Mock()
+
+        proposals = [
+            {
+                "section": "tech_stack",
+                "drift_detected": True,
+                "proposed_value": "Python, FastAPI, PostgreSQL",
+            }
+        ]
+        kwargs, sections = service._build_update_kwargs(proposals)
+
+        assert "tech_stack" not in kwargs
+        assert "tech_stack" not in sections
+
+    def test_relation_section_with_string_value_logs_warning(self):
+        """Skipped relation sections with string values must emit a warning log."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        service = ProductTuningService.__new__(ProductTuningService)
+        service._logger = Mock()
+
+        proposals = [
+            {
+                "section": "architecture",
+                "drift_detected": True,
+                "proposed_value": "monolith",
+            }
+        ]
+        service._build_update_kwargs(proposals)
+
+        service._logger.warning.assert_called_once()
+        warning_args = service._logger.warning.call_args[0]
+        assert "architecture" in warning_args[1]
+
+    def test_relation_section_with_dict_value_is_applied(self):
+        """Relation sections with dict values must still be applied normally."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        service = ProductTuningService.__new__(ProductTuningService)
+        service._logger = Mock()
+
+        proposals = [
+            {
+                "section": "tech_stack",
+                "drift_detected": True,
+                "proposed_value": {"programming_languages": "Python 3.12"},
+            }
+        ]
+        kwargs, sections = service._build_update_kwargs(proposals)
+
+        assert "tech_stack" in kwargs
+        assert kwargs["tech_stack"] == {"programming_languages": "Python 3.12"}
+        assert "tech_stack" in sections
