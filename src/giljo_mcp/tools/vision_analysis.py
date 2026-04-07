@@ -17,14 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ResourceNotFoundError
+from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models.context import MCPContextIndex
 from src.giljo_mcp.models.products import (
-    VALID_TARGET_PLATFORMS,
     Product,
-    ProductArchitecture,
-    ProductTechStack,
-    ProductTestConfig,
 )
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 
@@ -55,12 +51,8 @@ preserving decisions, architecture, and feature descriptions).
 {custom_instructions}"""
 
 
-# CROSS-REFERENCE: Two independent code paths write to these product fields.
-# If you modify fields here, you MUST also check the tuning writer:
-#   ProductTuningService._apply_value_to_product() in
-#   src/giljo_mcp/services/product_tuning_service.py (SECTION_FIELD_MAP, line ~36)
-# The tuning path writes one field at a time (per-section accept).
-# This path writes in bulk with merge semantics.
+VALID_TESTING_STRATEGIES = {"TDD", "BDD", "Integration-First", "E2E-First", "Manual", "Hybrid"}
+
 FIELD_MAP = {
     "product_name": ("products", "name"),
     "product_description": ("products", "description"),
@@ -271,6 +263,24 @@ async def gil_write_product(
     if not db_manager and _test_session is None:
         raise ValueError("db_manager is required")
 
+    # -- Input validation before any DB access --
+    if "testing_strategy" in fields:
+        strategy = fields["testing_strategy"]
+        if strategy not in VALID_TESTING_STRATEGIES:
+            valid_list = ", ".join(sorted(VALID_TESTING_STRATEGIES))
+            raise ValidationError(
+                message=f"Invalid testing_strategy '{strategy}'. Valid values: {valid_list}",
+                context={"testing_strategy": strategy},
+            )
+
+    if "test_coverage_target" in fields:
+        target = fields["test_coverage_target"]
+        if not isinstance(target, int) or not (0 <= target <= 100):
+            raise ValidationError(
+                message=f"test_coverage_target must be an integer between 0 and 100, got {target!r}",
+                context={"test_coverage_target": target},
+            )
+
     fields_written: list[str] = []
 
     async with _session_scope(db_manager, _test_session) as session:
@@ -293,22 +303,81 @@ async def gil_write_product(
                 context={"product_id": product_id},
             )
 
-        # -- Product direct fields --
-        _write_product_fields(product, fields, fields_written)
+        # -- Build kwargs for ProductService.update_product() --
+        kwargs: dict[str, Any] = {}
 
-        # -- Tech stack fields (get-or-create, merge-update) --
-        _write_tech_stack_fields(product, tenant_key, session, fields, fields_written)
+        # Direct product fields
+        for field_name in _PRODUCT_FIELDS:
+            if field_name not in fields:
+                continue
+            _, column_name = FIELD_MAP[field_name]
+            kwargs[column_name] = fields[field_name]
+            fields_written.append(field_name)
 
-        # -- Architecture fields (get-or-create, merge-update) --
-        _write_architecture_fields(product, tenant_key, session, fields, fields_written)
+        # Tech stack: merge existing values with only the provided fields
+        ts_provided = {k: fields[k] for k in _TECH_STACK_FIELDS if k in fields}
+        if ts_provided:
+            ts = product.tech_stack
+            merged_ts: dict[str, Any] = {
+                "programming_languages": (ts.programming_languages or "") if ts else "",
+                "frontend_frameworks": (ts.frontend_frameworks or "") if ts else "",
+                "backend_frameworks": (ts.backend_frameworks or "") if ts else "",
+                "databases_storage": (ts.databases_storage or "") if ts else "",
+                "infrastructure": (ts.infrastructure or "") if ts else "",
+                "dev_tools": (ts.dev_tools or "") if ts else "",
+            }
+            for field_name, value in ts_provided.items():
+                _, column_name = FIELD_MAP[field_name]
+                merged_ts[column_name] = value
+                fields_written.append(field_name)
+            kwargs["tech_stack"] = merged_ts
 
-        # -- Test config fields (get-or-create, merge-update) --
-        _write_test_config_fields(product, tenant_key, session, fields, fields_written)
+        # Architecture: merge existing values with only the provided fields
+        arch_provided = {k: fields[k] for k in _ARCHITECTURE_FIELDS if k in fields}
+        if arch_provided:
+            arch = product.architecture
+            merged_arch: dict[str, Any] = {
+                "primary_pattern": (arch.primary_pattern or "") if arch else "",
+                "design_patterns": (arch.design_patterns or "") if arch else "",
+                "api_style": (arch.api_style or "") if arch else "",
+                "architecture_notes": (arch.architecture_notes or "") if arch else "",
+                "coding_conventions": (arch.coding_conventions or "") if arch else "",
+            }
+            for field_name, value in arch_provided.items():
+                _, column_name = FIELD_MAP[field_name]
+                merged_arch[column_name] = value
+                fields_written.append(field_name)
+            kwargs["architecture"] = merged_arch
 
-        # -- Summaries --
+        # Test config: merge existing values with only the provided fields
+        tc_provided = {k: fields[k] for k in _TEST_CONFIG_FIELDS if k in fields}
+        if tc_provided:
+            tc = product.test_config
+            merged_tc: dict[str, Any] = {
+                "quality_standards": (tc.quality_standards or "") if tc else "",
+                "test_strategy": (tc.test_strategy or "") if tc else "",
+                "coverage_target": (tc.coverage_target if tc and tc.coverage_target is not None else 80),
+                "testing_frameworks": (tc.testing_frameworks or "") if tc else "",
+            }
+            for field_name, value in tc_provided.items():
+                _, column_name = FIELD_MAP[field_name]
+                merged_tc[column_name] = value
+                fields_written.append(field_name)
+            kwargs["test_config"] = merged_tc
+
+        # -- Route writes through ProductService (the validated single write path) --
+        if kwargs:
+            from src.giljo_mcp.services.product_service import ProductService
+
+            product_service = ProductService(
+                db_manager=db_manager,
+                tenant_key=tenant_key,
+                test_session=_test_session,
+            )
+            await product_service.update_product(product_id, **kwargs)
+
+        # -- Summaries (written via VisionDocumentRepository, not ProductService) --
         await _write_summaries(product, tenant_key, session, fields, fields_written, db_manager)
-
-        await session.flush()
 
     # WebSocket emission (after commit via context manager)
     if websocket_manager and fields_written:
@@ -330,115 +399,6 @@ async def gil_write_product(
         "fields_written": len(fields_written),
         "fields": fields_written,
     }
-
-
-def _write_product_fields(
-    product: Product,
-    fields: dict[str, Any],
-    fields_written: list[str],
-) -> None:
-    """Apply direct product fields (name, description, core_features, target_platforms)."""
-    # See CROSS-REFERENCE note on FIELD_MAP — tuning also writes these fields.
-
-    # Validate target_platforms before writing — fail fast with actionable error
-    if "target_platforms" in fields:
-        platforms = fields["target_platforms"]
-        if isinstance(platforms, list):
-            invalid = set(platforms) - VALID_TARGET_PLATFORMS
-            if invalid:
-                valid_list = ", ".join(sorted(VALID_TARGET_PLATFORMS))
-                raise ValueError(f"Invalid target_platforms: {', '.join(sorted(invalid))}. Valid values: {valid_list}")
-
-    for field_name in _PRODUCT_FIELDS:
-        if field_name not in fields:
-            continue
-        _, column_name = FIELD_MAP[field_name]
-        setattr(product, column_name, fields[field_name])
-        fields_written.append(field_name)
-
-
-def _write_tech_stack_fields(
-    product: Product,
-    tenant_key: str,
-    session: Any,
-    fields: dict[str, Any],
-    fields_written: list[str],
-) -> None:
-    """Get-or-create ProductTechStack and merge-update only provided fields."""
-    # See CROSS-REFERENCE note on FIELD_MAP — tuning also writes these fields.
-    provided = {k: fields[k] for k in _TECH_STACK_FIELDS if k in fields}
-    if not provided:
-        return
-
-    tech_stack = product.tech_stack
-    if not tech_stack:
-        tech_stack = ProductTechStack(
-            product_id=product.id,
-            tenant_key=tenant_key,
-        )
-        session.add(tech_stack)
-        product.tech_stack = tech_stack
-
-    for field_name, value in provided.items():
-        _, column_name = FIELD_MAP[field_name]
-        setattr(tech_stack, column_name, value)
-        fields_written.append(field_name)
-
-
-def _write_architecture_fields(
-    product: Product,
-    tenant_key: str,
-    session: Any,
-    fields: dict[str, Any],
-    fields_written: list[str],
-) -> None:
-    """Get-or-create ProductArchitecture and merge-update only provided fields."""
-    # See CROSS-REFERENCE note on FIELD_MAP — tuning also writes these fields.
-    provided = {k: fields[k] for k in _ARCHITECTURE_FIELDS if k in fields}
-    if not provided:
-        return
-
-    arch = product.architecture
-    if not arch:
-        arch = ProductArchitecture(
-            product_id=product.id,
-            tenant_key=tenant_key,
-        )
-        session.add(arch)
-        product.architecture = arch
-
-    for field_name, value in provided.items():
-        _, column_name = FIELD_MAP[field_name]
-        setattr(arch, column_name, value)
-        fields_written.append(field_name)
-
-
-def _write_test_config_fields(
-    product: Product,
-    tenant_key: str,
-    session: Any,
-    fields: dict[str, Any],
-    fields_written: list[str],
-) -> None:
-    """Get-or-create ProductTestConfig and merge-update only provided fields."""
-    # See CROSS-REFERENCE note on FIELD_MAP — tuning also writes these fields.
-    provided = {k: fields[k] for k in _TEST_CONFIG_FIELDS if k in fields}
-    if not provided:
-        return
-
-    test_cfg = product.test_config
-    if not test_cfg:
-        test_cfg = ProductTestConfig(
-            product_id=product.id,
-            tenant_key=tenant_key,
-        )
-        session.add(test_cfg)
-        product.test_config = test_cfg
-
-    for field_name, value in provided.items():
-        _, column_name = FIELD_MAP[field_name]
-        setattr(test_cfg, column_name, value)
-        fields_written.append(field_name)
 
 
 async def _write_summaries(

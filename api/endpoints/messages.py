@@ -3,7 +3,7 @@ Message management API endpoints
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,8 +23,8 @@ class MessageSend(BaseModel):
     to_agents: list[str] = Field(..., description="Recipient agent names")
     content: str = Field(..., description="Message content")
     project_id: str = Field(..., description="Project ID")
-    message_type: str = Field("direct", description="Message type")
-    priority: str = Field("normal", description="Message priority")
+    message_type: Literal["direct", "broadcast"] = Field("direct", description="Message type")
+    priority: Literal["low", "normal", "high"] = Field("normal", description="Message priority")
     from_agent: Optional[str] = Field(None, description="Sender agent name")
 
 
@@ -47,8 +47,10 @@ class MessageSendRequest(BaseModel):
     project_id: str = Field(..., description="Project ID")
     to_agents: list[str] = Field(..., description="Recipient agent IDs. Use ['all'] for broadcast.")
     content: str = Field(..., description="Message content")
-    message_type: str = Field("direct", description="Message type: 'direct' or 'broadcast'")
-    priority: str = Field("normal", description="Message priority: 'low', 'normal', 'high'")
+    message_type: Literal["direct", "broadcast"] = Field("direct", description="Message type: 'direct' or 'broadcast'")
+    priority: Literal["low", "normal", "high"] = Field(
+        "normal", description="Message priority: 'low', 'normal', 'high'"
+    )
 
 
 @router.post("/", response_model=MessageResponse)
@@ -275,7 +277,7 @@ async def complete_message(
 class BroadcastMessage(BaseModel):
     project_id: str = Field(..., description="Project ID to broadcast to")
     content: str = Field(..., description="Broadcast message content")
-    priority: str = Field("normal", description="Message priority")
+    priority: Literal["low", "normal", "high"] = Field("normal", description="Message priority")
     from_agent: Optional[str] = Field(None, description="Sender name (defaults to 'user')")
 
 

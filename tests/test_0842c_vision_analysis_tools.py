@@ -574,3 +574,43 @@ async def test_write_product_target_platforms(
 
     await db_session.refresh(product_a)
     assert product_a.target_platforms == ["windows", "linux"]
+
+
+@pytest.mark.asyncio
+async def test_write_product_invalid_testing_strategy(
+    db_session: AsyncSession,
+    db_manager,
+    tenant_a: str,
+    product_a: Product,
+):
+    """Invalid testing_strategy raises ValidationError before any DB access."""
+    from src.giljo_mcp.exceptions import ValidationError
+    from src.giljo_mcp.tools.vision_analysis import gil_write_product
+
+    with pytest.raises(ValidationError, match="testing_strategy"):
+        await gil_write_product(
+            product_id=product_a.id,
+            tenant_key=tenant_a,
+            _test_session=db_session,
+            testing_strategy="Waterfall",
+        )
+
+
+@pytest.mark.asyncio
+async def test_write_product_invalid_coverage_target(
+    db_session: AsyncSession,
+    db_manager,
+    tenant_a: str,
+    product_a: Product,
+):
+    """test_coverage_target outside 0-100 raises ValidationError before any DB access."""
+    from src.giljo_mcp.exceptions import ValidationError
+    from src.giljo_mcp.tools.vision_analysis import gil_write_product
+
+    with pytest.raises(ValidationError, match="test_coverage_target"):
+        await gil_write_product(
+            product_id=product_a.id,
+            tenant_key=tenant_a,
+            _test_session=db_session,
+            test_coverage_target=150,
+        )

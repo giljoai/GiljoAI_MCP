@@ -4,6 +4,9 @@ These models enforce schema consistency at write time for JSONB columns
 that intentionally remain as flexible storage.
 
 Created: Handover 0840f
+Updated: Handover 0962c — added AgentExecutionResult, CloseoutChecklistItem, template
+    validators; fixed ProductMemoryConfig field names; removed stale todo_steps from
+    AgentJobMetadata.
 """
 
 from __future__ import annotations
@@ -22,7 +25,6 @@ class AgentJobMetadata(BaseModel):
     field_priorities: dict | None = None
     depth_config: dict | None = None
     template_name: str | None = None
-    todo_steps: list | None = None
 
 
 # --- AgentTemplate.meta_data ---
@@ -85,7 +87,12 @@ class SettingsData(BaseModel):
 
 
 class OrganizationSettings(BaseModel):
-    """Validates organizations.settings JSONB."""
+    """Validates organizations.settings JSONB.
+
+    The settings blob is intentionally schema-less: keys are dynamic per
+    organization and the set of recognized keys grows organically. extra="allow"
+    is the correct posture here — there is no fixed schema to enforce.
+    """
 
     model_config = ConfigDict(extra="allow")
 
@@ -103,16 +110,48 @@ class MCPSessionData(BaseModel):
     tool_call_history: list | None = None
 
 
+# --- AgentExecution.result ---
+
+
+class AgentExecutionResult(BaseModel):
+    """Validates agent_executions.result JSONB.
+
+    Reflects the structured completion result written by orchestration_service
+    when an agent calls complete_job().
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    summary: str | None = None
+    artifacts: list[str] | None = None
+    commits: list[str] | None = None
+
+
+# --- Project.closeout_checklist ---
+
+
+class CloseoutChecklistItem(BaseModel):
+    """Single item in projects.closeout_checklist JSONB array."""
+
+    task: str
+    completed: bool = False
+
+
 # --- Product.product_memory ---
 
 
 class ProductMemoryConfig(BaseModel):
-    """Validates products.product_memory JSONB."""
+    """Validates products.product_memory JSONB.
+
+    Keys match the server_default: {"github": {}, "context": {}}.
+    The legacy key "git_integration" is also written by product_service in one
+    code path; extra="allow" tolerates it without validator breakage.
+    """
 
     model_config = ConfigDict(extra="allow")
 
-    git_integration: dict | None = None
-    context_metadata: dict | None = None
+    github: dict | None = None
+    context: dict | None = None
 
 
 # --- Product.tuning_state ---
@@ -177,3 +216,53 @@ def validate_tuning_state(data: dict | None) -> dict | None:
     if data is None:
         return None
     return ProductTuningState(**data).model_dump(exclude_none=False)
+
+
+def validate_execution_result(data: dict | None) -> dict | None:
+    """Validate agent_executions.result dict."""
+    if data is None:
+        return None
+    return AgentExecutionResult(**data).model_dump(exclude_none=False)
+
+
+def validate_closeout_checklist(data: list | None) -> list | None:
+    """Validate projects.closeout_checklist JSONB array."""
+    if data is None:
+        return None
+    return [CloseoutChecklistItem(**item).model_dump() for item in data]
+
+
+def validate_behavioral_rules(data: list | None) -> list | None:
+    """Validate agent_templates.behavioral_rules — must be a list of strings."""
+    if data is None:
+        return None
+    validated = []
+    for item in data:
+        if not isinstance(item, str):
+            raise TypeError(f"behavioral_rules items must be strings, got {type(item).__name__}")
+        validated.append(item)
+    return validated
+
+
+def validate_success_criteria(data: list | None) -> list | None:
+    """Validate agent_templates.success_criteria — must be a list of strings."""
+    if data is None:
+        return None
+    validated = []
+    for item in data:
+        if not isinstance(item, str):
+            raise TypeError(f"success_criteria items must be strings, got {type(item).__name__}")
+        validated.append(item)
+    return validated
+
+
+def validate_template_variables(data: list | None) -> list | None:
+    """Validate agent_templates.variables — must be a list of strings (variable names)."""
+    if data is None:
+        return None
+    validated = []
+    for item in data:
+        if not isinstance(item, str):
+            raise TypeError(f"template variables items must be strings, got {type(item).__name__}")
+        validated.append(item)
+    return validated
