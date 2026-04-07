@@ -4,7 +4,7 @@
 
 ## What Is GiljoAI MCP
 
-GiljoAI MCP is a context engineering platform for AI-assisted software development. It stores product knowledge, generates focused prompts, and coordinates agents via the Model Context Protocol (MCP). It does not write code or reason about your codebase — your AI coding tool does that work using your own subscription.
+GiljoAI MCP is a context engineering platform for AI-assisted software development. It stores product knowledge, generates focused prompts, and coordinates agents via the Model Context Protocol (MCP). It does not write code or reason about your codebase. Your AI coding tool does that work using your own subscription.
 
 ## Who It Is For
 
@@ -30,7 +30,7 @@ The platform also coordinates multi-agent teams. Rather than running one large c
 
 ### Your Tools, Your Subscription
 
-GiljoAI never touches your AI credits. You bring your own Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool — each with your own subscription. GiljoAI acts as a passive MCP server: your tool connects over HTTP, reads context and coordination data, and does all the reasoning and coding itself. You can connect multiple tools simultaneously, each with its own API key.
+GiljoAI never touches your AI credits. You bring your own Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool, each with your own subscription. GiljoAI acts as a passive MCP server: your tool connects over HTTP, reads context and coordination data, and does all the reasoning and coding itself. You can connect multiple tools simultaneously, each with its own API key.
 
 ### Define Your Product
 
@@ -38,7 +38,7 @@ Create a Product to represent the software you are building. Fill in context fie
 
 ### Projects and Missions
 
-Projects are focused units of work inside a product — a feature, sprint, or scaffolding effort. The workflow:
+Projects are focused units of work inside a product, such as a feature, sprint, or scaffolding effort. The workflow:
 
 1. Create a project and describe what needs to be done.
 2. Activate the project. GiljoAI assembles a bootstrap prompt from your product context, 360 Memory, and project description.
@@ -60,7 +60,7 @@ The Agent Template Manager in the dashboard lets you browse, customize, and crea
 
 ### 360 Memory
 
-Each completed project writes to 360 Memory automatically: what was built, key decisions, patterns discovered, and what worked. This is not a plugin or integration — it is a core product behavior. Your next project starts with accumulated context from previous ones. The orchestrator reads past memories alongside your product context to plan each mission. You control how many memories back agents read through the context settings. Optionally enrich memory with git commit history for the complete development timeline.
+Each completed project writes to 360 Memory automatically: what was built, key decisions, patterns discovered, and what worked. This is not a plugin or integration; it is a core product behavior. Your next project starts with accumulated context from previous ones. The orchestrator reads past memories alongside your product context to plan each mission. You control how many memories back agents read through the context settings. Optionally enrich memory with git commit history for the complete development timeline.
 
 ### Dashboard and Monitoring
 
