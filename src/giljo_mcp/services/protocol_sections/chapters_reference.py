@@ -341,32 +341,40 @@ def _build_ch6_auto_checkin(interval: int) -> str:
     Args:
         interval: Check-in interval in minutes (5, 10, 15, 20, 30, 40, or 60).
     """
+    seconds = interval * 60
     return f"""════════════════════════════════════════════════════════════════════════════
                 CH6: AUTO CHECK-IN PROTOCOL
 ════════════════════════════════════════════════════════════════════════════
 
-ORCHESTRATOR SELF-MONITORING MODE (Enabled by user)
+After dispatching specialist agents to their respective terminals:
 
-After dispatching all agents to their terminals:
+1. Sleep Command: Pause the orchestrator by running a foreground shell command
+   for the user-selected interval ({seconds} seconds for {interval} minutes).
+   * PowerShell (Windows): Start-Sleep -Seconds {seconds}
+   * Bash/Zsh (macOS/Linux): sleep {seconds}
 
-1. Set your status:
-   set_agent_status(job_id, status="sleeping", reason="Auto check-in active, interval: {interval} min")
+2. Wake-Up & Coordination Loop:
+   * receive_messages(): Read all agent reports and developer messages
+     from the passive MCP server.
+   * get_workflow_status(): Fetch the current live status of all
+     dispatched agents.
+   * Intervention: Resolve any "blocked" agents, relay messages between
+     agents, or spawn next-phase specialists.
+   * report_progress(): Update the project TODO list and notify the
+     developer of the swarm's current status.
 
-2. Wait {interval} minutes (use your tool's native sleep/pause capability).
-
-3. Wake and check in:
-   a. Call receive_messages() — process any agent reports, questions, or completions
-   b. Assess progress: Are agents blocked? Have any completed? Do handoffs need coordinating?
-   c. Take action as needed: send coordination messages, spawn next-phase agents, unblock
-
-4. If all agents have completed: proceed to Completion Protocol (CH5).
-   If agents are still working: return to step 1.
+3. Repeat or Closeout:
+   * If agents are still working → Repeat from Step 1.
+   * If all agents are complete → Proceed to Closeout (Phase 3).
 
 IMPORTANT:
-- Each check-in cycle consumes tokens. The user has chosen this trade-off.
-- If an agent reports being blocked, address it immediately rather than sleeping again.
-- If you have nothing actionable after a check-in, go back to sleep — do not generate
-  unnecessary messages.
+- Use the literal terminal command to pause; this blocks the orchestrator's
+  turn to prevent unnecessary token consumption while waiting for the
+  passive MCP to update.
+- If the shell command is interrupted or returns early, proceed immediately
+  to the wake-up check (Step 2).
+- The developer can interrupt the sleep at any time using Ctrl+C in the
+  terminal to regain control of the orchestrator.
 
 ────────────────────────────────────────────────────────────────────────────
 """
