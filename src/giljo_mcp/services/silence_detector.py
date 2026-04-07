@@ -225,16 +225,21 @@ async def auto_clear_silent(
     # MCP authentication resolves job_id from the authenticated tenant's context,
     # so a tenant cannot call this with another tenant's job_id. Cross-tenant risk
     # is mitigated by UUID uniqueness + MCP auth layer. System-level by design.
-    stmt = select(AgentExecution).where(
-        AgentExecution.job_id == job_id,
-        AgentExecution.status == "silent",
+    stmt = (
+        select(AgentExecution, AgentJob.project_id)
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+        .where(
+            AgentExecution.job_id == job_id,
+            AgentExecution.status == "silent",
+        )
     )
     result = await session.execute(stmt)
-    agent = result.scalar_one_or_none()
+    row = result.one_or_none()
 
-    if agent is None:
+    if row is None:
         return
 
+    agent, project_id = row
     old_status = agent.status
     agent.status = "working"
     agent.last_progress_at = datetime.now(timezone.utc)
@@ -253,6 +258,7 @@ async def auto_clear_silent(
             agent=agent,
             old_status=old_status,
             new_status="working",
+            project_id=str(project_id) if project_id else None,
         )
     except Exception:  # Broad catch: WebSocket resilience, non-critical broadcast
         logger.exception(
@@ -281,17 +287,22 @@ async def clear_silent_status(
     Returns:
         Dict with updated agent info if cleared, None if agent not found or not silent
     """
-    stmt = select(AgentExecution).where(
-        AgentExecution.agent_id == agent_id,
-        AgentExecution.tenant_key == tenant_key,
-        AgentExecution.status == "silent",
+    stmt = (
+        select(AgentExecution, AgentJob.project_id)
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+        .where(
+            AgentExecution.agent_id == agent_id,
+            AgentExecution.tenant_key == tenant_key,
+            AgentExecution.status == "silent",
+        )
     )
     result = await session.execute(stmt)
-    agent = result.scalar_one_or_none()
+    row = result.one_or_none()
 
-    if agent is None:
+    if row is None:
         return None
 
+    agent, project_id = row
     old_status = agent.status
     agent.status = "working"
     agent.last_progress_at = datetime.now(timezone.utc)
@@ -310,6 +321,7 @@ async def clear_silent_status(
             agent=agent,
             old_status=old_status,
             new_status="working",
+            project_id=str(project_id) if project_id else None,
         )
     except Exception:  # Broad catch: WebSocket resilience, non-critical broadcast
         logger.exception(
@@ -371,6 +383,15 @@ async def _broadcast_status_change(
         new_status: New status
         project_id: Optional project UUID string for frontend filtering
     """
+    if ws_manager is None:
+        logger.warning(
+            "WebSocket manager unavailable — skipping broadcast for agent %s (%s → %s)",
+            agent.agent_id,
+            old_status,
+            new_status,
+        )
+        return
+
     from api.events.schemas import EventFactory
 
     event = EventFactory.agent_status_changed(

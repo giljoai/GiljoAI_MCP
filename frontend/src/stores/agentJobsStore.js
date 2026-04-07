@@ -318,11 +318,6 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     // are not lost when a lifecycle event overtakes queued minor events.
     flushPendingForJob(existingKey)
 
-    // EventFactory.agent_status_changed() sends new_status, but upsertJob
-    // merges into the job object which uses 'status'. Map it so the store updates.
-    if (payload?.new_status && !payload?.status) {
-      payload = { ...payload, status: payload.new_status }
-    }
     upsertJob(payload)
   }
 
