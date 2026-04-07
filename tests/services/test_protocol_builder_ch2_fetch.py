@@ -150,7 +150,7 @@ class TestCH2InlineFetchCalls:
 
     def test_ch2_depth_config_not_in_memory_360_call(self):
         """memory_360 fetch call must NOT include depth_config (Handover 0823b)."""
-        from src.giljo_mcp.services.protocol_builder import _build_ch2_fetch_calls
+        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
 
         result = _build_ch2_fetch_calls(
             field_toggles={"memory_360": True},
@@ -165,7 +165,7 @@ class TestCH2InlineFetchCalls:
 
     def test_ch2_depth_config_not_in_git_history_call(self):
         """git_history fetch call must NOT include depth_config (Handover 0823b)."""
-        from src.giljo_mcp.services.protocol_builder import _build_ch2_fetch_calls
+        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
 
         result = _build_ch2_fetch_calls(
             field_toggles={"git_history": True},
@@ -179,7 +179,7 @@ class TestCH2InlineFetchCalls:
 
     def test_ch2_depth_config_not_in_vision_call(self):
         """vision_documents fetch call must NOT include depth_config (Handover 0823b)."""
-        from src.giljo_mcp.services.protocol_builder import _build_ch2_fetch_calls
+        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
 
         result = _build_ch2_fetch_calls(
             field_toggles={"vision_documents": True},

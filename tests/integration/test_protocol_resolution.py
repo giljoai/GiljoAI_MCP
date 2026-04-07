@@ -179,28 +179,11 @@ class TestConfigurationEndpointProtocol:
 class TestThinPromptGeneratorProtocol:
     """Test that thin_prompt_generator reads ssl_enabled correctly."""
 
-    def test_returns_https_when_ssl_enabled(self, tmp_path):
-        config_file = tmp_path / "config.yaml"
-        config_file.write_text(
-            yaml.safe_dump({"features": {"ssl_enabled": True}})
-        )
-        with patch("src.giljo_mcp.thin_prompt_generator.Path") as mock_path:
-            mock_instance = MagicMock()
-            mock_instance.__truediv__ = MagicMock(return_value=mock_instance)
-            mock_instance.exists.return_value = True
-            mock_instance.open = config_file.open
-            # Override Path(__file__) chain
-            mock_path.return_value = mock_instance
-            mock_path.return_value.parent = mock_instance
-            mock_instance.parent = mock_instance
-
+    def test_returns_https_when_ssl_enabled(self, ssl_config):
+        with patch("src.giljo_mcp.thin_prompt_generator.get_config", return_value=ssl_config):
             from src.giljo_mcp.thin_prompt_generator import _get_ssl_protocol
             result = _get_ssl_protocol()
-
-        # Direct validation via config data
-        config_data = yaml.safe_load(config_file.read_text())
-        expected = "https" if config_data.get("features", {}).get("ssl_enabled", False) else "http"
-        assert expected == "https"
+        assert result == "https"
 
 
 # ---------------------------------------------------------------------------
