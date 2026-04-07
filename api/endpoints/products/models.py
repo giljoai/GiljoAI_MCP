@@ -73,6 +73,9 @@ class ProductUpdate(BaseModel):
     test_config: Optional[TestConfigSchema] = Field(None, description="Test configuration - Handover 0840i")
     core_features: Optional[str] = Field(None, description="Core product features - Handover 0840i")
     brand_guidelines: Optional[str] = Field(None, description="Brand & design guidelines for frontend agents")
+    extraction_custom_instructions: Optional[str] = Field(
+        None, description="Custom instructions for vision document extraction"
+    )
     product_memory: Optional[dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )

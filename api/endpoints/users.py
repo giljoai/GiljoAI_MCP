@@ -191,7 +191,11 @@ class FieldPriorityConfig(BaseModel):
                     f"Invalid value for '{category}': {value}. Must be {{'toggle': true/false}} or a flat boolean"
                 )
 
-        if not has_enabled:
+        # product_core and project_description are always-on and never sent
+        # in the payload, so all toggleable categories being disabled is valid
+        always_on = {"product_core", "project_description"}
+        has_always_on = bool(always_on & set(v.keys()))
+        if not has_enabled and has_always_on:
             raise ValueError("At least one category must be enabled")
 
         return v
