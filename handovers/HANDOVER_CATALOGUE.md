@@ -21,7 +21,7 @@
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
 | 0800-0869 | Enhancement & Feature Series | 0800-0843 ALL COMPLETE. **0844 DEFERRED (post-launch).** 0846-0860 ALL COMPLETE. |
 | 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE. 0873a-o COMPLETE. 0874a-c COMPLETE. 0875 COMPLETE. 0880 COMPLETE.** All design system work done. Branch: feature/0873-style-centralization. |
-| 0900-0999 | Infrastructure & DevEx | 0900-0902 COMPLETE. **0903 DEFERRED (post-launch).** 0904-0908 COMPLETE. **0950a-n Pre-Release Quality Sprint ACTIVE.** |
+| 0900-0999 | Infrastructure & DevEx | 0900-0902 COMPLETE. **0903 DEFERRED (post-launch).** 0904-0908 COMPLETE. **0950a-n Pre-Release Quality Sprint ACTIVE.** **0962a-d DB Harmonization Cleanup NOT STARTED.** |
 
 ---
 
@@ -39,6 +39,11 @@
 | 0910d | Architecture + README Hub + Verification | Not Started | High | Write ARCHITECTURE.md, README_FIRST.md hub, verify all docs. |
 | 0960 | Orchestrator Auto Check-in Interval Slider | Not Started | Medium | Replace button group with minute-based slider (5-60 min). Backend seconds->minutes migration. |
 | 0961 | Tuning Prompt v2 — Interactive Codebase-Aware Review | **COMPLETE** | High | Replace batch-submit prompt with 4-phase interactive flow (research → scan → review → submit). Agent reads codebase, user approves per-section. |
+| 0962 | DB & Code Harmonization Cleanup (Series: 0962a-d) | Not Started | High | Fix parallel write paths, missing JSONB validators, `hasattr` allowlist, schema redundancy. 4 phases. |
+| 0962a | ProductService Allowlist + Tuning Validation | Not Started | High | Field allowlist for `update_product()`, `proposed_value` validation, fix `VALID_SECTIONS` mismatch. |
+| 0962b | Vision Analysis Consolidation | Not Started | High | Route `gil_write_product` through `ProductService`. Eliminate parallel write path. Depends on 0962a. |
+| 0962c | JSONB Validator Coverage | Not Started | High | Add missing validators, fix `ProductMemoryConfig`/`AgentJobMetadata` mismatches, wire up `validate_git_commits`. |
+| 0962d | Schema Redundancy + Enum Validation | Not Started | Medium | Resolve `quality_standards`/`target_platforms` duplication, add `Literal` types to task/message schemas. |
 | 0950a | Comprehensive Audit: Establish Baseline Score | Not Started | High | Read-only audit. 10-dimension scoring. No code changes. |
 | 0950b | Backend: Security + Dict-Returns + Exception Annotations | Not Started | High | Quick wins. Depends on 0950a. |
 | 0950c | Frontend: ESLint Budget + Commented-Out Code | Not Started | High | Quick wins. Depends on 0950a. Parallel with 0950b. |
