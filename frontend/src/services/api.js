@@ -257,12 +257,6 @@ export const api = {
       apiClient.get(`/api/v1/products/${productId}/tuning/sections`),
     generateTuningPrompt: (productId, sections) =>
       apiClient.post(`/api/v1/products/${productId}/tuning/generate-prompt`, { sections }),
-    getTuningProposals: (productId) =>
-      apiClient.get(`/api/v1/products/${productId}/tuning/proposals`),
-    applyTuningProposal: (productId, section, data) =>
-      apiClient.post(`/api/v1/products/${productId}/tuning/proposals/${section}/apply`, data),
-    dismissAllTuningProposals: (productId) =>
-      apiClient.post(`/api/v1/products/${productId}/tuning/proposals/dismiss-all`),
   },
 
   // Project Types (Handover 0440b: Taxonomy system)
