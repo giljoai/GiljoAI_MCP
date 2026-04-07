@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-04-05 (Archive 0907/0908 COMPLETE, remove completed entries from Active section)
+**Last Updated:** 2026-04-07 (Archive 23 completed handovers: 0910a-d, 0950a-n, 0960, 0961, 0962a-d. Zero active handovers remain.)
 
 ---
 
@@ -21,7 +21,7 @@
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
 | 0800-0869 | Enhancement & Feature Series | 0800-0843 ALL COMPLETE. **0844 DEFERRED (post-launch).** 0846-0860 ALL COMPLETE. |
 | 0870-0899 | Design System & Agent States | **0870a-p COMPLETE. 0871a-h COMPLETE. 0872a-d COMPLETE. 0873a-o COMPLETE. 0874a-c COMPLETE. 0875 COMPLETE. 0880 COMPLETE.** All design system work done. Branch: feature/0873-style-centralization. |
-| 0900-0999 | Infrastructure & DevEx | 0900-0902 COMPLETE. **0903 DEFERRED (post-launch).** 0904-0908 COMPLETE. **0950a-n Pre-Release Quality Sprint ACTIVE.** **0962a-d DB Harmonization Cleanup NOT STARTED.** |
+| 0900-0999 | Infrastructure & DevEx | 0900-0902 COMPLETE. **0903 DEFERRED (post-launch).** 0904-0962 ALL COMPLETE. No active handovers. |
 
 ---
 
@@ -31,33 +31,8 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0909 | discovery MCP Tool | **COMPLETE** | Medium | Single MCP tool with category switch for system discovery. Renamed from gil_discovery. |
-| 0910 | Documentation Overhaul (Series Coordinator) | Not Started | High | Complete /docs rewrite for CE release. 4 sub-handovers. |
-| 0910a | Archive Stale Docs + Create Scaffold | Not Started | High | Move 135 stale docs to archive, create scaffold files. |
-| 0910b | Product Overview + User Guide | Not Started | High | Write PRODUCT_OVERVIEW.md and USER_GUIDE.md from code inspection. |
-| 0910c | Installation Guide + MCP Tools Reference | Not Started | High | Write INSTALLATION_GUIDE.md and MCP_TOOLS_REFERENCE.md. |
-| 0910d | Architecture + README Hub + Verification | Not Started | High | Write ARCHITECTURE.md, README_FIRST.md hub, verify all docs. |
-| 0960 | Orchestrator Auto Check-in Interval Slider | Not Started | Medium | Replace button group with minute-based slider (5-60 min). Backend seconds->minutes migration. |
-| 0961 | Tuning Prompt v2 — Interactive Codebase-Aware Review | **COMPLETE** | High | Replace batch-submit prompt with 4-phase interactive flow (research → scan → review → submit). Agent reads codebase, user approves per-section. |
-| 0962 | DB & Code Harmonization Cleanup (Series: 0962a-d) | Not Started | High | Fix parallel write paths, missing JSONB validators, `hasattr` allowlist, schema redundancy. 4 phases. |
-| 0962a | ProductService Allowlist + Tuning Validation | Not Started | High | Field allowlist for `update_product()`, `proposed_value` validation, fix `VALID_SECTIONS` mismatch. |
-| 0962b | Vision Analysis Consolidation | Not Started | High | Route `gil_write_product` through `ProductService`. Eliminate parallel write path. Depends on 0962a. |
-| 0962c | JSONB Validator Coverage | Not Started | High | Add missing validators, fix `ProductMemoryConfig`/`AgentJobMetadata` mismatches, wire up `validate_git_commits`. |
-| 0962d | Schema Redundancy + Enum Validation | Not Started | Medium | Resolve `quality_standards`/`target_platforms` duplication, add `Literal` types to task/message schemas. |
-| 0950a | Comprehensive Audit: Establish Baseline Score | Not Started | High | Read-only audit. 10-dimension scoring. No code changes. |
-| 0950b | Backend: Security + Dict-Returns + Exception Annotations | Not Started | High | Quick wins. Depends on 0950a. |
-| 0950c | Frontend: ESLint Budget + Commented-Out Code | Not Started | High | Quick wins. Depends on 0950a. Parallel with 0950b. |
-| 0950d | Frontend: Dialog Convention + text-medium-emphasis | Not Started | Medium | Depends on 0950c. |
-| 0950e | Frontend: Hardcoded Hex Color Sweep | Not Started | Medium | Depends on 0950d. |
-| 0950f | Backend: Stale Docstrings + Dead Pass Statements | Not Started | Medium | Depends on 0950b. |
-| 0950g | God-Class Split: ThinClientPromptGenerator | Not Started | High | Heavy. Depends on 0950f. |
-| 0950h | God-Class Split: MessageService | Not Started | High | Heavy. Depends on 0950g. |
-| 0950i | God-Class Split: ProductService + ProjectService | Not Started | High | Heavy. Depends on 0950h. |
-| 0950j | God-Class Split: OrchestrationService + ProtocolBuilder + 3 more | Not Started | High | Heavy. Depends on 0950i. |
-| 0950k | Frontend: God-Component Splits | Not Started | High | Heavy. Depends on 0950e. Parallel with backend track. |
-| 0950l | Test Suite: Fix Skips, Dead Fixtures, Coverage Gaps | Not Started | High | Depends on 0950j + 0950k. |
-| 0950m | Final Audit: Full Re-Run + PASS/FAIL Verdict | Not Started | Critical | Depends on all prior. Target >= 9.0/10. |
-| 0950n | Conditional Remediation | Conditional | Critical | Only if 0950m FAILs. |
+
+*No active handovers. All work complete or deferred.*
 
 ### Deferred (Still in Root Folder)
 
@@ -79,6 +54,11 @@
 | 0908 | How to Use Modal Rewrite (6 chapters) | 2026-04-04 | COMPLETE (`47dc1fcd`, `f8a87bf9`) — Rewrote How to Use modal to 6-chapter user journey, retired What is GiljoAI onboarding, redesigned integration cards. |
 | 0907 | MCP Bootstrap Setup Tool (`giljo_setup`) | 2026-04-04 | COMPLETE (`db26b68b`, `ad5b8fa2`) — Single MCP tool provisions slash commands + agent templates via binary ZIP download. |
 | 0842h | Frontend Tests — Tuning Icon & Vision Analysis Banner | 2026-04-03 | COMPLETE (`6e60c48b`) — 20 Vitest tests across 2 spec files. Tuning state logic + badge props + tooltip text + ProductForm banner rendering. |
+| 0910 | Documentation Overhaul (Series: 0910a-d) | 2026-04-07 | COMPLETE (`14583efe` merge) — Full /docs rewrite. 4 sub-handovers all complete. |
+| 0950a-n | Pre-Release Quality Sprint (14 handovers) | 2026-04-07 | COMPLETE (`f8b56ef0` merge, `022c75bb` 0950n PASS) — Full audit + remediation cycle. Score 8.9→PASS after 0950n. |
+| 0960 | Orchestrator Auto Check-in Interval Slider | 2026-04-07 | COMPLETE (`91c2e112`) — Minute-based slider, backend seconds→minutes migration. |
+| 0961 | Tuning Prompt v2 — Interactive Codebase-Aware Review | 2026-04-07 | COMPLETE (`9b6ad39f`, `3d03c35e`) — 4-phase interactive flow, auto-apply via ProductService. |
+| 0962 | DB & Code Harmonization Cleanup (Series: 0962a-d) | 2026-04-07 | COMPLETE (`92dede61`) — Field allowlists, single write path, 5 JSONB validators, enum types. |
 | 0841 | Slash Command Optimization (/gil_add) | 2026-04-01 | COMPLETE (`48376d20`) — Slim slash command templates, platform-aware signoff, project taxonomy improvements. |
 | 0842L | Post-Implementation Audit & Cleanup | 2026-04-01 | COMPLETE (`8304eac6`) — Dead code removal, zombie cleanup, backward compat bloat removed. Branch merged to master. |
 | 0842m | Pre-Existing Bug Fixes | 2026-04-01 | COMPLETE (`2f72e7a7`) — config.services AttributeError + network_mode passthrough. |
