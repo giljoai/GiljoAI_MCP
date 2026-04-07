@@ -1,25 +1,17 @@
 """
 Tests for ProductTuningService — Handover 0831
 
-TDD tests written BEFORE implementation. These define the behavioral contract
-for the ProductTuningService which handles on-demand product context tuning:
-prompt assembly, proposal storage, apply/dismiss, and review clearing.
-
 Test Coverage:
 - assemble_tuning_prompt: section filtering, toggle respect, 360 memory depth,
   git integration handling, edge cases (no memory, git disabled, all toggles off)
-- store_proposals: proposal persistence, review_id generation, WebSocket emission
-- apply_proposal: field mapping for all section keys, pending list removal
-- dismiss_proposal: single section removal, other proposals preserved
-- clear_review: pending_proposals cleared, last_tuned_at updated
+- apply_tuning_updates: direct field write for drift proposals, skip no-drift,
+  last_tuned_at stamping, WebSocket context_updated event, tenant isolation
 
 Created as part of Handover 0831: Product Context Tuning
 """
 
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock, patch
-from uuid import uuid4
-
 import pytest
 
 from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
@@ -109,19 +101,6 @@ def sample_product():
 
 
 @pytest.fixture
-def sample_product_no_git(sample_product):
-    """Product with git integration disabled."""
-    sample_product.product_memory = {
-        "github": {},
-        "context": {},
-        "git_integration": {
-            "enabled": False,
-        },
-    }
-    return sample_product
-
-
-@pytest.fixture
 def sample_memory_entries():
     """Create sample 360 memory entries for prompt assembly tests.
 
@@ -175,85 +154,6 @@ def sample_user_settings():
         "architecture_depth": "overview",
     }
     return toggle_config, depth_config
-
-
-@pytest.fixture
-def sample_proposals_data():
-    """Sample proposals as would be received from submit_tuning_review MCP tool."""
-    return {
-        "proposals": [
-            {
-                "section": "tech_stack",
-                "drift_detected": True,
-                "current_summary": "Python 3.12, FastAPI, Vue 3, PostgreSQL",
-                "evidence": "Project 3 added Redis caching layer",
-                "proposed_value": "Python 3.12, FastAPI, Vue 3, PostgreSQL, Redis",
-                "confidence": "high",
-                "reasoning": "Redis was added in project 3 and is now part of the stack",
-            },
-            {
-                "section": "architecture",
-                "drift_detected": False,
-                "current_summary": "Monolithic backend with REST API",
-                "evidence": "No architectural changes observed",
-                "proposed_value": "Monolithic backend with REST API",
-                "confidence": "high",
-                "reasoning": "Architecture description remains accurate",
-            },
-            {
-                "section": "description",
-                "drift_detected": True,
-                "current_summary": "An AI agent orchestration platform",
-                "evidence": "Redis caching added",
-                "proposed_value": "Updated AI orchestration platform with Redis caching",
-                "confidence": "medium",
-                "reasoning": "Description should reflect caching addition",
-            },
-            {
-                "section": "core_features",
-                "drift_detected": True,
-                "current_summary": "Agent orchestration, project management, 360 memory",
-                "evidence": "Caching layer added",
-                "proposed_value": "Agent orchestration, project management, 360 memory, caching",
-                "confidence": "medium",
-                "reasoning": "Core features expanded",
-            },
-            {
-                "section": "quality_standards",
-                "drift_detected": True,
-                "current_summary": "80% test coverage, all endpoints tested",
-                "evidence": "Coverage target increased",
-                "proposed_value": "90% test coverage, all endpoints tested, performance benchmarks",
-                "confidence": "high",
-                "reasoning": "Quality bar raised",
-            },
-            {
-                "section": "target_platforms",
-                "drift_detected": True,
-                "current_summary": "windows, linux",
-                "evidence": "macOS support added",
-                "proposed_value": "windows, linux, macos",
-                "confidence": "high",
-                "reasoning": "macOS now supported",
-            },
-        ],
-        "overall_summary": "Minor drift detected in tech stack only.",
-    }
-
-
-@pytest.fixture
-def product_with_pending_proposals(sample_product, sample_proposals_data):
-    """Product that already has pending proposals stored."""
-    review_id = str(uuid4())
-    sample_product.tuning_state = {
-        "pending_proposals": {
-            "review_id": review_id,
-            "submitted_at": "2026-03-21T14:35:00Z",
-            "overall_summary": sample_proposals_data["overall_summary"],
-            "proposals": sample_proposals_data["proposals"],
-        },
-    }
-    return sample_product, review_id
 
 
 # ============================================================================
@@ -689,18 +589,125 @@ class TestAssembleTuningPromptErrors:
 
 
 # ============================================================================
-# TEST CLASS 5: store_proposals
+# TEST CLASS 5: apply_tuning_updates
 # ============================================================================
 
 
-class TestStoreProposals:
-    """Test proposal storage, review_id generation, and WebSocket events."""
+DRIFT_PROPOSALS = [
+    {
+        "section": "description",
+        "drift_detected": True,
+        "current_summary": "An AI agent orchestration platform",
+        "evidence": "Redis caching added",
+        "proposed_value": "Updated AI orchestration platform with Redis caching",
+        "confidence": "medium",
+        "reasoning": "Description should reflect caching addition",
+    },
+    {
+        "section": "architecture",
+        "drift_detected": False,
+        "current_summary": "Monolithic backend with REST API",
+        "evidence": "No architectural changes observed",
+        "proposed_value": "Monolithic backend with REST API",
+        "confidence": "high",
+        "reasoning": "Architecture description remains accurate",
+    },
+    {
+        "section": "core_features",
+        "drift_detected": True,
+        "current_summary": "Agent orchestration, project management, 360 memory",
+        "evidence": "Caching layer added",
+        "proposed_value": "Agent orchestration, project management, 360 memory, caching",
+        "confidence": "medium",
+        "reasoning": "Core features expanded",
+    },
+    {
+        "section": "quality_standards",
+        "drift_detected": True,
+        "current_summary": "80% test coverage, all endpoints tested",
+        "evidence": "Coverage target increased",
+        "proposed_value": "90% test coverage, all endpoints tested, performance benchmarks",
+        "confidence": "high",
+        "reasoning": "Quality bar raised",
+    },
+    {
+        "section": "target_platforms",
+        "drift_detected": True,
+        "current_summary": "windows, linux",
+        "evidence": "macOS support added",
+        "proposed_value": "windows, linux, macos",
+        "confidence": "high",
+        "reasoning": "macOS now supported",
+    },
+]
+
+
+class TestBuildUpdateKwargs:
+    """Test _build_update_kwargs maps proposals to ProductService kwargs correctly."""
+
+    def test_maps_direct_fields(self):
+        """Direct-type sections (description, core_features) map to flat kwargs."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        service = ProductTuningService.__new__(ProductTuningService)
+        kwargs, sections = service._build_update_kwargs(DRIFT_PROPOSALS)
+
+        assert kwargs["description"] == "Updated AI orchestration platform with Redis caching"
+        assert kwargs["core_features"] == "Agent orchestration, project management, 360 memory, caching"
+        assert "description" in sections
+        assert "core_features" in sections
+
+    def test_maps_relation_field_to_nested_dict(self):
+        """relation_field sections (quality_standards) map to nested test_config dict."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        service = ProductTuningService.__new__(ProductTuningService)
+        kwargs, sections = service._build_update_kwargs(DRIFT_PROPOSALS)
+
+        assert "test_config" in kwargs
+        assert kwargs["test_config"]["quality_standards"] == "90% test coverage, all endpoints tested, performance benchmarks"
+        assert "quality_standards" in sections
+
+    def test_skips_no_drift_proposals(self):
+        """Proposals with drift_detected=False must not appear in kwargs."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        service = ProductTuningService.__new__(ProductTuningService)
+        kwargs, sections = service._build_update_kwargs(DRIFT_PROPOSALS)
+
+        assert "architecture" not in kwargs
+        assert "architecture" not in sections
+
+    def test_skips_unknown_sections(self):
+        """Proposals with unrecognized section keys are silently skipped."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        service = ProductTuningService.__new__(ProductTuningService)
+        proposals = [{"section": "nonexistent_field", "drift_detected": True, "proposed_value": "x"}]
+        kwargs, sections = service._build_update_kwargs(proposals)
+
+        assert kwargs == {}
+        assert sections == []
+
+    def test_returns_correct_section_count(self):
+        """Should return exactly the drift-detected sections that have valid mappings."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        service = ProductTuningService.__new__(ProductTuningService)
+        kwargs, sections = service._build_update_kwargs(DRIFT_PROPOSALS)
+
+        assert len(sections) == 4
+        assert set(sections) == {"description", "core_features", "quality_standards", "target_platforms"}
+
+
+class TestApplyTuningUpdates:
+    """Test that apply_tuning_updates delegates to ProductService.update_product."""
 
     @pytest.mark.asyncio
-    async def test_stores_proposals_on_product_tuning_state(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_proposals_data
+    async def test_calls_product_service_update(
+        self, mock_db_manager, mock_websocket_manager, sample_product
     ):
-        """Should save proposals to Product.tuning_state.pending_proposals."""
+        """Should delegate field writes to ProductService.update_product."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -711,48 +718,28 @@ class TestStoreProposals:
         )
         session.commit = AsyncMock()
 
-        result = await service.store_proposals(
-            product_id=PRODUCT_ID,
-            proposals=sample_proposals_data["proposals"],
-            overall_summary=sample_proposals_data.get("overall_summary"),
-        )
+        with patch("src.giljo_mcp.services.product_service.ProductService") as MockPS:
+            mock_ps_instance = AsyncMock()
+            MockPS.return_value = mock_ps_instance
 
+            result = await service.apply_tuning_updates(
+                product_id=PRODUCT_ID,
+                proposals=DRIFT_PROPOSALS,
+            )
+
+        mock_ps_instance.update_product.assert_called_once()
+        call_kwargs = mock_ps_instance.update_product.call_args
+        assert call_kwargs.args[0] == PRODUCT_ID
+        assert "description" in call_kwargs.kwargs
+        assert "core_features" in call_kwargs.kwargs
         assert result["success"] is True
-        assert "review_id" in result
-        assert result["review_id"] is not None
-        assert len(result["review_id"]) > 0
+        assert result["applied_count"] == 4
 
     @pytest.mark.asyncio
-    async def test_generates_uuid_review_id(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_proposals_data
+    async def test_skips_product_service_when_no_drift(
+        self, mock_db_manager, mock_websocket_manager, sample_product
     ):
-        """Should generate a UUID for review_id."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-        from uuid import UUID as UUIDType
-
-        db_manager, session = mock_db_manager
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
-        session.commit = AsyncMock()
-
-        result = await service.store_proposals(
-            product_id=PRODUCT_ID,
-            proposals=sample_proposals_data["proposals"],
-            overall_summary=sample_proposals_data.get("overall_summary"),
-        )
-
-        # Should be a valid UUID
-        parsed = UUIDType(result["review_id"])
-        assert str(parsed) == result["review_id"]
-
-    @pytest.mark.asyncio
-    async def test_emits_websocket_event_on_store(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_proposals_data
-    ):
-        """Should emit product:tuning:proposals_ready WebSocket event."""
+        """When no proposals have drift, ProductService should not be called."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -763,343 +750,69 @@ class TestStoreProposals:
         )
         session.commit = AsyncMock()
 
-        await service.store_proposals(
-            product_id=PRODUCT_ID,
-            proposals=sample_proposals_data["proposals"],
-            overall_summary=sample_proposals_data.get("overall_summary"),
+        no_drift = [{"section": "description", "drift_detected": False, "proposed_value": "x"}]
+
+        with patch("src.giljo_mcp.services.product_service.ProductService") as MockPS:
+            result = await service.apply_tuning_updates(
+                product_id=PRODUCT_ID,
+                proposals=no_drift,
+            )
+
+        MockPS.return_value.update_product.assert_not_called()
+        assert result["applied_count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_sets_last_tuned_at(
+        self, mock_db_manager, mock_websocket_manager, sample_product
+    ):
+        """Should stamp tuning_state.last_tuned_at after applying updates."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, session = mock_db_manager
+        sample_product.tuning_state = None
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        session.execute = AsyncMock(
+            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
+        session.commit = AsyncMock()
+
+        with patch("src.giljo_mcp.services.product_service.ProductService") as MockPS:
+            MockPS.return_value = AsyncMock()
+            await service.apply_tuning_updates(
+                product_id=PRODUCT_ID,
+                proposals=DRIFT_PROPOSALS,
+            )
+
+        assert sample_product.tuning_state is not None
+        assert sample_product.tuning_state.get("last_tuned_at") is not None
+
+    @pytest.mark.asyncio
+    async def test_emits_context_updated_websocket_event(
+        self, mock_db_manager, mock_websocket_manager, sample_product
+    ):
+        """Should emit product:context_updated WebSocket event after applying."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, session = mock_db_manager
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        session.execute = AsyncMock(
+            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
+        )
+        session.commit = AsyncMock()
+
+        with patch("src.giljo_mcp.services.product_service.ProductService") as MockPS:
+            MockPS.return_value = AsyncMock()
+            await service.apply_tuning_updates(
+                product_id=PRODUCT_ID,
+                proposals=DRIFT_PROPOSALS,
+            )
 
         mock_websocket_manager.broadcast_to_tenant.assert_called_once()
         call_kwargs = mock_websocket_manager.broadcast_to_tenant.call_args.kwargs
         assert call_kwargs["tenant_key"] == TENANT_KEY
-        assert call_kwargs["event_type"] == "product:tuning:proposals_ready"
-
-    @pytest.mark.asyncio
-    async def test_returns_success_structure(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_proposals_data
-    ):
-        """Return value should have success, review_id, and message."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
-        session.commit = AsyncMock()
-
-        result = await service.store_proposals(
-            product_id=PRODUCT_ID,
-            proposals=sample_proposals_data["proposals"],
-            overall_summary=sample_proposals_data.get("overall_summary"),
-        )
-
-        assert "success" in result
-        assert "review_id" in result
-        assert "message" in result
-        assert isinstance(result["message"], str)
-
-    @pytest.mark.asyncio
-    async def test_raises_not_found_for_missing_product(
-        self, mock_db_manager, mock_websocket_manager, sample_proposals_data
-    ):
-        """Should raise ResourceNotFoundError when product does not exist."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=None))
-        )
-
-        with pytest.raises(ResourceNotFoundError):
-            await service.store_proposals(
-                product_id="nonexistent-id",
-                proposals=sample_proposals_data["proposals"],
-                overall_summary=sample_proposals_data.get("overall_summary"),
-            )
-
-
-# ============================================================================
-# TEST CLASS 6: apply_proposal — Section Key Mapping
-# ============================================================================
-
-
-class TestApplyProposal:
-    """Test that apply_proposal correctly maps section keys to product fields."""
-
-    @pytest.mark.asyncio
-    async def test_apply_description_updates_product_description(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'description' should update Product.description."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_description = "Updated AI orchestration platform with Redis caching"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            section="description",
-            action="edit",
-            value=new_description,
-        )
-
-        assert product.description == new_description
-
-    @pytest.mark.asyncio
-    async def test_apply_tech_stack_updates_relation(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'tech_stack' should update ProductTechStack relation fields."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = "Python 3.12, FastAPI, Vue 3, PostgreSQL, Redis"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            section="tech_stack",
-            action="accept",
-            value=new_value,
-        )
-
-        # String value should be broadcast to all tech_stack relation fields
-        assert product.tech_stack.programming_languages == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_architecture_updates_relation(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'architecture' should update ProductArchitecture relation fields."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = "Microservices with event-driven architecture"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            section="architecture",
-            action="edit",
-            value=new_value,
-        )
-
-        assert product.architecture.primary_pattern == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_core_features_updates_direct_field(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'core_features' should update Product.core_features directly."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = "Agent orchestration, project management, 360 memory, context tuning"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            section="core_features",
-            action="edit",
-            value=new_value,
-        )
-
-        assert product.core_features == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_quality_standards_updates_test_config_relation(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'quality_standards' should update ProductTestConfig.quality_standards via relation."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = "90% test coverage, all endpoints tested, type annotations required"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            section="quality_standards",
-            action="edit",
-            value=new_value,
-        )
-
-        assert product.test_config.quality_standards == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_target_platforms_updates_product_field(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'target_platforms' should update Product.target_platforms."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = ["windows", "linux", "macos"]
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            section="target_platforms",
-            action="edit",
-            value=new_value,
-        )
-
-        assert product.target_platforms == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_removes_proposal_from_pending_list(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """After applying a proposal, it should be removed from pending_proposals."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        # Product has proposals for tech_stack and architecture
-        initial_count = len(product.tuning_state["pending_proposals"]["proposals"])
-
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            section="tech_stack",
-            action="accept",
-            value="Python 3.12, FastAPI, Vue 3, PostgreSQL, Redis",
-        )
-
-        remaining = product.tuning_state["pending_proposals"]["proposals"]
-        assert len(remaining) == initial_count - 1
-        remaining_sections = [p["section"] for p in remaining]
-        assert "tech_stack" not in remaining_sections
-
-    @pytest.mark.asyncio
-    async def test_apply_raises_not_found_for_missing_product(
-        self, mock_db_manager, mock_websocket_manager
-    ):
-        """Should raise ResourceNotFoundError when product does not exist."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=None))
-        )
-
-        with pytest.raises(ResourceNotFoundError):
-            await service.apply_proposal(
-                product_id="nonexistent-id",
-                section="description",
-                action="accept",
-                value="new value",
-            )
-
-
-# ============================================================================
-# TEST CLASS 7: dismiss_proposal
-# ============================================================================
-
-
-class TestDismissProposal:
-    """Test that apply_proposal with action='dismiss' removes specific proposals without side effects."""
-
-    @pytest.mark.asyncio
-    async def test_removes_specific_section_from_pending(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Should remove only the specified section's proposal."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            section="tech_stack",
-            action="dismiss",
-        )
-
-        remaining = product.tuning_state["pending_proposals"]["proposals"]
-        remaining_sections = [p["section"] for p in remaining]
-        assert "tech_stack" not in remaining_sections
-
-    @pytest.mark.asyncio
-    async def test_preserves_other_pending_proposals(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Dismissing one section should not affect other proposals."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            section="tech_stack",
-            action="dismiss",
-        )
-
-        remaining = product.tuning_state["pending_proposals"]["proposals"]
-        remaining_sections = [p["section"] for p in remaining]
-        assert "architecture" in remaining_sections
+        assert call_kwargs["event_type"] == "product:context_updated"
 
     @pytest.mark.asyncio
     async def test_raises_not_found_for_missing_product(
@@ -1111,119 +824,22 @@ class TestDismissProposal:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=None))
-        )
-
-        with pytest.raises(ResourceNotFoundError):
-            await service.apply_proposal(
-                product_id="nonexistent-id",
-                section="tech_stack",
-                action="dismiss",
+        with patch("src.giljo_mcp.services.product_service.ProductService") as MockPS:
+            mock_ps_instance = AsyncMock()
+            mock_ps_instance.update_product.side_effect = ResourceNotFoundError(
+                message="Product not found", context={"product_id": "nonexistent-id"}
             )
+            MockPS.return_value = mock_ps_instance
+
+            with pytest.raises(ResourceNotFoundError):
+                await service.apply_tuning_updates(
+                    product_id="nonexistent-id",
+                    proposals=DRIFT_PROPOSALS,
+                )
 
 
 # ============================================================================
-# TEST CLASS 8: clear_review
-# ============================================================================
-
-
-class TestClearReview:
-    """Test that clear_review clears proposals and updates timestamps."""
-
-    @pytest.mark.asyncio
-    async def test_clears_pending_proposals_to_none(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Should set pending_proposals to None."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        with patch.object(service._memory_repo, "get_next_sequence", new_callable=AsyncMock, return_value=4):
-            await service.clear_review(
-                product_id=PRODUCT_ID,
-            )
-
-        assert product.tuning_state.get("pending_proposals") is None
-
-    @pytest.mark.asyncio
-    async def test_updates_last_tuned_at(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Should set last_tuned_at to a recent timestamp."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        before = datetime.now(timezone.utc)
-        with patch.object(service._memory_repo, "get_next_sequence", new_callable=AsyncMock, return_value=4):
-            await service.clear_review(
-                product_id=PRODUCT_ID,
-            )
-
-        last_tuned = product.tuning_state.get("last_tuned_at")
-        assert last_tuned is not None
-
-    @pytest.mark.asyncio
-    async def test_updates_last_tuned_at_sequence(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Should update last_tuned_at_sequence to current 360 memory count."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        with patch.object(service._memory_repo, "get_next_sequence", new_callable=AsyncMock, return_value=16):
-            await service.clear_review(
-                product_id=PRODUCT_ID,
-            )
-
-        assert product.tuning_state.get("last_tuned_at_sequence") is not None
-
-    @pytest.mark.asyncio
-    async def test_raises_not_found_for_missing_product(
-        self, mock_db_manager, mock_websocket_manager
-    ):
-        """Should raise ResourceNotFoundError when product does not exist."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=None))
-        )
-
-        with pytest.raises(ResourceNotFoundError):
-            await service.clear_review(
-                product_id="nonexistent-id",
-            )
-
-
-# ============================================================================
-# TEST CLASS 9: Tenant Isolation
+# TEST CLASS 6: Tenant Isolation
 # ============================================================================
 
 
@@ -1232,7 +848,7 @@ class TestTenantIsolation:
 
     @pytest.mark.asyncio
     async def test_assemble_prompt_filters_by_tenant(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_memory_entries, sample_user_settings
+        self, mock_db_manager, mock_websocket_manager, sample_product, sample_user_settings
     ):
         """Product lookup in assemble_tuning_prompt must filter by tenant_key."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
@@ -1244,8 +860,7 @@ class TestTenantIsolation:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
                 user_id=USER_ID,
@@ -1256,10 +871,10 @@ class TestTenantIsolation:
         session.execute.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_store_proposals_filters_by_tenant(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_proposals_data
+    async def test_apply_tuning_updates_passes_tenant_to_product_service(
+        self, mock_db_manager, mock_websocket_manager, sample_product
     ):
-        """Product lookup in store_proposals must filter by tenant_key."""
+        """apply_tuning_updates must pass tenant_key to ProductService for isolation."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -1270,10 +885,13 @@ class TestTenantIsolation:
         )
         session.commit = AsyncMock()
 
-        await service.store_proposals(
-            product_id=PRODUCT_ID,
-            proposals=sample_proposals_data["proposals"],
-            overall_summary=sample_proposals_data.get("overall_summary"),
-        )
+        with patch("src.giljo_mcp.services.product_service.ProductService") as MockPS:
+            mock_ps_instance = AsyncMock()
+            MockPS.return_value = mock_ps_instance
 
-        session.execute.assert_called_once()
+            await service.apply_tuning_updates(
+                product_id=PRODUCT_ID,
+                proposals=DRIFT_PROPOSALS,
+            )
+
+        MockPS.assert_called_once_with(db_manager, TENANT_KEY)
