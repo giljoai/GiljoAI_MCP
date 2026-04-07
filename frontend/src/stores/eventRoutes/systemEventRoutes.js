@@ -66,18 +66,13 @@ export const SYSTEM_EVENT_ROUTES = {
   'product:learning:added': { store: 'products', action: 'handleProductLearningAdded' },
   'product:status:changed': { store: 'products', action: 'handleProductStatusChanged' },
 
-  // Handover 0831: Product context tuning proposals ready
-  'product:tuning:proposals_ready': {
-    handler: async (payload) => {
-      const notificationStore = useNotificationStore()
+  'product:context_updated': {
+    handler: async (data, { notificationStore }) => {
       notificationStore.addNotification({
         type: 'context_tuning',
-        title: 'Tuning Proposals Ready',
-        message: 'Your AI coding agent has submitted context tuning proposals. Review them in the product details.',
-        metadata: {
-          product_id: payload.product_id,
-          product_name: payload.product_name,
-        },
+        title: 'Product Context Updated',
+        message: `${data.applied_count} section(s) updated via tuning review.`,
+        metadata: { product_id: data.product_id },
       })
     },
   },

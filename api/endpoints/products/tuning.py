@@ -1,12 +1,12 @@
 """
 Product Context Tuning Endpoints - Handover 0831
 
-Handles tuning prompt generation, proposal retrieval, and proposal actions
-for on-demand product context drift detection.
+Handles tuning prompt generation and section eligibility for on-demand
+product context drift detection. Proposals are applied directly by the MCP
+tool after user review in the CLI — no dashboard review flow.
 """
 
 import logging
-from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -36,18 +36,6 @@ class GeneratePromptResponse(BaseModel):
     sections_included: list[str]
     lookback_depth: int | None = None
     git_enabled: bool
-
-
-class ProposalActionRequest(BaseModel):
-    action: str = Field(..., description="accept, edit, or dismiss")
-    value: str | None = Field(None, description="Override value for edit action")
-
-
-class ProposalActionResponse(BaseModel):
-    success: bool
-    section: str
-    action: str
-    remaining_proposals: int
 
 
 class EligibleSectionsResponse(BaseModel):
@@ -124,70 +112,3 @@ async def generate_tuning_prompt(
         raise HTTPException(status_code=404, detail=str(e)) from e
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-
-
-@router.get("/{product_id}/tuning/proposals")
-async def get_proposals(
-    product_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db_manager=Depends(get_db_manager),
-) -> dict[str, Any]:
-    """Get current pending tuning proposals for a product."""
-    _validate_product_id(product_id)
-
-    try:
-        service = await _get_tuning_service(current_user, db_manager)
-        proposals = await service.get_proposals(product_id)
-        return {"proposals": proposals}
-    except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
-
-
-@router.post("/{product_id}/tuning/proposals/{section}/apply")
-async def apply_proposal(
-    product_id: str,
-    section: str,
-    request: ProposalActionRequest,
-    current_user: User = Depends(get_current_active_user),
-    db_manager=Depends(get_db_manager),
-) -> ProposalActionResponse:
-    """
-    Apply, edit, or dismiss a single tuning proposal.
-
-    Actions:
-    - accept: Apply the proposed value to the product field
-    - edit: Apply a user-provided value instead
-    - dismiss: Remove the proposal without changes
-    """
-    _validate_product_id(product_id)
-
-    try:
-        service = await _get_tuning_service(current_user, db_manager)
-        result = await service.apply_proposal(
-            product_id=product_id,
-            section=section,
-            action=request.action,
-            value=request.value,
-        )
-        return ProposalActionResponse(**result)
-    except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-
-@router.post("/{product_id}/tuning/dismiss-all")
-async def dismiss_all_proposals(
-    product_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db_manager=Depends(get_db_manager),
-) -> dict[str, Any]:
-    """Clear all pending proposals and update last_tuned_at."""
-    _validate_product_id(product_id)
-
-    try:
-        service = await _get_tuning_service(current_user, db_manager)
-        result = await service.clear_review(product_id)
-        return result
-    except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e

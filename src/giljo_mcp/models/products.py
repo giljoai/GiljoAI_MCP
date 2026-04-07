@@ -123,7 +123,7 @@ class Product(Base):
         JSONB,
         nullable=True,
         default=None,
-        comment="Context tuning state: last_tuned_at, last_tuned_at_sequence, pending_proposals",
+        comment="Context tuning state: last_tuned_at, last_tuned_at_sequence",
     )
 
     # Consolidated vision summaries (Handover 0377)
