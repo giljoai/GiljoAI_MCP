@@ -160,6 +160,7 @@ async def close_project_and_update_memory(
     db_manager: DatabaseManager | None = None,
     session: AsyncSession | None = None,
     force: bool = False,
+    git_commits: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """
     Close project and update product memory with history entry.
@@ -172,6 +173,10 @@ async def close_project_and_update_memory(
 
     When force=True, auto-decommissions any remaining active agents before
     closing, and logs a warning with the affected agents.
+
+    Args:
+        git_commits: Agent-supplied commits from local git log. When provided,
+            skips the GitHub API fetch entirely (passive server model).
     """
     if not project_id:
         raise ValidationError("project_id is required")
@@ -244,17 +249,23 @@ async def close_project_and_update_memory(
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
-            git_config = _get_git_config(product_memory)
-            git_commits: list[dict[str, Any | None]] = None
-
-            if git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner"):
-                git_commits = await _fetch_github_commits(
-                    repo_name=git_config.get("repo_name"),
-                    repo_owner=git_config.get("repo_owner"),
-                    access_token=git_config.get("access_token"),
-                    project_created_at=project.created_at,
-                    project_completed_at=project.completed_at or datetime.now(timezone.utc),
+            # Use agent-supplied commits (passive server); fall back to GitHub API
+            if git_commits is not None:
+                logger.info(
+                    "Using %d agent-supplied git commits for project %s",
+                    len(git_commits),
+                    project_id,
                 )
+            else:
+                git_config = _get_git_config(product_memory)
+                if git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner"):
+                    git_commits = await _fetch_github_commits(
+                        repo_name=git_config.get("repo_name"),
+                        repo_owner=git_config.get("repo_owner"),
+                        access_token=git_config.get("access_token"),
+                        project_created_at=project.created_at,
+                        project_completed_at=project.completed_at or datetime.now(timezone.utc),
+                    )
 
             if git_commits is None:
                 git_commits = []

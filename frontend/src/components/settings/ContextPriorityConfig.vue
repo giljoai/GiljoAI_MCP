@@ -395,18 +395,34 @@ function navigateToIntegrations() {
 }
 
 // Handover 0408: Sync git_history toggle with git integration state
+// Only react to real user-initiated transitions, not initial mount.
+// Track previous state explicitly to avoid undefined oldValue on first run.
+const gitIntegrationPrevState = ref<boolean | null>(null)
+
 watch(() => props.gitIntegrationEnabled, (enabled) => {
+  // Capture initial state without acting on it
+  if (gitIntegrationPrevState.value === null) {
+    gitIntegrationPrevState.value = enabled
+    return
+  }
+
+  // Only act on actual transitions
+  if (enabled === gitIntegrationPrevState.value) return
+  gitIntegrationPrevState.value = enabled
+
   if (!configLoaded.value) return
 
   if (!enabled && config.value.git_history?.enabled) {
+    // Integration turned OFF → disable git_history
     config.value.git_history.enabled = false
     saveConfig()
   } else if (enabled && !config.value.git_history?.enabled) {
+    // Integration turned ON → convenience-enable git_history
     config.value.git_history.enabled = true
     config.value.git_history.count = 5
     saveConfig()
   }
-}, { immediate: true })
+})
 
 async function fetchVisionStats() {
   fetchingVisionStats.value = true

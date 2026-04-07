@@ -77,6 +77,18 @@ class CodexPromptBuilder:
             "Each has a unique job_id. In Codex CLI, ALL agent names require the 'gil-' prefix.",
             "",
             *agent_spawn_lines,
+            "## EXECUTION DIRECTIVE",
+            "",
+            "After fetching your mission, you MUST invoke every agent listed above.",
+            "Do NOT skip agents. Do NOT summarize the plan and stop. Your job is to",
+            "launch each agent using spawn_agent() as shown below, monitor their progress,",
+            "and close out the project when all agents are complete.",
+            "",
+            "**Preferred mode: background execution.** If spawn_agent supports a background",
+            "or async flag, use it for independent agents so the user can continue interacting.",
+            "Poll progress via `get_workflow_status()`. Only block on an agent when the next",
+            "agent depends on its output.",
+            "",
         ]
 
         spawning_section = [
