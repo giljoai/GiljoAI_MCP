@@ -64,7 +64,7 @@
     <div class="pill-tabs-content">
       <v-window v-model="activeTab" :touch="false" :reverse="false" class="global-tabs-window main-window-tabs">
       <!-- Context Settings -->
-      <v-window-item value="context">
+      <v-window-item value="context" eager>
         <ContextPriorityConfig :git-integration-enabled="gitEnabled" />
       </v-window-item>
 
