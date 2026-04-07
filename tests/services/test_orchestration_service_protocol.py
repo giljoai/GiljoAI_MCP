@@ -154,4 +154,4 @@ class TestCH2ProgressTracking:
         ch2 = _build_ch2_startup(orchestrator_id="orch-123", project_id="proj-456")
         assert "STEP 1b" in ch2, "CH2 should contain Step 1b for progress tracking"
         assert "report_progress" in ch2, "Step 1b should reference report_progress"
-        assert "Orchestration tasks ONLY" in ch2, "Step 1b should scope to orchestration tasks"
+        assert "PROJECT OUTCOME" in ch2, "Step 1b should scope to project outcomes, not orchestrator actions"
