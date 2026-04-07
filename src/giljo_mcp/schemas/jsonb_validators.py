@@ -125,7 +125,6 @@ class ProductTuningState(BaseModel):
 
     last_tuned_at: str | None = None
     last_tuned_at_sequence: int | None = None
-    pending_proposals: list | dict | None = None
 
 
 # --- Convenience validators ---
