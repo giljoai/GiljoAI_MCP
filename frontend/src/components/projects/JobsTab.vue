@@ -13,8 +13,7 @@
         v-if="showAutoCheckin"
         :enabled="autoCheckinEnabled"
         :interval="autoCheckinInterval"
-        @toggle-checkin="onAutoCheckinToggle"
-        @change-interval="onAutoCheckinIntervalChange"
+        @update:checkin="onAutoCheckinChange"
       />
 
       <table class="agents-table" data-testid="agent-status-table">
@@ -434,27 +433,19 @@ watch(() => props.project?.auto_checkin_interval, (val) => {
   if (val !== undefined) autoCheckinInterval.value = val
 })
 
-async function onAutoCheckinToggle(val) {
+async function onAutoCheckinChange({ enabled, interval }) {
   if (!projectId.value) return
+  const payload = { auto_checkin_enabled: enabled }
+  if (interval !== undefined) payload.auto_checkin_interval = interval
   try {
-    await api.projects.update(projectId.value, { auto_checkin_enabled: val })
-    autoCheckinEnabled.value = val
+    await api.projects.update(projectId.value, payload)
+    autoCheckinEnabled.value = enabled
+    if (interval !== undefined) autoCheckinInterval.value = interval
   } catch (err) {
-    console.error('[JobsTab] Failed to update auto check-in toggle:', err)
-    autoCheckinEnabled.value = !val
-    showToast({ message: 'Failed to update auto check-in setting', type: 'error', timeout: 4000 })
-  }
-}
-
-async function onAutoCheckinIntervalChange(val) {
-  if (!projectId.value) return
-  try {
-    await api.projects.update(projectId.value, { auto_checkin_interval: val })
-    autoCheckinInterval.value = val
-  } catch (err) {
-    console.error('[JobsTab] Failed to update auto check-in interval:', err)
+    console.error('[JobsTab] Failed to update auto check-in:', err)
+    autoCheckinEnabled.value = props.project?.auto_checkin_enabled ?? false
     autoCheckinInterval.value = props.project?.auto_checkin_interval ?? 10
-    showToast({ message: 'Failed to update check-in interval', type: 'error', timeout: 4000 })
+    showToast({ message: 'Failed to update auto check-in setting', type: 'error', timeout: 4000 })
   }
 }
 
