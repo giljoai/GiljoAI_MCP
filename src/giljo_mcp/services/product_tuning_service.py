@@ -12,7 +12,6 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
-from uuid import uuid4
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -408,185 +407,104 @@ class ProductTuningService:
             toggle_config, _ = await self._get_user_configs(session, user_id)
             return self._get_eligible_sections(toggle_config)
 
-    async def store_proposals(
+    def _build_update_kwargs(self, proposals: list[dict[str, Any]]) -> tuple[dict[str, Any], list[str]]:
+        """Convert drift proposals into kwargs for ProductService.update_product().
+
+        Returns (update_kwargs, sections_applied).
+        """
+        update_kwargs: dict[str, Any] = {}
+        sections_applied: list[str] = []
+
+        for proposal in proposals:
+            if not proposal.get("drift_detected"):
+                continue
+
+            section = proposal.get("section")
+            value = proposal.get("proposed_value")
+            mapping = SECTION_FIELD_MAP.get(section)
+            if not mapping or value is None:
+                continue
+
+            if mapping["type"] == "direct":
+                field = mapping["field"]
+                if field == "target_platforms" and isinstance(value, str):
+                    value = [v.strip() for v in value.split(",") if v.strip()]
+                update_kwargs[field] = value
+            elif mapping["type"] == "relation":
+                relation_name = mapping["relation"]
+                if isinstance(value, dict):
+                    update_kwargs[relation_name] = value
+                elif isinstance(value, str):
+                    update_kwargs[relation_name] = dict.fromkeys(mapping["fields"], value)
+            elif mapping["type"] == "relation_field":
+                relation_name = mapping["relation"]
+                existing = update_kwargs.get(relation_name, {})
+                existing[mapping["field"]] = value
+                update_kwargs[relation_name] = existing
+
+            sections_applied.append(section)
+
+        return update_kwargs, sections_applied
+
+    async def apply_tuning_updates(
         self,
         product_id: str,
         proposals: list[dict[str, Any]],
         overall_summary: str | None = None,
     ) -> dict[str, Any]:
         """
-        Store tuning proposals submitted by an agent via submit_tuning_review.
+        Apply agent-approved tuning proposals directly to product fields.
+
+        Routes all writes through ProductService.update_product() — the same
+        validated path used by the Edit Product dialog. Only proposals where
+        drift_detected is True are applied.
 
         Args:
             product_id: Target product ID
             proposals: List of per-section proposal dicts
-            overall_summary: Optional high-level drift assessment
+            overall_summary: Optional high-level drift assessment (informational)
 
         Returns:
-            Dict with success, review_id, message
-        """
-        review_id = str(uuid4())
+            Dict with success, applied_count, sections_applied
 
+        Raises:
+            ResourceNotFoundError: If product not found
+        """
+        from src.giljo_mcp.services.product_service import ProductService
+
+        update_kwargs, sections_applied = self._build_update_kwargs(proposals)
+
+        if update_kwargs:
+            product_service = ProductService(self.db_manager, self.tenant_key)
+            await product_service.update_product(product_id, **update_kwargs)
+
+        # Stamp tuning metadata
         async with self._get_session() as session:
             product = await self._get_product(session, product_id)
-
             tuning_state = product.tuning_state or {}
-            tuning_state["pending_proposals"] = {
-                "review_id": review_id,
-                "submitted_at": datetime.now(timezone.utc).isoformat(),
-                "overall_summary": overall_summary,
-                "proposals": proposals,
-            }
+            tuning_state["last_tuned_at"] = datetime.now(timezone.utc).isoformat()
+            tuning_state["pending_proposals"] = None
             product.tuning_state = validate_tuning_state(tuning_state)
-            product.updated_at = datetime.now(timezone.utc)
 
             await session.commit()
 
-        # Emit WebSocket event after commit
         await self._emit_websocket_event(
-            event_type="product:tuning:proposals_ready",
+            event_type="product:context_updated",
             data={
                 "product_id": product_id,
-                "review_id": review_id,
-                "proposal_count": len(proposals),
+                "applied_count": len(sections_applied),
             },
         )
 
-        self._logger.info(f"Stored {len(proposals)} tuning proposals for product {product_id} (review {review_id})")
+        self._logger.info(
+            f"Applied {len(sections_applied)} tuning updates for product {product_id}: {sections_applied}"
+        )
 
         return {
             "success": True,
-            "review_id": review_id,
-            "message": f"Stored {len(proposals)} tuning proposals for review",
+            "applied_count": len(sections_applied),
+            "sections_applied": sections_applied,
         }
-
-    async def get_proposals(self, product_id: str) -> dict[str, Any] | None:
-        """Get current pending proposals for a product."""
-        async with self._get_session() as session:
-            product = await self._get_product(session, product_id)
-            if not product.tuning_state:
-                return None
-            return product.tuning_state.get("pending_proposals")
-
-    async def apply_proposal(
-        self,
-        product_id: str,
-        section: str,
-        action: str,
-        value: str | None = None,
-    ) -> dict[str, Any]:
-        """
-        Apply, edit, or dismiss a single tuning proposal.
-
-        Args:
-            product_id: Target product ID
-            section: Section key (e.g., "tech_stack")
-            action: "accept", "edit", or "dismiss"
-            value: Override value for "edit" action
-
-        Returns:
-            Dict with success and updated section info
-        """
-        if action not in ("accept", "edit", "dismiss"):
-            raise ValidationError(
-                message="Invalid action", context={"action": action, "valid": ["accept", "edit", "dismiss"]}
-            )
-
-        async with self._get_session() as session:
-            product = await self._get_product(session, product_id)
-
-            tuning_state = product.tuning_state or {}
-            pending = tuning_state.get("pending_proposals")
-            if not pending:
-                raise ValidationError(message="No pending proposals", context={"product_id": product_id})
-
-            proposals = pending.get("proposals", [])
-            proposal = next((p for p in proposals if p.get("section") == section), None)
-            if not proposal:
-                raise ValidationError(
-                    message="Proposal not found for section",
-                    context={"section": section, "product_id": product_id},
-                )
-
-            if action == "dismiss":
-                proposals = [p for p in proposals if p.get("section") != section]
-            else:
-                apply_value = value if action == "edit" else proposal.get("proposed_value")
-                self._apply_value_to_product(product, section, apply_value)
-                proposals = [p for p in proposals if p.get("section") != section]
-
-            # Update pending proposals
-            if proposals:
-                pending["proposals"] = proposals
-                tuning_state["pending_proposals"] = pending
-            else:
-                tuning_state["pending_proposals"] = None
-                tuning_state["last_tuned_at"] = datetime.now(timezone.utc).isoformat()
-
-            product.tuning_state = validate_tuning_state(tuning_state)
-            product.updated_at = datetime.now(timezone.utc)
-            await session.commit()
-
-        return {"success": True, "section": section, "action": action, "remaining_proposals": len(proposals)}
-
-    def _apply_value_to_product(self, product: Product, section: str, value: Any) -> None:
-        """Apply a tuning value to the correct product field."""
-        # See CROSS-REFERENCE note on SECTION_FIELD_MAP — vision analysis also writes these fields.
-        from src.giljo_mcp.models.products import ProductArchitecture, ProductTechStack
-
-        mapping = SECTION_FIELD_MAP.get(section)
-        if not mapping:
-            raise ValidationError(message=f"Unknown section: {section}", context={"section": section})
-
-        if mapping["type"] == "direct":
-            setattr(product, mapping["field"], value)
-        elif mapping["type"] == "relation":
-            rel_obj = getattr(product, mapping["relation"], None)
-            if rel_obj is None:
-                # Create the related object if it doesn't exist
-                if mapping["relation"] == "tech_stack":
-                    rel_obj = ProductTechStack(product_id=product.id, tenant_key=product.tenant_key)
-                    product.tech_stack = rel_obj
-                elif mapping["relation"] == "architecture":
-                    rel_obj = ProductArchitecture(product_id=product.id, tenant_key=product.tenant_key)
-                    product.architecture = rel_obj
-            # Value could be a dict of fields or a string
-            if isinstance(value, dict):
-                for field_name, field_value in value.items():
-                    if hasattr(rel_obj, field_name):
-                        setattr(rel_obj, field_name, field_value)
-            elif isinstance(value, str):
-                # For string values, set all text fields to the value
-                for field_name in mapping["fields"]:
-                    setattr(rel_obj, field_name, value)
-        elif mapping["type"] == "relation_field":
-            from src.giljo_mcp.models.products import ProductTestConfig
-
-            rel_obj = getattr(product, mapping["relation"], None)
-            if rel_obj is None:
-                rel_obj = ProductTestConfig(product_id=product.id, tenant_key=product.tenant_key)
-                product.test_config = rel_obj
-            setattr(rel_obj, mapping["field"], value)
-
-    async def clear_review(self, product_id: str) -> dict[str, Any]:
-        """Clear all pending proposals and update last_tuned_at."""
-        async with self._get_session() as session:
-            product = await self._get_product(session, product_id)
-
-            # Get current max sequence from 360 memory
-            current_sequence = await self._memory_repo.get_next_sequence(session, product_id) - 1
-
-            tuning_state = product.tuning_state or {}
-            tuning_state["pending_proposals"] = None
-            tuning_state["last_tuned_at"] = datetime.now(timezone.utc).isoformat()
-            tuning_state["last_tuned_at_sequence"] = max(current_sequence, 0)
-
-            product.tuning_state = validate_tuning_state(tuning_state)
-            product.updated_at = datetime.now(timezone.utc)
-            await session.commit()
-
-        self._logger.info(f"Cleared tuning review for product {product_id}")
-        return {"success": True, "last_tuned_at_sequence": max(current_sequence, 0)}
 
     async def check_tuning_staleness(self, product_id: str, user_id: str) -> dict[str, Any]:
         """

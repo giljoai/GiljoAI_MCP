@@ -110,8 +110,11 @@
                         </span>
                       </div>
 
-                      <div class="text-caption text-muted-a11y mb-3">
+                      <div class="text-caption text-muted-a11y" :class="{ 'mb-1': product.updated_at, 'mb-3': !product.updated_at }">
                         Created: {{ formatDate(product.created_at) }}
+                      </div>
+                      <div v-if="product.updated_at" class="text-caption text-muted-a11y mb-3">
+                        Context updated: {{ formatDate(product.updated_at) }}
                       </div>
 
                       <div class="mb-3">
@@ -186,27 +189,19 @@
                       </v-tooltip>
                       <v-tooltip location="top" content-class="branded-tooltip">
                         <template v-slot:activator="{ props }">
-                          <v-badge
-                            :model-value="getTuningState(product) !== 'normal'"
-                            dot
-                            :color="getTuningState(product) === 'proposals' ? 'warning' : 'info'"
-                            offset-x="-2"
-                            offset-y="-2"
+                          <v-btn
+                            icon
+                            size="small"
+                            variant="text"
+                            v-bind="props"
+                            class="icon-interactive"
+                            aria-label="Tune context"
+                            @click="showProductTuning(product)"
                           >
-                            <v-btn
-                              icon
-                              size="small"
-                              variant="text"
-                              v-bind="props"
-                              class="icon-interactive"
-                              aria-label="Tune context"
-                              @click="showProductTuning(product)"
-                            >
-                              <v-icon>mdi-tune</v-icon>
-                            </v-btn>
-                          </v-badge>
+                            <v-icon>mdi-tune</v-icon>
+                          </v-btn>
                         </template>
-                        <span>{{ getTuningState(product) === 'proposals' ? 'Tuning proposals ready for review' : getTuningState(product) === 'stale' ? 'Context tuning recommended' : 'Tune Context' }}</span>
+                        <span>Tune Context</span>
                       </v-tooltip>
                       <v-tooltip location="top" content-class="branded-tooltip">
                         <template v-slot:activator="{ props }">
@@ -535,14 +530,6 @@ function validateVisionFiles() {
   return true
 }
 
-function getTuningState(product) {
-  if (product.tuning_state?.pending_proposals) return 'proposals'
-  const hasUnread = notificationStore.notifications.some(
-    (n) => !n.read && n.type === 'context_tuning' && n.metadata?.product_id === product.id,
-  )
-  if (hasUnread) return 'stale'
-  return 'normal'
-}
 
 async function showProductDetails(product) {
   selectedProduct.value = product

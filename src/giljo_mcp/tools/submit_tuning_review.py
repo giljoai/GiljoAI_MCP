@@ -5,6 +5,7 @@ Allows agents to submit structured product context tuning proposals
 after analyzing current product context against recent project history.
 
 Called by the user's AI coding agent after reviewing the tuning comparison prompt.
+Approved proposals are applied directly to product fields — no dashboard review step.
 """
 
 import logging
@@ -69,26 +70,26 @@ async def submit_tuning_review(
     websocket_manager: Any = None,
 ) -> dict[str, Any]:
     """
-    Submit product context tuning proposals.
+    Apply approved product context tuning proposals directly to product fields.
 
-    Called by the user's AI coding agent after analyzing the comparison prompt.
-    Stores proposals on the product for user review in the dashboard.
+    Called by the user's AI coding agent after interactive review in the CLI.
+    Proposals where drift_detected is True are written immediately. Proposals
+    where drift_detected is False are skipped — no change is needed.
 
     Args:
         product_id: Target product UUID
         tenant_key: Tenant isolation key
-        proposals: Per-section proposal dicts
-        overall_summary: High-level drift assessment
+        proposals: Per-section proposal dicts (user-reviewed)
+        overall_summary: High-level drift assessment (informational)
         db_manager: Injected by ToolAccessor
         websocket_manager: Injected by ToolAccessor
 
     Returns:
-        Dict with success, review_id, message
+        Dict with success, applied_count, sections_applied
     """
     if not db_manager:
         raise ValueError("db_manager is required")
 
-    # Validate proposals structure
     errors = _validate_proposals(proposals)
     if errors:
         raise ValueError(f"Invalid proposals: {'; '.join(errors)}")
@@ -99,7 +100,7 @@ async def submit_tuning_review(
         websocket_manager=websocket_manager,
     )
 
-    return await service.store_proposals(
+    return await service.apply_tuning_updates(
         product_id=product_id,
         proposals=proposals,
         overall_summary=overall_summary,

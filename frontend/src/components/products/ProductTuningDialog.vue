@@ -18,18 +18,6 @@
           ID: {{ product.id }}
         </div>
 
-        <div v-if="product.tuning_state?.pending_proposals" class="mb-4">
-          <div class="text-subtitle-2 mb-2">Tuning Proposals</div>
-          <div class="text-caption text-muted-a11y mb-3">
-            Review proposed updates detected from product context drift.
-          </div>
-          <ProductTuningReview
-            :product-id="product.id"
-            :proposals="product.tuning_state.pending_proposals"
-            @proposals-updated="emit('refresh-product')"
-          />
-        </div>
-
         <div class="text-subtitle-2 mb-2">Generate Tuning Prompt</div>
         <div class="text-caption text-muted-a11y mb-3">
           Select the product sections you want to retune and generate a prompt for the next pass.
@@ -54,7 +42,6 @@
 <script setup>
 import { computed } from 'vue'
 import ProductTuningMenu from './ProductTuningMenu.vue'
-import ProductTuningReview from './ProductTuningReview.vue'
 
 const props = defineProps({
   modelValue: {
