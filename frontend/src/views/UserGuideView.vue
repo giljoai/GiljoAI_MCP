@@ -2,7 +2,20 @@
   <div class="guide-layout">
     <!-- Mobile TOC chip row (< 768px) -->
     <div v-if="isMobile" class="guide-toc-mobile">
-      <div class="guide-toc-mobile-inner">
+      <div class="guide-toc-mobile-search">
+        <v-icon size="16" class="guide-search-icon">mdi-magnify</v-icon>
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Search guide..."
+          class="guide-search-input"
+          @keydown.escape="searchQuery = ''"
+        />
+        <button v-if="searchQuery" class="guide-search-clear" @click="searchQuery = ''">
+          <v-icon size="14">mdi-close</v-icon>
+        </button>
+      </div>
+      <div v-if="!searchQuery" class="guide-toc-mobile-inner">
         <button
           v-for="entry in tocEntries"
           :key="entry.anchor"
@@ -13,14 +26,59 @@
           {{ entry.text }}
         </button>
       </div>
+      <div v-else-if="searchResults.length" class="guide-search-results-mobile">
+        <button
+          v-for="result in searchResults"
+          :key="result.anchor"
+          class="guide-search-result"
+          @click="goToSearchResult(result)"
+        >
+          <span class="guide-search-result-section">{{ result.section }}</span>
+          <span class="guide-search-result-snippet" v-html="result.snippet" />
+        </button>
+      </div>
+      <div v-else class="guide-search-empty">No results for "{{ searchQuery }}"</div>
     </div>
 
     <!-- Desktop layout: sidebar + content -->
     <div class="guide-inner">
-      <!-- Left sidebar TOC (>= 768px) -->
-      <aside v-if="!isMobile" class="guide-sidebar smooth-border">
-        <div class="guide-sidebar-title">Contents</div>
-        <nav class="guide-toc" aria-label="Table of contents">
+      <!-- Left sidebar TOC (>= 768px) — fixed to viewport -->
+      <aside v-if="!isMobile" class="guide-sidebar">
+        <div class="guide-sidebar-header">
+          <div class="guide-sidebar-title">Contents</div>
+          <div class="guide-search-box">
+            <v-icon size="16" class="guide-search-icon">mdi-magnify</v-icon>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search..."
+              class="guide-search-input"
+              @keydown.escape="searchQuery = ''"
+            />
+            <button v-if="searchQuery" class="guide-search-clear" @click="searchQuery = ''">
+              <v-icon size="14">mdi-close</v-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Search results in sidebar -->
+        <div v-if="searchQuery && searchResults.length" class="guide-search-results">
+          <button
+            v-for="result in searchResults"
+            :key="result.anchor"
+            class="guide-search-result"
+            @click="goToSearchResult(result)"
+          >
+            <span class="guide-search-result-section">{{ result.section }}</span>
+            <span class="guide-search-result-snippet" v-html="result.snippet" />
+          </button>
+        </div>
+        <div v-else-if="searchQuery" class="guide-search-empty">
+          No results
+        </div>
+
+        <!-- TOC (hidden during search) -->
+        <nav v-else class="guide-toc" aria-label="Table of contents">
           <button
             v-for="entry in tocEntries"
             :key="entry.anchor"
@@ -60,6 +118,7 @@ const { width } = useDisplay()
 const isMobile = computed(() => width.value < 768)
 const contentRef = ref(null)
 const activeTocAnchor = ref('')
+const searchQuery = ref('')
 
 // Build combined markdown: overview + getting started + user guide
 const combinedMarkdown = computed(() => {
@@ -102,6 +161,72 @@ const tocEntries = computed(() => {
   }
   return entries
 })
+
+// ─── SEARCH ───
+
+// Build searchable sections: split markdown by ## headings
+const searchableSections = computed(() => {
+  const sections = []
+  const lines = combinedMarkdown.value.split('\n')
+  let currentSection = null
+
+  for (const line of lines) {
+    const match = line.match(/^## (.+)$/)
+    if (match) {
+      if (currentSection) sections.push(currentSection)
+      currentSection = {
+        title: match[1].trim(),
+        anchor: headingToAnchor(match[1].trim()),
+        text: '',
+      }
+    } else if (currentSection) {
+      currentSection.text += line + '\n'
+    }
+  }
+  if (currentSection) sections.push(currentSection)
+  return sections
+})
+
+const searchResults = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q || q.length < 2) return []
+
+  const results = []
+  for (const section of searchableSections.value) {
+    const plainText = section.text
+      .replace(/[#*_`|[\]()>-]/g, '')
+      .replace(/\n+/g, ' ')
+      .trim()
+
+    const idx = plainText.toLowerCase().indexOf(q)
+    if (idx === -1 && !section.title.toLowerCase().includes(q)) continue
+
+    let snippet = ''
+    if (idx !== -1) {
+      const start = Math.max(0, idx - 30)
+      const end = Math.min(plainText.length, idx + q.length + 50)
+      const raw = (start > 0 ? '...' : '') + plainText.slice(start, end) + (end < plainText.length ? '...' : '')
+      snippet = raw.replace(
+        new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'),
+        '<mark>$1</mark>'
+      )
+    }
+
+    results.push({
+      section: section.title,
+      anchor: section.anchor,
+      snippet,
+    })
+  }
+  return results.slice(0, 10)
+})
+
+function goToSearchResult(result) {
+  searchQuery.value = ''
+  nextTick(() => scrollToAnchor(result.anchor))
+}
+
+// ─── TOC HELPERS ───
 
 function headingToAnchor(text) {
   return text
@@ -185,32 +310,38 @@ onBeforeUnmount(() => {
 .guide-layout {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  height: calc(100vh - 64px); // subtract app bar height
   background: var(--color-bg-primary, #0e1c2d);
+  overflow: hidden;
 }
 
-// ─── MOBILE TOC CHIP ROW ───
+// ─── MOBILE TOC + SEARCH ───
 
 .guide-toc-mobile {
-  overflow-x: auto;
   padding: 10px 16px;
   background: var(--color-bg-secondary, #12202e);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  flex-shrink: 0;
+}
 
-  &::-webkit-scrollbar {
-    display: none;
-  }
+.guide-toc-mobile-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .guide-toc-mobile-inner {
   display: flex;
   gap: 8px;
   white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .guide-toc-chip {
@@ -244,23 +375,24 @@ onBeforeUnmount(() => {
   display: flex;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
-// ─── SIDEBAR ───
+// ─── SIDEBAR (fixed to viewport, scrolls independently) ───
 
 .guide-sidebar {
-  width: 200px;
+  width: 220px;
   flex-shrink: 0;
   background: var(--color-bg-secondary, #12202e);
-  padding: 24px 16px;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
-  box-sizing: border-box;
-
-  // Smooth border on right edge only via override
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+.guide-sidebar-header {
+  padding: 20px 16px 12px;
+  flex-shrink: 0;
 }
 
 .guide-sidebar-title {
@@ -270,14 +402,129 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
   color: var(--text-muted, #8895a8);
   margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
+
+// ─── SEARCH BOX ───
+
+.guide-search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 6px 10px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: box-shadow 0.15s ease;
+
+  &:focus-within {
+    box-shadow: inset 0 0 0 1px rgba($yellow, 0.4);
+  }
+}
+
+.guide-search-icon {
+  color: var(--text-muted, #8895a8);
+  flex-shrink: 0;
+}
+
+.guide-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-text-primary, #e1e1e1);
+  font-size: 0.8rem;
+  font-family: inherit;
+  width: 100%;
+  min-width: 0;
+
+  &::placeholder {
+    color: var(--text-muted, #8895a8);
+  }
+}
+
+.guide-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted, #8895a8);
+  padding: 2px;
+  border-radius: 4px;
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--color-text-primary, #e1e1e1);
+  }
+}
+
+// ─── SEARCH RESULTS ───
+
+.guide-search-results,
+.guide-search-results-mobile {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0 12px 12px;
+}
+
+.guide-search-result {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.guide-search-result-section {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: $yellow;
+  margin-bottom: 2px;
+}
+
+.guide-search-result-snippet {
+  font-size: 0.75rem;
+  color: var(--text-muted, #8895a8);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+
+  :deep(mark) {
+    background: rgba($yellow, 0.25);
+    color: var(--color-text-primary, #e1e1e1);
+    border-radius: 2px;
+    padding: 0 2px;
+  }
+}
+
+.guide-search-empty {
+  padding: 16px;
+  font-size: 0.8rem;
+  color: var(--text-muted, #8895a8);
+  text-align: center;
+}
+
+// ─── TOC (below search, scrolls independently) ───
 
 .guide-toc {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow-y: auto;
+  flex: 1;
+  padding: 0 12px 16px;
 }
 
 .guide-toc-item {
@@ -305,7 +552,7 @@ onBeforeUnmount(() => {
   }
 }
 
-// ─── CONTENT AREA ───
+// ─── CONTENT AREA (scrolls independently) ───
 
 .guide-content {
   flex: 1;
@@ -340,6 +587,7 @@ onBeforeUnmount(() => {
   padding-top: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   line-height: 1.3;
+  scroll-margin-top: 16px;
 
   &:first-child {
     margin-top: 0;
@@ -478,12 +726,20 @@ onBeforeUnmount(() => {
 // ─── RESPONSIVE ───
 
 @media (max-width: 767px) {
+  .guide-layout {
+    height: auto;
+    min-height: calc(100vh - 64px);
+    overflow: visible;
+  }
+
   .guide-inner {
     flex-direction: column;
+    overflow: visible;
   }
 
   .guide-content {
     padding: 20px 16px;
+    overflow: visible;
   }
 }
 </style>
