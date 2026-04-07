@@ -232,7 +232,7 @@ describe('agentJobsStore - Phase 2: Debounced store updates', () => {
     // Act: fire a status change (should be immediate, no debounce)
     store.handleStatusChanged({
       job_id: 'job-1',
-      new_status: 'silent',
+      status: 'silent',
     })
 
     // Assert: Map reference should have changed immediately
@@ -305,7 +305,7 @@ describe('agentJobsStore - Phase 2: Debounced store updates', () => {
     // Act: fire a status change (immediate) -- should flush pending first
     store.handleStatusChanged({
       job_id: 'job-1',
-      new_status: 'complete',
+      status: 'complete',
     })
 
     // Assert: both the pending progress update AND the status change should be applied
