@@ -141,6 +141,80 @@ class ProductMemoryRepository:
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_entries_by_last_n_projects(
+        self,
+        session: AsyncSession,
+        product_id: UUID,
+        tenant_key: str,
+        last_n_projects: int,
+        offset: int = 0,
+        include_deleted: bool = False,
+    ) -> tuple[list[ProductMemoryEntry], int]:
+        """
+        Get 360 memory entries for the last N distinct projects.
+
+        Unlike get_entries_by_product which limits by entry count, this limits
+        by distinct project_id count. A project with 3 entries returns all 3
+        within a single project slot.
+
+        Args:
+            session: Database session
+            product_id: Product ID to query
+            tenant_key: Tenant isolation key
+            last_n_projects: Number of distinct projects to include
+            offset: Number of distinct projects to skip
+            include_deleted: Include soft-deleted entries
+
+        Returns:
+            Tuple of (entries list in descending sequence order, total distinct project count)
+        """
+        # Base filter shared by both queries
+        base_filter = [
+            ProductMemoryEntry.product_id == str(product_id),
+            ProductMemoryEntry.tenant_key == tenant_key,
+            ProductMemoryEntry.project_id.isnot(None),
+        ]
+        if not include_deleted:
+            base_filter.append(ProductMemoryEntry.deleted_by_user == False)  # noqa: E712
+
+        # Count total distinct projects
+        count_stmt = select(func.count(func.distinct(ProductMemoryEntry.project_id))).where(*base_filter)
+        count_result = await session.execute(count_stmt)
+        total_distinct_projects = count_result.scalar() or 0
+
+        # Get the N most recent distinct project_ids (by max sequence)
+        project_ids_stmt = (
+            select(ProductMemoryEntry.project_id)
+            .where(*base_filter)
+            .group_by(ProductMemoryEntry.project_id)
+            .order_by(func.max(ProductMemoryEntry.sequence).desc())
+            .offset(offset)
+            .limit(last_n_projects)
+        )
+        project_ids_result = await session.execute(project_ids_stmt)
+        project_ids = [row[0] for row in project_ids_result.all()]
+
+        if not project_ids:
+            return [], total_distinct_projects
+
+        # Fetch all entries for those projects
+        entries_stmt = (
+            select(ProductMemoryEntry)
+            .where(
+                ProductMemoryEntry.product_id == str(product_id),
+                ProductMemoryEntry.tenant_key == tenant_key,
+                ProductMemoryEntry.project_id.in_(project_ids),
+            )
+            .order_by(ProductMemoryEntry.sequence.desc())
+        )
+        if not include_deleted:
+            entries_stmt = entries_stmt.where(
+                ProductMemoryEntry.deleted_by_user == False  # noqa: E712
+            )
+
+        result = await session.execute(entries_stmt)
+        return list(result.scalars().all()), total_distinct_projects
+
     async def get_entry_by_id(
         self,
         session: AsyncSession,

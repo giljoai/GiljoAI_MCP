@@ -234,6 +234,8 @@ export const api = {
       if (data.architecture !== undefined) payload.architecture = data.architecture
       if (data.test_config !== undefined) payload.test_config = data.test_config
       if (data.core_features !== undefined) payload.core_features = data.core_features
+      if (data.brand_guidelines !== undefined) payload.brand_guidelines = data.brand_guidelines
+      if (data.extraction_custom_instructions !== undefined) payload.extraction_custom_instructions = data.extraction_custom_instructions
       if (data.isActive !== undefined) payload.is_active = data.isActive
       return apiClient.put(`/api/v1/products/${id}`, payload)
     },

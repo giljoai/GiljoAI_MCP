@@ -84,6 +84,9 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
     - Inspects method signature to decide whether tenant_key is accepted
     - Always injects session tenant_key (never trust client-supplied value)
     - Strips tenant_key from kwargs if the method doesn't accept it
+
+    After successful execution, auto-clears 'silent' status if the calling
+    agent was marked silent (restores to 'working' + updates last_progress_at).
     """
     tenant_key = _resolve_tenant(ctx)
     _set_tenant_context(tenant_key)
@@ -98,7 +101,22 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
     else:
         kwargs.pop("tenant_key", None)
 
-    return await tool_func(**kwargs)
+    result = await tool_func(**kwargs)
+
+    # Auto-clear silent status on any successful MCP interaction
+    job_id = kwargs.get("job_id")
+    if job_id:
+        try:
+            from api.app import state as app_state
+            from src.giljo_mcp.services.silence_detector import auto_clear_silent
+
+            ws_manager = getattr(app_state, "websocket_manager", None)
+            async with app_state.db_manager.get_session_async() as db:
+                await auto_clear_silent(db, job_id, ws_manager)
+        except (OSError, RuntimeError, ValueError, TypeError, AttributeError, KeyError):
+            logger.warning("auto_clear_silent failed for job_id=%s (non-blocking)", job_id)
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -681,7 +699,12 @@ async def fetch_context(
     description=(
         "Close project and update 360 Memory with sequential history entry. "
         "Called by: ORCHESTRATOR at project completion. Triggers WebSocket "
-        "'product_memory_updated' event for UI updates."
+        "'product_memory_updated' event for UI updates. "
+        "All agents MUST be in 'complete' or 'decommissioned' status before calling. "
+        "If blocked, resolve each agent via report_progress + complete_job first. "
+        "IMPORTANT: Before calling, run `git log --oneline` for the project branch "
+        "and pass the commits as git_commits. Each entry needs: sha, message, author. "
+        "Optional fields: date (ISO 8601), files_changed (int), lines_added (int)."
     ),
 )
 async def close_project_and_update_memory(
@@ -689,28 +712,30 @@ async def close_project_and_update_memory(
     summary: str,
     key_outcomes: list[str],
     decisions_made: list[str],
-    force: bool = False,
+    git_commits: list[dict] = None,
     ctx: Context = None,
 ) -> dict:
     """Close project and update 360 Memory."""
-    return await _call_tool(
-        ctx,
-        "close_project_and_update_memory",
-        {
-            "project_id": project_id,
-            "summary": summary,
-            "key_outcomes": key_outcomes,
-            "decisions_made": decisions_made,
-            "force": force,
-        },
-    )
+    kwargs: dict[str, Any] = {
+        "project_id": project_id,
+        "summary": summary,
+        "key_outcomes": key_outcomes,
+        "decisions_made": decisions_made,
+        "force": False,
+    }
+    if git_commits is not None:
+        kwargs["git_commits"] = git_commits
+    return await _call_tool(ctx, "close_project_and_update_memory", kwargs)
 
 
 @mcp.tool(
     description=(
         "Write a 360 memory entry for project completion or handover. Called by "
         "orchestrator on completion, or by agents on handover. Appends to "
-        "Product.product_memory.sequential_history."
+        "Product.product_memory.sequential_history. "
+        "IMPORTANT: Before calling, run `git log --oneline` for the project branch "
+        "and pass the commits as git_commits. Each entry needs: sha, message, author. "
+        "Optional fields: date (ISO 8601), files_changed (int), lines_added (int)."
     ),
 )
 async def write_360_memory(
@@ -720,6 +745,7 @@ async def write_360_memory(
     decisions_made: list[str],
     entry_type: str = "project_completion",
     author_job_id: str = "",
+    git_commits: list[dict] = None,
     ctx: Context = None,
 ) -> dict:
     """Write 360 memory entry for project completion/handover."""
@@ -732,6 +758,8 @@ async def write_360_memory(
     }
     if author_job_id:
         kwargs["author_job_id"] = author_job_id
+    if git_commits is not None:
+        kwargs["git_commits"] = git_commits
     return await _call_tool(ctx, "write_360_memory", kwargs)
 
 
