@@ -39,7 +39,9 @@ structlog>=25.0.0          # Structured logging (required by MCP context tools)
 watchdog>=3.0.0            # File system event monitoring
 
 # Vision Document Summarization (Handover 0345b - Optional CPU-based feature)
-sumy>=0.11.0               # Extractive summarization using LSA algorithm (pulls numpy, scipy as transitive deps)
+sumy>=0.11.0               # Extractive summarization using LSA algorithm
+numpy>=1.24.0              # Required by sumy LSA summarizer (not a transitive dep of sumy)
+scipy>=1.10.0              # Required by sumy LSA for SVD computation (not a transitive dep of sumy)
 nltk>=3.8                  # Natural language processing (tokenization, stopwords)
 
 # Platform-Specific
