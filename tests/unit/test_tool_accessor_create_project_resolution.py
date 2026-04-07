@@ -302,6 +302,7 @@ class TestCreateProjectReturnValue:
                 "success",
                 "project_id",
                 "alias",
+                "taxonomy_alias",
                 "name",
                 "description",
                 "mission",
@@ -309,6 +310,8 @@ class TestCreateProjectReturnValue:
                 "product_id",
                 "created_at",
                 "message",
+                "project_type",
+                "series_number",
             }
             assert set(result.keys()) == expected_keys, (
                 f"Expected keys {expected_keys}, got {set(result.keys())}"

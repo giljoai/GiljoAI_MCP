@@ -73,14 +73,14 @@ async def test_task(db_session, test_tenant_key, test_product, test_project, tes
 @pytest.mark.asyncio
 async def test_can_delete_task_as_creator(task_service, test_task, test_user):
     """Test creator can delete their own task"""
-    can_delete = task_service.can_delete_task(test_task, test_user)
+    can_delete = task_service._conversion.can_delete_task(test_task, test_user)
     assert can_delete is True
 
 
 @pytest.mark.asyncio
 async def test_can_delete_task_as_admin(task_service, test_task, admin_user):
     """Test admin can delete any task in tenant"""
-    can_delete = task_service.can_delete_task(test_task, admin_user)
+    can_delete = task_service._conversion.can_delete_task(test_task, admin_user)
     assert can_delete is True
 
 
@@ -99,5 +99,5 @@ async def test_can_delete_task_denied(task_service, test_task, db_session, test_
     db_session.add(other_user)
     await db_session.commit()
 
-    can_delete = task_service.can_delete_task(test_task, other_user)
+    can_delete = task_service._conversion.can_delete_task(test_task, other_user)
     assert can_delete is False

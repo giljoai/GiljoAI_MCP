@@ -134,7 +134,7 @@ class TestOrchestratorDeduplication:
         project_service = create_project_service(db_session, test_user.tenant_key)
 
         # Call _ensure_orchestrator_fixture
-        result = await project_service._ensure_orchestrator_fixture(
+        result = await project_service._lifecycle._ensure_orchestrator_fixture(
             session=db_session,
             project=project,
             websocket_manager=None,
@@ -217,7 +217,7 @@ class TestOrchestratorDeduplication:
         project_service = create_project_service(db_session, test_user.tenant_key)
 
         # Call _ensure_orchestrator_fixture
-        result = await project_service._ensure_orchestrator_fixture(
+        result = await project_service._lifecycle._ensure_orchestrator_fixture(
             session=db_session,
             project=project,
             websocket_manager=None,
@@ -300,7 +300,7 @@ class TestOrchestratorDeduplication:
         project_service = create_project_service(db_session, test_user.tenant_key)
 
         # Call _ensure_orchestrator_fixture
-        result = await project_service._ensure_orchestrator_fixture(
+        result = await project_service._lifecycle._ensure_orchestrator_fixture(
             session=db_session,
             project=project,
             websocket_manager=None,
