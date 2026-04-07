@@ -1,9 +1,8 @@
 /**
- * agentJobsStore - handleStatusChanged new_status mapping tests
+ * agentJobsStore - handleStatusChanged tests
  *
- * Validates the fix where EventFactory.agent_status_changed() sends `new_status`
- * but the store's job object uses `status`. Without the mapping, status changes
- * from the silence detector (and auto-clear) were silently ignored.
+ * Validates that agent:status_changed WebSocket events correctly update
+ * the store. Backend emits `status` field directly (no mapping needed).
  *
  * Edition Scope: CE
  */
@@ -12,7 +11,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAgentJobsStore } from '@/stores/agentJobsStore'
 
-describe('agentJobsStore - handleStatusChanged new_status mapping', () => {
+describe('agentJobsStore - handleStatusChanged', () => {
   let store
 
   beforeEach(() => {
@@ -20,8 +19,7 @@ describe('agentJobsStore - handleStatusChanged new_status mapping', () => {
     store = useAgentJobsStore()
   })
 
-  it('maps new_status to status when payload has new_status but no status', () => {
-    // Setup: Add a job that is currently working
+  it('updates status from payload', () => {
     store.setJobs([
       {
         job_id: 'job-1',
@@ -31,44 +29,17 @@ describe('agentJobsStore - handleStatusChanged new_status mapping', () => {
       },
     ])
 
-    // Act: Receive a status change with new_status (as EventFactory sends)
     store.handleStatusChanged({
       job_id: 'job-1',
-      new_status: 'silent',
+      status: 'silent',
     })
 
-    // Assert: The job should now have status 'silent'
     const job = store.getJob('job-1')
     expect(job).toBeTruthy()
     expect(job.status).toBe('silent')
   })
 
-  it('preserves explicit status when both status and new_status are present', () => {
-    // Setup: Add a working job
-    store.setJobs([
-      {
-        job_id: 'job-2',
-        agent_id: 'agent-2',
-        agent_display_name: 'orchestrator',
-        status: 'working',
-      },
-    ])
-
-    // Act: Receive a payload with both fields -- explicit status should win
-    store.handleStatusChanged({
-      job_id: 'job-2',
-      status: 'complete',
-      new_status: 'silent',
-    })
-
-    // Assert: Explicit status field takes precedence
-    const job = store.getJob('job-2')
-    expect(job).toBeTruthy()
-    expect(job.status).toBe('complete')
-  })
-
   it('ignores status changes for unknown jobs (prevents ghost rows)', () => {
-    // Setup: Add one known job
     store.setJobs([
       {
         job_id: 'known-job',
@@ -80,19 +51,16 @@ describe('agentJobsStore - handleStatusChanged new_status mapping', () => {
 
     const countBefore = store.jobCount
 
-    // Act: Receive a status change for a job_id NOT in the store
     store.handleStatusChanged({
       job_id: 'unknown-job-from-other-project',
-      new_status: 'silent',
+      status: 'silent',
     })
 
-    // Assert: No new job was created -- store size unchanged
     expect(store.jobCount).toBe(countBefore)
     expect(store.getJob('unknown-job-from-other-project')).toBeNull()
   })
 
-  it('transitions a working job to silent via new_status mapping', () => {
-    // Setup: A job that is actively working
+  it('transitions a working job to silent', () => {
     store.setJobs([
       {
         job_id: 'job-active',
@@ -102,24 +70,20 @@ describe('agentJobsStore - handleStatusChanged new_status mapping', () => {
       },
     ])
 
-    // Pre-condition: verify it is working
     expect(store.getJob('job-active').status).toBe('working')
 
-    // Act: Silence detector fires agent_status_changed with new_status
     store.handleStatusChanged({
       job_id: 'job-active',
-      new_status: 'silent',
+      status: 'silent',
       project_id: 'proj-1',
       agent_display_name: 'tester',
     })
 
-    // Assert: Status is now silent
     const job = store.getJob('job-active')
     expect(job.status).toBe('silent')
   })
 
-  it('does not overwrite other fields when mapping new_status', () => {
-    // Setup: A job with identity fields
+  it('does not overwrite other fields when updating status', () => {
     store.setJobs([
       {
         job_id: 'job-identity',
@@ -131,13 +95,11 @@ describe('agentJobsStore - handleStatusChanged new_status mapping', () => {
       },
     ])
 
-    // Act: Status change via new_status
     store.handleStatusChanged({
       job_id: 'job-identity',
-      new_status: 'silent',
+      status: 'silent',
     })
 
-    // Assert: Identity and progress fields preserved
     const job = store.getJob('job-identity')
     expect(job.status).toBe('silent')
     expect(job.agent_display_name).toBe('reviewer')
@@ -145,8 +107,7 @@ describe('agentJobsStore - handleStatusChanged new_status mapping', () => {
     expect(job.progress).toBe(75)
   })
 
-  it('handles new_status with agent_id resolution (not just job_id)', () => {
-    // Setup: Add a job keyed by agent_id
+  it('handles status with agent_id resolution (not just job_id)', () => {
     store.setJobs([
       {
         job_id: 'job-uuid-1',
@@ -156,22 +117,18 @@ describe('agentJobsStore - handleStatusChanged new_status mapping', () => {
       },
     ])
 
-    // Act: Status change referencing both job_id and agent_id
-    // Real events typically include job_id, but agent_id is used for resolution fallback
     store.handleStatusChanged({
       job_id: 'job-uuid-1',
       agent_id: 'executor-uuid-1',
-      new_status: 'complete',
+      status: 'complete',
     })
 
-    // Assert: Job resolved and status updated
     const job = store.getJob('job-uuid-1')
     expect(job).toBeTruthy()
     expect(job.status).toBe('complete')
   })
 
-  it('handles payload with no new_status and no status gracefully', () => {
-    // Setup: Add a job
+  it('handles payload with no status gracefully', () => {
     store.setJobs([
       {
         job_id: 'job-noop',
@@ -181,12 +138,10 @@ describe('agentJobsStore - handleStatusChanged new_status mapping', () => {
       },
     ])
 
-    // Act: Status change with neither field -- should be a no-op on status
     store.handleStatusChanged({
       job_id: 'job-noop',
     })
 
-    // Assert: Status unchanged (upsert merges but no status field provided)
     const job = store.getJob('job-noop')
     expect(job.status).toBe('working')
   })

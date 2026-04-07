@@ -181,15 +181,16 @@ class ProgressService:
                 # Auto-wake transition: if an agent reports progress while in a
                 # resting state (blocked/idle/sleeping), resume "working" status.
                 # Handover 0880: extended from blocked-only to all resting states.
+                old_resting_status = None
                 if execution.status in ("blocked", "idle", "sleeping"):
-                    old_resting = execution.status
+                    old_resting_status = execution.status
                     execution.status = "working"
                     execution.block_reason = None
                     blocked_to_working = True
 
                     self._logger.info(
                         "Agent resumed from %s: agent_id=%s, job_id=%s",
-                        old_resting,
+                        old_resting_status,
                         execution.agent_id,
                         job_id,
                     )
@@ -221,6 +222,7 @@ class ProgressService:
                 execution,
                 progress,
                 blocked_to_working,
+                old_resting_status=old_resting_status,
             )
         except (ValidationError, ResourceNotFoundError):
             raise
@@ -567,9 +569,10 @@ class ProgressService:
         execution: AgentExecution,
         progress: dict[str, Any],
         blocked_to_working: bool,
+        old_resting_status: str | None = None,
     ) -> ProgressResult:
         """Broadcast WebSocket events and return the progress result with warnings."""
-        # Broadcast blocked->working AFTER commit succeeds (not before)
+        # Broadcast resting->working AFTER commit succeeds (not before)
         if blocked_to_working and self._websocket_manager:
             try:
                 await self._websocket_manager.broadcast_to_tenant(
@@ -578,14 +581,15 @@ class ProgressService:
                     data={
                         "job_id": str(job_id),
                         "agent_display_name": execution.agent_display_name or "unknown",
-                        "old_status": "blocked",
-                        "new_status": "working",
+                        "old_status": old_resting_status or "blocked",
+                        "status": "working",
                         "project_id": str(job.project_id),
                     },
                 )
             except Exception:  # Broad catch: WebSocket resilience, non-critical broadcast
                 self._logger.exception(
-                    "Failed to broadcast blocked->working for agent %s",
+                    "Failed to broadcast %s->working for agent %s",
+                    old_resting_status or "blocked",
                     execution.agent_id,
                 )
 

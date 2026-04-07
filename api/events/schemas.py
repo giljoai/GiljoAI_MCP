@@ -221,11 +221,11 @@ class AgentStatusChangedData(BaseModel):
     project_id: str | None = Field(None, description="Project UUID if applicable")
     tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
     old_status: str = Field(..., min_length=1, description="Previous status")
-    new_status: str = Field(..., min_length=1, description="New status")
+    status: str = Field(..., min_length=1, description="New status")
     agent_display_name: str = Field(..., min_length=1, description="Human-readable display name for UI")
     duration_seconds: float | None = Field(None, ge=0, description="Job duration for completed/failed status")
 
-    @field_validator("new_status")
+    @field_validator("status")
     @classmethod
     def validate_status_transition(cls, v: str, info) -> str:
         """
@@ -271,7 +271,7 @@ class AgentStatusChangedEvent(BaseModel):
                     "project_id": "550e8400-e29b-41d4-a716-446655440000",
                     "tenant_key": "tenant_123",
                     "old_status": "pending",
-                    "new_status": "active",
+                    "status": "active",
                     "agent_display_name": "orchestrator",
                     "duration_seconds": None,
                 },
@@ -701,7 +701,7 @@ class EventFactory:
                 project_id=project_id_str,
                 tenant_key=tenant_key,
                 old_status=old_status,
-                new_status=new_status,
+                status=new_status,
                 agent_display_name=agent_display_name,
                 duration_seconds=duration_seconds,
             ),
