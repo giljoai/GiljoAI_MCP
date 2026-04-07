@@ -1,11 +1,11 @@
 """
-Tests for orchestrator auto check-in protocol (Handover 0904).
+Tests for orchestrator auto check-in protocol (Handover 0904, updated 0960).
 
 Verifies:
 1. CH6 is included when auto_checkin_enabled=True and multi-terminal mode
 2. CH6 is excluded when auto_checkin_enabled=False
 3. CH6 is excluded in CLI subagent modes even when enabled
-4. Interval value is correctly substituted in protocol text
+4. Interval value (minutes) is correctly substituted in protocol text
 """
 
 import pytest
@@ -20,29 +20,29 @@ class TestCh6AutoCheckin:
     """CH6 auto check-in protocol generation."""
 
     def test_ch6_contains_interval_value(self):
-        ch6 = _build_ch6_auto_checkin(interval=30)
-        assert "interval: 30s" in ch6
-        assert "Wait 30 seconds" in ch6
+        ch6 = _build_ch6_auto_checkin(interval=5)
+        assert "interval: 5 min" in ch6
+        assert "Wait 5 minutes" in ch6
+
+    def test_ch6_contains_interval_10(self):
+        ch6 = _build_ch6_auto_checkin(interval=10)
+        assert "interval: 10 min" in ch6
+        assert "Wait 10 minutes" in ch6
 
     def test_ch6_contains_interval_60(self):
         ch6 = _build_ch6_auto_checkin(interval=60)
-        assert "interval: 60s" in ch6
-        assert "Wait 60 seconds" in ch6
-
-    def test_ch6_contains_interval_90(self):
-        ch6 = _build_ch6_auto_checkin(interval=90)
-        assert "interval: 90s" in ch6
-        assert "Wait 90 seconds" in ch6
+        assert "interval: 60 min" in ch6
+        assert "Wait 60 minutes" in ch6
 
     def test_ch6_contains_key_instructions(self):
-        ch6 = _build_ch6_auto_checkin(interval=60)
+        ch6 = _build_ch6_auto_checkin(interval=10)
         assert "AUTO CHECK-IN PROTOCOL" in ch6
         assert "receive_messages()" in ch6
         assert "set_agent_status" in ch6
         assert "sleeping" in ch6
 
     def test_ch6_warns_about_token_consumption(self):
-        ch6 = _build_ch6_auto_checkin(interval=60)
+        ch6 = _build_ch6_auto_checkin(interval=10)
         assert "token" in ch6.lower()
 
 
@@ -56,7 +56,7 @@ class TestProtocolCh6Integration:
             orchestrator_id="test-orch",
             tenant_key="test-tenant",
             auto_checkin_enabled=True,
-            auto_checkin_interval=60,
+            auto_checkin_interval=10,
         )
         assert protocol["ch6_auto_checkin"] != ""
         assert "AUTO CHECK-IN" in protocol["ch6_auto_checkin"]
@@ -68,7 +68,7 @@ class TestProtocolCh6Integration:
             orchestrator_id="test-orch",
             tenant_key="test-tenant",
             auto_checkin_enabled=False,
-            auto_checkin_interval=60,
+            auto_checkin_interval=10,
         )
         assert protocol["ch6_auto_checkin"] == ""
 
@@ -79,7 +79,7 @@ class TestProtocolCh6Integration:
             orchestrator_id="test-orch",
             tenant_key="test-tenant",
             auto_checkin_enabled=True,
-            auto_checkin_interval=60,
+            auto_checkin_interval=10,
         )
         assert protocol["ch6_auto_checkin"] == ""
 
@@ -92,7 +92,7 @@ class TestProtocolCh6Integration:
             auto_checkin_enabled=True,
             auto_checkin_interval=30,
         )
-        assert "interval: 30s" in protocol["ch6_auto_checkin"]
+        assert "interval: 30 min" in protocol["ch6_auto_checkin"]
 
     def test_protocol_defaults_ch6_disabled(self):
         """When auto_checkin params omitted, CH6 is empty (defaults to disabled)."""

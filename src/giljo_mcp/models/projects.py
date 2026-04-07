@@ -189,9 +189,9 @@ class Project(Base):
     auto_checkin_interval = Column(
         Integer,
         nullable=False,
-        default=60,
-        server_default=text("60"),
-        comment="Auto check-in interval in seconds (30, 60, or 90)",
+        default=10,
+        server_default=text("10"),
+        comment="Auto check-in interval in minutes (5, 10, 15, 20, 30, 40, 60)",
     )
 
     # Relationships
