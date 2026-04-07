@@ -19,31 +19,32 @@ from src.giljo_mcp.services.protocol_builder import (
 class TestCh6AutoCheckin:
     """CH6 auto check-in protocol generation."""
 
-    def test_ch6_contains_interval_value(self):
+    def test_ch6_contains_interval_and_seconds(self):
         ch6 = _build_ch6_auto_checkin(interval=5)
-        assert "interval: 5 min" in ch6
-        assert "Wait 5 minutes" in ch6
+        assert "300 seconds for 5 minutes" in ch6
+        assert "sleep 300" in ch6
+        assert "Start-Sleep -Seconds 300" in ch6
 
     def test_ch6_contains_interval_10(self):
         ch6 = _build_ch6_auto_checkin(interval=10)
-        assert "interval: 10 min" in ch6
-        assert "Wait 10 minutes" in ch6
+        assert "600 seconds for 10 minutes" in ch6
+        assert "sleep 600" in ch6
 
     def test_ch6_contains_interval_60(self):
         ch6 = _build_ch6_auto_checkin(interval=60)
-        assert "interval: 60 min" in ch6
-        assert "Wait 60 minutes" in ch6
+        assert "3600 seconds for 60 minutes" in ch6
+        assert "sleep 3600" in ch6
 
     def test_ch6_contains_key_instructions(self):
         ch6 = _build_ch6_auto_checkin(interval=10)
         assert "AUTO CHECK-IN PROTOCOL" in ch6
         assert "receive_messages()" in ch6
-        assert "set_agent_status" in ch6
-        assert "sleeping" in ch6
+        assert "get_workflow_status()" in ch6
+        assert "report_progress()" in ch6
 
     def test_ch6_warns_about_token_consumption(self):
         ch6 = _build_ch6_auto_checkin(interval=10)
-        assert "token" in ch6.lower()
+        assert "token consumption" in ch6.lower()
 
 
 class TestProtocolCh6Integration:
@@ -92,7 +93,7 @@ class TestProtocolCh6Integration:
             auto_checkin_enabled=True,
             auto_checkin_interval=30,
         )
-        assert "interval: 30 min" in protocol["ch6_auto_checkin"]
+        assert "1800 seconds for 30 minutes" in protocol["ch6_auto_checkin"]
 
     def test_protocol_defaults_ch6_disabled(self):
         """When auto_checkin params omitted, CH6 is empty (defaults to disabled)."""

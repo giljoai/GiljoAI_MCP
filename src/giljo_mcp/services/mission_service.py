@@ -620,6 +620,18 @@ class MissionService:
             tool=agent_tool,
         )
 
+        # Handover 0960: Inject CH6 auto check-in protocol for orchestrator in multi-terminal mode
+        if (
+            execution.agent_display_name == "orchestrator"
+            and project_exec_mode == "multi_terminal"
+            and project
+            and getattr(project, "auto_checkin_enabled", False)
+        ):
+            from src.giljo_mcp.services.protocol_sections.chapters_reference import _build_ch6_auto_checkin
+
+            auto_checkin_interval = getattr(project, "auto_checkin_interval", 10)
+            full_protocol += "\n" + _build_ch6_auto_checkin(auto_checkin_interval)
+
         # Handover 0731c: Typed return (MissionResponse)
         return MissionResponse(
             job_id=job.job_id,
