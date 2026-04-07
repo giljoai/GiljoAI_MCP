@@ -145,3 +145,64 @@ def test_task_create_model_fields_metadata():
     description = product_id_field.description
     assert description is not None, "product_id should have description"
     assert "0433" in description, "Description should reference Handover 0433"
+
+
+# ---------------------------------------------------------------------------
+# Handover 0962d: Enum validation tests
+# ---------------------------------------------------------------------------
+
+
+def test_task_create_invalid_status_rejected():
+    """TaskCreate must reject unknown status values (0962d)."""
+    with pytest.raises(ValidationError) as exc_info:
+        TaskCreate(title="T", product_id="p", status="invalid_status")
+
+    errors = exc_info.value.errors()
+    assert any(error["loc"] == ("status",) for error in errors)
+
+
+def test_task_create_invalid_priority_rejected():
+    """TaskCreate must reject unknown priority values (0962d)."""
+    with pytest.raises(ValidationError) as exc_info:
+        TaskCreate(title="T", product_id="p", priority="urgent")
+
+    errors = exc_info.value.errors()
+    assert any(error["loc"] == ("priority",) for error in errors)
+
+
+def test_task_create_valid_status_values():
+    """TaskCreate accepts all valid status values (0962d)."""
+    valid_statuses = ["pending", "in_progress", "completed", "blocked", "cancelled", "converted"]
+    for status in valid_statuses:
+        task = TaskCreate(title="T", product_id="p", status=status)
+        assert task.status == status
+
+
+def test_task_create_valid_priority_values():
+    """TaskCreate accepts all valid priority values (0962d)."""
+    valid_priorities = ["low", "medium", "high", "critical"]
+    for priority in valid_priorities:
+        task = TaskCreate(title="T", product_id="p", priority=priority)
+        assert task.priority == priority
+
+
+def test_status_update_invalid_status_rejected():
+    """StatusUpdate must reject unknown status values (0962d)."""
+    from api.schemas.task import StatusUpdate
+
+    with pytest.raises(ValidationError) as exc_info:
+        StatusUpdate(status="active")
+
+    errors = exc_info.value.errors()
+    assert any(error["loc"] == ("status",) for error in errors)
+
+
+def test_task_update_invalid_status_rejected():
+    """TaskUpdate must reject unknown status values (0962d)."""
+    from api.schemas.task import TaskUpdate
+
+    with pytest.raises(ValidationError) as exc_info:
+        TaskUpdate(status="broken")
+
+    errors = exc_info.value.errors()
+    assert any(error["loc"] == ("status",) for error in errors)

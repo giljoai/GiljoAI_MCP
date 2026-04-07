@@ -29,6 +29,7 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentT
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from src.giljo_mcp.schemas.jsonb_validators import validate_git_commits
 from src.giljo_mcp.tools._memory_helpers import (
     MAX_DECISIONS_MADE,
     MAX_KEY_OUTCOMES,
@@ -491,6 +492,7 @@ async def write_360_memory(
 
             # Use agent-supplied commits (passive server); fall back to GitHub API
             if git_commits is not None:
+                git_commits = validate_git_commits(git_commits)
                 logger.info(
                     "Using %d agent-supplied git commits for project %s",
                     len(git_commits),
