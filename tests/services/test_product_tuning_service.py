@@ -266,7 +266,7 @@ class TestAssembleTuningPromptSections:
 
     @pytest.mark.asyncio
     async def test_includes_only_selected_sections_in_prompt(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_memory_entries, sample_user_settings
+        self, mock_db_manager, mock_websocket_manager, sample_product, sample_user_settings
     ):
         """Prompt should contain only the sections the user selected."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
@@ -278,8 +278,7 @@ class TestAssembleTuningPromptSections:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
                 user_id=USER_ID,
@@ -292,7 +291,7 @@ class TestAssembleTuningPromptSections:
 
     @pytest.mark.asyncio
     async def test_excludes_unselected_sections_from_prompt(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_memory_entries, sample_user_settings
+        self, mock_db_manager, mock_websocket_manager, sample_product, sample_user_settings
     ):
         """Sections not in the selection list should not appear in sections_included."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
@@ -304,8 +303,7 @@ class TestAssembleTuningPromptSections:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
                 user_id=USER_ID,
@@ -317,7 +315,7 @@ class TestAssembleTuningPromptSections:
 
     @pytest.mark.asyncio
     async def test_prompt_contains_product_id(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_memory_entries, sample_user_settings
+        self, mock_db_manager, mock_websocket_manager, sample_product, sample_user_settings
     ):
         """The assembled prompt must include the product_id for the MCP tool call."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
@@ -329,8 +327,7 @@ class TestAssembleTuningPromptSections:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
                 user_id=USER_ID,
@@ -338,6 +335,56 @@ class TestAssembleTuningPromptSections:
             )
 
         assert PRODUCT_ID in result["prompt"]
+
+    @pytest.mark.asyncio
+    async def test_prompt_contains_product_name(
+        self, mock_db_manager, mock_websocket_manager, sample_product, sample_user_settings
+    ):
+        """The assembled prompt must include the product name."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, session = mock_db_manager
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        session.execute = AsyncMock(
+            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
+        )
+
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
+            result = await service.assemble_tuning_prompt(
+                product_id=PRODUCT_ID,
+                user_id=USER_ID,
+                sections=["description"],
+            )
+
+        assert sample_product.name in result["prompt"]
+
+    @pytest.mark.asyncio
+    async def test_prompt_contains_four_phases(
+        self, mock_db_manager, mock_websocket_manager, sample_product, sample_user_settings
+    ):
+        """The v2 prompt must contain all four interactive phases."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, session = mock_db_manager
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        session.execute = AsyncMock(
+            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
+        )
+
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
+            result = await service.assemble_tuning_prompt(
+                product_id=PRODUCT_ID,
+                user_id=USER_ID,
+                sections=["description"],
+            )
+
+        prompt = result["prompt"]
+        assert "Phase 1: RESEARCH" in prompt
+        assert "Phase 2: QUICK SCAN" in prompt
+        assert "Phase 3: INTERACTIVE REVIEW" in prompt
+        assert "Phase 4: SUBMIT" in prompt
 
 
 # ============================================================================
@@ -382,8 +429,7 @@ class TestAssembleTuningPromptToggles:
             {"memory_last_n_projects": 3, "git_commits": 25},
         )
 
-        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=settings_arch_off):
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=settings_arch_off):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
                 user_id=USER_ID,
@@ -427,8 +473,7 @@ class TestAssembleTuningPromptToggles:
             {"memory_last_n_projects": 3},
         )
 
-        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=[]), \
-             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=all_off):
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=all_off):
             with pytest.raises(ValidationError):
                 await service.assemble_tuning_prompt(
                     product_id=PRODUCT_ID,
@@ -442,88 +487,14 @@ class TestAssembleTuningPromptToggles:
 # ============================================================================
 
 
-class TestAssembleTuningPromptMemoryAndGit:
-    """Test 360 memory depth and git integration in prompt assembly."""
+class TestAssembleTuningPromptV2Features:
+    """Test v2 interactive prompt features: agent-driven research, vision note, structure."""
 
     @pytest.mark.asyncio
-    async def test_includes_360_memory_at_configured_depth(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_memory_entries, sample_user_settings
-    ):
-        """Prompt should include 360 memory entries up to the configured lookback depth."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
-
-        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries) as mock_get_mem, \
-             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
-            result = await service.assemble_tuning_prompt(
-                product_id=PRODUCT_ID,
-                user_id=USER_ID,
-                sections=["description"],
-            )
-
-        assert result["lookback_depth"] == 3
-        # Verify memory entries content appears in prompt
-        assert "Project 1 summary" in result["prompt"] or len(sample_memory_entries) > 0
-
-    @pytest.mark.asyncio
-    async def test_includes_git_commits_when_git_enabled(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_memory_entries, sample_user_settings
-    ):
-        """When git integration is enabled, prompt should include git commit data."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
-
-        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
-            result = await service.assemble_tuning_prompt(
-                product_id=PRODUCT_ID,
-                user_id=USER_ID,
-                sections=["tech_stack"],
-            )
-
-        assert result["git_enabled"] is True
-
-    @pytest.mark.asyncio
-    async def test_omits_git_section_when_git_disabled(
-        self, mock_db_manager, mock_websocket_manager, sample_product_no_git, sample_memory_entries, sample_user_settings
-    ):
-        """When git integration is disabled, prompt should omit git section."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product_no_git))
-        )
-
-        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
-            result = await service.assemble_tuning_prompt(
-                product_id=PRODUCT_ID,
-                user_id=USER_ID,
-                sections=["tech_stack"],
-            )
-
-        assert result["git_enabled"] is False
-
-    @pytest.mark.asyncio
-    async def test_handles_no_360_memory_entries_gracefully(
+    async def test_prompt_instructs_agent_to_fetch_context_via_mcp(
         self, mock_db_manager, mock_websocket_manager, sample_product, sample_user_settings
     ):
-        """With no 360 memory entries, prompt should still assemble without error."""
+        """v2 prompt tells the agent to call fetch_context for 360 memory (not pre-serialized)."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -533,22 +504,70 @@ class TestAssembleTuningPromptMemoryAndGit:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=[]), \
-             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
                 user_id=USER_ID,
                 sections=["description"],
             )
 
-        assert "prompt" in result
-        assert result["sections_included"] == ["description"]
+        assert "fetch_context" in result["prompt"]
+        assert "memory_360" in result["prompt"]
+
+    @pytest.mark.asyncio
+    async def test_includes_vision_note_when_vision_documents_selected(
+        self, mock_db_manager, mock_websocket_manager, sample_product, sample_user_settings
+    ):
+        """When vision_documents is selected, prompt should include the special handling note."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, session = mock_db_manager
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        session.execute = AsyncMock(
+            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
+        )
+
+        # Ensure vision_documents is eligible
+        toggle_config, depth_config = sample_user_settings
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=(toggle_config, depth_config)), \
+             patch.object(service, "_get_eligible_sections", return_value=["description", "vision_documents"]):
+            result = await service.assemble_tuning_prompt(
+                product_id=PRODUCT_ID,
+                user_id=USER_ID,
+                sections=["description", "vision_documents"],
+            )
+
+        assert "Vision Documents are historical records" in result["prompt"]
+
+    @pytest.mark.asyncio
+    async def test_omits_vision_note_when_vision_documents_not_selected(
+        self, mock_db_manager, mock_websocket_manager, sample_product, sample_user_settings
+    ):
+        """When vision_documents is NOT selected, prompt should not include the note."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, session = mock_db_manager
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        session.execute = AsyncMock(
+            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
+        )
+
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
+            result = await service.assemble_tuning_prompt(
+                product_id=PRODUCT_ID,
+                user_id=USER_ID,
+                sections=["description"],
+            )
+
+        assert "Vision Documents are historical records" not in result["prompt"]
 
     @pytest.mark.asyncio
     async def test_returns_correct_structure(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_memory_entries, sample_user_settings
+        self, mock_db_manager, mock_websocket_manager, sample_product, sample_user_settings
     ):
-        """Return value should contain prompt, sections_included, lookback_depth, git_enabled."""
+        """Return value should contain prompt, sections_included, lookback_depth=None, git_enabled=False."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -558,8 +577,7 @@ class TestAssembleTuningPromptMemoryAndGit:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
                 user_id=USER_ID,
@@ -568,8 +586,31 @@ class TestAssembleTuningPromptMemoryAndGit:
 
         assert isinstance(result["prompt"], str)
         assert isinstance(result["sections_included"], list)
-        assert isinstance(result["lookback_depth"], int)
-        assert isinstance(result["git_enabled"], bool)
+        assert result["lookback_depth"] is None
+        assert result["git_enabled"] is False
+
+    @pytest.mark.asyncio
+    async def test_prompt_includes_interactive_wait_instruction(
+        self, mock_db_manager, mock_websocket_manager, sample_product, sample_user_settings
+    ):
+        """v2 prompt must instruct the agent to wait for user approval between sections."""
+        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, session = mock_db_manager
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        session.execute = AsyncMock(
+            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
+        )
+
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
+            result = await service.assemble_tuning_prompt(
+                product_id=PRODUCT_ID,
+                user_id=USER_ID,
+                sections=["description"],
+            )
+
+        assert "Wait for user approval" in result["prompt"]
 
 
 # ============================================================================
@@ -625,7 +666,7 @@ class TestAssembleTuningPromptErrors:
 
     @pytest.mark.asyncio
     async def test_prompt_includes_submit_tuning_review_instruction(
-        self, mock_db_manager, mock_websocket_manager, sample_product, sample_memory_entries, sample_user_settings
+        self, mock_db_manager, mock_websocket_manager, sample_product, sample_user_settings
     ):
         """Prompt must instruct the agent to call submit_tuning_review MCP tool."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
@@ -637,8 +678,7 @@ class TestAssembleTuningPromptErrors:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
                 user_id=USER_ID,

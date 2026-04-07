@@ -38,6 +38,7 @@
 | 0910c | Installation Guide + MCP Tools Reference | Not Started | High | Write INSTALLATION_GUIDE.md and MCP_TOOLS_REFERENCE.md. |
 | 0910d | Architecture + README Hub + Verification | Not Started | High | Write ARCHITECTURE.md, README_FIRST.md hub, verify all docs. |
 | 0960 | Orchestrator Auto Check-in Interval Slider | Not Started | Medium | Replace button group with minute-based slider (5-60 min). Backend seconds->minutes migration. |
+| 0961 | Tuning Prompt v2 — Interactive Codebase-Aware Review | **COMPLETE** | High | Replace batch-submit prompt with 4-phase interactive flow (research → scan → review → submit). Agent reads codebase, user approves per-section. |
 | 0950a | Comprehensive Audit: Establish Baseline Score | Not Started | High | Read-only audit. 10-dimension scoring. No code changes. |
 | 0950b | Backend: Security + Dict-Returns + Exception Annotations | Not Started | High | Quick wins. Depends on 0950a. |
 | 0950c | Frontend: ESLint Budget + Commented-Out Code | Not Started | High | Quick wins. Depends on 0950a. Parallel with 0950b. |
