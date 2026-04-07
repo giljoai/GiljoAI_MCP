@@ -177,6 +177,13 @@
                 <v-list-item-title>My Settings</v-list-item-title>
               </v-list-item>
 
+              <v-list-item :to="{ name: 'UserGuide' }">
+                <template v-slot:prepend>
+                  <v-icon>mdi-book-open-variant</v-icon>
+                </template>
+                <v-list-item-title>User Guide</v-list-item-title>
+              </v-list-item>
+
               <v-divider v-if="currentUser && currentUser.role === 'admin'" />
 
               <v-list-item
