@@ -81,23 +81,21 @@ class TestDepthConfigFieldStandardization:
         )
 
     def test_project_service_uses_vision_documents(self):
-        """Verify ProjectService uses 'vision_documents' in default depth config."""
-        # Check that any hardcoded defaults use vision_documents
-        # This test verifies the default dict at line ~1765
+        """Verify ProjectLaunchService uses 'vision_documents' in default depth config."""
         import inspect
 
-        from src.giljo_mcp.services.project_service import ProjectService
+        from src.giljo_mcp.services.project_launch_service import ProjectLaunchService
 
-        source = inspect.getsource(ProjectService)
+        source = inspect.getsource(ProjectLaunchService)
 
         # Should contain vision_documents
         assert "vision_documents" in source or '"vision_documents"' in source, (
-            "ProjectService should reference 'vision_documents' field"
+            "ProjectLaunchService should reference 'vision_documents' field"
         )
 
         # Should NOT contain vision_chunking
         assert "vision_chunking" not in source and '"vision_chunking"' not in source, (
-            "ProjectService should NOT reference deprecated 'vision_chunking' field"
+            "ProjectLaunchService should NOT reference deprecated 'vision_chunking' field"
         )
 
     def test_thin_prompt_generator_uses_vision_documents(self):
