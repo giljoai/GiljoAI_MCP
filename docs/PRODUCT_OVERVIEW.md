@@ -24,6 +24,8 @@ Without GiljoAI, each AI session starts blank. You re-explain your tech stack, c
 
 The platform also coordinates multi-agent teams. Rather than running one large context window, GiljoAI distributes context to the right agent for each role: an implementer gets code-relevant context, a reviewer gets quality-relevant context, a documenter gets specification context. Each agent gets exactly what it needs for its role.
 
+GiljoAI MCP sits at the intersection of product thinking and development. Whether you are a developer learning to define what you build before you build it, or a product manager turning a specification into working software, the platform gives you a structured path from vision to execution. The clearer your product definition, the more effective every agent session becomes.
+
 ---
 
 ## The Six Pillars

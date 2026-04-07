@@ -119,9 +119,13 @@ The product form is organized into four tabs. Fields that are toggled on in User
 
 ### Vision Documents
 
-Vision documents are uploaded `.md` or `.txt` files that describe your product or a proposed architecture. After upload, the server chunks and optionally summarizes the document. The product card shows a "docs" badge and a "chunks" count when documents are processed.
+Vision documents are the most impactful input you can give GiljoAI. A well-written product proposal, architecture spec, or feature brief gives every agent session a shared understanding of what you are building and why. Without one, agents work from field-level context alone. With one, they understand scope, constraints, trade-offs, and intent.
 
-Vision documents can be used to pre-populate context fields: during setup, GiljoAI can generate a prompt that directs your CLI tool to read the document and suggest field values.
+Think of the vision document as the bridge between deciding what to build and building it. Upload your product proposal, architecture overview, or design spec as `.md` or `.txt` files (max 10 MB each). After upload, the server chunks and optionally summarizes the document. The product card shows a "docs" badge and a "chunks" count when documents are processed.
+
+You can then use the "Use AI coding agent" option on the Product Setup tab to have your AI tool analyze the document and populate product fields automatically. This is the fastest way to go from a written spec to a fully configured product context.
+
+If you do not have a vision document yet, start with a one-page brief: what the product does, who it is for, the core technical decisions, and what success looks like. That single page will improve every agent interaction that follows.
 
 ### Tuning
 
