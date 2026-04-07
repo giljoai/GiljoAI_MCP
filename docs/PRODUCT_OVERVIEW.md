@@ -1,12 +1,10 @@
 # GiljoAI MCP: Product Overview
 
-*Last updated: 2026-04-06*
+*Last updated: 2026-04-07*
 
 ## What Is GiljoAI MCP
 
-GiljoAI MCP is a context engineering platform for AI-assisted software development. It acts as a passive context server: it stores product knowledge, generates focused prompts, and coordinates agents via the Model Context Protocol (MCP). It does not write code or reason about your codebase. Your AI coding tool does that work using your own subscription. GiljoAI provides the orchestration layer that keeps every agent session aligned with your product.
-
-Your AI tool connects to GiljoAI as an MCP server over HTTP. GiljoAI returns structured context, agent templates, and coordination data. The tool then uses that information to plan missions, spawn subagents, and track progress.
+GiljoAI MCP is a context engineering platform for AI-assisted software development. It stores product knowledge, generates focused prompts, and coordinates agents via the Model Context Protocol (MCP). It does not write code or reason about your codebase — your AI coding tool does that work using your own subscription.
 
 ## Who It Is For
 
@@ -26,56 +24,49 @@ Without GiljoAI, each AI session starts blank. You re-explain your tech stack, c
 
 The platform also coordinates multi-agent teams. Rather than running one large context window, GiljoAI distributes context to the right agent for each role: an implementer gets code-relevant context, a reviewer gets quality-relevant context, a documenter gets specification context. Each agent gets exactly what it needs for its role.
 
-## How It Works
-
-```
-CLI tool --> MCP server (GiljoAI) --> FastAPI --> PostgreSQL
-```
-
-1. Connect your AI coding tool to GiljoAI using an API key generated during setup.
-2. Define a Product (what you are building) and create Projects (units of work inside that product).
-3. Activate a project. GiljoAI generates a bootstrap prompt.
-4. Paste that prompt into your CLI tool. The tool connects to GiljoAI and reads context, agent templates, and project instructions via MCP.
-5. The orchestrator agent plans the mission and spawns subagents. Each subagent receives its role, expertise, and chain strategy from GiljoAI.
-6. Agents report status back to GiljoAI in real time. You monitor progress on the Jobs page.
-7. When the project completes, GiljoAI writes a 360 Memory entry. The next project inherits that accumulated context.
+---
 
 ## The Six Pillars
 
-### How GiljoAI Works
+### Your Tools, Your Subscription
 
-GiljoAI MCP is a passive context server. Your AI coding tool does all reasoning and coding using your own subscription. GiljoAI stores product knowledge, generates focused prompts, and serves coordination data so your agents stay aligned. Your AI tool connects to GiljoAI as an MCP server over HTTP, and each tool gets its own API key and connection. You can use Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool simultaneously.
+GiljoAI never touches your AI credits. You bring your own Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool — each with your own subscription. GiljoAI acts as a passive MCP server: your tool connects over HTTP, reads context and coordination data, and does all the reasoning and coding itself. You can connect multiple tools simultaneously, each with its own API key.
 
 ### Define Your Product
 
-Create a Product to represent the software you are building. Fill in context fields: description, tech stack, architecture, testing strategy, constraints, and more. You can enter context manually, or use a pre-generated prompt that lets your AI coding tool suggest what to include based on a vision document or product proposal. Context settings let you toggle fields on or off and adjust depth per source, keeping prompts lean for simple tasks or fully detailed for complex missions.
+Create a Product to represent the software you are building. Fill in context fields: description, tech stack, architecture, testing strategy, and more. You can enter context manually, or upload a vision document and use a pre-generated prompt that lets your AI coding tool suggest what to include. Context settings let you toggle fields on or off and adjust depth per source, keeping prompts lean for simple tasks or fully detailed for complex missions.
 
 ### Projects and Missions
 
-Create Projects inside a product. Each project is a focused unit of work such as a feature, sprint, or scaffolding effort. You stage a series of projects and activate one at a time. Activating a project causes GiljoAI to generate a bootstrap prompt. Paste that prompt into your CLI tool to start the orchestrator, which plans the mission and assigns agents from your templates. Context is assembled per session from your product fields, 360 Memory, and optional integrations. Each agent receives exactly what it needs for its role.
+Projects are focused units of work inside a product — a feature, sprint, or scaffolding effort. The workflow:
+
+1. Create a project and describe what needs to be done.
+2. Activate the project. GiljoAI assembles a bootstrap prompt from your product context, 360 Memory, and project description.
+3. Paste the prompt into your CLI tool. The orchestrator agent connects to GiljoAI and plans the mission.
+4. The orchestrator spawns subagents from your templates. Each receives its role, expertise, and chain strategy from GiljoAI.
+5. Agents report status back in real time. You monitor progress on the Jobs page.
+6. When the project completes, GiljoAI writes a 360 Memory entry. The next project inherits that accumulated context.
 
 ### Skills and Agent Templates
 
-Two skills are installed on your machine during setup. For Claude Code and Gemini CLI: `/gil_add` and `/gil_get_agents`. For Codex CLI: `$gil-add` and `$gil-get-agents`. Use `/gil_add` to capture tasks or create projects mid-session without breaking flow. Use `/gil_get_agents` to fetch agent templates into your workspace for subagent spawning. The Agent Template Manager lets you browse, customize, and create agent profiles with roles, expertise, and chain strategies. Templates export automatically in the correct format for your platform.
+Two skills are installed on your machine during setup. Use them from your CLI without breaking flow:
+
+| Skill | Claude Code | Codex CLI | Gemini CLI | What it does |
+|---|---|---|---|---|
+| **Add task or project** | `/gil_add` | `$gil-add` | `/gil_add` | Capture tasks, create projects, or log ideas mid-session |
+| **Fetch agent templates** | `/gil_get_agents` | `$gil-get-agents` | `/gil_get_agents` | Download agent profiles into your workspace for subagent spawning |
+
+The Agent Template Manager in the dashboard lets you browse, customize, and create agent profiles with roles, expertise, and chain strategies. Templates export automatically in the correct format for your connected platform.
 
 ### 360 Memory
 
-Each completed project writes to 360 Memory automatically: what was built, key decisions, patterns discovered, and what worked. This is not a plugin or integration; it is a core product behavior. Your next project starts with accumulated context from previous ones. The orchestrator reads past memories alongside your product context and project description to plan each mission. You control how many memories back agents read through the context settings. Optionally enrich memory with git commit history for the complete development timeline.
+Each completed project writes to 360 Memory automatically: what was built, key decisions, patterns discovered, and what worked. This is not a plugin or integration — it is a core product behavior. Your next project starts with accumulated context from previous ones. The orchestrator reads past memories alongside your product context to plan each mission. You control how many memories back agents read through the context settings. Optionally enrich memory with git commit history for the complete development timeline.
 
 ### Dashboard and Monitoring
 
 The Products, Projects, Tasks, and Jobs pages let you manage your work and track technical debt across all products. The Jobs page is where staging begins and agents execute. Watch their planning, to-do lists, and messages in real time. A message composer lets you talk directly to the orchestrator or broadcast to the entire agent team. All messages are logged in the MCP message system for auditability.
 
-## Supported AI Tools
-
-| Tool | Provider | Skill syntax |
-|---|---|---|
-| Claude Code | Anthropic | `/gil_add`, `/gil_get_agents` |
-| Codex CLI | OpenAI | `$gil-add`, `$gil-get-agents` |
-| Gemini CLI | Google | `/gil_add`, `/gil_get_agents` |
-| Any MCP-compatible tool | Various | Depends on tool |
-
-GiljoAI accepts any tool that can connect to an MCP server over HTTP.
+---
 
 ## How to Get Started
 
