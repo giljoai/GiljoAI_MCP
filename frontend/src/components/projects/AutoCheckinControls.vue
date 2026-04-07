@@ -11,31 +11,38 @@
         data-testid="auto-checkin-toggle"
         @update:model-value="onToggle"
       />
-    </div>
-    <div v-if="localEnabled" class="auto-checkin-interval" data-testid="auto-checkin-interval">
-      <span class="auto-checkin-interval-label">Check-in every:</span>
-      <v-btn-toggle
-        v-model="localInterval"
-        mandatory
-        density="compact"
-        class="auto-checkin-btn-group"
-        @update:model-value="onIntervalChange"
-      >
-        <v-btn :value="30" size="small" variant="outlined">0:30</v-btn>
-        <v-btn :value="60" size="small" variant="outlined">1:00</v-btn>
-        <v-btn :value="90" size="small" variant="outlined">1:30</v-btn>
-      </v-btn-toggle>
+      <div v-if="localEnabled" class="auto-checkin-slider-wrap" data-testid="auto-checkin-interval">
+        <v-slider
+          v-model="sliderIndex"
+          :min="0"
+          :max="intervals.length - 1"
+          :step="1"
+          :ticks="tickLabels"
+          show-ticks="always"
+          hide-details
+          density="compact"
+          color="rgb(var(--v-theme-primary))"
+          track-color="rgba(255,255,255,0.12)"
+          class="auto-checkin-slider"
+          data-testid="auto-checkin-slider"
+          @update:model-value="onSliderChange"
+        />
+        <span class="auto-checkin-value">{{ intervals[sliderIndex] }} min</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 /**
- * AutoCheckinControls — auto check-in toggle and interval selector extracted from JobsTab.
+ * AutoCheckinControls — auto check-in toggle and interval slider extracted from JobsTab.
  * Parent (JobsTab) manages persistence via API; this component only owns local display state.
+ * Handover 0960: Replaced v-btn-toggle (30/60/90s) with mapped-index v-slider (5-60 min).
  */
+
+const intervals = [5, 10, 15, 20, 30, 40, 60]
 
 const props = defineProps({
   enabled: {
@@ -44,24 +51,38 @@ const props = defineProps({
   },
   interval: {
     type: Number,
-    default: 60,
+    default: 10,
   },
 })
 
 const emit = defineEmits(['toggle-checkin', 'change-interval'])
 
 const localEnabled = ref(props.enabled)
-const localInterval = ref(props.interval)
+
+function minutesToIndex(minutes) {
+  const idx = intervals.indexOf(minutes)
+  return idx >= 0 ? idx : 1
+}
+
+const sliderIndex = ref(minutesToIndex(props.interval))
+
+const tickLabels = computed(() => {
+  const labels = {}
+  for (let i = 0; i < intervals.length; i++) {
+    labels[i] = `${intervals[i]}`
+  }
+  return labels
+})
 
 watch(() => props.enabled, (val) => { localEnabled.value = val })
-watch(() => props.interval, (val) => { localInterval.value = val })
+watch(() => props.interval, (val) => { sliderIndex.value = minutesToIndex(val) })
 
 function onToggle(val) {
   emit('toggle-checkin', val)
 }
 
-function onIntervalChange(val) {
-  emit('change-interval', val)
+function onSliderChange(idx) {
+  emit('change-interval', intervals[idx])
 }
 </script>
 
@@ -75,7 +96,6 @@ function onIntervalChange(val) {
   .auto-checkin-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
   }
 
@@ -83,31 +103,38 @@ function onIntervalChange(val) {
     font-size: 0.78rem;
     font-weight: 600;
     color: var(--text-muted);
+    white-space: nowrap;
   }
 
   .auto-checkin-toggle {
     flex-shrink: 0;
   }
 
-  .auto-checkin-interval {
+  .auto-checkin-slider-wrap {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-top: 6px;
+    flex: 1;
+    min-width: 0;
   }
 
-  .auto-checkin-interval-label {
-    font-size: 0.72rem;
-    color: var(--text-muted);
-  }
+  .auto-checkin-slider {
+    flex: 1;
+    min-width: 120px;
 
-  .auto-checkin-btn-group {
-    :deep(.v-btn) {
-      font-size: 0.72rem;
-      min-width: 48px;
-      height: 28px;
-      text-transform: none;
+    :deep(.v-slider-track__tick-label) {
+      font-size: 0.62rem;
+      color: $color-text-muted;
     }
+  }
+
+  .auto-checkin-value {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: $color-text-secondary;
+    white-space: nowrap;
+    min-width: 42px;
+    text-align: right;
   }
 }
 </style>
