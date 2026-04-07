@@ -1,34 +1,34 @@
 <template>
   <div class="auto-checkin-section" data-testid="auto-checkin">
     <div class="auto-checkin-row">
-      <span class="auto-checkin-label">Orchestrator Auto Check-in</span>
-      <v-switch
-        v-model="localEnabled"
-        density="compact"
+      <span class="auto-checkin-label">
+        Auto Check-in
+        <v-tooltip location="top" max-width="260">
+          <template #activator="{ props: tip }">
+            <v-icon v-bind="tip" size="14" class="auto-checkin-help">mdi-help-circle-outline</v-icon>
+          </template>
+          When enabled, the orchestrator automatically checks in on agent progress at the selected interval and coordinates as needed.
+        </v-tooltip>
+      </span>
+      <v-slider
+        v-model="sliderIndex"
+        :min="0"
+        :max="steps.length - 1"
+        :step="1"
+        thumb-label="always"
         hide-details
-        color="rgb(var(--v-theme-primary))"
-        class="auto-checkin-toggle"
-        data-testid="auto-checkin-toggle"
-        @update:model-value="onToggle"
-      />
-      <div v-if="localEnabled" class="auto-checkin-slider-wrap" data-testid="auto-checkin-interval">
-        <v-slider
-          v-model="sliderIndex"
-          :min="0"
-          :max="intervals.length - 1"
-          :step="1"
-          :ticks="tickLabels"
-          show-ticks="always"
-          hide-details
-          density="compact"
-          color="rgb(var(--v-theme-primary))"
-          track-color="rgba(255,255,255,0.12)"
-          class="auto-checkin-slider"
-          data-testid="auto-checkin-slider"
-          @update:model-value="onSliderChange"
-        />
-        <span class="auto-checkin-value">{{ intervals[sliderIndex] }} min</span>
-      </div>
+        density="compact"
+        :color="isEnabled ? 'rgb(var(--v-theme-primary))' : 'grey'"
+        track-color="rgba(255,255,255,0.12)"
+        class="auto-checkin-slider"
+        data-testid="auto-checkin-slider"
+        @update:model-value="onSliderChange"
+      >
+        <template #thumb-label="{ modelValue }">
+          {{ steps[modelValue].label }}
+        </template>
+      </v-slider>
+      <span v-if="isEnabled" class="auto-checkin-value">min</span>
     </div>
   </div>
 </template>
@@ -37,12 +37,21 @@
 import { ref, watch, computed } from 'vue'
 
 /**
- * AutoCheckinControls — auto check-in toggle and interval slider extracted from JobsTab.
- * Parent (JobsTab) manages persistence via API; this component only owns local display state.
- * Handover 0960: Replaced v-btn-toggle (30/60/90s) with mapped-index v-slider (5-60 min).
+ * AutoCheckinControls — combined off/interval slider for orchestrator auto check-in.
+ * Index 0 = Off, indices 1-7 = minute intervals. No separate toggle needed.
+ * Handover 0960: Replaced v-btn-toggle (30/60/90s) with unified slider.
  */
 
-const intervals = [5, 10, 15, 20, 30, 40, 60]
+const steps = [
+  { label: 'Off', minutes: null },
+  { label: '5',   minutes: 5 },
+  { label: '10',  minutes: 10 },
+  { label: '15',  minutes: 15 },
+  { label: '20',  minutes: 20 },
+  { label: '30',  minutes: 30 },
+  { label: '40',  minutes: 40 },
+  { label: '60',  minutes: 60 },
+]
 
 const props = defineProps({
   enabled: {
@@ -55,34 +64,26 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['toggle-checkin', 'change-interval'])
+const emit = defineEmits(['update:checkin'])
 
-const localEnabled = ref(props.enabled)
-
-function minutesToIndex(minutes) {
-  const idx = intervals.indexOf(minutes)
-  return idx >= 0 ? idx : 1
+function toIndex(enabled, minutes) {
+  if (!enabled) return 0
+  const idx = steps.findIndex(s => s.minutes === minutes)
+  return idx >= 1 ? idx : 2
 }
 
-const sliderIndex = ref(minutesToIndex(props.interval))
+const sliderIndex = ref(toIndex(props.enabled, props.interval))
+const isEnabled = computed(() => sliderIndex.value > 0)
 
-const tickLabels = computed(() => {
-  const labels = {}
-  for (let i = 0; i < intervals.length; i++) {
-    labels[i] = `${intervals[i]}`
-  }
-  return labels
-})
-
-watch(() => props.enabled, (val) => { localEnabled.value = val })
-watch(() => props.interval, (val) => { sliderIndex.value = minutesToIndex(val) })
-
-function onToggle(val) {
-  emit('toggle-checkin', val)
-}
+watch(() => props.enabled, () => { sliderIndex.value = toIndex(props.enabled, props.interval) })
+watch(() => props.interval, () => { sliderIndex.value = toIndex(props.enabled, props.interval) })
 
 function onSliderChange(idx) {
-  emit('change-interval', intervals[idx])
+  if (idx === 0) {
+    emit('update:checkin', { enabled: false })
+  } else {
+    emit('update:checkin', { enabled: true, interval: steps[idx].minutes })
+  }
 }
 </script>
 
@@ -96,6 +97,7 @@ function onSliderChange(idx) {
   .auto-checkin-row {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 12px;
   }
 
@@ -104,27 +106,68 @@ function onSliderChange(idx) {
     font-weight: 600;
     color: var(--text-muted);
     white-space: nowrap;
-  }
 
-  .auto-checkin-toggle {
-    flex-shrink: 0;
-  }
-
-  .auto-checkin-slider-wrap {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-    min-width: 0;
+    .auto-checkin-help {
+      color: $color-text-muted;
+      margin-left: 4px;
+      vertical-align: middle;
+      cursor: help;
+    }
   }
 
   .auto-checkin-slider {
-    flex: 1;
-    min-width: 120px;
+    flex: 0 1 250px;
+    min-width: 100px;
 
-    :deep(.v-slider-track__tick-label) {
-      font-size: 0.62rem;
-      color: $color-text-muted;
+    // Render the thumb-label value inside the thumb dot
+    :deep(.v-slider-thumb) {
+      .v-slider-thumb__surface {
+        width: 25px;
+        height: 25px;
+        box-shadow: none !important;
+
+        &::before {
+          display: none !important;
+        }
+
+        &::after {
+          display: none !important;
+        }
+      }
+
+      // Kill ripple/focus glow on the thumb itself
+      .v-slider-thumb__ripple {
+        display: none !important;
+      }
+
+      // Collapse the label container so it doesn't float above
+      .v-slider-thumb__label-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      .v-slider-thumb__label {
+        position: static;
+        background: transparent !important;
+        color: $color-background-primary;
+        font-size: 0.6rem;
+        font-weight: 800;
+        width: auto;
+        height: auto;
+        min-width: 0;
+        padding: 0;
+        transform: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        // Hide the default tooltip arrow/shape
+        &::before {
+          display: none;
+        }
+      }
     }
   }
 
@@ -133,8 +176,6 @@ function onSliderChange(idx) {
     font-weight: 600;
     color: $color-text-secondary;
     white-space: nowrap;
-    min-width: 42px;
-    text-align: right;
   }
 }
 </style>
