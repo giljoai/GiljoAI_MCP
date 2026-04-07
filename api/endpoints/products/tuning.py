@@ -34,7 +34,7 @@ class GeneratePromptRequest(BaseModel):
 class GeneratePromptResponse(BaseModel):
     prompt: str
     sections_included: list[str]
-    lookback_depth: int
+    lookback_depth: int | None = None
     git_enabled: bool
 
 
