@@ -8,7 +8,8 @@ Token Budget by Depth (Handover 0246b, updated 0493):
 - "none": 0 tokens (empty response)
 - "light": consolidated summary, paginated at 24K tokens (VISION_DELIVERY_BUDGET)
 - "medium": consolidated summary, paginated at 24K tokens (VISION_DELIVERY_BUDGET)
-- "full": all chunks, paginated at 24K tokens (VISION_DELIVERY_BUDGET)
+- "full": MCPContextIndex chunks if available, otherwise raw vision_document
+         content. Both paginated at 24K tokens (VISION_DELIVERY_BUDGET)
 
 Backward Compatibility:
 - "moderate" maps to "medium"
@@ -618,31 +619,78 @@ async def _execute_vision_query(
     if early_response is not None:
         return early_response
 
-    # For "full" depth, use chunk-based pagination (existing logic below)
+    # For "full" depth: prefer mcp_context_index chunks, fall back to raw content
 
-    # Get active chunked vision documents (reuse pattern from mission_planner)
+    # Try chunked documents first (large docs > 25K tokens)
     chunked_docs = [doc for doc in active_docs if doc.chunked and doc.chunk_count > 0]
 
     if not chunked_docs:
-        logger.debug(
-            "no_chunked_documents",
+        # No chunks — serve raw vision_document content directly
+        raw_docs = [doc for doc in active_docs if doc.vision_document]
+
+        if not raw_docs:
+            logger.warning(
+                "no_vision_content_available",
+                product_id=product_id,
+                total_docs=len(active_docs),
+                operation="get_vision_document",
+            )
+            return {
+                "source": "vision_documents",
+                "depth": chunking,
+                "data": {
+                    "error": "content_not_available",
+                    "message": "No vision document content available. Upload a document first.",
+                },
+                "pagination": None,
+            }
+
+        # Build raw content response with token budget pagination
+        doc_name_map = {str(doc.id): doc.document_name for doc in active_docs}
+        parts: list[str] = []
+        for doc in raw_docs:
+            name = doc_name_map.get(str(doc.id), "Untitled")
+            if len(raw_docs) > 1:
+                parts.append(f"# {name}\n{doc.vision_document}")
+            else:
+                parts.append(doc.vision_document)
+
+        full_text = "\n\n".join(parts)
+        total_tokens = estimate_tokens(full_text)
+        max_tokens = get_max_tokens(chunking)
+
+        # Paginate by character offset if exceeds budget
+        chars_per_token = 4
+        max_chars = max_tokens * chars_per_token
+        text_offset = offset * chars_per_token if offset else 0
+        page_text = full_text[text_offset : text_offset + max_chars]
+        page_tokens = estimate_tokens(page_text)
+        has_more = (text_offset + len(page_text)) < len(full_text)
+        next_offset = (text_offset + len(page_text)) // chars_per_token if has_more else None
+
+        logger.info(
+            "vision_raw_content_fetched",
             product_id=product_id,
-            total_docs=len(active_docs),
-            operation="get_vision_document",
+            depth=chunking,
+            total_docs=len(raw_docs),
+            total_tokens=total_tokens,
+            page_tokens=page_tokens,
+            has_more=has_more,
         )
+
         return {
             "source": "vision_documents",
             "depth": chunking,
-            "data": [],
-            "metadata": {
-                "product_id": product_id,
-                "tenant_key": tenant_key,
-                "total_chunks": 0,
+            "data": {
+                "content": page_text,
+                "tokens": page_tokens,
+                "total_tokens": total_tokens,
+                "document_count": len(raw_docs),
+            },
+            "pagination": {
                 "offset": offset,
-                "limit": limit or 0,
-                "returned_chunks": 0,
-                "has_more": False,
-                "next_offset": None,
+                "has_more": has_more,
+                "next_offset": next_offset,
             },
         }
 
