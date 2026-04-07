@@ -130,11 +130,11 @@ Click the tune icon on a product card to open the Tuning dialog. Tuning lets you
 The workflow:
 
 1. Select the sections you want to retune (description, tech stack, architecture, core features, codebase structure, etc.)
-2. Click **Generate Tuning Prompt** — a structured prompt is produced and can be copied to your clipboard
+2. Click **Generate Tuning Prompt**. A structured prompt is produced and can be copied to your clipboard
 3. Paste the prompt into your CLI tool (Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool)
 4. The agent scans the codebase, checks for drift between the stored context and the actual code, and presents findings section by section
 5. Approve or reject each section's proposed changes in the CLI conversation
-6. Approved changes are applied directly to the product fields in GiljoAI MCP — no separate review step in the dashboard
+6. Approved changes are applied directly to the product fields in GiljoAI MCP. There is no separate review step in the dashboard
 
 The `context_tuning` notification in the bell menu appears after a tuning pass applies changes to a product.
 

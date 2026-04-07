@@ -57,7 +57,7 @@ Only one product can be active at a time. Activating a new product shows a confi
 Navigate to **Projects** in the left sidebar. A Project represents a unit of work: a feature, a refactor, a bugfix.
 
 1. Click **+ New Project**
-2. Write a **Name** and **Description** in plain language — what you want built, requirements, constraints
+2. Write a **Name** and **Description** in plain language: what you want built, requirements, constraints
 3. Set the **Project Type** for the taxonomy badge (e.g. BE, FE, API)
 4. Save the project
 
@@ -77,7 +77,7 @@ Click **Stage Project**. GiljoAI MCP assembles a structured prompt from your pro
 3. Your agent connects to GiljoAI MCP and generates the mission plan
 4. Switch to the **Implementation** tab on the Jobs page
 5. Copy the implementation prompt and paste it back into your terminal
-6. Execution begins — agents read their assigned jobs, create todo lists, and coordinate through MCP message queues
+6. Execution begins. Agents read their assigned jobs, create todo lists, and coordinate through MCP message queues
 
 GiljoAI MCP does not call any AI model. It assembles context and protocol. Your AI coding tool does the thinking.
 
@@ -87,7 +87,7 @@ GiljoAI MCP does not call any AI model. It assembles context and protocol. Your 
 
 The **Jobs** page shows real-time agent activity for the running project:
 
-- Agent status (waiting, working, blocked, sleeping, complete — see the User Guide for the full status list)
+- Agent status (waiting, working, blocked, sleeping, complete; see the User Guide for the full status list)
 - Step progress (e.g. 6/6, 8/8)
 - Duration per agent
 - Messages waiting count
@@ -106,16 +106,16 @@ Your next project starts with this accumulated context automatically.
 
 ## What's Next
 
-**Tune product context** — If context fields drift from the actual codebase, use the Tune button on a product card. Select sections to retune, generate a prompt, and paste it into your CLI tool. The agent scans the codebase and updates the fields directly. See the User Guide for details.
+**Tune product context.** If context fields drift from the actual codebase, use the Tune button on a product card. Select sections to retune, generate a prompt, and paste it into your CLI tool. The agent scans the codebase and updates the fields directly. See the User Guide for details.
 
-**Customize agent templates** — Go to **My Settings > Agents**. Edit role instructions or add specializations. Fetch templates from the CLI:
+**Customize agent templates.** Go to **My Settings > Agents**. Edit role instructions or add specializations. Fetch templates from the CLI:
 
 ```
 /gil_get_agents   # Claude Code, Gemini CLI
 $gil_get_agents   # Codex CLI
 ```
 
-**Capture tasks** — Use the **Tasks** page to log ideas and technical debt. Create tasks from the CLI:
+**Capture tasks.** Use the **Tasks** page to log ideas and technical debt. Create tasks from the CLI:
 
 ```
 /gil_add a task for the last three things we discussed, mark them high priority
