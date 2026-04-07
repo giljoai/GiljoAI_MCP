@@ -434,8 +434,13 @@ class ProductTuningService:
                 relation_name = mapping["relation"]
                 if isinstance(value, dict):
                     update_kwargs[relation_name] = value
-                elif isinstance(value, str):
-                    update_kwargs[relation_name] = dict.fromkeys(mapping["fields"], value)
+                else:
+                    self._logger.warning(
+                        "Skipping relation section '%s': expected dict, got %s",
+                        section,
+                        type(value).__name__,
+                    )
+                    continue
             elif mapping["type"] == "relation_field":
                 relation_name = mapping["relation"]
                 existing = update_kwargs.get(relation_name, {})
@@ -483,7 +488,6 @@ class ProductTuningService:
             product = await self._get_product(session, product_id)
             tuning_state = product.tuning_state or {}
             tuning_state["last_tuned_at"] = datetime.now(timezone.utc).isoformat()
-            tuning_state["pending_proposals"] = None
             product.tuning_state = validate_tuning_state(tuning_state)
 
             await session.commit()

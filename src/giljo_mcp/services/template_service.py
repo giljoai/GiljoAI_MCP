@@ -40,6 +40,7 @@ from src.giljo_mcp.exceptions import (
 # Model imports: Use domain-specific imports (Post-0128a)
 from src.giljo_mcp.models.agent_identity import AgentJob
 from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
+from src.giljo_mcp.schemas.jsonb_validators import validate_behavioral_rules, validate_success_criteria
 from src.giljo_mcp.schemas.service_responses import (
     TemplateCreateResult,
     TemplateDetail,
@@ -896,8 +897,8 @@ class TemplateService:
         """
         # ORIGINAL QUERY: history.py line 135-139 (restore_template endpoint)
         template.variables = archive.variables
-        template.behavioral_rules = archive.behavioral_rules
-        template.success_criteria = archive.success_criteria
+        template.behavioral_rules = validate_behavioral_rules(archive.behavioral_rules)
+        template.success_criteria = validate_success_criteria(archive.success_criteria)
         template.version = archive.version
 
     async def reset_template_to_defaults(
@@ -917,8 +918,8 @@ class TemplateService:
         """
         # ORIGINAL QUERY: history.py line 198-201 (reset_template endpoint)
         template.user_instructions = None
-        template.behavioral_rules = []
-        template.success_criteria = []
+        template.behavioral_rules = validate_behavioral_rules([])
+        template.success_criteria = validate_success_criteria([])
         template.tags = []
 
     async def reset_system_instructions(

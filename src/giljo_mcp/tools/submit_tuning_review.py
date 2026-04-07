@@ -22,13 +22,9 @@ VALID_SECTIONS = {
     "tech_stack",
     "architecture",
     "core_features",
-    "codebase_structure",
-    "database_type",
-    "backend_framework",
-    "frontend_framework",
+    "brand_guidelines",
     "quality_standards",
     "target_platforms",
-    "vision_documents",
 }
 
 VALID_CONFIDENCE_LEVELS = {"high", "medium", "low"}
@@ -57,6 +53,25 @@ def _validate_proposals(proposals: list[dict[str, Any]]) -> list[str]:
         confidence = proposal.get("confidence")
         if confidence and confidence not in VALID_CONFIDENCE_LEVELS:
             errors.append(f"proposals[{i}]: invalid confidence '{confidence}', must be high/medium/low")
+
+        proposed_value = proposal.get("proposed_value")
+        if proposed_value is not None:
+            if not isinstance(proposed_value, (str, dict, list)):
+                errors.append(
+                    f"proposals[{i}]: proposed_value must be a string, object, or array, "
+                    f"got {type(proposed_value).__name__}"
+                )
+            elif isinstance(proposed_value, str) and len(proposed_value) > 10000:
+                errors.append(
+                    f"proposals[{i}]: proposed_value string exceeds 10000 character limit ({len(proposed_value)} chars)"
+                )
+            elif isinstance(proposed_value, list) and section == "target_platforms":
+                for j, item in enumerate(proposed_value):
+                    if not isinstance(item, str):
+                        errors.append(
+                            f"proposals[{i}]: proposed_value[{j}] must be a string for "
+                            f"target_platforms, got {type(item).__name__}"
+                        )
 
     return errors
 

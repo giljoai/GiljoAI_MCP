@@ -56,6 +56,17 @@ from src.giljo_mcp.services.product_memory_service import ProductMemoryService
 logger = logging.getLogger(__name__)
 
 
+_ALLOWED_PRODUCT_FIELDS = {
+    "name",
+    "description",
+    "project_path",
+    "core_features",
+    "brand_guidelines",
+    "extraction_custom_instructions",
+    "target_platforms",
+}
+
+
 class ProductService:
     """
     Service for managing product lifecycle and operations.
@@ -529,7 +540,7 @@ class ProductService:
                     await self._update_config_relations(session, product, config_parts)
 
                 for field, value in updates.items():
-                    if hasattr(product, field):
+                    if field in _ALLOWED_PRODUCT_FIELDS:
                         setattr(product, field, value)
 
                 product.updated_at = datetime.now(timezone.utc)

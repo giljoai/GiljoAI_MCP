@@ -43,18 +43,15 @@ class TestAgentJobMetadata:
             "field_priorities": {"tech_stack": 1},
             "depth_config": {"memory_last_n_projects": 5},
             "template_name": "architect",
-            "todo_steps": ["step1", "step2"],
         }
         model = AgentJobMetadata(**data)
         assert model.template_name == "architect"
-        assert model.todo_steps == ["step1", "step2"]
 
     def test_empty_data_uses_defaults(self):
         model = AgentJobMetadata()
         assert model.field_priorities is None
         assert model.depth_config is None
         assert model.template_name is None
-        assert model.todo_steps is None
 
     def test_extra_keys_allowed(self):
         data = {"custom_runtime_key": "some_value", "another_key": 42}
@@ -257,16 +254,16 @@ class TestProductMemoryConfig:
 
     def test_valid_data(self):
         data = {
-            "git_integration": {"enabled": True, "commit_limit": 25},
-            "context_metadata": {"last_updated": "2026-03-25"},
+            "github": {"enabled": True, "commit_limit": 25},
+            "context": {"last_updated": "2026-03-25"},
         }
         model = ProductMemoryConfig(**data)
-        assert model.git_integration["enabled"] is True
+        assert model.github["enabled"] is True
 
     def test_empty_data(self):
         model = ProductMemoryConfig()
-        assert model.git_integration is None
-        assert model.context_metadata is None
+        assert model.github is None
+        assert model.context is None
 
     def test_extra_keys_allowed(self):
         model = ProductMemoryConfig(github={}, context={})
@@ -285,23 +282,14 @@ class TestProductTuningState:
         data = {
             "last_tuned_at": "2026-03-20T10:00:00Z",
             "last_tuned_at_sequence": 5,
-            "pending_proposals": [{"section": "tech_stack", "drift_detected": True}],
         }
         model = ProductTuningState(**data)
         assert model.last_tuned_at_sequence == 5
-
-    def test_pending_proposals_as_dict(self):
-        data = {
-            "pending_proposals": {"review_id": "abc", "proposals": []},
-        }
-        model = ProductTuningState(**data)
-        assert model.pending_proposals["review_id"] == "abc"
 
     def test_empty_data(self):
         model = ProductTuningState()
         assert model.last_tuned_at is None
         assert model.last_tuned_at_sequence is None
-        assert model.pending_proposals is None
 
     def test_extra_keys_allowed(self):
         model = ProductTuningState(custom_flag=True)
@@ -432,4 +420,4 @@ class TestValidateTuningState:
     def test_empty_dict(self):
         result = validate_tuning_state({})
         assert result["last_tuned_at"] is None
-        assert result["pending_proposals"] is None
+        assert result["last_tuned_at_sequence"] is None
