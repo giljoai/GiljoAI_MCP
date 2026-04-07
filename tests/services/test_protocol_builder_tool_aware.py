@@ -75,7 +75,7 @@ class TestCh3ToolAware:
     def test_codex_has_generic_worker_guardrail(self):
         """Codex block must warn against spawning generic workers."""
         ch3 = _build_ch3_spawning_rules(tool="codex")
-        assert "DO NOT spawn a generic" in ch3
+        assert "NEVER spawn a generic" in ch3
 
     def test_codex_no_claude_references(self):
         """Codex protocol must not mention Claude-specific concepts."""

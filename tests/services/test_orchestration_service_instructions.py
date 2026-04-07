@@ -75,6 +75,8 @@ class TestGetOrchestratorInstructions:
             db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
         )
         service._test_session = db_session
+        service._mission._test_session = db_session
+        service._mission._orchestration._test_session = db_session
 
         # Act: Get orchestrator instructions
         result = await service.get_orchestrator_instructions(
@@ -171,6 +173,8 @@ class TestGetOrchestratorInstructions:
             db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
         )
         service._test_session = db_session
+        service._mission._test_session = db_session
+        service._mission._orchestration._test_session = db_session
 
         # Handover 0730b: Exception-based error handling
         with pytest.raises(ValidationError) as exc_info:
@@ -238,6 +242,8 @@ class TestGetOrchestratorInstructions:
             db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
         )
         service._test_session = db_session
+        service._mission._test_session = db_session
+        service._mission._orchestration._test_session = db_session
 
         # Handover 0730b: Exception-based error handling
         # Tenant B tries to access tenant A's orchestrator - should raise ResourceNotFoundError
@@ -282,6 +288,8 @@ class TestUpdateAgentMission:
             db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
         )
         service._test_session = db_session
+        service._mission._test_session = db_session
+        service._mission._orchestration._test_session = db_session
 
         # Act: Update mission
         new_mission = "Updated mission with execution plan"
