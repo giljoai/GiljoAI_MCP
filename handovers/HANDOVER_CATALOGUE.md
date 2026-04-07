@@ -32,7 +32,7 @@
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 
-*No active handovers. All work complete or deferred.*
+| 0963 | In-App User Guide | Not Started | Medium | Full-page `/guide` route with sidebar TOC. Content from USER_GUIDE.md + PRODUCT_OVERVIEW.md + landing page getting-started. Avatar dropdown entry. 3 phases (a-c). |
 
 ### Deferred (Still in Root Folder)
 
