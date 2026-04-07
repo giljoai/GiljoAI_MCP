@@ -213,6 +213,19 @@ When creating a new handover, you MUST validate the number:
 5. **Current known gaps** (check catalogue for latest): 0021, 0033, 0054-0059, 0068, 0097-0099, 0133-0134, 0259, 0277, 0317, 0398-0399, 0413, 0418, 0435-0439, 0441-0449, 0493-0499
 6. **Use gaps appropriate to the domain**: Foundation (0001-0100), Architecture (0101-0200), GUI/Context (0201-0300), Services (0301-0400), Agent/Org (0401-0500)
 
+### Database Write Discipline (post-0962 — Non-Negotiable)
+
+The 0840 harmonization normalized free-text JSON into typed relation tables. The 0962 audit found that new features had drifted back — parallel write paths, missing validators, raw `setattr` from agent input. These rules prevent recurrence:
+
+1. **Single validated write path per entity.** Product writes go through `ProductService.update_product()`. No tool, endpoint, or sibling service opens its own session to write product-related tables directly. The same applies to every domain entity — the owning service is the only writer.
+2. **Field allowlists, not `hasattr`.** Any service method that accepts `**kwargs` and applies them via `setattr` MUST use an explicit allowlist of writable fields. `hasattr(model, field)` is not a security gate — it allows writing to `tenant_key`, `deleted_at`, and other internal columns.
+3. **JSONB validators are mandatory.** Every JSONB column with a known schema must have a Pydantic model in `jsonb_validators.py`, called at the service write boundary. Validator field names must match the actual DB keys. `extra="allow"` is reserved for genuinely schema-less config blobs.
+4. **Agent input is untrusted.** MCP tool parameters (`src/giljo_mcp/tools/`) flow from AI agents. Before reaching the service layer: validate type (str vs dict vs list), enforce max length on text fields, and check membership for enum-like values (statuses, platforms, strategies). DB constraints produce 500s — validate at the application layer for clean 422 responses.
+5. **No relation field splat.** When a `proposed_value` maps to a relation with multiple columns (e.g., tech_stack has 6 fields), never write the same scalar to every column. Either require a per-field dict, or reject the value.
+6. **Validator ↔ code sync.** When a JSONB field is added or removed (e.g., `pending_proposals`), update the Pydantic model, remove all write-side references, and update DB column comments if they enumerate fields.
+
+**Pre-commit check for DB changes:** If your diff touches a model column, a JSONB validator, or a `setattr` call — verify the full chain: model → validator → service → tool/endpoint → test.
+
 ### Endpoint Security
 - Every API router MUST inject `Depends(get_current_active_user)` for authentication
 - Admin-only endpoints (configuration, database, system management) MUST additionally check user role
