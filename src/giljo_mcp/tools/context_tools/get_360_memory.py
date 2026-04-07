@@ -160,17 +160,17 @@ async def _get_360_memory_impl(
             },
         }
 
-    # Use repository to fetch memory entries from table
+    # Use repository to fetch entries grouped by distinct projects
     repo = ProductMemoryRepository()
 
-    # First, get total count (fetch all to determine total)
-    all_entries = await repo.get_entries_by_product(
+    entries, total_projects = await repo.get_entries_by_last_n_projects(
         session=session,
         product_id=product_id,
         tenant_key=tenant_key,
+        last_n_projects=last_n_projects,
+        offset=offset,
         include_deleted=False,
     )
-    total_projects = len(all_entries)
 
     if total_projects == 0:
         logger.debug("no_memory_entries", product_id=product_id, operation="get_360_memory")
@@ -184,33 +184,22 @@ async def _get_360_memory_impl(
                 "total_projects": 0,
                 "last_n_projects": last_n_projects,
                 "offset": offset,
-                "limit": limit or 0,
                 "returned_projects": 0,
                 "has_more": False,
                 "next_offset": None,
             },
         }
 
-    # Fetch entries with pagination (repository already sorts by sequence DESC)
-    entries = await repo.get_entries_by_product(
-        session=session,
-        product_id=product_id,
-        tenant_key=tenant_key,
-        limit=last_n_projects,
-        offset=0,
-        include_deleted=False,
-    )
-
     # Convert to dicts (matches existing format via to_dict())
-    filtered_history = [entry.to_dict() for entry in entries]
+    paginated_history = [entry.to_dict() for entry in entries]
 
-    # Apply pagination within the filtered results
-    effective_limit = limit if limit is not None else last_n_projects
-    paginated_history = filtered_history[offset : offset + effective_limit]
+    # Count distinct projects in this page
+    returned_project_ids = {e.project_id for e in entries if e.project_id}
+    returned_projects = len(returned_project_ids)
 
-    # Calculate pagination metadata
-    has_more = (offset + len(paginated_history)) < len(filtered_history)
-    next_offset = offset + len(paginated_history) if has_more else None
+    # Pagination is by distinct project count
+    has_more = (offset + returned_projects) < total_projects
+    next_offset = offset + returned_projects if has_more else None
 
     # Calculate token estimate
     total_tokens = estimate_tokens(paginated_history)
@@ -221,9 +210,9 @@ async def _get_360_memory_impl(
         tenant_key=tenant_key,
         depth=last_n_projects,
         offset=offset,
-        limit=effective_limit,
         total_projects=total_projects,
-        returned_projects=len(paginated_history),
+        returned_projects=returned_projects,
+        returned_entries=len(paginated_history),
         has_more=has_more,
         estimated_tokens=total_tokens,
     )
@@ -238,8 +227,8 @@ async def _get_360_memory_impl(
             "total_projects": total_projects,
             "last_n_projects": last_n_projects,
             "offset": offset,
-            "limit": effective_limit,
-            "returned_projects": len(paginated_history),
+            "returned_projects": returned_projects,
+            "returned_entries": len(paginated_history),
             "has_more": has_more,
             "next_offset": next_offset,
         },

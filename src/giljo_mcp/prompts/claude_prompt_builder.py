@@ -105,6 +105,18 @@ class ClaudePromptBuilder:
             "Each has a unique job_id and agent_display_name.",
             "",
             *agent_spawn_lines,
+            "## EXECUTION DIRECTIVE",
+            "",
+            "After fetching your mission, you MUST invoke every agent listed above.",
+            "Do NOT skip agents. Do NOT summarize the plan and stop. Your job is to",
+            "launch each agent using the Task tool as shown below, monitor their progress,",
+            "and close out the project when all agents are complete.",
+            "",
+            "**Preferred mode: background execution.** Launch independent agents with",
+            "`run_in_background=true` so the user can continue interacting while agents work.",
+            "Poll progress via `get_workflow_status()`. Use foreground (default) only when",
+            "one agent's output is needed before the next can start.",
+            "",
         ]
 
     def _build_spawning_section(self, agent_jobs: list) -> list[str]:
