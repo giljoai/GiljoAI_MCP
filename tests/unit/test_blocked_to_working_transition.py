@@ -127,7 +127,7 @@ async def test_report_progress_broadcasts_status_change_on_blocked_to_working(
     assert call_kwargs.kwargs["event_type"] == "agent:status_changed"
     data = call_kwargs.kwargs["data"]
     assert data["old_status"] == "blocked"
-    assert data["new_status"] == "working"
+    assert data["status"] == "working"
     assert data["agent_display_name"] == "Test Agent"
 
 
