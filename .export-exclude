@@ -5,8 +5,8 @@
 # Agent communication files
 agent_comms.json
 
-# Private-only scripts and configs
-scripts/export_ce.sh
+# Private-only scripts (all standalone dev utilities, no runtime dependencies)
+scripts/
 .export-exclude
 update_claude.md
 claude_code_statusline_setup.md
