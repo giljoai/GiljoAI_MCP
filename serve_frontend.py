@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
+
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Simple HTTP server to serve the production-built Vue frontend.
 Serves files from frontend/dist/ directory with SPA routing support.
 """
 
 import http.server
-import os
 import socketserver
 from pathlib import Path
 
@@ -23,10 +28,9 @@ class SPAHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         path = self.translate_path(self.path)
 
         # If the path is a directory or file doesn't exist, serve index.html (SPA routing)
-        if os.path.isdir(path) or not os.path.exists(path):
-            # Ignore API calls and WebSocket upgrades
-            if not self.path.startswith("/api/") and not self.path.startswith("/ws/"):
-                self.path = "/index.html"
+        file_path = Path(path)
+        if (file_path.is_dir() or not file_path.exists()) and not self.path.startswith(("/api/", "/ws/")):
+            self.path = "/index.html"
 
         return super().do_GET()
 
