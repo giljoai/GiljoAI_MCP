@@ -81,9 +81,17 @@ dmypy.json
 *.sublime-project
 *.sublime-workspace
 
-# Claude and Serena (AI assistants)
+# AI tools -- user-private, never committed
+CLAUDE.md
 .claude/
-!.claude/commands/  # Track project-level slash commands
+.claude.json
+.codex/
+CODEX.md
+.gemini/
+GEMINI.md
+.cursor/
+.copilot/
+.aider*
 .serena/
 serena/
 
@@ -154,18 +162,10 @@ config.yaml
 install_config.yaml
 .mcp.json
 
-# Claude Code configuration (system-specific)
-CLAUDE.md
-.claude.json
-.claude/
-
-# Serena MCP configuration (system-specific)
-.serena/
-serena/
+# Misc cleanup scripts
 cleanup_auto.ps1
 cleanup_for_fresh_install.ps1
 IMPORTANT.txt
-.aider*
 external/serena-venv/bin/python
 external/serena-venv/bin/python3
 external/serena-venv/bin/python3.12
@@ -180,13 +180,10 @@ installer/credentials/
 docs/archive/0130_websocket_v1_backups/
 handovers/Project_500_Prompt.md
 backup*.sql
-tmpclaude-e682-cwd
-tmpclaude-787f-cwd
+tmpclaude-*-cwd
 *.dump
 *.0
 setup_test_report.json
-setup_test_report.json
-CLAUDE.md
 nul
 image.jpg
 frontend/stats.html
