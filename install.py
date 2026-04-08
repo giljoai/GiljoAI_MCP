@@ -394,7 +394,8 @@ class UnifiedInstaller:
         print(f"{Fore.CYAN}This installer will set up your coding orchestrator.{Style.RESET_ALL}\n")
 
         print(f"{Fore.WHITE}What will be installed:{Style.RESET_ALL}")
-        print("  • PostgreSQL database setup (giljo_mcp)")
+        db_display = self.settings.get("db_name", "giljo_mcp")
+        print(f"  • PostgreSQL database setup ({db_display})")
         print("  • Python dependencies (FastAPI, SQLAlchemy, etc.)")
         print("  • Configuration files (.env, config.yaml)")
         print("  • API server + Frontend dashboard")
@@ -556,6 +557,17 @@ class UnifiedInstaller:
             else:
                 raise ValueError("PostgreSQL password required for installation")
 
+        # Database name (allows multiple installations on same PostgreSQL)
+        print(f"\n{Fore.CYAN}[Database Name]{Style.RESET_ALL}")
+        print(f"Default database name is {Fore.WHITE}giljo_mcp{Style.RESET_ALL}.")
+        print("Change this if you run multiple installations on the same PostgreSQL server.")
+        db_name_input = input(f"{Fore.YELLOW}Database name [giljo_mcp]: {Style.RESET_ALL}").strip()
+        if db_name_input:
+            self.settings["db_name"] = db_name_input
+            self._print_info(f"Database name: {db_name_input}")
+        else:
+            self.settings["db_name"] = "giljo_mcp"
+
         # REMOVED: Start services prompt - services will not auto-start
 
         # REMOVED: Database table creation prompt - table creation is now MANDATORY
@@ -587,6 +599,9 @@ class UnifiedInstaller:
             print(f"  • Network mode: {network_mode}")
         print(f"  • External access host: {self.settings.get('external_host', 'localhost')}")
         print(f"  • PostgreSQL password: {'*' * 8} (secured)")
+        db_name = self.settings.get("db_name", "giljo_mcp")
+        if db_name != "giljo_mcp":
+            print(f"  • Database name: {Fore.YELLOW}{db_name}{Style.RESET_ALL} (custom)")
         if platform.system() == "Windows":
             print(f"  • Create shortcuts: {self.settings['create_shortcuts']}")
 
@@ -1526,6 +1541,7 @@ class UnifiedInstaller:
                 "port": self.settings.get("pg_port", 5432),
                 "password": self.settings.get("pg_password"),
                 "username": self.settings.get("pg_user", "postgres"),
+                "db_name": self.settings.get("db_name", "giljo_mcp"),
             }
 
             db_installer = DatabaseInstaller(settings=db_settings)
@@ -1807,6 +1823,7 @@ class UnifiedInstaller:
                 "network_mode": self.settings.get("network_mode", "localhost"),
                 "selected_adapter": self.settings.get("selected_adapter"),
                 "initial_ip": self.settings.get("initial_ip"),
+                "db_name": self.settings.get("db_name", "giljo_mcp"),
             }
 
             config_manager = ConfigManager(settings=config_settings)
@@ -2404,7 +2421,8 @@ class UnifiedInstaller:
 
         # Database credentials
         if self.database_credentials:
-            print(f"{Fore.YELLOW}Database: {Fore.WHITE}giljo_mcp @ localhost:5432 (owner: giljo_owner, user: giljo_user){Style.RESET_ALL}\n")
+            db_display = self.settings.get("db_name", "giljo_mcp")
+            print(f"{Fore.YELLOW}Database: {Fore.WHITE}{db_display} @ localhost:5432 (owner: giljo_owner, user: giljo_user){Style.RESET_ALL}\n")
 
         # Detect protocol and ports
         frontend_port = self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT)
