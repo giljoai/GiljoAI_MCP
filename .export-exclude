@@ -22,6 +22,9 @@ docs/archive/
 # Internal dev tools (control panel, simulators)
 dev_tools/
 
+# Internal license audit docs
+audit/
+
 # Internal planning/handover docs in test directories
 # These are development artifacts, not actual test documentation
 tests/api/TEST_COVERAGE_HANDOVER_*.md
