@@ -28,7 +28,7 @@ import threading
 import time
 import webbrowser
 from pathlib import Path
-from tkinter import BooleanVar, Tk, messagebox, simpledialog, ttk
+from tkinter import BooleanVar, StringVar, Tk, filedialog, messagebox, simpledialog, ttk
 from typing import Any, List, Optional
 
 
@@ -279,6 +279,27 @@ class GiljoDevControlPanel:
                 print(f"Warning: Could not load config.yaml: {e}")
                 self.config = None
 
+    def _browse_target_path(self):
+        """Open folder browser to select target installation path."""
+        path = filedialog.askdirectory(
+            title="Select GiljoAI MCP Installation",
+            initialdir=str(self.project_root),
+        )
+        if path:
+            candidate = Path(path)
+            if (candidate / "api" / "run_api.py").exists():
+                self.project_root = candidate
+                self._target_path_var.set(str(candidate))
+                self.load_config()
+                self.update_status()
+                self.set_status(f"Target changed to: {candidate}")
+            else:
+                messagebox.showerror(
+                    "Invalid Path",
+                    f"Not a GiljoAI MCP installation.\n\n"
+                    f"Could not find api/run_api.py in:\n{candidate}",
+                )
+
     def build_ui(self):
         """Build the complete UI with tabbed interface."""
         # Main container with padding
@@ -291,7 +312,7 @@ class GiljoDevControlPanel:
             text="GiljoAI MCP Developer Control Panel",
             font=("Arial", 16, "bold"),
         )
-        title_label.grid(row=0, column=0, sticky="w", pady=(0, 20))
+        title_label.grid(row=0, column=0, sticky="w", pady=(0, 5))
 
         theme_key = "dark" if self.is_dark_mode.get() else "light"
         self.theme_toggle_btn = ttk.Button(
@@ -300,14 +321,39 @@ class GiljoDevControlPanel:
             command=self.toggle_theme,
             width=12,
         )
-        self.theme_toggle_btn.grid(row=0, column=1, sticky="e", pady=(0, 20))
+        self.theme_toggle_btn.grid(row=0, column=1, sticky="e", pady=(0, 5))
+
+        # Target path selector row
+        target_frame = ttk.Frame(main_frame)
+        target_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        target_frame.grid_columnconfigure(1, weight=1)
+
+        ttk.Label(target_frame, text="Target:", font=("Arial", 9)).grid(
+            row=0, column=0, sticky="w", padx=(0, 5)
+        )
+
+        self._target_path_var = StringVar(value=str(self.project_root))
+        target_entry = ttk.Entry(
+            target_frame,
+            textvariable=self._target_path_var,
+            state="readonly",
+            font=("Consolas", 9),
+        )
+        target_entry.grid(row=0, column=1, sticky="ew", padx=(0, 5))
+
+        ttk.Button(
+            target_frame,
+            text="Browse...",
+            command=self._browse_target_path,
+            width=10,
+        ).grid(row=0, column=2)
 
         # Create tabbed notebook
         self.notebook = ttk.Notebook(main_frame)
-        self.notebook.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(0, 10))
+        self.notebook.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=(0, 10))
 
         # Configure grid weights for resizing
-        main_frame.grid_rowconfigure(1, weight=1)
+        main_frame.grid_rowconfigure(2, weight=1)
         main_frame.grid_columnconfigure(0, weight=1)
 
         # Build tabs
@@ -320,7 +366,7 @@ class GiljoDevControlPanel:
         self.status_label = ttk.Label(
             main_frame, text="Ready", style="Sunken.TLabel", anchor="nw", justify="left", padding=(5, 5)
         )
-        self.status_label.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0), ipady=40)
+        self.status_label.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(10, 0), ipady=40)
 
     def build_services_tab(self):
         """Build the Services tab with service management, cache, and frontend tools."""
