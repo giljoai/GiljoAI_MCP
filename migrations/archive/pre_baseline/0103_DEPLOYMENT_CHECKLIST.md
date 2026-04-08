@@ -230,7 +230,7 @@ exit(0 if all_pass else 1)
 
 ## Contact Information
 
-**Security Team**: security@giljoai.com
+**Security Team**: (see SECURITY.md)
 **Migration Owner**: TDD Implementor Agent
 **Date**: 2025-11-05
 **Status**: ✅ READY FOR PRODUCTION
