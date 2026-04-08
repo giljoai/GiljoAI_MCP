@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Test suite for UserService CRUD operations and role management.
 
@@ -10,8 +15,8 @@ provided by tests/services/conftest.py.
 
 from uuid import uuid4
 
-import pytest
 import bcrypt
+import pytest
 
 from src.giljo_mcp.exceptions import (
     AuthorizationError,

@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Pytest configuration for API endpoint tests.
 
@@ -11,10 +16,11 @@ Provides fixtures specific to API integration testing including:
 import secrets
 from unittest.mock import MagicMock
 
+import bcrypt
 import pytest_asyncio
 from httpx import ASGITransport
 from httpx import AsyncClient as HTTPXAsyncClient
-import bcrypt
+
 
 # Shared CSRF token for test fixtures (double-submit cookie pattern)
 _TEST_CSRF_TOKEN = secrets.token_urlsafe(32)

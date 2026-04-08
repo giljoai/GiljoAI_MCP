@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Integration tests for CSRF protection middleware.
 
@@ -18,6 +23,7 @@ Created for Handover 0765f - CSRF protection hardening.
 import secrets
 
 import pytest
+
 
 # ---------------------------------------------------------------------------
 # Non-exempt endpoint used across tests.

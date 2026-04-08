@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Tests for ConfigurationRepository (Handover 1011 Phase 3).
 
@@ -13,7 +18,6 @@ import pytest_asyncio
 from src.giljo_mcp.models import Configuration
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.repositories.configuration_repository import ConfigurationRepository
-
 
 
 @pytest.fixture

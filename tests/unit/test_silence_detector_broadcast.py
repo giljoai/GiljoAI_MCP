@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Tests for silence_detector auto_clear_silent() and clear_silent_status() broadcast fixes.
 
@@ -18,6 +23,7 @@ import uuid
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+
 
 # Stub the api package before importing silence_detector, which does a lazy
 # `from api.events.schemas import EventFactory` inside _broadcast_status_change.
