@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 FastAPI application for GiljoAI MCP
 Provides REST API and WebSocket endpoints for orchestration system
@@ -122,6 +127,7 @@ except ImportError as e:
 
 if TYPE_CHECKING:
     from src.giljo_mcp.config_manager import ConfigManager
+    from src.giljo_mcp.licensing.validator import LicenseResult
 
 
 class APIState:
@@ -148,6 +154,7 @@ class APIState:
         self.system_prompt_service: Optional[SystemPromptService] = None
         self.startup_complete: bool = False
         self.degraded_services: list[str] = []
+        self.license: Optional[LicenseResult] = None  # Set during lifespan startup
 
 
 state = APIState()
@@ -170,6 +177,17 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 70)
     logger.info("Starting GiljoAI MCP API...")
     logger.info("=" * 70)
+
+    # Phase 0: License validation
+    # [CE] License validation — CE always passes. Commercial builds enforce here.
+    from src.giljo_mcp.licensing import LicenseValidator
+
+    license_result = LicenseValidator().validate()
+    if not license_result.valid:
+        raise RuntimeError(f"License validation failed: {license_result.message}")
+    state.license = license_result
+    app.state.license = license_result
+    logger.info("License: %s", license_result.message)
 
     # Phase 1: Database and configuration
     await init_database(state)
