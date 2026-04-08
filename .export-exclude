@@ -14,6 +14,15 @@ create_distribution.ps1
 create_distribution.sh
 create_shortcuts.ps1
 
+# Internal dev tools (not needed by users)
+backup.py
+reset.py
+restart_services.py
+run_tests.py
+dev-requirements.txt
+pytest_no_coverage.ini
+uv.lock
+
 # Internal handovers (private development history)
 handovers/
 
