@@ -24,7 +24,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-PUBLIC_REPO="/media/patrik/Work/GiljoAI_MCP"
+PUBLIC_REPO_GITHUB="https://github.com/patrik-giljoai/GiljoAI_MCP.git"
+PUBLIC_REPO_LOCAL="/media/patrik/Work/GiljoAI_MCP"  # Optional local clone
 TEMP_DIR=""
 DRY_RUN=true
 
@@ -58,10 +59,7 @@ if [[ ! -d "$REPO_ROOT/.git" ]]; then
     exit 1
 fi
 
-if [[ ! -d "$PUBLIC_REPO/.git" ]]; then
-    err "Public repo not found at: $PUBLIC_REPO"
-    exit 1
-fi
+# Local public repo clone is optional (used for local review only)
 
 # ── Step 1: Clone to temp ─────────────────────────────────────
 
@@ -241,16 +239,18 @@ if [[ "$DRY_RUN" == true ]]; then
     warn "Press Enter to clean up, or Ctrl+C to keep the temp dir for inspection."
     read -r
 else
-    log "Pushing to public repo..."
-    cd "$PUBLIC_REPO"
-    # Fetch the export commit and reset local to it
-    git fetch "$TEMP_DIR/export" master --quiet
-    git reset --hard FETCH_HEAD --quiet
-    log ""
-    log "Local public repo updated at: $PUBLIC_REPO"
-    log ""
-    # Push to GitHub
+    # Push directly to GitHub from the temp export
     log "Pushing to GitHub..."
-    git push origin master --force
+    cd "$TEMP_DIR/export"
+    git push "$PUBLIC_REPO_GITHUB" master --force
     log "GitHub push complete."
+
+    # Optionally update local clone if it exists
+    if [[ -d "$PUBLIC_REPO_LOCAL/.git" ]]; then
+        log "Updating local public repo clone..."
+        cd "$PUBLIC_REPO_LOCAL"
+        git fetch origin --quiet
+        git reset --hard origin/master --quiet
+        log "Local clone updated at: $PUBLIC_REPO_LOCAL"
+    fi
 fi
