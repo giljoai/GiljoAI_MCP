@@ -10,6 +10,9 @@ scripts/export_ce.sh
 .export-exclude
 update_claude.md
 claude_code_statusline_setup.md
+create_distribution.ps1
+create_distribution.sh
+create_shortcuts.ps1
 
 # Internal handovers (private development history)
 handovers/
