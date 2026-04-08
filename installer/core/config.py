@@ -398,7 +398,7 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                     # Only the API layer is network-accessible (bind address from install-time network choice)
                     "host": "localhost",  # ALWAYS localhost (never changes)
                     "port": self.settings.get("pg_port", 5432),
-                    "name": "giljo_mcp",
+                    "name": self.settings.get("db_name", "giljo_mcp"),
                     "user": "giljo_user",
                     "owner": "giljo_owner",
                     "pool_size": 5,  # v3.0: Fixed pool size (no mode-based scaling)
