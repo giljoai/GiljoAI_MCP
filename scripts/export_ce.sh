@@ -139,8 +139,8 @@ while IFS= read -r -d '' pyfile; do
     if [[ "$(basename "$pyfile")" == "__init__.py" && ! -s "$pyfile" ]]; then
         continue
     fi
-    # Skip files already containing the marker
-    if head -1 "$pyfile" | grep -qF "$MARKER"; then
+    # Skip files already containing the marker (check first 5 lines to catch shebang files)
+    if head -5 "$pyfile" | grep -qF "$MARKER"; then
         continue
     fi
     # Check for shebang
