@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """Tests for Handover 0813: Agent Template Context Separation.
 
 Tests the three-context separation:
@@ -8,9 +13,10 @@ Tests the three-context separation:
 TDD: These tests are written FIRST (RED phase).
 """
 
-import yaml
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+import yaml
 
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_renderer import render_claude_agent

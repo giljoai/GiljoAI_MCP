@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Test suite for TaskService Exception Handling - Lifecycle operations.
 
@@ -10,9 +15,9 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import bcrypt
 import pytest
 import pytest_asyncio
-import bcrypt
 
 from src.giljo_mcp.exceptions import (
     AuthorizationError,

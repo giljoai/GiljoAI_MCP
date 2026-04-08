@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """Protocol sections subpackage — focused submodules extracted from protocol_builder.py."""
 
 from src.giljo_mcp.services.protocol_sections.agent_lifecycle import (

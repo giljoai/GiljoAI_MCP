@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """Configuration service for centralized config.yaml management.
 
 Updated Handover 0731: Reviewed for typed returns - dict[str, Any] retained because
