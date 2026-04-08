@@ -24,8 +24,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-PUBLIC_REPO_GITHUB="https://github.com/patrik-giljoai/GiljoAI_MCP.git"
 PUBLIC_REPO_LOCAL="/media/patrik/Work/GiljoAI_MCP"  # Optional local clone
+
+# Build authenticated GitHub URL by extracting PAT from this repo's origin
+_ORIGIN_URL="$(git -C "$REPO_ROOT" remote get-url origin 2>/dev/null || true)"
+if [[ "$_ORIGIN_URL" == *"@github.com"* ]]; then
+    _PAT="$(echo "$_ORIGIN_URL" | sed 's|https://\(.*\)@github.com.*|\1|')"
+    PUBLIC_REPO_GITHUB="https://${_PAT}@github.com/patrik-giljoai/GiljoAI_MCP.git"
+else
+    PUBLIC_REPO_GITHUB="https://github.com/patrik-giljoai/GiljoAI_MCP.git"
+fi
 TEMP_DIR=""
 DRY_RUN=true
 
