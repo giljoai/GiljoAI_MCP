@@ -148,6 +148,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
         """Check if endpoint is public (no authentication required)"""
         if path in {"/", "/index.html", "/favicon.ico"} or path.startswith("/assets/"):
             return True
+        # Static files served from frontend/public (logos, icons, mascot)
+        static_extensions = (".svg", ".png", ".jpg", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".css")
+        if path.endswith(static_extensions) or path.startswith("/icons/") or path.startswith("/mascot/"):
+            return True
+        # Setup wizard routes must be accessible before any user exists
+        if path in {"/welcome", "/create-admin"} or path.startswith("/api/setup/"):
+            return True
         public_paths = [
             "/health",
             "/docs",
