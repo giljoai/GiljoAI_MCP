@@ -2683,7 +2683,7 @@ pg_restore -l {backup_file.name} | head -20
         dev_username = simpledialog.askstring(
             "Dev Admin Username",
             "Enter the admin username to reset:",
-            initialvalue=saved_username or "patrik",
+            initialvalue=saved_username or "admin",
             parent=self.root,
         )
         if not dev_username:
@@ -2787,7 +2787,7 @@ pg_restore -l {backup_file.name} | head -20
                 "Make sure:\n"
                 "1. PostgreSQL is running\n"
                 "2. giljo_mcp database exists\n"
-                "3. User 'patrik' exists in database",
+                "3. The specified user exists in database",
             )
 
     def reset_to_pristine(self):

@@ -120,9 +120,9 @@
           "",
           "",
           "**Path**: `POST /api/v1/projects/{id}/activate`",
-          "**Location**: F:\\GiljoAI_MCP\\api\\endpoints\\projects.py (lines 702-824)",
+          "**Location**: api/endpoints/projects.py (lines 702-824)",
           "**Function**: Creates orchestrator job when project is activated",
-          "**Primary Class**: MissionPlanner (F:\\GiljoAI_MCP\\src\\giljo_mcp\\mission_planner.py)",
+          "**Primary Class**: MissionPlanner (src/giljo_mcp/mission_planner.py)",
           "**Key Method**: `process_product_vision()` (orchestrator.py:1687-1828)",
           "**Token Reduction**: Field priority configuration + vision chunking"
         ]
