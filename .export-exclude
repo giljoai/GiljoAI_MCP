@@ -16,6 +16,9 @@ handovers/
 # Legacy migration archive (contains internal handover docs)
 migrations/archive/
 
+# Archived internal docs (retired handovers, guides, test reports)
+docs/archive/
+
 # Internal dev tools (control panel, simulators)
 dev_tools/
 
