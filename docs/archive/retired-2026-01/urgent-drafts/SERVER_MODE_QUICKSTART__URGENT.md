@@ -280,7 +280,7 @@ Example nginx configuration in `installer/configs/nginx.conf.example` after inst
 
 ## Security Disclosure
 
-Found a security issue? Please report to security@giljoai.com (do not create public issues for security vulnerabilities).
+Found a security issue? Please see SECURITY.md for reporting instructions.
 
 ---
 
