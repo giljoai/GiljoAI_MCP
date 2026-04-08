@@ -94,19 +94,33 @@ done
 # ── Step 3: Delete files from .export-exclude ──────────────────
 
 EXCLUDE_FILE="$REPO_ROOT/.export-exclude"
+exclude_count=0
 if [[ -f "$EXCLUDE_FILE" ]]; then
     log "Applying .export-exclude..."
     while IFS= read -r pattern || [[ -n "$pattern" ]]; do
         # Skip comments and blank lines
-        [[ "$pattern" =~ ^#.*$ || -z "$pattern" ]] && continue
-        # Expand globs
-        for f in $pattern; do
-            if [[ -e "$f" ]]; then
+        pattern="$(echo "$pattern" | sed 's/#.*//' | xargs)"
+        [[ -z "$pattern" ]] && continue
+        # Use find for directory patterns (ending with /)
+        if [[ "$pattern" == */ ]]; then
+            if [[ -d "${pattern%/}" ]]; then
+                rm -rf "${pattern%/}"
+                log "  excluded dir: ${pattern%/}"
+                ((exclude_count++))
+            fi
+        else
+            # Expand globs with nullglob
+            shopt -s nullglob
+            matches=($pattern)
+            shopt -u nullglob
+            for f in "${matches[@]}"; do
                 rm -rf "$f"
                 log "  excluded: $f"
-            fi
-        done
+                ((exclude_count++))
+            done
+        fi
     done < "$EXCLUDE_FILE"
+    log "  Total exclusions: $exclude_count"
 fi
 
 # ── Step 4: Ensure license headers on all .py files ───────────
