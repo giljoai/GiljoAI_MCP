@@ -104,7 +104,7 @@ For full functionality, right-click and select "Run as Administrator":
 
 ```bash
 # PowerShell as Administrator
-cd F:\GiljoAI_MCP
+cd path\to\GiljoAI_MCP
 python dev_tools/control_panel.py
 ```
 
