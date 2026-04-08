@@ -48,7 +48,7 @@ class DatabaseInstaller:
         self.port = settings.get("port", 5432)
         self.password = settings.get("password")
         self.username = settings.get("username", "postgres")
-        self.db_name = "giljo_mcp"
+        self.db_name = settings.get("db_name", "giljo_mcp")
         self.logger = logging.getLogger(self.__class__.__name__)
 
         # Generated credentials
