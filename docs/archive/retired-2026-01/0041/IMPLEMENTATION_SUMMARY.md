@@ -732,7 +732,7 @@ See "Long-Term Improvements" in PHASE_4_TESTING_REPORT.md for roadmap items.
 ### Support Contact
 
 For issues, questions, or feature requests:
-- **Email**: support@giljoai.com
+- **Email**: support@giljo.ai
 - **GitHub Issues**: https://github.com/giljoai/giljo-mcp/issues
 - **Documentation**: F:/GiljoAI_MCP/docs/handovers/0041/
 

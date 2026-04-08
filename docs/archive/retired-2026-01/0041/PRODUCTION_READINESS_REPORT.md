@@ -336,7 +336,7 @@ The Agent Template Management System has been successfully implemented and is pr
 - **Technical Questions**: Refer to DEVELOPER_GUIDE.md
 - **User Questions**: Refer to USER_GUIDE.md
 - **Deployment Issues**: Refer to DEPLOYMENT_GUIDE.md
-- **Escalation**: support@giljoai.com
+- **Escalation**: support@giljo.ai
 
 ---
 
