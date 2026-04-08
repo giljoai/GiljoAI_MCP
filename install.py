@@ -2434,8 +2434,10 @@ class UnifiedInstaller:
             print(f"{Fore.YELLOW}Database: {Fore.WHITE}{db_display} @ localhost:5432 (owner: giljo_owner, user: giljo_user){Style.RESET_ALL}\n")
 
         # Detect protocol and ports
-        frontend_port = self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT)
+        # In production mode (frontend/dist exists), frontend is served on the API port
         api_port = self.settings.get("api_port", DEFAULT_API_PORT)
+        is_production = (self.install_dir / "frontend" / "dist").exists()
+        frontend_port = api_port if is_production else self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT)
         protocol = "https" if self.settings.get("ssl_enabled") else "http"
 
         # How to start
