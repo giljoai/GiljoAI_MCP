@@ -2447,11 +2447,13 @@ class UnifiedInstaller:
         print(f"{Fore.CYAN}{Style.BRIGHT}Then open your browser:{Style.RESET_ALL}")
         print(f"  {Fore.CYAN}{protocol}://localhost:{frontend_port}{Style.RESET_ALL}")
 
-        # Show network IPs if detected
-        network_ips = self._get_all_network_ips()
-        if network_ips:
-            for ip in network_ips:
-                print(f"  {Fore.WHITE}{protocol}://{ip}:{frontend_port}  (LAN){Style.RESET_ALL}")
+        # Show network IPs only if not in localhost mode
+        network_mode = self.settings.get("network_mode", "localhost")
+        if network_mode != "localhost":
+            network_ips = self._get_all_network_ips()
+            if network_ips:
+                for ip in network_ips:
+                    print(f"  {Fore.WHITE}{protocol}://{ip}:{frontend_port}  (LAN){Style.RESET_ALL}")
         print()
 
         # API docs
