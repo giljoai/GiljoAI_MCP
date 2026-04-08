@@ -93,6 +93,7 @@ done
 
 # ── Step 3: Delete files from .export-exclude ──────────────────
 
+# Read .export-exclude from the ORIGINAL repo (not the temp clone, which also has it)
 EXCLUDE_FILE="$REPO_ROOT/.export-exclude"
 exclude_count=0
 if [[ -f "$EXCLUDE_FILE" ]]; then
@@ -106,7 +107,7 @@ if [[ -f "$EXCLUDE_FILE" ]]; then
             if [[ -d "${pattern%/}" ]]; then
                 rm -rf "${pattern%/}"
                 log "  excluded dir: ${pattern%/}"
-                ((exclude_count++))
+                exclude_count=$((exclude_count + 1))
             fi
         else
             # Expand globs with nullglob
@@ -116,7 +117,7 @@ if [[ -f "$EXCLUDE_FILE" ]]; then
             for f in "${matches[@]}"; do
                 rm -rf "$f"
                 log "  excluded: $f"
-                ((exclude_count++))
+                exclude_count=$((exclude_count + 1))
             done
         fi
     done < "$EXCLUDE_FILE"
@@ -151,7 +152,7 @@ while IFS= read -r -d '' pyfile; do
         original="$(cat "$pyfile")"
         printf '%s\n\n%s\n' "$HEADER" "$original" > "$pyfile"
     fi
-    ((header_count++))
+    header_count=$((header_count + 1))
 done < <(find . -name "*.py" -type f -print0)
 
 if [[ $header_count -gt 0 ]]; then
