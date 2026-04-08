@@ -254,6 +254,8 @@ The 0840 harmonization normalized free-text JSON into typed relation tables. The
 
 ## Code Quality Standards
 
+> **Public repo code standards:** `docs/CODE_STANDARDS.md` in the public repo contains contributor-facing code standards derived from this document. When updating quality rules here, check if the public version also needs updating to stay in sync. Pull from public: `git fetch public && git merge public/master`
+
 ### Production-Grade Requirements
 All code must meet these non-negotiable standards:
 
