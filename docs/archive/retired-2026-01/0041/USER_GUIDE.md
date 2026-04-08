@@ -964,10 +964,10 @@ Congratulations! You now know how to:
 If you encounter issues or have questions:
 - Check the [Troubleshooting](#troubleshooting) section
 - Review the [FAQ](#faq)
-- Contact support: support@giljoai.com
+- Contact support: support@giljo.ai
 
 ---
 
 **Document Version**: 1.0
 **Last Updated**: 2025-10-24
-**Feedback**: Please report errors or suggest improvements to support@giljoai.com
+**Feedback**: Please report errors or suggest improvements to support@giljo.ai
