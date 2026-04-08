@@ -971,7 +971,7 @@ If documentation errors are found:
 
 **Next Steps**:
 → Documentation complete and pushed to branch `claude/project-0240d-017QhV4tea65MhdVYNcD86Qw`
-→ Pull request ready: https://github.com/patrik-giljoai/GiljoAI_MCP/pull/new/claude/project-0240d-017QhV4tea65MhdVYNcD86Qw
+→ Pull request ready: https://github.com/giljoai/GiljoAI_MCP/pull/new/claude/project-0240d-017QhV4tea65MhdVYNcD86Qw
 → 0240c (Integration Testing) to be completed by CLI agent
 → Screenshots can be added after 0240c validates final UI state
 → Ready for merge and production deployment

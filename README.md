@@ -56,8 +56,8 @@ GiljoAI sits at the intersection of product thinking and development. Whether yo
 </div>
 
 ```bash
-git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
-cd GiljoAI-MCP
+git clone https://github.com/giljoai/GiljoAI_MCP.git
+cd GiljoAI_MCP
 python install.py
 python startup.py
 ```
@@ -229,7 +229,7 @@ python startup.py --verbose    # Detailed logging
 <img src="docs/images/section-support.png" alt="Support" width="100%">
 </div>
 
-- **Issues:** [github.com/patrik-giljoai/GiljoAI-MCP/issues](https://github.com/patrik-giljoai/GiljoAI-MCP/issues)
+- **Issues:** [github.com/giljoai/GiljoAI_MCP/issues](https://github.com/giljoai/GiljoAI_MCP/issues)
 - **Website:** [giljo.ai](https://giljo.ai)
 - **License:** [GiljoAI Community License v1.1](LICENSE)
 - **Contributing:** See [CONTRIBUTING.md](CONTRIBUTING.md)
