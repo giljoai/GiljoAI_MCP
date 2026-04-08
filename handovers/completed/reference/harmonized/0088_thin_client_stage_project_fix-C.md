@@ -2015,7 +2015,7 @@ async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str):
                     'Check database: SELECT * FROM mcp_agent_jobs WHERE id = \'' + orchestrator_id + '\''
                 ],
                 'severity': 'ERROR',
-                'contact_support': 'If problem persists: support@giljoai.com'
+                'contact_support': 'If problem persists: support@giljo.ai'
             }
 
         # ... rest of implementation ...
@@ -2044,7 +2044,7 @@ async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str):
                 'Restart MCP server if issue persists'
             ],
             'severity': 'ERROR',
-            'contact_support': 'support@giljoai.com'
+            'contact_support': 'support@giljo.ai'
         }
 ```
 

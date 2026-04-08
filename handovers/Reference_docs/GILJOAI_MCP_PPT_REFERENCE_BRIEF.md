@@ -288,7 +288,7 @@ When reviewing/updating any slide, check for:
 - [ ] "Agent Orchestration MCP Server" → "GiljoAI MCP"
 - [ ] Three editions shown → must be two (CE + SaaS; Enterprise = deployment mode of SaaS)
 - [ ] Active orchestration language → passive orchestrator language
-- [ ] "licensing@giljoai.com" → "sales@giljo.ai"
+- [ ] "sales@giljo.ai" → "sales@giljo.ai"
 - [ ] Node.js 18+ → Node.js 20+
 - [ ] `master` branch → `main` branch
 - [ ] Any reference to the server executing code or running inference → server provides data only

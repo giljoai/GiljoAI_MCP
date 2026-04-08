@@ -2252,7 +2252,7 @@ Before starting 0131-0200 work, ensure the following are COMPLETE:
 **Type:** Support
 
 **What This Is:**
-- Support email (support@giljoai.com)
+- Support email (support@giljo.ai)
 - Discord server
 - Status page (status.giljoai.com)
 - Incident response plan
@@ -2260,7 +2260,7 @@ Before starting 0131-0200 work, ensure the following are COMPLETE:
 **Tasks:**
 ```markdown
 # Support Email
-- [ ] Set up support@giljoai.com
+- [ ] Set up support@giljo.ai
 - [ ] Auto-responder (24-hour response time)
 - [ ] Routing rules (bug reports, feature requests, questions)
 
