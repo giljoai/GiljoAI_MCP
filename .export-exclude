@@ -25,6 +25,9 @@ dev_tools/
 # Internal license audit docs
 audit/
 
+# CI/CD workflows (public repo gets its own workflows when ready)
+.github/workflows/
+
 # Internal planning/handover docs in test directories
 # These are development artifacts, not actual test documentation
 tests/api/TEST_COVERAGE_HANDOVER_*.md
