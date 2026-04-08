@@ -17,7 +17,11 @@
 
 **Workflow rules:**
 - ALL development happens here. Never commit directly to the public repo.
-- CE releases: run `scripts/export_ce.sh` to push filtered code to public.
+- CE releases: run the export script to push filtered code to public:
+  ```bash
+  ./scripts/export_ce.sh          # dry-run first (review in temp dir)
+  ./scripts/export_ce.sh --push   # then push to public repo for real
+  ```
 - Community PRs: merged in public repo, then cherry-picked back here (`git fetch public && git cherry-pick <hash>`).
 - The `public` git remote points to the local public repo clone at `/media/patrik/Work/GiljoAI_MCP`.
 
