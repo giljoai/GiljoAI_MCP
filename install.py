@@ -51,22 +51,31 @@ def _bootstrap_dependencies():
         except ImportError:
             missing.append(pkg)
 
-    if missing:
-        print(f"Installing bootstrap dependencies: {', '.join(missing)}...")
-        cmd = [sys.executable, "-m", "pip", "install", "-q"] + missing
+    if not missing:
+        return
 
-        # If not in a venv, use --user to avoid PEP 668 restriction on Linux/macOS
-        if sys.prefix == sys.base_prefix:
-            cmd.insert(5, "--user")
+    print(f"Installing bootstrap dependencies: {', '.join(missing)}...")
+    use_user = sys.prefix == sys.base_prefix  # Not in a venv
 
-        try:
-            subprocess.check_call(cmd, stdout=subprocess.DEVNULL)
-        except subprocess.CalledProcessError:
-            print("\nERROR: Could not install bootstrap dependencies.")
-            print("Please install manually:")
-            print("  pip install --user click colorama")
-            print("  or: sudo apt install python3-click python3-colorama  (Ubuntu/Debian)")
-            sys.exit(1)
+    cmd = [sys.executable, "-m", "pip", "install", "-q"] + missing
+    if use_user:
+        cmd.insert(5, "--user")
+
+    try:
+        subprocess.check_call(cmd, stdout=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:
+        print("\nERROR: Could not install bootstrap dependencies.")
+        print("Please install manually:")
+        print("  pip install click colorama")
+        sys.exit(1)
+
+    # After --user install, the packages may not be on sys.path yet.
+    # Add the user site-packages directory so the import below succeeds.
+    if use_user:
+        import site
+        user_site = site.getusersitepackages()
+        if user_site not in sys.path:
+            sys.path.insert(0, user_site)
 
 
 _bootstrap_dependencies()
