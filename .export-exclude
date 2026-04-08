@@ -1,0 +1,12 @@
+# Files and patterns to exclude from CE export.
+# One path or glob per line. Comments (#) and blank lines are ignored.
+# Paths are relative to repo root.
+
+# Agent communication files
+agent_comms.json
+
+# Private-only scripts
+scripts/export_ce.sh
+
+# Internal deployment configs
+.export-exclude
