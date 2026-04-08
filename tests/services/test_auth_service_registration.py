@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Tests for AuthService - User registration and first admin creation.
 
@@ -8,8 +13,8 @@ Split from test_auth_service.py. Contains:
 Handover 0731c: Updated for typed service returns (AuthResult, UserInfo).
 """
 
-import pytest
 import bcrypt
+import pytest
 from sqlalchemy import select
 
 from src.giljo_mcp.exceptions import ValidationError

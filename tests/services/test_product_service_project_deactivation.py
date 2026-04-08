@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Unit tests for ProductService product switching and project deactivation.
 
@@ -22,7 +27,6 @@ import pytest
 from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.services.product_service import ProductService
 from tests.fixtures.base_fixtures import TestData
-
 
 
 @pytest.mark.asyncio

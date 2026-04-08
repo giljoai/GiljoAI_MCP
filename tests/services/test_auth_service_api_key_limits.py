@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Tests for API Key Security Hardening (Handover 0492).
 
@@ -13,9 +18,9 @@ TDD: Tests written FIRST, implementation follows.
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
+import bcrypt
 import pytest
 import pytest_asyncio
-import bcrypt
 
 from src.giljo_mcp.exceptions import BaseGiljoError
 from src.giljo_mcp.models.auth import APIKey, User

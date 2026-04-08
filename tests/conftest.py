@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Pytest configuration for test suite
 Provides test fixtures and database setup
@@ -31,6 +36,7 @@ from tests.fixtures.base_fixtures import (
     db_session,
     test_project,
 )
+
 
 # Import pytest plugin for PostgreSQL database management
 pytest_plugins = ["tests.pytest_postgresql_plugin"]
@@ -146,11 +152,10 @@ async def test_tenant_key():
 @pytest_asyncio.fixture(scope="function")
 async def test_project_id(db_session, test_tenant_key):
     """Create a test project and return its ID"""
+    import random
     import uuid
 
     from src.giljo_mcp.models import Project
-
-    import random
 
     project = Project(
         id=str(uuid.uuid4()),

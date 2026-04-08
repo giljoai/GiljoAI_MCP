@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """Tests for Handover 0814: Template Manager UI Redesign (Phase 5).
 
 Validates the four backend fixes introduced in 0814:
@@ -10,10 +15,10 @@ Validates the four backend fixes introduced in 0814:
 """
 
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 import yaml
-from unittest.mock import AsyncMock, Mock, MagicMock, patch
 
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_renderer import render_claude_agent
@@ -298,6 +303,7 @@ class TestUpdateTemplateRejectsSystemInstructions:
     async def test_update_template_rejects_system_instructions_with_403(self):
         """Sending system_instructions in an update payload should return 403."""
         from fastapi import HTTPException
+
         from api.endpoints.templates.crud import update_template
         from api.endpoints.templates.models import TemplateUpdate
 
@@ -337,6 +343,7 @@ class TestUpdateTemplateRejectsSystemInstructions:
     async def test_update_template_rejects_system_instructions_even_with_same_value(self):
         """Even if system_instructions matches current value, it should still be rejected."""
         from fastapi import HTTPException
+
         from api.endpoints.templates.crud import update_template
         from api.endpoints.templates.models import TemplateUpdate
 

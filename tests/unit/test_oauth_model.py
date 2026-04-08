@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Unit tests for OAuthAuthorizationCode model.
 
@@ -10,8 +15,8 @@ from unittest.mock import patch
 
 import pytest
 
-from src.giljo_mcp.models.oauth import OAuthAuthorizationCode
 from src.giljo_mcp.models.base import generate_uuid
+from src.giljo_mcp.models.oauth import OAuthAuthorizationCode
 
 
 class TestGenerateUuid:
