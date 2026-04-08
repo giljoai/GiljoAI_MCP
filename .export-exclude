@@ -26,6 +26,9 @@ dev_tools/
 # Internal license audit docs
 audit/
 
+# Database backups and recovery files
+backups/
+
 # CI/CD workflows (public repo gets its own workflows when ready)
 .github/workflows/
 
