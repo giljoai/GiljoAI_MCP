@@ -227,7 +227,19 @@ def get_network_adapters() -> List[dict]:
     except Exception as e:
         logger.warning(f"Network adapter detection failed: {e}")
 
-    # Fallback: return empty list (caller should handle)
+    # Fallback: use UDP socket trick to find primary IP (works without psutil)
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(2)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        if ip and ip != "127.0.0.1" and not ip.startswith("127."):
+            logger.info(f"Fallback: detected primary IP {ip} via UDP socket")
+            return [{"name": "Primary Network", "ip": ip, "is_virtual": False}]
+    except Exception as e:
+        logger.debug(f"UDP socket fallback failed: {e}")
+
     return []
 
 
