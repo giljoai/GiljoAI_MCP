@@ -382,7 +382,7 @@ pytest tests/performance/test_concurrent_spawning.py -v
 
 ## Support
 
-**Issues**: https://github.com/patrik-giljoai/GiljoAI-MCP/issues
+**Issues**: https://github.com/giljoai/GiljoAI_MCP/issues
 **Documentation**: [docs/README_FIRST.md](../../README_FIRST.md)
 
 ---

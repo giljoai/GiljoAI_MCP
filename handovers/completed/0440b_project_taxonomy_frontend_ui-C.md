@@ -769,7 +769,7 @@ If feature needs complete removal:
 - **0243 series**: GUI Redesign (reference for Vuetify patterns, testing strategy)
 
 ### GitHub Issues
-- Check repo for related issues: `https://github.com/patrik-giljoai/GiljoAI-MCP/issues?q=is%3Aissue+taxonomy`
+- Check repo for related issues: `https://github.com/giljoai/GiljoAI_MCP/issues?q=is%3Aissue+taxonomy`
 
 ---
 

@@ -104,14 +104,14 @@ node --version
 For developers or users who prefer manual control:
 
 ```bash
-git clone https://github.com/patrik-giljoai/GiljoAI-MCP
+git clone https://github.com/giljoai/GiljoAI_MCP
 cd GiljoAI-MCP
 python install.py
 ```
 
 Follow the interactive setup wizard to complete installation.
 
-See [Installation Guide](https://github.com/patrik-giljoai/GiljoAI-MCP/blob/master/docs/INSTALLATION_FLOW_PROCESS.md) for detailed instructions.
+See [Installation Guide](https://github.com/giljoai/GiljoAI_MCP/blob/master/docs/INSTALLATION_FLOW_PROCESS.md) for detailed instructions.
 
 ---
 
@@ -258,9 +258,9 @@ Then re-run the installation command.
 
 ## Need Help?
 
-**Documentation**: [Full Installation Guide](https://github.com/patrik-giljoai/GiljoAI-MCP/blob/master/docs/README_FIRST.md)
+**Documentation**: [Full Installation Guide](https://github.com/giljoai/GiljoAI_MCP/blob/master/docs/README_FIRST.md)
 
-**Issues**: [GitHub Issues](https://github.com/patrik-giljoai/GiljoAI-MCP/issues)
+**Issues**: [GitHub Issues](https://github.com/giljoai/GiljoAI_MCP/issues)
 
 **Support**: Contact via GitHub or [your support email]
 
@@ -293,4 +293,4 @@ curl -fsSL https://install.giljoai.com/install.sh | bash
 irm https://install.giljoai.com/install.ps1 | iex
 ```
 
-**Questions?** Check our [FAQ](https://github.com/patrik-giljoai/GiljoAI-MCP/blob/master/docs/FAQ.md) or [open an issue](https://github.com/patrik-giljoai/GiljoAI-MCP/issues).
+**Questions?** Check our [FAQ](https://github.com/giljoai/GiljoAI_MCP/blob/master/docs/FAQ.md) or [open an issue](https://github.com/giljoai/GiljoAI_MCP/issues).
