@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 GiljoAI MCP Project Backup Script
 ==================================
@@ -74,7 +80,7 @@ def get_directory_size(path: Path):
         for entry in path.rglob("*"):
             if entry.is_file():
                 total += entry.stat().st_size
-    except Exception:
+    except OSError:
         pass
     return total
 
@@ -119,8 +125,8 @@ def copy_with_exclusions(src: Path, dst: Path, exclude_dirs: list, exclude_files
         dirs[:] = [d for d in dirs if not should_exclude_dir(d, exclude_dirs)]
 
         # Count skipped directories
-        all_dirs = os.listdir(root) if Path(root).is_dir() else []
-        skipped_dirs += len([d for d in all_dirs if Path(root, d).is_dir() and should_exclude_dir(d, exclude_dirs)])
+        all_dirs = [d for d in Path(root).iterdir() if d.is_dir()] if Path(root).is_dir() else []
+        skipped_dirs += len([d for d in all_dirs if should_exclude_dir(d.name, exclude_dirs)])
 
         # Create directory structure
         for dir_name in dirs:
@@ -242,7 +248,15 @@ def main():
         if not args.auto:
             open_folder = input("Open backup folder? (Y/N): ").strip().upper()
             if open_folder == "Y":
-                os.startfile(backup_path)
+                import platform
+                import subprocess
+                system = platform.system()
+                if system == "Windows":
+                    os.startfile(backup_path)
+                elif system == "Darwin":
+                    subprocess.Popen(["open", str(backup_path)])
+                else:
+                    subprocess.Popen(["xdg-open", str(backup_path)])
 
         return 0
 

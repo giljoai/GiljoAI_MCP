@@ -76,6 +76,8 @@ To switch from production back to dev mode, simply re-run with `--dev`. No build
 - **Paths**: Always use `pathlib.Path()` — never hardcode OS-specific paths
 - **Logging**: Use `import logging; logger = logging.getLogger(__name__)` in most code. Use `structlog` only in auth, database, WebSocket, and MCP orchestration paths.
 
+For detailed code standards (database write discipline, service layer conventions, frontend patterns, security requirements), see **[docs/CODE_STANDARDS.md](docs/CODE_STANDARDS.md)**.
+
 Run before committing:
 ```bash
 python -m ruff check src/ api/
