@@ -3079,6 +3079,18 @@ pg_restore -l {backup_file.name} | head -20
             # Uninstall mkcert CA from system trust stores
             mkcert_path = shutil.which("mkcert")
             if mkcert_path:
+                # Resolve CAROOT before -uninstall so we know what to delete
+                caroot_dir = None
+                try:
+                    caroot_result = subprocess.run(
+                        [mkcert_path, "-CAROOT"],
+                        capture_output=True, text=True, timeout=5, check=False,
+                    )
+                    if caroot_result.stdout.strip():
+                        caroot_dir = Path(caroot_result.stdout.strip())
+                except Exception:
+                    pass
+
                 try:
                     subprocess.run(
                         [mkcert_path, "-uninstall"],
@@ -3089,6 +3101,20 @@ pg_restore -l {backup_file.name} | head -20
                     deleted.append("mkcert CA (removed from trust stores)")
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
                     errors.append(f"mkcert CA uninstall: {e}")
+
+                # Delete actual CA files from CAROOT directory.
+                # mkcert -uninstall only removes CA from trust stores; it leaves
+                # rootCA.pem/rootCA-key.pem on disk. If those files don't exist
+                # when -uninstall runs, mkcert generates a fresh CA first.
+                if caroot_dir and caroot_dir.exists():
+                    for ca_file in ("rootCA.pem", "rootCA-key.pem"):
+                        ca_path = caroot_dir / ca_file
+                        if ca_path.exists():
+                            try:
+                                ca_path.unlink()
+                                deleted.append(f"mkcert CAROOT: {ca_file}")
+                            except Exception as e:
+                                errors.append(f"Delete {ca_file}: {e}")
 
             # Clear Node.js cert trust env vars (current process + persistent, cross-platform)
             env_cleared = self._clear_node_cert_env_vars()
