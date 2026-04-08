@@ -243,11 +243,14 @@ if [[ "$DRY_RUN" == true ]]; then
 else
     log "Pushing to public repo..."
     cd "$PUBLIC_REPO"
-    # Create a clean branch from the export
+    # Fetch the export commit and reset local to it
     git fetch "$TEMP_DIR/export" master --quiet
     git reset --hard FETCH_HEAD --quiet
     log ""
-    log "Public repo updated at: $PUBLIC_REPO"
-    log "Review the changes, then push manually:"
-    log "  cd $PUBLIC_REPO && git push origin master"
+    log "Local public repo updated at: $PUBLIC_REPO"
+    log ""
+    # Push to GitHub
+    log "Pushing to GitHub..."
+    git push origin master --force
+    log "GitHub push complete."
 fi
