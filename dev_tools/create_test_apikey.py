@@ -34,7 +34,7 @@ async def create_test_key():
         # Get the first active user
         from sqlalchemy import select
 
-        result = await session.execute(select(User).where(User.is_active == True, User.username == "patrik").limit(1))
+        result = await session.execute(select(User).where(User.is_active == True).limit(1))
         user = result.scalar_one_or_none()
 
         if not user:
