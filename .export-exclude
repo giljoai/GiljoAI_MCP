@@ -32,8 +32,7 @@ migrations/archive/
 # Archived internal docs (retired handovers, guides, test reports)
 docs/archive/
 
-# Internal dev tools (control panel, simulators)
-dev_tools/
+# dev_tools/ ships to public — contributors need the control panel
 
 # Legacy installer (replaced by installer/)
 Linux_Installer/
