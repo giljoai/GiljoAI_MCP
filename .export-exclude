@@ -9,6 +9,7 @@ agent_comms.json
 scripts/export_ce.sh
 .export-exclude
 update_claude.md
+claude_code_statusline_setup.md
 
 # Internal handovers (private development history)
 handovers/
