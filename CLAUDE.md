@@ -1,4 +1,4 @@
-# CLAUDE.md -- Project Instructions for GiljoAI MCP
+# CLAUDE.md -- Project Instructions for GiljoAI MCP!
 
 ## Project Overview
 
