@@ -1,7 +1,0 @@
-# Default dataset parameters for simulator stress runs
-products: 10
-projects_per_product: 10
-tasks_per_project: 10
-name_prefix: "SIM"
-random_seed: 42
-
