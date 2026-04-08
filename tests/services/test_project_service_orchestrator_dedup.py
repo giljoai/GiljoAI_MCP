@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Tests for orchestrator deduplication on project reactivation (Handover 0485 - Bug B)
 Updated 0730d: Exception-based error handling patterns (no success wrappers).

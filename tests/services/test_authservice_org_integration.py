@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 Tests for AuthService Organization Integration (Handover 0424g).
 
@@ -19,10 +24,11 @@ Handover 0731c: Updated for typed service returns (AuthResult, UserInfo).
 
 from datetime import datetime, timezone
 
+import bcrypt
 import pytest
 import pytest_asyncio
-import bcrypt
 from sqlalchemy import select
+
 from src.giljo_mcp.exceptions import AuthorizationError
 from src.giljo_mcp.models import Task  # noqa: F401 - For FK cleanup
 from src.giljo_mcp.models.auth import User
