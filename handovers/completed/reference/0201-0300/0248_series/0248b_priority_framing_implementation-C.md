@@ -339,7 +339,7 @@ Coverage: 86.18%
 - `CLAUDE.md` - Context Management section
 
 **GitHub**:
-- Repository: `https://github.com/patrik-giljoai/GiljoAI-MCP`
+- Repository: `https://github.com/giljoai/GiljoAI_MCP`
 - Related issues: None (internal handover)
 
 ---

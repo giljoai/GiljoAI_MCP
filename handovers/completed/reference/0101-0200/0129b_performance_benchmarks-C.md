@@ -1070,7 +1070,7 @@ Based on typical FastAPI/PostgreSQL performance:
 **Commit**: `656793a` - "Implement Handover 0129b: Performance Benchmarks & Baseline Metrics"
 **Status**: ✅ Committed and pushed to remote
 **Files Added**: 5 new files (+2,055 lines)
-**Pull Request**: https://github.com/patrik-giljoai/GiljoAI_MCP/pull/new/claude/project-0129b-011CV3A7z47xsB6vYdNdvsz4
+**Pull Request**: https://github.com/giljoai/GiljoAI_MCP/pull/new/claude/project-0129b-011CV3A7z47xsB6vYdNdvsz4
 
 ### Installation Impact
 

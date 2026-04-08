@@ -658,7 +658,7 @@ pytest tests/integration/ -v
 **Fresh Installation**:
 ```bash
 # 1. Clone repository
-git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
+git clone https://github.com/giljoai/GiljoAI_MCP.git
 cd GiljoAI_MCP
 
 # 2. Install dependencies
@@ -690,7 +690,7 @@ cd frontend/ && npm run dev
 
 ## Support & Contribution
 
-- **Issues**: https://github.com/patrik-giljoai/GiljoAI-MCP/issues
+- **Issues**: https://github.com/giljoai/GiljoAI_MCP/issues
 - **Documentation**: `docs/README_FIRST.md` (this file)
 - **License**: See LICENSE file
 - **Edition**: GiljoAI MCP Community Edition (GiljoAI Community License v1.1). See [Licensing Philosophy](../LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md)

@@ -7,7 +7,7 @@
 $ErrorActionPreference = "Stop"
 
 # Configuration
-$GITHUB_REPO = "patrik-giljoai/GiljoAI-MCP"
+$GITHUB_REPO = "giljoai/GiljoAI_MCP"
 $DEFAULT_INSTALL_DIR = "C:\GiljoAI_MCP"
 $MIN_PYTHON_VERSION = [Version]"3.11"
 $MIN_NODE_VERSION = 18

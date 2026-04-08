@@ -405,7 +405,7 @@ Available tools:
 - Contributor discussions
 - Release notes and changelogs
 
-**Repository:** `https://github.com/patrik-giljoai/GiljoAI-MCP`
+**Repository:** `https://github.com/giljoai/GiljoAI_MCP`
 
 ---
 
