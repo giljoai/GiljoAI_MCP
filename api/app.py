@@ -884,7 +884,7 @@ def create_app() -> FastAPI:
         },
         license_info={
             "name": "GiljoAI Community License v1.1",
-            "url": "https://github.com/patrik-giljoai/GiljoAI_MCP/blob/master/LICENSE",
+            "url": "https://github.com/giljoai/GiljoAI_MCP/blob/master/LICENSE",
         },
     )
 

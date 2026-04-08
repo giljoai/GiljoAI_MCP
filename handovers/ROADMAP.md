@@ -228,7 +228,7 @@ Work directly in the CE repo. Every commit shows up in the public history — ke
 
 ```bash
 # In SaaS or Demo repo:
-git remote add ce https://github.com/patrik-giljoai/GiljoAI_MCP.git
+git remote add ce https://github.com/giljoai/GiljoAI_MCP.git
 git fetch ce
 git merge ce/master
 # Resolve any conflicts, commit

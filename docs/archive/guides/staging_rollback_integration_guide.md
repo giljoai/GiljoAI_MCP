@@ -591,6 +591,6 @@ Potential improvements for v4.0:
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/patrik-giljoai/GiljoAI-MCP/issues
+- GitHub Issues: https://github.com/giljoai/GiljoAI_MCP/issues
 - Documentation: https://docs.giljo.ai
 - Community: https://discord.gg/giljoai

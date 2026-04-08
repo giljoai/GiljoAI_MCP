@@ -21,7 +21,7 @@ GiljoAI MCP v3.0 introduces `startup.py`, a unified entry point that simplifies 
 
 ```bash
 # Clone the repository
-git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
+git clone https://github.com/giljoai/GiljoAI_MCP.git
 cd GiljoAI_MCP
 
 # Run startup.py - handles everything automatically
@@ -818,7 +818,7 @@ The new `startup.py` entry point simplifies the GiljoAI MCP installation and lau
 **Typical Usage**:
 ```bash
 # First time
-git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
+git clone https://github.com/giljoai/GiljoAI_MCP.git
 cd GiljoAI_MCP
 python startup.py  # Launches setup wizard
 

@@ -98,7 +98,7 @@ This approach provides:
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
+git clone https://github.com/giljoai/GiljoAI_MCP.git
 cd GiljoAI_MCP
 
 # 2. Run installer
@@ -365,7 +365,7 @@ Should return project list without errors.
 - [Technical Architecture](../TECHNICAL_ARCHITECTURE.md) - System internals
 
 **Support**:
-- GitHub Issues: https://github.com/patrik-giljoai/GiljoAI-MCP/issues
+- GitHub Issues: https://github.com/giljoai/GiljoAI_MCP/issues
 - Installation Logs: `install_logs/install.log`
 - Backend Logs: `logs/backend.log`
 

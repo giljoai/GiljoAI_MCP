@@ -130,7 +130,7 @@ Extract to environment variables or a `.env.test` file that's gitignored.
 | `frontend/.env.production` | Contains URLs only, no secrets |
 | `frontend/.env.test` | Contains URLs only, no secrets |
 | `install.py` / `installer/` | Prompts user for passwords at install time |
-| GitHub username `patrik-giljoai` in URLs | Public repo URL, not a credential |
+| GitHub username `giljoai` in URLs | Public repo URL, not a credential |
 | `Linux_Installer/credentials/` | Empty directory with `.gitkeep` |
 
 ---

@@ -2241,7 +2241,7 @@ Congratulations! You now understand multi-tool agent orchestration in GiljoAI MC
 Need help?
 
 - **Documentation**: [docs/README_FIRST.md](../../README_FIRST.md)
-- **Issues**: https://github.com/patrik-giljoai/GiljoAI-MCP/issues
+- **Issues**: https://github.com/giljoai/GiljoAI_MCP/issues
 - **Community**: GiljoAI Discord server
 
 ---

@@ -77,7 +77,7 @@ Currently, 360 memory is stored in `Product.product_memory.sequential_history[]`
     "git_integration": {
         "enabled": true,
         "repo_name": "GiljoAI-MCP",
-        "repo_owner": "patrik-giljoai",
+        "repo_owner": "giljoai",
         "access_token": "ghp_xxx"
     }
 }
