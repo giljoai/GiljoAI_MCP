@@ -789,8 +789,8 @@ curl -v http://10.1.0.164:7272/api/auth/me
 **Search:**
 ```bash
 # (User to perform)
-# Check: https://github.com/patrik-giljoai/GiljoAI-MCP/issues?q=localhost
-# Check: https://github.com/patrik-giljoai/GiljoAI-MCP/issues?q=v3.0+auth
+# Check: https://github.com/giljoai/GiljoAI_MCP/issues?q=localhost
+# Check: https://github.com/giljoai/GiljoAI_MCP/issues?q=v3.0+auth
 ```
 
 ---

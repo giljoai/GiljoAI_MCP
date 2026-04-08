@@ -1262,7 +1262,7 @@ pytest tests/security/test_owasp_audit.py -v
 - Branch: claude/project-0129a-011CV3ACHoLAELTxAK8Erub9
 - Commit: 2a6d802 - "feat: Implement comprehensive security hardening & OWASP compliance (Handover 0129c)"
 - Status: ✅ Pushed successfully
-- Pull Request: Available at https://github.com/patrik-giljoai/GiljoAI_MCP/pull/new/claude/project-0129a-011CV3ACHoLAELTxAK8Erub9
+- Pull Request: Available at https://github.com/giljoai/GiljoAI_MCP/pull/new/claude/project-0129a-011CV3ACHoLAELTxAK8Erub9
 
 **Final Notes:**
 - Implementation completed in single session (comprehensive, production-grade)
