@@ -35,6 +35,9 @@ docs/archive/
 # Internal dev tools (control panel, simulators)
 dev_tools/
 
+# Legacy installer (replaced by installer/)
+Linux_Installer/
+
 # Internal license audit docs
 audit/
 
