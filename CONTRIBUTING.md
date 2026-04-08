@@ -32,7 +32,7 @@ You are welcome to fork the repository and use it under the terms of the
 
 ```bash
 # Clone and install
-git clone https://github.com/patrik-giljoai/GiljoAI_MCP.git
+git clone https://github.com/giljoai/GiljoAI_MCP.git
 cd GiljoAI_MCP
 python install.py          # Interactive installer (sets up config.yaml, DB, etc.)
 
@@ -111,7 +111,7 @@ See `docs/README_FIRST.md` for navigation and `docs/SERVER_ARCHITECTURE_TECH_STA
 
 ## Reporting Issues
 
-Use [GitHub Issues](https://github.com/patrik-giljoai/GiljoAI_MCP/issues) with the provided templates. Include steps to reproduce for bugs.
+Use [GitHub Issues](https://github.com/giljoai/GiljoAI_MCP/issues) with the provided templates. Include steps to reproduce for bugs.
 
 ## Security Vulnerabilities
 

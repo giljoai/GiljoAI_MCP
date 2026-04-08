@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-GITHUB_REPO="patrik-giljoai/GiljoAI-MCP"
+GITHUB_REPO="giljoai/GiljoAI_MCP"
 DEFAULT_INSTALL_DIR="$HOME/giljoai-mcp"
 MIN_PYTHON_VERSION="3.11"
 MIN_NODE_VERSION="18"

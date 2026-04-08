@@ -250,7 +250,7 @@
             >giljo.ai</a>
             &nbsp;&middot;&nbsp;
             <a
-              href="https://github.com/patrik-giljoai/GiljoAI_MCP/blob/master/LICENSE"
+              href="https://github.com/giljoai/GiljoAI_MCP/blob/master/LICENSE"
               target="_blank"
               class="about-link"
             >View License</a>
