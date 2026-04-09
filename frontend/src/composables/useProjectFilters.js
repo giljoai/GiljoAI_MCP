@@ -104,6 +104,25 @@ export function useProjectFilters({ projects, projectTypes, activeProduct }) {
           return isAsc ? aName.localeCompare(bName) : bName.localeCompare(aName)
         }
 
+        // Serial sort: type abbreviation first, then series_number, then subseries
+        if (key === 'serial') {
+          const aType = a.project_type?.abbreviation || 'ZZZ'
+          const bType = b.project_type?.abbreviation || 'ZZZ'
+          if (aType !== bType) {
+            return isAsc ? aType.localeCompare(bType) : bType.localeCompare(aType)
+          }
+
+          const aSeries = a.series_number || 99999
+          const bSeries = b.series_number || 99999
+          if (aSeries !== bSeries) {
+            return isAsc ? aSeries - bSeries : bSeries - aSeries
+          }
+
+          const aSub = a.subseries || ''
+          const bSub = b.subseries || ''
+          return isAsc ? aSub.localeCompare(bSub) : bSub.localeCompare(aSub)
+        }
+
         let aVal = a[key]
         let bVal = b[key]
 
