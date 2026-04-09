@@ -123,7 +123,7 @@
                       <v-icon v-bind="props" size="16" class="ml-1">mdi-help-circle-outline</v-icon>
                     </template>
                     <span class="text-caption"
-                      >At least 12 characters, one uppercase, one lowercase, one digit, and one
+                      >At least 8 characters, one uppercase, one lowercase, one digit, and one
                       special character.</span
                     >
                   </v-tooltip>
@@ -328,7 +328,7 @@ const emailRules = [(v) => !v || /.+@.+\..+/.test(v) || 'Email must be valid']
 
 const passwordRules = [
   (v) => !!v || 'Password is required',
-  (v) => v.length >= 12 || 'Password must be at least 12 characters',
+  (v) => v.length >= 8 || 'Password must be at least 8 characters',
   (v) => /[A-Z]/.test(v) || 'Must contain at least one uppercase letter',
   (v) => /[a-z]/.test(v) || 'Must contain at least one lowercase letter',
   (v) => /\d/.test(v) || 'Must contain at least one digit',
@@ -353,7 +353,7 @@ const confirmPinRules = [
 
 // Password requirements
 const passwordRequirements = computed(() => [
-  { text: 'At least 12 characters', met: password.value.length >= 12 },
+  { text: 'At least 8 characters', met: password.value.length >= 8 },
   { text: 'One uppercase letter', met: /[A-Z]/.test(password.value) },
   { text: 'One lowercase letter', met: /[a-z]/.test(password.value) },
   { text: 'One digit', met: /\d/.test(password.value) },
