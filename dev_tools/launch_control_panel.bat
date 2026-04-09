@@ -8,12 +8,12 @@ REM ============================================================
 cd /d "%~dp0.."
 
 REM ── Check isolated devtools venv (preferred) ────────────────
-if exist "dev_tools\venv_devtools\pyvenv.cfg" (
-    if exist "dev_tools\venv_devtools\Scripts\python.exe" (
+if exist "%~dp0venv_devtools\pyvenv.cfg" (
+    if exist "%~dp0venv_devtools\Scripts\python.exe" (
         echo Starting GiljoAI MCP Developer Control Panel...
         echo Using isolated dev_tools venv
         echo.
-        "dev_tools\venv_devtools\Scripts\python.exe" "dev_tools\control_panel.py" %*
+        "%~dp0venv_devtools\Scripts\python.exe" "%~dp0control_panel.py" %*
         goto :done
     )
 )
@@ -58,14 +58,14 @@ exit /b 1
 echo  [OK] Found system Python: %SYS_PYTHON%
 
 REM Clean up corrupted venv_devtools if it exists without pyvenv.cfg
-if exist "dev_tools\venv_devtools" (
+if exist "%~dp0venv_devtools" (
     echo  [..] Removing corrupted venv_devtools...
-    rmdir /s /q "dev_tools\venv_devtools" >nul 2>&1
+    rmdir /s /q "%~dp0venv_devtools" >nul 2>&1
 )
 
 REM Create the venv
 echo  [..] Creating dev_tools\venv_devtools...
-%SYS_PYTHON% -m venv "dev_tools\venv_devtools"
+%SYS_PYTHON% -m venv "%~dp0venv_devtools"
 if %errorlevel% neq 0 (
     echo  [FAIL] Failed to create virtual environment.
     echo         Try: %SYS_PYTHON% -m venv dev_tools\venv_devtools
@@ -76,11 +76,11 @@ echo  [OK] Virtual environment created
 
 REM Install dependencies
 echo  [..] Installing dependencies (psutil, psycopg2-binary, pyyaml)...
-"dev_tools\venv_devtools\Scripts\pip.exe" install --upgrade pip -q >nul 2>&1
-if exist "dev_tools\requirements.txt" (
-    "dev_tools\venv_devtools\Scripts\pip.exe" install -r "dev_tools\requirements.txt" -q
+"%~dp0venv_devtools\Scripts\pip.exe" install --upgrade pip -q >nul 2>&1
+if exist "%~dp0requirements.txt" (
+    "%~dp0venv_devtools\Scripts\pip.exe" install -r "%~dp0requirements.txt" -q
 ) else (
-    "dev_tools\venv_devtools\Scripts\pip.exe" install psutil psycopg2-binary pyyaml -q
+    "%~dp0venv_devtools\Scripts\pip.exe" install psutil psycopg2-binary pyyaml -q
 )
 if %errorlevel% neq 0 (
     echo  [FAIL] Failed to install dependencies.
@@ -92,7 +92,7 @@ echo.
 echo  Setup complete. Launching control panel...
 echo.
 
-"dev_tools\venv_devtools\Scripts\python.exe" "dev_tools\control_panel.py" %*
+"%~dp0venv_devtools\Scripts\python.exe" "%~dp0control_panel.py" %*
 goto :done
 
 :done
