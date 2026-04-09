@@ -23,7 +23,6 @@ from src.giljo_mcp.models import User
 from src.giljo_mcp.repositories.job_statistics_repository import JobStatisticsRepository
 from src.giljo_mcp.repositories.product_statistics_repository import ProductStatisticsRepository
 
-
 logger = get_colored_logger(__name__)
 
 

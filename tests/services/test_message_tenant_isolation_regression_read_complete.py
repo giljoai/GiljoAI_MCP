@@ -27,7 +27,6 @@ import pytest
 from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.tenant import TenantManager
 
-
 # ============================================================================
 # get_messages() -- Cross-Tenant Read Test
 # ============================================================================

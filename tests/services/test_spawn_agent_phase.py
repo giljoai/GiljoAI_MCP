@@ -21,8 +21,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Project
-
+from src.giljo_mcp.models import AgentJob, AgentTemplate, Project
 
 # ============================================================================
 # Test Fixtures

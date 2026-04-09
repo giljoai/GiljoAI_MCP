@@ -29,7 +29,6 @@ from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------

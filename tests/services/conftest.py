@@ -1019,7 +1019,7 @@ async def other_project(db_session, other_tenant_key, other_tenant_templates) ->
 
 
 @pytest_asyncio.fixture
-async def service(db_session, db_manager) -> "OrchestrationService":
+async def service(db_session, db_manager) -> "OrchestrationService":  # noqa: F821 — forward ref, imported inside body
     """Create OrchestrationService with shared test session."""
     from src.giljo_mcp.services.orchestration_service import OrchestrationService
 

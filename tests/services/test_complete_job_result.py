@@ -29,7 +29,6 @@ from src.giljo_mcp.models.tasks import MessageRecipient
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================

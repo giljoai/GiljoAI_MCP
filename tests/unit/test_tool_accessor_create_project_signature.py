@@ -17,7 +17,6 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.giljo_mcp.exceptions import ValidationError
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
 

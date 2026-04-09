@@ -14,7 +14,6 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-
 # Maximum template sizes
 MAX_TEMPLATE_SIZE = 100 * 1024  # 100KB
 MAX_USER_INSTRUCTIONS_SIZE = 50 * 1024  # 50KB

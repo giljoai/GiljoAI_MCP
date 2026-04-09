@@ -33,7 +33,6 @@ from src.giljo_mcp.exceptions import (
 )
 from src.giljo_mcp.models.organizations import Organization, OrgMembership
 
-
 logger = logging.getLogger(__name__)
 
 

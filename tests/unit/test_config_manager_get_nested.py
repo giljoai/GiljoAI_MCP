@@ -14,9 +14,6 @@ Covers dot-notation traversal of the raw config dict:
 - Leaf value of None is returned (not confused with missing key)
 """
 
-import os
-import tempfile
-from pathlib import Path
 
 import pytest
 import yaml

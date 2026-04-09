@@ -40,7 +40,6 @@ from src.giljo_mcp.models import Product
 from src.giljo_mcp.schemas.service_responses import VisionUploadResult
 from src.giljo_mcp.tools.chunking import VISION_MAX_INGEST_TOKENS
 
-
 logger = logging.getLogger(__name__)
 
 

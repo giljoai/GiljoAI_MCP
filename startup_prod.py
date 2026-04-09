@@ -44,7 +44,6 @@ from startup import (
     wait_for_api_ready,
 )
 
-
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
 

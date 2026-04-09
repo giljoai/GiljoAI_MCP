@@ -13,11 +13,11 @@ Handles macOS-specific installation operations including:
 - npm command execution with shell=False
 """
 
-import subprocess
 import platform
+import subprocess
 import sys
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from colorama import Fore, Style
 
@@ -279,7 +279,7 @@ class MacOSPlatformHandler(PlatformHandler):
             import psutil
 
             ips = []
-            for interface_name, addresses in psutil.net_if_addrs().items():
+            for addresses in psutil.net_if_addrs().values():
                 for addr in addresses:
                     if addr.family == 2:  # AF_INET (IPv4)
                         ip = addr.address
@@ -311,11 +311,11 @@ class MacOSPlatformHandler(PlatformHandler):
         print(f"{Fore.CYAN}This installer will set up your coding orchestrator.{Style.RESET_ALL}\n")
 
         print(f"{Fore.WHITE}What will be installed:{Style.RESET_ALL}")
-        print(f"  • PostgreSQL database (giljo_mcp)")
-        print(f"  • Python dependencies (FastAPI, SQLAlchemy, etc.)")
-        print(f"  • Configuration files (.env, config.yaml)")
-        print(f"  • API server + Frontend dashboard")
-        print(f"  • MCP server integration\n")
+        print("  • PostgreSQL database (giljo_mcp)")
+        print("  • Python dependencies (FastAPI, SQLAlchemy, etc.)")
+        print("  • Configuration files (.env, config.yaml)")
+        print("  • API server + Frontend dashboard")
+        print("  • MCP server integration\n")
 
         # macOS platform info with architecture
         macos_version = platform.mac_ver()[0]

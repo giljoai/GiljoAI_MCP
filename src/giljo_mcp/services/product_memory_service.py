@@ -28,7 +28,6 @@ from src.giljo_mcp.exceptions import BaseGiljoError, ResourceNotFoundError
 from src.giljo_mcp.models import Product, Project, Task, VisionDocument
 from src.giljo_mcp.schemas.service_responses import CascadeImpact, ProductStatistics
 
-
 logger = logging.getLogger(__name__)
 
 

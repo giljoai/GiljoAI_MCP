@@ -17,7 +17,6 @@ from typing import Any, Optional
 
 from .models.products import Product
 
-
 logger = logging.getLogger(__name__)
 
 

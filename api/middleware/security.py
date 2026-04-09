@@ -19,7 +19,6 @@ from typing import Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-
 logger = logging.getLogger(__name__)
 
 # CSP hashes for inline code blocks in frontend/index.html

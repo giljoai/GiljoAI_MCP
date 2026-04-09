@@ -16,7 +16,6 @@ Handover 0820: Removed priority integer coupling, uses detail_level instead
 import logging
 from typing import Any
 
-
 logger = logging.getLogger(__name__)
 
 

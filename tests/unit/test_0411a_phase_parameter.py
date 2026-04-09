@@ -24,7 +24,6 @@ import pytest
 from api.endpoints.agent_jobs.models import JobResponse
 from api.endpoints.agent_jobs.status import job_to_response
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

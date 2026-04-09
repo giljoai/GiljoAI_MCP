@@ -23,13 +23,11 @@ import warnings
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
-
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 # Enable all warnings
 warnings.filterwarnings("always")
@@ -83,7 +81,7 @@ async def simulate_endpoint_with_http_exception():
         session_generator = get_db_session(mock_request)
 
         try:
-            session = await session_generator.__anext__()
+            await session_generator.__anext__()
             # Simulate endpoint raising HTTPException
             raise HTTPException(status_code=403, detail="Permission denied")
         except HTTPException:

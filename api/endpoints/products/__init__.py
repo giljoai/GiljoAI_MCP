@@ -24,7 +24,6 @@ from fastapi import APIRouter
 
 from . import crud, git_integration, lifecycle, memory, tuning, vision
 
-
 # Create main router for products module
 router = APIRouter(prefix="/api/v1/products", tags=["Products"])
 

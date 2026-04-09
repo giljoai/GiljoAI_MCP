@@ -13,7 +13,6 @@ Verifies:
 4. Interval value (minutes) is correctly substituted in protocol text
 """
 
-import pytest
 
 from src.giljo_mcp.services.protocol_builder import (
     _build_ch6_auto_checkin,

@@ -28,9 +28,7 @@ from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.tasks import MessageRecipient
 from src.giljo_mcp.repositories.message_repository import MessageRepository
 from src.giljo_mcp.services.message_routing_service import MessageRoutingService
-from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.utils.db_retry import with_deadlock_retry
-
 
 # Patch target for asyncio.sleep inside the shared retry utility
 _SLEEP_PATCH_TARGET = "src.giljo_mcp.utils.db_retry.asyncio.sleep"

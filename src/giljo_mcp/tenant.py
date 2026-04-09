@@ -16,7 +16,6 @@ import string
 from contextvars import ContextVar
 from typing import Any, ClassVar, Optional
 
-
 # Thread-safe context variable for current tenant
 current_tenant: ContextVar[Optional[str]] = ContextVar("current_tenant", default=None)
 

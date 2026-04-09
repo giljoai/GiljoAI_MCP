@@ -144,6 +144,12 @@ class Message(Base):
     from_display_name = Column(String(255), nullable=True)
     auto_generated = Column(Boolean, server_default="false", nullable=False)
 
+    # 0435d: Message intent — controls whether completed agents get auto-blocked
+    requires_action = Column(
+        Boolean, default=False, nullable=False, server_default="false",
+        comment="True if recipient must take action. False for informational messages.",
+    )
+
     # MessageQueue system fields
     processing_started_at = Column(DateTime(timezone=True), nullable=True)
     retry_count = Column(Integer, default=0)

@@ -15,7 +15,6 @@ Fixtures sync_db_manager, sync_db_session, and create_test_template are in conft
 
 import uuid
 
-import pytest
 from sqlalchemy.orm import Session
 
 from src.giljo_mcp.template_validation import (

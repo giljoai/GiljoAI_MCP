@@ -27,7 +27,6 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
-import pytest_asyncio
 
 from src.giljo_mcp.services.oauth_service import BUILTIN_CLIENT_ID
 

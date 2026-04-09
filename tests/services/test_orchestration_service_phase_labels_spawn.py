@@ -20,7 +20,6 @@ from sqlalchemy import select
 
 from src.giljo_mcp.models import AgentJob
 
-
 # ============================================================================
 # Change A: spawn_agent_job accepts and stores phase parameter
 # ============================================================================
@@ -190,7 +189,7 @@ class TestSpawnWebSocketBroadcastPhase:
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
-        result = await service.spawn_agent_job(
+        await service.spawn_agent_job(
             agent_display_name="analyzer",
             agent_name="analyzer-1",
             mission="Analyze codebase",
@@ -275,7 +274,7 @@ class TestSpawnWebSocketBroadcastPhase:
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
-        result = await service.spawn_agent_job(
+        await service.spawn_agent_job(
             agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement feature",

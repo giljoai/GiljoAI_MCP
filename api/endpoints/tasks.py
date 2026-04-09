@@ -37,7 +37,6 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import Product, Task, User
 from src.giljo_mcp.services.task_service import TaskService
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

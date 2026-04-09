@@ -25,7 +25,6 @@ from src.giljo_mcp.exceptions import (
 )
 from src.giljo_mcp.models.auth import User
 
-
 # ============================================================================
 # TEST: list_users
 # ============================================================================

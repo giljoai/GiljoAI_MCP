@@ -24,7 +24,6 @@ from api.events.schemas import (
     WebSocketEvent,
 )
 
-
 # ============================================================================
 # SetupToolConnectedData / SetupToolConnectedEvent
 # ============================================================================
