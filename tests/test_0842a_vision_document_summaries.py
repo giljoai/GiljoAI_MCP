@@ -19,7 +19,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Product, VisionDocument, VisionDocumentSummary
+from src.giljo_mcp.models import Product, VisionDocument
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from src.giljo_mcp.tenant import TenantManager
 
@@ -200,7 +200,7 @@ async def test_create_summary_upserts(
     )
 
     # Second insert (same doc+source+ratio) should replace
-    summary2 = await vision_repo.create_summary(
+    await vision_repo.create_summary(
         session=db_session,
         tenant_key=tenant_a,
         document_id=str(doc_a.id),

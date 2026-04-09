@@ -28,7 +28,6 @@ import pytest_asyncio
 from src.giljo_mcp.exceptions import AlreadyExistsError, ValidationError
 from src.giljo_mcp.models import AgentTemplate, Project
 
-
 # ============================================================================
 # Test Fixtures
 # ============================================================================

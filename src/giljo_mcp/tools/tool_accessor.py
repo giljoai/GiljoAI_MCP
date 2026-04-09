@@ -13,7 +13,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,7 +31,6 @@ from src.giljo_mcp.services.product_service import ProductService
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.services.task_service import TaskService
 from src.giljo_mcp.tenant import TenantManager
-
 
 logger = logging.getLogger(__name__)
 
@@ -806,6 +804,10 @@ class ToolAccessor:
     async def complete_job(self, job_id: str, result: dict[str, Any], tenant_key: str | None = None) -> dict[str, Any]:
         """Mark job as complete (delegates to OrchestrationService)"""
         return await self._orchestration_service.complete_job(job_id=job_id, result=result, tenant_key=tenant_key)
+
+    async def close_job(self, job_id: str, tenant_key: str | None = None) -> dict[str, Any]:
+        """Close a completed job (final acceptance). Handover 0435b."""
+        return await self._orchestration_service.close_job(job_id=job_id, tenant_key=tenant_key)
 
     async def reactivate_job(self, job_id: str, tenant_key: str | None = None, reason: str = "") -> dict[str, Any]:
         """Resume work on a completed job (delegates to OrchestrationService). Handover 0827c."""

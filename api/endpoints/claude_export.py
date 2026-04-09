@@ -38,7 +38,6 @@ from src.giljo_mcp.models import AgentTemplate, User
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.template_renderer import render_claude_agent
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 USER_AGENT_EXPORT_LIMIT = 7

@@ -92,11 +92,10 @@ from typing import Any, Dict, List, Optional
 
 # Third-party imports (safe after bootstrap)
 import click
-from colorama import Back, Fore, Style, init
+from colorama import Fore, Style, init
 
 # Import unified platform handlers and core modules
 from installer.platforms import get_platform_handler
-
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
@@ -1170,7 +1169,7 @@ class UnifiedInstaller:
                 timeout=10,
             )
             ca_dir = ca_result.stdout.strip()
-            ca_cert = str(Path(ca_dir) / "rootCA.pem") if ca_dir else "rootCA.pem"
+            str(Path(ca_dir) / "rootCA.pem") if ca_dir else "rootCA.pem"
 
             # Automatically set NODE_OPTIONS for AI tools on this server
             self._print_info("Configuring NODE_OPTIONS for AI tool certificate trust...")
@@ -1387,7 +1386,7 @@ class UnifiedInstaller:
                 self.venv_created = True
 
             # Determine pip executable (platform-specific)
-            pip_executable = self.platform.get_venv_pip(self.venv_dir)
+            self.platform.get_venv_pip(self.venv_dir)
 
             # Upgrade pip to latest before installing packages
             # Must use 'python -m pip' instead of pip.exe directly — on Windows,

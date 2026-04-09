@@ -18,7 +18,6 @@ from .database import DatabaseManager
 from .services.config_service import ConfigService
 from .template_cache import TemplateCache
 
-
 logger = logging.getLogger(__name__)
 
 

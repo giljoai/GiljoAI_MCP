@@ -12,7 +12,7 @@ Isolates all OS-specific code into concrete implementations.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 
 class PlatformHandler(ABC):

@@ -43,7 +43,6 @@ from src.giljo_mcp.api_key_utils import verify_api_key
 from src.giljo_mcp.auth.jwt_manager import JWTManager
 from src.giljo_mcp.models import APIKey, User
 
-
 logger = logging.getLogger(__name__)
 
 

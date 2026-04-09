@@ -10,13 +10,13 @@ This module provides PostgreSQL installation detection across Windows, Linux, an
 It searches the system PATH, common installation locations, and accepts custom paths.
 """
 
+import logging
 import platform
+import re
 import shutil
 import subprocess
-import re
-import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class PostgreSQLDiscovery:

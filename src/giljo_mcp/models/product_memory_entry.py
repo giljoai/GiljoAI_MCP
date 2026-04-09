@@ -84,7 +84,7 @@ class ProductMemoryEntry(Base):
     entry_type = Column(
         String(50),
         nullable=False,
-        comment="Entry type: project_closeout, project_completion, handover_closeout, session_handover",
+        comment="Entry type: project_completion, handover_closeout, session_handover",
     )
     source = Column(
         String(50),

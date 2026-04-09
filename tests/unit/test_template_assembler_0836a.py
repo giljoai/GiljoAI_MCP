@@ -22,7 +22,6 @@ from src.giljo_mcp.template_renderer import (
 )
 from src.giljo_mcp.tools.agent_template_assembler import AgentTemplateAssembler
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

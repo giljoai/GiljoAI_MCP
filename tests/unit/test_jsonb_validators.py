@@ -34,7 +34,6 @@ from src.giljo_mcp.schemas.jsonb_validators import (
     validate_tuning_state,
 )
 
-
 # ============================================================================
 # AgentJobMetadata
 # ============================================================================

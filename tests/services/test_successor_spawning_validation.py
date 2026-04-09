@@ -17,10 +17,8 @@ import random
 import uuid
 
 import pytest
-from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentJob, Project
-
+from src.giljo_mcp.models import Project
 
 # Fixtures `tenant_key`, `agent_templates`, `project`, `service`,
 # `other_tenant_key`, `other_tenant_templates`, `other_project`,

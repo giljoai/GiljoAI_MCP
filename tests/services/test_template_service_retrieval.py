@@ -19,7 +19,6 @@ from sqlalchemy import select
 
 from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
 
-
 # ============================================================================
 # Template Retrieval Tests
 # ============================================================================

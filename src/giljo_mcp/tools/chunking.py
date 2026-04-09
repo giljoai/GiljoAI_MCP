@@ -13,7 +13,6 @@ import logging
 import re
 from typing import Any, Optional
 
-
 logger = logging.getLogger(__name__)
 
 # Canonical vision document token constants (Handover 0493)

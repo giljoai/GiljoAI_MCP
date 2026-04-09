@@ -15,7 +15,7 @@ Validates the four backend fixes introduced in 0814:
 """
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 import yaml
@@ -23,7 +23,6 @@ import yaml
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_renderer import render_claude_agent
 from src.giljo_mcp.template_seeder import _get_mcp_bootstrap_section
-
 
 # ---------------------------------------------------------------------------
 # Helpers

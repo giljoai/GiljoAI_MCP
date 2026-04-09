@@ -56,7 +56,6 @@ from src.giljo_mcp.schemas.service_responses import (
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.tenant import TenantManager
 
-
 logger = logging.getLogger(__name__)
 
 # Agent limit constants (Handover 0103)

@@ -35,7 +35,6 @@ from src.giljo_mcp.models.context import MCPContextIndex
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from src.giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET, EnhancedChunker
 
-
 DEPTH_RATIO_MAP: dict[str, Decimal] = {
     "light": Decimal("0.33"),
     "medium": Decimal("0.66"),

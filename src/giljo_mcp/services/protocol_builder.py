@@ -42,7 +42,6 @@ from src.giljo_mcp.services.protocol_sections.user_config import (
     _normalize_field_toggles,
 )
 
-
 logger = logging.getLogger(__name__)
 
 # Re-export all section functions for backward compatibility

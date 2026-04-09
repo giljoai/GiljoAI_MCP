@@ -27,7 +27,6 @@ from src.giljo_mcp.services import ProductService
 from .dependencies import get_product_service
 from .models import GitIntegrationRequest, GitIntegrationResponse
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

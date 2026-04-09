@@ -24,7 +24,6 @@ import secrets
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Non-exempt endpoint used across tests.
 # /api/v1/products/ is behind auth and CSRF, giving us a reliable target.

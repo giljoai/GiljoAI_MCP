@@ -16,7 +16,6 @@ import pytest
 
 from src.giljo_mcp.models.templates import TemplateArchive
 
-
 # ============================================================================
 # Template History Tests
 # ============================================================================

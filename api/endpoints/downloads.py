@@ -28,7 +28,6 @@ from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import AgentTemplate, User
 from src.giljo_mcp.tools.slash_command_templates import get_all_templates
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/download", tags=["downloads"])
 

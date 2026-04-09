@@ -44,7 +44,6 @@ from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
 from src.giljo_mcp.tools.context_tools.get_testing import get_testing
 from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
 
-
 logger = structlog.get_logger(__name__)
 
 # Category to internal tool mapping

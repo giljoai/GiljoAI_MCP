@@ -29,7 +29,6 @@ from src.giljo_mcp.schemas.service_responses import (
     ApiKeyInfo,
 )
 
-
 # Fixtures local to this file
 
 

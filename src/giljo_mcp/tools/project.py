@@ -13,7 +13,6 @@ from typing import Any, Optional
 
 from src.giljo_mcp.database import DatabaseManager
 
-
 logger = logging.getLogger(__name__)
 
 

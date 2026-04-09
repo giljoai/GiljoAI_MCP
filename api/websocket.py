@@ -20,7 +20,6 @@ from api.broker.base import WebSocketBrokerMessage, WebSocketEventBroker
 from api.events.schemas import EventFactory
 from src.giljo_mcp.logging import ErrorCode, get_logger
 
-
 logger = get_logger(__name__)
 
 
