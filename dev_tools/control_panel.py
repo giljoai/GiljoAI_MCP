@@ -654,7 +654,7 @@ class GiljoDevControlPanel:
             foreground="red",
         ).grid(row=2, column=2, sticky="w", padx=5)
 
-        # Row 3: Full certificate cleanup
+        # Row 3: Full certificate cleanup + Client cert cleanup
         ttk.Button(
             section,
             text="Full Cert Cleanup",
@@ -662,11 +662,25 @@ class GiljoDevControlPanel:
             width=25,
         ).grid(row=3, column=0, pady=5, padx=5)
 
+        ttk.Button(
+            section,
+            text="Client Cert Cleanup",
+            command=self.cleanup_client_certs,
+            width=25,
+        ).grid(row=3, column=1, pady=5, padx=5)
+
+        # Row 4: Descriptions
         ttk.Label(
             section,
             text="Remove all cert trust (OS + Node.js env vars)",
             font=("Arial", 8),
         ).grid(row=4, column=0, sticky="w", padx=5)
+
+        ttk.Label(
+            section,
+            text="Remove downloaded certs + trust (client PC)",
+            font=("Arial", 8),
+        ).grid(row=4, column=1, sticky="w", padx=5)
 
         return row + 1
 
@@ -3836,6 +3850,195 @@ pg_restore -l {backup_file.name} | head -20
             + "\n\nRestart your terminal for changes to take effect.",
         )
         self.update_status_message("Remote workstation cert cleanup complete")
+
+    def cleanup_client_certs(self):
+        """Remove certificates from a client workstation that connected to a GiljoAI server.
+
+        Handles:
+        - Downloaded rootCA.pem and rootCA-key.pem from ~/Downloads
+        - mkcert root CA from the OS trust store (installed via certutil/security/cp)
+        - NODE_OPTIONS / NODE_EXTRA_CA_CERTS env vars
+        """
+        downloads = Path.home() / "Downloads"
+        cert_files = [downloads / "rootCA.pem", downloads / "rootCA-key.pem"]
+        existing = [f for f in cert_files if f.exists()]
+
+        detail_lines = []
+        if existing:
+            detail_lines.append("Downloaded cert files:")
+            for f in existing:
+                detail_lines.append(f"  - {f}")
+        detail_lines.append("OS trust store: mkcert root CA")
+        detail_lines.append("Env vars: NODE_OPTIONS, NODE_EXTRA_CA_CERTS")
+
+        confirm = messagebox.askyesno(
+            "Client Certificate Cleanup",
+            "This will remove GiljoAI certificates from this client PC:\n\n"
+            + "\n".join(detail_lines)
+            + "\n\nAfter cleanup, this machine will no longer trust\n"
+            "the GiljoAI server's HTTPS certificate.\n\n"
+            "Continue?",
+        )
+        if not confirm:
+            self.update_status_message("Client cert cleanup cancelled")
+            return
+
+        results = []
+
+        # 1. Delete downloaded cert files
+        for cert_file in cert_files:
+            if cert_file.exists():
+                try:
+                    cert_file.unlink()
+                    results.append(f"Deleted {cert_file.name}")
+                    logger.info("Deleted client cert file: %s", cert_file)
+                except OSError as e:
+                    results.append(f"Failed to delete {cert_file.name}: {e}")
+                    logger.warning("Failed to delete %s: %s", cert_file, e)
+
+        # 2. Remove mkcert root CA from OS trust store
+        results.extend(self._remove_client_ca_from_trust_store())
+
+        # 3. Clear Node.js cert env vars
+        results.extend(self._clear_node_cert_env_vars())
+
+        messagebox.showinfo(
+            "Client Cert Cleanup Complete",
+            "Results:\n\n"
+            + "\n".join(f"  {r}" for r in results)
+            + "\n\nRestart your terminal for env var changes to take effect.",
+        )
+        self.update_status_message("Client cert cleanup complete")
+
+    def _remove_client_ca_from_trust_store(self):
+        """Remove mkcert root CA that was installed via client instructions.
+
+        On Windows, the install instructions use:
+            certutil -addstore -f "ROOT" %USERPROFILE%\\Downloads\\rootCA.pem
+        which adds to LocalMachine\\Root. We use PowerShell to find by subject
+        and remove by thumbprint, which is more reliable than certutil friendly
+        name matching.
+        """
+        removed = []
+        system = platform.system()
+
+        if system == "Windows":
+            # certutil -addstore "ROOT" puts certs in LocalMachine\Root
+            # Find mkcert certs by subject, remove by thumbprint
+            find_cmd = (
+                "Get-ChildItem Cert:\\LocalMachine\\Root "
+                "| Where-Object { $_.Issuer -like '*mkcert*' } "
+                "| Select-Object -ExpandProperty Thumbprint"
+            )
+            try:
+                result = subprocess.run(
+                    ["powershell", "-Command", find_cmd],
+                    capture_output=True, text=True, timeout=10, check=False,
+                )
+                thumbprints = [t.strip() for t in result.stdout.strip().splitlines() if t.strip()]
+
+                if not thumbprints:
+                    removed.append("No mkcert CA found in Windows cert store")
+                    return removed
+
+                # Build removal script that runs elevated
+                remove_lines = []
+                for tp in thumbprints:
+                    remove_lines.append(
+                        f"Get-ChildItem Cert:\\LocalMachine\\Root\\{tp} "
+                        f"| Remove-Item -Force"
+                    )
+                remove_script = "; ".join(remove_lines)
+
+                # Run elevated via Start-Process and wait for completion
+                elevated_cmd = (
+                    f"Start-Process powershell -Verb RunAs -Wait "
+                    f"-ArgumentList '-Command', '{remove_script}'"
+                )
+                subprocess.run(
+                    ["powershell", "-Command", elevated_cmd],
+                    capture_output=True, text=True, timeout=30, check=False,
+                )
+
+                # Verify removal
+                verify = subprocess.run(
+                    ["powershell", "-Command", find_cmd],
+                    capture_output=True, text=True, timeout=10, check=False,
+                )
+                remaining = [t.strip() for t in verify.stdout.strip().splitlines() if t.strip()]
+
+                if not remaining:
+                    removed.append(f"Removed {len(thumbprints)} mkcert CA(s) from Windows cert store")
+                    logger.info("Removed %d mkcert CAs from LocalMachine\\Root", len(thumbprints))
+                else:
+                    removed.append(
+                        f"WARNING: {len(remaining)} mkcert CA(s) still in store "
+                        f"(UAC declined or removal failed)"
+                    )
+                    logger.warning("mkcert CAs still present after removal attempt: %s", remaining)
+
+            except Exception as e:
+                removed.append(f"Windows cert store removal error: {e}")
+                logger.error("Windows cert store removal failed: %s", e)
+
+        elif system == "Darwin":
+            # macOS: cert was added via security add-trusted-cert to System keychain
+            # Find and remove by label
+            try:
+                find_result = subprocess.run(
+                    ["security", "find-certificate", "-c", "mkcert",
+                     "/Library/Keychains/System.keychain"],
+                    capture_output=True, text=True, timeout=10, check=False,
+                )
+                if find_result.returncode == 0 and "mkcert" in find_result.stdout:
+                    sudo_pw = self._get_sudo_password(
+                        "Removing the mkcert root CA from the System\n"
+                        "keychain requires elevated privileges."
+                    )
+                    if sudo_pw is not None:
+                        subprocess.run(
+                            ["sudo", "-S", "security", "delete-certificate",
+                             "-c", "mkcert", "/Library/Keychains/System.keychain"],
+                            input=sudo_pw + "\n",
+                            capture_output=True, text=True, timeout=10, check=False,
+                        )
+                        removed.append("Removed mkcert CA from macOS System keychain")
+                    else:
+                        removed.append("macOS cert removal cancelled (no password)")
+                else:
+                    removed.append("No mkcert CA found in macOS System keychain")
+            except Exception as e:
+                removed.append(f"macOS cert removal error: {e}")
+
+        elif system == "Linux":
+            # Linux: cert was copied to /usr/local/share/ca-certificates/giljoai.crt
+            giljo_cert = Path("/usr/local/share/ca-certificates/giljoai.crt")
+            if giljo_cert.exists():
+                sudo_pw = self._get_sudo_password(
+                    "Removing the certificate from the system\n"
+                    "trust store requires elevated privileges."
+                )
+                if sudo_pw is not None:
+                    try:
+                        subprocess.run(
+                            ["sudo", "-S", "rm", "-f", str(giljo_cert)],
+                            input=sudo_pw + "\n",
+                            capture_output=True, text=True, timeout=10, check=False,
+                        )
+                        subprocess.run(
+                            ["sudo", "-S", "update-ca-certificates"],
+                            input=sudo_pw + "\n",
+                            capture_output=True, text=True, timeout=15, check=False,
+                        )
+                        removed.append("Removed mkcert CA from Linux ca-certificates")
+                    except Exception as e:
+                        removed.append(f"Linux cert removal error: {e}")
+                else:
+                    removed.append("Linux cert removal cancelled (no password)")
+            else:
+                removed.append("No mkcert CA found in Linux ca-certificates")
+
+        return removed
 
     def _aggressive_delete_venv(self, venv_path: Path) -> bool:
         """
