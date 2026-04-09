@@ -1,3 +1,8 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 v3.0 Configuration file generation for .env and config.yaml
 Bind address derived from install-time network choice (localhost=127.0.0.1/HTTP, LAN/WAN=0.0.0.0/HTTPS via mkcert)
