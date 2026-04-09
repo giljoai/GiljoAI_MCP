@@ -159,7 +159,7 @@ If you call `complete_job()` without meeting these requirements:
 1. Call `mcp__giljo_mcp__set_agent_status(job_id="{job_id}", status="blocked", reason="BLOCKED: <reason>")`
    - Sets status to "blocked" and stores block_reason
 2. Send message to orchestrator explaining what you need (use orchestrator's agent_id UUID from YOUR TEAM table):
-   - `mcp__giljo_mcp__send_message(to_agents=["<orchestrator-agent-id-uuid>"], content="BLOCKER: <details>", from_agent="{executor_id}", project_id="...", message_type="direct")`
+   - `mcp__giljo_mcp__send_message(to_agents=["<orchestrator-agent-id-uuid>"], content="BLOCKER: <details>", from_agent="{executor_id}", project_id="...", message_type="direct", requires_action=true)`
    - ALWAYS use the orchestrator's agent_id UUID, NEVER the display name "orchestrator"
 3. STOP work and poll for response (use longer intervals while blocked — 15-20 seconds between polls, up to 5 attempts):
    - `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
@@ -171,6 +171,14 @@ If you call `complete_job()` without meeting these requirements:
 2. Continue execution with Phase 2
 
 **Use BLOCKED for**: Unclear requirements, missing context, waiting for decisions, unrecoverable errors (all errors use blocked status)
+
+## If You Are Reactivated (Handover 0435c)
+
+If you receive context indicating you are resuming a previously completed job:
+1. Call `get_agent_mission(job_id="...")` to load your full prior context
+2. Read any new messages via `receive_messages()` — these contain the reason for reactivation
+3. Continue work from your prior state — do not restart from scratch
+4. When done, call `complete_job()` again with updated results
 
 ## Handover on Context Exhaustion
 
@@ -204,7 +212,7 @@ Do NOT write 360 memory on normal completion - orchestrator handles that.
 
 **Requesting Broader Context:**
 If your mission references undefined entities, has unclear dependencies, or ambiguous scope:
-1. Send: `send_message(to_agents=["<orchestrator-uuid>"], content="REQUEST_CONTEXT: <specific need>", from_agent="{executor_id}", project_id="...", message_type="direct")`
+1. Send: `send_message(to_agents=["<orchestrator-uuid>"], content="REQUEST_CONTEXT: <specific need>", from_agent="{executor_id}", project_id="...", message_type="direct", requires_action=true)`
 2. Be specific (e.g., "REQUEST_CONTEXT: What database schema is used for user auth?")
 3. Wait for response via `receive_messages()`
 4. Do NOT guess at major ambiguities - ask first

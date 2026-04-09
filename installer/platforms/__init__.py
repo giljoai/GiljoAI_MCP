@@ -20,10 +20,9 @@ import platform
 from typing import Type
 
 from .base import PlatformHandler
-from .windows import WindowsPlatformHandler
 from .linux import LinuxPlatformHandler
 from .macos import MacOSPlatformHandler
-
+from .windows import WindowsPlatformHandler
 
 # Platform mapping
 _PLATFORM_HANDLERS: dict[str, Type[PlatformHandler]] = {

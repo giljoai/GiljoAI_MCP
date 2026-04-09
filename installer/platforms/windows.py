@@ -13,11 +13,11 @@ Handles Windows-specific installation operations including:
 - npm command execution with shell=True
 """
 
-import subprocess
-from pathlib import Path
-from typing import List, Dict, Any
-import sys
 import platform
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any, Dict, List
 
 from colorama import Fore, Style
 
@@ -138,7 +138,7 @@ class WindowsPlatformHandler(PlatformHandler):
         try:
             # Try win32com method first (proper .lnk files)
             try:
-                import win32com.client
+                import win32com.client  # noqa: F401 — availability check
 
                 result = self._create_shortcuts_win32com(install_dir, venv_dir)
                 return result
@@ -259,7 +259,7 @@ class WindowsPlatformHandler(PlatformHandler):
                     capture_output=True, text=True, timeout=10, check=True,
                 )
                 shortcuts_created.append(str(lnk_path))
-            except Exception as e:
+            except Exception:
                 # Final fallback: create .bat if PowerShell fails too
                 bat_path = desktop / sc["name"].replace(".lnk", ".bat")
                 with open(bat_path, "w") as f:
@@ -325,7 +325,7 @@ class WindowsPlatformHandler(PlatformHandler):
             import psutil
 
             ips = []
-            for interface_name, addresses in psutil.net_if_addrs().items():
+            for addresses in psutil.net_if_addrs().values():
                 for addr in addresses:
                     if addr.family == 2:  # AF_INET (IPv4)
                         ip = addr.address
@@ -357,11 +357,11 @@ class WindowsPlatformHandler(PlatformHandler):
         print(f"{Fore.CYAN}This installer will set up your coding orchestrator.{Style.RESET_ALL}\n")
 
         print(f"{Fore.WHITE}What will be installed:{Style.RESET_ALL}")
-        print(f"  • PostgreSQL database (giljo_mcp)")
-        print(f"  • Python dependencies (FastAPI, SQLAlchemy, etc.)")
-        print(f"  • Configuration files (.env, config.yaml)")
-        print(f"  • API server + Frontend dashboard")
-        print(f"  • MCP server integration\n")
+        print("  • PostgreSQL database (giljo_mcp)")
+        print("  • Python dependencies (FastAPI, SQLAlchemy, etc.)")
+        print("  • Configuration files (.env, config.yaml)")
+        print("  • API server + Frontend dashboard")
+        print("  • MCP server integration\n")
 
         # Windows platform info
         windows_version = platform.win32_ver()[0] if hasattr(platform, "win32_ver") else platform.release()

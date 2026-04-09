@@ -17,7 +17,6 @@ from sqlalchemy import select
 
 from src.giljo_mcp.models import AgentJob, AgentTemplate
 
-
 # ============================================================================
 # Change B: template_id populated on AgentJob when template found
 # ============================================================================

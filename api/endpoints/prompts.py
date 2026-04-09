@@ -38,7 +38,6 @@ from src.giljo_mcp.models import Project, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

@@ -27,7 +27,6 @@ from .models import (
     OrganizationUpdate,
 )
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

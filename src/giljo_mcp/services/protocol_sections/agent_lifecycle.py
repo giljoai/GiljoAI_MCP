@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -156,7 +155,7 @@ completing, an unblock event, or any other trigger — execute this loop:
 **Unblock an agent:**
   → Read blocker message content
   → Consult your `mission` field for relevant context
-  → `mcp__giljo_mcp__send_message(to_agents=["<agent_id>"], content="...", from_agent="{executor_id}", project_id="...", message_type="direct")`
+  → `mcp__giljo_mcp__send_message(to_agents=["<agent_id>"], content="...", from_agent="{executor_id}", project_id="...", message_type="direct", requires_action=true)`
   → Tell user: "Go to that agent's terminal and say: the orchestrator responded"
   → Update the relevant TODO item
 
@@ -168,6 +167,7 @@ completing, an unblock event, or any other trigger — execute this loop:
 
 **Broadcast to team:**
   → `mcp__giljo_mcp__send_message(to_agents=['all'], content="...", from_agent="{executor_id}", project_id="...", message_type="broadcast")`
+  → Broadcasts are informational by default (requires_action=false). Set requires_action=true only if ALL recipients must act.
 
 **PROGRESS REPORTING (MANDATORY after every coordination action):**
   → To update statuses: `report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_items=[...FULL list with updated statuses...])`

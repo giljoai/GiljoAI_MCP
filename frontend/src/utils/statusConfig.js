@@ -14,6 +14,7 @@ const STATUS_COLORS = {
   IDLE: '#7a9bb5',        // $color-status-idle
   SLEEPING: '#9b89b3',    // $color-status-sleeping
   HANDED_OVER: '#9e9e9e', // $color-status-handed-over
+  CLOSED: '#4a9c5f',      // $color-status-closed (darker green, signals finality)
   DECOMMISSIONED: '#757575', // $color-status-decommissioned
   FALLBACK: '#666666',    // Fallback muted
 }
@@ -62,6 +63,13 @@ const statusConfig = {
     color: STATUS_COLORS.BLOCKED,
     italic: false,
     chipColor: 'warning',
+  },
+  // Handover 0435b: Final acceptance by orchestrator
+  closed: {
+    label: 'Closed',
+    color: STATUS_COLORS.CLOSED,
+    italic: false,
+    chipColor: 'success',
   },
   // Handover 0506: Status after orchestrator hands over to successor
   handed_over: {
@@ -151,6 +159,13 @@ const STATUS_CONFIG = {
     label: 'Silent',
     description: 'Agent stopped communicating',
   },
+  // Handover 0435b: Final acceptance by orchestrator
+  closed: {
+    icon: 'mdi-check-decagram',
+    color: 'green-darken-2',
+    label: 'Closed',
+    description: 'Work accepted and finalized by orchestrator',
+  },
   decommissioned: {
     icon: 'mdi-archive',
     color: 'grey-darken-1',
@@ -217,7 +232,7 @@ export function getHealthConfig(healthStatus) {
 export function isJobStale(lastProgressAt, status) {
   if (!lastProgressAt) return false
 
-  const terminalStates = ['complete', 'silent', 'decommissioned', 'handed_over', 'idle', 'sleeping']
+  const terminalStates = ['complete', 'closed', 'silent', 'decommissioned', 'handed_over', 'idle', 'sleeping']
   if (terminalStates.includes(status)) return false
 
   const now = new Date()

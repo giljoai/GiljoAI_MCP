@@ -22,7 +22,6 @@ from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 T = TypeVar("T")
 
 

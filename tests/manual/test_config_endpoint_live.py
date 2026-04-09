@@ -145,7 +145,7 @@ async def test_config_endpoint():
 
         # Test 8: Check sensitive data masking
         print("\n[TEST 8] Checking sensitive data masking...")
-        config_str = str(config).lower()
+        str(config).lower()
 
         # Check database password is masked
         db_password = config.get("database", {}).get("password")
@@ -161,7 +161,7 @@ async def test_config_endpoint():
         times = []
         for i in range(3):
             start = time.time()
-            r = await client.get(api_url, timeout=5.0)
+            await client.get(api_url, timeout=5.0)
             end = time.time()
             req_time = (end - start) * 1000
             times.append(req_time)

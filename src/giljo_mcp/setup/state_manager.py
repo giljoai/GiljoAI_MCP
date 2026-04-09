@@ -29,7 +29,6 @@ from typing import Any, ClassVar
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-
 logger = logging.getLogger(__name__)
 
 

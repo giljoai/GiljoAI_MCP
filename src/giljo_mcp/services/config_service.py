@@ -20,7 +20,6 @@ from typing import Any, Optional
 
 from giljo_mcp._config_io import read_config
 
-
 logger = logging.getLogger(__name__)
 
 

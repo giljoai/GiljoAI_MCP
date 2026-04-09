@@ -36,7 +36,6 @@ from src.giljo_mcp.models.organizations import Organization, OrgMembership
 from src.giljo_mcp.schemas.service_responses import UserInfo
 from src.giljo_mcp.services.auth_service import AuthService
 
-
 # Fixtures
 
 

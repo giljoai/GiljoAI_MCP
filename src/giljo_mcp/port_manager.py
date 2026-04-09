@@ -22,7 +22,6 @@ from pathlib import Path
 
 from giljo_mcp._config_io import read_config
 
-
 logger = logging.getLogger(__name__)
 
 

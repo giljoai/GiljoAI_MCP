@@ -37,7 +37,8 @@ from src.giljo_mcp.tools._memory_helpers import (
 logger = logging.getLogger(__name__)
 
 # Statuses that do not block closeout (aligned with write_360_memory.SKIP_STATUSES)
-_SKIP_STATUSES = {"decommissioned"}
+# Handover 0435b: 'closed' agents are already final-accepted, skip them too
+_SKIP_STATUSES = {"decommissioned", "closed"}
 # Statuses considered "active" — agents not yet finished
 _ACTIVE_STATUSES = {"waiting", "working", "blocked", "silent"}
 
@@ -249,6 +250,9 @@ async def close_project_and_update_memory(
                 force=force,
                 blockers=blockers,
             )
+
+            # Handover 0435b: transition all 'complete' agents to 'closed' during closeout
+            await _close_completed_agents(active_session, project_id, tenant_key)
 
             product_memory: dict[str, Any] = product.product_memory or {}
             if not isinstance(product_memory, dict):
@@ -467,6 +471,45 @@ async def _force_decommission_agents(
         await session.flush()
 
     return decommissioned_names
+
+
+async def _close_completed_agents(
+    session: AsyncSession,
+    project_id: str,
+    tenant_key: str,
+) -> list[str]:
+    """
+    Transition all 'complete' agents to 'closed' during project closeout (Handover 0435b).
+
+    Normal closeout = accepted work. Agents in 'complete' become 'closed' (final acceptance).
+    Only agents in abnormal states get 'decommissioned' via _force_decommission_agents.
+
+    Returns list of agent display names that were closed.
+    """
+    exec_stmt = (
+        select(AgentExecution)
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+        .where(
+            and_(
+                AgentJob.project_id == project_id,
+                AgentExecution.tenant_key == tenant_key,
+                AgentExecution.status == "complete",
+            )
+        )
+    )
+    result = await session.execute(exec_stmt)
+    executions = result.scalars().all()
+
+    closed_names: list[str] = []
+    for execution in executions:
+        execution.status = "closed"
+        closed_names.append(execution.agent_display_name or execution.agent_name or execution.agent_id)
+
+    if closed_names:
+        await session.flush()
+        logger.info("Closed %d agent(s) during project closeout: %s", len(closed_names), ", ".join(closed_names))
+
+    return closed_names
 
 
 def _extract_deliverables(key_outcomes: list[str]) -> list[str]:

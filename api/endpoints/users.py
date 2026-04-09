@@ -37,7 +37,6 @@ from src.giljo_mcp.auth.dependencies import (
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import UserService
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

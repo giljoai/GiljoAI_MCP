@@ -21,7 +21,6 @@ import pytest
 
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
-
 # pytestmark = pytest.mark.asyncio
 
 
@@ -109,7 +108,7 @@ async def test_get_agent_mission_emits_ack_and_status_changed(
         _rows_result([(execution, job)]),
     ]
 
-    response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
+    await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
 
     # No success wrapper after 0730b refactor
     assert execution.status == "working"
@@ -155,7 +154,7 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
         _rows_result([(execution, job)]),
     ]
 
-    response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
+    await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
 
     # No success wrapper after 0730b refactor
     mock_websocket_manager.broadcast_to_tenant.assert_not_awaited()

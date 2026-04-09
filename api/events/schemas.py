@@ -40,7 +40,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-
 # ============================================================================
 # Base Event Structures
 # ============================================================================

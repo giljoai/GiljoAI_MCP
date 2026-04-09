@@ -43,7 +43,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .models import AgentTemplate
 from .tools.slash_command_templates import get_all_templates
 
-
 logger = logging.getLogger(__name__)
 
 

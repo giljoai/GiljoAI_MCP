@@ -19,8 +19,8 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.exceptions import ProjectStateError
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.tools.project_closeout import (

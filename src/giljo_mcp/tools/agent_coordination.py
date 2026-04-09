@@ -23,7 +23,6 @@ from typing import Any, Optional
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import ValidationError
 
-
 logger = logging.getLogger(__name__)
 
 

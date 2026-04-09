@@ -51,7 +51,6 @@ from structlog.types import FilteringBoundLogger
 
 from .error_codes import ErrorCode, get_error_description
 
-
 # Re-export for convenience
 __all__ = ["ErrorCode", "configure_logging", "get_colored_logger", "get_error_description", "get_logger"]
 

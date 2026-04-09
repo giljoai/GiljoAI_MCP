@@ -34,7 +34,6 @@ from .crud_ops import (
 )
 from .schemas import ProjectTypeCreate, ProjectTypeResponse, ProjectTypeUpdate
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

@@ -21,7 +21,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from giljo_mcp.logging import ErrorCode, get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -150,7 +149,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return True
         # Static files served from frontend/public (logos, icons, mascot)
         static_extensions = (".svg", ".png", ".jpg", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".css")
-        if path.endswith(static_extensions) or path.startswith("/icons/") or path.startswith("/mascot/"):
+        if path.endswith(static_extensions) or path.startswith(("/icons/", "/mascot/")):
             return True
         # Setup wizard routes must be accessible before any user exists
         if path in {"/welcome", "/create-admin"} or path.startswith("/api/setup/"):
