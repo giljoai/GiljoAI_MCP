@@ -28,6 +28,7 @@ import logging
 import os
 import platform
 import shutil
+import stat
 import subprocess
 import sys
 import threading
@@ -3131,6 +3132,10 @@ pg_restore -l {backup_file.name} | head -20
                         ca_path = caroot_dir / ca_file
                         if ca_path.exists():
                             try:
+                                # mkcert marks rootCA-key.pem read-only on Windows
+                                # to protect the private key. Clear that attribute
+                                # first or unlink() raises [WinError 5] even as admin.
+                                ca_path.chmod(stat.S_IWRITE | stat.S_IREAD)
                                 ca_path.unlink()
                                 deleted.append(f"mkcert CAROOT: {ca_file}")
                             except Exception as e:
