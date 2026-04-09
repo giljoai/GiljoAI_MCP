@@ -20,15 +20,12 @@
         </div>
       </v-tooltip>
     </div>
-    <div class="intg-card-desc d-flex align-center flex-wrap" style="gap: 6px;">
-      <span>run</span>
-      <span class="setup-cmd">giljo_setup</span>
-      <span>or</span>
-    </div>
-
     <div class="intg-card-body">
-      <div class="d-flex flex-wrap justify-center mb-4" style="gap: 16px;">
-        <div v-for="p in platforms" :key="p.id" class="d-flex align-center gap-2">
+      <div class="d-flex align-center flex-wrap justify-center" style="gap: 8px; margin-bottom: 12px;">
+        <span class="intg-card-desc" style="margin-bottom: 0">run</span>
+        <span class="setup-cmd">giljo_setup</span>
+        <span class="intg-card-desc" style="margin-bottom: 0">or</span>
+        <div v-for="p in platforms" :key="p.id">
           <v-tooltip location="top">
             <template #activator="{ props: btnProps }">
               <button
@@ -130,12 +127,14 @@ const platforms = [
   { id: 'claude_code', label: 'Claude Code', buttonLabel: 'Claude Prompt', icon: '/claude_pix.svg', color: 'deep-orange', experimental: false },
   { id: 'codex_cli', label: 'Codex CLI', buttonLabel: 'Codex Prompt', icon: '/codex_logo.svg', color: 'green', experimental: true },
   { id: 'gemini_cli', label: 'Gemini CLI', buttonLabel: 'Gemini Prompt', icon: '/gemini-icon.svg', color: 'blue', experimental: true },
+  { id: 'generic', label: 'Generic MCP', buttonLabel: 'Generic', icon: '/logo-mcp.svg', color: 'grey', experimental: false },
 ]
 
 const setupLoading = reactive({
   claude_code: false,
   codex_cli: false,
   gemini_cli: false,
+  generic: false,
 })
 
 const downloadLoading = reactive({})

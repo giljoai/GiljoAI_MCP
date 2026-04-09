@@ -23,6 +23,7 @@ from src.giljo_mcp.template_renderer import (
     render_claude_agent,
     render_codex_agent,
     render_gemini_agent,
+    render_generic_agent,
 )
 
 
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-VALID_PLATFORMS = frozenset({"claude_code", "codex_cli", "gemini_cli"})
+VALID_PLATFORMS = frozenset({"claude_code", "codex_cli", "gemini_cli", "generic"})
 
 # Install path metadata per platform
 _INSTALL_PATHS: dict[str, dict[str, str]] = {
@@ -46,6 +47,10 @@ _INSTALL_PATHS: dict[str, dict[str, str]] = {
     "codex_cli": {
         "agent_files": "~/.codex/agents/",
         "config_file": "~/.codex/config.toml",
+    },
+    "generic": {
+        "project": "agents/",
+        "user": "~/agents/",
     },
 }
 
@@ -80,6 +85,8 @@ class AgentTemplateAssembler:
             return self._assemble_claude(templates)
         if platform == "gemini_cli":
             return self._assemble_gemini(templates)
+        if platform == "generic":
+            return self._assemble_generic(templates)
         return self._assemble_codex(templates)
 
     # ------------------------------------------------------------------
@@ -150,6 +157,30 @@ class AgentTemplateAssembler:
             "agents": agents,
             "install_paths": _INSTALL_PATHS["codex_cli"],
             "toml_format_reference": CODEX_TOML_FORMAT_REFERENCE,
+            "template_count": len(agents),
+            "format_version": "1.0",
+        }
+
+    # ------------------------------------------------------------------
+    # Generic MCP — plain Markdown, no platform-specific frontmatter
+    # ------------------------------------------------------------------
+
+    def _assemble_generic(self, templates: list[AgentTemplate]) -> dict:
+        agents = []
+        for t in templates:
+            content = render_generic_agent(t)
+            agents.append(
+                {
+                    "filename": f"{_slugify_filename(t.name)}.md",
+                    "content": content,
+                    "role": t.role or "agent",
+                }
+            )
+
+        return {
+            "platform": "generic",
+            "agents": agents,
+            "install_paths": _INSTALL_PATHS["generic"],
             "template_count": len(agents),
             "format_version": "1.0",
         }

@@ -365,7 +365,7 @@ async def discovery(
     ),
 )
 async def giljo_setup(
-    platform: Literal["claude_code", "gemini_cli", "codex_cli"] = "claude_code",
+    platform: Literal["claude_code", "gemini_cli", "codex_cli", "generic"] = "claude_code",
     ctx: Context = None,
 ) -> dict:
     """Install slash commands and agent templates for your CLI tool."""
