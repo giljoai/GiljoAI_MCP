@@ -344,4 +344,13 @@ These components are **already built** and reduce SaaS implementation effort:
 
 ---
 
+## SaaS Security Hardening Backlog
+
+| Item | Current State | SaaS Target | Priority | Notes |
+|------|--------------|-------------|----------|-------|
+| CSP style-src | `'unsafe-inline'` (required by Vuetify runtime styles) | Nonce-based CSP: server generates per-request nonce, Vuetify uses it | Medium | Every Vue/Vuetify app ships with unsafe-inline for styles. Nonce-based requires SSR integration. Not a launch blocker but should be addressed for enterprise customers. |
+| CSP script-src | Hash-locked (production grade) | Keep as-is | N/A | Already locked down. |
+
+---
+
 *This document was compiled from automated codebase analysis of 33 database models, 209 API endpoints, 90 Vue components, 141 test files, and 10 handover documents.*
