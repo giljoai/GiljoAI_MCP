@@ -212,40 +212,55 @@ def _build_body_parts(template: AgentTemplate) -> list[str]:
 
 
 def render_generic_agent(template: AgentTemplate) -> str:
-    """Render agent template to generic plaintext format.
+    """Render agent template to platform-neutral Markdown.
 
-    Used for Codex, Gemini, and other generic AI coding agents.
+    Produces plain Markdown without YAML/TOML frontmatter, suitable for
+    any MCP client that doesn't match a known platform profile.
 
     Args:
         template: AgentTemplate model instance
 
     Returns:
-        Plaintext prompt without YAML frontmatter
+        Markdown content without platform-specific frontmatter
     """
+    description = template.description or (f"Subagent for {template.role}" if template.role else "Subagent")
+
     parts = [
         f"# {template.name}",
-        f"\nRole: {template.role}",
-        f"\n{template.system_instructions or ''}",
+        "",
+        f"**Role:** {template.role or 'agent'}",
+        f"**Description:** {description}",
     ]
 
-    # Role identity prose (user_instructions -- Handover 0813)
+    bootstrap = (template.system_instructions or "").strip()
+    if bootstrap:
+        parts.append("")
+        parts.append("## System Instructions")
+        parts.append("")
+        parts.append(bootstrap)
+
     role_prose = (template.user_instructions or "").strip()
     if role_prose:
-        parts.append(f"\n{role_prose}")
+        parts.append("")
+        parts.append("## User Instructions")
+        parts.append("")
+        parts.append(role_prose)
 
-    # Add behavioral rules section if present
     rules = template.behavioral_rules or []
     if isinstance(rules, list) and rules:
-        parts.append("\n## Behavioral Rules")
+        parts.append("")
+        parts.append("## Behavioral Rules")
+        parts.append("")
         parts.extend(f"- {r}" for r in rules)
 
-    # Add success criteria section if present
     criteria = template.success_criteria or []
     if isinstance(criteria, list) and criteria:
-        parts.append("\n## Success Criteria")
+        parts.append("")
+        parts.append("## Success Criteria")
+        parts.append("")
         parts.extend(f"- {c}" for c in criteria)
 
-    return "\n".join(parts)
+    return "\n".join(parts) + "\n"
 
 
 def render_gemini_agent(template: AgentTemplate) -> str:
