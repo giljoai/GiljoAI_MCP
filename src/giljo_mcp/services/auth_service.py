@@ -750,11 +750,11 @@ class AuthService:
                 message="Administrator account already exists", context={"reason": "users_exist", "count": total_users}
             )
 
-        # Validate password strength (12+ chars, complexity)
-        if len(password) < 12:
+        # Validate password strength (8+ chars, complexity)
+        if len(password) < 8:
             raise ValidationError(
-                message="Password must be at least 12 characters",
-                context={"password_length": len(password), "required": 12},
+                message="Password must be at least 8 characters",
+                context={"password_length": len(password), "required": 8},
             )
 
         has_upper = any(c.isupper() for c in password)
