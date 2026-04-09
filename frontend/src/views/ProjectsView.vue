@@ -146,6 +146,12 @@
             </div>
           </template>
 
+          <!-- Serial Column -->
+          <template v-slot:item.serial="{ item }">
+            <span v-if="item.taxonomy_alias" class="text-caption text-muted-a11y">{{ item.taxonomy_alias }}</span>
+            <span v-else class="staged-dash">—</span>
+          </template>
+
           <!-- Quick Action Column — play button to activate + launch -->
           <template v-slot:item.quick_action="{ item }">
             <v-tooltip v-if="normalizeStatus(item.status) === 'inactive'" :text="isProjectStaged(item) ? 'Activate & resume' : 'Activate & launch'">
@@ -476,8 +482,9 @@ const statusSelectOptions = ['active', 'inactive', 'completed', 'cancelled', 'te
 
 // Table headers
 const headers = [
-  { title: 'Name', key: 'name', sortable: true, width: '33%' },
-  { title: 'Status', key: 'status', sortable: true, width: '15%', align: 'center' },
+  { title: 'Name', key: 'name', sortable: true, width: '28%' },
+  { title: 'Serial', key: 'serial', sortable: true, width: '10%' },
+  { title: 'Status', key: 'status', sortable: true, width: '13%', align: 'center' },
   { title: 'Staged', key: 'staging_status', sortable: true, width: '9%', align: 'center' },
   { title: 'Created', key: 'created_at', sortable: true, width: '13%' },
   { title: 'Completed', key: 'completed_at', sortable: true, width: '13%', align: 'center' },
