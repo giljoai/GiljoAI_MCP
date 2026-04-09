@@ -565,6 +565,21 @@ class OrchestrationService:
             if execution:
                 await self._broadcast_completion(tenant_key, job_id, job, execution, old_status, duration_seconds)
 
+            # Git commit reminder for orchestrators (only when git integration is enabled)
+            if job and getattr(job, "job_type", "") == "orchestrator":
+                try:
+                    from giljo_mcp._config_io import read_config
+                    cfg = read_config()
+                    git_enabled = cfg.get("features", {}).get("git_integration", {}).get("enabled", False)
+                    if git_enabled and "commits" not in (result or {}):
+                        warnings.append(
+                            "Git integration is enabled but no commits were included in the result. "
+                            "Run `git status` to check for uncommitted work, then `git add` and `git commit` "
+                            "before writing 360 memory."
+                        )
+                except Exception:
+                    pass  # Config read failure is not a blocker
+
             # Handover 0731c: Typed return (CompleteJobResult)
             return CompleteJobResult(
                 status="success",
