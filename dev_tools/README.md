@@ -6,11 +6,13 @@ A comprehensive GUI tool for managing the GiljoAI MCP development environment.
 
 The control panel uses its own **isolated virtual environment** to avoid conflicts with the main application venv.
 
+The control panel allows you to easily stop and start server and front end during development, reset the application folder and database completely to do a fresh install and clear out any certs installed.  Check DB status, Stop servers etc, its convenient to run both in production and contribution/dev mode.  Its a bit quick and dirty, feel free to tweek as needed. Remember its destructive nature!!!! ;) 
+
 ### First Time Setup
 
 ```bash
 # From project root (or cd to dev_tools/)
-dev_tools\setup_devtools_venv.bat
+dev_tools\{python/python3} Setup_control_panel.py
 ```
 
 This creates `dev_tools/venv_devtools/` with all required dependencies (psutil, psycopg2-binary, pyyaml).
@@ -19,8 +21,11 @@ This creates `dev_tools/venv_devtools/` with all required dependencies (psutil, 
 
 **Option 1: Use the Launcher (Easiest)**
 ```bash
-# From anywhere in project
+# From anywhere in project Windows
 dev_tools\launch_control_panel.bat
+
+# From anywhere in project Linux/MacOS
+dev_tools\bash launch_control_panel.sh
 ```
 
 **Option 2: Manual Launch**
