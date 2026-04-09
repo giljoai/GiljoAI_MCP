@@ -367,11 +367,20 @@ async def giljo_setup(
     ctx: Context = None,
 ) -> dict:
     """Install slash commands and agent templates for your CLI tool."""
-    # Auto-detect platform from MCP client info if available
+    # Auto-detect platform from MCP client info (initialize handshake)
     if platform == "auto":
+        client_name = ""
         try:
-            client_info = getattr(ctx, "client_info", None) or {}
-            client_name = (client_info.get("name") or "").lower() if isinstance(client_info, dict) else ""
+            # MCP SDK stores client identity from the initialize handshake on
+            # ctx.session.client_params. The clientInfo field may be camelCase
+            # (auto-generated types) or snake_case (Pydantic alias) depending
+            # on SDK version — try both.
+            client_params = getattr(ctx.session, "client_params", None)
+            client_info = (
+                getattr(client_params, "clientInfo", None)
+                or getattr(client_params, "client_info", None)
+            ) if client_params else None
+            client_name = (getattr(client_info, "name", "") or "").lower()
             if "claude" in client_name:
                 platform = "claude_code"
             elif "codex" in client_name:
@@ -382,6 +391,7 @@ async def giljo_setup(
                 platform = "claude_code"
         except (AttributeError, TypeError):
             platform = "claude_code"
+        logger.info("giljo_setup auto-detected platform=%s (client_name=%r)", platform, client_name)
 
     result = await _call_tool(ctx, "bootstrap_setup", {"platform": platform})
 
