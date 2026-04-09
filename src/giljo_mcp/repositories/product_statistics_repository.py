@@ -521,6 +521,7 @@ class ProductStatisticsRepository:
                 Project.project_type_id,
                 Project.series_number,
                 Project.subseries,
+                Project.product_id,
                 ProjectType.abbreviation.label("type_abbreviation"),
                 ProjectType.color.label("project_type_color"),
                 Product.name.label("product_name"),
@@ -566,6 +567,7 @@ class ProductStatisticsRepository:
                     "taxonomy_alias": taxonomy_alias,
                     "project_type_color": row.project_type_color,
                     "product_name": row.product_name,
+                    "product_id": str(row.product_id) if row.product_id else None,
                 }
             )
 
@@ -592,6 +594,7 @@ class ProductStatisticsRepository:
         """
         stmt = (
             select(
+                ProductMemoryEntry.product_id,
                 ProductMemoryEntry.project_id,
                 ProductMemoryEntry.project_name,
                 ProductMemoryEntry.summary,
@@ -611,6 +614,7 @@ class ProductStatisticsRepository:
         result = await session.execute(stmt)
         return [
             {
+                "product_id": str(row.product_id) if row.product_id else None,
                 "project_id": str(row.project_id) if row.project_id else None,
                 "project_name": row.project_name,
                 "summary": (row.summary[:200] if row.summary else None),
