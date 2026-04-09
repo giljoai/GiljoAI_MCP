@@ -76,6 +76,7 @@ def _build_orchestrator_protocol(
     tool: str = "claude-code",
     auto_checkin_enabled: bool = False,
     auto_checkin_interval: int = 10,
+    git_integration_enabled: bool = False,
 ) -> dict:
     """
     Build chapter-based orchestrator protocol.
@@ -111,7 +112,7 @@ def _build_orchestrator_protocol(
     )
     ch3 = _build_ch3_spawning_rules(effective_tool)
     ch4 = _build_ch4_error_handling()
-    ch5 = _build_ch5_reference(project_id, orchestrator_id, effective_tool) if include_implementation_reference else ""
+    ch5 = _build_ch5_reference(project_id, orchestrator_id, effective_tool, git_integration_enabled) if include_implementation_reference else ""
 
     ch6 = _build_ch6_auto_checkin(auto_checkin_interval) if (auto_checkin_enabled and not cli_mode) else ""
 
