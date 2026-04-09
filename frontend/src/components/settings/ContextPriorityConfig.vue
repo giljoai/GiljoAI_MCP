@@ -395,22 +395,9 @@ function navigateToIntegrations() {
 }
 
 // Handover 0408: Sync git_history toggle with git integration state
-// Only react to real user-initiated transitions, not initial mount.
-// Track previous state explicitly to avoid undefined oldValue on first run.
-const gitIntegrationPrevState = ref<boolean | null>(null)
-
-watch(() => props.gitIntegrationEnabled, (enabled) => {
-  // Capture initial state without acting on it
-  if (gitIntegrationPrevState.value === null) {
-    gitIntegrationPrevState.value = enabled
-    return
-  }
-
-  // Only act on actual transitions
-  if (enabled === gitIntegrationPrevState.value) return
-  gitIntegrationPrevState.value = enabled
-
+watch(() => props.gitIntegrationEnabled, (enabled, oldEnabled) => {
   if (!configLoaded.value) return
+  if (enabled === oldEnabled) return
 
   if (!enabled && config.value.git_history?.enabled) {
     // Integration turned OFF → disable git_history
@@ -419,7 +406,7 @@ watch(() => props.gitIntegrationEnabled, (enabled) => {
   } else if (enabled && !config.value.git_history?.enabled) {
     // Integration turned ON → convenience-enable git_history
     config.value.git_history.enabled = true
-    config.value.git_history.count = 5
+    config.value.git_history.count = config.value.git_history.count || 5
     saveConfig()
   }
 })
@@ -501,6 +488,13 @@ async function fetchConfig() {
     }
 
     configLoaded.value = true
+
+    // Enforce integration-off → context-off invariant on load
+    // If git integration is OFF but context somehow has git_history ON, fix it
+    if (!props.gitIntegrationEnabled && config.value.git_history?.enabled) {
+      config.value.git_history.enabled = false
+      saveConfig()
+    }
   } catch (error) {
     console.error('[CONTEXT CONFIG] Failed to fetch config:', error)
     configLoaded.value = true
