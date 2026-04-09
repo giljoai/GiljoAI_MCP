@@ -3894,12 +3894,14 @@ pg_restore -l {backup_file.name} | head -20
         for cert_file in cert_files:
             if cert_file.exists():
                 try:
+                    # Clear read-only flag if set (common on downloaded files)
+                    cert_file.chmod(0o666)
                     cert_file.unlink()
                     results.append(f"Deleted {cert_file.name}")
-                    logger.info("Deleted client cert file: %s", cert_file)
+                    self.logger.info("Deleted client cert file: %s", cert_file)
                 except OSError as e:
                     results.append(f"Failed to delete {cert_file.name}: {e}")
-                    logger.warning("Failed to delete %s: %s", cert_file, e)
+                    self.logger.warning("Failed to delete %s: %s", cert_file, e)
 
         # 2. Remove mkcert root CA from OS trust store
         results.extend(self._remove_client_ca_from_trust_store())
@@ -3974,17 +3976,17 @@ pg_restore -l {backup_file.name} | head -20
 
                 if not remaining:
                     removed.append(f"Removed {len(thumbprints)} mkcert CA(s) from Windows cert store")
-                    logger.info("Removed %d mkcert CAs from LocalMachine\\Root", len(thumbprints))
+                    self.logger.info("Removed %d mkcert CAs from LocalMachine\\Root", len(thumbprints))
                 else:
                     removed.append(
                         f"WARNING: {len(remaining)} mkcert CA(s) still in store "
                         f"(UAC declined or removal failed)"
                     )
-                    logger.warning("mkcert CAs still present after removal attempt: %s", remaining)
+                    self.logger.warning("mkcert CAs still present after removal attempt: %s", remaining)
 
             except Exception as e:
                 removed.append(f"Windows cert store removal error: {e}")
-                logger.error("Windows cert store removal failed: %s", e)
+                self.logger.error("Windows cert store removal failed: %s", e)
 
         elif system == "Darwin":
             # macOS: cert was added via security add-trusted-cert to System keychain
