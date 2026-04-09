@@ -166,6 +166,7 @@ You are the GiljoAI agent template installer for Gemini CLI.
    { "experimental": { "enableAgents": true } }
    ```
    Merge with existing settings — do NOT overwrite MCP server configs or other settings.
+   IMPORTANT: Write UTF-8 without BOM. Do not use PowerShell Set-Content or Out-File.
    Show the diff before writing. This flag is required for custom agents to load.
 9. Instruct the user to restart Gemini CLI
 
@@ -483,6 +484,7 @@ Required fields per [agents.gil-{name}]:
 4. If [agents.{name}] exists for a NON-GiljoAI agent (no gil- prefix), DO NOT touch it
 5. Show the complete diff to the user before writing
 6. Create a timestamped backup of config.toml before writing
+7. Write UTF-8 without BOM — do not use PowerShell Set-Content or Out-File
 
 ### Verification After Install
 
@@ -595,6 +597,7 @@ default_mode_request_user_input = true
 If [features] already exists, merge — do NOT remove existing feature flags.
 If config.toml does not exist, create it with just the [features] section above.
 This flag enables structured menu prompts that GiljoAI skills rely on.
+IMPORTANT: Write UTF-8 without BOM. Do not use PowerShell Set-Content or Out-File.
 
 Adapt all commands for the OS you are running on.
 After installation, tell the user:
@@ -606,11 +609,32 @@ Restart Codex CLI, then run $gil-get-agents to install agent templates.
 Note: Download link expires in 15 minutes.
 """
 
+BOOTSTRAP_GENERIC = """Your CLI platform was not auto-detected. Visit your GiljoAI server's
+Settings → Integrations page to download generic agent templates and
+slash command reference files. Install them according to your tool's
+documentation.
+"""
+
+# =============================================================================
+# HELPERS
+# =============================================================================
+
+
+def _strip_yaml_frontmatter(content: str) -> str:
+    """Remove YAML frontmatter (between --- markers) from Markdown content."""
+    stripped = content.strip()
+    if stripped.startswith("---"):
+        end = stripped.find("---", 3)
+        if end != -1:
+            return stripped[end + 3:].strip()
+    return stripped
+
+
 # =============================================================================
 # TEMPLATE REGISTRY
 # =============================================================================
 
-_VALID_PLATFORMS = ("claude_code", "gemini_cli", "codex_cli")
+_VALID_PLATFORMS = ("claude_code", "gemini_cli", "codex_cli", "generic")
 
 
 def get_all_templates(platform: str = "claude_code") -> dict[str, str]:
@@ -639,6 +663,12 @@ def get_all_templates(platform: str = "claude_code") -> dict[str, str]:
         return {
             "gil_get_agents.toml": GIL_GET_AGENTS_GEMINI_TOML,
             "gil_add.toml": GIL_ADD_GEMINI_TOML,
+        }
+
+    if platform == "generic":
+        return {
+            "gil_get_agents_reference.md": _strip_yaml_frontmatter(GIL_GET_AGENTS_MD),
+            "gil_add_reference.md": _strip_yaml_frontmatter(GIL_ADD_MD),
         }
 
     # codex_cli
