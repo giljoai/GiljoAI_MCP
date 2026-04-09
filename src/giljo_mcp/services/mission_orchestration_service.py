@@ -442,6 +442,7 @@ class MissionOrchestrationService:
             tool=protocol_tool,
             auto_checkin_enabled=auto_checkin_enabled,
             auto_checkin_interval=auto_checkin_interval,
+            git_integration_enabled=git_integration_enabled,
         )
         response["orchestrator_protocol"] = orchestrator_protocol
 
