@@ -119,7 +119,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             f"script-src {script_src}; "
-            f"style-src 'self' 'unsafe-inline' {CSP_STYLE_HASH}; "
+            "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: https:; "
             "font-src 'self' data:; "
             "connect-src 'self' ws: wss:; "  # WebSocket connections
