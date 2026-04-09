@@ -64,13 +64,28 @@ def _build_setup_instructions(platform: str, download_url: str) -> str:
             "Step 2 — Enable custom agents:\n"
             "Read ~/.gemini/settings.json (create if it does not exist).\n"
             'Merge this JSON into it: {"experimental": {"enableAgents": true}}\n'
-            "Preserve all existing settings — do NOT overwrite the file.\n\n"
+            "Preserve all existing settings — do NOT overwrite the file.\n"
+            "IMPORTANT: Write UTF-8 without BOM. Do not use PowerShell Set-Content or Out-File.\n\n"
             "Adapt all commands for the OS you are running on.\n\n"
             "Step 3 — Tell the user:\n"
             "Two commands are now available:\n"
             "- /gil_get_agents — install/update GiljoAI agent templates\n"
             "- /gil_add — add tasks and projects from the CLI (try /gil_add --help)\n\n"
             "Restart Gemini CLI, then run /gil_get_agents to install agent templates.\n"
+            "Note: Download link expires in 15 minutes."
+        )
+    if platform == "generic":
+        return (
+            "Your platform was not identified. To install GiljoAI agent templates\n"
+            "and commands manually:\n\n"
+            f"Step 1 — Download: {download_url}\n"
+            "Step 2 — Extract the ZIP. It contains:\n"
+            "  - agents/ — Markdown files with agent role definitions and system prompts\n"
+            "  - commands/ — Reference documents describing available GiljoAI commands\n"
+            "Step 3 — Install these files according to your MCP client's documentation\n"
+            "  for custom agents and commands/skills.\n\n"
+            "For platform-specific setup, visit your GiljoAI server's web interface\n"
+            "at Settings → Integrations.\n"
             "Note: Download link expires in 15 minutes."
         )
     # codex_cli
@@ -87,7 +102,8 @@ def _build_setup_instructions(platform: str, download_url: str) -> str:
         "  multi_agent = true\n"
         "If [features] already exists, merge — do NOT remove existing flags.\n"
         "CRITICAL: Use a TOML parser to read-then-merge. Never overwrite config.toml.\n"
-        "Back up config.toml before writing.\n\n"
+        "Back up config.toml before writing.\n"
+        "IMPORTANT: Write UTF-8 without BOM. Do not use PowerShell Set-Content or Out-File.\n\n"
         "Adapt all commands for the OS you are running on.\n\n"
         "Step 3 — Tell the user:\n"
         "Two skills are now available:\n"
