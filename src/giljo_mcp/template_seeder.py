@@ -36,7 +36,6 @@ from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.template_manager import UnifiedTemplateManager
 
-
 logger = logging.getLogger(__name__)
 
 

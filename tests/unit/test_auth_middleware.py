@@ -110,7 +110,7 @@ class TestTokenExpiryHeader:
         response = Response(content="ok", status_code=200)
         call_next = AsyncMock(return_value=response)
 
-        result = await middleware.dispatch(request, call_next)
+        await middleware.dispatch(request, call_next)
 
         assert request.state.token_exp == future_exp
 

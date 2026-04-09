@@ -16,7 +16,6 @@ from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-
 # Set up logging early to catch import issues
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
@@ -25,7 +24,6 @@ logger = logging.getLogger(__name__)
 logger.info("Loading FastAPI application...")
 
 from dotenv import load_dotenv
-
 
 try:
     from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect

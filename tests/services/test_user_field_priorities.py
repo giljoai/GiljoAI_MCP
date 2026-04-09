@@ -27,7 +27,6 @@ from src.giljo_mcp.models.auth import User, UserFieldPriority
 from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.services.user_service import UserService
 
-
 # ============================================================================
 # FIXTURES
 # ============================================================================

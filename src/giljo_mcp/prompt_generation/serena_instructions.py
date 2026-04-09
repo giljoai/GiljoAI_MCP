@@ -12,7 +12,6 @@ Removed 6,000 token comprehensive guide for 99% token reduction.
 
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 

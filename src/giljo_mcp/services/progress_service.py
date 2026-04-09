@@ -38,7 +38,6 @@ from src.giljo_mcp.models import (
 from src.giljo_mcp.schemas.service_responses import ProgressResult
 from src.giljo_mcp.tenant import TenantManager
 
-
 if TYPE_CHECKING:
     from giljo_mcp.services.message_service import MessageService
 
@@ -358,7 +357,7 @@ class ProgressService:
             .where(
                 AgentExecution.job_id == job_id,
                 AgentExecution.tenant_key == tenant_key,
-                AgentExecution.status.not_in(["complete", "decommissioned"]),
+                AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
             )
             .order_by(AgentExecution.started_at.desc())
             .limit(1)

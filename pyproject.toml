@@ -91,14 +91,28 @@ exclude = [
     ".git", ".venv", ".mypy_cache", ".pytest_cache", ".ruff_cache",
     "__pycache__", "build", "dist", "node_modules", "migrations",
     "temp", "backups", "logs", "data", ".serena", ".giljo-config",
+    "dev_tools/",
 ]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "BLE", "PERF"]
-ignore = ["E501"]
+ignore = ["E501", "PERF203", "PERF401"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["BLE001"]
+"backup.py" = ["BLE001"]
+"uninstall.py" = ["BLE001"]
+"install.py" = ["BLE001", "E402"]
+"startup.py" = ["BLE001"]
+"startup_prod.py" = ["BLE001"]
+"reset.py" = ["BLE001"]
+"restart_services.py" = ["BLE001"]
+"launchers/**" = ["BLE001"]
+"scripts/**" = ["BLE001", "E402"]
+"installer/**" = ["BLE001"]
+"api/app.py" = ["BLE001", "E402"]
+"src/giljo_mcp/services/orchestration_service.py" = ["BLE001"]
+"tests/manual/**" = ["E402"]
 
 [tool.black]
 line-length = 120

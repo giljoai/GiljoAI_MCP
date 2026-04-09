@@ -27,7 +27,6 @@ from src.giljo_mcp.schemas.jsonb_validators import (
     validate_template_variables,
 )
 
-
 # ---------------------------------------------------------------------------
 # AgentJobMetadata — stale todo_steps removed
 # ---------------------------------------------------------------------------

@@ -19,7 +19,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 
-
 logger = logging.getLogger(__name__)
 
 

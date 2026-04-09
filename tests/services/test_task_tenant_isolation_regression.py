@@ -121,7 +121,7 @@ async def test_update_task_blocks_cross_tenant(db_session, two_tenant_tasks):
     tenant_a = two_tenant_tasks["tenant_a"]
     task_b = two_tenant_tasks["task_b"]
     service = two_tenant_tasks["service"]
-    tenant_manager = two_tenant_tasks["tenant_manager"]
+    two_tenant_tasks["tenant_manager"]
 
     # Set current tenant to A
     TenantManager.set_current_tenant(tenant_a)

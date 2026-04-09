@@ -5,5 +5,4 @@
 
 from .validator import LicenseResult, LicenseValidator
 
-
 __all__ = ["LicenseResult", "LicenseValidator"]

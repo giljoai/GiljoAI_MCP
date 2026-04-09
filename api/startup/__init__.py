@@ -28,7 +28,6 @@ from api.startup.shutdown import shutdown
 from api.startup.silence_detector import init_silence_detector
 from api.startup.validation import init_validation
 
-
 __all__ = [
     "init_background_tasks",
     "init_core_services",

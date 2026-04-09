@@ -38,7 +38,6 @@ from sqlalchemy import select
 
 from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Project
 
-
 # ============================================================================
 # Test Fixtures
 # ============================================================================
@@ -452,7 +451,7 @@ class TestUpdateMethodsDualModel:
 
         # Report progress (requires job_id and progress dict)
         # Note: In test environment, message queue may fail but progress fields still get updated
-        progress_result = await service.report_progress(
+        await service.report_progress(
             job_id=job_id,
             progress={"percent": 50, "message": "Implementing database schema"},
             tenant_key=test_tenant_key,

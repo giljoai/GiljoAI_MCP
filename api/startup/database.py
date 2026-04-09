@@ -17,7 +17,6 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.logging import ErrorCode, get_logger
 from src.giljo_mcp.system_prompts import SystemPromptService
 
-
 logger = get_logger(__name__)
 
 

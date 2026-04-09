@@ -474,7 +474,7 @@ class TestCleanupExpiredCodes:
             code_challenge=challenge,
         )
 
-        deleted_count = await oauth_service.cleanup_expired_codes()
+        await oauth_service.cleanup_expired_codes()
 
         result = await db_session.execute(
             select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code)

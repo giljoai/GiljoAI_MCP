@@ -14,7 +14,6 @@ from fastapi import APIRouter
 
 from . import routes
 
-
 router = APIRouter(prefix="/api/v1/project-types", tags=["project-types"])
 router.include_router(routes.router)
 

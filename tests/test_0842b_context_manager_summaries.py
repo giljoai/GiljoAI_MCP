@@ -20,7 +20,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Product, VisionDocument, VisionDocumentSummary
+from src.giljo_mcp.models import Product, VisionDocument
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document

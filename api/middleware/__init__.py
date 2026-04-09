@@ -27,7 +27,6 @@ from .metrics import APIMetricsMiddleware
 from .rate_limiter import EndpointRateLimiter, RateLimiter, RateLimitMiddleware
 from .security import SecurityHeadersMiddleware
 
-
 __all__ = [
     "APIMetricsMiddleware",
     "AuthMiddleware",

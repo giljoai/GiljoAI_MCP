@@ -33,7 +33,6 @@ from src.giljo_mcp.exceptions import (
 )
 from src.giljo_mcp.models.auth import User
 
-
 logger = logging.getLogger(__name__)
 
 

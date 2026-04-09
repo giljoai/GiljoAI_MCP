@@ -19,7 +19,6 @@ from src.giljo_mcp.auth import AuthManager
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
-
 logger = logging.getLogger(__name__)
 
 

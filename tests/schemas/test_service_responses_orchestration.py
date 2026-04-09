@@ -27,7 +27,6 @@ from src.giljo_mcp.schemas.service_responses import (
     TemplateListResult,
 )
 
-
 # ---------------------------------------------------------------------------
 # Orchestration Service Models
 # ---------------------------------------------------------------------------

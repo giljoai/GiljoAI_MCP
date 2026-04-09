@@ -9,13 +9,14 @@ Bind address derived from install-time network choice (localhost=127.0.0.1/HTTP,
 Authentication always enabled with IP-based auto-login for localhost
 """
 
+import logging
 import os
 import platform
-import yaml
-import logging
-from pathlib import Path
-from typing import Dict, Any, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+import yaml
 
 
 class ConfigManager:
@@ -177,7 +178,6 @@ class ConfigManager:
             frontend_port = self.settings.get("dashboard_port", 7274)
 
             # Bind address derived from install-time network choice (localhost=127.0.0.1/HTTP, LAN/WAN=0.0.0.0/HTTPS via mkcert)
-            bind_address = "0.0.0.0"
             api_url_host = "localhost"  # Default for frontend connections
             ssl_enabled = self.settings.get("ssl_enabled", False)
             http_proto = "https" if ssl_enabled else "http"
@@ -688,6 +688,7 @@ def seed_default_orchestrator_template(db_manager, tenant_key: str) -> Dict[str,
         Result dictionary with success status
     """
     from datetime import datetime, timezone
+
     from src.giljo_mcp.models import AgentTemplate
     from src.giljo_mcp.template_manager import UnifiedTemplateManager
 
@@ -709,7 +710,7 @@ def seed_default_orchestrator_template(db_manager, tenant_key: str) -> Dict[str,
                 .filter(
                     AgentTemplate.tenant_key == tenant_key,
                     AgentTemplate.role == "orchestrator",
-                    AgentTemplate.is_default == True,
+                    AgentTemplate.is_default == True,  # noqa: E712 — SQLAlchemy filter expression
                 )
                 .first()
             )

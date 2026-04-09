@@ -143,7 +143,7 @@ async def test_repository_respects_include_deleted_flag(db_session, test_tenant_
         summary="Entry 1",
     )
 
-    entry2 = await repo.create_entry(
+    await repo.create_entry(
         session=db_session,
         tenant_key=test_tenant_key,
         product_id=test_product.id,

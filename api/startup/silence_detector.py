@@ -15,7 +15,6 @@ import logging
 
 from api.app import APIState
 
-
 logger = logging.getLogger(__name__)
 
 

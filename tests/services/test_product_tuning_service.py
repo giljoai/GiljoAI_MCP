@@ -22,7 +22,6 @@ import pytest
 
 from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 
-
 # ============================================================================
 # TEST FIXTURES
 # ============================================================================
