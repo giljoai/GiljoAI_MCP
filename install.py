@@ -1172,81 +1172,46 @@ class UnifiedInstaller:
             ca_dir = ca_result.stdout.strip()
             ca_cert = str(Path(ca_dir) / "rootCA.pem") if ca_dir else "rootCA.pem"
 
-            print(f"\n{Back.RED}{Fore.WHITE}{Style.BRIGHT}{'=' * 60}{Style.RESET_ALL}")
-            print(f"{Back.RED}{Fore.WHITE}{Style.BRIGHT}  IMPORTANT: AI Tool Certificate Trust{Style.RESET_ALL}")
-            print(f"{Back.RED}{Fore.WHITE}{Style.BRIGHT}{'=' * 60}{Style.RESET_ALL}")
-            print(f"\n{Fore.RED}{Style.BRIGHT}  Node.js-based AI tools (Claude Code, Gemini CLI) need{Style.RESET_ALL}")
-            print(f"{Fore.RED}{Style.BRIGHT}  one extra step to trust your HTTPS certificate.{Style.RESET_ALL}")
-            print(f"{Fore.RED}{Style.BRIGHT}  Requires Node.js 20.12+ (run 'node --version' to check).{Style.RESET_ALL}\n")
+            # Automatically set NODE_OPTIONS for AI tools on this server
+            self._print_info("Configuring NODE_OPTIONS for AI tool certificate trust...")
+            try:
+                if current_os == "Windows":
+                    # Set for current process + persist for future sessions
+                    os.environ["NODE_OPTIONS"] = "--use-system-ca"
+                    subprocess.run(
+                        ["powershell", "-NoProfile", "-Command",
+                         "[System.Environment]::SetEnvironmentVariable('NODE_OPTIONS', '--use-system-ca', 'User')"],
+                        capture_output=True, timeout=10, check=True,
+                    )
+                elif current_os == "Darwin":
+                    os.environ["NODE_OPTIONS"] = "--use-system-ca"
+                    shell_rc = Path.home() / ".zshrc"
+                    marker = 'export NODE_OPTIONS="--use-system-ca"'
+                    if shell_rc.exists() and marker in shell_rc.read_text():
+                        pass  # Already set
+                    else:
+                        with open(shell_rc, "a") as f:
+                            f.write(f"\n# GiljoAI MCP: trust mkcert CA in Node.js\n{marker}\n")
+                else:  # Linux
+                    os.environ["NODE_OPTIONS"] = "--use-system-ca"
+                    shell_rc = Path.home() / ".bashrc"
+                    marker = 'export NODE_OPTIONS="--use-system-ca"'
+                    if shell_rc.exists() and marker in shell_rc.read_text():
+                        pass  # Already set
+                    else:
+                        with open(shell_rc, "a") as f:
+                            f.write(f"\n# GiljoAI MCP: trust mkcert CA in Node.js\n{marker}\n")
+                self._print_success("NODE_OPTIONS configured (AI tools will trust HTTPS certificates)")
+            except Exception as e:
+                self._print_warning(f"Could not auto-configure NODE_OPTIONS: {e}")
+                if current_os == "Windows":
+                    self._print_info('Manual fix: $env:NODE_OPTIONS = "--use-system-ca"')
+                else:
+                    self._print_info('Manual fix: echo \'export NODE_OPTIONS="--use-system-ca"\' >> ~/.bashrc')
 
-            if current_os == "Windows":
-                print(f"  {Fore.GREEN}Run in PowerShell (sets current + future sessions):{Style.RESET_ALL}")
-                print(f'  {Fore.CYAN}$env:NODE_OPTIONS = "--use-system-ca"; [System.Environment]::SetEnvironmentVariable(\'NODE_OPTIONS\', \'--use-system-ca\', \'User\'){Style.RESET_ALL}')
-            elif current_os == "Darwin":
-                print(f"  {Fore.GREEN}Run in your terminal:{Style.RESET_ALL}")
-                print(f"  {Fore.CYAN}echo 'export NODE_OPTIONS=\"--use-system-ca\"' >> ~/.zshrc && source ~/.zshrc{Style.RESET_ALL}")
-                print(f"\n  {Fore.WHITE}(Use ~/.bashrc instead if you use bash){Style.RESET_ALL}")
-            else:
-                print(f"  {Fore.GREEN}Run in your terminal:{Style.RESET_ALL}")
-                print(f"  {Fore.CYAN}echo 'export NODE_OPTIONS=\"--use-system-ca\"' >> ~/.bashrc && source ~/.bashrc{Style.RESET_ALL}")
-                print(f"\n  {Fore.WHITE}(Use ~/.zshrc if you use zsh, or ~/.config/fish/config.fish for fish){Style.RESET_ALL}")
-
-            print(f"\n  This tells Node.js to trust your OS certificate store,")
-            print(f"  where mkcert already installed its root CA.")
-            print(f"\n  This is a one-time setup on EACH machine connecting to this server.")
-            print(f"  New terminal windows will inherit the setting automatically.")
-            print(f"\n{Fore.YELLOW}{'=' * 60}{Style.RESET_ALL}")
-
-            print(
-                f"\n{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}",
-                end="",
-                flush=True,
-            )
-            input()
-
-            # Instructions for connecting from OTHER machines on the LAN
-            external_host = self.settings.get("external_host", "this server")
-            print(f"\n{Fore.CYAN}{'=' * 60}{Style.RESET_ALL}")
-            print(f"{Fore.CYAN}  Connect from Other Machines (Laptop, Workstation){Style.RESET_ALL}")
-            print(f"{Fore.CYAN}{'=' * 60}{Style.RESET_ALL}")
-            print(f"\n  This machine already trusts the certificate.")
-            print(f"  To connect from OTHER machines without browser warnings,")
-            print(f"  copy the root CA to each client and install it:\n")
-            print(f"  {Fore.WHITE}Root CA file:{Style.RESET_ALL}")
-            print(f"  {Fore.CYAN}{ca_cert}{Style.RESET_ALL}\n")
-
-            if current_os == "Windows":
-                print(f"  {Fore.GREEN}1. Save rootCA.pem to the client's Downloads folder{Style.RESET_ALL}")
-                print(f"\n  {Fore.GREEN}2. Install it into the OS trust store:{Style.RESET_ALL}")
-                print(f"  {Fore.WHITE}Windows:{Style.RESET_ALL}  certutil -addstore -f \"ROOT\" %USERPROFILE%\\Downloads\\rootCA.pem")
-                print(f"  {Fore.WHITE}macOS:{Style.RESET_ALL}    sudo security add-trusted-cert -d -r trustRoot \\")
-                print(f"              -k /Library/Keychains/System.keychain ~/Downloads/rootCA.pem")
-                print(f"  {Fore.WHITE}Linux:{Style.RESET_ALL}    sudo cp ~/Downloads/rootCA.pem /usr/local/share/ca-certificates/giljoai.crt \\")
-                print(f"              && sudo update-ca-certificates")
-            else:
-                print(f"  {Fore.GREEN}1. Save rootCA.pem to the client's Downloads folder{Style.RESET_ALL}")
-                print(f"\n  {Fore.GREEN}2. Install it into the OS trust store:{Style.RESET_ALL}")
-                print(f"  {Fore.WHITE}Windows:{Style.RESET_ALL}  certutil -addstore -f \"ROOT\" %USERPROFILE%\\Downloads\\rootCA.pem")
-                print(f"  {Fore.WHITE}macOS:{Style.RESET_ALL}    sudo security add-trusted-cert -d -r trustRoot \\")
-                print(f"              -k /Library/Keychains/System.keychain ~/Downloads/rootCA.pem")
-                print(f"  {Fore.WHITE}Linux:{Style.RESET_ALL}    sudo cp ~/Downloads/rootCA.pem /usr/local/share/ca-certificates/giljoai.crt \\")
-                print(f"              && sudo update-ca-certificates")
-
-            print(f"\n  {Fore.WHITE}Transfer methods: file share, USB, email, or scp.{Style.RESET_ALL}")
-            print(f"  The rootCA.pem is a public key — it's safe to transfer openly.")
-            print(f"\n  {Fore.YELLOW}Then on the client, also set NODE_OPTIONS for AI tools:{Style.RESET_ALL}")
-            print(f'  {Fore.CYAN}Windows:  $env:NODE_OPTIONS = "--use-system-ca"{Style.RESET_ALL}')
-            print(f'  {Fore.CYAN}Linux/Mac: export NODE_OPTIONS="--use-system-ca"{Style.RESET_ALL}')
-            print(f"\n  This is a one-time step per client machine.")
-            print(f"\n  You can also download it later from Admin Settings > Network.")
-            print(f"\n{Fore.CYAN}{'=' * 60}{Style.RESET_ALL}")
-
-            print(
-                f"\n{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}",
-                end="",
-                flush=True,
-            )
-            input()
+            # Client cert instructions are shown in the app UI when remote
+            # clients connect. No need to show them during install.
+            self._print_info("Other machines: open the app URL and follow the certificate trust guide.")
 
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError, OSError):
             pass
