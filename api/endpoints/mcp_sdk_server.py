@@ -15,7 +15,7 @@ Handover: 0846a (transport replacement), 0846b (security integration)
 
 import inspect
 import logging
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import HTTPException
 from mcp.server.fastmcp import Context, FastMCP
@@ -359,39 +359,17 @@ async def discovery(
     description=(
         "First-time setup: downloads slash commands and agent templates as a ZIP. "
         "Run once after connecting. Installs with default models. "
-        "To customize models later, run /gil_get_agents (or $gil-get-agents for Codex)."
+        "To customize models later, run /gil_get_agents (or $gil-get-agents for Codex). "
+        "IMPORTANT: You MUST pass the platform parameter identifying which CLI tool you are. "
+        "Use 'claude_code' for Claude Code, 'gemini_cli' for Gemini CLI, 'codex_cli' for Codex CLI."
     ),
 )
 async def giljo_setup(
-    platform: str = "auto",
+    platform: Literal["claude_code", "gemini_cli", "codex_cli"] = "claude_code",
     ctx: Context = None,
 ) -> dict:
     """Install slash commands and agent templates for your CLI tool."""
-    # Auto-detect platform from MCP client info (initialize handshake)
-    if platform == "auto":
-        client_name = ""
-        try:
-            # MCP SDK stores client identity from the initialize handshake on
-            # ctx.session.client_params. The clientInfo field may be camelCase
-            # (auto-generated types) or snake_case (Pydantic alias) depending
-            # on SDK version — try both.
-            client_params = getattr(ctx.session, "client_params", None)
-            client_info = (
-                getattr(client_params, "clientInfo", None)
-                or getattr(client_params, "client_info", None)
-            ) if client_params else None
-            client_name = (getattr(client_info, "name", "") or "").lower()
-            if "claude" in client_name:
-                platform = "claude_code"
-            elif "codex" in client_name:
-                platform = "codex_cli"
-            elif "gemini" in client_name:
-                platform = "gemini_cli"
-            else:
-                platform = "claude_code"
-        except (AttributeError, TypeError):
-            platform = "claude_code"
-        logger.info("giljo_setup auto-detected platform=%s (client_name=%r)", platform, client_name)
+    logger.info("giljo_setup called with platform=%s", platform)
 
     result = await _call_tool(ctx, "bootstrap_setup", {"platform": platform})
 
