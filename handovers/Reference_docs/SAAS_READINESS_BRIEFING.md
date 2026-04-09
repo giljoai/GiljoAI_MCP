@@ -350,6 +350,13 @@ These components are **already built** and reduce SaaS implementation effort:
 |------|--------------|-------------|----------|-------|
 | CSP style-src | `'unsafe-inline'` (required by Vuetify runtime styles) | Nonce-based CSP: server generates per-request nonce, Vuetify uses it | Medium | Every Vue/Vuetify app ships with unsafe-inline for styles. Nonce-based requires SSR integration. Not a launch blocker but should be addressed for enterprise customers. |
 | CSP script-src | Hash-locked (production grade) | Keep as-is | N/A | Already locked down. |
+| LicenseValidator | CE stub at `src/giljo_mcp/licensing/validator.py` (always passes) | SaaS override at `src/giljo_mcp/saas/licensing/validator.py` with Stripe integration, seat counting, license key validation. Conditional import in app.py Phase 0. | High | Architecture agreed: Option B (conditional import). CE stub stays, SaaS overrides. Deletion Test passes naturally. |
+| Database naming | Hardcoded `giljo_mcp` default, configurable via install prompt | Per-tenant databases or schema-per-tenant for SaaS multi-tenancy | High | install.py now asks DB name. Runtime reads from config.yaml. Foundation is there but SaaS needs tenant isolation at DB level. |
+| Vite chunk sizes | 3 chunks over 500KB (main.js 738KB, main.css 828KB) | Code-split with dynamic imports and manualChunks in rollup config | Low | Cosmetic build warning. App works. Optimize for faster page loads at scale. |
+| Network auth middleware | Static assets and setup routes now exempt from network auth | Review all public endpoints for SaaS. Add rate limiting per tenant. API key scoping per org. | High | Fixed for CE (2026-04-08). SaaS needs granular auth: org-scoped API keys, per-tenant rate limits, OAuth/SSO. |
+| GILJO_MODE env var | Not yet implemented | `demo` (read-only + seed data), `saas` (full commercial) | High | Architecture agreed. CE = default (no var). Demo and SaaS are deployment modes of the same codebase. |
+| CI/CD workflows | Excluded from CE export. None active. | GitHub Actions for: automated tests on PR, CE export on tag, SaaS deploy pipeline | Medium | `.github/workflows/` excluded from public. SaaS needs its own CI/CD. |
+| PAT token management | Embedded in git remote URLs on dev machines | Use GitHub App or deploy keys for CI/CD. Never embed PATs in scripts. | Medium | Export script extracts PAT from origin URL dynamically. Works but not scalable for team. |
 
 ---
 
