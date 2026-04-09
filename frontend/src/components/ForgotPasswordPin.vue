@@ -259,6 +259,7 @@ const success = ref('')
 const lockoutMessage = ref('')
 const attemptsRemaining = ref(null)
 const pinForm = ref(null)
+const resetPasswordForm = ref(null)
 // Validation rules
 const rules = {
   username: (value) => !!value || 'Username is required',
@@ -307,7 +308,8 @@ const isPasswordValid = computed(() => {
 
 // Methods
 function handlePinInput(value) {
-  pin.value = value.replace(/\D/g, '').slice(0, 4)
+  const str = String(value ?? '')
+  pin.value = str.replace(/\D/g, '').slice(0, 4)
 }
 
 function onlyNumbers(event) {
