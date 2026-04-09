@@ -20,7 +20,6 @@ from sqlalchemy.orm import Session
 
 from src.giljo_mcp.database import DatabaseManager
 
-
 T = TypeVar("T")
 
 

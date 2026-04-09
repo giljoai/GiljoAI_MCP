@@ -180,7 +180,7 @@ class TestRepositoryIntegration:
             mock_repo.get_next_sequence = AsyncMock(return_value=3)
             mock_repo.create_entry = AsyncMock(return_value=mock_memory_entry)
 
-            result = await close_project_and_update_memory(
+            await close_project_and_update_memory(
                 project_id=str(mock_project.id),
                 summary="Test summary",
                 key_outcomes=["Outcome 1", "Outcome 2"],
@@ -235,7 +235,7 @@ class TestRepositoryIntegration:
             mock_repo.get_next_sequence = AsyncMock(return_value=1)
             mock_repo.create_entry = AsyncMock(return_value=mock_memory_entry)
 
-            result = await close_project_and_update_memory(
+            await close_project_and_update_memory(
                 project_id=str(mock_project.id),
                 summary="Test summary",
                 key_outcomes=["Outcome 1"],
@@ -314,7 +314,7 @@ class TestRepositoryIntegration:
                 mock_repo.get_next_sequence = AsyncMock(return_value=1)
                 mock_repo.create_entry = AsyncMock(return_value=mock_memory_entry)
 
-                result = await close_project_and_update_memory(
+                await close_project_and_update_memory(
                     project_id=str(mock_project.id),
                     summary="Comprehensive test summary with details",
                     key_outcomes=["Outcome A", "Outcome B", "Outcome C"],
@@ -370,7 +370,7 @@ class TestRepositoryIntegration:
             mock_repo.get_next_sequence = AsyncMock(return_value=1)
             mock_repo.create_entry = AsyncMock(return_value=mock_memory_entry)
 
-            result = await close_project_and_update_memory(
+            await close_project_and_update_memory(
                 project_id=str(mock_project.id),
                 summary="Test summary",
                 key_outcomes=["Outcome 1"],

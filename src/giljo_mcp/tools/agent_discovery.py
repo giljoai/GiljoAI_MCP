@@ -28,7 +28,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.templates import AgentTemplate
 
-
 logger = logging.getLogger(__name__)
 
 # Constants for response formatting

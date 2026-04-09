@@ -35,7 +35,6 @@ from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================

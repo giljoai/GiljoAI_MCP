@@ -33,7 +33,6 @@ from src.giljo_mcp.services.product_service import ProductService
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
 
-
 # ============================================================================
 # Fix 4: ConsolidatedVisionService — Product query with tenant_key
 # ============================================================================

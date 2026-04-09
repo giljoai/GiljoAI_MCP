@@ -19,7 +19,6 @@ from typing import Any
 from api.event_bus import EventBus
 from api.events.schemas import EventFactory
 
-
 logger = logging.getLogger(__name__)
 
 

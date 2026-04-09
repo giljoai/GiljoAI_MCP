@@ -38,7 +38,7 @@ class GiljoProductionUninstaller:
             try:
                 with open(self.manifest_path) as f:
                     return json.load(f)
-            except:
+            except Exception:
                 return {}
         return {}
 
@@ -111,7 +111,7 @@ class GiljoProductionUninstaller:
                         if line.startswith("DB_PASSWORD="):
                             password = line.split("=", 1)[1].strip().strip("\"'")
                             break
-            except:
+            except Exception:
                 pass
 
         # Find psql executable

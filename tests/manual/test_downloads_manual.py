@@ -14,14 +14,12 @@ import asyncio
 import sys
 from pathlib import Path
 
-
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import os
 
 from dotenv import load_dotenv
-
 
 load_dotenv()
 
@@ -58,7 +56,7 @@ class DownloadsTester:
 
         # Get test user
         async with self.db.get_session_async() as session:
-            result = await session.execute(select(User).where(User.is_active == True).limit(1))
+            result = await session.execute(select(User).where(User.is_active == True).limit(1))  # noqa: E712 — SQLAlchemy filter
             self.test_user = result.scalar_one_or_none()
 
             if not self.test_user:
@@ -293,7 +291,7 @@ class DownloadsTester:
                     select(AgentTemplate)
                     .where(
                         AgentTemplate.tenant_key == self.test_user.tenant_key,
-                        AgentTemplate.is_active == True,
+                        AgentTemplate.is_active == True,  # noqa: E712 — SQLAlchemy filter
                     )
                     .order_by(AgentTemplate.name)
                 )

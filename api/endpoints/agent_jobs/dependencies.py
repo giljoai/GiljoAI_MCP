@@ -18,7 +18,6 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
-
 logger = logging.getLogger(__name__)
 
 

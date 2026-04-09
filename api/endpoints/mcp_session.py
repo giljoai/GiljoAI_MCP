@@ -33,7 +33,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.api_key_utils import verify_api_key
 from src.giljo_mcp.models import APIKey, MCPSession, User
 
-
 logger = logging.getLogger(__name__)
 
 

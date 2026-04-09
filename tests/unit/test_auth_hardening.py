@@ -23,7 +23,6 @@ import pytest
 
 from src.giljo_mcp.auth.jwt_manager import JWTManager
 
-
 # ---------------------------------------------------------------------------
 # 1. create_access_token requires tenant_key
 # ---------------------------------------------------------------------------

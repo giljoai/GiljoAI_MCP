@@ -15,11 +15,12 @@ Handover: 0846a (transport replacement), 0846b (security integration)
 
 import inspect
 import logging
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import HTTPException
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
+from pydantic import Field
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -240,15 +241,21 @@ async def get_orchestrator_instructions(
 
 
 @mcp.tool(
-    description="Send a message to one or more agents. Use to_agents=['all'] for broadcast.",
+    description=(
+        "Send a message to one or more agents. Use to_agents=['all'] for broadcast. "
+        "Set requires_action=true if the recipient must act (rework, review, respond). "
+        "Leave false for informational messages (status updates, completion notices). "
+        "Only action-required messages trigger reactivation of completed agents."
+    ),
 )
 async def send_message(
-    to_agents: list[str],
-    content: str,
+    to_agents: Annotated[list[str], Field(description="List of recipient agent_id UUIDs (from get_workflow_status). Use ['all'] for broadcast. NEVER use display names like 'orchestrator' — always UUIDs.")],
+    content: Annotated[str, Field(description="Message content. Prefix with BLOCKER:, PROGRESS:, COMPLETE:, READY:, or REQUEST_CONTEXT: to indicate intent.")],
     project_id: str,
-    from_agent: str,
-    message_type: str = "direct",
-    priority: str = "normal",
+    from_agent: Annotated[str, Field(description="Your agent_id UUID (the executor identity, not job_id).")],
+    message_type: Annotated[str, Field(description="Message type: 'direct' (to specific agents), 'broadcast' (to all), or 'system' (internal). Default: 'direct'.")] = "direct",
+    priority: Annotated[str, Field(description="Priority: 'low', 'normal', 'high', or 'critical'. Default: 'normal'.")] = "normal",
+    requires_action: Annotated[bool, Field(description="True if recipient must act (rework, review, respond). False for informational messages. Only action-required messages trigger reactivation of completed agents.")] = False,
     ctx: Context = None,
 ) -> dict:
     """Send a message to one or more agents."""
@@ -262,6 +269,7 @@ async def send_message(
             "from_agent": from_agent,
             "message_type": message_type,
             "priority": priority,
+            "requires_action": requires_action,
         },
     )
 
@@ -270,14 +278,14 @@ async def send_message(
     description=("Receive pending messages for current agent with optional filtering (Handover 0360)"),
 )
 async def receive_messages(
-    agent_id: str = "",
-    limit: int = 10,
-    exclude_self: bool = True,
-    exclude_progress: bool = True,
-    message_types: list[str] | None = None,
+    agent_id: Annotated[str, Field(description="Your agent_id UUID. Required to receive your messages.")] = "",
+    limit: Annotated[int, Field(description="Max messages to return. Default: 10.")] = 10,
+    exclude_self: Annotated[bool, Field(description="Exclude messages you sent yourself. Default: true.")] = True,
+    exclude_progress: Annotated[bool, Field(description="Exclude auto-generated progress messages. Default: true.")] = True,
+    message_types: Annotated[list[str] | None, Field(description="Filter by type: ['direct'], ['broadcast'], ['system']. Omit for all types.")] = None,
     ctx: Context = None,
 ) -> dict:
-    """Receive pending messages with optional filtering."""
+    """Receive pending messages with optional filtering. Auto-acknowledges and removes from queue."""
     kwargs: dict[str, Any] = {"limit": limit, "exclude_self": exclude_self, "exclude_progress": exclude_progress}
     if agent_id:
         kwargs["agent_id"] = agent_id
@@ -286,14 +294,20 @@ async def receive_messages(
     return await _call_tool(ctx, "receive_messages", kwargs)
 
 
-@mcp.tool(description="List messages with optional filters")
+@mcp.tool(
+    description=(
+        "List messages with optional filters (read-only, does NOT acknowledge). "
+        "Use receive_messages() instead for normal message processing — it auto-acknowledges. "
+        "This tool is for inspection only."
+    ),
+)
 async def list_messages(
-    agent_id: str = "",
-    status: str = "",
-    limit: int = 50,
+    agent_id: Annotated[str, Field(description="Filter by recipient agent_id UUID. Optional.")] = "",
+    status: Annotated[str, Field(description="Filter by status: 'pending', 'acknowledged', 'completed', 'failed'. Optional.")] = "",
+    limit: Annotated[int, Field(description="Max messages to return. Default: 50.")] = 50,
     ctx: Context = None,
 ) -> dict:
-    """List messages with optional filters."""
+    """List messages with optional filters (read-only)."""
     kwargs: dict[str, Any] = {}
     if agent_id:
         kwargs["agent_id"] = agent_id
@@ -310,14 +324,14 @@ async def list_messages(
 
 
 @mcp.tool(
-    description="Create a new task bound to the active product. Requires an active product to be set.",
+    description="Create a new task (technical debt/TODO) bound to the active product. Requires an active product to be set.",
 )
 async def create_task(
-    title: str,
-    description: str,
-    priority: str = "medium",
-    category: str = "",
-    assigned_to: str = "",
+    title: Annotated[str, Field(description="Task title (required). Short, actionable description.")],
+    description: Annotated[str, Field(description="Detailed task description (required).")],
+    priority: Annotated[str, Field(description="Priority: 'low', 'medium', 'high', or 'critical'. Default: 'medium'.")] = "medium",
+    category: Annotated[str, Field(description="Optional category label for grouping.")] = "",
+    assigned_to: Annotated[str, Field(description="Optional assignee name.")] = "",
     ctx: Context = None,
 ) -> dict:
     """Create a new task bound to the active product."""
@@ -460,9 +474,14 @@ async def get_agent_templates_for_export(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool(description="Get pending jobs for agent type with multi-tenant isolation")
+@mcp.tool(
+    description=(
+        "Get pending jobs (status='waiting') for a specific agent type. "
+        "Used by agents to find work assigned to their role."
+    ),
+)
 async def get_pending_jobs(
-    agent_display_name: str,
+    agent_display_name: Annotated[str, Field(description="Agent role to query, e.g. 'implementer', 'tester', 'analyzer'. Matches against job's agent_display_name.")],
     ctx: Context = None,
 ) -> dict:
     """Get pending jobs for agent type."""
@@ -471,14 +490,15 @@ async def get_pending_jobs(
 
 @mcp.tool(
     description=(
-        "Report incremental progress. Simplified: just send todo_items array. "
-        "Backend calculates percent/steps automatically."
+        "Report incremental progress with TODO items. Backend auto-calculates "
+        "percent and step counts. Also auto-wakes idle/sleeping/blocked agents "
+        "back to 'working' status."
     ),
 )
 async def report_progress(
     job_id: str,
-    todo_items: list[dict] | None = None,
-    todo_append: list[dict] | None = None,
+    todo_items: Annotated[list[dict] | None, Field(description="FULL TODO list (replaces existing). Each item: {content: str, status: 'pending'|'in_progress'|'completed'}. Include ALL items — completed + in_progress + pending. Never a partial list.")] = None,
+    todo_append: Annotated[list[dict] | None, Field(description="NEW items to append (does not replace). Same format as todo_items. Use this to add tasks discovered during work without overwriting existing list.")] = None,
     ctx: Context = None,
 ) -> dict:
     """Report incremental progress."""
@@ -490,14 +510,37 @@ async def report_progress(
     return await _call_tool(ctx, "report_progress", kwargs)
 
 
-@mcp.tool(description="Mark job as completed with results")
+@mcp.tool(
+    description=(
+        "Mark job as completed with results. Called by: ANY AGENT when all assigned "
+        "work is done. System will REJECT if unread messages remain or TODOs are incomplete. "
+        "Check receive_messages() and verify all TODOs are completed before calling."
+    ),
+)
 async def complete_job(
     job_id: str,
-    result: dict,
+    result: Annotated[dict, Field(description="Completion result dict. Expected keys: 'summary' (str, what was accomplished), 'files_changed' (list[str], optional), 'decisions_made' (list[str], optional).")],
     ctx: Context = None,
 ) -> dict:
     """Mark job as completed with results."""
     return await _call_tool(ctx, "complete_job", {"job_id": job_id, "result": result})
+
+
+@mcp.tool(
+    description=(
+        "Mark a completed agent job as closed (final acceptance). "
+        "Called by: ORCHESTRATOR ONLY after verifying deliverables. "
+        "Transition: complete → closed. Closed jobs will not be "
+        "auto-reactivated on new messages. Use 'decommissioned' only "
+        "for failed/replaced/abandoned agents."
+    ),
+)
+async def close_job(
+    job_id: str,
+    ctx: Context = None,
+) -> dict:
+    """Accept completed work and close the job permanently."""
+    return await _call_tool(ctx, "close_job", {"job_id": job_id})
 
 
 @mcp.tool(
@@ -541,18 +584,20 @@ async def dismiss_reactivation(
 
 @mcp.tool(
     description=(
-        "Set agent status — blocked (need help), idle (monitoring agents), "
-        "or sleeping (periodic check-in). Replaces report_error."
+        "Set agent resting or blocked status. Valid statuses: 'blocked' (need human help, "
+        "shows 'Needs Input'), 'idle' (monitoring, shows 'Monitoring'), 'sleeping' "
+        "(periodic auto-check, shows 'Sleeping'). All three auto-wake back to 'working' "
+        "when report_progress() is called."
     ),
 )
 async def set_agent_status(
     job_id: str,
-    status: str,
-    reason: str = "",
-    wake_in_minutes: int | None = None,
+    status: Annotated[str, Field(description="Target status: 'blocked', 'idle', or 'sleeping'. Other statuses are not valid here.")],
+    reason: Annotated[str, Field(description="Human-readable reason. REQUIRED for 'blocked' status. Displayed on dashboard.")] = "",
+    wake_in_minutes: Annotated[int | None, Field(description="Sleep interval hint for 'sleeping' status. Agent will auto-check-in after this many minutes.")] = None,
     ctx: Context = None,
 ) -> dict:
-    """Set agent resting/blocked status. Handover 0880: expanded from report_error."""
+    """Set agent resting/blocked status."""
     return await _call_tool(
         ctx,
         "set_agent_status",
@@ -570,6 +615,9 @@ async def set_agent_status(
 # ---------------------------------------------------------------------------
 
 
+_PLACEHOLDER_JOB_IDS = {"unknown", "none", "null", "", "undefined", "placeholder"}
+
+
 @mcp.tool(
     description=(
         "Fetch agent-specific mission and context. Called by: ANY AGENT immediately after "
@@ -583,6 +631,18 @@ async def get_agent_mission(
     ctx: Context = None,
 ) -> dict:
     """Fetch agent-specific mission and context."""
+    if job_id.strip().lower() in _PLACEHOLDER_JOB_IDS:
+        return {
+            "error": "no_job_context",
+            "message": (
+                "This agent was launched without orchestration context. "
+                "To use GiljoAI orchestration, the orchestrator must call "
+                "spawn_agent_job() first, then pass the returned thin prompt "
+                "(which contains the real job_id) to this agent. "
+                "Without a valid job_id, you can still operate using your "
+                "role instructions — just skip the GiljoAI protocol steps."
+            ),
+        }
     return await _call_tool(ctx, "get_agent_mission", {"job_id": job_id})
 
 
@@ -596,12 +656,12 @@ async def get_agent_mission(
     ),
 )
 async def spawn_agent_job(
-    agent_display_name: str,
-    agent_name: str,
-    mission: str,
+    agent_display_name: Annotated[str, Field(description="Agent role label for UI display, e.g. 'implementer', 'tester', 'analyzer'.")],
+    agent_name: Annotated[str, Field(description="Agent template name from agent_templates list, e.g. 'tdd-implementor', 'code-reviewer'.")],
+    mission: Annotated[str, Field(description="The specific work assignment for this agent. Be detailed — this becomes the agent's full mission.")],
     project_id: str,
-    phase: int | None = None,
-    predecessor_job_id: str = "",
+    phase: Annotated[int | None, Field(description="Execution phase number (1, 2, 3...). Phase 1 runs first, phase 2 after phase 1 completes. Must be an integer.")] = None,
+    predecessor_job_id: Annotated[str, Field(description="Job ID of predecessor agent whose work this agent continues. Agent can call get_agent_result(predecessor_job_id) to read prior work.")] = "",
     ctx: Context = None,
 ) -> dict:
     """Create specialist agent job for execution."""
@@ -636,7 +696,7 @@ async def get_agent_result(
 @mcp.tool(
     description=(
         "Monitor workflow progress across all project agents. Returns active/completed/"
-        "blocked/silent/decommissioned/pending agent counts and progress_percent (0-100). "
+        "blocked/closed/silent/decommissioned/pending agent counts and progress_percent (0-100). "
         "Use exclude_job_id to omit the calling orchestrator's own job from counts."
     ),
 )
@@ -669,13 +729,15 @@ async def get_workflow_status(
 async def fetch_context(
     product_id: str,
     project_id: str = "",
-    agent_name: str = "",
-    categories: list[str] | None = None,
-    depth_config: dict | None = None,
-    output_format: str = "structured",
+    agent_name: Annotated[str, Field(description="Agent template name (e.g. 'tdd-implementor') for self_identity category. Optional.")] = "",
+    categories: Annotated[list[str] | None, Field(description="List of categories to fetch: 'product_core', 'vision_documents', 'tech_stack', 'architecture', 'testing', 'memory_360', 'git_history', 'agent_templates', 'project', 'self_identity'. Must be a list, e.g. ['tech_stack', 'architecture']. Pass null/omit for all.")] = None,
+    depth_config: Annotated[dict | None, Field(description="Optional depth overrides per category, e.g. {'vision_documents': 'full', 'git_history': 'summary'}.")] = None,
+    output_format: Annotated[str, Field(description="Output format: 'structured' (default) or 'flat'.")] = "structured",
     ctx: Context = None,
 ) -> dict:
     """Unified context fetcher by category with depth control."""
+    if isinstance(categories, str):
+        categories = [categories]
     kwargs: dict[str, Any] = {"product_id": product_id, "output_format": output_format}
     if project_id:
         kwargs["project_id"] = project_id
@@ -693,7 +755,7 @@ async def fetch_context(
         "Close project and update 360 Memory with sequential history entry. "
         "Called by: ORCHESTRATOR at project completion. Triggers WebSocket "
         "'product_memory_updated' event for UI updates. "
-        "All agents MUST be in 'complete' or 'decommissioned' status before calling. "
+        "All agents MUST be in 'complete', 'closed', or 'decommissioned' status before calling. "
         "If blocked, resolve each agent via report_progress + complete_job first. "
         "IMPORTANT: Before calling, run `git log --oneline` for the project branch "
         "and pass the commits as git_commits. Each entry needs: sha, message, author. "
@@ -702,10 +764,10 @@ async def fetch_context(
 )
 async def close_project_and_update_memory(
     project_id: str,
-    summary: str,
-    key_outcomes: list[str],
-    decisions_made: list[str],
-    git_commits: list[dict] = None,
+    summary: Annotated[str, Field(description="Brief summary of project outcome.")],
+    key_outcomes: Annotated[list[str], Field(description="List of key achievements (max 20).")],
+    decisions_made: Annotated[list[str], Field(description="List of key decisions with rationale (max 20).")],
+    git_commits: Annotated[list[dict] | None, Field(description="Git commits from project branch. Each: {sha: str, message: str, author: str}. Run 'git log --oneline' first.")] = None,
     ctx: Context = None,
 ) -> dict:
     """Close project and update 360 Memory."""
@@ -733,12 +795,12 @@ async def close_project_and_update_memory(
 )
 async def write_360_memory(
     project_id: str,
-    summary: str,
-    key_outcomes: list[str],
-    decisions_made: list[str],
-    entry_type: str = "project_completion",
-    author_job_id: str = "",
-    git_commits: list[dict] = None,
+    summary: Annotated[str, Field(description="Brief summary of what was accomplished or handed over.")],
+    key_outcomes: Annotated[list[str], Field(description="List of key outcomes/achievements (max 20).")],
+    decisions_made: Annotated[list[str], Field(description="List of key decisions with rationale (max 20).")],
+    entry_type: Annotated[str, Field(description="Entry type: 'project_completion' (orchestrator closeout), 'handover_closeout' (agent context exhaustion handover), or 'session_handover' (session continuation).")] = "project_completion",
+    author_job_id: Annotated[str, Field(description="Job ID of the authoring agent (usually the orchestrator's job_id).")] = "",
+    git_commits: Annotated[list[dict] | None, Field(description="Git commits from project branch. Each entry: {sha: str, message: str, author: str}. Optional: date (ISO 8601), files_changed (int), lines_added (int).")] = None,
     ctx: Context = None,
 ) -> dict:
     """Write 360 memory entry for project completion/handover."""

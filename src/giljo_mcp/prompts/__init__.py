@@ -17,7 +17,6 @@ from giljo_mcp.prompts.multi_terminal_prompt_builder import MultiTerminalPromptB
 from giljo_mcp.prompts.staging_prompt_builder import StagingPromptBuilder
 from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
-
 __all__ = [
     "ClaudePromptBuilder",
     "CodexPromptBuilder",

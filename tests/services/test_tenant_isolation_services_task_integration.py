@@ -25,7 +25,6 @@ import pytest
 
 from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 
-
 # ============================================================================
 # TASK_SERVICE.PY TESTS (Line 117)
 # ============================================================================

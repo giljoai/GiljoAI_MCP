@@ -17,9 +17,6 @@ import sys
 import types
 import uuid
 
-import pytest
-
-
 # Stub the api package before importing its submodules so that api/__init__.py
 # (which triggers create_app and requires the 'mcp' package) is never executed.
 if "api" not in sys.modules:

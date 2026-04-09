@@ -409,6 +409,7 @@ def upgrade() -> None:
     sa.Column("from_agent_id", sa.String(length=36), nullable=True),
     sa.Column("from_display_name", sa.String(length=255), nullable=True),
     sa.Column("auto_generated", sa.Boolean(), server_default=sa.text("false"), nullable=False),
+    sa.Column("requires_action", sa.Boolean(), server_default=sa.text("false"), nullable=False, comment="True if recipient must take action. False for informational messages."),
     sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
     sa.PrimaryKeyConstraint("id")
     )
@@ -704,7 +705,7 @@ def upgrade() -> None:
     sa.Column("accumulated_duration_seconds", sa.Float(), nullable=False, server_default="0.0", comment="Total working time across reactivation cycles (seconds)"),
     sa.Column("reactivation_count", sa.Integer(), nullable=False, server_default="0", comment="Number of times this agent has been reactivated after completion"),
     sa.Column("agent_name", sa.String(length=255), nullable=True, comment="Human-readable display name for UI"),
-    sa.CheckConstraint("status IN ('waiting', 'working', 'blocked', 'complete', 'silent', 'decommissioned', 'idle', 'sleeping')", name="ck_agent_execution_status"),
+    sa.CheckConstraint("status IN ('waiting', 'working', 'blocked', 'complete', 'closed', 'silent', 'decommissioned', 'idle', 'sleeping')", name="ck_agent_execution_status"),
     sa.CheckConstraint("progress >= 0 AND progress <= 100", name="ck_agent_execution_progress_range"),
     sa.CheckConstraint("tool_type IN ('claude-code', 'codex', 'gemini', 'universal')", name="ck_agent_execution_tool_type"),
     sa.CheckConstraint("health_status IN ('unknown', 'healthy', 'warning', 'critical', 'timeout')", name="ck_agent_execution_health_status"),

@@ -10,10 +10,9 @@ This module provides network interface and IP address discovery across platforms
 with graceful fallback when optional dependencies (like psutil) are unavailable.
 """
 
-import socket
 import logging
-from typing import List, Optional, Any
-
+import socket
+from typing import Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ def get_network_ips(platform_handler: Optional[Any] = None) -> List[str]:
         logger.debug("Using psutil for network IP detection")
         addresses = psutil.net_if_addrs()
 
-        for interface_name, interface_addresses in addresses.items():
+        for interface_addresses in addresses.values():
             for address in interface_addresses:
                 # Filter for IPv4 (AF_INET) only
                 if address.family == socket.AF_INET:

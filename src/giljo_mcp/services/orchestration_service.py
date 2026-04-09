@@ -31,6 +31,7 @@ from src.giljo_mcp.models import (
     AgentJob,
     AgentTodoItem,
     Message,
+    ProductMemoryEntry,
     Project,
 )
 from src.giljo_mcp.models.tasks import MessageRecipient
@@ -523,7 +524,7 @@ class OrchestrationService:
                     .where(
                         AgentExecution.job_id == job_id,
                         AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "decommissioned"]),
+                        AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
                     )
                     .order_by(AgentExecution.started_at.desc())
                     .limit(1)
@@ -555,6 +556,16 @@ class OrchestrationService:
                         tenant_key=tenant_key,
                         warnings=warnings,
                     )
+
+                    # Handover 0435d: Soft 360 memory check (warn, don't block)
+                    if job and getattr(job, "job_type", "") == "orchestrator":
+                        has_memory = await self._check_360_memory_written(session, job, tenant_key)
+                        if not has_memory:
+                            warnings.append(
+                                "360 memory has not been written for this project. "
+                                "Run write_360_memory() to record project learnings. "
+                                "The job has been completed, but the closeout is incomplete."
+                            )
 
                     await session.commit()
                 else:
@@ -610,6 +621,35 @@ class OrchestrationService:
                 message=f"Job {job_id} not found", context={"job_id": job_id, "method": "complete_job"}
             )
         return job
+
+    async def _check_360_memory_written(
+        self, session: AsyncSession, job: "AgentJob", tenant_key: str
+    ) -> bool:
+        """Check if a 360 memory entry exists for the project (Handover 0435d).
+
+        Soft prerequisite — returns False if missing, caller decides whether to warn or block.
+        """
+        if not job.project_id:
+            return True  # No project context, skip check
+
+        project_res = await session.execute(
+            select(Project).where(Project.id == job.project_id, Project.tenant_key == tenant_key)
+        )
+        project = project_res.scalar_one_or_none()
+        if not project or not project.product_id:
+            return True  # No product context, skip check
+
+        stmt = (
+            select(ProductMemoryEntry)
+            .where(
+                ProductMemoryEntry.product_id == project.product_id,
+                ProductMemoryEntry.tenant_key == tenant_key,
+                ProductMemoryEntry.entry_type == "project_completion",
+            )
+            .limit(1)
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none() is not None
 
     async def _validate_completion_requirements(
         self,
@@ -720,7 +760,7 @@ class OrchestrationService:
             AgentExecution.job_id == job_id,
             AgentExecution.tenant_key == tenant_key,
             AgentExecution.agent_id != execution.agent_id,
-            AgentExecution.status.not_in(["complete", "decommissioned"]),
+            AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
         )
         other_active_res = await session.execute(other_active_stmt)
         other_active = other_active_res.scalar_one_or_none()
@@ -812,6 +852,10 @@ class OrchestrationService:
             if execution and execution.result:
                 return execution.result
             return None
+
+    async def close_job(self, job_id, tenant_key=None):
+        """Facade: delegates to OrchestrationAgentStateService. Handover 0435b."""
+        return await self._agent_state.close_job(job_id, tenant_key)
 
     async def reactivate_job(self, job_id, tenant_key=None, reason="") -> ReactivationResult:
         """Facade: delegates to OrchestrationAgentStateService."""

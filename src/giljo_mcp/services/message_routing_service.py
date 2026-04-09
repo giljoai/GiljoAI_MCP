@@ -114,6 +114,7 @@ class MessageRoutingService:
         priority: str = "normal",
         from_agent: Optional[str] = None,
         tenant_key: Optional[str] = None,
+        requires_action: bool = False,
     ) -> SendMessageResult:
         """
         Send a message to one or more agents.
@@ -160,6 +161,7 @@ class MessageRoutingService:
                     priority,
                     from_agent,
                     sender_display_name,
+                    requires_action,
                 )
 
                 self._logger.info(
@@ -176,12 +178,14 @@ class MessageRoutingService:
                 )
 
                 # Handover 0827b: Auto-block completed agents that receive direct messages
+                # Handover 0435d: Only auto-block if requires_action=True
                 await self._auto_block_completed_recipients(
                     session,
                     resolved_to_agents,
                     project,
                     sender_display_name,
                     is_broadcast_fanout,
+                    requires_action,
                 )
 
                 await self._broadcast_message_events(
@@ -356,6 +360,7 @@ class MessageRoutingService:
         priority: str,
         from_agent: Optional[str],
         sender_display_name: str,
+        requires_action: bool = False,
     ) -> tuple[list[Message], str | None]:
         """Create Message + MessageRecipient rows for each recipient. Returns (messages, first_message_id)."""
         messages: list[Message] = []
@@ -370,6 +375,7 @@ class MessageRoutingService:
                     status="pending",
                     from_agent_id=from_agent or "orchestrator",
                     from_display_name=sender_display_name,
+                    requires_action=requires_action,
                 )
                 session.add(message)
                 await session.flush()
@@ -538,13 +544,20 @@ class MessageRoutingService:
         project: Any,
         sender_display_name: str,
         is_broadcast_fanout: bool,
+        requires_action: bool = False,
     ) -> list[str]:
         """Auto-block completed agents that receive a direct message (Handover 0827b).
+
+        Handover 0435d: Only auto-block if requires_action=True. Informational
+        messages (requires_action=False) no longer trigger reactivation.
 
         Returns:
             List of agent_ids that were auto-blocked.
         """
         if is_broadcast_fanout:
+            return []
+
+        if not requires_action:
             return []
 
         if project.status in ("completed", "cancelled"):
@@ -563,6 +576,7 @@ class MessageRoutingService:
             )
             recipient_execution = exec_result.scalar_one_or_none()
 
+            # Handover 0435b: skip 'closed' agents — they are terminal, no auto-block
             if recipient_execution and recipient_execution.status == "complete":
                 old_status = recipient_execution.status
                 recipient_execution.status = "blocked"

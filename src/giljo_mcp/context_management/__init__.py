@@ -13,7 +13,6 @@ via tenant_key.
 
 from .chunker import VisionDocumentChunker
 
-
 __all__ = [
     "VisionDocumentChunker",
 ]

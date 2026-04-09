@@ -27,7 +27,6 @@ from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from .dependencies import get_orchestration_service
 from .models import JobListResponse, JobMissionResponse, JobResponse, PendingJobsResponse, TodoItemResponse
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

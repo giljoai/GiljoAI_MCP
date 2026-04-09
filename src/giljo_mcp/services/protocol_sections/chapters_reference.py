@@ -221,6 +221,9 @@ idle     ─[report_progress()/any active MCP]─→ working (auto-wake)
 sleeping ─[report_progress()/any active MCP]─→ working (auto-wake)
 blocked  ─[report_progress()]────────────────→ working (auto-wake)
 blocked  ─[complete_job()]───────────────────→ complete
+complete ─[message received]────────────────→ blocked  (auto, Handover 0827b)
+blocked  ─[reactivate_job()]───────────────→ working  (resume path)
+blocked  ─[dismiss_reactivation()]──────────→ complete (informational msg)
 
 Note: Use set_agent_status(status="blocked", reason="BLOCKED: <reason>")
 when asking for clarification vs actual errors.
@@ -240,6 +243,32 @@ ERROR SEVERITY LEVELS:
 - MEDIUM: Mission size warnings → Continue but log warning
 - LOW: Context optimization suggestions → Continue normally
 """
+
+
+_REACTIVATION_SPAWN_BLOCKS: dict[str, str] = {
+    "codex": """Reactivation Spawn — Codex CLI:
+  spawn_agent(agent='gil-{role}', instructions='You are resuming a reactivated Giljo job. Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}") immediately to load your mission and prior context.')
+  Do NOT call spawn_agent_job again — the job already exists.""",
+    "gemini": """Reactivation Spawn — Gemini CLI:
+  @{role} You are resuming a reactivated Giljo job. Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}") immediately to load your mission and prior context.
+  Do NOT call spawn_agent_job again — the job already exists.""",
+    "multi_terminal": """Reactivation Spawn — Multi-Terminal:
+  Tell the user: "Open a new terminal and paste this prompt for the {role} agent"
+  Include in the prompt: "You are resuming job_id={job_id}. Call get_agent_mission(job_id='{job_id}') to load your full context."
+  Do NOT call spawn_agent_job again — the job already exists.""",
+    "claude-code": """Reactivation Spawn — Claude Code:
+  Task(subagent_type='{agent_name}', instructions='You are resuming a reactivated Giljo job. Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}") immediately to load your mission and prior context.')
+  Do NOT call spawn_agent_job again — the job already exists.""",
+}
+
+
+def _build_reactivation_spawn_block(tool: str) -> str:
+    """Build platform-specific reactivation spawn instructions (Handover 0435c).
+
+    Args:
+        tool: Platform identifier — 'claude-code', 'codex', 'gemini', or 'multi_terminal'.
+    """
+    return _REACTIVATION_SPAWN_BLOCKS.get(tool, _REACTIVATION_SPAWN_BLOCKS["claude-code"])
 
 
 def _build_ch5_reference(project_id: str, orchestrator_id: str, tool: str = "claude-code", git_integration_enabled: bool = False) -> str:
@@ -343,6 +372,58 @@ User chooses:
   - "Close Out Project" → Marks project as completed
 
 Orchestrator waits for user decision (no further action)
+
+────────────────────────────────────────────────────────────────────────────
+
+AGENT REACTIVATION PROTOCOL (Handover 0435c):
+
+When a downstream agent reports an issue requiring rework from an already-completed
+upstream agent, follow this sequence:
+
+── STEP 1: Send a direct message to the completed agent ────────────────────
+Call: send_message(to_agents=["<completed-agent-id>"], content="REWORK_REQUIRED: <specific issue>",
+      from_agent="{orchestrator_id}", project_id="{project_id}", message_type="direct")
+This auto-blocks the completed agent (server-side, Handover 0827b).
+
+── STEP 2: Reactivate the job ─────────────────────────────────────────────
+Call: reactivate_job(job_id="<completed-agent-job-id>")
+Transitions the agent from blocked→working and increments reactivation_count.
+
+── STEP 3: Launch a fresh local agent for the same role ───────────────────
+The original terminal/subagent may be gone — that is expected.
+{_build_reactivation_spawn_block(tool)}
+
+── STEP 4: Fresh agent resumes from server state ──────────────────────────
+The fresh agent calls get_agent_mission(job_id="...") and receives the full
+durable state: mission, history, todos, results, outstanding messages.
+It continues work from where the original left off.
+
+Key principle: Local subagent processes are disposable. Giljo jobs are durable.
+Reactivation targets the job_id, not the terminal session.
+
+WHEN NOT TO REACTIVATE:
+- Completed agent's work is fine and the issue is in a different agent → fix there
+- Post-completion message is purely informational (no action needed)
+  → call dismiss_reactivation(job_id="...") to return agent to 'complete'
+- Agent was decommissioned (failed/replaced) → spawn a new job instead
+
+HANDLING POST-COMPLETION MESSAGES:
+
+When a completed agent receives a message and gets auto-blocked:
+1. Check receive_messages() for that agent's pending messages
+2. Read the message content
+3. If informational (another agent sharing results, no action needed):
+   → Call dismiss_reactivation(job_id="...") — agent returns to 'complete'
+4. If it requires rework:
+   → Follow the Reactivation Protocol above (Steps 1-4)
+
+CLOSING JOBS (FINAL ACCEPTANCE):
+
+After verifying all deliverables from a completed agent:
+- Call close_job(job_id=...) for each agent whose work is accepted
+- Agents marked 'closed' will not be auto-reactivated on new messages
+- Use 'decommissioned' only for failed/replaced/abandoned agents
+- Lifecycle: working → complete (agent self-reports) → closed (orchestrator accepts)
 
 ────────────────────────────────────────────────────────────────────────────
 

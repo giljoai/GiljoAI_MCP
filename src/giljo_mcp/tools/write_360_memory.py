@@ -48,7 +48,8 @@ from src.giljo_mcp.tools._memory_helpers import (
 logger = logging.getLogger(__name__)
 
 # Statuses to skip during verification (they don't block closeout)
-SKIP_STATUSES = {"decommissioned"}
+# Handover 0435b: 'closed' agents are already final-accepted
+SKIP_STATUSES = {"decommissioned", "closed"}
 
 
 async def _resolve_project_and_product(
@@ -446,6 +447,10 @@ async def write_360_memory(
             extra={"project_id": project_id},
         )
         decisions_made = decisions_made[:MAX_DECISIONS_MADE]
+
+    # Normalize common aliases to canonical values
+    entry_type_aliases = {"project_closeout": "project_completion"}
+    entry_type = entry_type_aliases.get(entry_type, entry_type)
 
     # Validate entry_type
     valid_entry_types = {"project_completion", "handover_closeout", "session_handover"}

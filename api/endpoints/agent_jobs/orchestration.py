@@ -36,7 +36,6 @@ from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from .dependencies import get_orchestration_service
 from .models import WorkflowStatusResponse
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
