@@ -37,85 +37,65 @@ from src.giljo_mcp.tenant import TenantManager
 logger = logging.getLogger(__name__)
 
 
-def _build_setup_instructions(platform: str, download_url: str) -> dict[str, Any]:
-    """Build platform-specific extract and config edit instructions for giljo_setup."""
+def _build_setup_instructions(platform: str, download_url: str) -> str:
+    """Build a natural-language prompt the LLM will execute to install GiljoAI CLI integration."""
     if platform == "claude_code":
-        return {
-            "download": f"Download the ZIP: curl -o giljo_setup.zip '{download_url}'",
-            "extract_path": "~/.claude/",
-            "extract_command": "unzip -o giljo_setup.zip -d ~/.claude/",
-            "config_edits": [],
-            "cleanup": "rm giljo_setup.zip",
-            "post_install": "Restart your CLI tool to activate slash commands and agent templates.",
-        }
+        return (
+            "Install the GiljoAI CLI integration. This is a one-time setup.\n\n"
+            "Step 1 — Download and extract:\n"
+            f"Download: {download_url}\n"
+            "Extract to: ~/.claude/ (create if needed, overwrite existing)\n"
+            "Delete the downloaded zip.\n\n"
+            "Adapt all commands for the OS you are running on.\n\n"
+            "Step 2 — Tell the user:\n"
+            "Two commands are now available:\n"
+            "- /gil_get_agents — install/update GiljoAI agent templates\n"
+            "- /gil_add — add tasks and projects from the CLI (try /gil_add --help)\n\n"
+            "Restart Claude Code, then run /gil_get_agents to install agent templates.\n"
+            "Note: Download link expires in 15 minutes."
+        )
     if platform == "gemini_cli":
-        return {
-            "download": f"Download the ZIP: curl -o giljo_setup.zip '{download_url}'",
-            "extract_path": "~/.gemini/",
-            "extract_command": "unzip -o giljo_setup.zip -d ~/.gemini/",
-            "config_edits": [
-                {
-                    "file": "~/.gemini/settings.json",
-                    "action": "merge_json",
-                    "value": {"experimental": {"enableAgents": True}},
-                    "reason": "Required for Gemini CLI to discover custom agents",
-                },
-            ],
-            "cleanup": "rm giljo_setup.zip",
-            "post_install": "Restart your CLI tool to activate slash commands and agent templates.",
-        }
+        return (
+            "Install the GiljoAI CLI integration. This is a one-time setup.\n\n"
+            "Step 1 — Download and extract:\n"
+            f"Download: {download_url}\n"
+            "Extract to: ~/.gemini/ (create if needed, overwrite existing)\n"
+            "Delete the downloaded zip.\n\n"
+            "Step 2 — Enable custom agents:\n"
+            "Read ~/.gemini/settings.json (create if it does not exist).\n"
+            'Merge this JSON into it: {"experimental": {"enableAgents": true}}\n'
+            "Preserve all existing settings — do NOT overwrite the file.\n\n"
+            "Adapt all commands for the OS you are running on.\n\n"
+            "Step 3 — Tell the user:\n"
+            "Two commands are now available:\n"
+            "- /gil_get_agents — install/update GiljoAI agent templates\n"
+            "- /gil_add — add tasks and projects from the CLI (try /gil_add --help)\n\n"
+            "Restart Gemini CLI, then run /gil_get_agents to install agent templates.\n"
+            "Note: Download link expires in 15 minutes."
+        )
     # codex_cli
-    return {
-        "download": f"Download the ZIP: curl -o giljo_setup.zip '{download_url}'",
-        "extract_path": "~/.codex/",
-        "extract_command": "unzip -o giljo_setup.zip -d ~/.codex/",
-        "config_edits": [
-            {
-                "file": "~/.codex/config.toml",
-                "action": "merge_toml_section",
-                "section": "features",
-                "value": {"default_mode_request_user_input": True, "multi_agent": True},
-                "reason": "Required for interactive skill menus and multi-agent spawning",
-            },
-            {
-                "file": "~/.codex/config.toml",
-                "action": "register_agents",
-                "reason": (
-                    "Register each gil-*.toml file as [agents.gil-<name>] with "
-                    "config_file = 'agents/gil-<name>.toml' (relative path), "
-                    "model = 'gpt-5.2-codex', model_reasoning_effort = 'medium', "
-                    "nickname_candidates = ['gil-<name>']"
-                ),
-            },
-        ],
-        "config_merge_rules": {
-            "CRITICAL": (
-                "config.toml is the user's primary Codex configuration. A corrupt config.toml "
-                "will crash Codex on startup (skills/list TUI failure). Follow these rules strictly:"
-            ),
-            "rules": [
-                "NEVER overwrite config.toml — always read-then-merge",
-                "Use a TOML parser to read existing config, merge new sections, write back",
-                "Do NOT use string substitution, regex, or PowerShell text manipulation",
-                "Preserve ALL existing sections not managed by GiljoAI (MCP servers, user prefs, etc.)",
-                "TOML values must NOT have doubled quotes — 'agents/gil-analyzer.toml' not ''agents/gil-analyzer.toml''",
-                "Back up config.toml before writing: copy to config_backup.toml",
-                "After writing, validate the file parses: python -c \"import tomllib; tomllib.load(open('config.toml','rb'))\"",
-            ],
-            "safe_merge_example": (
-                "In Python: import tomllib, tomli_w; "
-                "config = tomllib.load(open(path, 'rb')); "
-                "config.setdefault('agents', {})['gil-analyzer'] = {"
-                "'config_file': 'agents/gil-analyzer.toml', "
-                "'model': 'gpt-5.2-codex', "
-                "'model_reasoning_effort': 'medium', "
-                "'nickname_candidates': ['gil-analyzer']}; "
-                "tomli_w.dump(config, open(path, 'wb'))"
-            ),
-        },
-        "cleanup": "rm giljo_setup.zip",
-        "post_install": "Restart your CLI tool to activate skills and agent templates.",
-    }
+    return (
+        "Install the GiljoAI CLI integration. This is a one-time setup.\n\n"
+        "Step 1 — Download and extract:\n"
+        f"Download: {download_url}\n"
+        "Extract to: ~/.codex/ (create if needed, overwrite existing)\n"
+        "Delete the downloaded zip.\n\n"
+        "Step 2 — Enable interactive menus:\n"
+        "Read ~/.codex/config.toml (create if it does not exist).\n"
+        "Under the [features] section, ensure these flags are set:\n"
+        "  default_mode_request_user_input = true\n"
+        "  multi_agent = true\n"
+        "If [features] already exists, merge — do NOT remove existing flags.\n"
+        "CRITICAL: Use a TOML parser to read-then-merge. Never overwrite config.toml.\n"
+        "Back up config.toml before writing.\n\n"
+        "Adapt all commands for the OS you are running on.\n\n"
+        "Step 3 — Tell the user:\n"
+        "Two skills are now available:\n"
+        "- $gil-get-agents — install/update GiljoAI agent templates\n"
+        "- $gil-add — add tasks and projects from the CLI (try $gil-add --help)\n\n"
+        "Restart Codex CLI, then run $gil-get-agents to install agent templates.\n"
+        "Note: Download link expires in 15 minutes."
+    )
 
 
 class ToolAccessor:
@@ -650,14 +630,14 @@ class ToolAccessor:
                 server_url = f"{protocol}://{host}:{port}"
                 download_url = f"{server_url}/api/download/temp/{token}/{filename}"
 
-                # Build platform-specific install instructions
+                # Build natural-language install prompt the LLM will execute
                 instructions = _build_setup_instructions(platform, download_url)
 
                 return {
-                    "download_url": download_url,
-                    "expires_in_minutes": 15,
+                    "status": "ready",
                     "platform": platform,
-                    "install_instructions": instructions,
+                    "expires_in_minutes": 15,
+                    "action_required": instructions,
                 }
         except (ValidationError, ValueError):
             raise
