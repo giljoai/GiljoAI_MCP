@@ -242,13 +242,14 @@ ERROR SEVERITY LEVELS:
 """
 
 
-def _build_ch5_reference(project_id: str, orchestrator_id: str, tool: str = "claude-code") -> str:
+def _build_ch5_reference(project_id: str, orchestrator_id: str, tool: str = "claude-code", git_integration_enabled: bool = False) -> str:
     """Build CH5: REFERENCE section for implementation phase (~380 tokens).
 
     Args:
         project_id: Project UUID for parameter substitution.
         orchestrator_id: Job ID for parameter substitution.
         tool: Platform identifier for platform-native spawn syntax.
+        git_integration_enabled: Whether git integration is active.
     """
     return f"""════════════════════════════════════════════════════════════════════════════
                 CH5: REFERENCE (Implementation Phase Only)
@@ -299,7 +300,16 @@ System rejects completion attempts with unread messages or incomplete TODOs.
 ────────────────────────────────────────────────────────────────────────────
 
 COMPLETION PROTOCOL (After ALL agents finish their work):
-
+{"" if not git_integration_enabled else '''
+── STEP 0: Git Commit (Git Integration Enabled) ───────────────────────────
+Before writing 360 memory, ensure all work is committed to git:
+1. Review changes: run `git status` in the project directory
+2. Stage deliverables: `git add` relevant files (never `git add -A`)
+3. Commit with a descriptive message summarizing the project work
+4. Record the commit hash for inclusion in 360 memory and completion result
+This preserves a clean audit trail before the project is closed out.
+────────────────────────────────────────────────────────────────────────────
+'''}
 ── STEP 1: Write 360 Memory ────────────────────────────────────────────────
 Call: write_360_memory(
           project_id='{project_id}',
