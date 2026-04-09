@@ -556,7 +556,7 @@ function handleDismiss() {
   width: 100%;
   max-width: 810px;
   max-height: calc(100vh - 48px);
-  overflow-y: auto;
+  overflow: hidden;
   background: $elevation-raised;
   border-radius: $border-radius-rounded;
   display: flex;
@@ -689,11 +689,12 @@ function handleDismiss() {
   width: 100%;
 }
 
-/* Step content area */
+/* Step content area - scrolls independently so footer stays pinned */
 .setup-wizard-content {
   flex: 1;
   padding: 0 24px 16px;
-  min-height: 240px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .closing-confirmation {
