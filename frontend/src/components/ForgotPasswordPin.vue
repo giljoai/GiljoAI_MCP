@@ -97,6 +97,7 @@
               aria-required="true"
               hint="Enter the 4-digit PIN you set during account setup"
               persistent-hint
+              @input="handlePinInput"
               @keypress="onlyNumbers"
             />
 
@@ -305,13 +306,10 @@ const isPasswordValid = computed(() => {
   )
 })
 
-// Sanitize PIN input — strip non-digits, cap at 4
-watch(pin, (val) => {
-  const sanitized = String(val ?? '').replace(/\D/g, '').slice(0, 4)
-  if (sanitized !== val) {
-    pin.value = sanitized
-  }
-})
+// Methods
+function handlePinInput(value) {
+  pin.value = value.replace(/\D/g, '').slice(0, 4)
+}
 
 function onlyNumbers(event) {
   const charCode = event.which ? event.which : event.keyCode
