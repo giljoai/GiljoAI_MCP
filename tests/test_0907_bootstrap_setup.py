@@ -204,6 +204,31 @@ class TestStageCombinedSetup:
             )
 
     @pytest.mark.asyncio
+    async def test_generic_zip_structure(self, staging_dir, mock_session):
+        """Generic ZIP contains commands/*.md and agents/*.md without platform frontmatter."""
+        staging = FileStaging(db_session=mock_session)
+
+        zip_path, _ = await staging.stage_combined_setup(
+            staging_dir, "test-tenant", platform="generic",
+        )
+
+        assert zip_path is not None
+
+        with zipfile.ZipFile(zip_path) as zf:
+            names = zf.namelist()
+            # Slash commands as plain MD reference
+            cmd_files = [n for n in names if n.startswith("commands/")]
+            assert len(cmd_files) >= 2
+            # Agent templates as plain MD
+            agent_files = [n for n in names if n.startswith("agents/")]
+            assert len(agent_files) == 2
+            for af in agent_files:
+                assert af.endswith(".md")
+                content = zf.read(af).decode("utf-8")
+                # Generic templates must NOT have YAML frontmatter
+                assert not content.startswith("---")
+
+    @pytest.mark.asyncio
     async def test_updates_last_exported_at(self, staging_dir, mock_session, templates):
         """Agent templates get last_exported_at updated after staging."""
         staging = FileStaging(db_session=mock_session)

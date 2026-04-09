@@ -113,8 +113,8 @@ async def download_slash_commands(
     request: Request,
     platform: str = Query(
         default="claude_code",
-        pattern="^(claude_code|gemini_cli|codex_cli)$",
-        description="Target CLI platform: claude_code, gemini_cli, or codex_cli",
+        pattern="^(claude_code|gemini_cli|codex_cli|generic)$",
+        description="Target CLI platform: claude_code, gemini_cli, codex_cli, or generic",
     ),
 ):
     """
@@ -280,7 +280,7 @@ async def download_agent_templates(
             )
 
     # Validate platform parameter
-    valid_platforms = {"claude_code", "codex_cli", "gemini_cli"}
+    valid_platforms = {"claude_code", "codex_cli", "gemini_cli", "generic"}
     if platform not in valid_platforms:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -462,8 +462,8 @@ async def get_bootstrap_prompt(
     request: Request,
     platform: str = Query(
         ...,
-        pattern="^(claude_code|gemini_cli|codex_cli)$",
-        description="Target CLI platform: claude_code, gemini_cli, or codex_cli",
+        pattern="^(claude_code|gemini_cli|codex_cli|generic)$",
+        description="Target CLI platform: claude_code, gemini_cli, codex_cli, or generic",
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
@@ -503,12 +503,14 @@ async def get_bootstrap_prompt(
         BOOTSTRAP_CLAUDE_CODE,
         BOOTSTRAP_CODEX_CLI,
         BOOTSTRAP_GEMINI_CLI,
+        BOOTSTRAP_GENERIC,
     )
 
     bootstrap_templates = {
         "claude_code": BOOTSTRAP_CLAUDE_CODE,
         "gemini_cli": BOOTSTRAP_GEMINI_CLI,
         "codex_cli": BOOTSTRAP_CODEX_CLI,
+        "generic": BOOTSTRAP_GENERIC,
     }
 
     logger.info(
@@ -625,7 +627,7 @@ async def generate_download_token(
         )
 
     # Validate platform (Handover 0836a)
-    valid_platforms = {"claude_code", "codex_cli", "gemini_cli"}
+    valid_platforms = {"claude_code", "codex_cli", "gemini_cli", "generic"}
     if platform not in valid_platforms:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
