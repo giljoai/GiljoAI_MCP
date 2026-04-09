@@ -253,7 +253,7 @@ const firstLoginForm = ref(null)
 // Validation rules
 const passwordRules = [
   (v) => !!v || 'Password is required',
-  (v) => v.length >= 12 || 'Password must be at least 12 characters',
+  (v) => v.length >= 8 || 'Password must be at least 8 characters',
   (v) => /[A-Z]/.test(v) || 'Must contain at least one uppercase letter',
   (v) => /[a-z]/.test(v) || 'Must contain at least one lowercase letter',
   (v) => /\d/.test(v) || 'Must contain at least one digit',
@@ -278,7 +278,7 @@ const confirmPinRules = [
 
 // Password requirements
 const passwordRequirements = computed(() => [
-  { text: 'At least 12 characters', met: newPassword.value.length >= 12 },
+  { text: 'At least 8 characters', met: newPassword.value.length >= 8 },
   { text: 'One uppercase letter', met: /[A-Z]/.test(newPassword.value) },
   { text: 'One lowercase letter', met: /[a-z]/.test(newPassword.value) },
   { text: 'One digit', met: /\d/.test(newPassword.value) },
