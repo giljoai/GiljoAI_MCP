@@ -206,7 +206,10 @@ class WindowsPlatformHandler(PlatformHandler):
 
     def _create_shortcuts_batch(self, install_dir: Path, venv_dir: Path) -> Dict[str, Any]:
         """
-        Create .bat file shortcuts as fallback.
+        Create .lnk shortcuts via PowerShell (fallback when win32com unavailable).
+
+        Uses PowerShell COM interop to create proper .lnk files with icons,
+        since batch files cannot have custom icons on the desktop.
 
         Args:
             install_dir: Installation directory
@@ -217,31 +220,60 @@ class WindowsPlatformHandler(PlatformHandler):
         """
         desktop = Path.home() / "Desktop"
         shortcuts_created = []
-        python_exe = f'"{venv_dir / "Scripts" / "python.exe"}"'
+        python_exe = str(venv_dir / "Scripts" / "python.exe")
+        icons_dir = install_dir / "frontend" / "public"
 
-        # Start batch file
-        main_bat = desktop / "GiljoAI MCP.bat"
-        with open(main_bat, "w") as f:
-            f.write("@echo off\n")
-            f.write(f'cd /d "{install_dir}"\n')
-            f.write(f"{python_exe} startup.py --verbose\n")
-            f.write("pause\n")
-        shortcuts_created.append(str(main_bat))
+        shortcuts = [
+            {
+                "name": "GiljoAI MCP.lnk",
+                "args": f'"{install_dir / "startup.py"}" --verbose',
+                "icon": icons_dir / "Start.ico",
+                "desc": "Start GiljoAI MCP (backend + frontend + browser)",
+            },
+            {
+                "name": "Stop GiljoAI.lnk",
+                "args": f'"{install_dir / "startup.py"}" --stop',
+                "icon": icons_dir / "Stop.ico",
+                "desc": "Stop GiljoAI MCP services",
+            },
+        ]
 
-        # Stop batch file
-        stop_bat = desktop / "Stop GiljoAI.bat"
-        with open(stop_bat, "w") as f:
-            f.write("@echo off\n")
-            f.write(f'cd /d "{install_dir}"\n')
-            f.write(f"{python_exe} startup.py --stop\n")
-            f.write("pause\n")
-        shortcuts_created.append(str(stop_bat))
+        for sc in shortcuts:
+            lnk_path = desktop / sc["name"]
+            icon_loc = str(sc["icon"]) if sc["icon"].exists() else ""
+            ps_script = (
+                f'$ws = New-Object -ComObject WScript.Shell; '
+                f'$s = $ws.CreateShortcut("{lnk_path}"); '
+                f'$s.TargetPath = "{python_exe}"; '
+                f'$s.Arguments = \'{sc["args"]}\'; '
+                f'$s.WorkingDirectory = "{install_dir}"; '
+                f'$s.Description = "{sc["desc"]}"; '
+            )
+            if icon_loc:
+                ps_script += f'$s.IconLocation = "{icon_loc}"; '
+            ps_script += '$s.Save()'
+
+            try:
+                subprocess.run(
+                    ["powershell", "-NoProfile", "-Command", ps_script],
+                    capture_output=True, text=True, timeout=10, check=True,
+                )
+                shortcuts_created.append(str(lnk_path))
+            except Exception as e:
+                # Final fallback: create .bat if PowerShell fails too
+                bat_path = desktop / sc["name"].replace(".lnk", ".bat")
+                with open(bat_path, "w") as f:
+                    f.write("@echo off\n")
+                    f.write(f'cd /d "{install_dir}"\n')
+                    f.write(f'"{python_exe}" {sc["args"]}\n')
+                    f.write("pause\n")
+                shortcuts_created.append(str(bat_path))
 
         return {
             "success": True,
-            "method": "batch",
+            "method": "powershell",
             "shortcuts_created": shortcuts_created,
-            "message": f"Created {len(shortcuts_created)} batch file shortcuts (win32com not available)",
+            "message": f"Created {len(shortcuts_created)} desktop shortcuts",
         }
 
     def run_npm_command(self, cmd: List[str], cwd: Path, timeout: int = 300) -> Dict[str, Any]:
