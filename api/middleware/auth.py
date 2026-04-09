@@ -162,6 +162,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/auth/login",  # Login endpoint
             "/api/auth/refresh",  # Token refresh (handles own auth via cookie)
             "/api/auth/create-first-admin",  # First admin creation (Handover 0034)
+            "/api/auth/verify-pin-and-reset-password",  # Password reset via recovery PIN (no auth — user forgot password)
             "/api/setup/status",  # Fresh install detection (Handover 0034)
             "/api/v1/config/frontend",  # Frontend config
             "/api/auth/me",  # Auth status check
