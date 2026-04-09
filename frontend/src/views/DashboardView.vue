@@ -180,7 +180,11 @@
               <span class="commit-sha">{{ c.sha?.substring(0, 8) }}</span>
               <div class="commit-content">
                 <div class="commit-msg">{{ c.message }}</div>
-                <div v-if="c.author" class="commit-meta">{{ c.author }}</div>
+                <div class="commit-meta">
+                  <span v-if="c.author">{{ c.author }}</span>
+                  <span v-if="c.product_name"> · {{ c.product_name }}</span>
+                  <span v-if="c.project_name"> · {{ c.project_name }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -367,11 +371,17 @@ const fetchDashboardData = async () => {
         task_status_dist: response.data.task_status_dist || {},
         execution_mode_dist: response.data.execution_mode_dist || {},
       }
-      // Extract git commits from 360 memory entries
+      // Extract git commits from 360 memory entries, preserving product/project context
       const commits = []
       for (const mem of (response.data.recent_memories || [])) {
         if (mem.git_commits && Array.isArray(mem.git_commits)) {
-          commits.push(...mem.git_commits)
+          for (const c of mem.git_commits) {
+            commits.push({
+              ...c,
+              product_name: mem.product_name || null,
+              project_name: mem.project_name || null,
+            })
+          }
         }
       }
       recentCommits.value = commits.slice(0, 10)
