@@ -39,7 +39,6 @@ from typing import Optional, Tuple
 import click
 from colorama import Fore, Style, init
 
-
 # ---------------------------------------------------------------------------
 # Virtualenv guard: always relaunch inside the project-managed interpreter
 # ---------------------------------------------------------------------------
@@ -853,7 +852,7 @@ def install_requirements() -> bool:
 
     try:
         # Run pip install
-        result = subprocess.run(
+        subprocess.run(
             [sys.executable, "-m", "pip", "install", "-r", str(requirements_path)],
             capture_output=True,
             text=True,
@@ -906,7 +905,7 @@ def run_database_migrations() -> bool:
     """
     print_header("Running Database Migrations")
     try:
-        result = subprocess.run(
+        subprocess.run(
             [sys.executable, "-m", "alembic", "upgrade", "head"],
             capture_output=True,
             text=True,
@@ -1010,7 +1009,6 @@ def run_startup(
     if no_ssl and get_ssl_enabled():
         print_warning("SSL disabled via --no-ssl flag (HTTP mode forced)")
     http_proto = "https" if ssl_enabled else "http"
-    ws_proto = "wss" if ssl_enabled else "ws"
 
     # Step 7: Check port availability
     print_header("Port Availability")

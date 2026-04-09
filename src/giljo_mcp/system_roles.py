@@ -13,5 +13,4 @@ be toggled, exported, or modified by end users.
 
 from __future__ import annotations
 
-
 SYSTEM_MANAGED_ROLES: set[str] = {"orchestrator"}

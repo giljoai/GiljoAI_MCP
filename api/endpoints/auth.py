@@ -36,7 +36,6 @@ from src.giljo_mcp.models import User
 from src.giljo_mcp.services import AuthService
 from src.giljo_mcp.template_seeder import seed_tenant_templates
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

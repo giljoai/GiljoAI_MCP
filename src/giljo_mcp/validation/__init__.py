@@ -35,7 +35,6 @@ from src.giljo_mcp.validation.rules import (
 )
 from src.giljo_mcp.validation.template_validator import TemplateValidationResult, TemplateValidator, ValidationError
 
-
 __all__ = [
     "InjectionDetectionRule",
     "MCPToolsPresenceRule",

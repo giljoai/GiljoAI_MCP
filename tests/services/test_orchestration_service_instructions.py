@@ -29,7 +29,6 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.schemas.service_responses import MissionUpdateResult
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
-
 # ============================================================================
 # TestGetOrchestratorInstructions
 # ============================================================================

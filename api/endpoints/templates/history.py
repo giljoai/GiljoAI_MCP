@@ -24,7 +24,6 @@ from src.giljo_mcp.services.template_service import TemplateService
 from .dependencies import get_template_service
 from .models import TemplateHistoryResponse, TemplateResponse
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

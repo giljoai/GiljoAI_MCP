@@ -10,11 +10,9 @@ Verifies that create_project auto-assigns series_number when not provided,
 preventing uq_project_taxonomy constraint violations for MCP callers.
 """
 
-import asyncio
 from uuid import uuid4
 
 import pytest
-import pytest_asyncio
 
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.services.project_service import ProjectService

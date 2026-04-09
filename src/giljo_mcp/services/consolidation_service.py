@@ -21,7 +21,6 @@ from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.schemas.service_responses import ConsolidationResult, SummaryLevel
 
-
 logger = logging.getLogger(__name__)
 
 

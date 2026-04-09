@@ -21,7 +21,6 @@ from .database import DatabaseManager
 from .models import Configuration
 from .tenant import TenantManager
 
-
 logger = logging.getLogger(__name__)
 
 

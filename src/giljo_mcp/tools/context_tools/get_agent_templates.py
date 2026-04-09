@@ -24,7 +24,6 @@ from sqlalchemy import select
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate
 
-
 logger = structlog.get_logger(__name__)
 
 

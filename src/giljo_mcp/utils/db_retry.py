@@ -23,7 +23,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.exceptions import RetryExhaustedError
 
-
 logger = logging.getLogger(__name__)
 
 # PostgreSQL deadlock SQLSTATE

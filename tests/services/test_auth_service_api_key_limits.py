@@ -28,7 +28,6 @@ from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.schemas.service_responses import ApiKeyCreateResult, ApiKeyInfo
 from src.giljo_mcp.services.auth_service import AuthService
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

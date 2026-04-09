@@ -11,9 +11,6 @@ without requiring a database connection.
 """
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
-
-import pytest
 
 from src.giljo_mcp.models.base import generate_uuid
 from src.giljo_mcp.models.oauth import OAuthAuthorizationCode

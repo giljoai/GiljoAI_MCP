@@ -14,7 +14,6 @@ Split from test_orchestration_service_phase_labels.py during test reorganization
 
 import pytest
 
-
 # ============================================================================
 # Change D: Phase assignment instructions in orchestrator protocol
 # ============================================================================

@@ -212,7 +212,7 @@ class OrchestrationAgentStateService:
                 AgentJob.tenant_key == tenant_key,
                 AgentExecution.tenant_key == tenant_key,
                 AgentExecution.agent_display_name == "orchestrator",
-                AgentExecution.status.not_in(["complete", "decommissioned"]),
+                AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
             )
             .limit(1)
         )
@@ -428,7 +428,7 @@ class OrchestrationAgentStateService:
                         AgentExecution.job_id == job_id,
                         AgentExecution.tenant_key == tenant_key,
                         AgentExecution.id != execution.id,
-                        AgentExecution.status.not_in(["complete", "decommissioned"]),
+                        AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
                     )
                     other_active_res = await session.execute(other_active_stmt)
                     other_active = other_active_res.scalar_one_or_none()
@@ -470,6 +470,98 @@ class OrchestrationAgentStateService:
             self._logger.exception("Failed to dismiss reactivation")
             raise OrchestrationError(
                 message="Failed to dismiss reactivation", context={"job_id": job_id, "error": str(e)}
+            ) from e
+
+    async def close_job(
+        self, job_id: str, tenant_key: Optional[str] = None
+    ) -> dict[str, Any]:
+        """
+        Mark a completed job as closed (final orchestrator acceptance). Handover 0435b.
+
+        Transition: complete → closed. Only valid from 'complete' status.
+        Closed jobs are terminal — they will not be auto-blocked on incoming messages
+        and are not expected to receive further work.
+
+        Args:
+            job_id: Job UUID
+            tenant_key: Optional tenant key (uses current if not provided)
+
+        Returns:
+            Dict with job_id, old_status, new_status
+
+        Raises:
+            ValidationError: Invalid input
+            ResourceNotFoundError: Job not found or not in 'complete' status
+        """
+        try:
+            if not tenant_key:
+                tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                raise ValidationError(message="No tenant context available", context={"method": "close_job"})
+            if not job_id or not job_id.strip():
+                raise ValidationError(message="job_id cannot be empty", context={"method": "close_job"})
+
+            project_id = None
+            async with self._get_session() as session:
+                exec_stmt = (
+                    select(AgentExecution)
+                    .where(
+                        AgentExecution.job_id == job_id,
+                        AgentExecution.tenant_key == tenant_key,
+                        AgentExecution.status == "complete",
+                    )
+                    .order_by(AgentExecution.started_at.desc())
+                    .limit(1)
+                )
+                exec_res = await session.execute(exec_stmt)
+                execution = exec_res.scalar_one_or_none()
+
+                if not execution:
+                    raise ResourceNotFoundError(
+                        message="Job not found or not in 'complete' status. Only completed jobs can be closed.",
+                        context={"job_id": job_id, "method": "close_job"},
+                    )
+
+                execution.status = "closed"
+
+                job_res = await session.execute(
+                    select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
+                )
+                job = job_res.scalar_one_or_none()
+                project_id = str(job.project_id) if job and job.project_id else None
+
+                await session.flush()
+                self._logger.info("Job %s closed (final acceptance)", job_id)
+
+            if self._websocket_manager:
+                try:
+                    await self._websocket_manager.broadcast_to_tenant(
+                        tenant_key=tenant_key,
+                        event_type="agent:status_changed",
+                        data={
+                            "job_id": job_id,
+                            "project_id": project_id,
+                            "agent_display_name": execution.agent_display_name,
+                            "agent_name": execution.agent_name,
+                            "old_status": "complete",
+                            "status": "closed",
+                        },
+                    )
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience
+                    self._logger.warning("[WEBSOCKET] Failed to broadcast close: %s", ws_error)
+
+            return {
+                "job_id": job_id,
+                "old_status": "complete",
+                "new_status": "closed",
+                "message": "Job closed — final acceptance by orchestrator.",
+            }
+        except (ValidationError, ResourceNotFoundError):
+            raise
+        except Exception as e:  # Broad catch: service boundary
+            self._logger.exception("Failed to close job")
+            raise OrchestrationError(
+                message="Failed to close job", context={"job_id": job_id, "error": str(e)}
             ) from e
 
     async def set_agent_status(
@@ -538,7 +630,7 @@ class OrchestrationAgentStateService:
                     .where(
                         AgentExecution.job_id == job_id,
                         AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "decommissioned"]),
+                        AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
                     )
                     .order_by(AgentExecution.started_at.desc())
                     .limit(1)

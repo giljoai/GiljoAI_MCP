@@ -16,18 +16,16 @@ This module provides comprehensive PostgreSQL setup capabilities:
 - Cross-platform compatibility (Windows, Linux, macOS)
 """
 
-import os
-import sys
-import platform
-import subprocess
-import socket
 import logging
+import os
+import platform
 import secrets
+import socket
 import string
-import re
-from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, List
+import subprocess
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 try:
     import psycopg2
@@ -813,7 +811,7 @@ echo ""
                 )
                 conn.close()
                 return True
-            except:
+            except Exception:
                 pass
 
         return False
@@ -1062,6 +1060,7 @@ After installation, return here and run the installer again
         try:
             # Import DatabaseManager to create tables
             from src.giljo_mcp.database_manager import DatabaseManager
+
             from src.giljo_mcp.models import Base
 
             # Create database manager

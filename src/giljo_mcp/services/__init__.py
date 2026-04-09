@@ -37,7 +37,6 @@ from .template_service import TemplateService
 from .user_auth_service import UserAuthService
 from .user_service import UserService
 
-
 __all__ = [
     "AuthService",
     "ConfigService",

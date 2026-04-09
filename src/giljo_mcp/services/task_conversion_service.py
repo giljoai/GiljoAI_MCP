@@ -44,7 +44,6 @@ from src.giljo_mcp.models import Project, Task
 from src.giljo_mcp.schemas.service_responses import ConversionResult
 from src.giljo_mcp.tenant import TenantManager
 
-
 logger = logging.getLogger(__name__)
 
 

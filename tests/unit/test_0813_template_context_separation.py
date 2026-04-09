@@ -13,14 +13,12 @@ Tests the three-context separation:
 TDD: These tests are written FIRST (RED phase).
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import yaml
 
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_renderer import render_claude_agent
-
 
 # ---------------------------------------------------------------------------
 # 1. Renderer: user_instructions now included in exported .md files
@@ -197,7 +195,7 @@ class TestSeederProducesSlimBootstrap:
         from src.giljo_mcp.template_seeder import _get_mcp_bootstrap_section
 
         bootstrap = _get_mcp_bootstrap_section()
-        lines = [l for l in bootstrap.strip().split("\n") if l.strip()]
+        lines = [line for line in bootstrap.strip().split("\n") if line.strip()]
         assert len(lines) <= 15, f"Bootstrap should be slim (~10 lines), got {len(lines)}"
         assert "GiljoAI MCP Agent" in bootstrap or "GiljoAI" in bootstrap
         assert "get_agent_mission" in bootstrap

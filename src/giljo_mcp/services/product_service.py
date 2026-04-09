@@ -57,7 +57,6 @@ from src.giljo_mcp.schemas.service_responses import (
 from src.giljo_mcp.services.product_lifecycle_service import ProductLifecycleService
 from src.giljo_mcp.services.product_memory_service import ProductMemoryService
 
-
 logger = logging.getLogger(__name__)
 
 

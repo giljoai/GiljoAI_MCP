@@ -22,7 +22,6 @@ from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.tasks import Task
 
-
 # ============================================================================
 # LOCAL FIXTURES (override conftest test_project which lacks product_id)
 # ============================================================================

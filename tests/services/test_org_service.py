@@ -35,7 +35,6 @@ from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.services.org_service import OrgService
 
-
 # Fixtures
 
 
