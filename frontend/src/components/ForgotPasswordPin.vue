@@ -351,25 +351,21 @@ async function handleVerifyPin() {
   lockoutMessage.value = ''
 
   try {
-    // Call API to verify PIN (this endpoint will also handle password reset in one call)
-    // For now, we'll just move to stage 2 on successful verification
-    // In production, the backend should verify PIN first, then allow password reset
+    const response = await api.auth.verifyPin({
+      username: username.value,
+      recovery_pin: pin.value,
+    })
 
-    // Since the API endpoint combines both operations, we'll proceed to stage 2
-    stage.value = 'reset'
-    error.value = ''
+    if (response.data.valid) {
+      stage.value = 'reset'
+      error.value = ''
+    } else {
+      error.value = response.data.message || 'Invalid username or PIN.'
+    }
   } catch (err) {
     console.error('[ForgotPassword] PIN verification failed:', err)
 
-    // Handle lockout
-    if (err.response?.status === 429) {
-      lockoutMessage.value =
-        err.response.data?.detail || 'Too many attempts. Please try again in 15 minutes.'
-      attemptsRemaining.value = 0
-    } else if (err.response?.data?.attempts_remaining !== undefined) {
-      attemptsRemaining.value = err.response.data.attempts_remaining
-      error.value = 'Invalid username or PIN. Please try again.'
-    } else if (err.response?.data?.detail) {
+    if (err.response?.data?.detail) {
       error.value = err.response.data.detail
     } else {
       error.value = 'Failed to verify PIN. Please try again.'
