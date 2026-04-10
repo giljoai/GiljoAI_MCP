@@ -101,17 +101,17 @@
       <div class="project-list-container">
         <v-data-table
           :headers="headers"
-          :items="sortedProjects"
+          :items="tableItems"
           :loading="loading"
           :items-per-page="itemsPerPage"
           :page="currentPage"
-          v-model:sort-by="sortConfig"
-          :custom-sort="passthrough"
+          :sort-by="sortBy"
           class="elevation-0"
           item-key="id"
           fixed-header
           :item-props="() => ({ 'data-testid': 'project-card' })"
           @update:page="currentPage = $event"
+          @update:sort-by="sortBy = $event"
           @click:row="handleRowClick"
         >
           <!-- Name Column -->
@@ -125,7 +125,7 @@
           </template>
 
           <!-- Serial Column (colorized tinted badge) -->
-          <template v-slot:item.serial="{ item }">
+          <template v-slot:item._serial_sort="{ item }">
             <span
               v-if="item.taxonomy_alias"
               class="project-id-badge"
@@ -449,24 +449,33 @@ const {
   filterStatus,
   currentPage,
   itemsPerPage,
-  sortConfig,
   typeSelectOptions,
   // eslint-disable-next-line no-unused-vars -- exposed on vm for test assertions
   activeProductProjects,
   // eslint-disable-next-line no-unused-vars -- exposed on vm for test assertions
   filteredBySearch,
-  // eslint-disable-next-line no-unused-vars -- exposed on vm for test assertions
   filteredProjects,
-  sortedProjects,
   clearFilters,
 } = useProjectFilters({ projects, projectTypes, activeProduct })
+
+// Default sort: created_at descending
+const sortBy = ref([{ key: 'created_at', order: 'desc' }])
+
+// Enrich filtered projects with a sortable 'serial' field for Vuetify
+const tableItems = computed(() => {
+  return filteredProjects.value.map((p) => ({
+    ...p,
+    serial: p.taxonomy_alias || '',
+    _serial_sort: `${p.project_type?.abbreviation || 'ZZZ'}_${String(p.series_number || 99999).padStart(5, '0')}_${p.subseries || ''}`,
+  }))
+})
 
 // 0873: v-select items for filter bar dropdowns
 const statusSelectOptions = ['active', 'inactive', 'completed', 'cancelled', 'terminated']
 
 // Table headers
 const headers = [
-  { title: 'Serial', key: 'serial', sortable: true, width: '10%' },
+  { title: 'Serial', key: '_serial_sort', sortable: true, width: '10%' },
   { title: 'Name', key: 'name', sortable: true, width: '28%' },
   { title: 'Status', key: 'status', sortable: true, width: '13%', align: 'center' },
   { title: 'Staged', key: 'staging_status', sortable: true, width: '9%', align: 'center' },
@@ -475,11 +484,6 @@ const headers = [
   { title: 'Actions', key: 'quick_action', sortable: false, width: '5%', align: 'center' },
   { title: '', key: 'menu', sortable: false, width: '3%', align: 'center' },
 ]
-
-// Disable Vuetify's internal sort — our composable handles it via sortedProjects
-function passthrough(items) {
-  return items
-}
 
 /* 0870h: tinted square badge style for project taxonomy IDs */
 function projectIdBadgeStyle(color) {
