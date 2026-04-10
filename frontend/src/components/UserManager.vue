@@ -97,13 +97,13 @@
               <template v-slot:prepend>
                 <v-icon>mdi-key-variant</v-icon>
               </template>
-              <v-list-item-title>Change Password</v-list-item-title>
+              <v-list-item-title>Change Password &amp; PIN</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openResetPasswordDialog(item)">
               <template v-slot:prepend>
                 <v-icon>mdi-lock-reset</v-icon>
               </template>
-              <v-list-item-title>Reset Password</v-list-item-title>
+              <v-list-item-title>Reset Password &amp; PIN</v-list-item-title>
             </v-list-item>
             <v-divider />
             <v-list-item :disabled="item.id === currentUser?.id" @click="toggleUserStatus(item)">
@@ -203,7 +203,7 @@
       <v-card v-draggable class="smooth-border">
         <div class="dlg-header">
           <v-icon class="dlg-icon">mdi-key-variant</v-icon>
-          <span class="dlg-title">Change Password</span>
+          <span class="dlg-title">Change Password &amp; PIN</span>
           <v-btn icon variant="text" class="dlg-close" @click="closePasswordDialog">
             <v-icon>mdi-close</v-icon>
           </v-btn>
@@ -230,7 +230,7 @@
             Cancel
           </v-btn>
           <v-btn color="primary" variant="flat" :loading="changingPassword" @click="changePassword">
-            Change Password
+            Change Password &amp; PIN
           </v-btn>
         </div>
       </v-card>
