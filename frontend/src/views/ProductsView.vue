@@ -628,12 +628,13 @@ async function saveProduct(payload) {
     // Close dialog
     showDialog.value = false
 
+    const wasCreating = !editingProduct.value
     showToast({
-      message: editingProduct.value
-        ? 'Product updated successfully'
-        : 'Product created successfully',
+      message: wasCreating
+        ? 'Product created — activate it with the play button to start using it'
+        : 'Product updated successfully',
       type: 'success',
-      timeout: 3000,
+      timeout: wasCreating ? 6000 : 3000,
     })
 
     // Reset state
