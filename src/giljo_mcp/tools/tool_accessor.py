@@ -334,6 +334,7 @@ class ToolAccessor:
         priority: str = "normal",
         from_agent: str | None = None,
         tenant_key: str | None = None,
+        requires_action: bool = False,
     ) -> SendMessageResult:
         """Send message to one or more agents (delegates to MessageRoutingService)"""
         return await self._message_routing_service.send_message(
@@ -344,6 +345,7 @@ class ToolAccessor:
             priority=priority,
             from_agent=from_agent,
             tenant_key=tenant_key,
+            requires_action=requires_action,
         )
 
     async def receive_messages(
