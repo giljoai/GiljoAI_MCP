@@ -105,13 +105,13 @@
           :loading="loading"
           :items-per-page="itemsPerPage"
           :page="currentPage"
-          :sort-by="sortConfig"
+          v-model:sort-by="sortConfig"
+          :custom-sort="passthrough"
           class="elevation-0"
           item-key="id"
           fixed-header
           :item-props="() => ({ 'data-testid': 'project-card' })"
           @update:page="currentPage = $event"
-          @update:sort-by="sortConfig = $event"
           @click:row="handleRowClick"
         >
           <!-- Name Column -->
@@ -475,6 +475,11 @@ const headers = [
   { title: 'Actions', key: 'quick_action', sortable: false, width: '5%', align: 'center' },
   { title: '', key: 'menu', sortable: false, width: '3%', align: 'center' },
 ]
+
+// Disable Vuetify's internal sort — our composable handles it via sortedProjects
+function passthrough(items) {
+  return items
+}
 
 /* 0870h: tinted square badge style for project taxonomy IDs */
 function projectIdBadgeStyle(color) {
