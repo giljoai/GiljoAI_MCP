@@ -192,7 +192,7 @@
       </v-card>
     </v-dialog>
 
-    <!-- Change Password Dialog -->
+    <!-- Change Password & PIN Dialog -->
     <v-dialog v-model="showPasswordDialog" max-width="500" persistent>
       <v-card v-draggable class="smooth-border">
         <div class="dlg-header">
@@ -205,26 +205,86 @@
 
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-            Changing password for: <strong>{{ passwordUser?.username }}</strong>
+            Managing credentials for: <strong>{{ passwordUser?.username }}</strong>
           </v-alert>
 
+          <!-- Password Section -->
+          <div class="text-subtitle-2 mb-2">Password</div>
           <v-text-field
             v-model="newPassword"
             label="New Password"
             variant="outlined"
             type="password"
-            :rules="[rules.password, rules.minLength]"
-            required
+            :rules="[rules.minLength]"
+            density="compact"
+            class="mb-1"
           />
+          <v-text-field
+            v-model="confirmPassword"
+            label="Confirm Password"
+            variant="outlined"
+            type="password"
+            :rules="newPassword ? [(v) => v === newPassword || 'Passwords do not match'] : []"
+            density="compact"
+            class="mb-2"
+          />
+          <v-btn
+            color="primary"
+            variant="flat"
+            size="small"
+            :loading="changingPassword"
+            :disabled="!newPassword || newPassword.length < 8 || newPassword !== confirmPassword"
+            @click="changePassword"
+          >
+            Save Password
+          </v-btn>
+
+          <v-divider class="my-4" />
+
+          <!-- PIN Section -->
+          <div class="text-subtitle-2 mb-2">Recovery PIN</div>
+          <v-text-field
+            v-model="newPin"
+            label="New PIN (4 digits)"
+            variant="outlined"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]{4}"
+            maxlength="4"
+            :rules="[(v) => !v || /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits']"
+            density="compact"
+            class="mb-1"
+            @keypress="onlyNumbers"
+          />
+          <v-text-field
+            v-model="confirmPin"
+            label="Confirm PIN"
+            variant="outlined"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]{4}"
+            maxlength="4"
+            :rules="newPin ? [(v) => v === newPin || 'PINs do not match'] : []"
+            density="compact"
+            class="mb-2"
+            @keypress="onlyNumbers"
+          />
+          <v-btn
+            color="primary"
+            variant="flat"
+            size="small"
+            :loading="changingPin"
+            :disabled="!newPin || !/^\d{4}$/.test(newPin) || newPin !== confirmPin"
+            @click="changePin"
+          >
+            Save PIN
+          </v-btn>
         </v-card-text>
 
         <div class="dlg-footer">
           <v-spacer />
-          <v-btn variant="text" :disabled="changingPassword" @click="closePasswordDialog">
-            Cancel
-          </v-btn>
-          <v-btn color="primary" variant="flat" :loading="changingPassword" @click="changePassword">
-            Change Password &amp; PIN
+          <v-btn variant="text" @click="closePasswordDialog">
+            Close
           </v-btn>
         </div>
       </v-card>
@@ -345,6 +405,7 @@ const showStatusDialog = ref(false)
 const isEditMode = ref(false)
 const saving = ref(false)
 const changingPassword = ref(false)
+const changingPin = ref(false)
 const togglingStatus = ref(false)
 
 // Form data
@@ -359,6 +420,9 @@ const userForm = ref({
 
 const passwordUser = ref(null)
 const newPassword = ref('')
+const confirmPassword = ref('')
+const newPin = ref('')
+const confirmPin = ref('')
 const statusUser = ref(null)
 
 // Table configuration
@@ -534,9 +598,19 @@ async function saveUser() {
   }
 }
 
+function onlyNumbers(event) {
+  const charCode = event.which ? event.which : event.keyCode
+  if (charCode < 48 || charCode > 57) {
+    event.preventDefault()
+  }
+}
+
 function openPasswordDialog(user) {
   passwordUser.value = user
   newPassword.value = ''
+  confirmPassword.value = ''
+  newPin.value = ''
+  confirmPin.value = ''
   showPasswordDialog.value = true
 }
 
@@ -544,21 +618,42 @@ function closePasswordDialog() {
   showPasswordDialog.value = false
   passwordUser.value = null
   newPassword.value = ''
+  confirmPassword.value = ''
+  newPin.value = ''
+  confirmPin.value = ''
 }
 
 async function changePassword() {
-  if (!passwordUser.value || !newPassword.value) return
+  if (!passwordUser.value || !newPassword.value || newPassword.value !== confirmPassword.value) return
 
   changingPassword.value = true
   try {
     await api.auth.updateUser(passwordUser.value.id, {
       password: newPassword.value,
     })
-    closePasswordDialog()
+    newPassword.value = ''
+    confirmPassword.value = ''
   } catch (err) {
     console.error('[UserManager] Failed to change password:', err)
   } finally {
     changingPassword.value = false
+  }
+}
+
+async function changePin() {
+  if (!passwordUser.value || !newPin.value || newPin.value !== confirmPin.value) return
+
+  changingPin.value = true
+  try {
+    await api.auth.updateUser(passwordUser.value.id, {
+      recovery_pin: newPin.value,
+    })
+    newPin.value = ''
+    confirmPin.value = ''
+  } catch (err) {
+    console.error('[UserManager] Failed to change PIN:', err)
+  } finally {
+    changingPin.value = false
   }
 }
 
