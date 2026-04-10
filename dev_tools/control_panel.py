@@ -2586,8 +2586,12 @@ pg_restore -l {backup_file.name} | head -20
                 cache_clean = False
                 break
 
-        # Check for any __pycache__ directories
-        pycache_exists = any(self.project_root.rglob("__pycache__"))
+        # Check for any __pycache__ directories (skip venv directories)
+        skip_dirs = {"venv", "venv_devtools", ".venv", "node_modules"}
+        pycache_exists = any(
+            p for p in self.project_root.rglob("__pycache__")
+            if not any(part in skip_dirs for part in p.parts)
+        )
 
         checks["python_cache"] = cache_clean and not pycache_exists
 
