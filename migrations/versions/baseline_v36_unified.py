@@ -3,20 +3,21 @@
 # See LICENSE in the project root for terms.
 # [CE] Community Edition — source-available, single-user use only.
 
-"""Unified baseline migration for v3.5 schema
+"""Unified baseline migration for v3.6 schema
 
-Revision ID: baseline_v35
+Revision ID: baseline_v36
 Revises: None
-Create Date: 2026-04-03
+Create Date: 2026-04-10
 
 This is a consolidated baseline migration that creates EXACTLY the schema
-matching the current SQLAlchemy models. Squashed from baseline_v34 + 4 incrementals:
+matching the current SQLAlchemy models. Squashed from baseline_v35 + 5 incrementals:
 
-  baseline_v34 - Full schema (39 tables)
-  0855a - User setup wizard state columns (setup_complete, setup_selected_tools, setup_step_completed)
-  0904 - Orchestrator auto check-in columns (auto_checkin_enabled, auto_checkin_interval)
-  a47a2 - Add 'web' to target_platforms check constraint (already in baseline)
-  0908a - Add learning_complete column to users
+  baseline_v35 - Full schema (39 tables)
+  0950b - Add 'idle' and 'sleeping' to agent_executions status constraint
+  0960 - Convert auto_checkin_interval default from 60 (seconds) to 10 (minutes)
+  0435b - Add 'closed' to agent_executions status constraint
+  0435d - Add requires_action column to messages
+  bee93 - Merge head (0435d + 0960)
 
 Tables created (39 total):
   1. organizations           21. configurations
@@ -50,7 +51,7 @@ from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
-revision: str = "baseline_v35"
+revision: str = "baseline_v36"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -292,7 +293,7 @@ def upgrade() -> None:
     sa.Column("deactivation_reason", sa.Text(), nullable=True),
     sa.Column("early_termination", sa.Boolean(), server_default=sa.text("false"), nullable=True),
     sa.Column("auto_checkin_enabled", sa.Boolean(), nullable=False, server_default="false"),
-    sa.Column("auto_checkin_interval", sa.Integer(), nullable=False, server_default="60"),
+    sa.Column("auto_checkin_interval", sa.Integer(), nullable=False, server_default="10"),
     sa.ForeignKeyConstraint(["product_id"], ["products.id"], ondelete="CASCADE"),
     sa.ForeignKeyConstraint(["project_type_id"], ["project_types.id"], ondelete="SET NULL"),
     sa.PrimaryKeyConstraint("id"),
