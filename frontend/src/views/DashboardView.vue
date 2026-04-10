@@ -137,12 +137,8 @@
         <div class="mini-stat-value">{{ miniStats.mcpCalls }}</div>
       </div>
       <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-tester-primary)">
-        <div class="mini-stat-label">Exec: Auto</div>
-        <div class="mini-stat-value">{{ miniStats.execAuto }}</div>
-      </div>
-      <div class="mini-stat smooth-border" style="--stat-accent: var(--agent-orchestrator-primary)">
-        <div class="mini-stat-label">Exec: Supervised</div>
-        <div class="mini-stat-value">{{ miniStats.execSupervised }}</div>
+        <div class="mini-stat-label">Commits</div>
+        <div class="mini-stat-value">{{ recentCommits.length }}</div>
       </div>
     </div>
 
@@ -260,7 +256,6 @@ const dashboardData = ref({
   recent_projects: [],
   recent_memories: [],
   task_status_dist: {},
-  execution_mode_dist: {},
 })
 
 // Server stats (always global)
@@ -344,16 +339,12 @@ const agentRolePill = computed(() => {
 const miniStats = computed(() => {
   const dist = dashboardData.value.project_status_dist || {}
   const taskDist = dashboardData.value.task_status_dist || {}
-  const execDist = dashboardData.value.execution_mode_dist || {}
   const totalTasks = Object.values(taskDist).reduce((a, b) => a + b, 0)
-  const autoModes = (execDist.multi_terminal || 0) + (execDist.claude_code_cli || 0) + (execDist.codex_cli || 0) + (execDist.gemini_cli || 0)
   return {
     active: dist.active || 0,
     tasks: totalTasks,
     apiCalls: apiCallCount.value,
     mcpCalls: mcpCallCount.value,
-    execAuto: autoModes,
-    execSupervised: execDist.supervised || 0,
   }
 })
 
@@ -369,7 +360,6 @@ const fetchDashboardData = async () => {
         recent_projects: response.data.recent_projects || [],
         recent_memories: response.data.recent_memories || [],
         task_status_dist: response.data.task_status_dist || {},
-        execution_mode_dist: response.data.execution_mode_dist || {},
       }
       // Extract git commits from 360 memory entries, preserving product/project context
       const commits = []
