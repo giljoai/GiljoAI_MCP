@@ -124,8 +124,8 @@
             </div>
           </template>
 
-          <!-- Serial Column (colorized tinted badge) -->
-          <template v-slot:item._serial_sort="{ item }">
+          <!-- Serial Column (colorized tinted badge, sorted by series_number integer) -->
+          <template v-slot:item.series_number="{ item }">
             <span
               v-if="item.taxonomy_alias"
               class="project-id-badge"
@@ -461,21 +461,15 @@ const {
 // Default sort: created_at descending
 const sortBy = ref([{ key: 'created_at', order: 'desc' }])
 
-// Enrich filtered projects with a sortable 'serial' field for Vuetify
-const tableItems = computed(() => {
-  return filteredProjects.value.map((p) => ({
-    ...p,
-    serial: p.taxonomy_alias || '',
-    _serial_sort: `${String(p.series_number || 99999).padStart(5, '0')}_${p.subseries || ''}_${p.project_type?.abbreviation || 'ZZZ'}`,
-  }))
-})
+// Items for the table — filteredProjects already has series_number as integer
+const tableItems = computed(() => filteredProjects.value)
 
 // 0873: v-select items for filter bar dropdowns
 const statusSelectOptions = ['active', 'inactive', 'completed', 'cancelled', 'terminated']
 
 // Table headers
 const headers = [
-  { title: 'Serial', key: '_serial_sort', sortable: true, width: '10%' },
+  { title: 'Serial', key: 'series_number', sortable: true, width: '10%' },
   { title: 'Name', key: 'name', sortable: true, width: '28%' },
   { title: 'Status', key: 'status', sortable: true, width: '13%', align: 'center' },
   { title: 'Staged', key: 'staging_status', sortable: true, width: '9%', align: 'center' },
