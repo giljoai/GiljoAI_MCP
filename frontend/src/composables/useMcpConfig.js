@@ -128,7 +128,7 @@ export function generateConfigForTool(toolId, serverUrl, apiKey) {
 export function generateCodexEnvVar(apiKey, platform) {
   const key = apiKey || 'YOUR_API_KEY'
   if (platform === 'windows') {
-    return `setx GILJO_API_KEY "${key}"\n$env:GILJO_API_KEY="${key}"`
+    return `[System.Environment]::SetEnvironmentVariable('GILJO_API_KEY', '${key}', 'User'); $env:GILJO_API_KEY="${key}"`
   }
   return `echo 'export GILJO_API_KEY="${key}"' >> ~/.bashrc && source ~/.bashrc`
 }
