@@ -158,6 +158,49 @@ async def verify_pin_and_reset_password(
     return PinPasswordResetResponse(message="Password reset successful")
 
 
+class VerifyPinRequest(BaseModel):
+    username: str
+    recovery_pin: str = Field(..., min_length=4, max_length=4, pattern="^[0-9]{4}$")
+
+
+class VerifyPinResponse(BaseModel):
+    valid: bool
+    message: str
+
+
+@router.post("/verify-pin", response_model=VerifyPinResponse, tags=["auth"])
+async def verify_pin(
+    request_data: VerifyPinRequest = Body(...), db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Verify recovery PIN without resetting password.
+
+    Used by the forgot-password UI to validate the PIN before
+    showing the new password form. Does not modify any data.
+    """
+    stmt = select(User).where(User.username == request_data.username)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if not user or not user.recovery_pin_hash:
+        return VerifyPinResponse(valid=False, message="Invalid username or PIN")
+
+    if user.pin_lockout_until and datetime.now(timezone.utc) < user.pin_lockout_until:
+        lockout_remaining = user.pin_lockout_until - datetime.now(timezone.utc)
+        minutes_remaining = int(lockout_remaining.total_seconds() / 60)
+        return VerifyPinResponse(valid=False, message=f"Account locked. Try again in {minutes_remaining} minutes.")
+
+    if not bcrypt.checkpw(request_data.recovery_pin.encode("utf-8"), user.recovery_pin_hash.encode("utf-8")):
+        user.failed_pin_attempts += 1
+        if user.failed_pin_attempts >= 5:
+            user.pin_lockout_until = datetime.now(timezone.utc) + timedelta(minutes=15)
+        await db.commit()
+        attempts_remaining = max(0, 5 - user.failed_pin_attempts)
+        return VerifyPinResponse(valid=False, message=f"Invalid PIN. {attempts_remaining} attempts remaining.")
+
+    return VerifyPinResponse(valid=True, message="PIN verified")
+
+
 @router.post("/check-first-login", response_model=CheckFirstLoginResponse, tags=["auth"])
 async def check_first_login(
     request_data: CheckFirstLoginRequest = Body(...), db: AsyncSession = Depends(get_db_session)
