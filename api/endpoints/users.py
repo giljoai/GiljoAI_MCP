@@ -586,40 +586,6 @@ async def change_password(
     return PasswordChangeResponse(message="Password changed successfully")
 
 
-@router.post("/{user_id}/reset-password", response_model=PasswordChangeResponse)
-async def reset_password(
-    user_id: UUID,
-    current_user: User = Depends(require_admin),
-    user_service: UserService = Depends(get_user_service),
-) -> PasswordChangeResponse:
-    """
-    Reset user password to default 'GiljoMCP' (Handover 0023).
-
-    Requires admin role. Admin can reset any user's password including their own.
-    Resets password to default 'GiljoMCP' and sets must_change_password=True.
-    Keeps recovery_pin_hash unchanged and clears PIN lockout.
-
-    Args:
-        user_id: UUID of user to reset password
-        current_user: Current authenticated admin user
-        user_service: User service for database operations
-
-    Returns:
-        Password reset confirmation
-
-    Raises:
-        AuthorizationError: User is not admin (403)
-        ResourceNotFoundError: User not found (404)
-        BaseGiljoError: Database operation failed (500)
-    """
-    logger.debug(f"Admin {current_user.username} resetting password for user {user_id}")
-
-    await user_service.reset_password(str(user_id))
-
-    logger.info(f"Admin {current_user.username} reset password for user: {user_id}")
-    return PasswordChangeResponse(message="Password reset to default. User must change on next login.")
-
-
 # Field Toggle Configuration Endpoints (Handover 0048, 0820)
 
 
