@@ -136,7 +136,7 @@
               variant="outlined"
               class="font-monospace no-resize mb-3"
               append-inner-icon="mdi-content-copy"
-              :messages="copiedCert ? 'Copied! Add to ~/.bashrc or ~/.zshrc to persist across sessions.' : 'Add to ~/.bashrc or ~/.zshrc to persist across sessions.'"
+              :messages="copiedCert ? 'Copied!' : ''"
               @click:append-inner="copyCertCommand"
             />
           </template>
