@@ -114,41 +114,25 @@
           @update:sort-by="sortConfig = $event"
           @click:row="handleRowClick"
         >
-          <!-- Name Column with ID and Taxonomy Chip (Handover 0440c, 0870h) -->
+          <!-- Name Column -->
           <template v-slot:item.name="{ item }">
             <div class="py-2">
-              <div class="d-flex align-center">
-                <v-tooltip v-if="item.project_type_id || item.series_number" :text="(item.project_type?.label || 'Untyped') + ' — ' + item.taxonomy_alias">
-                  <template #activator="{ props: ttProps }">
-                    <!-- Square tinted badge: desktop -->
-                    <span
-                      v-bind="ttProps"
-                      class="project-id-badge mr-2 taxonomy-chip-full"
-                      :style="projectIdBadgeStyle(item.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR)"
-                    >
-                      {{ item.taxonomy_alias }}
-                    </span>
-                    <!-- Colored dot: compact viewports -->
-                    <span
-                      v-bind="ttProps"
-                      class="taxonomy-dot mr-2"
-                      :style="{ backgroundColor: item.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR }"
-                    ></span>
-                  </template>
-                </v-tooltip>
-                <span class="project-name-text">
-                  {{ item.name }}
-                </span>
-              </div>
+              <span class="project-name-text">{{ item.name }}</span>
               <div class="project-uuid-text project-id-text">
                 Project ID: {{ item.id }}
               </div>
             </div>
           </template>
 
-          <!-- Serial Column -->
+          <!-- Serial Column (colorized tinted badge) -->
           <template v-slot:item.serial="{ item }">
-            <span v-if="item.taxonomy_alias" class="text-caption text-muted-a11y">{{ item.taxonomy_alias }}</span>
+            <span
+              v-if="item.taxonomy_alias"
+              class="project-id-badge"
+              :style="projectIdBadgeStyle(item.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR)"
+            >
+              {{ item.taxonomy_alias }}
+            </span>
             <span v-else class="staged-dash">—</span>
           </template>
 
@@ -482,8 +466,8 @@ const statusSelectOptions = ['active', 'inactive', 'completed', 'cancelled', 'te
 
 // Table headers
 const headers = [
-  { title: 'Name', key: 'name', sortable: true, width: '28%' },
   { title: 'Serial', key: 'serial', sortable: true, width: '10%' },
+  { title: 'Name', key: 'name', sortable: true, width: '28%' },
   { title: 'Status', key: 'status', sortable: true, width: '13%', align: 'center' },
   { title: 'Staged', key: 'staging_status', sortable: true, width: '9%', align: 'center' },
   { title: 'Created', key: 'created_at', sortable: true, width: '13%' },
@@ -940,19 +924,9 @@ onMounted(async () => {
 }
 
 /* ── Responsive compact elements (hidden by default, shown via media queries) ── */
-.taxonomy-dot,
 .status-dot,
 .date-compact {
   display: none;
-}
-
-/* Taxonomy colored dot */
-.taxonomy-dot {
-  width: 10px;
-  height: 10px;
-  min-width: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
 }
 
 /* Status compact dot with initial letter */
@@ -971,12 +945,10 @@ onMounted(async () => {
 /* ── Compact breakpoint (≤1280px): collapse badges to dots, dates to DD/MM/YY ── */
 /* At 1200px with sidebar open (~160px), content area is ~1040px and badges overflow */
 @media (max-width: 1280px) {
-  .taxonomy-chip-full,
   .status-full,
   .date-full {
     display: none !important;
   }
-  .taxonomy-dot,
   .status-dot,
   .date-compact {
     display: inline-block;
