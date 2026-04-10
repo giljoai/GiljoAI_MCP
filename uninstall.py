@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
 # Licensed under the GiljoAI Community License v1.1.
 # See LICENSE in the project root for terms.
@@ -66,7 +64,7 @@ class GiljoProductionUninstaller:
                     batch = pkg_names[i : i + batch_size]
                     try:
                         subprocess.run(
-                            [sys.executable, "-m", "pip", "uninstall", "-y"] + batch,
+                            [sys.executable, "-m", "pip", "uninstall", "-y", *batch],
                             check=False,
                             capture_output=True,
                             timeout=300,
@@ -111,7 +109,7 @@ class GiljoProductionUninstaller:
                         if line.startswith("DB_PASSWORD="):
                             password = line.split("=", 1)[1].strip().strip("\"'")
                             break
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
         # Find psql executable
@@ -147,7 +145,7 @@ class GiljoProductionUninstaller:
                         "-d",
                         "postgres",
                         "-c",
-                        f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{database}' AND pid <> pg_backend_pid();",
+                        f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{database}' AND pid <> pg_backend_pid();",  # noqa: S608 — database name comes from trusted install manifest, not user input
                     ],
                     check=False,
                     env=env,
