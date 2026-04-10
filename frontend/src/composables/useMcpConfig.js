@@ -128,14 +128,14 @@ export function generateConfigForTool(toolId, serverUrl, apiKey) {
 export function generateCodexEnvVar(apiKey, platform) {
   const key = apiKey || 'YOUR_API_KEY'
   if (platform === 'windows') {
-    return `[System.Environment]::SetEnvironmentVariable('GILJO_API_KEY', '${key}', 'User'); $env:GILJO_API_KEY="${key}"`
+    return `setx GILJO_API_KEY "${key}"\n$env:GILJO_API_KEY="${key}"`
   }
   return `echo 'export GILJO_API_KEY="${key}"' >> ~/.bashrc && source ~/.bashrc`
 }
 
 // ─── Certificate trust commands ───────────────────────────────────
 
-export const CERT_TRUST_WINDOWS = 'mkdir -Force "$env:USERPROFILE\\.giljo" | Out-Null; Copy-Item "$env:USERPROFILE\\Downloads\\rootCA.pem" "$env:USERPROFILE\\.giljo\\rootCA.pem"; $env:NODE_EXTRA_CA_CERTS = "$env:USERPROFILE\\.giljo\\rootCA.pem"; [System.Environment]::SetEnvironmentVariable(\'NODE_EXTRA_CA_CERTS\', "$env:USERPROFILE\\.giljo\\rootCA.pem", \'User\')'
+export const CERT_TRUST_WINDOWS = '$env:NODE_OPTIONS = "--use-system-ca"; [System.Environment]::SetEnvironmentVariable(\'NODE_OPTIONS\', \'--use-system-ca\', \'User\')'
 export const CERT_TRUST_UNIX = 'mkdir -p ~/.giljo && cp ~/Downloads/rootCA.pem ~/.giljo/rootCA.pem && export NODE_EXTRA_CA_CERTS="$HOME/.giljo/rootCA.pem"'
 
 /**
