@@ -31,10 +31,10 @@
               <button
                 v-bind="btnProps"
                 class="export-icon-btn smooth-border"
-                :class="{ 'export-icon-btn--loading': setupLoading[p.id] }"
+                :class="{ 'export-icon-btn--loading': setupLoading[p.id], 'export-icon-btn--generic': p.isGeneric }"
                 :disabled="setupLoading[p.id]"
                 :data-testid="`setup-${p.id}`"
-                @click="generateBootstrapPrompt(p.id)"
+                @click="p.isGeneric ? (showGenericDialog = true) : generateBootstrapPrompt(p.id)"
               >
                 <v-progress-circular
                   v-if="setupLoading[p.id]"
@@ -106,11 +106,64 @@
         </v-expansion-panel>
       </v-expansion-panels>
     </div>
+
+    <!-- Generic MCP Dialog -->
+    <v-dialog v-model="showGenericDialog" max-width="480" scrollable>
+      <v-card class="smooth-border">
+        <div class="dlg-header">
+          <v-avatar size="28" rounded="0" class="mr-2" style="filter: grayscale(1) brightness(1.5)">
+            <v-img src="/logo-mcp.svg" alt="MCP" />
+          </v-avatar>
+          <span class="dlg-title">Generic MCP Platform</span>
+          <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="showGenericDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
+        <v-card-text class="pt-4">
+          <p class="text-body-2 mb-3">
+            Due to the wide variety of MCP-compatible coding tools available, we provide generic agent templates and slash command files for manual installation.
+          </p>
+          <p class="text-body-2 mb-4" style="color: var(--text-muted)">
+            These files will need to be adapted to your specific platform. Refer to your tool's documentation for where to place agent definitions and slash commands.
+          </p>
+
+          <div class="mb-3">
+            <div class="text-subtitle-2 mb-2">Agent Templates</div>
+            <v-btn
+              variant="tonal"
+              size="small"
+              prepend-icon="mdi-download"
+              :loading="downloadLoading['agents_generic']"
+              @click="downloadZip('agent_templates', 'generic')"
+            >
+              Download Agent Templates
+            </v-btn>
+          </div>
+
+          <div>
+            <div class="text-subtitle-2 mb-2">Slash Commands / Skills</div>
+            <v-btn
+              variant="tonal"
+              size="small"
+              prepend-icon="mdi-download"
+              :loading="downloadLoading['slash_generic']"
+              @click="downloadZip('slash_commands', 'generic')"
+            >
+              Download Slash Commands
+            </v-btn>
+          </div>
+        </v-card-text>
+        <div class="dlg-footer">
+          <v-spacer />
+          <v-btn variant="text" @click="showGenericDialog = false">Close</v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { useClipboard } from '@/composables/useClipboard'
 
@@ -127,8 +180,10 @@ const platforms = [
   { id: 'claude_code', label: 'Claude Code', buttonLabel: 'Claude Prompt', icon: '/claude_pix.svg', color: 'deep-orange', experimental: false },
   { id: 'codex_cli', label: 'Codex CLI', buttonLabel: 'Codex Prompt', icon: '/codex_logo.svg', color: 'green', experimental: true },
   { id: 'gemini_cli', label: 'Gemini CLI', buttonLabel: 'Gemini Prompt', icon: '/gemini-icon.svg', color: 'blue', experimental: true },
-  { id: 'generic', label: 'Generic MCP', buttonLabel: 'Generic', icon: '/logo-mcp.svg', color: 'grey', experimental: false },
+  { id: 'generic', label: 'Generic MCP', buttonLabel: 'Generic', icon: '/logo-mcp.svg', color: 'grey', experimental: false, isGeneric: true },
 ]
+
+const showGenericDialog = ref(false)
 
 const setupLoading = reactive({
   claude_code: false,
@@ -240,6 +295,15 @@ async function downloadZip(contentType, platform) {
 
 .export-icon-btn:hover {
   background: rgba(255, 195, 0, 0.12);
+}
+
+.export-icon-btn--generic {
+  --smooth-border-color: #8895a8;
+  filter: grayscale(1) brightness(1.5);
+}
+
+.export-icon-btn--generic:hover {
+  background: rgba(137, 149, 168, 0.12);
 }
 
 .export-icon-btn--loading {
