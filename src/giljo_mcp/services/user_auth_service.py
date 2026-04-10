@@ -151,54 +151,6 @@ class UserAuthService:
 
         self._logger.info(f"Password changed for user: {user.username}")
 
-    async def reset_password(self, user_id: str) -> None:
-        """
-        Reset user password to default 'GiljoMCP'.
-
-        Args:
-            user_id: User UUID
-
-        Raises:
-            ResourceNotFoundError: User not found
-            BaseGiljoError: Database operation failed
-        """
-        try:
-            async with self._get_session() as session:
-                return await self._reset_password_impl(session, user_id)
-
-        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
-            raise  # Re-raise without wrapping
-        except (RuntimeError, ValueError) as e:
-            self._logger.exception("Failed to reset password")
-            raise BaseGiljoError(message=str(e), context={"operation": "reset_password", "user_id": user_id}) from e
-
-    async def _reset_password_impl(self, session: AsyncSession, user_id: str) -> None:
-        """Implementation that uses provided session (void return)
-
-        Raises:
-            ResourceNotFoundError: User not found
-        """
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
-
-        if not user:
-            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
-
-        # Reset password to default 'GiljoMCP'
-        user.password_hash = bcrypt.hashpw(b"GiljoMCP", bcrypt.gensalt()).decode("utf-8")
-
-        # Set must_change_password flag
-        user.must_change_password = True
-
-        # Clear PIN lockout
-        user.failed_pin_attempts = 0
-        user.pin_lockout_until = None
-
-        await session.commit()
-
-        self._logger.info(f"Reset password for user: {user.username}")
-
     async def verify_password(self, user_id: str, password: str) -> bool:
         """
         Verify user password using bcrypt.

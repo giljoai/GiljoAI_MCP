@@ -428,10 +428,6 @@ class UserService:
         """Facade: delegates to UserAuthService."""
         return await self._auth.change_password(*a, **kw)
 
-    async def reset_password(self, *a, **kw) -> None:
-        """Facade: delegates to UserAuthService."""
-        return await self._auth.reset_password(*a, **kw)
-
     async def verify_password(self, *a, **kw) -> bool:
         """Facade: delegates to UserAuthService."""
         return await self._auth.verify_password(*a, **kw)
