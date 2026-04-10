@@ -659,8 +659,8 @@ onUnmounted(() => {
 /* ═══ MINI STATS ROW ═══ */
 .mini-stats {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
   margin-bottom: 24px;
 }
 
@@ -689,6 +689,7 @@ onUnmounted(() => {
   letter-spacing: 0.05em;
   color: var(--text-muted);
   margin-bottom: 2px;
+  text-align: center;
 }
 
 .mini-stat-value {
@@ -696,6 +697,7 @@ onUnmounted(() => {
   font-size: 1.1rem;
   font-weight: 500;
   color: $color-text-primary;
+  text-align: center;
 }
 
 /* ═══ PANEL PATTERN ═══ */
