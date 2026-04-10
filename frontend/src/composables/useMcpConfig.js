@@ -130,7 +130,7 @@ export function generateCodexEnvVar(apiKey, platform) {
   if (platform === 'windows') {
     return `setx GILJO_API_KEY "${key}"\n$env:GILJO_API_KEY="${key}"`
   }
-  return `echo 'export GILJO_API_KEY="${key}"' >> ~/.bashrc && source ~/.bashrc`
+  return `echo 'export GILJO_API_KEY="${key}"' >> ~/.bashrc && export GILJO_API_KEY="${key}"`
 }
 
 // ─── Certificate trust commands ───────────────────────────────────
