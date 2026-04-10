@@ -18,6 +18,7 @@ Handover 0815: Cleared stale rules/criteria to match v103 design
 
 from src.giljo_mcp.template_seeder import _get_template_metadata
 
+
 EXPECTED_ROLES = {"orchestrator", "analyzer", "implementer", "tester", "reviewer", "documenter"}
 
 

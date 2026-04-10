@@ -323,7 +323,7 @@ class TestTemplateServiceCRUD:
         assert result.template_id == "test-id"
         assert result.updated is True
         assert mock_template.name == "new-name"
-        # Note: content is stored in system_instructions
+        # The `content` field maps to `system_instructions` on the model
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio

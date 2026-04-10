@@ -22,6 +22,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -89,7 +90,7 @@ class TestDatabaseConnectivity:
             manager = DatabaseManager(database_url=db_url, is_async=False)
             assert manager is not None
             assert manager.database_url == db_url
-        except Exception:
+        except Exception:  # noqa: S110
             # If database not available, that's ok for unit test
             # Real connection testing should be in integration tests
             pass
@@ -99,9 +100,9 @@ class TestDatabaseConnectivity:
         """Test database connection failure handling."""
         mock_db_manager.side_effect = Exception("Connection refused")
 
-        with pytest.raises(Exception, match="Connection refused"):
-            from src.giljo_mcp.database import DatabaseManager
+        from src.giljo_mcp.database import DatabaseManager
 
+        with pytest.raises(Exception, match="Connection refused"):
             DatabaseManager(database_url="postgresql://invalid", is_async=False)
 
 
@@ -215,9 +216,9 @@ class TestErrorHandling:
 
     def test_missing_database_url(self):
         """Test handling of missing DATABASE_URL."""
-        with pytest.raises(ValueError):
-            from src.giljo_mcp.database import DatabaseManager
+        from src.giljo_mcp.database import DatabaseManager
 
+        with pytest.raises(ValueError, match="Database URL is required"):
             DatabaseManager(database_url=None, is_async=False)
 
     @patch("subprocess.Popen")
