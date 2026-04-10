@@ -458,8 +458,8 @@ const {
   clearFilters,
 } = useProjectFilters({ projects, projectTypes, activeProduct })
 
-// Default sort: created_at descending
-const sortBy = ref([{ key: 'created_at', order: 'desc' }])
+// Default sort: serial number ascending
+const sortBy = ref([{ key: 'series_number', order: 'asc' }])
 
 // Items for the table — filteredProjects already has series_number as integer
 const tableItems = computed(() => filteredProjects.value)
