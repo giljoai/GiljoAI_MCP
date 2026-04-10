@@ -183,7 +183,7 @@ const osCommands = {
 
 const nodeCommand = computed(() => {
   if (activeOs.value === 'windows') {
-    return 'mkdir -Force "$env:USERPROFILE\\.giljo" | Out-Null; Copy-Item "$env:USERPROFILE\\Downloads\\rootCA.pem" "$env:USERPROFILE\\.giljo\\rootCA.pem"; $env:NODE_EXTRA_CA_CERTS = "$env:USERPROFILE\\.giljo\\rootCA.pem"; [System.Environment]::SetEnvironmentVariable(\'NODE_EXTRA_CA_CERTS\', "$env:USERPROFILE\\.giljo\\rootCA.pem", \'User\')'
+    return '$env:NODE_OPTIONS = "--use-system-ca"; [System.Environment]::SetEnvironmentVariable(\'NODE_OPTIONS\', \'--use-system-ca\', \'User\')'
   }
   const rcFile = activeOs.value === 'macos' ? '~/.zshrc' : '~/.bashrc'
   return `mkdir -p ~/.giljo && cp ~/Downloads/rootCA.pem ~/.giljo/rootCA.pem && echo 'export NODE_EXTRA_CA_CERTS="$HOME/.giljo/rootCA.pem"' >> ${rcFile} && source ${rcFile}`
