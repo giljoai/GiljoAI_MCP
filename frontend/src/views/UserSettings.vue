@@ -102,16 +102,18 @@
             <div class="startup-card-title">Learning</div>
             <div class="startup-card-desc">Understand products, projects, agents, memory, and slash commands.</div>
           </div>
+          <div
+            class="startup-card smooth-border"
+            style="--card-accent: #6DB3E4"
+            @click="showCertModal = true"
+          >
+            <div class="startup-card-icon" style="background: rgba(109,179,228,0.12); color: #6DB3E4">
+              <v-icon size="20">mdi-certificate</v-icon>
+            </div>
+            <div class="startup-card-title">Certificate Setup</div>
+            <div class="startup-card-desc">Trust the root CA for HTTPS connections from AI coding tools.</div>
+          </div>
         </div>
-        <v-btn
-          variant="text"
-          prepend-icon="mdi-certificate"
-          class="mt-3"
-          style="text-transform: none; color: var(--text-muted);"
-          @click="showCertModal = true"
-        >
-          Relaunch Certificate Setup
-        </v-btn>
         <CertTrustModal v-model="showCertModal" />
       </v-window-item>
 
@@ -471,7 +473,7 @@ function handleTemplateExportEvent(data) {
 /* Startup quick-launch cards (mirrors Home page .quick-card) */
 .startup-cards {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 14px;
 }
 
