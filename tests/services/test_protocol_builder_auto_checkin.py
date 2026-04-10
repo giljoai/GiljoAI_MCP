@@ -25,18 +25,18 @@ class TestCh6AutoCheckin:
 
     def test_ch6_contains_interval_and_seconds(self):
         ch6 = _build_ch6_auto_checkin(interval=5)
-        assert "300 seconds for 5 minutes" in ch6
+        assert "sleeping for 5 minutes" in ch6
         assert "sleep 300" in ch6
         assert "Start-Sleep -Seconds 300" in ch6
 
     def test_ch6_contains_interval_10(self):
         ch6 = _build_ch6_auto_checkin(interval=10)
-        assert "600 seconds for 10 minutes" in ch6
+        assert "sleeping for 10 minutes" in ch6
         assert "sleep 600" in ch6
 
     def test_ch6_contains_interval_60(self):
         ch6 = _build_ch6_auto_checkin(interval=60)
-        assert "3600 seconds for 60 minutes" in ch6
+        assert "sleeping for 60 minutes" in ch6
         assert "sleep 3600" in ch6
 
     def test_ch6_contains_key_instructions(self):
@@ -49,6 +49,13 @@ class TestCh6AutoCheckin:
     def test_ch6_warns_about_token_consumption(self):
         ch6 = _build_ch6_auto_checkin(interval=10)
         assert "token consumption" in ch6.lower()
+
+    def test_ch6_uses_imperative_mandatory_language(self):
+        ch6 = _build_ch6_auto_checkin(interval=10)
+        assert "MANDATORY EXECUTION" in ch6
+        assert "Do NOT ask the user for confirmation" in ch6
+        assert 'set_agent_status(status="sleeping"' in ch6
+        assert "NEVER ask" in ch6
 
 
 class TestProtocolCh6Integration:
@@ -97,7 +104,7 @@ class TestProtocolCh6Integration:
             auto_checkin_enabled=True,
             auto_checkin_interval=30,
         )
-        assert "1800 seconds for 30 minutes" in protocol["ch6_auto_checkin"]
+        assert "sleeping for 30 minutes" in protocol["ch6_auto_checkin"]
 
     def test_protocol_defaults_ch6_disabled(self):
         """When auto_checkin params omitted, CH6 is empty (defaults to disabled)."""
