@@ -633,8 +633,10 @@ async function changePassword() {
     })
     newPassword.value = ''
     confirmPassword.value = ''
+    showToast({ message: 'Password updated successfully', type: 'success' })
   } catch (err) {
     console.error('[UserManager] Failed to change password:', err)
+    showToast({ message: 'Failed to update password', type: 'error' })
   } finally {
     changingPassword.value = false
   }
@@ -650,8 +652,10 @@ async function changePin() {
     })
     newPin.value = ''
     confirmPin.value = ''
+    showToast({ message: 'Recovery PIN updated successfully', type: 'success' })
   } catch (err) {
     console.error('[UserManager] Failed to change PIN:', err)
+    showToast({ message: 'Failed to update PIN', type: 'error' })
   } finally {
     changingPin.value = false
   }
