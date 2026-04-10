@@ -41,8 +41,8 @@
         </div>
       </div>
 
-      <!-- YOUR TEAM -->
-      <div class="team-section">
+      <!-- YOUR TEAM (hidden during onboarding) -->
+      <div v-if="onboardingComplete" class="team-section">
         <div class="team-header">
           <div class="section-label mb-0">Your Team</div>
           <div class="d-flex align-center ga-2">
@@ -104,8 +104,8 @@
         </div>
       </div>
 
-      <!-- CONDITIONAL SECTION: Setup or Recent Projects -->
-      <div v-if="!setupComplete" class="setup-cta-section">
+      <!-- CONDITIONAL SECTION: Setup or Recent Projects (hidden during onboarding) -->
+      <div v-if="!setupComplete && onboardingComplete" class="setup-cta-section">
         <div class="setup-cta smooth-border" @click="openSetupWithCertGate">
           <v-icon size="24" color="#ffc300">mdi-rocket-launch</v-icon>
           <div class="setup-cta-text">
@@ -115,7 +115,7 @@
           <v-icon size="18" style="color:var(--text-muted);">mdi-chevron-right</v-icon>
         </div>
       </div>
-      <div v-else-if="recentProjects.length > 0" class="recent-projects-section">
+      <div v-else-if="onboardingComplete && recentProjects.length > 0" class="recent-projects-section">
         <div class="recent-projects-panel smooth-border">
           <div class="rp-header">
             <span class="rp-title">Recent Projects</span>
@@ -395,47 +395,37 @@ const activeProjectsCard = computed(() => ({
   to: '/launch?via=jobs',
 }))
 
+// Onboarding phase: true until user has at least one product AND one project
+const onboardingComplete = computed(() => hasActiveProduct.value && hasAnyProject.value)
+
 const quickCards = computed(() => {
-  const cards = []
+  // --- Early onboarding: single focused card ---
 
-  // Priority 1: Incomplete setup
+  // Step 1: Setup not done → show only setup card
   if (!setupComplete.value) {
-    cards.push(setupCard)
+    return [setupCard]
   }
 
-  // Priority 2: Incomplete learning
-  if (!learningComplete.value && cards.length < 3) {
-    cards.push(learnCard)
+  // Step 2: Learning not done → show only learn card
+  if (!learningComplete.value) {
+    return [learnCard]
   }
 
-  // Priority 3: No product
-  if (!hasActiveProduct.value && cards.length < 3) {
-    cards.push(newProductCard.value)
+  // Step 3: No product yet → show only "New Product"
+  if (!hasActiveProduct.value) {
+    return [newProductCard.value]
   }
 
-  // Priority 4: No project (only if product exists)
-  if (hasActiveProduct.value && !hasAnyProject.value && cards.length < 3) {
-    cards.push(newProjectCard.value)
+  // Step 4: Product exists but no project → show only "New Project"
+  if (!hasAnyProject.value) {
+    return [newProjectCard.value]
   }
 
-  // All onboarding complete — fill remaining slots
-  if (cards.length < 3) {
-    if (activeProjectCount.value > 0) {
-      // Active project: Active Projects, Dashboard, Task Board
-      const readyCards = [activeProjectsCard.value, dashboardCard, taskBoardCard]
-      for (const c of readyCards) {
-        if (cards.length < 3) cards.push(c)
-      }
-    } else {
-      // No active project: Dashboard, New Project, Task Board
-      const readyCards = [dashboardCard, newProjectCard.value, taskBoardCard]
-      for (const c of readyCards) {
-        if (cards.length < 3) cards.push(c)
-      }
-    }
+  // --- Onboarding complete: full 3-card layout ---
+  if (activeProjectCount.value > 0) {
+    return [activeProjectsCard.value, dashboardCard, taskBoardCard]
   }
-
-  return cards
+  return [dashboardCard, newProjectCard.value, taskBoardCard]
 })
 
 // Recent projects (from dashboard API)
@@ -715,6 +705,14 @@ onMounted(async () => {
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
   margin-bottom: 36px;
+
+  // Single card during onboarding — center it
+  &:has(.quick-card:only-child) {
+    grid-template-columns: 1fr;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 .quick-card {
