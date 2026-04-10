@@ -281,10 +281,10 @@
           </div>
 
           <div class="mb-3">
-            <div class="text-subtitle-2 mb-2">Then enable Node.js system CA trust (for AI coding tools):</div>
+            <div class="text-subtitle-2 mb-2">Then trust the certificate in Node.js (for AI coding tools):</div>
             <div class="pa-3 bg-grey-darken-4 rounded text-body-2">
-              <code class="d-block mb-1"><strong>Windows (PowerShell):</strong> $env:NODE_OPTIONS = "--use-system-ca"; [System.Environment]::SetEnvironmentVariable('NODE_OPTIONS', '--use-system-ca', 'User')</code>
-              <code class="d-block"><strong>Linux/macOS:</strong> echo 'export NODE_OPTIONS="--use-system-ca"' >> ~/.bashrc &amp;&amp; source ~/.bashrc</code>
+              <code class="d-block mb-1"><strong>Windows (PowerShell):</strong> $env:NODE_EXTRA_CA_CERTS = "$env:USERPROFILE\Downloads\rootCA.pem"; [System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', "$env:USERPROFILE\Downloads\rootCA.pem", 'User')</code>
+              <code class="d-block"><strong>Linux/macOS:</strong> echo 'export NODE_EXTRA_CA_CERTS="$HOME/Downloads/rootCA.pem"' >> ~/.bashrc &amp;&amp; source ~/.bashrc</code>
             </div>
           </div>
         </template>
