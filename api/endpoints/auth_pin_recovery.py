@@ -86,12 +86,10 @@ async def verify_pin_and_reset_password(
     if request_data.new_password != request_data.confirm_password:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match")
 
-    # Defense-in-depth: scope user lookup to default tenant (Handover 0769a)
-    from src.giljo_mcp.config_manager import get_config
-
-    _cfg = get_config()
-    _tenant_key = _cfg.tenant.default_tenant_key or "default"
-    stmt = select(User).where(User.username == request_data.username, User.tenant_key == _tenant_key)
+    # Look up by username only — matches login endpoint pattern.
+    # Tenant key is generated from username at creation time, not "default".
+    # SaaS: add tenant scoping when multi-tenant auth is built.
+    stmt = select(User).where(User.username == request_data.username)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
@@ -177,12 +175,10 @@ async def check_first_login(
     Returns:
         must_change_password and must_set_pin flags (safe defaults for unknown users)
     """
-    # Defense-in-depth: scope user lookup to default tenant (Handover 0769a)
-    from src.giljo_mcp.config_manager import get_config
-
-    _cfg = get_config()
-    _tenant_key = _cfg.tenant.default_tenant_key or "default"
-    stmt = select(User).where(User.username == request_data.username, User.tenant_key == _tenant_key)
+    # Look up by username only — matches login endpoint pattern.
+    # Tenant key is generated from username at creation time, not "default".
+    # SaaS: add tenant scoping when multi-tenant auth is built.
+    stmt = select(User).where(User.username == request_data.username)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
