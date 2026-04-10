@@ -202,11 +202,13 @@ After completing a coordination loop with no actionable work remaining:
 3. Review your TODO list — ALL items must be `completed`
    If any are not, either complete them or explain why they were dropped
 
-**Closeout steps:**
+**Closeout steps (order matters):**
 1. Mark any remaining TODO items as `completed` via `report_progress()`
-2. `mcp__giljo_mcp__write_360_memory()` — preserve project knowledge for future projects
-3. `mcp__giljo_mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})` — mark orchestrator complete
+2. `mcp__giljo_mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})` — mark YOUR orchestrator job complete FIRST
+3. `mcp__giljo_mcp__close_project_and_update_memory(project_id="...", summary="...", key_outcomes=[...], decisions_made=[...], git_commits=[...])` — close the project and write 360 memory
 4. Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
+
+**IMPORTANT:** You MUST complete your own job (step 2) BEFORE closing the project (step 3). The server requires all agents including the orchestrator to be complete before project closeout.
 
 **If `complete_job()` is rejected:** Read the error. Common causes:
 - Unread messages remain → run receive_messages() and process them
