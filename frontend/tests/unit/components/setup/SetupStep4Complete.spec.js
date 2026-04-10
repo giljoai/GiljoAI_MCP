@@ -1,6 +1,6 @@
 /**
  * Unit tests for SetupStep4Complete component (Handover 0855f)
- * Covers launchpad card rendering, emission of complete events, and header content.
+ * Covers header rendering and emission of complete event.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -30,33 +30,6 @@ describe('SetupStep4Complete', () => {
   // Rendering
   // -------------------------------------------------------------------
   describe('Rendering', () => {
-    it('renders 3 launchpad cards', () => {
-      const wrapper = mountStep4()
-      const cards = wrapper.findAll('.launchpad-card')
-
-      expect(cards).toHaveLength(3)
-    })
-
-    it('renders cards with correct titles', () => {
-      const wrapper = mountStep4()
-      const titles = wrapper.findAll('.card-title')
-
-      expect(titles).toHaveLength(3)
-      expect(titles[0].text()).toBe('Define Your Product')
-      expect(titles[1].text()).toBe('Start a Project')
-      expect(titles[2].text()).toBe('Track Your Work')
-    })
-
-    it('renders cards with correct button labels', () => {
-      const wrapper = mountStep4()
-      const buttons = wrapper.findAll('.card-btn')
-
-      expect(buttons).toHaveLength(3)
-      expect(buttons[0].text()).toBe('OPEN PRODUCTS')
-      expect(buttons[1].text()).toBe('OPEN PROJECTS')
-      expect(buttons[2].text()).toBe('OPEN TASKS')
-    })
-
     it('renders success header with "You\'re all set!" text', () => {
       const wrapper = mountStep4()
       const title = wrapper.find('.complete-title')
@@ -74,12 +47,12 @@ describe('SetupStep4Complete', () => {
       expect(subtitle.text()).toContain('connected and ready')
     })
 
-    it('renders a "Go to Home" link', () => {
+    it('renders a Continue button', () => {
       const wrapper = mountStep4()
-      const dashboardLink = wrapper.find('.dashboard-link')
+      const btn = wrapper.find('.card-btn')
 
-      expect(dashboardLink.exists()).toBe(true)
-      expect(dashboardLink.text()).toBe('Go to Home')
+      expect(btn.exists()).toBe(true)
+      expect(btn.text()).toBe('Continue')
     })
   })
 
@@ -87,47 +60,11 @@ describe('SetupStep4Complete', () => {
   // Emit: complete
   // -------------------------------------------------------------------
   describe('Complete event emission', () => {
-    it('click "OPEN PRODUCTS" emits complete with products action and route', async () => {
+    it('click Continue emits complete with home action and route', async () => {
       const wrapper = mountStep4()
-      const buttons = wrapper.findAll('.card-btn')
+      const btn = wrapper.find('.card-btn')
 
-      await buttons[0].trigger('click')
-
-      const events = wrapper.emitted('complete')
-      expect(events).toBeTruthy()
-      expect(events).toHaveLength(1)
-      expect(events[0][0]).toEqual({ action: 'products', route: '/products' })
-    })
-
-    it('click "OPEN PROJECTS" emits complete with projects action and route', async () => {
-      const wrapper = mountStep4()
-      const buttons = wrapper.findAll('.card-btn')
-
-      await buttons[1].trigger('click')
-
-      const events = wrapper.emitted('complete')
-      expect(events).toBeTruthy()
-      expect(events).toHaveLength(1)
-      expect(events[0][0]).toEqual({ action: 'projects', route: '/projects' })
-    })
-
-    it('click "OPEN TASKS" emits complete with tasks action and route', async () => {
-      const wrapper = mountStep4()
-      const buttons = wrapper.findAll('.card-btn')
-
-      await buttons[2].trigger('click')
-
-      const events = wrapper.emitted('complete')
-      expect(events).toBeTruthy()
-      expect(events).toHaveLength(1)
-      expect(events[0][0]).toEqual({ action: 'tasks', route: '/tasks' })
-    })
-
-    it('click "Go to Home" emits complete with home action and route', async () => {
-      const wrapper = mountStep4()
-      const dashboardLink = wrapper.find('.dashboard-link')
-
-      await dashboardLink.trigger('click')
+      await btn.trigger('click')
 
       const events = wrapper.emitted('complete')
       expect(events).toBeTruthy()
