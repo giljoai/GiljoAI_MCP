@@ -896,6 +896,73 @@ def install_requirements() -> bool:
         return False
 
 
+def _check_and_stamp_migration_version() -> None:
+    """Detect old migration revisions and stamp to baseline_v36.
+
+    After a CE export squash, the old revision IDs no longer exist as files.
+    This bridges existing databases to the new baseline so alembic upgrade head works.
+    """
+    try:
+        from sqlalchemy import text
+
+        from src.giljo_mcp.database import DatabaseManager
+
+        db_url = _get_database_url()
+        if not db_url:
+            return
+
+        db_manager = DatabaseManager(database_url=db_url, is_async=False)
+        with db_manager.get_session() as session:
+            result = session.execute(
+                text("SELECT version_num FROM alembic_version LIMIT 1")
+            )
+            current = result.scalar()
+
+            if not current or current == "baseline_v36":
+                return
+
+            known_old = {
+                "baseline_v33", "baseline_v34", "baseline_v35",
+                "0855a_setup_state", "0904_auto_checkin", "0950b_exec_status",
+                "0960_checkin_min", "0435b_closed_status", "0435d_requires_action",
+                "bee938301ffa",
+            }
+
+            if current in known_old or current not in known_old:
+                print_info(f"Stamping migration: {current} -> baseline_v36")
+                session.execute(
+                    text("UPDATE alembic_version SET version_num = 'baseline_v36'")
+                )
+                session.commit()
+                print_success("Migration version updated to baseline_v36")
+
+    except Exception as e:
+        print_warning(f"Migration version check skipped: {e}")
+
+
+def _get_database_url() -> Optional[str]:
+    """Build database URL from environment (same source as check_database_connectivity)."""
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+
+        database_url = os.getenv("DATABASE_URL")
+        if database_url:
+            return database_url
+
+        from urllib.parse import quote_plus
+        db_host = os.getenv("DB_HOST", "localhost")
+        db_port = os.getenv("DB_PORT", "5432")
+        db_name = os.getenv("DB_NAME", "giljo_mcp")
+        db_user = os.getenv("DB_USER", "postgres")
+        db_password = os.getenv("DB_PASSWORD", "")
+        if not db_password:
+            return None
+        return f"postgresql://{db_user}:{quote_plus(db_password)}@{db_host}:{db_port}/{db_name}"
+    except Exception:
+        return None
+
+
 def run_database_migrations() -> bool:
     """
     Run database migrations using Alembic.
@@ -904,6 +971,10 @@ def run_database_migrations() -> bool:
         True if migrations are successful, False otherwise
     """
     print_header("Running Database Migrations")
+
+    # Bridge old migration revisions to baseline_v36 before running alembic
+    _check_and_stamp_migration_version()
+
     try:
         subprocess.run(
             [sys.executable, "-m", "alembic", "upgrade", "head"],
