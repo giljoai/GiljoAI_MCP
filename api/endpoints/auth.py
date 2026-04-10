@@ -214,6 +214,14 @@ class RegisterUserRequest(BaseModel):
     workspace_name: str | None = Field(
         default="My Organization", description="Organization name for first admin user (Handover 0424h)"
     )
+    recovery_pin: str | None = Field(
+        default=None, min_length=4, max_length=4, pattern="^[0-9]{4}$",
+        description="4-digit recovery PIN for password reset",
+    )
+    confirm_pin: str | None = Field(
+        default=None, min_length=4, max_length=4, pattern="^[0-9]{4}$",
+        description="Confirm recovery PIN",
+    )
 
     @field_validator("role")
     @classmethod
@@ -836,6 +844,30 @@ async def create_first_admin_user(
 
         token = admin_data.token
         tenant_key = admin_data.tenant_key
+
+        # Save recovery PIN if provided during admin creation
+        if request_body.recovery_pin:
+            if request_body.recovery_pin != request_body.confirm_pin:
+                raise HTTPException(status_code=400, detail="Recovery PINs do not match")
+
+            import bcrypt
+
+            from api.endpoints.dependencies import get_db_manager
+            from src.giljo_mcp.models.auth import User
+
+            db_manager = await get_db_manager()
+            async with db_manager.get_session_async() as db:
+                from sqlalchemy import select
+
+                stmt = select(User).where(User.username == request_body.username)
+                result = await db.execute(stmt)
+                user = result.scalar_one_or_none()
+                if user:
+                    user.recovery_pin_hash = bcrypt.hashpw(
+                        request_body.recovery_pin.encode("utf-8"), bcrypt.gensalt()
+                    ).decode("utf-8")
+                    await db.commit()
+                    logger.info(f"[SETUP] Recovery PIN set for admin user: {request_body.username}")
 
         # Seed default agent templates for this tenant (Handover 0041 Phase 2)
         # CRITICAL: Templates are seeded with the user's tenant_key (not default_tenant_key)
