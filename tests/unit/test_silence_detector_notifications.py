@@ -20,6 +20,7 @@ import pytest
 
 from api.events.schemas import EventFactory
 
+
 # ---------------------------------------------------------------------------
 # EventFactory.agent_silent unit tests
 # ---------------------------------------------------------------------------
