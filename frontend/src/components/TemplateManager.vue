@@ -354,10 +354,13 @@
 
         <div class="dlg-footer">
           <v-spacer />
-          <v-btn variant="text" @click="closeEditDialog"> Cancel </v-btn>
-          <v-btn color="primary" variant="flat" :loading="saving" @click="saveTemplateAndPreview">
-            Save and Generate Preview
-          </v-btn>
+          <v-btn v-if="templateSaved" variant="text" @click="closeEditDialog">Close</v-btn>
+          <template v-else>
+            <v-btn variant="text" @click="closeEditDialog">Cancel</v-btn>
+            <v-btn color="primary" variant="flat" :loading="saving" @click="saveTemplateAndPreview">
+              Save and Generate Preview
+            </v-btn>
+          </template>
         </div>
       </v-card>
     </v-dialog>
@@ -474,6 +477,7 @@ const {
 } = useTemplateData(search, filterCategory, filterStatus)
 
 // Dialog loading states
+const templateSaved = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 const resetting = ref(false)
@@ -583,6 +587,7 @@ const duplicateTemplate = (template) => {
 const closeEditDialog = () => {
   editDialog.value = false
   previewContent.value = ''
+  templateSaved.value = false
   resetEditingTemplate()
 }
 
@@ -636,7 +641,9 @@ const saveTemplateAndPreview = async () => {
 
     const previewResponse = await api.templates.preview(templateId, {})
     previewContent.value = previewResponse.data.preview
+    templateSaved.value = true
     await loadTemplates()
+    showToast({ message: 'Template saved and preview generated', type: 'success' })
   } catch (error) {
     console.error('Failed to save template:', error)
     previewContent.value = ''
@@ -710,15 +717,26 @@ const handleTemplateExported = (data) => {
   })
 }
 
+// Handle agent template downloads via MCP (/gil_get_agents) — clear staleness flags
+const handleAgentsDownloaded = () => {
+  const now = new Date().toISOString()
+  templates.value.forEach((template) => {
+    template.last_exported_at = now
+    template.may_be_stale = false
+  })
+}
+
 // Lifecycle
 onMounted(() => {
   loadTemplates()
   loadActiveCount()
   on('template:exported', handleTemplateExported)
+  on('setup:agents_downloaded', handleAgentsDownloaded)
 })
 
 onUnmounted(() => {
   off('template:exported', handleTemplateExported)
+  off('setup:agents_downloaded', handleAgentsDownloaded)
 })
 
 // Handover 0335: Watch for export events from parent (UserSettings.vue)
