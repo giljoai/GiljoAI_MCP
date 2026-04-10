@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
 """
 GiljoAI MCP Developer Control Panel
 
@@ -2586,12 +2592,8 @@ pg_restore -l {backup_file.name} | head -20
                 cache_clean = False
                 break
 
-        # Check for any __pycache__ directories (skip venv directories)
-        skip_dirs = {"venv", "venv_devtools", ".venv", "node_modules"}
-        pycache_exists = any(
-            p for p in self.project_root.rglob("__pycache__")
-            if not any(part in skip_dirs for part in p.parts)
-        )
+        # Check for any __pycache__ directories
+        pycache_exists = any(self.project_root.rglob("__pycache__"))
 
         checks["python_cache"] = cache_clean and not pycache_exists
 
