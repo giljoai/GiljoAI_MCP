@@ -1,0 +1,41 @@
+# Release workflow — creates a GitHub Release when you push a version tag
+# What this does: when you push a tag like v1.0.0, this automatically
+# creates a nice release page on GitHub with your changelog notes.
+#
+# How to use:
+#   git tag -a v1.0.0 -m "v1.0.0 — Initial public release"
+#   git push origin v1.0.0
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "GiljoAI MCP v${{ steps.version.outputs.VERSION }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

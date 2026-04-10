@@ -1,0 +1,45 @@
+# Dependabot — Automated dependency updates
+# What this does: every week, Dependabot checks if any of your Python or
+# Node packages have security fixes. If so, it automatically opens a PR
+# for you to review and merge. Zero maintenance from you.
+
+version: 2
+updates:
+  # Python (pip) dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "deps(py):"
+
+  # Node.js (npm) dependencies — frontend
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "deps(npm):"
+
+  # GitHub Actions versions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "deps(actions):"

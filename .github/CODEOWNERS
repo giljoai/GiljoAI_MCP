@@ -1,0 +1,6 @@
+# CODEOWNERS — Auto-assigns reviewers on pull requests
+# What this does: every PR automatically requests a review from you.
+# GitHub won't let PRs merge without your approval (once branch protection is on).
+
+# Default: all files require review from the GiljoAI org
+* @giljoai
