@@ -466,7 +466,7 @@ const tableItems = computed(() => {
   return filteredProjects.value.map((p) => ({
     ...p,
     serial: p.taxonomy_alias || '',
-    _serial_sort: `${p.project_type?.abbreviation || 'ZZZ'}_${String(p.series_number || 99999).padStart(5, '0')}_${p.subseries || ''}`,
+    _serial_sort: `${String(p.series_number || 99999).padStart(5, '0')}_${p.subseries || ''}_${p.project_type?.abbreviation || 'ZZZ'}`,
   }))
 })
 
