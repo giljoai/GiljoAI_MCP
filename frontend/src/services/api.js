@@ -446,6 +446,7 @@ export const api = {
     // Password reset endpoints (Handover 0023)
     checkFirstLogin: (username) => apiClient.post('/api/auth/check-first-login', { username }),
     completeFirstLogin: (data) => apiClient.post('/api/auth/complete-first-login', data),
+    verifyPin: (data) => apiClient.post('/api/auth/verify-pin', data),
     verifyPinAndResetPassword: (data) =>
       apiClient.post('/api/auth/verify-pin-and-reset-password', data),
     setRecoveryPin: (data) => apiClient.post('/api/auth/set-recovery-pin', data),
