@@ -94,12 +94,12 @@
                 </div>
               </div>
 
-              <!-- Step 3: NODE_OPTIONS -->
+              <!-- Step 3: NODE_EXTRA_CA_CERTS -->
               <div class="cert-step">
                 <div class="cert-step-number">3</div>
                 <div class="cert-step-content">
-                  <div class="cert-step-title">Enable Node.js system CA trust</div>
-                  <p class="cert-hint">Required for Claude Code, Codex CLI, and Gemini CLI:</p>
+                  <div class="cert-step-title">Trust certificate in Node.js</div>
+                  <p class="cert-hint">Required for Claude Code, Codex CLI, and Gemini CLI (all Node versions):</p>
 
                   <div class="cert-command-block smooth-border">
                     <code class="cert-command">{{ nodeCommand }}</code>
@@ -108,7 +108,7 @@
                       variant="text"
                       size="x-small"
                       class="cert-copy-btn"
-                      aria-label="Copy NODE_OPTIONS command"
+                      aria-label="Copy NODE_EXTRA_CA_CERTS command"
                       @click="copyCommand(nodeCommand, 'node')"
                     >
                       <v-icon size="14">{{ copiedNode ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
@@ -183,10 +183,11 @@ const osCommands = {
 
 const nodeCommand = computed(() => {
   if (activeOs.value === 'windows') {
-    return '$env:NODE_OPTIONS = "--use-system-ca"; [System.Environment]::SetEnvironmentVariable(\'NODE_OPTIONS\', \'--use-system-ca\', \'User\')'
+    return '$env:NODE_EXTRA_CA_CERTS = "$env:USERPROFILE\\Downloads\\rootCA.pem"; [System.Environment]::SetEnvironmentVariable(\'NODE_EXTRA_CA_CERTS\', "$env:USERPROFILE\\Downloads\\rootCA.pem", \'User\')'
   }
   const rcFile = activeOs.value === 'macos' ? '~/.zshrc' : '~/.bashrc'
-  return `echo 'export NODE_OPTIONS="--use-system-ca"' >> ${rcFile} && source ${rcFile}`
+  const certPath = '~/Downloads/rootCA.pem'
+  return `echo 'export NODE_EXTRA_CA_CERTS="${certPath}"' >> ${rcFile} && source ${rcFile}`
 })
 
 async function downloadCert() {
