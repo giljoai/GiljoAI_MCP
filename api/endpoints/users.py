@@ -71,6 +71,7 @@ class UserUpdate(BaseModel):
     full_name: str | None = Field(None, max_length=255)
     is_active: bool | None = None
     password: str | None = Field(None, min_length=8, description="New password (min 8 chars)")
+    recovery_pin: str | None = Field(None, min_length=4, max_length=4, pattern="^[0-9]{4}$", description="4-digit recovery PIN")
 
 
 class UserResponse(BaseModel):
@@ -450,6 +451,28 @@ async def update_user(
         updates["is_active"] = user_data.is_active
     if user_data.password is not None:
         updates["password"] = user_data.password
+
+    # Handle PIN update separately (not part of UserService.update_user)
+    if user_data.recovery_pin is not None:
+        import bcrypt
+
+        from api.endpoints.dependencies import get_db_manager
+
+        db_manager = await get_db_manager()
+        async with db_manager.get_session_async() as db:
+            from sqlalchemy import select
+
+            from src.giljo_mcp.models.auth import User as UserModel
+
+            stmt = select(UserModel).where(UserModel.id == str(user_id))
+            result = await db.execute(stmt)
+            target_user = result.scalar_one_or_none()
+            if target_user:
+                target_user.recovery_pin_hash = bcrypt.hashpw(
+                    user_data.recovery_pin.encode("utf-8"), bcrypt.gensalt()
+                ).decode("utf-8")
+                await db.commit()
+                logger.info(f"Recovery PIN updated for user: {target_user.username}")
 
     updated_user = await user_service.update_user(str(user_id), include_all_tenants=is_admin, **updates)
 
