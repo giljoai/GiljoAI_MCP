@@ -186,7 +186,7 @@ const nodeCommand = computed(() => {
     return '$env:NODE_OPTIONS = "--use-system-ca"; [System.Environment]::SetEnvironmentVariable(\'NODE_OPTIONS\', \'--use-system-ca\', \'User\')'
   }
   const rcFile = activeOs.value === 'macos' ? '~/.zshrc' : '~/.bashrc'
-  return `mkdir -p ~/.giljo && cp ~/Downloads/rootCA.pem ~/.giljo/rootCA.pem && echo 'export NODE_EXTRA_CA_CERTS="$HOME/.giljo/rootCA.pem"' >> ${rcFile} && source ${rcFile}`
+  return `mkdir -p ~/.giljo && cp ~/Downloads/rootCA.pem ~/.giljo/rootCA.pem && echo 'export NODE_EXTRA_CA_CERTS="$HOME/.giljo/rootCA.pem"' >> ${rcFile} && export NODE_EXTRA_CA_CERTS="$HOME/.giljo/rootCA.pem"`
 })
 
 async function downloadCert() {
