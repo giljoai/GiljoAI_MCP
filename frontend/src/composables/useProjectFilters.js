@@ -72,9 +72,13 @@ export function useProjectFilters({ projects, projectTypes, activeProduct }) {
     const sorted = [...filteredProjects.value]
 
     sorted.sort((a, b) => {
-      const aActive = a.status === 'active' ? 0 : 1
-      const bActive = b.status === 'active' ? 0 : 1
-      if (aActive !== bActive) return aActive - bActive
+      // Active-first only for default sort (created_at) — not when user sorts by serial/name/status
+      const sortKey = sortConfig.value?.[0]?.key
+      if (!sortKey || sortKey === 'created_at') {
+        const aActive = a.status === 'active' ? 0 : 1
+        const bActive = b.status === 'active' ? 0 : 1
+        if (aActive !== bActive) return aActive - bActive
+      }
 
       if (sortConfig.value && sortConfig.value.length > 0) {
         const { key, order } = sortConfig.value[0]
