@@ -3861,16 +3861,22 @@ pg_restore -l {backup_file.name} | head -20
 
         Handles:
         - Downloaded rootCA.pem and rootCA-key.pem from ~/Downloads
+        - Persistent copy at ~/.giljo/rootCA.pem
         - mkcert root CA from the OS trust store (installed via certutil/security/cp)
         - NODE_OPTIONS / NODE_EXTRA_CA_CERTS env vars
         """
         downloads = Path.home() / "Downloads"
-        cert_files = [downloads / "rootCA.pem", downloads / "rootCA-key.pem"]
+        giljo_dir = Path.home() / ".giljo"
+        cert_files = [
+            downloads / "rootCA.pem",
+            downloads / "rootCA-key.pem",
+            giljo_dir / "rootCA.pem",
+        ]
         existing = [f for f in cert_files if f.exists()]
 
         detail_lines = []
         if existing:
-            detail_lines.append("Downloaded cert files:")
+            detail_lines.append("Cert files:")
             for f in existing:
                 detail_lines.append(f"  - {f}")
         detail_lines.append("OS trust store: mkcert root CA")
