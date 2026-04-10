@@ -103,6 +103,16 @@
             <div class="startup-card-desc">Understand products, projects, agents, memory, and slash commands.</div>
           </div>
         </div>
+        <v-btn
+          variant="text"
+          prepend-icon="mdi-certificate"
+          class="mt-3"
+          style="text-transform: none; color: var(--text-muted);"
+          @click="showCertModal = true"
+        >
+          Relaunch Certificate Setup
+        </v-btn>
+        <CertTrustModal v-model="showCertModal" />
       </v-window-item>
 
       <!-- Notification Settings -->
@@ -231,6 +241,7 @@ import McpIntegrationCard from '@/components/settings/integrations/McpIntegratio
 import SerenaIntegrationCard from '@/components/settings/integrations/SerenaIntegrationCard.vue'
 import GitIntegrationCard from '@/components/settings/integrations/GitIntegrationCard.vue'
 import setupService from '@/services/setupService'
+import CertTrustModal from '@/components/setup/CertTrustModal.vue'
 // Stores and Theme
 const settingsStore = useSettingsStore()
 const router = useRouter()
@@ -241,6 +252,7 @@ const { showToast } = useToast()
 
 // State
 const activeTab = ref('startup')
+const showCertModal = ref(false)
 const serenaEnabled = ref(false)
 const toggling = ref(false)
 
