@@ -99,12 +99,6 @@
               </template>
               <v-list-item-title>Change Password &amp; PIN</v-list-item-title>
             </v-list-item>
-            <v-list-item @click="openResetPasswordDialog(item)">
-              <template v-slot:prepend>
-                <v-icon>mdi-lock-reset</v-icon>
-              </template>
-              <v-list-item-title>Reset Password &amp; PIN</v-list-item-title>
-            </v-list-item>
             <v-divider />
             <v-list-item :disabled="item.id === currentUser?.id" @click="toggleUserStatus(item)">
               <template v-slot:prepend>
@@ -236,52 +230,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Reset Password Confirmation Dialog -->
-    <v-dialog v-model="showResetPasswordDialog" max-width="500">
-      <v-card v-draggable class="smooth-border">
-        <div class="dlg-header dlg-header--warning">
-          <v-icon class="dlg-icon">mdi-lock-reset</v-icon>
-          <span class="dlg-title">Reset User Password?</span>
-          <v-btn icon variant="text" class="dlg-close" @click="closeResetPasswordDialog">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </div>
-
-        <v-card-text class="pt-6">
-          <p class="text-body-1 mb-2">You are about to reset the password for:</p>
-          <v-card variant="flat" class="mb-4 pa-3 smooth-border">
-            <div class="d-flex align-center">
-              <v-icon class="mr-2">mdi-account</v-icon>
-              <strong>{{ resetPasswordUser?.username }}</strong>
-            </div>
-            <div class="d-flex align-center mt-2">
-              <v-icon class="mr-2" size="small">{{ getRoleIcon(resetPasswordUser?.role) }}</v-icon>
-              <span class="text-caption">{{ getRoleTitle(resetPasswordUser?.role) }}</span>
-            </div>
-          </v-card>
-
-          <v-alert type="warning" variant="tonal" density="compact" class="mb-2">
-            <strong>Password will be reset to:</strong> <code>GiljoMCP</code>
-          </v-alert>
-
-          <v-alert type="info" variant="tonal" density="compact">
-            The user will be required to change this password on their next login. Their recovery
-            PIN will remain unchanged.
-          </v-alert>
-        </v-card-text>
-
-        <div class="dlg-footer">
-          <v-spacer />
-          <v-btn variant="text" :disabled="resettingPassword" @click="closeResetPasswordDialog">
-            Cancel
-          </v-btn>
-          <v-btn color="warning" variant="flat" :loading="resettingPassword" @click="confirmResetPassword">
-            Reset Password
-          </v-btn>
-        </div>
-      </v-card>
-    </v-dialog>
-
     <!-- Status Toggle Confirmation Dialog -->
     <v-dialog v-model="showStatusDialog" max-width="500">
       <v-card v-draggable class="smooth-border">
@@ -393,12 +341,10 @@ const showCeLimitDialog = ref(false)
 // Dialog state
 const showUserDialog = ref(false)
 const showPasswordDialog = ref(false)
-const showResetPasswordDialog = ref(false)
 const showStatusDialog = ref(false)
 const isEditMode = ref(false)
 const saving = ref(false)
 const changingPassword = ref(false)
-const resettingPassword = ref(false)
 const togglingStatus = ref(false)
 
 // Form data
@@ -413,7 +359,6 @@ const userForm = ref({
 
 const passwordUser = ref(null)
 const newPassword = ref('')
-const resetPasswordUser = ref(null)
 const statusUser = ref(null)
 
 // Table configuration
@@ -614,33 +559,6 @@ async function changePassword() {
     console.error('[UserManager] Failed to change password:', err)
   } finally {
     changingPassword.value = false
-  }
-}
-
-function openResetPasswordDialog(user) {
-  resetPasswordUser.value = user
-  showResetPasswordDialog.value = true
-}
-
-function closeResetPasswordDialog() {
-  showResetPasswordDialog.value = false
-  resetPasswordUser.value = null
-}
-
-async function confirmResetPassword() {
-  if (!resetPasswordUser.value) return
-
-  resettingPassword.value = true
-  try {
-    await api.auth.resetUserPassword(resetPasswordUser.value.id)
-
-    // Reload users list
-    await loadUsers()
-    closeResetPasswordDialog()
-  } catch (err) {
-    console.error('[UserManager] Failed to reset password:', err)
-  } finally {
-    resettingPassword.value = false
   }
 }
 
