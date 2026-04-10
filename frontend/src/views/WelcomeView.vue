@@ -315,6 +315,7 @@ function tintedBg(hex) {
 
 // Quick-launch cards — adapt to product state
 const hasActiveProduct = computed(() => !!productStore.activeProduct)
+const hasAnyProduct = computed(() => productStore.hasProducts)
 const activeProjectCount = computed(() => projectStore.activeProjects?.length ?? 0)
 const hasAnyProject = computed(() => (projectStore.projects?.length ?? 0) > 0)
 
@@ -373,6 +374,17 @@ const newProductCard = computed(() => ({
   attention: true,
 }))
 
+const activateProductCard = computed(() => ({
+  title: 'Activate Product',
+  description: 'You have a product but it\'s not active. Activate it to start creating projects.',
+  icon: 'mdi-play-circle-outline',
+  iconBg: 'rgba(255,195,0,0.1)',
+  iconColor: 'var(--brand-yellow, #ffc300)',
+  accent: 'var(--brand-yellow, #ffc300)',
+  to: '/Products',
+  attention: true,
+}))
+
 const taskBoardCard = {
   title: 'Task Board',
   description: 'Track technical debt, scope creep captures, and tasks or directly from your AI tool.',
@@ -411,9 +423,14 @@ const quickCards = computed(() => {
     return [learnCard]
   }
 
-  // Step 3: No product yet → show only "New Product"
-  if (!hasActiveProduct.value) {
+  // Step 3: No product at all → show "New Product"
+  if (!hasAnyProduct.value) {
     return [newProductCard.value]
+  }
+
+  // Step 3b: Product exists but not activated → show "Activate Product"
+  if (!hasActiveProduct.value) {
+    return [activateProductCard.value]
   }
 
   // Step 4: Product exists but no project → show only "New Project"
