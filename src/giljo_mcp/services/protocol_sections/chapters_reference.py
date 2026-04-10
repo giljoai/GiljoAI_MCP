@@ -439,38 +439,40 @@ def _build_ch6_auto_checkin(interval: int) -> str:
     """
     seconds = interval * 60
     return f"""════════════════════════════════════════════════════════════════════════════
-                CH6: AUTO CHECK-IN PROTOCOL
+          CH6: AUTO CHECK-IN PROTOCOL — MANDATORY EXECUTION
 ════════════════════════════════════════════════════════════════════════════
 
-After dispatching specialist agents to their respective terminals:
+When you have dispatched all specialist agents and have no immediate
+coordination work remaining, execute the following steps IN ORDER.
+Do NOT ask the user for confirmation. Do NOT skip any step.
 
-1. Sleep Command: Pause the orchestrator by running a foreground shell command
-   for the user-selected interval ({seconds} seconds for {interval} minutes).
-   * PowerShell (Windows): Start-Sleep -Seconds {seconds}
-   * Bash/Zsh (macOS/Linux): sleep {seconds}
+STEP 1 — SET STATUS TO SLEEPING:
+  Call set_agent_status(status="sleeping",
+    wake_in_minutes={interval},
+    reason="Auto check-in: sleeping for {interval} minutes")
 
-2. Wake-Up & Coordination Loop:
-   * receive_messages(): Read all agent reports and developer messages
-     from the passive MCP server.
-   * get_workflow_status(): Fetch the current live status of all
-     dispatched agents.
-   * Intervention: Resolve any "blocked" agents, relay messages between
-     agents, or spawn next-phase specialists.
-   * report_progress(): Update the project TODO list and notify the
-     developer of the swarm's current status.
+STEP 2 — EXECUTE SLEEP COMMAND (IMMEDIATELY, NO CONFIRMATION):
+  * PowerShell (Windows): Start-Sleep -Seconds {seconds}
+  * Bash/Zsh (macOS/Linux): sleep {seconds}
+  This blocks your terminal for {interval} minutes to prevent unnecessary
+  token consumption while agents work via the passive MCP server.
 
-3. Repeat or Closeout:
-   * If agents are still working → Repeat from Step 1.
-   * If all agents are complete → Proceed to Closeout (Phase 3).
+STEP 3 — WAKE UP AND COORDINATE:
+  After the sleep completes (or is interrupted by the developer via Ctrl+C):
+  a) receive_messages() — read all agent reports and developer messages
+  b) get_workflow_status() — check live status of all dispatched agents
+  c) Resolve any "blocked" agents, relay messages, spawn next-phase work
+  d) report_progress() — update the project TODO list and notify the
+     developer of the swarm's current status
 
-IMPORTANT:
-- Use the literal terminal command to pause; this blocks the orchestrator's
-  turn to prevent unnecessary token consumption while waiting for the
-  passive MCP to update.
-- If the shell command is interrupted or returns early, proceed immediately
-  to the wake-up check (Step 2).
-- The developer can interrupt the sleep at any time using Ctrl+C in the
-  terminal to regain control of the orchestrator.
+STEP 4 — LOOP OR CLOSE:
+  * Agents still working → go back to STEP 1
+  * All agents complete → proceed to Closeout (Phase 3)
+
+RULES:
+- This is NOT optional. If auto check-in is enabled, you MUST sleep.
+- If the sleep command is interrupted or returns early, skip to STEP 3.
+- NEVER ask "should I sleep now?" — just do it.
 
 ────────────────────────────────────────────────────────────────────────────
 """
