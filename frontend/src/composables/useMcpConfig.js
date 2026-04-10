@@ -135,8 +135,8 @@ export function generateCodexEnvVar(apiKey, platform) {
 
 // ─── Certificate trust commands ───────────────────────────────────
 
-export const CERT_TRUST_WINDOWS = '$env:NODE_EXTRA_CA_CERTS = "$env:USERPROFILE\\Downloads\\rootCA.pem"; [System.Environment]::SetEnvironmentVariable(\'NODE_EXTRA_CA_CERTS\', "$env:USERPROFILE\\Downloads\\rootCA.pem", \'User\')'
-export const CERT_TRUST_UNIX = 'export NODE_EXTRA_CA_CERTS="$HOME/Downloads/rootCA.pem"'
+export const CERT_TRUST_WINDOWS = 'mkdir -Force "$env:USERPROFILE\\.giljo" | Out-Null; Copy-Item "$env:USERPROFILE\\Downloads\\rootCA.pem" "$env:USERPROFILE\\.giljo\\rootCA.pem"; $env:NODE_EXTRA_CA_CERTS = "$env:USERPROFILE\\.giljo\\rootCA.pem"; [System.Environment]::SetEnvironmentVariable(\'NODE_EXTRA_CA_CERTS\', "$env:USERPROFILE\\.giljo\\rootCA.pem", \'User\')'
+export const CERT_TRUST_UNIX = 'mkdir -p ~/.giljo && cp ~/Downloads/rootCA.pem ~/.giljo/rootCA.pem && export NODE_EXTRA_CA_CERTS="$HOME/.giljo/rootCA.pem"'
 
 /**
  * @param {'windows'|'unix'} platform
