@@ -283,7 +283,7 @@
           <div class="mb-3">
             <div class="text-subtitle-2 mb-2">Then trust the certificate in Node.js (for AI coding tools):</div>
             <div class="pa-3 bg-grey-darken-4 rounded text-body-2">
-              <code class="d-block mb-1"><strong>Windows (PowerShell):</strong> mkdir -Force "$env:USERPROFILE\.giljo" | Out-Null; Copy-Item "$env:USERPROFILE\Downloads\rootCA.pem" "$env:USERPROFILE\.giljo\rootCA.pem"; [System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', "$env:USERPROFILE\.giljo\rootCA.pem", 'User')</code>
+              <code class="d-block mb-1"><strong>Windows (PowerShell):</strong> $env:NODE_OPTIONS = "--use-system-ca"; [System.Environment]::SetEnvironmentVariable('NODE_OPTIONS', '--use-system-ca', 'User')</code>
               <code class="d-block"><strong>Linux/macOS:</strong> mkdir -p ~/.giljo &amp;&amp; cp ~/Downloads/rootCA.pem ~/.giljo/rootCA.pem &amp;&amp; echo 'export NODE_EXTRA_CA_CERTS="$HOME/.giljo/rootCA.pem"' >> ~/.bashrc &amp;&amp; source ~/.bashrc</code>
             </div>
           </div>
