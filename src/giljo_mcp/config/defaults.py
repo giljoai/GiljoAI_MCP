@@ -39,6 +39,7 @@ Related:
 
 from typing import Any
 
+
 # Default toggle states for all categories (including always-on)
 # Used for backward-compatible API responses and protocol builder defaults
 DEFAULT_FIELD_PRIORITY: dict[str, Any] = {

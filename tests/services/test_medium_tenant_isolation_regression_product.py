@@ -27,6 +27,7 @@ import pytest
 from src.giljo_mcp.exceptions import ResourceNotFoundError
 from src.giljo_mcp.services.product_service import ProductService
 
+
 # ============================================================================
 # Fix 1: ProductService.get_cascade_impact — COUNT queries with tenant_key
 # ============================================================================

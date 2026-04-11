@@ -271,7 +271,9 @@ def _build_reactivation_spawn_block(tool: str) -> str:
     return _REACTIVATION_SPAWN_BLOCKS.get(tool, _REACTIVATION_SPAWN_BLOCKS["claude-code"])
 
 
-def _build_ch5_reference(project_id: str, orchestrator_id: str, tool: str = "claude-code", git_integration_enabled: bool = False) -> str:
+def _build_ch5_reference(
+    project_id: str, orchestrator_id: str, tool: str = "claude-code", git_integration_enabled: bool = False
+) -> str:
     """Build CH5: REFERENCE section for implementation phase (~380 tokens).
 
     Args:
@@ -329,7 +331,10 @@ System rejects completion attempts with unread messages or incomplete TODOs.
 ────────────────────────────────────────────────────────────────────────────
 
 COMPLETION PROTOCOL (After ALL agents finish their work):
-{"" if not git_integration_enabled else '''
+{
+        ""
+        if not git_integration_enabled
+        else '''
 ── STEP 0: Git Commit (Git Integration Enabled) ───────────────────────────
 Before writing 360 memory, ensure all work is committed to git:
 1. Review changes: run `git status` in the project directory
@@ -338,7 +343,8 @@ Before writing 360 memory, ensure all work is committed to git:
 4. Record the commit hash for inclusion in 360 memory and completion result
 This preserves a clean audit trail before the project is closed out.
 ────────────────────────────────────────────────────────────────────────────
-'''}
+'''
+    }
 ── STEP 1: Write 360 Memory ────────────────────────────────────────────────
 Call: write_360_memory(
           project_id='{project_id}',

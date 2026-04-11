@@ -32,6 +32,7 @@ from sqlalchemy.sql import func
 
 from .base import Base, generate_uuid
 
+
 # Valid categories for user_field_priorities (no product_info — always on)
 TOGGLEABLE_CATEGORIES = frozenset(
     {

@@ -33,6 +33,7 @@ from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 from src.giljo_mcp.schemas.jsonb_validators import validate_tuning_state
 
+
 logger = logging.getLogger(__name__)
 
 # Maps section keys to product fields for applying proposals

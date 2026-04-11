@@ -17,6 +17,7 @@ from sqlalchemy import select
 
 from src.giljo_mcp.models import AgentJob, AgentTemplate
 
+
 # ============================================================================
 # Change B: template_id populated on AgentJob when template found
 # ============================================================================
@@ -34,9 +35,7 @@ class TestSpawnPopulatesTemplateId:
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         result = await service.spawn_agent_job(
             agent_display_name="analyzer",
@@ -62,17 +61,13 @@ class TestSpawnPopulatesTemplateId:
         template = template_result.scalar_one()
         assert job.template_id == template.id
 
-    async def test_template_id_none_when_no_template_found(
-        self, db_session, db_manager, test_project, test_tenant_key
-    ):
+    async def test_template_id_none_when_no_template_found(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify template_id remains None for orchestrator (no template lookup)."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         result = await service.spawn_agent_job(
             agent_display_name="orchestrator",
@@ -98,17 +93,13 @@ class TestSpawnPopulatesTemplateId:
 class TestListJobsIncludesPhase:
     """Tests that list_jobs includes `phase` in each job dict."""
 
-    async def test_list_jobs_returns_phase_value(
-        self, db_session, db_manager, test_project, test_tenant_key
-    ):
+    async def test_list_jobs_returns_phase_value(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify list_jobs response includes phase for jobs with phase set."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Create a job with phase
         await service.spawn_agent_job(
@@ -139,9 +130,7 @@ class TestListJobsIncludesPhase:
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Create a job without phase
         await service.spawn_agent_job(
@@ -164,17 +153,13 @@ class TestListJobsIncludesPhase:
         assert "phase" in impl_jobs[0]
         assert impl_jobs[0]["phase"] is None
 
-    async def test_list_jobs_returns_multiple_phases(
-        self, db_session, db_manager, test_project, test_tenant_key
-    ):
+    async def test_list_jobs_returns_multiple_phases(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify list_jobs correctly returns different phases for different jobs."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Create jobs with different phases
         await service.spawn_agent_job(

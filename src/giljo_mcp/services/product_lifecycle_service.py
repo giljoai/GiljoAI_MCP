@@ -33,6 +33,7 @@ from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.models.agent_identity import AgentJob
 from src.giljo_mcp.schemas.service_responses import DeleteResult, PurgeResult
 
+
 logger = logging.getLogger(__name__)
 
 

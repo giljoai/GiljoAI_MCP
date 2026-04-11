@@ -42,6 +42,7 @@ from src.giljo_mcp.services.protocol_sections.user_config import (
     _normalize_field_toggles,
 )
 
+
 logger = logging.getLogger(__name__)
 
 # Re-export all section functions for backward compatibility
@@ -111,7 +112,11 @@ def _build_orchestrator_protocol(
     )
     ch3 = _build_ch3_spawning_rules(effective_tool)
     ch4 = _build_ch4_error_handling()
-    ch5 = _build_ch5_reference(project_id, orchestrator_id, effective_tool, git_integration_enabled) if include_implementation_reference else ""
+    ch5 = (
+        _build_ch5_reference(project_id, orchestrator_id, effective_tool, git_integration_enabled)
+        if include_implementation_reference
+        else ""
+    )
 
     ch6 = _build_ch6_auto_checkin(auto_checkin_interval) if (auto_checkin_enabled and not cli_mode) else ""
 

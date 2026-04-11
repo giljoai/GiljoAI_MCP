@@ -34,6 +34,7 @@ from src.giljo_mcp.services.product_vision_service import ProductVisionService
 from .dependencies import get_product_vision_service
 from .models import VisionChunk
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

@@ -13,7 +13,6 @@ Tests pure validation functions that do not require database access:
 Split from test_template_validation_0103.py for maintainability.
 """
 
-
 from src.giljo_mcp.template_validation import (
     get_role_color,
     slugify_name,

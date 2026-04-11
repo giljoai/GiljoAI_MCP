@@ -29,6 +29,7 @@ from src.giljo_mcp.models.tasks import MessageRecipient
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
 
+
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -98,9 +99,7 @@ async def service(db_session, db_manager) -> OrchestrationService:
 class TestCompleteJobStoresResult:
     """Verify that calling complete_job persists the result dict on AgentExecution."""
 
-    async def test_result_dict_stored_on_execution(
-        self, db_session, service, project, tenant_key
-    ):
+    async def test_result_dict_stored_on_execution(self, db_session, service, project, tenant_key):
         """complete_job should store the result dict in AgentExecution.result column."""
         # Arrange: spawn a specialist agent
         spawn = await service.spawn_agent_job(
@@ -149,9 +148,7 @@ class TestCompleteJobStoresResult:
 class TestCompleteJobAutoMessage:
     """Verify that completing a specialist agent auto-sends a completion report to the orchestrator."""
 
-    async def test_completion_report_message_created(
-        self, db_session, service, project, tenant_key
-    ):
+    async def test_completion_report_message_created(self, db_session, service, project, tenant_key):
         """When a specialist completes, a completion_report message should be sent to the orchestrator."""
         # Arrange: spawn orchestrator first, then specialist
         orch_spawn = await service.spawn_agent_job(
@@ -195,9 +192,7 @@ class TestCompleteJobAutoMessage:
 
         msg = messages[0]
         # Handover 0840b: Recipients stored in MessageRecipient junction table
-        recip_result = await db_session.execute(
-            select(MessageRecipient).where(MessageRecipient.message_id == msg.id)
-        )
+        recip_result = await db_session.execute(select(MessageRecipient).where(MessageRecipient.message_id == msg.id))
         recipients = recip_result.scalars().all()
         assert any(r.agent_id == orch_spawn.agent_id for r in recipients), (
             f"Expected orchestrator {orch_spawn.agent_id} in recipients"
@@ -220,9 +215,7 @@ class TestCompleteJobAutoMessage:
 class TestOrchestratorCompletionNoMessage:
     """Verify that when the orchestrator itself completes, no auto-message is generated."""
 
-    async def test_no_completion_report_for_orchestrator(
-        self, db_session, service, project, tenant_key
-    ):
+    async def test_no_completion_report_for_orchestrator(self, db_session, service, project, tenant_key):
         """Orchestrator completing should NOT create a completion_report message to itself."""
         # Arrange: spawn orchestrator only
         orch_spawn = await service.spawn_agent_job(
@@ -267,9 +260,7 @@ class TestOrchestratorCompletionNoMessage:
 class TestGetAgentResult:
     """Verify get_agent_result() retrieves the stored completion result."""
 
-    async def test_returns_stored_result_dict(
-        self, db_session, service, project, tenant_key
-    ):
+    async def test_returns_stored_result_dict(self, db_session, service, project, tenant_key):
         """get_agent_result should return the result dict after a job is completed."""
         # Arrange: spawn and complete an agent
         spawn = await service.spawn_agent_job(
@@ -314,9 +305,7 @@ class TestGetAgentResult:
 class TestGetAgentResultIncomplete:
     """Verify get_agent_result() returns None for jobs that have not completed."""
 
-    async def test_returns_none_for_working_agent(
-        self, db_session, service, project, tenant_key
-    ):
+    async def test_returns_none_for_working_agent(self, db_session, service, project, tenant_key):
         """get_agent_result should return None when the agent has not completed."""
         # Arrange: spawn an agent but do NOT complete it
         spawn = await service.spawn_agent_job(

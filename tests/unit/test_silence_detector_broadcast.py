@@ -24,6 +24,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+
 # Stub the api package before importing silence_detector, which does a lazy
 # `from api.events.schemas import EventFactory` inside _broadcast_status_change.
 # Without this stub, importing `api` triggers api/__init__.py -> create_app()

@@ -13,11 +13,10 @@ Verifies that:
 """
 
 
-
-
 # ---------------------------------------------------------------------------
 # Test: Frontend prompt generators output Bearer format
 # ---------------------------------------------------------------------------
+
 
 class TestWizardBearerOutput:
     """Verify wizard prompt functions use Authorization: Bearer."""
@@ -50,6 +49,7 @@ class TestWizardBearerOutput:
 # ---------------------------------------------------------------------------
 # Test: MCP endpoint still accepts both auth methods
 # ---------------------------------------------------------------------------
+
 
 class TestMcpEndpointAcceptsBoth:
     """Verify the MCP SDK auth middleware accepts both Bearer and X-API-Key."""

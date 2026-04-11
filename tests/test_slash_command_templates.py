@@ -100,7 +100,7 @@ class TestCodexTemplates:
 
     def test_codex_get_agents_uses_relative_config_paths(self):
         """Codex skill must specify relative config_file paths (tilde paths fail in Codex CLI)."""
-        assert 'agents/gil-' in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert "agents/gil-" in GIL_GET_AGENTS_CODEX_SKILL_MD
         assert "RELATIVE" in GIL_GET_AGENTS_CODEX_SKILL_MD
 
     def test_codex_get_agents_has_verification_step(self):
@@ -149,9 +149,7 @@ class TestProjectTypeParameter:
             ("Gemini", GIL_ADD_GEMINI_TOML),
             ("Codex", GIL_ADD_CODEX_SKILL_MD),
         ]:
-            assert "optional" in template.lower(), (
-                f"{name} template should mention project_type is optional"
-            )
+            assert "optional" in template.lower(), f"{name} template should mention project_type is optional"
 
 
 class TestBootstrapTemplates:

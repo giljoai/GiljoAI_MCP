@@ -15,7 +15,6 @@ Verifies:
 6. fetch_context reads user depth_config from DB when not provided (Handover 0823b)
 """
 
-
 from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as RAW_DEPTH_CONFIG
 
 
@@ -59,8 +58,7 @@ class TestDepthDefaultsConsolidation:
 class TestCH2InlineFetchCalls:
     """Phase 2: Verify CH2 generates inline fetch_context() calls."""
 
-    def _build_ch2(self, field_toggles=None, depth_config=None,
-                   product_id="prod-123", tenant_key="tk_test"):
+    def _build_ch2(self, field_toggles=None, depth_config=None, product_id="prod-123", tenant_key="tk_test"):
         """Helper to build CH2 with test parameters."""
         from src.giljo_mcp.services.protocol_builder import _build_ch2_startup
 
@@ -164,9 +162,7 @@ class TestCH2InlineFetchCalls:
             tenant_key="tk_test",
         )
         # depth_config should NOT appear anywhere in the generated fetch calls
-        assert "depth_config" not in result, (
-            "memory_360 fetch call should not contain depth_config (0823b)"
-        )
+        assert "depth_config" not in result, "memory_360 fetch call should not contain depth_config (0823b)"
 
     def test_ch2_depth_config_not_in_git_history_call(self):
         """git_history fetch call must NOT include depth_config (Handover 0823b)."""
@@ -178,9 +174,7 @@ class TestCH2InlineFetchCalls:
             product_id="prod-123",
             tenant_key="tk_test",
         )
-        assert "depth_config" not in result, (
-            "git_history fetch call should not contain depth_config (0823b)"
-        )
+        assert "depth_config" not in result, "git_history fetch call should not contain depth_config (0823b)"
 
     def test_ch2_depth_config_not_in_vision_call(self):
         """vision_documents fetch call must NOT include depth_config (Handover 0823b)."""
@@ -192,9 +186,7 @@ class TestCH2InlineFetchCalls:
             product_id="prod-123",
             tenant_key="tk_test",
         )
-        assert "depth_config" not in result, (
-            "vision_documents fetch call should not contain depth_config (0823b)"
-        )
+        assert "depth_config" not in result, "vision_documents fetch call should not contain depth_config (0823b)"
 
     def test_ch2_framing_memory_360_generic(self):
         """Framing text for memory_360 should be generic, not depth-specific (0823b)."""
@@ -308,6 +300,7 @@ class TestFetchContextDepthFromDB:
     def _make_mock_user(**depth_kwargs):
         """Create a mock User object with depth columns (Handover 0840d)."""
         from unittest.mock import MagicMock
+
         user = MagicMock()
         user.is_active = True
         user.tenant_key = "tk_test"
@@ -346,9 +339,7 @@ class TestFetchContextDepthFromDB:
         mock_db = MagicMock()
         mock_db.get_session_async = MagicMock(return_value=mock_session)
 
-        result = asyncio.get_event_loop().run_until_complete(
-            _load_user_depth_config("tk_test", mock_db)
-        )
+        result = asyncio.get_event_loop().run_until_complete(_load_user_depth_config("tk_test", mock_db))
 
         assert result is not None
         assert result["memory_360"] == 5
@@ -374,9 +365,7 @@ class TestFetchContextDepthFromDB:
         mock_db = MagicMock()
         mock_db.get_session_async = MagicMock(return_value=mock_session)
 
-        result = asyncio.get_event_loop().run_until_complete(
-            _load_user_depth_config("tk_test", mock_db)
-        )
+        result = asyncio.get_event_loop().run_until_complete(_load_user_depth_config("tk_test", mock_db))
 
         assert result is None
 
@@ -400,9 +389,7 @@ class TestFetchContextDepthFromDB:
         mock_db = MagicMock()
         mock_db.get_session_async = MagicMock(return_value=mock_session)
 
-        result = asyncio.get_event_loop().run_until_complete(
-            _load_user_depth_config("tk_test", mock_db)
-        )
+        result = asyncio.get_event_loop().run_until_complete(_load_user_depth_config("tk_test", mock_db))
 
         # Handover 0840d: columns always have defaults, so result is never None when user exists
         assert result is not None
@@ -429,9 +416,7 @@ class TestFetchContextDepthFromDB:
         mock_db = MagicMock()
         mock_db.get_session_async = MagicMock(return_value=mock_session)
 
-        result = asyncio.get_event_loop().run_until_complete(
-            _load_user_depth_config("tk_test", mock_db)
-        )
+        result = asyncio.get_event_loop().run_until_complete(_load_user_depth_config("tk_test", mock_db))
 
         assert result is not None
         assert result["vision_documents"] == "light"

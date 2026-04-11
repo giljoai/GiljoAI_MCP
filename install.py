@@ -73,6 +73,7 @@ def _bootstrap_dependencies():
     # Add the user site-packages directory so the import below succeeds.
     if use_user:
         import site
+
         user_site = site.getusersitepackages()
         if user_site not in sys.path:
             sys.path.insert(0, user_site)
@@ -96,6 +97,7 @@ from colorama import Fore, Style, init
 
 # Import unified platform handlers and core modules
 from installer.platforms import get_platform_handler
+
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
@@ -1178,9 +1180,15 @@ class UnifiedInstaller:
                     # Set for current process + persist for future sessions
                     os.environ["NODE_OPTIONS"] = "--use-system-ca"
                     subprocess.run(
-                        ["powershell", "-NoProfile", "-Command",
-                         "[System.Environment]::SetEnvironmentVariable('NODE_OPTIONS', '--use-system-ca', 'User')"],
-                        capture_output=True, timeout=10, check=True,
+                        [
+                            "powershell",
+                            "-NoProfile",
+                            "-Command",
+                            "[System.Environment]::SetEnvironmentVariable('NODE_OPTIONS', '--use-system-ca', 'User')",
+                        ],
+                        capture_output=True,
+                        timeout=10,
+                        check=True,
                     )
                 elif current_os == "Darwin":
                     os.environ["NODE_OPTIONS"] = "--use-system-ca"
@@ -1206,7 +1214,7 @@ class UnifiedInstaller:
                 if current_os == "Windows":
                     self._print_info('Manual fix: $env:NODE_OPTIONS = "--use-system-ca"')
                 else:
-                    self._print_info('Manual fix: echo \'export NODE_OPTIONS="--use-system-ca"\' >> ~/.bashrc')
+                    self._print_info("Manual fix: echo 'export NODE_OPTIONS=\"--use-system-ca\"' >> ~/.bashrc")
 
             # Client cert instructions are shown in the app UI when remote
             # clients connect. No need to show them during install.
@@ -1245,7 +1253,13 @@ class UnifiedInstaller:
                 self._print_info("Installing mkcert via winget...")
                 try:
                     subprocess.run(
-                        ["winget", "install", "FiloSottile.mkcert", "--accept-source-agreements", "--accept-package-agreements"],
+                        [
+                            "winget",
+                            "install",
+                            "FiloSottile.mkcert",
+                            "--accept-source-agreements",
+                            "--accept-package-agreements",
+                        ],
                         check=True,
                         timeout=120,
                     )
@@ -2395,7 +2409,9 @@ class UnifiedInstaller:
         # Database credentials
         if self.database_credentials:
             db_display = self.settings.get("db_name", "giljo_mcp")
-            print(f"{Fore.YELLOW}Database: {Fore.WHITE}{db_display} @ localhost:5432 (owner: giljo_owner, user: giljo_user){Style.RESET_ALL}\n")
+            print(
+                f"{Fore.YELLOW}Database: {Fore.WHITE}{db_display} @ localhost:5432 (owner: giljo_owner, user: giljo_user){Style.RESET_ALL}\n"
+            )
 
         # Detect protocol and ports
         # In production mode (frontend/dist exists), frontend is served on the API port
@@ -2537,9 +2553,7 @@ class UnifiedInstaller:
                         if current_version and current_version in known_old_revisions:
                             # Existing database from a previous baseline.
                             # Reconcile schema: add any columns that may be missing.
-                            self._print_info(
-                                f"Upgrading migration chain: {current_version} -> baseline_v36"
-                            )
+                            self._print_info(f"Upgrading migration chain: {current_version} -> baseline_v36")
                             self._print_info("Reconciling schema for baseline_v36...")
 
                             reconcile_statements = [
@@ -2576,9 +2590,7 @@ class UnifiedInstaller:
                                 except Exception as reconcile_err:
                                     self._print_warning(f"Reconcile skipped: {reconcile_err}")
 
-                            stamp_query = text(
-                                "UPDATE alembic_version SET version_num = 'baseline_v36'"
-                            )
+                            stamp_query = text("UPDATE alembic_version SET version_num = 'baseline_v36'")
                             await session.execute(stamp_query)
                             await session.commit()
                             self._print_success("Schema reconciled and stamped to baseline_v36")
@@ -2587,12 +2599,8 @@ class UnifiedInstaller:
 
                         if current_version and current_version not in known_old_revisions:
                             # Unknown old revision — attempt reconcile and stamp
-                            self._print_info(
-                                f"Upgrading from unknown revision: {current_version} -> baseline_v36"
-                            )
-                            stamp_query = text(
-                                "UPDATE alembic_version SET version_num = 'baseline_v36'"
-                            )
+                            self._print_info(f"Upgrading from unknown revision: {current_version} -> baseline_v36")
+                            stamp_query = text("UPDATE alembic_version SET version_num = 'baseline_v36'")
                             await session.execute(stamp_query)
                             await session.commit()
                             self._print_success("Stamped to baseline_v36")
@@ -2861,16 +2869,12 @@ except Exception as e:
             if system == "Darwin":
                 # macOS (Homebrew): postgres runs as current user
                 cmd = ["psql", "-U", "postgres", "-d", "postgres", "-c", sql]
-                result = subprocess.run(
-                    cmd, capture_output=True, text=True, timeout=10
-                )
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             else:
                 # Linux: use sudo -u postgres for peer auth
                 cmd = ["sudo", "-u", "postgres", "psql", "-c", sql]
                 self._print_info("Setting PostgreSQL password (sudo may ask for your password)...")
-                result = subprocess.run(
-                    cmd, capture_output=True, text=True, timeout=30
-                )
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
             if result.returncode == 0:
                 return True

@@ -14,6 +14,7 @@ import asyncio
 import sys
 from pathlib import Path
 
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
@@ -21,12 +22,13 @@ import os
 
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
-from sqlalchemy import select
+from sqlalchemy import select  # noqa: E402
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import AgentTemplate, User
+from src.giljo_mcp.database import DatabaseManager  # noqa: E402
+from src.giljo_mcp.models import AgentTemplate, User  # noqa: E402
 
 
 class DownloadsTester:

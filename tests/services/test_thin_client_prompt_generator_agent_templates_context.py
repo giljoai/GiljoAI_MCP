@@ -96,9 +96,7 @@ async def test_thin_prompt_token_estimation(db_session: AsyncSession):
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
 
     # ACT - Generate thin prompt
-    result = await generator.generate(
-        project_id=project.id, user_id=user.id, field_toggles={"agent_templates": True}
-    )
+    result = await generator.generate(project_id=project.id, user_id=user.id, field_toggles={"agent_templates": True})
 
     # ASSERT
     # Token estimation should be provided
@@ -210,8 +208,12 @@ async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
     assert f"Tenant A Project {unique_id_a}" in thin_prompt, "Thin prompt should contain project name"
 
     # Tenant B content should NOT appear (multi-tenant isolation)
-    assert f"Tenant B Project {unique_id_b}" not in thin_prompt, "Tenant B's project should NOT appear in Tenant A's thin prompt"
-    assert f"Tenant B Product {unique_id_b}" not in thin_prompt, "Tenant B's product should NOT appear in Tenant A's thin prompt"
+    assert f"Tenant B Project {unique_id_b}" not in thin_prompt, (
+        "Tenant B's project should NOT appear in Tenant A's thin prompt"
+    )
+    assert f"Tenant B Product {unique_id_b}" not in thin_prompt, (
+        "Tenant B's product should NOT appear in Tenant A's thin prompt"
+    )
 
     # Note: Agent templates are NOT embedded inline - they are fetched via MCP tools
     # Tenant isolation for agent templates is tested in MCP tool tests, not thin prompt tests

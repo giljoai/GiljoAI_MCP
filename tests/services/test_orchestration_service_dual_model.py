@@ -38,6 +38,7 @@ from sqlalchemy import select
 
 from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Project
 
+
 # ============================================================================
 # Test Fixtures
 # ============================================================================

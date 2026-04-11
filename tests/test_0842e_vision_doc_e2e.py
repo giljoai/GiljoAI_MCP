@@ -29,6 +29,7 @@ from src.giljo_mcp.models.products import (
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from src.giljo_mcp.tenant import TenantManager
 
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -64,9 +65,7 @@ async def product(db_session: AsyncSession, tenant_key: str) -> Product:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def vision_doc(
-    db_session: AsyncSession, tenant_key: str, product: Product
-) -> VisionDocument:
+async def vision_doc(db_session: AsyncSession, tenant_key: str, product: Product) -> VisionDocument:
     """Create an active vision document for the product."""
     doc = VisionDocument(
         id=str(uuid.uuid4()),
@@ -168,11 +167,19 @@ async def test_e2e_full_analysis_flow(
     assert write_result["success"] is True
     assert write_result["fields_written"] == 13
     expected_fields = {
-        "product_description", "core_features", "target_platforms",
-        "programming_languages", "frontend_frameworks", "databases",
-        "architecture_pattern", "api_style",
-        "testing_strategy", "testing_frameworks", "test_coverage_target",
-        "summary_33", "summary_66",
+        "product_description",
+        "core_features",
+        "target_platforms",
+        "programming_languages",
+        "frontend_frameworks",
+        "databases",
+        "architecture_pattern",
+        "api_style",
+        "testing_strategy",
+        "testing_frameworks",
+        "test_coverage_target",
+        "summary_33",
+        "summary_66",
     }
     assert set(write_result["fields"]) == expected_fields
 
@@ -521,10 +528,16 @@ async def test_e2e_custom_instructions(
 
     # Step 3: Verify document content is still present in both cases (via chunk=1)
     chunk_with = await gil_get_vision_doc(
-        product_id=product.id, tenant_key=tenant_key, chunk=1, _test_session=db_session,
+        product_id=product.id,
+        tenant_key=tenant_key,
+        chunk=1,
+        _test_session=db_session,
     )
     chunk_without = await gil_get_vision_doc(
-        product_id=product.id, tenant_key=tenant_key, chunk=1, _test_session=db_session,
+        product_id=product.id,
+        tenant_key=tenant_key,
+        chunk=1,
+        _test_session=db_session,
     )
     assert "mobile-first platform" in chunk_with["content"]
     assert "mobile-first platform" in chunk_without["content"]

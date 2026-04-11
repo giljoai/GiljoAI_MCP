@@ -26,6 +26,7 @@ from api.events.schemas import (
     WebSocketEvent,
 )
 
+
 __all__ = [
     "AgentCreatedData",
     "AgentCreatedEvent",

@@ -87,11 +87,14 @@ class TestApplyProjectUpdates:
 
     def test_applies_multiple_fields(self, project_service, mock_project):
         """Applying multiple updates sets all allowed attributes."""
-        project_service._apply_project_updates(mock_project, {
-            "name": "Updated",
-            "description": "Updated Desc",
-            "series_number": 99,
-        })
+        project_service._apply_project_updates(
+            mock_project,
+            {
+                "name": "Updated",
+                "description": "Updated Desc",
+                "series_number": 99,
+            },
+        )
         assert mock_project.name == "Updated"
         assert mock_project.description == "Updated Desc"
         assert mock_project.series_number == 99
@@ -114,9 +117,7 @@ class TestApplyProjectUpdates:
         """Cannot change execution_mode when mission is already set (post-staging)."""
         mock_project.mission = "Existing mission"
         with pytest.raises(ProjectStateError):
-            project_service._apply_project_updates(
-                mock_project, {"execution_mode": "cli"}
-            )
+            project_service._apply_project_updates(mock_project, {"execution_mode": "cli"})
 
     def test_allows_execution_mode_change_when_no_mission(self, project_service, mock_project):
         """Can change execution_mode when mission is None."""

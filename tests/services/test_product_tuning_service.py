@@ -22,6 +22,7 @@ import pytest
 
 from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 
+
 # ============================================================================
 # TEST FIXTURES
 # ============================================================================
@@ -119,9 +120,7 @@ def sample_memory_entries():
             "key_outcomes": [f"Outcome {i + 1}.1", f"Outcome {i + 1}.2"],
             "decisions_made": [f"Decision {i + 1}: chose approach {chr(65 + i)}"],
             "deliverables": [f"deliverable_{i + 1}.py"],
-            "git_commits": [
-                {"sha": f"abc{i}", "message": f"feat: feature {chr(65 + i)}", "date": f"2026-03-{15 + i}"}
-            ],
+            "git_commits": [{"sha": f"abc{i}", "message": f"feat: feature {chr(65 + i)}", "date": f"2026-03-{15 + i}"}],
             "tags": ["closeout"],
             "project_name": f"Project {i + 1}",
             "timestamp": datetime(2026, 3, 15 + i, tzinfo=timezone.utc).isoformat(),
@@ -179,9 +178,7 @@ class TestAssembleTuningPromptSections:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
@@ -204,9 +201,7 @@ class TestAssembleTuningPromptSections:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
@@ -228,9 +223,7 @@ class TestAssembleTuningPromptSections:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
@@ -251,9 +244,7 @@ class TestAssembleTuningPromptSections:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
@@ -274,9 +265,7 @@ class TestAssembleTuningPromptSections:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
@@ -310,9 +299,7 @@ class TestAssembleTuningPromptToggles:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         # Architecture toggle OFF means architecture, core_features, codebase_structure excluded
         # 0840d: tuple format (toggle_config, depth_config) for _get_user_configs
@@ -355,9 +342,7 @@ class TestAssembleTuningPromptToggles:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         # 0840d: tuple format (toggle_config, depth_config) for _get_user_configs
         all_off = (
@@ -405,9 +390,7 @@ class TestAssembleTuningPromptV2Features:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
@@ -429,14 +412,16 @@ class TestAssembleTuningPromptV2Features:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         # Ensure vision_documents is eligible
         toggle_config, depth_config = sample_user_settings
-        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=(toggle_config, depth_config)), \
-             patch.object(service, "_get_eligible_sections", return_value=["description", "vision_documents"]):
+        with (
+            patch.object(
+                service, "_get_user_configs", new_callable=AsyncMock, return_value=(toggle_config, depth_config)
+            ),
+            patch.object(service, "_get_eligible_sections", return_value=["description", "vision_documents"]),
+        ):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
                 user_id=USER_ID,
@@ -455,9 +440,7 @@ class TestAssembleTuningPromptV2Features:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
@@ -478,9 +461,7 @@ class TestAssembleTuningPromptV2Features:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
@@ -504,9 +485,7 @@ class TestAssembleTuningPromptV2Features:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
@@ -527,18 +506,14 @@ class TestAssembleTuningPromptErrors:
     """Test error handling in assemble_tuning_prompt."""
 
     @pytest.mark.asyncio
-    async def test_raises_not_found_when_product_missing(
-        self, mock_db_manager, mock_websocket_manager
-    ):
+    async def test_raises_not_found_when_product_missing(self, mock_db_manager, mock_websocket_manager):
         """Should raise ResourceNotFoundError when product does not exist."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=None))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         with pytest.raises(ResourceNotFoundError):
             await service.assemble_tuning_prompt(
@@ -557,9 +532,7 @@ class TestAssembleTuningPromptErrors:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             with pytest.raises(ValidationError):
@@ -579,9 +552,7 @@ class TestAssembleTuningPromptErrors:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
@@ -670,7 +641,10 @@ class TestBuildUpdateKwargs:
         kwargs, sections = service._build_update_kwargs(DRIFT_PROPOSALS)
 
         assert "test_config" in kwargs
-        assert kwargs["test_config"]["quality_standards"] == "90% test coverage, all endpoints tested, performance benchmarks"
+        assert (
+            kwargs["test_config"]["quality_standards"]
+            == "90% test coverage, all endpoints tested, performance benchmarks"
+        )
         assert "quality_standards" in sections
 
     def test_skips_no_drift_proposals(self):
@@ -709,18 +683,14 @@ class TestApplyTuningUpdates:
     """Test that apply_tuning_updates delegates to ProductService.update_product."""
 
     @pytest.mark.asyncio
-    async def test_calls_product_service_update(
-        self, mock_db_manager, mock_websocket_manager, sample_product
-    ):
+    async def test_calls_product_service_update(self, mock_db_manager, mock_websocket_manager, sample_product):
         """Should delegate field writes to ProductService.update_product."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
         with patch("src.giljo_mcp.services.product_service.ProductService") as MockPS:
@@ -741,18 +711,14 @@ class TestApplyTuningUpdates:
         assert result["applied_count"] == 4
 
     @pytest.mark.asyncio
-    async def test_skips_product_service_when_no_drift(
-        self, mock_db_manager, mock_websocket_manager, sample_product
-    ):
+    async def test_skips_product_service_when_no_drift(self, mock_db_manager, mock_websocket_manager, sample_product):
         """When no proposals have drift, ProductService should not be called."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
         no_drift = [{"section": "description", "drift_detected": False, "proposed_value": "x"}]
@@ -767,9 +733,7 @@ class TestApplyTuningUpdates:
         assert result["applied_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_sets_last_tuned_at(
-        self, mock_db_manager, mock_websocket_manager, sample_product
-    ):
+    async def test_sets_last_tuned_at(self, mock_db_manager, mock_websocket_manager, sample_product):
         """Should stamp tuning_state.last_tuned_at after applying updates."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
@@ -777,9 +741,7 @@ class TestApplyTuningUpdates:
         sample_product.tuning_state = None
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
         with patch("src.giljo_mcp.services.product_service.ProductService") as MockPS:
@@ -793,18 +755,14 @@ class TestApplyTuningUpdates:
         assert sample_product.tuning_state.get("last_tuned_at") is not None
 
     @pytest.mark.asyncio
-    async def test_emits_context_updated_websocket_event(
-        self, mock_db_manager, mock_websocket_manager, sample_product
-    ):
+    async def test_emits_context_updated_websocket_event(self, mock_db_manager, mock_websocket_manager, sample_product):
         """Should emit product:context_updated WebSocket event after applying."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
         with patch("src.giljo_mcp.services.product_service.ProductService") as MockPS:
@@ -820,9 +778,7 @@ class TestApplyTuningUpdates:
         assert call_kwargs["event_type"] == "product:context_updated"
 
     @pytest.mark.asyncio
-    async def test_raises_not_found_for_missing_product(
-        self, mock_db_manager, mock_websocket_manager
-    ):
+    async def test_raises_not_found_for_missing_product(self, mock_db_manager, mock_websocket_manager):
         """Should raise ResourceNotFoundError when product does not exist."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
@@ -861,9 +817,7 @@ class TestTenantIsolation:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
 
         with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             await service.assemble_tuning_prompt(
@@ -885,9 +839,7 @@ class TestTenantIsolation:
         db_manager, session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
         with patch("src.giljo_mcp.services.product_service.ProductService") as MockPS:

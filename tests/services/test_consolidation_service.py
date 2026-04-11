@@ -139,7 +139,9 @@ async def test_consolidate_five_documents_returns_unified_summary(mock_db_manage
     mock_summarizer = MagicMock()
     mock_summarizer.summarize_multi_level.return_value = SummarizeMultiLevelResult(
         light=MultiLevelSummaryLevel(summary="Light summary of all 5 chapters", tokens=200, sentences=10),
-        medium=MultiLevelSummaryLevel(summary="Medium summary of all 5 chapters with more detail", tokens=400, sentences=20),
+        medium=MultiLevelSummaryLevel(
+            summary="Medium summary of all 5 chapters with more detail", tokens=400, sentences=20
+        ),
         original_tokens=600,
         processing_time_ms=200,
     )

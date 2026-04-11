@@ -33,6 +33,7 @@ from src.giljo_mcp.services.product_service import ProductService
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
 
+
 # ============================================================================
 # Fix 4: ConsolidatedVisionService — Product query with tenant_key
 # ============================================================================
@@ -238,6 +239,4 @@ async def test_medium_defense_in_depth_audit(two_tenant_products):
     except ResourceNotFoundError:
         pass
 
-    assert len(violations) == 0, (
-        "MEDIUM defense-in-depth violations found!\n" + "\n".join(f"- {v}" for v in violations)
-    )
+    assert len(violations) == 0, "MEDIUM defense-in-depth violations found!\n" + "\n".join(f"- {v}" for v in violations)

@@ -285,9 +285,7 @@ async def test_complete_job_blocks_cross_tenant(db_session, two_tenant_orchestra
 
     # Verify tenant B's execution was NOT modified
     await db_session.refresh(exec_b)
-    assert exec_b.status == "working", (
-        "Cross-tenant complete_job modified another tenant's execution!"
-    )
+    assert exec_b.status == "working", "Cross-tenant complete_job modified another tenant's execution!"
 
 
 @pytest.mark.tenant_isolation
@@ -338,9 +336,7 @@ async def test_report_error_blocks_cross_tenant(db_session, two_tenant_orchestra
 
     # Verify tenant B's execution was NOT modified
     await db_session.refresh(exec_b)
-    assert exec_b.status == "working", (
-        "Cross-tenant set_agent_status modified another tenant's execution!"
-    )
+    assert exec_b.status == "working", "Cross-tenant set_agent_status modified another tenant's execution!"
 
 
 @pytest.mark.tenant_isolation
@@ -429,11 +425,8 @@ async def test_orchestration_service_cross_tenant_audit(db_session, two_tenant_o
     # Verify tenant B's execution was NEVER modified
     await db_session.refresh(exec_b)
     if exec_b.status != "working":
-        violations.append(
-            f"Tenant B execution status changed from 'working' to '{exec_b.status}'"
-        )
+        violations.append(f"Tenant B execution status changed from 'working' to '{exec_b.status}'")
 
-    assert len(violations) == 0, (
-        "CRITICAL: Tenant isolation violated!\nViolations:\n"
-        + "\n".join(f"- {v}" for v in violations)
+    assert len(violations) == 0, "CRITICAL: Tenant isolation violated!\nViolations:\n" + "\n".join(
+        f"- {v}" for v in violations
     )

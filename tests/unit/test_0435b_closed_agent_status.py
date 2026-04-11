@@ -22,6 +22,7 @@ import pytest
 
 from src.giljo_mcp.exceptions import ResourceNotFoundError
 
+
 # ---------------------------------------------------------------------------
 # 1. close_job: complete → closed transition
 # ---------------------------------------------------------------------------
@@ -54,9 +55,7 @@ class TestCloseJobTransition:
         mock_exec_result.scalar_one_or_none.return_value = None
         mock_session.execute = AsyncMock(return_value=mock_exec_result)
 
-        state_service._get_session = MagicMock(
-            return_value=_async_ctx(mock_session)
-        )
+        state_service._get_session = MagicMock(return_value=_async_ctx(mock_session))
 
         with pytest.raises(ResourceNotFoundError, match="not in 'complete' status"):
             await state_service.close_job(job_id="some-job-id", tenant_key="test_tenant")
@@ -91,9 +90,7 @@ class TestCloseJobTransition:
         mock_session.execute = AsyncMock(side_effect=[exec_result, job_result])
         mock_session.flush = AsyncMock()
 
-        state_service._get_session = MagicMock(
-            return_value=_async_ctx(mock_session)
-        )
+        state_service._get_session = MagicMock(return_value=_async_ctx(mock_session))
 
         result = await state_service.close_job(job_id="test-job-123", tenant_key="test_tenant")
 
@@ -154,7 +151,8 @@ class TestModelConstraint:
         from src.giljo_mcp.models.agent_identity import AgentExecution
 
         constraints = [
-            c for c in AgentExecution.__table_args__
+            c
+            for c in AgentExecution.__table_args__
             if hasattr(c, "name") and getattr(c, "name", None) == "ck_agent_execution_status"
         ]
         assert len(constraints) == 1

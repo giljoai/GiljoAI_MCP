@@ -29,27 +29,21 @@ class TestCreateProjectSignature:
         params = sig.parameters
 
         assert "mission" in params, "create_project() must accept mission parameter"
-        assert params["mission"].default == "", (
-            "mission should default to empty string"
-        )
+        assert params["mission"].default == "", "mission should default to empty string"
 
     def test_no_context_budget_parameter(self):
         """Verify context_budget parameter has been removed."""
         sig = inspect.signature(ToolAccessor.create_project)
         params = sig.parameters
 
-        assert "context_budget" not in params, (
-            "context_budget parameter should be removed from create_project()"
-        )
+        assert "context_budget" not in params, "context_budget parameter should be removed from create_project()"
 
     def test_no_status_parameter(self):
         """Verify status parameter has been removed (hardcoded to inactive)."""
         sig = inspect.signature(ToolAccessor.create_project)
         params = sig.parameters
 
-        assert "status" not in params, (
-            "status parameter should be removed from create_project()"
-        )
+        assert "status" not in params, "status parameter should be removed from create_project()"
 
     def test_expected_parameters(self):
         """Verify all expected parameters exist with correct defaults."""
@@ -66,9 +60,7 @@ class TestCreateProjectSignature:
         }
 
         for param_name, default in expected.items():
-            assert param_name in params, (
-                f"Parameter '{param_name}' should be in signature"
-            )
+            assert param_name in params, f"Parameter '{param_name}' should be in signature"
             if default is not inspect.Parameter.empty:
                 assert params[param_name].default == default, (
                     f"Parameter '{param_name}' should have default {default!r}"
@@ -79,12 +71,8 @@ class TestCreateProjectSignature:
         sig = inspect.signature(ToolAccessor.create_project)
         params = sig.parameters
 
-        assert "tenant_key" in params, (
-            "create_project() must accept tenant_key parameter"
-        )
-        assert params["tenant_key"].default is None, (
-            "tenant_key should have default value of None"
-        )
+        assert "tenant_key" in params, "create_project() must accept tenant_key parameter"
+        assert params["tenant_key"].default is None, "tenant_key should have default value of None"
 
 
 class TestCreateProjectHardcodedBehavior:
@@ -128,9 +116,7 @@ class TestCreateProjectHardcodedBehavior:
 
             # Verify ProjectService was called with status="inactive"
             call_kwargs = mock_create.call_args[1]
-            assert call_kwargs["status"] == "inactive", (
-                "Status must always be 'inactive'"
-            )
+            assert call_kwargs["status"] == "inactive", "Status must always be 'inactive'"
 
     @pytest.mark.asyncio
     async def test_mission_defaults_to_empty_string(self):
@@ -169,9 +155,7 @@ class TestCreateProjectHardcodedBehavior:
             )
 
             call_kwargs = mock_create.call_args[1]
-            assert call_kwargs["mission"] == "", (
-                "Mission should default to empty string"
-            )
+            assert call_kwargs["mission"] == "", "Mission should default to empty string"
 
     @pytest.mark.asyncio
     async def test_passes_explicit_mission_when_provided(self):

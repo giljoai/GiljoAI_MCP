@@ -23,6 +23,7 @@ import pytest
 
 from src.giljo_mcp.auth.jwt_manager import JWTManager
 
+
 # ---------------------------------------------------------------------------
 # 1. create_access_token requires tenant_key
 # ---------------------------------------------------------------------------
@@ -83,9 +84,7 @@ class TestValidateJwtTokenTenantKeyRequired:
         token = jwt.encode(payload, secret_key, algorithm="HS256")
 
         result = await validate_jwt_token(token)
-        assert result is None, (
-            "validate_jwt_token should return None for JWTs missing tenant_key"
-        )
+        assert result is None, "validate_jwt_token should return None for JWTs missing tenant_key"
 
     @pytest.mark.asyncio
     async def test_valid_jwt_with_tenant_key_accepted(self):
@@ -132,9 +131,7 @@ class TestSubscriptionPermissionTenantKeyRequired:
             entity_id=str(uuid.uuid4()),
             tenant_key="tk_entity_tenant",
         )
-        assert result is False, (
-            "Subscription should be denied when user has no tenant_key"
-        )
+        assert result is False, "Subscription should be denied when user has no tenant_key"
 
     def test_subscription_allowed_when_tenant_key_matches(self):
         """Normal flow: user with matching tenant_key can subscribe."""

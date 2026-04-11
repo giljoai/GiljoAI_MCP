@@ -40,6 +40,7 @@ from src.giljo_mcp.models import Product
 from src.giljo_mcp.schemas.service_responses import VisionUploadResult
 from src.giljo_mcp.tools.chunking import VISION_MAX_INGEST_TOKENS
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -75,6 +76,7 @@ class ProductVisionService:
     def _get_session(self):
         """Get a session, preferring an injected test session when provided."""
         if self._test_session is not None:
+
             @asynccontextmanager
             async def _test_session_wrapper():
                 yield self._test_session

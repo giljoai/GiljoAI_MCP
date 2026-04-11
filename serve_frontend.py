@@ -14,6 +14,7 @@ import http.server
 import socketserver
 from pathlib import Path
 
+
 PORT = 7274
 DIRECTORY = Path(__file__).parent / "frontend" / "dist"
 

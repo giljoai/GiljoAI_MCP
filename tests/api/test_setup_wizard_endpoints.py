@@ -23,6 +23,7 @@ from pydantic import ValidationError
 
 from api.endpoints.auth import SetupStateUpdate
 
+
 # ---------------------------------------------------------------------------
 # Pydantic model validation tests (no API client needed)
 # ---------------------------------------------------------------------------

@@ -37,6 +37,7 @@ from .get_tech_stack import get_tech_stack
 from .get_testing import get_testing  # Handover 0316: NEW
 from .get_vision_document import get_vision_document
 
+
 __all__ = [
     "fetch_context",  # Handover 0350a: PUBLIC - exposed via MCP HTTP
     "get_360_memory",

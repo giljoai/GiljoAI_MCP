@@ -39,9 +39,7 @@ async def tenant_key() -> str:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def product_with_consolidated(
-    db_session: AsyncSession, tenant_key: str
-) -> Product:
+async def product_with_consolidated(db_session: AsyncSession, tenant_key: str) -> Product:
     """Create a product with consolidated vision columns populated (for fallback)."""
     product = Product(
         id=str(uuid.uuid4()),
@@ -61,9 +59,7 @@ async def product_with_consolidated(
 
 
 @pytest_asyncio.fixture(scope="function")
-async def active_doc(
-    db_session: AsyncSession, tenant_key: str, product_with_consolidated: Product
-) -> VisionDocument:
+async def active_doc(db_session: AsyncSession, tenant_key: str, product_with_consolidated: Product) -> VisionDocument:
     """Create a single active, chunked vision document."""
     doc = VisionDocument(
         id=str(uuid.uuid4()),
@@ -86,9 +82,7 @@ async def active_doc(
 
 
 @pytest_asyncio.fixture(scope="function")
-async def active_doc_2(
-    db_session: AsyncSession, tenant_key: str, product_with_consolidated: Product
-) -> VisionDocument:
+async def active_doc_2(db_session: AsyncSession, tenant_key: str, product_with_consolidated: Product) -> VisionDocument:
     """Create a second active, chunked vision document for multi-doc tests."""
     doc = VisionDocument(
         id=str(uuid.uuid4()),

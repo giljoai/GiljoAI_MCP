@@ -35,6 +35,7 @@ from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
 
+
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -140,8 +141,12 @@ async def blocked_agent(
     completed = datetime.now(timezone.utc) - timedelta(minutes=2)
 
     job, agent = _create_agent(
-        db_session, active_project.id, test_tenant_key,
-        "Folder-Creator", "builder", "blocked",
+        db_session,
+        active_project.id,
+        test_tenant_key,
+        "Folder-Creator",
+        "builder",
+        "blocked",
         started_at=started,
         completed_at=completed,
     )
@@ -338,8 +343,12 @@ class TestReactivateJob:
     ):
         """Reactivating a non-blocked agent should raise ResourceNotFoundError."""
         job, agent = _create_agent(
-            db_session, active_project.id, test_tenant_key,
-            "Worker", "worker", "working",
+            db_session,
+            active_project.id,
+            test_tenant_key,
+            "Worker",
+            "worker",
+            "working",
         )
         await db_session.commit()
 
@@ -359,8 +368,12 @@ class TestReactivateJob:
     ):
         """Reactivating a complete (not blocked) agent should raise ResourceNotFoundError."""
         job, agent = _create_agent(
-            db_session, active_project.id, test_tenant_key,
-            "Done-Agent", "done", "complete",
+            db_session,
+            active_project.id,
+            test_tenant_key,
+            "Done-Agent",
+            "done",
+            "complete",
         )
         await db_session.commit()
 
@@ -502,8 +515,12 @@ class TestDismissReactivation:
     ):
         """Dismissing a non-blocked agent should raise ResourceNotFoundError."""
         job, agent = _create_agent(
-            db_session, active_project.id, test_tenant_key,
-            "Worker", "worker", "working",
+            db_session,
+            active_project.id,
+            test_tenant_key,
+            "Worker",
+            "worker",
+            "working",
         )
         await db_session.commit()
 
@@ -572,11 +589,13 @@ class TestReactivationGuidance:
         )
         db_session.add(msg)
         await db_session.flush()
-        db_session.add(MessageRecipient(
-            message_id=msg.id,
-            agent_id=agent.agent_id,
-            tenant_key=test_tenant_key,
-        ))
+        db_session.add(
+            MessageRecipient(
+                message_id=msg.id,
+                agent_id=agent.agent_id,
+                tenant_key=test_tenant_key,
+            )
+        )
         await db_session.commit()
 
         result = await message_service.receive_messages(
@@ -601,8 +620,12 @@ class TestReactivationGuidance:
     ):
         """Working agent should NOT get _reactivation_guidance."""
         job, agent = _create_agent(
-            db_session, active_project.id, test_tenant_key,
-            "Worker-Agent", "worker", "working",
+            db_session,
+            active_project.id,
+            test_tenant_key,
+            "Worker-Agent",
+            "worker",
+            "working",
         )
         await db_session.commit()
         await db_session.refresh(agent)
@@ -621,11 +644,13 @@ class TestReactivationGuidance:
         )
         db_session.add(msg)
         await db_session.flush()
-        db_session.add(MessageRecipient(
-            message_id=msg.id,
-            agent_id=agent.agent_id,
-            tenant_key=test_tenant_key,
-        ))
+        db_session.add(
+            MessageRecipient(
+                message_id=msg.id,
+                agent_id=agent.agent_id,
+                tenant_key=test_tenant_key,
+            )
+        )
         await db_session.commit()
 
         result = await message_service.receive_messages(

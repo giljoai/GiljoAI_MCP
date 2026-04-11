@@ -38,6 +38,7 @@ from src.giljo_mcp.models import (
 from src.giljo_mcp.schemas.service_responses import ProgressResult
 from src.giljo_mcp.tenant import TenantManager
 
+
 if TYPE_CHECKING:
     from giljo_mcp.services.message_service import MessageService
 
