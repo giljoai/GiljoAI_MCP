@@ -175,6 +175,6 @@ describe('JobsTab Auto Check-in (0904)', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-testid="auto-checkin"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="auto-checkin-interval"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="auto-checkin-slider"]').exists()).toBe(true)
   })
 })

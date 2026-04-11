@@ -319,6 +319,7 @@ describe('UserManager', () => {
     it('changes password successfully', async () => {
       wrapper.vm.passwordUser = mockUsers[1]
       wrapper.vm.newPassword = 'newpassword123'
+      wrapper.vm.confirmPassword = 'newpassword123'
 
       await wrapper.vm.changePassword()
 
