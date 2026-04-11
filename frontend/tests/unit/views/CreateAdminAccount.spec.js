@@ -424,13 +424,13 @@ describe('CreateAdminAccount Component', () => {
       expect(result).toBe('Password is required')
     })
 
-    it('should require at least 12 characters', () => {
+    it('should require at least 8 characters', () => {
       const wrapper = createWrapper()
       const rules = wrapper.vm.passwordRules
 
-      const shortPassword = 'Short123!'
+      const shortPassword = 'Sh1!'
       const result = rules[1](shortPassword)
-      expect(result).toContain('at least 12 characters')
+      expect(result).toContain('at least 8 characters')
     })
 
     it('should require uppercase letter', () => {
