@@ -11,17 +11,6 @@
       </p>
     </div>
 
-    <!-- Go to Home -->
-    <div class="dashboard-link-area" style="margin-top: 24px;">
-      <v-btn
-        color="primary"
-        variant="flat"
-        class="card-btn"
-        @click="handleDashboard"
-      >
-        Continue
-      </v-btn>
-    </div>
   </div>
 </template>
 
