@@ -58,9 +58,7 @@ class TestDecommissionedDiagnostics:
 
         mock_session = AsyncMock()
 
-        decommissioned_exec = _make_mock_execution(
-            status="decommissioned", job_id=job_id, tenant_key=tenant_key
-        )
+        decommissioned_exec = _make_mock_execution(status="decommissioned", job_id=job_id, tenant_key=tenant_key)
 
         call_count = {"n": 0}
 
@@ -105,9 +103,7 @@ class TestDecommissionedDiagnostics:
 
         mock_session = AsyncMock()
 
-        decommissioned_exec = _make_mock_execution(
-            status="decommissioned", job_id=job_id, tenant_key=tenant_key
-        )
+        decommissioned_exec = _make_mock_execution(status="decommissioned", job_id=job_id, tenant_key=tenant_key)
 
         call_count = {"n": 0}
 

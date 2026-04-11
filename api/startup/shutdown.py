@@ -17,6 +17,7 @@ import time
 
 from api.app import APIState
 
+
 logger = logging.getLogger(__name__)
 
 # Maximum seconds to wait for each shutdown step before force-skipping

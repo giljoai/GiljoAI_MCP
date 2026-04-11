@@ -38,6 +38,7 @@ from src.giljo_mcp.schemas.service_responses import (
 )
 from src.giljo_mcp.tenant import TenantManager
 
+
 logger = logging.getLogger(__name__)
 
 

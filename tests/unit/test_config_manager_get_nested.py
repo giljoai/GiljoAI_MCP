@@ -14,7 +14,6 @@ Covers dot-notation traversal of the raw config dict:
 - Leaf value of None is returned (not confused with missing key)
 """
 
-
 import pytest
 import yaml
 
@@ -143,10 +142,12 @@ class TestGetNested:
         """After reload(), get_nested() returns updated values."""
         config_file = tmp_path / "config.yaml"
         config_file.write_text(
-            yaml.safe_dump({
-                "database": {"type": "postgresql", "password": "p1"},
-                "features": {"flag": "original"},
-            }),
+            yaml.safe_dump(
+                {
+                    "database": {"type": "postgresql", "password": "p1"},
+                    "features": {"flag": "original"},
+                }
+            ),
             encoding="utf-8",
         )
         with pytest.MonkeyPatch.context() as mp:
@@ -157,10 +158,12 @@ class TestGetNested:
 
         # Update file and reload
         config_file.write_text(
-            yaml.safe_dump({
-                "database": {"type": "postgresql", "password": "p1"},
-                "features": {"flag": "updated"},
-            }),
+            yaml.safe_dump(
+                {
+                    "database": {"type": "postgresql", "password": "p1"},
+                    "features": {"flag": "updated"},
+                }
+            ),
             encoding="utf-8",
         )
         mgr.reload()

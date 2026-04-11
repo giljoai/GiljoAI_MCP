@@ -79,7 +79,9 @@ class TestStageCombinedSetup:
         staging = FileStaging(db_session=mock_session)
 
         zip_path, msg = await staging.stage_combined_setup(
-            staging_dir, "test-tenant", platform="claude_code",
+            staging_dir,
+            "test-tenant",
+            platform="claude_code",
         )
 
         assert zip_path is not None
@@ -103,7 +105,9 @@ class TestStageCombinedSetup:
         staging = FileStaging(db_session=mock_session)
 
         zip_path, _ = await staging.stage_combined_setup(
-            staging_dir, "test-tenant", platform="gemini_cli",
+            staging_dir,
+            "test-tenant",
+            platform="gemini_cli",
         )
 
         assert zip_path is not None
@@ -125,7 +129,9 @@ class TestStageCombinedSetup:
         staging = FileStaging(db_session=mock_session)
 
         zip_path, _ = await staging.stage_combined_setup(
-            staging_dir, "test-tenant", platform="codex_cli",
+            staging_dir,
+            "test-tenant",
+            platform="codex_cli",
         )
 
         assert zip_path is not None
@@ -147,7 +153,9 @@ class TestStageCombinedSetup:
         staging = FileStaging(db_session=mock_session)
 
         zip_path, _ = await staging.stage_combined_setup(
-            staging_dir, "test-tenant", platform="codex_cli",
+            staging_dir,
+            "test-tenant",
+            platform="codex_cli",
         )
 
         with zipfile.ZipFile(zip_path) as zf:
@@ -165,7 +173,9 @@ class TestStageCombinedSetup:
         staging = FileStaging(db_session=mock_session)
 
         zip_path, _ = await staging.stage_combined_setup(
-            staging_dir, "test-tenant", platform="claude_code",
+            staging_dir,
+            "test-tenant",
+            platform="claude_code",
         )
 
         assert zip_path.name == "giljo_setup.zip"
@@ -181,7 +191,9 @@ class TestStageCombinedSetup:
         staging = FileStaging(db_session=session)
 
         zip_path, _ = await staging.stage_combined_setup(
-            staging_dir, "test-tenant", platform="claude_code",
+            staging_dir,
+            "test-tenant",
+            platform="claude_code",
         )
 
         assert zip_path is not None
@@ -200,7 +212,9 @@ class TestStageCombinedSetup:
 
         with pytest.raises(ValueError, match="Unknown platform"):
             await staging.stage_combined_setup(
-                staging_dir, "test-tenant", platform="invalid",
+                staging_dir,
+                "test-tenant",
+                platform="invalid",
             )
 
     @pytest.mark.asyncio
@@ -209,7 +223,9 @@ class TestStageCombinedSetup:
         staging = FileStaging(db_session=mock_session)
 
         zip_path, _ = await staging.stage_combined_setup(
-            staging_dir, "test-tenant", platform="generic",
+            staging_dir,
+            "test-tenant",
+            platform="generic",
         )
 
         assert zip_path is not None
@@ -234,7 +250,9 @@ class TestStageCombinedSetup:
         staging = FileStaging(db_session=mock_session)
 
         await staging.stage_combined_setup(
-            staging_dir, "test-tenant", platform="claude_code",
+            staging_dir,
+            "test-tenant",
+            platform="claude_code",
         )
 
         # Verify commit was called (timestamp update persisted)

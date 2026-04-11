@@ -23,6 +23,7 @@ from src.giljo_mcp.models import Message, User
 from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.tasks import MessageRecipient
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

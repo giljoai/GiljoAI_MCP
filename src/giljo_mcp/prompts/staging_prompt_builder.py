@@ -15,6 +15,7 @@ from typing import Any
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import Product, Project
 
+
 logger = logging.getLogger(__name__)
 
 

@@ -18,6 +18,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.slash_commands import get_slash_command
 
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/slash", tags=["slash-commands"])

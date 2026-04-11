@@ -29,6 +29,7 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.settings import Settings
 
+
 logger = logging.getLogger(__name__)
 
 # Default silence threshold in minutes (used when no setting is configured)

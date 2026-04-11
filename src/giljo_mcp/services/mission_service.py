@@ -50,6 +50,7 @@ from src.giljo_mcp.services.protocol_builder import (
 )
 from src.giljo_mcp.tenant import TenantManager
 
+
 if TYPE_CHECKING:
     from giljo_mcp.services.message_service import MessageService
 

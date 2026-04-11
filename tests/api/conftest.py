@@ -21,6 +21,7 @@ import pytest_asyncio
 from httpx import ASGITransport
 from httpx import AsyncClient as HTTPXAsyncClient
 
+
 # Shared CSRF token for test fixtures (double-submit cookie pattern)
 _TEST_CSRF_TOKEN = secrets.token_urlsafe(32)
 

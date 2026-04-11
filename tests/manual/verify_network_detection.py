@@ -17,6 +17,7 @@ This script demonstrates the behavior of get_network_ip() in various scenarios:
 import sys
 from pathlib import Path
 
+
 # Add parent directory to path to import startup module
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 

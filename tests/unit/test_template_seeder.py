@@ -95,7 +95,9 @@ class TestTemplateSeederDualField:
 
         # Verify all non-orchestrator system instructions are identical
         assert len(system_instructions_list) == 5, "Should have 5 templates"
-        assert len(set(system_instructions_list)) == 1, "All non-orchestrator templates should have identical system_instructions"
+        assert len(set(system_instructions_list)) == 1, (
+            "All non-orchestrator templates should have identical system_instructions"
+        )
 
     async def test_user_instructions_unique(self, db_session: AsyncSession):
         """Verify each role gets unique user_instructions."""
@@ -160,9 +162,7 @@ class TestTemplateSeederDualField:
             assert len(actual) > 0, f"Template {template.role} system_instructions should not be empty"
 
             # Verify MCP content is present in system_instructions
-            assert "MCP" in actual.upper(), (
-                f"{template.role} system_instructions should contain MCP content"
-            )
+            assert "MCP" in actual.upper(), f"{template.role} system_instructions should contain MCP content"
 
     async def test_required_mcp_content_in_system(self, db_session: AsyncSession):
         """Verify key MCP bootstrap content present in system_instructions.
@@ -183,21 +183,15 @@ class TestTemplateSeederDualField:
             system_inst = template.system_instructions
 
             # Handover 0813: Bootstrap should reference GiljoAI MCP Agent
-            assert "GiljoAI MCP Agent" in system_inst, (
-                f"{template.role} missing GiljoAI MCP Agent header"
-            )
+            assert "GiljoAI MCP Agent" in system_inst, f"{template.role} missing GiljoAI MCP Agent header"
             # Should reference mcp__giljo_mcp__ prefix
-            assert "mcp__giljo_mcp__" in system_inst, (
-                f"{template.role} should reference mcp__giljo_mcp__ tool prefix"
-            )
+            assert "mcp__giljo_mcp__" in system_inst, f"{template.role} should reference mcp__giljo_mcp__ tool prefix"
             # Should reference get_agent_mission for full protocol delivery
             assert "get_agent_mission" in system_inst, (
                 f"{template.role} should reference get_agent_mission in bootstrap"
             )
             # Should reference full_protocol
-            assert "full_protocol" in system_inst, (
-                f"{template.role} should reference full_protocol in bootstrap"
-            )
+            assert "full_protocol" in system_inst, f"{template.role} should reference full_protocol in bootstrap"
 
     async def test_system_instructions_not_in_user(self, db_session: AsyncSession):
         """Verify system_instructions content NOT duplicated in user_instructions."""

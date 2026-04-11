@@ -44,6 +44,7 @@ class TestGitHistoryDirective:
 
         # Set up execute to return different results for different queries
         call_count = 0
+
         async def mock_execute(stmt):
             nonlocal call_count
             call_count += 1
@@ -87,6 +88,7 @@ class TestGitHistoryDirective:
         mock_result.scalar_one_or_none.return_value = mock_product
 
         call_count = 0
+
         async def mock_execute(stmt):
             nonlocal call_count
             call_count += 1
@@ -151,6 +153,7 @@ class TestGitHistoryDirective:
         mock_result.scalar_one_or_none.return_value = mock_product
 
         call_count = 0
+
         async def mock_execute(stmt):
             nonlocal call_count
             call_count += 1
@@ -201,7 +204,9 @@ class TestFetchContextDirectivePropagation:
             "metadata": {},
         }
 
-        with patch("src.giljo_mcp.tools.context_tools.fetch_context._fetch_category", new_callable=AsyncMock) as mock_fetch:
+        with patch(
+            "src.giljo_mcp.tools.context_tools.fetch_context._fetch_category", new_callable=AsyncMock
+        ) as mock_fetch:
             mock_fetch.return_value = mock_git_result
 
             result = await fetch_context(
@@ -227,7 +232,9 @@ class TestFetchContextDirectivePropagation:
             "metadata": {},
         }
 
-        with patch("src.giljo_mcp.tools.context_tools.fetch_context._fetch_category", new_callable=AsyncMock) as mock_fetch:
+        with patch(
+            "src.giljo_mcp.tools.context_tools.fetch_context._fetch_category", new_callable=AsyncMock
+        ) as mock_fetch:
             mock_fetch.return_value = mock_git_result
 
             result = await fetch_context(

@@ -40,6 +40,7 @@ from src.giljo_mcp.services.protocol_builder import (
 )
 from src.giljo_mcp.tenant import TenantManager
 
+
 logger = logging.getLogger(__name__)
 
 
