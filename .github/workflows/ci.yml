@@ -71,7 +71,7 @@ jobs:
         run: pip install ruff
 
       - name: Run ruff check
-        # Uses pyproject.toml ruleset (E,F,W,I,BLE,PERF) — not the broader .ruff.toml dev config
+        # Uses pyproject.toml (CI-enforced ruleset: E,F,W,I,BLE,PERF with isort config)
         run: ruff check . --config pyproject.toml --output-format=github
 
       - name: Run ruff format check
