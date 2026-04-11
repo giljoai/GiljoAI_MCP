@@ -755,7 +755,7 @@ function getDefaultFormState() {
       design_patterns: '',
       api_style: '',
       architecture_notes: '',
-      coding_conventions: '- Keep code simple and readable. Prefer fewer files over many small ones.\n- Use consistent naming: snake_case for Python, camelCase for JavaScript.\n- No commented-out code. Delete what you don\'t need.\n- Handle errors explicitly. Don\'t silently swallow exceptions.\n- Write functions that do one thing. Keep them short enough to read without scrolling.\n- If unsure about a design decision, choose the simpler option.',
+      coding_conventions: '',
     },
     coreFeatures: '',
     brandGuidelines: '',

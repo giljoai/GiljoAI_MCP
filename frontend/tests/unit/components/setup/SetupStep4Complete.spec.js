@@ -1,6 +1,6 @@
 /**
  * Unit tests for SetupStep4Complete component (Handover 0855f)
- * Covers header rendering and emission of complete event.
+ * Covers header rendering.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -47,29 +47,11 @@ describe('SetupStep4Complete', () => {
       expect(subtitle.text()).toContain('connected and ready')
     })
 
-    it('renders a Continue button', () => {
+    it('does not render a Continue button (completion handled by parent Finish button)', () => {
       const wrapper = mountStep4()
       const btn = wrapper.find('.card-btn')
 
-      expect(btn.exists()).toBe(true)
-      expect(btn.text()).toBe('Continue')
-    })
-  })
-
-  // -------------------------------------------------------------------
-  // Emit: complete
-  // -------------------------------------------------------------------
-  describe('Complete event emission', () => {
-    it('click Continue emits complete with home action and route', async () => {
-      const wrapper = mountStep4()
-      const btn = wrapper.find('.card-btn')
-
-      await btn.trigger('click')
-
-      const events = wrapper.emitted('complete')
-      expect(events).toBeTruthy()
-      expect(events).toHaveLength(1)
-      expect(events[0][0]).toEqual({ action: 'home', route: '/home' })
+      expect(btn.exists()).toBe(false)
     })
   })
 })
