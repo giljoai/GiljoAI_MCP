@@ -242,21 +242,24 @@ class WindowsPlatformHandler(PlatformHandler):
             lnk_path = desktop / sc["name"]
             icon_loc = str(sc["icon"]) if sc["icon"].exists() else ""
             ps_script = (
-                f'$ws = New-Object -ComObject WScript.Shell; '
+                f"$ws = New-Object -ComObject WScript.Shell; "
                 f'$s = $ws.CreateShortcut("{lnk_path}"); '
                 f'$s.TargetPath = "{python_exe}"; '
-                f'$s.Arguments = \'{sc["args"]}\'; '
+                f"$s.Arguments = '{sc['args']}'; "
                 f'$s.WorkingDirectory = "{install_dir}"; '
                 f'$s.Description = "{sc["desc"]}"; '
             )
             if icon_loc:
                 ps_script += f'$s.IconLocation = "{icon_loc}"; '
-            ps_script += '$s.Save()'
+            ps_script += "$s.Save()"
 
             try:
                 subprocess.run(
                     ["powershell", "-NoProfile", "-Command", ps_script],
-                    capture_output=True, text=True, timeout=10, check=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=True,
                 )
                 shortcuts_created.append(str(lnk_path))
             except Exception:

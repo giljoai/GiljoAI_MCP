@@ -26,6 +26,7 @@ import tiktoken
 from src.giljo_mcp.exceptions import ContextError, GiljoFileNotFoundError
 from src.giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET, EnhancedChunker
 
+
 logger = logging.getLogger(__name__)
 
 

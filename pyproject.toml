@@ -113,6 +113,8 @@ ignore = ["E501", "PERF203", "PERF401"]
 "api/app.py" = ["BLE001", "E402"]
 "src/giljo_mcp/services/orchestration_service.py" = ["BLE001"]
 "tests/manual/**" = ["E402"]
+"migrations/env.py" = ["E402"]
+"src/giljo_mcp/services/protocol_sections/agent_lifecycle.py" = ["S608"]
 
 [tool.black]
 line-length = 120

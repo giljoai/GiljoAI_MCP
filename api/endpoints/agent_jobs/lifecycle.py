@@ -33,6 +33,7 @@ from .models import (
     SpawnAgentResponse,
 )
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

@@ -29,6 +29,7 @@ from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.tasks import Task
 from src.giljo_mcp.schemas.service_responses import TaskUpdateResult
 
+
 # ============================================================================
 # LOCAL FIXTURES (override conftest test_project which lacks product_id)
 # ============================================================================
@@ -205,9 +206,7 @@ async def test_list_tasks_empty(task_service):
 @pytest.mark.asyncio
 async def test_update_task_returns_typed_result(task_service, test_task):
     """Test update_task returns TaskUpdateResult"""
-    result = await task_service.update_task(
-        task_id=str(test_task.id), status="in_progress", priority="high"
-    )
+    result = await task_service.update_task(task_id=str(test_task.id), status="in_progress", priority="high")
 
     # 0731c: update_task now returns TaskUpdateResult
     assert isinstance(result, TaskUpdateResult)

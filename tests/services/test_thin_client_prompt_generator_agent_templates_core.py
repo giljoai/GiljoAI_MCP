@@ -64,12 +64,14 @@ async def test_thin_prompt_contains_core_structure(db_session: AsyncSession):
 
     # Insert field priority rows (0840d: replaces field_priority_config JSONB)
     for category in ["agent_templates", "tech_stack"]:
-        db_session.add(UserFieldPriority(
-            user_id=user.id,
-            tenant_key=tenant_key,
-            category=category,
-            enabled=True,
-        ))
+        db_session.add(
+            UserFieldPriority(
+                user_id=user.id,
+                tenant_key=tenant_key,
+                category=category,
+                enabled=True,
+            )
+        )
 
     # Create project
     project = Project(
@@ -135,9 +137,7 @@ async def test_thin_prompt_contains_core_structure(db_session: AsyncSession):
     # ACT
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
     field_toggles = {"agent_templates": True, "tech_stack": True}
-    result = await generator.generate(
-        project_id=project.id, user_id=user.id, field_toggles=field_toggles
-    )
+    result = await generator.generate(project_id=project.id, user_id=user.id, field_toggles=field_toggles)
     thin_prompt = result["thin_prompt"]
 
     # ASSERT - Core structure present (Handover 0315: thin prompt architecture)
@@ -233,18 +233,18 @@ async def test_thin_prompt_is_concise(db_session: AsyncSession):
     # TEST: Thin prompt should be concise regardless of toggle settings
     # (Agent templates NOT embedded inline - fetched via MCP tools)
     # 0840d: Insert field priority row instead of setting JSONB
-    db_session.add(UserFieldPriority(
-        user_id=user.id,
-        tenant_key=tenant_key,
-        category="agent_templates",
-        enabled=True,
-    ))
+    db_session.add(
+        UserFieldPriority(
+            user_id=user.id,
+            tenant_key=tenant_key,
+            category="agent_templates",
+            enabled=True,
+        )
+    )
     await db_session.commit()
 
     field_toggles_p1 = {"agent_templates": True}
-    result_p1 = await generator.generate(
-        project_id=project.id, user_id=user.id, field_toggles=field_toggles_p1
-    )
+    result_p1 = await generator.generate(project_id=project.id, user_id=user.id, field_toggles=field_toggles_p1)
 
     # Thin prompt should NOT contain inline agent template content
     # (Agent details are fetched via get_orchestrator_instructions at runtime)

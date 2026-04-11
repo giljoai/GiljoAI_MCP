@@ -23,9 +23,11 @@ import yaml
 
 from src.giljo_mcp.config_manager import ConfigManager
 
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_config(tmp_path, ssl_enabled: bool) -> ConfigManager:
     """Create a ConfigManager backed by a temp config.yaml."""
@@ -71,12 +73,14 @@ def ssl_config_data():
 # Test: mcp_installer.get_server_url()
 # ---------------------------------------------------------------------------
 
+
 class TestMcpInstallerGetServerUrl:
     """Test that mcp_installer.get_server_url() respects ssl_enabled."""
 
     def test_https_when_ssl_enabled(self, ssl_config):
         with patch("api.endpoints.mcp_installer.get_config", return_value=ssl_config):
             from api.endpoints.mcp_installer import get_server_url
+
             url = get_server_url()
         assert url.startswith("https://"), f"Expected https:// but got: {url}"
         assert "http://" not in url
@@ -84,6 +88,7 @@ class TestMcpInstallerGetServerUrl:
     def test_http_when_ssl_disabled(self, no_ssl_config):
         with patch("api.endpoints.mcp_installer.get_config", return_value=no_ssl_config):
             from api.endpoints.mcp_installer import get_server_url
+
             url = get_server_url()
         assert url.startswith("http://"), f"Expected http:// but got: {url}"
 
@@ -92,18 +97,21 @@ class TestMcpInstallerGetServerUrl:
 # Test: downloads.get_server_url()
 # ---------------------------------------------------------------------------
 
+
 class TestDownloadsGetServerUrl:
     """Test that downloads.get_server_url() respects ssl_enabled."""
 
     def test_https_when_ssl_enabled(self, ssl_config):
         with patch("api.endpoints.downloads.get_config", return_value=ssl_config):
             from api.endpoints.downloads import get_server_url
+
             url = get_server_url(request=None)
         assert url.startswith("https://"), f"Expected https:// but got: {url}"
 
     def test_http_when_ssl_disabled(self, no_ssl_config):
         with patch("api.endpoints.downloads.get_config", return_value=no_ssl_config):
             from api.endpoints.downloads import get_server_url
+
             url = get_server_url(request=None)
         assert url.startswith("http://"), f"Expected http:// but got: {url}"
 
@@ -113,6 +121,7 @@ class TestDownloadsGetServerUrl:
         mock_request.headers = {"x-forwarded-proto": "https"}
         with patch("api.endpoints.downloads.get_config", return_value=no_ssl_config):
             from api.endpoints.downloads import get_server_url
+
             url = get_server_url(request=mock_request)
         assert url.startswith("https://"), f"Proxy header should force https, got: {url}"
 
@@ -120,6 +129,7 @@ class TestDownloadsGetServerUrl:
 # ---------------------------------------------------------------------------
 # Test: ai_tools endpoint protocol
 # ---------------------------------------------------------------------------
+
 
 class TestAiToolsEndpointProtocol:
     """Verify ai_tools.py uses get_nested for ssl_enabled."""
@@ -136,6 +146,7 @@ class TestAiToolsEndpointProtocol:
 # ---------------------------------------------------------------------------
 # Test: tool_accessor download URL
 # ---------------------------------------------------------------------------
+
 
 class TestToolAccessorDownloadUrl:
     """Test that tool_accessor builds download URLs with correct protocol."""
@@ -156,6 +167,7 @@ class TestToolAccessorDownloadUrl:
 # ---------------------------------------------------------------------------
 # Test: configuration frontend endpoint protocol fields
 # ---------------------------------------------------------------------------
+
 
 class TestConfigurationEndpointProtocol:
     """Test that /api/v1/config/frontend returns correct protocol."""
@@ -179,12 +191,14 @@ class TestConfigurationEndpointProtocol:
 # Test: thin_prompt_generator._get_ssl_protocol()
 # ---------------------------------------------------------------------------
 
+
 class TestThinPromptGeneratorProtocol:
     """Test that thin_prompt_generator reads ssl_enabled correctly."""
 
     def test_returns_https_when_ssl_enabled(self, ssl_config):
         with patch("src.giljo_mcp.thin_prompt_generator.get_config", return_value=ssl_config):
             from src.giljo_mcp.thin_prompt_generator import _get_ssl_protocol
+
             result = _get_ssl_protocol()
         assert result == "https"
 
@@ -192,6 +206,7 @@ class TestThinPromptGeneratorProtocol:
 # ---------------------------------------------------------------------------
 # Test: No http:// or ws:// URLs when ssl_enabled=true (comprehensive)
 # ---------------------------------------------------------------------------
+
 
 class TestNoHttpUrlsWhenSslEnabled:
     """
@@ -202,12 +217,14 @@ class TestNoHttpUrlsWhenSslEnabled:
     def test_mcp_installer_no_http(self, ssl_config):
         with patch("api.endpoints.mcp_installer.get_config", return_value=ssl_config):
             from api.endpoints.mcp_installer import get_server_url
+
             url = get_server_url()
         assert "http://" not in url, f"Found http:// in mcp_installer URL: {url}"
 
     def test_downloads_no_http(self, ssl_config):
         with patch("api.endpoints.downloads.get_config", return_value=ssl_config):
             from api.endpoints.downloads import get_server_url
+
             url = get_server_url(request=None)
         assert "http://" not in url, f"Found http:// in downloads URL: {url}"
 

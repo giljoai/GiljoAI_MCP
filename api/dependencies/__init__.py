@@ -20,6 +20,7 @@ from pathlib import Path
 
 from .websocket import WebSocketDependency, get_websocket_dependency, get_websocket_manager
 
+
 _deps_file = str(Path(__file__).parent.parent / "dependencies.py")
 _spec = importlib.util.spec_from_file_location("_legacy_dependencies", _deps_file)
 _legacy_module = importlib.util.module_from_spec(_spec)

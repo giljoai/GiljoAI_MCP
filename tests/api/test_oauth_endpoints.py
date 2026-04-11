@@ -45,9 +45,7 @@ class TestOAuthMetadataEndpoint:
     @pytest.mark.asyncio
     async def test_metadata_endpoint_returns_correct_fields(self, api_client):
         """Metadata endpoint must return all required OAuth server metadata fields."""
-        response = await api_client.get(
-            "/api/oauth/.well-known/oauth-authorization-server"
-        )
+        response = await api_client.get("/api/oauth/.well-known/oauth-authorization-server")
         assert response.status_code == 200
 
         data = response.json()
@@ -61,9 +59,7 @@ class TestOAuthMetadataEndpoint:
     @pytest.mark.asyncio
     async def test_metadata_endpoint_is_public(self, api_client):
         """Metadata endpoint must be accessible without authentication."""
-        response = await api_client.get(
-            "/api/oauth/.well-known/oauth-authorization-server"
-        )
+        response = await api_client.get("/api/oauth/.well-known/oauth-authorization-server")
         assert response.status_code == 200
 
 

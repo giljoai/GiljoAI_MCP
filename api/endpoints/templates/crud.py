@@ -32,6 +32,7 @@ from src.giljo_mcp.template_validation import get_role_color, slugify_name
 from .dependencies import get_template_service
 from .models import TemplateCreate, TemplateResponse, TemplateUpdate
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

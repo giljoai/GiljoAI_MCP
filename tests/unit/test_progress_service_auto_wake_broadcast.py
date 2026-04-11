@@ -22,6 +22,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+
 # Stub the api package so that api/__init__.py is never executed.
 # progress_service itself does not import from api, but stubs are needed
 # for consistent test collection when all unit tests run together.

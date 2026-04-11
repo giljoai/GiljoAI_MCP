@@ -15,11 +15,11 @@ Validates:
 6. Spawn without predecessor_job_id preserves existing behavior (regression)
 """
 
-
 import pytest
 from sqlalchemy import select
 
 from src.giljo_mcp.models import AgentJob
+
 
 # Fixtures `tenant_key`, `agent_templates`, `project`, `service`,
 # `other_tenant_key`, `other_tenant_templates`, `other_project`,
@@ -35,9 +35,7 @@ from src.giljo_mcp.models import AgentJob
 class TestSpawnWithPredecessor:
     """Verify that spawning with predecessor_job_id injects predecessor context."""
 
-    async def test_mission_contains_predecessor_context(
-        self, db_session, service, project, tenant_key
-    ):
+    async def test_mission_contains_predecessor_context(self, db_session, service, project, tenant_key):
         """Successor mission should contain PREDECESSOR CONTEXT section."""
         from tests.services.conftest import _spawn_and_complete
 
@@ -46,9 +44,7 @@ class TestSpawnWithPredecessor:
             "artifacts": ["src/auth.py", "tests/test_auth.py"],
             "commits": ["abc123 feat: add auth module"],
         }
-        pred_spawn = await _spawn_and_complete(
-            service, project.id, tenant_key, predecessor_result
-        )
+        pred_spawn = await _spawn_and_complete(service, project.id, tenant_key, predecessor_result)
 
         # Spawn successor with predecessor reference
         successor = await service.spawn_agent_job(
@@ -72,15 +68,11 @@ class TestSpawnWithPredecessor:
         assert "Fix the JWT validation bug found by tester" in job.mission
         assert "get_agent_result" in job.mission
 
-    async def test_predecessor_job_id_in_spawn_result(
-        self, service, project, tenant_key
-    ):
+    async def test_predecessor_job_id_in_spawn_result(self, service, project, tenant_key):
         """SpawnResult should include the predecessor_job_id."""
         from tests.services.conftest import _spawn_and_complete
 
-        pred_spawn = await _spawn_and_complete(
-            service, project.id, tenant_key, {"summary": "Done"}
-        )
+        pred_spawn = await _spawn_and_complete(service, project.id, tenant_key, {"summary": "Done"})
 
         successor = await service.spawn_agent_job(
             agent_display_name="successor",
@@ -103,16 +95,12 @@ class TestSpawnWithPredecessor:
 class TestPredecessorContextTruncation:
     """Verify summary truncation and commits capping."""
 
-    async def test_long_summary_truncated_at_2000_chars(
-        self, db_session, service, project, tenant_key
-    ):
+    async def test_long_summary_truncated_at_2000_chars(self, db_session, service, project, tenant_key):
         """Summaries over 2000 chars should be truncated with [TRUNCATED] marker."""
         from tests.services.conftest import _spawn_and_complete
 
         long_summary = "A" * 3000
-        pred_spawn = await _spawn_and_complete(
-            service, project.id, tenant_key, {"summary": long_summary}
-        )
+        pred_spawn = await _spawn_and_complete(service, project.id, tenant_key, {"summary": long_summary})
 
         successor = await service.spawn_agent_job(
             agent_display_name="successor",
@@ -131,9 +119,7 @@ class TestPredecessorContextTruncation:
         # The full 3000-char summary should NOT be in the mission
         assert long_summary not in job.mission
 
-    async def test_commits_capped_at_10(
-        self, db_session, service, project, tenant_key
-    ):
+    async def test_commits_capped_at_10(self, db_session, service, project, tenant_key):
         """Commits list should be capped at 10 entries."""
         from tests.services.conftest import _spawn_and_complete
 
@@ -170,9 +156,7 @@ class TestPredecessorContextTruncation:
 class TestPredecessorNoResult:
     """Verify graceful handling when predecessor has no stored result."""
 
-    async def test_predecessor_not_completed_still_injects_context(
-        self, db_session, service, project, tenant_key
-    ):
+    async def test_predecessor_not_completed_still_injects_context(self, db_session, service, project, tenant_key):
         """If predecessor exists but isn't complete, context still injected with defaults."""
         # Spawn predecessor but do NOT complete it
         pred_spawn = await service.spawn_agent_job(
@@ -210,9 +194,7 @@ class TestPredecessorNoResult:
 class TestSpawnWithoutPredecessorRegression:
     """Verify existing behavior unchanged when predecessor_job_id is not provided."""
 
-    async def test_spawn_without_predecessor_works(
-        self, db_session, service, project, tenant_key
-    ):
+    async def test_spawn_without_predecessor_works(self, db_session, service, project, tenant_key):
         """Normal spawn (no predecessor) should work exactly as before."""
         result = await service.spawn_agent_job(
             agent_display_name="implementer",
@@ -235,9 +217,7 @@ class TestSpawnWithoutPredecessorRegression:
         assert "PREDECESSOR CONTEXT" not in job.mission
         assert "Implement the feature" in job.mission
 
-    async def test_spawn_with_none_predecessor_works(
-        self, service, project, tenant_key
-    ):
+    async def test_spawn_with_none_predecessor_works(self, service, project, tenant_key):
         """Explicitly passing predecessor_job_id=None should work as normal."""
         result = await service.spawn_agent_job(
             agent_display_name="implementer-2",

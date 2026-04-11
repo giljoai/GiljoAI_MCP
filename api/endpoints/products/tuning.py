@@ -24,6 +24,7 @@ from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
 from .dependencies import get_db_manager
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

@@ -32,6 +32,7 @@ from .dependencies import (
 )
 from .jwt_manager import JWTManager
 
+
 __all__ = [
     # Legacy
     "AuthManager",

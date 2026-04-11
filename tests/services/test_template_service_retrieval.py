@@ -19,6 +19,7 @@ from sqlalchemy import select
 
 from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
 
+
 # ============================================================================
 # Template Retrieval Tests
 # ============================================================================
@@ -239,9 +240,7 @@ async def test_hard_delete_template_cascades(
     )
     assert stat_result.scalar_one_or_none() is None
 
-    archive_result = await db_session.execute(
-        select(TemplateArchive).where(TemplateArchive.template_id == template_id)
-    )
+    archive_result = await db_session.execute(select(TemplateArchive).where(TemplateArchive.template_id == template_id))
     assert archive_result.scalar_one_or_none() is None
 
 
