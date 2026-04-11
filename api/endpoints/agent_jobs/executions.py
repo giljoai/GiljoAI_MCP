@@ -22,6 +22,7 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 from .models import AgentExecutionResponse, ClearSilentResponse
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

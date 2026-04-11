@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -35,6 +36,7 @@ from tests.fixtures.base_fixtures import (
     db_session,
     test_project,
 )
+
 
 # Import pytest plugin for PostgreSQL database management
 pytest_plugins = ["tests.pytest_postgresql_plugin"]

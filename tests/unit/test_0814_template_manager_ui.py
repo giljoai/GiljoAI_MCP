@@ -24,9 +24,11 @@ from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_renderer import render_claude_agent
 from src.giljo_mcp.template_seeder import _get_mcp_bootstrap_section
 
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_template(**overrides) -> AgentTemplate:
     """Build an AgentTemplate with sensible defaults for testing."""
@@ -87,6 +89,7 @@ def _make_mock_user(tenant_key: str = "tk_test1234567890abcdef1234567890ab"):
 # 1. create_template injects canonical bootstrap as system_instructions
 # ---------------------------------------------------------------------------
 
+
 class TestCreateTemplateInjectsCanonicalBootstrap:
     """create_template() must always set system_instructions to the canonical
     MCP bootstrap from _get_mcp_bootstrap_section(), regardless of what the
@@ -139,8 +142,7 @@ class TestCreateTemplateInjectsCanonicalBootstrap:
 
         assert captured_template is not None, "Template should have been added to session"
         assert captured_template.system_instructions == canonical, (
-            "system_instructions must be the canonical MCP bootstrap, "
-            "not the value sent by the frontend"
+            "system_instructions must be the canonical MCP bootstrap, not the value sent by the frontend"
         )
         assert "INJECTED EVIL INSTRUCTIONS" not in captured_template.system_instructions
 
@@ -195,6 +197,7 @@ class TestCreateTemplateInjectsCanonicalBootstrap:
 # 2. create_template stores user_instructions from request
 # ---------------------------------------------------------------------------
 
+
 class TestCreateTemplateStoresUserInstructions:
     """create_template() must store user_instructions from the request body."""
 
@@ -208,8 +211,7 @@ class TestCreateTemplateStoresUserInstructions:
         user = _make_mock_user()
 
         custom_role_description = (
-            "You are a senior code reviewer who provides constructive, "
-            "actionable feedback on pull requests."
+            "You are a senior code reviewer who provides constructive, actionable feedback on pull requests."
         )
 
         payload = TemplateCreate(
@@ -294,6 +296,7 @@ class TestCreateTemplateStoresUserInstructions:
 # ---------------------------------------------------------------------------
 # 3. update_template rejects system_instructions with 403
 # ---------------------------------------------------------------------------
+
 
 class TestUpdateTemplateRejectsSystemInstructions:
     """update_template() must reject attempts to modify system_instructions."""
@@ -382,6 +385,7 @@ class TestUpdateTemplateRejectsSystemInstructions:
 # 4. update_template accepts and stores user_instructions
 # ---------------------------------------------------------------------------
 
+
 class TestUpdateTemplateAcceptsUserInstructions:
     """update_template() must accept user_instructions and persist them."""
 
@@ -412,12 +416,15 @@ class TestUpdateTemplateAcceptsUserInstructions:
             user_instructions=new_instructions,
         )
 
-        with patch(
-            "api.endpoints.templates.crud.get_tenant_and_product_from_user",
-            return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
-        ), patch(
-            "api.endpoints.templates.crud._convert_to_response",
-        ) as mock_convert:
+        with (
+            patch(
+                "api.endpoints.templates.crud.get_tenant_and_product_from_user",
+                return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
+            ),
+            patch(
+                "api.endpoints.templates.crud._convert_to_response",
+            ) as mock_convert,
+        ):
             mock_convert.return_value = Mock()
 
             await update_template(
@@ -455,12 +462,15 @@ class TestUpdateTemplateAcceptsUserInstructions:
             user_instructions="Brand new instructions",
         )
 
-        with patch(
-            "api.endpoints.templates.crud.get_tenant_and_product_from_user",
-            return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
-        ), patch(
-            "api.endpoints.templates.crud._convert_to_response",
-        ) as mock_convert:
+        with (
+            patch(
+                "api.endpoints.templates.crud.get_tenant_and_product_from_user",
+                return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
+            ),
+            patch(
+                "api.endpoints.templates.crud._convert_to_response",
+            ) as mock_convert,
+        ):
             mock_convert.return_value = Mock()
 
             await update_template(
@@ -479,6 +489,7 @@ class TestUpdateTemplateAcceptsUserInstructions:
 # ---------------------------------------------------------------------------
 # 5. reset_system_instructions produces canonical bootstrap
 # ---------------------------------------------------------------------------
+
 
 class TestResetSystemInstructionsCanonical:
     """reset_system_instructions() must set system_instructions to the canonical
@@ -555,6 +566,7 @@ class TestResetSystemInstructionsCanonical:
 # ---------------------------------------------------------------------------
 # 6. Export paths produce identical output (render_claude_agent consistency)
 # ---------------------------------------------------------------------------
+
 
 class TestRenderClaudeAgentConsistency:
     """render_claude_agent() must produce consistent, complete output including

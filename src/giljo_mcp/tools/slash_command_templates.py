@@ -636,7 +636,7 @@ def _strip_yaml_frontmatter(content: str) -> str:
     if stripped.startswith("---"):
         end = stripped.find("---", 3)
         if end != -1:
-            return stripped[end + 3:].strip()
+            return stripped[end + 3 :].strip()
     return stripped
 
 

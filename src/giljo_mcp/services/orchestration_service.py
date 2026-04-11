@@ -580,6 +580,7 @@ class OrchestrationService:
             if job and getattr(job, "job_type", "") == "orchestrator":
                 try:
                     from giljo_mcp._config_io import read_config
+
                     cfg = read_config()
                     git_enabled = cfg.get("features", {}).get("git_integration", {}).get("enabled", False)
                     if git_enabled and "commits" not in (result or {}):
@@ -588,7 +589,7 @@ class OrchestrationService:
                             "Run `git status` to check for uncommitted work, then `git add` and `git commit` "
                             "before writing 360 memory."
                         )
-                except Exception:
+                except Exception:  # noqa: BLE001, S110
                     pass  # Config read failure is not a blocker
 
             # Handover 0731c: Typed return (CompleteJobResult)
@@ -622,9 +623,7 @@ class OrchestrationService:
             )
         return job
 
-    async def _check_360_memory_written(
-        self, session: AsyncSession, job: "AgentJob", tenant_key: str
-    ) -> bool:
+    async def _check_360_memory_written(self, session: AsyncSession, job: "AgentJob", tenant_key: str) -> bool:
         """Check if a 360 memory entry exists for the project (Handover 0435d).
 
         Soft prerequisite — returns False if missing, caller decides whether to warn or block.

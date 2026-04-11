@@ -69,9 +69,7 @@ class TestCheckAgentReadiness:
         result_mock.scalars.return_value = scalars_mock
         session.execute = AsyncMock(return_value=result_mock)
 
-        is_ready, blockers = await _check_agent_readiness(
-            session, project_id, "test-tenant"
-        )
+        is_ready, blockers = await _check_agent_readiness(session, project_id, "test-tenant")
 
         assert is_ready is True
         assert blockers == []
@@ -105,9 +103,7 @@ class TestCheckAgentReadiness:
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
-        is_ready, blockers = await _check_agent_readiness(
-            session, project_id, "test-tenant"
-        )
+        is_ready, blockers = await _check_agent_readiness(session, project_id, "test-tenant")
 
         assert is_ready is False
         agent_blockers = [b for b in blockers if "_summary" not in b]
@@ -136,9 +132,7 @@ class TestCheckAgentReadiness:
         result_mock.scalars.return_value = scalars_mock
         session.execute = AsyncMock(return_value=result_mock)
 
-        is_ready, blockers = await _check_agent_readiness(
-            session, project_id, "test-tenant"
-        )
+        is_ready, blockers = await _check_agent_readiness(session, project_id, "test-tenant")
 
         assert is_ready is True
         assert blockers == []
@@ -155,9 +149,7 @@ class TestCheckAgentReadiness:
         result_mock.scalars.return_value = scalars_mock
         session.execute = AsyncMock(return_value=result_mock)
 
-        is_ready, blockers = await _check_agent_readiness(
-            session, project_id, "test-tenant"
-        )
+        is_ready, blockers = await _check_agent_readiness(session, project_id, "test-tenant")
 
         assert is_ready is True
         assert blockers == []
@@ -181,9 +173,7 @@ class TestForceDecommissionAgents:
         result_mock.scalars.return_value = scalars_mock
         session.execute = AsyncMock(return_value=result_mock)
 
-        decommissioned = await _force_decommission_agents(
-            session, project_id, "test-tenant"
-        )
+        decommissioned = await _force_decommission_agents(session, project_id, "test-tenant")
 
         assert len(decommissioned) == 2
         assert agent_working.status == "decommissioned"
@@ -204,9 +194,7 @@ class TestForceDecommissionAgents:
         result_mock.scalars.return_value = scalars_mock
         session.execute = AsyncMock(return_value=result_mock)
 
-        decommissioned = await _force_decommission_agents(
-            session, project_id, "test-tenant"
-        )
+        decommissioned = await _force_decommission_agents(session, project_id, "test-tenant")
 
         assert decommissioned == []
         session.flush.assert_not_awaited()
@@ -237,12 +225,8 @@ class TestCloseoutGateIntegration:
 
         mock_session = AsyncMock()
         mock_db_manager = MagicMock()
-        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(
-            return_value=mock_session
-        )
-        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(
-            return_value=False
-        )
+        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(return_value=False)
 
         call_count = {"n": 0}
 
@@ -313,12 +297,8 @@ class TestCloseoutGateIntegration:
 
         mock_session = AsyncMock()
         mock_db_manager = MagicMock()
-        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(
-            return_value=mock_session
-        )
-        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(
-            return_value=False
-        )
+        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(return_value=False)
 
         call_count = {"n": 0}
 
@@ -356,9 +336,7 @@ class TestCloseoutGateIntegration:
         mock_entry.id = str(uuid4())
         mock_entry.to_dict.return_value = {"id": str(mock_entry.id)}
 
-        with patch(
-            "src.giljo_mcp.tools.project_closeout.ProductMemoryRepository"
-        ) as MockRepo:
+        with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as MockRepo:
             repo_instance = MockRepo.return_value
             repo_instance.get_next_sequence = AsyncMock(return_value=1)
             repo_instance.create_entry = AsyncMock(return_value=mock_entry)
@@ -410,18 +388,17 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_product.product_memory = {}
 
         orchestrator_agent = _make_execution(
-            str(uuid4()), "orchestrator", status="working",
-            job_id=str(uuid4()), tenant_key=tenant_key,
+            str(uuid4()),
+            "orchestrator",
+            status="working",
+            job_id=str(uuid4()),
+            tenant_key=tenant_key,
         )
 
         mock_session = AsyncMock()
         mock_db_manager = MagicMock()
-        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(
-            return_value=mock_session
-        )
-        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(
-            return_value=False
-        )
+        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(return_value=False)
 
         call_count = {"n": 0}
 
@@ -488,18 +465,17 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_product.product_memory = {}
 
         specialist_agent = _make_execution(
-            str(uuid4()), "impl-1", status="working",
-            job_id=str(uuid4()), tenant_key=tenant_key,
+            str(uuid4()),
+            "impl-1",
+            status="working",
+            job_id=str(uuid4()),
+            tenant_key=tenant_key,
         )
 
         mock_session = AsyncMock()
         mock_db_manager = MagicMock()
-        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(
-            return_value=mock_session
-        )
-        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(
-            return_value=False
-        )
+        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(return_value=False)
 
         call_count = {"n": 0}
 
@@ -538,9 +514,7 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_entry.id = str(uuid4())
         mock_entry.to_dict.return_value = {"id": str(mock_entry.id)}
 
-        with patch(
-            "src.giljo_mcp.tools.project_closeout.ProductMemoryRepository"
-        ) as mock_repo_cls:
+        with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_cls:
             repo_instance = mock_repo_cls.return_value
             repo_instance.get_next_sequence = AsyncMock(return_value=1)
             repo_instance.create_entry = AsyncMock(return_value=mock_entry)
@@ -584,22 +558,24 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_product.product_memory = {}
 
         complete_orchestrator = _make_execution(
-            str(uuid4()), "orchestrator", status="complete",
-            job_id=str(uuid4()), tenant_key=tenant_key,
+            str(uuid4()),
+            "orchestrator",
+            status="complete",
+            job_id=str(uuid4()),
+            tenant_key=tenant_key,
         )
         working_specialist = _make_execution(
-            str(uuid4()), "impl-1", status="working",
-            job_id=str(uuid4()), tenant_key=tenant_key,
+            str(uuid4()),
+            "impl-1",
+            status="working",
+            job_id=str(uuid4()),
+            tenant_key=tenant_key,
         )
 
         mock_session = AsyncMock()
         mock_db_manager = MagicMock()
-        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(
-            return_value=mock_session
-        )
-        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(
-            return_value=False
-        )
+        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(return_value=False)
 
         call_count = {"n": 0}
 
@@ -638,9 +614,7 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_entry.id = str(uuid4())
         mock_entry.to_dict.return_value = {"id": str(mock_entry.id)}
 
-        with patch(
-            "src.giljo_mcp.tools.project_closeout.ProductMemoryRepository"
-        ) as mock_repo_cls:
+        with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_cls:
             repo_instance = mock_repo_cls.return_value
             repo_instance.get_next_sequence = AsyncMock(return_value=1)
             repo_instance.create_entry = AsyncMock(return_value=mock_entry)
@@ -683,18 +657,17 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_product.product_memory = {}
 
         orchestrator_agent = _make_execution(
-            str(uuid4()), "orchestrator", status="working",
-            job_id=orch_job_id, tenant_key=tenant_key,
+            str(uuid4()),
+            "orchestrator",
+            status="working",
+            job_id=orch_job_id,
+            tenant_key=tenant_key,
         )
 
         mock_session = AsyncMock()
         mock_db_manager = MagicMock()
-        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(
-            return_value=mock_session
-        )
-        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(
-            return_value=False
-        )
+        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(return_value=False)
 
         call_count = {"n": 0}
 

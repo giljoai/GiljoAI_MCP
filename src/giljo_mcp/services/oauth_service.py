@@ -35,6 +35,7 @@ from src.giljo_mcp.auth.jwt_manager import JWTManager
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.oauth import OAuthAuthorizationCode
 
+
 logger = logging.getLogger(__name__)
 
 BUILTIN_CLIENT_ID = "giljo-mcp-default"

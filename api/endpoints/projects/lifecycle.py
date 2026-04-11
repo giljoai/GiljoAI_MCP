@@ -40,6 +40,7 @@ from .models import (
     PurgedProject,
 )
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

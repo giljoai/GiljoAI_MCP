@@ -240,6 +240,6 @@ async def test_project_service_cross_tenant_audit(db_session, two_tenant_project
     except (ResourceNotFoundError, ValidationError):
         pass
 
-    assert len(violations) == 0, (
-        "CRITICAL: Tenant isolation violated!\nViolations:\n" + "\n".join(f"- {v}" for v in violations)
+    assert len(violations) == 0, "CRITICAL: Tenant isolation violated!\nViolations:\n" + "\n".join(
+        f"- {v}" for v in violations
     )

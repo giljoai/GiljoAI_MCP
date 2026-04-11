@@ -27,6 +27,7 @@ from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.tasks import Task
 from src.giljo_mcp.services.task_service import TaskService
 
+
 # ============================================================================
 # LOCAL FIXTURES
 # These override conftest.py versions because the exception tests need

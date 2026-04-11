@@ -23,6 +23,7 @@ from sqlalchemy import select
 
 from src.giljo_mcp.models import AgentJob, AgentTemplate, Project
 
+
 # ============================================================================
 # Test Fixtures
 # ============================================================================
@@ -106,9 +107,7 @@ class TestSpawnAgentJobPhase:
         job = job_result.scalar_one()
         assert job.phase == 2
 
-    async def test_spawn_agent_job_phase_defaults_to_none(
-        self, db_session, db_manager, test_project, test_tenant_key
-    ):
+    async def test_spawn_agent_job_phase_defaults_to_none(self, db_session, db_manager, test_project, test_tenant_key):
         """Phase defaults to None when not provided (backward compatible)."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -130,9 +129,7 @@ class TestSpawnAgentJobPhase:
         job = job_result.scalar_one()
         assert job.phase is None
 
-    async def test_spawn_agent_job_populates_template_id(
-        self, db_session, db_manager, test_project, test_tenant_key
-    ):
+    async def test_spawn_agent_job_populates_template_id(self, db_session, db_manager, test_project, test_tenant_key):
         """template_id FK is populated when a matching template is found."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -174,9 +171,7 @@ class TestSpawnAgentJobPhase:
 class TestListJobsPhase:
     """Tests that list_jobs includes phase in response."""
 
-    async def test_list_jobs_includes_phase_in_response(
-        self, db_session, db_manager, test_project, test_tenant_key
-    ):
+    async def test_list_jobs_includes_phase_in_response(self, db_session, db_manager, test_project, test_tenant_key):
         """Phase field appears in job dict from list_jobs()."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -215,9 +210,7 @@ class TestListJobsPhase:
 class TestOrchestratorPhaseInstructions:
     """Tests that orchestrator protocol includes/excludes phase instructions based on mode."""
 
-    async def test_phase_instructions_included_in_multi_terminal_mode(
-        self, db_session, db_manager, test_tenant_key
-    ):
+    async def test_phase_instructions_included_in_multi_terminal_mode(self, db_session, db_manager, test_tenant_key):
         """Phase assignment instructions appear in multi-terminal (default) mode."""
         from datetime import datetime, timezone
 
@@ -270,12 +263,12 @@ class TestOrchestratorPhaseInstructions:
 
         # Phase instructions should be present as a separate key in multi-terminal mode
         phase_instructions = instructions.get("phase_assignment_instructions", "")
-        assert "Phase 1" in phase_instructions, "Phase instructions missing from multi-terminal orchestrator instructions"
+        assert "Phase 1" in phase_instructions, (
+            "Phase instructions missing from multi-terminal orchestrator instructions"
+        )
         assert "phase" in phase_instructions.lower()
 
-    async def test_phase_instructions_excluded_in_cli_mode(
-        self, db_session, db_manager, test_tenant_key
-    ):
+    async def test_phase_instructions_excluded_in_cli_mode(self, db_session, db_manager, test_tenant_key):
         """Phase assignment instructions do NOT appear in CLI mode."""
         from datetime import datetime, timezone
 

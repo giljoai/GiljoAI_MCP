@@ -18,6 +18,7 @@ from api.dependencies.websocket import WebSocketDependency, get_websocket_depend
 from src.giljo_mcp._config_io import read_config, write_config
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

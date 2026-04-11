@@ -152,7 +152,11 @@ class TestBroadcastHealthAlertProjectContext:
 
         ws_manager.broadcast_event_to_tenant.assert_called_once()
         call_kwargs = ws_manager.broadcast_event_to_tenant.call_args
-        event = call_kwargs.kwargs.get("event") or call_kwargs[1].get("event") or call_kwargs[0][1] if len(call_kwargs[0]) > 1 else call_kwargs.kwargs["event"]
+        event = (
+            call_kwargs.kwargs.get("event") or call_kwargs[1].get("event") or call_kwargs[0][1]
+            if len(call_kwargs[0]) > 1
+            else call_kwargs.kwargs["event"]
+        )
 
         # Verify the event data contains project context
         data = event["data"]
@@ -194,7 +198,11 @@ class TestBroadcastHealthAlertProjectContext:
 
         ws_manager.broadcast_event_to_tenant.assert_called_once()
         call_kwargs = ws_manager.broadcast_event_to_tenant.call_args
-        event = call_kwargs.kwargs.get("event") or call_kwargs[1].get("event") or call_kwargs[0][1] if len(call_kwargs[0]) > 1 else call_kwargs.kwargs["event"]
+        event = (
+            call_kwargs.kwargs.get("event") or call_kwargs[1].get("event") or call_kwargs[0][1]
+            if len(call_kwargs[0]) > 1
+            else call_kwargs.kwargs["event"]
+        )
 
         data = event["data"]
         assert data["project_id"] == ""
@@ -232,7 +240,11 @@ class TestBroadcastHealthAlertProjectContext:
         )
 
         call_kwargs = ws_manager.broadcast_event_to_tenant.call_args
-        event = call_kwargs.kwargs.get("event") or call_kwargs[1].get("event") or call_kwargs[0][1] if len(call_kwargs[0]) > 1 else call_kwargs.kwargs["event"]
+        event = (
+            call_kwargs.kwargs.get("event") or call_kwargs[1].get("event") or call_kwargs[0][1]
+            if len(call_kwargs[0]) > 1
+            else call_kwargs.kwargs["event"]
+        )
 
         assert event["type"] == "agent:health_alert"
         assert event["schema_version"] == "1.0"

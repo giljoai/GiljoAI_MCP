@@ -22,6 +22,7 @@ from .vision_document import (
     VisionDocumentUpdate,
 )
 
+
 __all__ = [
     "DeleteResponse",
     "ProjectConversionResponse",

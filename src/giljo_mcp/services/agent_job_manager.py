@@ -39,6 +39,7 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.schemas.jsonb_validators import validate_job_metadata
 from src.giljo_mcp.tenant import TenantManager
 
+
 logger = logging.getLogger(__name__)
 
 

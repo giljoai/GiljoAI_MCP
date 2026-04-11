@@ -23,6 +23,7 @@ from .logging import ErrorCode, get_logger
 from .models import Base
 from .tenant import TenantManager
 
+
 logger = get_logger(__name__)
 
 

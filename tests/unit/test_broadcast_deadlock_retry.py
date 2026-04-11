@@ -30,6 +30,7 @@ from src.giljo_mcp.repositories.message_repository import MessageRepository
 from src.giljo_mcp.services.message_routing_service import MessageRoutingService
 from src.giljo_mcp.utils.db_retry import with_deadlock_retry
 
+
 # Patch target for asyncio.sleep inside the shared retry utility
 _SLEEP_PATCH_TARGET = "src.giljo_mcp.utils.db_retry.asyncio.sleep"
 
@@ -66,9 +67,7 @@ class TestBroadcastRecipientSorting:
     """Verify recipients are sorted for deterministic lock ordering."""
 
     @pytest.mark.asyncio
-    async def test_broadcast_recipients_sorted_before_message_creation(
-        self, mock_db_manager, mock_tenant_manager
-    ):
+    async def test_broadcast_recipients_sorted_before_message_creation(self, mock_db_manager, mock_tenant_manager):
         """Messages should be created in sorted agent_id order to prevent deadlocks."""
         db_manager, session = mock_db_manager
         tenant_key = "test-tenant"
@@ -128,9 +127,7 @@ class TestBroadcastRecipientSorting:
         assert len(added_messages) == 3
         # Handover 0840b: Recipients stored in MessageRecipient junction table.
         # Verify recipients were created in sorted order (deadlock prevention).
-        assert len(added_recipients) == 3, (
-            f"Expected 3 MessageRecipient rows, got {len(added_recipients)}"
-        )
+        assert len(added_recipients) == 3, f"Expected 3 MessageRecipient rows, got {len(added_recipients)}"
         recipient_ids = [r.agent_id for r in added_recipients]
         assert recipient_ids == sorted(recipient_ids), (
             f"Recipients must be sorted for deadlock prevention: {recipient_ids}"
@@ -192,9 +189,7 @@ class TestSendPathDeadlockRetry:
             session.rollback.assert_awaited()
 
     @pytest.mark.asyncio
-    async def test_send_counter_exhaustion_returns_success(
-        self, mock_db_manager, mock_tenant_manager
-    ):
+    async def test_send_counter_exhaustion_returns_success(self, mock_db_manager, mock_tenant_manager):
         """Send succeeds even when counter update exhausts all retries.
 
         The message is already committed before counter updates. If the counter
@@ -258,9 +253,7 @@ class TestSendPathDeadlockRetry:
             assert result is not None
 
     @pytest.mark.asyncio
-    async def test_non_deadlock_operational_error_not_retried(
-        self, mock_db_manager, mock_tenant_manager
-    ):
+    async def test_non_deadlock_operational_error_not_retried(self, mock_db_manager, mock_tenant_manager):
         """Non-deadlock OperationalErrors should propagate immediately without retry."""
         db_manager, session = mock_db_manager
         tenant_key = "test-tenant"
@@ -617,12 +610,14 @@ class TestSendPathBatchIntegration:
         msg1 = Mock(spec=Message)
         msg2 = Mock(spec=Message)
 
-        with patch.object(
-            service._repo, "batch_update_counters", new_callable=AsyncMock, return_value=3
-        ) as mock_batch:
+        with patch.object(service._repo, "batch_update_counters", new_callable=AsyncMock, return_value=3) as mock_batch:
             # Handover 0840b: Pass recipient_ids explicitly instead of reading from to_agents
             await service._handle_send_message_side_effects(
-                session, [msg1, msg2], mock_project, "orchestrator", project_id,
+                session,
+                [msg1, msg2],
+                mock_project,
+                "orchestrator",
+                project_id,
                 recipient_ids=["recipient-1", "recipient-2"],
             )
 
