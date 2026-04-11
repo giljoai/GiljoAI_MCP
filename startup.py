@@ -1155,19 +1155,14 @@ def run_startup(
 
         print_header("Welcome to GiljoAI MCP! -Gil")
     else:
-        # v3.0 Enhancement: Use network IP for fresh installs (better UX than localhost)
-        # Localhost triggers auto-login which confuses setup wizard
-        network_ip = get_network_ip() if is_first_run else None
-
         if is_first_run:
             target_route = "/welcome"
-            if network_ip:
-                setup_url = f"{http_proto}://{network_ip}:{browser_port}{target_route}"
-                print_info("First-run detected - opening welcome setup screen at network IP...")
-                print_info("(Using network IP avoids localhost auto-login)")
-            else:
-                setup_url = f"{http_proto}://localhost:{browser_port}{target_route}"
-                print_info("First-run detected - opening welcome setup screen...")
+            # Setup wizard paths (/welcome, /create-admin, /api/auth/create-first-admin)
+            # are public endpoints that bypass auth middleware — no need to use
+            # network IP to dodge auto-login. Always use localhost to stay within
+            # the CSP connect-src 'self' policy and CORS allowed origins.
+            setup_url = f"{http_proto}://localhost:{browser_port}{target_route}"
+            print_info("First-run detected - opening welcome setup screen...")
 
             open_browser(setup_url, delay=2)
         else:
