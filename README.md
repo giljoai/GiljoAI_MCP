@@ -16,6 +16,9 @@ Define your product once. Every agent that connects gets the full picture.
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL%2018-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/GiljoAI%20Community%20v1.1-ffc300?style=flat-square&labelColor=0e1c2d)](LICENSE)
 [![Setup](https://img.shields.io/badge/Setup-6--10%20min-6bcf7f?style=flat-square&labelColor=0e1c2d)](docs/INSTALLATION_GUIDE.md)
+[![Backend CI](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/ci.yml)
+[![Frontend CI](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/frontend.yml/badge.svg)](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/frontend.yml)
+[![CodeQL](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/codeql.yml/badge.svg)](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/codeql.yml)
 
 <br>
 
