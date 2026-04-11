@@ -220,7 +220,7 @@
               color="primary"
               variant="flat"
               class="footer-btn-next"
-              @click="handleDismiss"
+              @click="handleFinish"
             >
               Finish
             </v-btn>
@@ -490,6 +490,11 @@ function handleStep3Skip() {
 function handleStep4Complete({ action, route }) {
   emit('step-complete', { step: 3, data: { action, route, setup_complete: true } })
   emit('update:modelValue', false)
+}
+
+function handleFinish() {
+  emit('step-complete', { step: 3, data: { action: 'home', route: '/home', setup_complete: true } })
+  handleDismiss()
 }
 
 const closingWithCheckmarks = ref(false)
