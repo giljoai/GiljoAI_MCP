@@ -44,9 +44,6 @@ describe('ProductTuningDialog', () => {
           ProductTuningMenu: {
             template: '<div class="tuning-menu-stub">Tuning Menu Stub</div>',
           },
-          ProductTuningReview: {
-            template: '<div class="tuning-review-stub">Tuning Review Stub</div>',
-          },
         },
       },
     })
@@ -57,11 +54,10 @@ describe('ProductTuningDialog', () => {
 
     expect(wrapper.text()).toContain('Tune Context')
     expect(wrapper.text()).toContain('Test Product')
-    expect(wrapper.text()).toContain('Tuning Review Stub')
     expect(wrapper.text()).toContain('Tuning Menu Stub')
   })
 
-  it('hides the proposals section when no pending proposals exist', () => {
+  it('renders product id and generate tuning prompt section', () => {
     const wrapper = createWrapper({
       product: {
         id: 'prod-1',
@@ -70,7 +66,8 @@ describe('ProductTuningDialog', () => {
       },
     })
 
-    expect(wrapper.text()).not.toContain('Tuning Review Stub')
+    expect(wrapper.text()).toContain('Test Product')
+    expect(wrapper.text()).toContain('Generate Tuning Prompt')
     expect(wrapper.text()).toContain('Tuning Menu Stub')
   })
 })

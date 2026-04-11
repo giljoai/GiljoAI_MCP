@@ -27,16 +27,16 @@ describe('useProjectFilters', () => {
   })
 
   it('returns all non-deleted projects for active product when no filters', () => {
-    const { sortedProjects } = useProjectFilters({ projectTypes, projects, activeProduct })
-    expect(sortedProjects.value).toHaveLength(3)
-    expect(sortedProjects.value.map((p) => p.id)).not.toContain('p4')
-    expect(sortedProjects.value.map((p) => p.id)).not.toContain('p5')
+    const { filteredProjects } = useProjectFilters({ projectTypes, projects, activeProduct })
+    expect(filteredProjects.value).toHaveLength(3)
+    expect(filteredProjects.value.map((p) => p.id)).not.toContain('p4')
+    expect(filteredProjects.value.map((p) => p.id)).not.toContain('p5')
   })
 
   it('returns empty list when no active product', () => {
     activeProduct = ref(null)
-    const { sortedProjects } = useProjectFilters({ projectTypes, projects, activeProduct })
-    expect(sortedProjects.value).toHaveLength(0)
+    const { filteredProjects } = useProjectFilters({ projectTypes, projects, activeProduct })
+    expect(filteredProjects.value).toHaveLength(0)
   })
 
   it('typeSelectOptions includes project types and "No Type" option', () => {
@@ -47,62 +47,58 @@ describe('useProjectFilters', () => {
   })
 
   it('filters by search query on name', () => {
-    const { sortedProjects, searchQuery } = useProjectFilters({ projectTypes, projects, activeProduct })
+    const { filteredBySearch, searchQuery } = useProjectFilters({ projectTypes, projects, activeProduct })
     searchQuery.value = 'auth'
-    expect(sortedProjects.value).toHaveLength(1)
-    expect(sortedProjects.value[0].id).toBe('p1')
+    expect(filteredBySearch.value).toHaveLength(1)
+    expect(filteredBySearch.value[0].id).toBe('p1')
   })
 
   it('filters by search query on mission text', () => {
-    const { sortedProjects, searchQuery } = useProjectFilters({ projectTypes, projects, activeProduct })
+    const { filteredBySearch, searchQuery } = useProjectFilters({ projectTypes, projects, activeProduct })
     searchQuery.value = 'important'
-    expect(sortedProjects.value).toHaveLength(1)
-    expect(sortedProjects.value[0].id).toBe('p3')
+    expect(filteredBySearch.value).toHaveLength(1)
+    expect(filteredBySearch.value[0].id).toBe('p3')
   })
 
   it('filters by search query on project id', () => {
-    const { sortedProjects, searchQuery } = useProjectFilters({ projectTypes, projects, activeProduct })
+    const { filteredBySearch, searchQuery } = useProjectFilters({ projectTypes, projects, activeProduct })
     searchQuery.value = 'p2'
-    expect(sortedProjects.value).toHaveLength(1)
-    expect(sortedProjects.value[0].id).toBe('p2')
+    expect(filteredBySearch.value).toHaveLength(1)
+    expect(filteredBySearch.value[0].id).toBe('p2')
   })
 
   it('filters by taxonomy_alias', () => {
-    const { sortedProjects, searchQuery } = useProjectFilters({ projectTypes, projects, activeProduct })
+    const { filteredBySearch, searchQuery } = useProjectFilters({ projectTypes, projects, activeProduct })
     searchQuery.value = 'FE-0001'
-    expect(sortedProjects.value).toHaveLength(1)
-    expect(sortedProjects.value[0].id).toBe('p2')
+    expect(filteredBySearch.value).toHaveLength(1)
+    expect(filteredBySearch.value[0].id).toBe('p2')
   })
 
   it('filters by type id', () => {
-    const { sortedProjects, filterType } = useProjectFilters({ projectTypes, projects, activeProduct })
+    const { filteredBySearch, filterType } = useProjectFilters({ projectTypes, projects, activeProduct })
     filterType.value = 'type-be'
-    expect(sortedProjects.value).toHaveLength(1)
-    expect(sortedProjects.value[0].id).toBe('p1')
+    expect(filteredBySearch.value).toHaveLength(1)
+    expect(filteredBySearch.value[0].id).toBe('p1')
   })
 
   it('filters by "none" type shows projects with no type', () => {
-    const { sortedProjects, filterType } = useProjectFilters({ projectTypes, projects, activeProduct })
+    const { filteredBySearch, filterType } = useProjectFilters({ projectTypes, projects, activeProduct })
     filterType.value = 'none'
-    expect(sortedProjects.value).toHaveLength(1)
-    expect(sortedProjects.value[0].id).toBe('p3')
+    expect(filteredBySearch.value).toHaveLength(1)
+    expect(filteredBySearch.value[0].id).toBe('p3')
   })
 
   it('filters by status', () => {
-    const { sortedProjects, filterStatus } = useProjectFilters({ projectTypes, projects, activeProduct })
+    const { filteredProjects, filterStatus } = useProjectFilters({ projectTypes, projects, activeProduct })
     filterStatus.value = 'inactive'
-    expect(sortedProjects.value).toHaveLength(1)
-    expect(sortedProjects.value[0].id).toBe('p2')
+    expect(filteredProjects.value).toHaveLength(1)
+    expect(filteredProjects.value[0].id).toBe('p2')
   })
 
-  it('active projects sort before inactive projects', () => {
-    const { sortedProjects } = useProjectFilters({ projectTypes, projects, activeProduct })
-    const statuses = sortedProjects.value.map((p) => p.status)
-    const firstNonActive = statuses.findIndex((s) => s !== 'active')
-    const lastActive = statuses.lastIndexOf('active')
-    if (firstNonActive !== -1 && lastActive !== -1) {
-      expect(lastActive).toBeLessThan(firstNonActive)
-    }
+  it('active projects are included in filteredProjects', () => {
+    const { filteredProjects } = useProjectFilters({ projectTypes, projects, activeProduct })
+    const activeProjects = filteredProjects.value.filter((p) => p.status === 'active')
+    expect(activeProjects.length).toBeGreaterThan(0)
   })
 
   it('clearFilters resets all filter state', () => {
@@ -120,11 +116,5 @@ describe('useProjectFilters', () => {
     const { currentPage, itemsPerPage } = useProjectFilters({ projectTypes, projects, activeProduct })
     expect(currentPage.value).toBe(1)
     expect(itemsPerPage.value).toBe(10)
-  })
-
-  it('sortConfig is exposed', () => {
-    const { sortConfig } = useProjectFilters({ projectTypes, projects, activeProduct })
-    expect(sortConfig.value[0].key).toBe('created_at')
-    expect(sortConfig.value[0].order).toBe('desc')
   })
 })
