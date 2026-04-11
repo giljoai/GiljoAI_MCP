@@ -44,6 +44,7 @@ from src.giljo_mcp.schemas.service_responses import (
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.utils.db_retry import with_deadlock_retry
 
+
 logger = logging.getLogger(__name__)
 
 

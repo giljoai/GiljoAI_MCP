@@ -32,6 +32,7 @@ from src.giljo_mcp.services.protocol_sections.user_config import (
     _normalize_field_toggles,
 )
 
+
 __all__ = [
     "DEFAULT_DEPTH_CONFIG",
     "DEFAULT_FIELD_PRIORITIES",

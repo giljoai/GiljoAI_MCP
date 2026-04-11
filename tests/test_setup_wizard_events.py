@@ -24,6 +24,7 @@ from api.events.schemas import (
     WebSocketEvent,
 )
 
+
 # ============================================================================
 # SetupToolConnectedData / SetupToolConnectedEvent
 # ============================================================================
@@ -291,9 +292,7 @@ class TestEventFactorySetupToolConnected:
         assert result["type"] == "setup:tool_connected"
 
     def test_has_timestamp(self):
-        result = EventFactory.setup_tool_connected(
-            tenant_key="t1", user_id="u1", tool_name="codex_cli"
-        )
+        result = EventFactory.setup_tool_connected(tenant_key="t1", user_id="u1", tool_name="codex_cli")
         assert "timestamp" in result
         assert result["timestamp"].endswith("Z")
 
@@ -311,9 +310,7 @@ class TestEventFactorySetupToolConnected:
         assert data["connected_at"].endswith("Z")
 
     def test_schema_version_present(self):
-        result = EventFactory.setup_tool_connected(
-            tenant_key="t1", user_id="u1", tool_name="claude_code"
-        )
+        result = EventFactory.setup_tool_connected(tenant_key="t1", user_id="u1", tool_name="claude_code")
         assert result["schema_version"] == "1.0"
 
 
@@ -350,28 +347,20 @@ class TestEventFactorySetupAgentsDownloaded:
     """Unit tests for EventFactory.setup_agents_downloaded()."""
 
     def test_returns_dict_with_correct_type(self):
-        result = EventFactory.setup_agents_downloaded(
-            tenant_key="t1", user_id="u1", agent_count=4
-        )
+        result = EventFactory.setup_agents_downloaded(tenant_key="t1", user_id="u1", agent_count=4)
         assert isinstance(result, dict)
         assert result["type"] == "setup:agents_downloaded"
 
     def test_agent_count_in_data(self):
-        result = EventFactory.setup_agents_downloaded(
-            tenant_key="t1", user_id="u1", agent_count=8
-        )
+        result = EventFactory.setup_agents_downloaded(tenant_key="t1", user_id="u1", agent_count=8)
         assert result["data"]["agent_count"] == 8
 
     def test_has_timestamp(self):
-        result = EventFactory.setup_agents_downloaded(
-            tenant_key="t1", user_id="u1", agent_count=0
-        )
+        result = EventFactory.setup_agents_downloaded(tenant_key="t1", user_id="u1", agent_count=0)
         assert result["timestamp"].endswith("Z")
 
     def test_schema_version_present(self):
-        result = EventFactory.setup_agents_downloaded(
-            tenant_key="t1", user_id="u1", agent_count=3
-        )
+        result = EventFactory.setup_agents_downloaded(tenant_key="t1", user_id="u1", agent_count=3)
         assert result["schema_version"] == "1.0"
 
 

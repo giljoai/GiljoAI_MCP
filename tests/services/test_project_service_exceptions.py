@@ -207,9 +207,7 @@ class TestProjectServiceTypedReturns:
         self, project_service: ProjectService, test_tenant_key: str, active_project
     ):
         """Test update_project returns ProjectData typed model"""
-        result = await project_service.update_project(
-            active_project.id, {"name": "Updated Name"}
-        )
+        result = await project_service.update_project(active_project.id, {"name": "Updated Name"})
         assert isinstance(result, ProjectData)
         assert result.name == "Updated Name"
         assert result.id == active_project.id

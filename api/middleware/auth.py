@@ -21,6 +21,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from giljo_mcp.logging import ErrorCode, get_logger
 
+
 logger = get_logger(__name__)
 
 

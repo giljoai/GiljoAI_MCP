@@ -20,6 +20,7 @@ import pytest
 
 from src.giljo_mcp.models import Project
 
+
 # Fixtures `tenant_key`, `agent_templates`, `project`, `service`,
 # `other_tenant_key`, `other_tenant_templates`, `other_project`,
 # and helper `_spawn_and_complete` are provided by tests/services/conftest.py.
@@ -34,9 +35,7 @@ from src.giljo_mcp.models import Project
 class TestPredecessorValidation:
     """Verify predecessor_job_id validation."""
 
-    async def test_nonexistent_predecessor_raises_error(
-        self, service, project, tenant_key
-    ):
+    async def test_nonexistent_predecessor_raises_error(self, service, project, tenant_key):
         """Spawning with a non-existent predecessor_job_id should raise ResourceNotFoundError."""
         from src.giljo_mcp.exceptions import ResourceNotFoundError
 
@@ -50,9 +49,7 @@ class TestPredecessorValidation:
                 predecessor_job_id=str(uuid.uuid4()),  # Non-existent
             )
 
-    async def test_predecessor_different_project_raises_error(
-        self, db_session, service, project, tenant_key
-    ):
+    async def test_predecessor_different_project_raises_error(self, db_session, service, project, tenant_key):
         """Predecessor from a different project should raise ValidationError."""
         from datetime import datetime, timezone
 
@@ -74,9 +71,7 @@ class TestPredecessorValidation:
         await db_session.commit()
 
         # Spawn and complete predecessor in project2
-        pred_spawn = await _spawn_and_complete(
-            service, proj2.id, tenant_key, {"summary": "Done in other project"}
-        )
+        pred_spawn = await _spawn_and_complete(service, proj2.id, tenant_key, {"summary": "Done in other project"})
 
         # Try to spawn successor in project1 referencing project2's predecessor
         with pytest.raises(ValidationError, match="different project"):
@@ -122,9 +117,7 @@ class TestPredecessorValidation:
 class TestGetAgentResultTool:
     """Verify get_agent_result via tool_accessor returns stored result."""
 
-    async def test_returns_result_for_completed_job(
-        self, service, project, tenant_key
-    ):
+    async def test_returns_result_for_completed_job(self, service, project, tenant_key):
         """get_agent_result should return the result dict."""
         from tests.services.conftest import _spawn_and_complete
 
@@ -133,9 +126,7 @@ class TestGetAgentResultTool:
             "artifacts": ["src/auth.py"],
             "commits": ["abc123"],
         }
-        pred_spawn = await _spawn_and_complete(
-            service, project.id, tenant_key, result_payload
-        )
+        pred_spawn = await _spawn_and_complete(service, project.id, tenant_key, result_payload)
 
         stored = await service.get_agent_result(
             job_id=pred_spawn.job_id,
@@ -146,9 +137,7 @@ class TestGetAgentResultTool:
         assert stored["summary"] == "Auth module complete"
         assert "abc123" in stored["commits"]
 
-    async def test_returns_none_for_incomplete_job(
-        self, service, project, tenant_key
-    ):
+    async def test_returns_none_for_incomplete_job(self, service, project, tenant_key):
         """get_agent_result should return None for jobs not yet completed."""
         spawn = await service.spawn_agent_job(
             agent_display_name="specialist",
@@ -165,16 +154,12 @@ class TestGetAgentResultTool:
 
         assert stored is None
 
-    async def test_tenant_isolation(
-        self, service, project, other_project, tenant_key, other_tenant_key
-    ):
+    async def test_tenant_isolation(self, service, project, other_project, tenant_key, other_tenant_key):
         """get_agent_result should NOT return results from other tenants."""
         from tests.services.conftest import _spawn_and_complete
 
         result_payload = {"summary": "Secret work", "commits": ["secret123"]}
-        pred_spawn = await _spawn_and_complete(
-            service, other_project.id, other_tenant_key, result_payload
-        )
+        pred_spawn = await _spawn_and_complete(service, other_project.id, other_tenant_key, result_payload)
 
         # Try to read with wrong tenant key
         stored = await service.get_agent_result(

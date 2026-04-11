@@ -25,8 +25,7 @@ class TestApplyUserConfigRemoved:
         sig = inspect.signature(fetch_context)
         params = list(sig.parameters.keys())
         assert "apply_user_config" not in params, (
-            f"apply_user_config should be removed from fetch_context signature. "
-            f"Current params: {params}"
+            f"apply_user_config should be removed from fetch_context signature. Current params: {params}"
         )
 
     def test_tool_accessor_fetch_context_no_apply_user_config(self):
@@ -36,8 +35,7 @@ class TestApplyUserConfigRemoved:
         sig = inspect.signature(ToolAccessor.fetch_context)
         params = list(sig.parameters.keys())
         assert "apply_user_config" not in params, (
-            f"apply_user_config should be removed from ToolAccessor.fetch_context. "
-            f"Current params: {params}"
+            f"apply_user_config should be removed from ToolAccessor.fetch_context. Current params: {params}"
         )
 
 

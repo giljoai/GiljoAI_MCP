@@ -17,6 +17,7 @@ import logging
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+
 logger = logging.getLogger(__name__)
 
 

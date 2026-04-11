@@ -33,6 +33,7 @@ from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.schemas.service_responses import ProjectSummaryResult
 from src.giljo_mcp.tenant import TenantManager
 
+
 logger = logging.getLogger(__name__)
 
 

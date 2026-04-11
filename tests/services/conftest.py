@@ -370,12 +370,20 @@ async def two_tenant_messages(db_session, db_manager):
     db_session.add(message_a)
     db_session.add(message_b)
     await db_session.flush()
-    db_session.add(MessageRecipient(
-        message_id=message_a.id, agent_id="worker-a", tenant_key=tenant_a,
-    ))
-    db_session.add(MessageRecipient(
-        message_id=message_b.id, agent_id="worker-b", tenant_key=tenant_b,
-    ))
+    db_session.add(
+        MessageRecipient(
+            message_id=message_a.id,
+            agent_id="worker-a",
+            tenant_key=tenant_a,
+        )
+    )
+    db_session.add(
+        MessageRecipient(
+            message_id=message_b.id,
+            agent_id="worker-b",
+            tenant_key=tenant_b,
+        )
+    )
     await db_session.commit()
 
     for obj in [message_a, message_b]:
@@ -696,9 +704,20 @@ async def two_tenant_products(db_session, db_manager):
 
     # Refresh all objects
     for obj in [
-        product_a, product_b, project_a, project_b, task_a, task_b,
-        vision_a, vision_b, job_a, job_b, execution_a, execution_b,
-        message_a, message_b,
+        product_a,
+        product_b,
+        project_a,
+        project_b,
+        task_a,
+        task_b,
+        vision_a,
+        vision_b,
+        job_a,
+        job_b,
+        execution_a,
+        execution_b,
+        message_a,
+        message_b,
     ]:
         await db_session.refresh(obj)
 

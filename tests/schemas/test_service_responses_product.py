@@ -24,6 +24,7 @@ from src.giljo_mcp.schemas.service_responses import (
     VisionUploadResult,
 )
 
+
 # ---------------------------------------------------------------------------
 # Product Service Models
 # ---------------------------------------------------------------------------

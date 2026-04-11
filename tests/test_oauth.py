@@ -222,9 +222,7 @@ class TestGenerateAuthorizationCode:
         assert isinstance(code, str)
         assert len(code) > 32
 
-        result = await db_session.execute(
-            select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code)
-        )
+        result = await db_session.execute(select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code))
         stored = result.scalar_one()
         assert stored.user_id == test_user.id
         assert stored.tenant_key == test_tenant_key
@@ -249,9 +247,7 @@ class TestGenerateAuthorizationCode:
         )
         after = datetime.now(timezone.utc)
 
-        result = await db_session.execute(
-            select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code)
-        )
+        result = await db_session.execute(select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code))
         stored = result.scalar_one()
         expected_min = before + timedelta(minutes=9, seconds=59)
         expected_max = after + timedelta(minutes=10, seconds=1)
@@ -298,9 +294,7 @@ class TestExchangeCodeForToken:
         )
 
         # Manually expire the code
-        result = await db_session.execute(
-            select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code)
-        )
+        result = await db_session.execute(select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code))
         stored = result.scalar_one()
         stored.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
         await db_session.flush()
@@ -426,9 +420,7 @@ class TestCleanupExpiredCodes:
         )
 
         # Expire the code
-        result = await db_session.execute(
-            select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code)
-        )
+        result = await db_session.execute(select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code))
         stored = result.scalar_one()
         stored.expires_at = datetime.now(timezone.utc) - timedelta(minutes=5)
         await db_session.flush()
@@ -436,9 +428,7 @@ class TestCleanupExpiredCodes:
         deleted_count = await oauth_service.cleanup_expired_codes()
         assert deleted_count >= 1
 
-        result = await db_session.execute(
-            select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code)
-        )
+        result = await db_session.execute(select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code))
         assert result.scalar_one_or_none() is None
 
     async def test_cleanup_deletes_used_codes(self, oauth_service, test_user, test_tenant_key, db_session):
@@ -476,7 +466,5 @@ class TestCleanupExpiredCodes:
 
         await oauth_service.cleanup_expired_codes()
 
-        result = await db_session.execute(
-            select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code)
-        )
+        result = await db_session.execute(select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code))
         assert result.scalar_one_or_none() is not None

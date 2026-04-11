@@ -266,6 +266,7 @@ inline-quotes = "double"
 "backup.py" = [
     "T201",   # CLI tool - print() for user-facing backup output
     "BLE001", # Broad exception OK for graceful error handling
+    "S606",   # os.startfile is Windows-only, not a shell injection risk
 ]
 "install.py" = [
     "T201",   # CLI installer - print() for user-facing output
@@ -274,10 +275,15 @@ inline-quotes = "double"
 "reset.py" = [
     "T201",   # CLI tool - print() for user-facing reset output
     "BLE001", # Broad exception OK for graceful error handling
+    "PTH114", # os.path.islink used alongside Path.is_symlink for Windows compat
+    "PTH115", # os.readlink used for symlink display in reset output
 ]
 "restart_services.py" = [
     "T201",   # CLI tool - print() for user-facing service restart output
     "BLE001", # Broad exception OK for graceful error handling
+    "UP006",  # List[int] annotation — legacy compat, not worth changing
+    "UP035",  # typing.List deprecated — same as UP006
+    "PERF203", # try-except in loop — psutil process iteration requires it
 ]
 "serve_frontend.py" = [
     "T201",   # CLI tool - print() for user-facing server output
@@ -309,6 +315,9 @@ inline-quotes = "double"
 ]
 "src/giljo_mcp/colored_logger.py" = [
     "T201",   # Public API for colored console output
+]
+"src/giljo_mcp/services/protocol_sections/agent_lifecycle.py" = [
+    "S608",   # False positive — f-string builds agent protocol prompt, not SQL
 ]
 
 # --- Installation files (transient code, users run once) ---

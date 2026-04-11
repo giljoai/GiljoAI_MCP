@@ -16,6 +16,7 @@ from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
 from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
 from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
 
+
 logger = logging.getLogger(__name__)
 
 

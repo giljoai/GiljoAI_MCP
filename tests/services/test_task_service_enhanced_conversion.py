@@ -27,6 +27,7 @@ from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.tasks import Task
 from src.giljo_mcp.schemas.service_responses import ConversionResult
 
+
 # ============================================================================
 # LOCAL FIXTURES (override conftest test_project which lacks product_id)
 # ============================================================================

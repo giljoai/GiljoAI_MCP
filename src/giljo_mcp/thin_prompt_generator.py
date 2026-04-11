@@ -42,6 +42,7 @@ from src.giljo_mcp.prompts.gemini_prompt_builder import GeminiPromptBuilder
 from src.giljo_mcp.prompts.multi_terminal_prompt_builder import MultiTerminalPromptBuilder
 from src.giljo_mcp.prompts.staging_prompt_builder import StagingPromptBuilder
 
+
 logger = logging.getLogger(__name__)
 
 

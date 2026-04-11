@@ -20,6 +20,7 @@ from sqlalchemy import select
 
 from src.giljo_mcp.models import AgentJob
 
+
 # ============================================================================
 # Change A: spawn_agent_job accepts and stores phase parameter
 # ============================================================================
@@ -29,17 +30,13 @@ from src.giljo_mcp.models import AgentJob
 class TestSpawnAgentJobPhaseParameter:
     """Tests that spawn_agent_job correctly handles the `phase` parameter."""
 
-    async def test_spawn_stores_phase_on_agent_job(
-        self, db_session, db_manager, test_project, test_tenant_key
-    ):
+    async def test_spawn_stores_phase_on_agent_job(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify spawn_agent_job stores phase value on AgentJob record."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         result = await service.spawn_agent_job(
             agent_display_name="analyzer",
@@ -56,17 +53,13 @@ class TestSpawnAgentJobPhaseParameter:
         job = job_result.scalar_one()
         assert job.phase == 1
 
-    async def test_spawn_stores_none_phase_when_omitted(
-        self, db_session, db_manager, test_project, test_tenant_key
-    ):
+    async def test_spawn_stores_none_phase_when_omitted(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify spawn_agent_job defaults phase to None when not provided."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         result = await service.spawn_agent_job(
             agent_display_name="analyzer",
@@ -82,17 +75,13 @@ class TestSpawnAgentJobPhaseParameter:
         job = job_result.scalar_one()
         assert job.phase is None
 
-    async def test_spawn_stores_higher_phase_numbers(
-        self, db_session, db_manager, test_project, test_tenant_key
-    ):
+    async def test_spawn_stores_higher_phase_numbers(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify spawn_agent_job correctly stores phase values > 1."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         result = await service.spawn_agent_job(
             agent_display_name="tester",
@@ -161,9 +150,7 @@ class TestSpawnWebSocketBroadcastPhase:
 
         # Query 3: Duplicate agent_display_name check (returns no duplicates)
         duplicate_check_result = MagicMock()
-        duplicate_check_result.scalars = MagicMock(
-            return_value=MagicMock(all=MagicMock(return_value=[]))
-        )
+        duplicate_check_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
 
         # Query 4: Template lookup for multi-terminal injection
         mock_template = MagicMock()
@@ -246,9 +233,7 @@ class TestSpawnWebSocketBroadcastPhase:
 
         # Query 3: Duplicate agent_display_name check (returns no duplicates)
         duplicate_check_result = MagicMock()
-        duplicate_check_result.scalars = MagicMock(
-            return_value=MagicMock(all=MagicMock(return_value=[]))
-        )
+        duplicate_check_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
 
         # Query 4: Template lookup for multi-terminal injection
         mock_template = MagicMock()

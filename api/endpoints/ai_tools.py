@@ -20,6 +20,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

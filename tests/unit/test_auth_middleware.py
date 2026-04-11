@@ -105,6 +105,7 @@ class TestTokenExpiryHeader:
         request = self._make_request()
         # Use a real SimpleNamespace for state so we can track assignments
         import types
+
         request.state = types.SimpleNamespace()
 
         response = Response(content="ok", status_code=200)
@@ -135,6 +136,7 @@ class TestTokenExpiryHeader:
         middleware = AuthMiddleware(app, auth_manager=lambda: mock_auth_mgr)
 
         import types
+
         request = self._make_request()
         request.state = types.SimpleNamespace()
 
@@ -168,6 +170,7 @@ class TestTokenExpiryHeader:
         middleware = AuthMiddleware(app, auth_manager=lambda: mock_auth_mgr)
 
         import types
+
         request = self._make_request()
         request.state = types.SimpleNamespace()
 
@@ -199,6 +202,7 @@ class TestTokenExpiryHeader:
         middleware = AuthMiddleware(app, auth_manager=lambda: mock_auth_mgr)
 
         import types
+
         request = self._make_request()
         request.state = types.SimpleNamespace()
 

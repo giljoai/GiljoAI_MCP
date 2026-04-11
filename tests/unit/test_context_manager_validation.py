@@ -14,7 +14,6 @@ Handover 0840c: Removed tests for validate_config_data and merge_config_updates
 (both functions deleted in context_manager.py normalization).
 """
 
-
 from src.giljo_mcp.context_manager import (
     ROLE_CONFIG_FILTERS,
     is_orchestrator,

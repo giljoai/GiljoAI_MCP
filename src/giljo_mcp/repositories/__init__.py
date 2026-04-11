@@ -23,6 +23,7 @@ from .product_statistics_repository import ProductStatisticsRepository
 from .statistics_repository import StatisticsRepository
 from .vision_document_repository import VisionDocumentRepository
 
+
 __all__ = [
     "AgentJobRepository",
     "BaseRepository",

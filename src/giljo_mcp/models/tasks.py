@@ -146,7 +146,10 @@ class Message(Base):
 
     # 0435d: Message intent — controls whether completed agents get auto-blocked
     requires_action = Column(
-        Boolean, default=False, nullable=False, server_default="false",
+        Boolean,
+        default=False,
+        nullable=False,
+        server_default="false",
         comment="True if recipient must take action. False for informational messages.",
     )
 

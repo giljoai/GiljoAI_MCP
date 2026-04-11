@@ -54,6 +54,7 @@ MACOS_BREW_DEPS = {
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def print_header(text: str) -> None:
     print(f"\n{'=' * 60}")
     print(f"  {text}")
@@ -93,6 +94,7 @@ def cmd_exists(name: str) -> bool:
 
 # ─── Platform Detection ──────────────────────────────────────────────────────
 
+
 def get_platform() -> str:
     """Return 'windows', 'linux', or 'macos'."""
     system = platform.system()
@@ -104,6 +106,7 @@ def get_platform() -> str:
 
 
 # ─── Check Functions ─────────────────────────────────────────────────────────
+
 
 def check_python() -> bool:
     version = sys.version_info
@@ -117,6 +120,7 @@ def check_python() -> bool:
 def check_tkinter() -> bool:
     try:
         import tkinter  # noqa: F401
+
         print_ok("tkinter available")
         return True
     except ImportError:
@@ -196,6 +200,7 @@ def check_linux_system_deps() -> dict:
 
 # ─── Install Functions ────────────────────────────────────────────────────────
 
+
 def install_linux_system_deps(missing: dict) -> bool:
     """Install missing Linux system packages via apt."""
     if not missing:
@@ -229,6 +234,7 @@ def install_macos_system_deps() -> bool:
     """Check and advise on macOS system dependencies."""
     try:
         import tkinter  # noqa: F401
+
         print_ok("tkinter available")
         return True
     except ImportError:
@@ -303,6 +309,7 @@ def install_python_deps() -> bool:
 
 # ─── Update Launchers ────────────────────────────────────────────────────────
 
+
 def update_launchers() -> None:
     """Ensure launcher scripts point to venv_devtools first."""
     plat = get_platform()
@@ -332,12 +339,12 @@ def update_launchers() -> None:
             new_content = content.replace(
                 'if exist "venv\\Scripts\\python.exe" (',
                 'if exist "dev_tools\\venv_devtools\\Scripts\\python.exe" (\n'
-                '    echo Starting GiljoAI MCP Developer Control Panel...\n'
-                '    echo Using dev_tools venv_devtools Python\n'
-                '    echo.\n'
+                "    echo Starting GiljoAI MCP Developer Control Panel...\n"
+                "    echo Using dev_tools venv_devtools Python\n"
+                "    echo.\n"
                 '    "dev_tools\\venv_devtools\\Scripts\\python.exe" "dev_tools\\control_panel.py" %*\n'
-                '    goto :done\n'
-                ')\n\n'
+                "    goto :done\n"
+                ")\n\n"
                 'if exist "venv\\Scripts\\python.exe" (',
             )
             launcher_bat.write_text(new_content)
@@ -363,6 +370,7 @@ def update_launchers() -> None:
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
+
 
 def check_only() -> None:
     """Check status without installing anything."""

@@ -34,6 +34,7 @@ from sqlalchemy.sql import func
 
 from .base import Base, generate_uuid
 
+
 # Single source of truth for valid product target platforms.
 # Referenced by: DB check constraint, ProductService validation, MCP tool validation,
 # extraction prompt, frontend checkboxes, and API schema descriptions.

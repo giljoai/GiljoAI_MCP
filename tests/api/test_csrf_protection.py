@@ -24,6 +24,7 @@ import secrets
 
 import pytest
 
+
 # ---------------------------------------------------------------------------
 # Non-exempt endpoint used across tests.
 # /api/v1/products/ is behind auth and CSRF, giving us a reliable target.
@@ -73,9 +74,7 @@ class TestCSRFBlocksWithoutToken:
     async def test_csrf_blocks_put_without_token(self, api_client, auth_headers):
         """PUT to a non-exempt endpoint without CSRF token returns 403."""
         headers = _auth_only_headers(auth_headers)
-        response = await api_client.put(
-            f"{NON_EXEMPT_ENDPOINT}fake-id", headers=headers, json={}
-        )
+        response = await api_client.put(f"{NON_EXEMPT_ENDPOINT}fake-id", headers=headers, json={})
 
         assert response.status_code == 403
         assert "CSRF validation failed" in response.json()["detail"]
@@ -84,9 +83,7 @@ class TestCSRFBlocksWithoutToken:
     async def test_csrf_blocks_delete_without_token(self, api_client, auth_headers):
         """DELETE to a non-exempt endpoint without CSRF token returns 403."""
         headers = _auth_only_headers(auth_headers)
-        response = await api_client.delete(
-            f"{NON_EXEMPT_ENDPOINT}fake-id", headers=headers
-        )
+        response = await api_client.delete(f"{NON_EXEMPT_ENDPOINT}fake-id", headers=headers)
 
         assert response.status_code == 403
         assert "CSRF validation failed" in response.json()["detail"]
@@ -95,9 +92,7 @@ class TestCSRFBlocksWithoutToken:
     async def test_csrf_blocks_patch_without_token(self, api_client, auth_headers):
         """PATCH to a non-exempt endpoint without CSRF token returns 403."""
         headers = _auth_only_headers(auth_headers)
-        response = await api_client.patch(
-            f"{NON_EXEMPT_ENDPOINT}fake-id", headers=headers, json={}
-        )
+        response = await api_client.patch(f"{NON_EXEMPT_ENDPOINT}fake-id", headers=headers, json={})
 
         assert response.status_code == 403
         assert "CSRF validation failed" in response.json()["detail"]
@@ -118,9 +113,7 @@ class TestCSRFAllowsValidToken:
         The response may be 404, 422, etc. depending on the endpoint's own
         validation -- the key assertion is that it is NOT 403 (CSRF).
         """
-        response = await api_client.post(
-            NON_EXEMPT_ENDPOINT, headers=auth_headers, json={}
-        )
+        response = await api_client.post(NON_EXEMPT_ENDPOINT, headers=auth_headers, json={})
 
         # Must not be blocked by CSRF middleware
         assert response.status_code != 403
@@ -143,9 +136,7 @@ class TestCSRFBlocksMismatchedToken:
             "Cookie": auth_headers["Cookie"],  # contains original csrf_token cookie
             "X-CSRF-Token": mismatched_header_token,
         }
-        response = await api_client.post(
-            NON_EXEMPT_ENDPOINT, headers=headers, json={}
-        )
+        response = await api_client.post(NON_EXEMPT_ENDPOINT, headers=headers, json={})
 
         assert response.status_code == 403
         assert "CSRF validation failed" in response.json()["detail"]
@@ -195,8 +186,7 @@ class TestCSRFExemptPaths:
 
         # Should not be a CSRF 403 -- it may be 401/422 from auth logic
         assert response.status_code != 403 or (
-            response.status_code == 403
-            and "CSRF" not in response.json().get("detail", "")
+            response.status_code == 403 and "CSRF" not in response.json().get("detail", "")
         )
 
     @pytest.mark.asyncio
@@ -213,8 +203,7 @@ class TestCSRFExemptPaths:
 
         # Should not be a CSRF 403
         assert response.status_code != 403 or (
-            response.status_code == 403
-            and "CSRF" not in response.json().get("detail", "")
+            response.status_code == 403 and "CSRF" not in response.json().get("detail", "")
         )
 
 
@@ -236,14 +225,11 @@ class TestCSRFSkipsAPIKey:
         but it must NOT fail with a CSRF 403.
         """
         headers = {"X-API-Key": "some-api-key-value"}
-        response = await api_client.post(
-            NON_EXEMPT_ENDPOINT, headers=headers, json={}
-        )
+        response = await api_client.post(NON_EXEMPT_ENDPOINT, headers=headers, json={})
 
         # Must not be a CSRF rejection
         assert response.status_code != 403 or (
-            response.status_code == 403
-            and "CSRF" not in response.json().get("detail", "")
+            response.status_code == 403 and "CSRF" not in response.json().get("detail", "")
         )
 
 
@@ -272,8 +258,7 @@ class TestCSRFCookieBehavior:
         csrf_cookies = [h for h in set_cookie_headers if "csrf_token=" in h]
 
         assert len(csrf_cookies) > 0, (
-            "Expected Set-Cookie header with csrf_token but none found. "
-            f"All Set-Cookie headers: {set_cookie_headers}"
+            f"Expected Set-Cookie header with csrf_token but none found. All Set-Cookie headers: {set_cookie_headers}"
         )
 
     @pytest.mark.asyncio
@@ -296,6 +281,5 @@ class TestCSRFCookieBehavior:
         # The cookie must NOT contain the httponly flag
         for cookie_header in csrf_cookies:
             assert "httponly" not in cookie_header.lower(), (
-                f"csrf_token cookie must NOT be httponly (JS needs to read it). "
-                f"Got: {cookie_header}"
+                f"csrf_token cookie must NOT be httponly (JS needs to read it). Got: {cookie_header}"
             )

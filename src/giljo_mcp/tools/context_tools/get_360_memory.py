@@ -26,6 +26,7 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
+
 logger = structlog.get_logger(__name__)
 
 
