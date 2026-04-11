@@ -1,0 +1,130 @@
+{
+  "chain_id": "0964",
+  "chain_name": "Frontend CI & Quality Green Sprint",
+  "created_at": "2026-04-11",
+  "spec_document": "handovers/ROADMAP.md",
+  "branch": "feature/0964-frontend-ci-quality",
+  "total_sessions": 4,
+  "orchestrator_notes": "All 17 Dependabot alerts are npm frontend packages. Fix direct deps first (0964a), then transitive (0964b), then get CI green (0964c), then add badges (0964d). Test build + vitest after every change. Do NOT update vite to 8.x (major version). Private repo CI is disabled — only public repo CI matters.",
+  "orchestrator_directives": [],
+  "sessions": [
+    {
+      "session_id": "0964a",
+      "title": "Update direct npm dependencies with security vulnerabilities",
+      "handover": "handovers/0964a_dependabot_vulnerability_fixes.md",
+      "color": "#E07872",
+      "status": "complete",
+      "started_at": "2026-04-10T10:10:00Z",
+      "completed_at": "2026-04-10T10:20:00Z",
+      "agent_types": ["implementer"],
+      "planned_tasks": [
+        "npm install axios@latest",
+        "npm install dompurify@latest",
+        "npm install lodash-es@latest",
+        "npm install vite@^7.3.2",
+        "npm run build — verify no errors",
+        "npm run test:run — verify tests pass",
+        "Commit with descriptive message"
+      ],
+      "tasks_completed": [
+        "npm install axios@latest dompurify@latest lodash-es@latest vite@^7.3.2 — all in one command",
+        "npm run build — passed with no new errors (pre-existing chunk size warnings only)",
+        "npx vitest run — 7 failed files, 25 failed tests — matches known pre-existing baseline exactly",
+        "Committed frontend/package.json and frontend/package-lock.json",
+        "Fixed worktree bug in scripts/check_no_ai_signatures.py (hardcoded .git path broke in worktrees)"
+      ],
+      "deviations": [
+        "Also committed scripts/check_no_ai_signatures.py alongside the package files — the commit-msg hook was using a hardcoded .git/COMMIT_EDITMSG path that fails in git worktrees. Fixed to use `git rev-parse --git-dir` instead. Minor infra fix, not a source code change."
+      ],
+      "blockers_encountered": [
+        "Pre-commit hook check_no_ai_signatures.py used hardcoded .git/COMMIT_EDITMSG path which does not exist in git worktrees. Fixed the fallback path in the script."
+      ],
+      "notes_for_next": "Exact versions installed: axios@1.15.0, dompurify@3.3.3, lodash-es@4.18.1, vite@7.3.2. After install, `npm audit` reports 5 vulnerabilities (1 moderate, 4 high) remaining — these are transitive deps, which is exactly 0964b's scope. No new build errors introduced. Test baseline unchanged: 7 files failed, 25 tests failed.",
+      "cascading_impacts": [],
+      "summary": "All 4 direct dependency security updates applied successfully. axios upgraded from ~1.13.5 to 1.15.0 (CRITICAL CVE fixed), dompurify from ~3.3.1 to 3.3.3 (High), lodash-es from ~4.17.23 to 4.18.1 (High), vite from ~7.1.8 to 7.3.2 (High, stayed on 7.x). Build and test baselines clean. 5 remaining vulnerabilities are transitive — handled in 0964b."
+    },
+    {
+      "session_id": "0964b",
+      "title": "Resolve transitive dependency vulnerabilities",
+      "handover": "handovers/0964b_transitive_dependency_fixes.md",
+      "color": "#6DB3E4",
+      "status": "complete",
+      "started_at": "2026-04-10T10:10:00Z",
+      "completed_at": "2026-04-10T10:25:00Z",
+      "agent_types": ["implementer"],
+      "planned_tasks": [
+        "npm audit fix",
+        "Check remaining alerts with npm audit",
+        "Add overrides for stubborn transitive deps",
+        "Handle immutable (Vuetify upstream)",
+        "npm run build + test",
+        "Commit"
+      ],
+      "tasks_completed": [
+        "npm audit fix — resolved all 9 vulnerabilities automatically",
+        "npm audit — confirmed 0 vulnerabilities remaining",
+        "npm run build — passed (pre-existing chunk size warnings only)",
+        "npx vitest run — baseline maintained (7 files / 25 tests failing, unchanged)",
+        "Committed frontend/package.json and frontend/package-lock.json",
+        "Fixed worktree bug in scripts/check_no_ai_signatures.py (fallback used .git/COMMIT_EDITMSG literally, failed in worktrees)"
+      ],
+      "deviations": [
+        "0964a's direct dep updates were NOT pre-applied — the worktree state still had all original vulnerabilities (9 total, not 5 as described in mission). npm audit fix resolved all 9 in one pass including direct deps (axios, dompurify, lodash-es, vite) and transitive deps (flatted, immutable, lodash, picomatch, brace-expansion).",
+        "No overrides were needed — npm audit fix resolved everything automatically including immutable (Vuetify) and all picomatch instances.",
+        "Fixed a pre-commit hook bug: check_no_ai_signatures.py crashed in git worktrees because it assumed .git is a directory. Fixed to use git rev-parse --git-dir for worktree-safe path resolution."
+      ],
+      "blockers_encountered": [],
+      "notes_for_next": "npm audit now reports 0 vulnerabilities. All 9 alerts resolved: axios (critical), dompurify (moderate), lodash-es (high), vite (high), flatted (high), immutable (high), lodash (high), picomatch (high x2), brace-expansion (moderate). No overrides in package.json — clean npm audit fix was sufficient. Build passes. Test baseline unchanged: 7 files / 25 tests failing (pre-existing). Ready for 0964c: export to public repo and get CI green.",
+      "cascading_impacts": [
+        "check_no_ai_signatures.py fix benefits all future worktree-based agent commits on this repo"
+      ],
+      "summary": "Resolved all npm dependency vulnerabilities in the frontend. npm audit fix automatically updated all packages including both direct and transitive deps. No manual overrides were needed. Build passes and test baseline is unchanged. Also fixed a worktree-incompatible pre-commit hook that was preventing commits in git worktrees."
+    },
+    {
+      "session_id": "0964c",
+      "title": "Export to public and get all CI checks green",
+      "handover": "handovers/0964c_public_repo_ci_green.md",
+      "color": "#5EC48E",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["implementer"],
+      "planned_tasks": [
+        "Export 0964a-b fixes to public via export_ce.sh --push",
+        "Merge PR on public repo",
+        "Check all CI workflows",
+        "Fix any remaining failures",
+        "Re-export and verify all green"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    },
+    {
+      "session_id": "0964d",
+      "title": "Add CI status badges to public README",
+      "handover": "handovers/0964d_readme_ci_badge.md",
+      "color": "#EDBA4A",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "agent_types": ["implementer"],
+      "planned_tasks": [
+        "Add Backend CI, Frontend CI, CodeQL badges to README.md",
+        "Commit and export to public",
+        "Verify badges render green on GitHub"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "cascading_impacts": [],
+      "summary": null
+    }
+  ],
+  "chain_summary": null,
+  "final_status": "pending"
+}
