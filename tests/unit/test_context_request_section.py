@@ -37,14 +37,10 @@ class TestContextRequestSection:
         """
         from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
-        protocol = _generate_agent_protocol(
-            job_id="test-job", tenant_key="test-tenant", agent_name="implementer"
-        )
+        protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="implementer")
         # full_protocol should contain context request guidance
         assert "REQUEST_CONTEXT:" in protocol, "full_protocol should contain REQUEST_CONTEXT prefix"
-        assert "Requesting Broader Context" in protocol, (
-            "full_protocol should contain context request guidance"
-        )
+        assert "Requesting Broader Context" in protocol, "full_protocol should contain context request guidance"
 
     async def test_system_instructions_has_slim_bootstrap(self, db_session: AsyncSession):
         """Verify system_instructions is now slim bootstrap (Handover 0813)."""
@@ -53,20 +49,14 @@ class TestContextRequestSection:
         count = await seed_tenant_templates(db_session, tenant_key)
         assert count == 5, "Should seed 5 default templates (orchestrator is system-managed)"
 
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
             system_inst = template.system_instructions
             # Slim bootstrap should reference get_agent_mission for protocols
-            assert "get_agent_mission" in system_inst, (
-                f"{template.role} bootstrap should reference get_agent_mission"
-            )
-            assert "full_protocol" in system_inst, (
-                f"{template.role} bootstrap should reference full_protocol"
-            )
+            assert "get_agent_mission" in system_inst, f"{template.role} bootstrap should reference get_agent_mission"
+            assert "full_protocol" in system_inst, f"{template.role} bootstrap should reference full_protocol"
             # Old protocol sections should NOT be in system_instructions
             assert "REQUESTING BROADER CONTEXT" not in system_inst, (
                 f"{template.role} should not have context request section in bootstrap"
@@ -76,9 +66,7 @@ class TestContextRequestSection:
         """Verify full_protocol contains all messaging prefixes including REQUEST_CONTEXT."""
         from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
-        protocol = _generate_agent_protocol(
-            job_id="test-job", tenant_key="test-tenant", agent_name="tester"
-        )
+        protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="tester")
         assert "BLOCKER:" in protocol
         assert "PROGRESS:" in protocol
         assert "COMPLETE:" in protocol
@@ -89,9 +77,7 @@ class TestContextRequestSection:
         """Verify full_protocol tells agents to be specific about context needs."""
         from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
-        protocol = _generate_agent_protocol(
-            job_id="test-job", tenant_key="test-tenant", agent_name="analyzer"
-        )
+        protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="analyzer")
         # Should instruct agents to be specific
         assert "specific" in protocol.lower() or "REQUEST_CONTEXT:" in protocol
 
@@ -99,9 +85,7 @@ class TestContextRequestSection:
         """Verify full_protocol tells agents to wait for orchestrator response."""
         from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
-        protocol = _generate_agent_protocol(
-            job_id="test-job", tenant_key="test-tenant", agent_name="implementer"
-        )
+        protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="implementer")
         assert "receive_messages" in protocol
         assert "wait" in protocol.lower() or "Wait" in protocol
 
@@ -109,18 +93,14 @@ class TestContextRequestSection:
         """Verify full_protocol references send_message for context requests."""
         from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
-        protocol = _generate_agent_protocol(
-            job_id="test-job", tenant_key="test-tenant", agent_name="documenter"
-        )
+        protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="documenter")
         assert "send_message" in protocol
 
     async def test_full_protocol_warns_against_guessing(self, db_session: AsyncSession):
         """Verify full_protocol tells agents not to guess at ambiguities."""
         from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
-        protocol = _generate_agent_protocol(
-            job_id="test-job", tenant_key="test-tenant", agent_name="reviewer"
-        )
+        protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="reviewer")
         assert "guess" in protocol.lower() or "Do NOT guess" in protocol
 
     def test_orchestrator_response_instructions(self):

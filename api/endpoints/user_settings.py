@@ -29,6 +29,7 @@ from src.giljo_mcp._config_io import write_config as _write_config_raw
 from src.giljo_mcp.auth.dependencies import get_db_session, require_admin
 from src.giljo_mcp.models import User
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

@@ -40,6 +40,7 @@ from src.giljo_mcp.schemas.service_responses import ProjectLaunchResult
 from src.giljo_mcp.services.project_service import _build_ws_project_data
 from src.giljo_mcp.tenant import TenantManager
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -82,6 +83,7 @@ class ProjectLaunchService:
     def _get_session(self):
         """Get a session, preferring an injected test session when provided."""
         if self._test_session is not None:
+
             @asynccontextmanager
             async def _test_session_wrapper():
                 yield self._test_session
@@ -125,19 +127,21 @@ class ProjectLaunchService:
                 session, project_id, tenant_key, websocket_manager, project_service
             )
 
-            field_toggles, depth_config = await self._resolve_user_config(
-                session, user_id, tenant_key
-            )
+            field_toggles, depth_config = await self._resolve_user_config(session, user_id, tenant_key)
 
-            existing = await self._find_existing_orchestrator(
-                session, project_id, tenant_key
-            )
+            existing = await self._find_existing_orchestrator(session, project_id, tenant_key)
             if existing:
                 return self._build_reuse_result(project, existing)
 
             return await self._spawn_orchestrator(
-                session, project, project_id, tenant_key,
-                field_toggles, depth_config, user_id, websocket_manager,
+                session,
+                project,
+                project_id,
+                tenant_key,
+                field_toggles,
+                depth_config,
+                user_id,
+                websocket_manager,
             )
 
     async def _validate_launch_preconditions(
@@ -164,9 +168,7 @@ class ProjectLaunchService:
             ResourceNotFoundError: Project not found
         """
         result = await session.execute(
-            select(Project).where(
-                and_(Project.id == project_id, Project.tenant_key == tenant_key)
-            )
+            select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
         )
         project = result.scalar_one_or_none()
 
@@ -177,9 +179,7 @@ class ProjectLaunchService:
             )
 
         if project.status != "active" and project_service:
-            await project_service.activate_project(
-                project_id, websocket_manager=websocket_manager
-            )
+            await project_service.activate_project(project_id, websocket_manager=websocket_manager)
 
         return project
 
@@ -207,9 +207,7 @@ class ProjectLaunchService:
         if user_id:
             from src.giljo_mcp.models.auth import User, UserFieldPriority
 
-            user_stmt = select(User).where(
-                and_(User.id == user_id, User.tenant_key == tenant_key)
-            )
+            user_stmt = select(User).where(and_(User.id == user_id, User.tenant_key == tenant_key))
             user_result = await session.execute(user_stmt)
             user = user_result.scalar_one_or_none()
 
@@ -286,9 +284,7 @@ class ProjectLaunchService:
         result = await session.execute(existing_orch_stmt)
         return result.scalars().first()
 
-    def _build_reuse_result(
-        self, project: Project, existing: AgentExecution
-    ) -> ProjectLaunchResult:
+    def _build_reuse_result(self, project: Project, existing: AgentExecution) -> ProjectLaunchResult:
         """Build launch result for reusing an existing orchestrator.
 
         Args:
@@ -306,9 +302,7 @@ class ProjectLaunchService:
         return ProjectLaunchResult(
             project_id=project.id,
             orchestrator_job_id=existing.job_id,
-            launch_prompt=self._generate_launch_prompt(
-                project.name, project.id, project.mission, existing.job_id
-            ),
+            launch_prompt=self._generate_launch_prompt(project.name, project.id, project.mission, existing.job_id),
             status=project.status,
             staging_status=project.staging_status,
         )
@@ -377,15 +371,11 @@ class ProjectLaunchService:
 
         await session.flush()
 
-        launch_prompt = self._generate_launch_prompt(
-            project.name, project.id, project.mission, orchestrator_job_id
-        )
+        launch_prompt = self._generate_launch_prompt(project.name, project.id, project.mission, orchestrator_job_id)
 
         await session.commit()
 
-        self._logger.info(
-            f"Launched project {project_id} with orchestrator job {orchestrator_job_id}"
-        )
+        self._logger.info(f"Launched project {project_id} with orchestrator job {orchestrator_job_id}")
 
         # Broadcast WebSocket event
         if websocket_manager:
@@ -410,9 +400,7 @@ class ProjectLaunchService:
         )
 
     @staticmethod
-    def _generate_launch_prompt(
-        project_name: str, project_id: str, mission: str | None, job_id: str
-    ) -> str:
+    def _generate_launch_prompt(project_name: str, project_id: str, mission: str | None, job_id: str) -> str:
         """Generate thin-client launch prompt for orchestrator.
 
         Args:

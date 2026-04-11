@@ -249,13 +249,35 @@ async def get_orchestrator_instructions(
     ),
 )
 async def send_message(
-    to_agents: Annotated[list[str], Field(description="List of recipient agent_id UUIDs (from get_workflow_status). Use ['all'] for broadcast. NEVER use display names like 'orchestrator' — always UUIDs.")],
-    content: Annotated[str, Field(description="Message content. Prefix with BLOCKER:, PROGRESS:, COMPLETE:, READY:, or REQUEST_CONTEXT: to indicate intent.")],
+    to_agents: Annotated[
+        list[str],
+        Field(
+            description="List of recipient agent_id UUIDs (from get_workflow_status). Use ['all'] for broadcast. NEVER use display names like 'orchestrator' — always UUIDs."
+        ),
+    ],
+    content: Annotated[
+        str,
+        Field(
+            description="Message content. Prefix with BLOCKER:, PROGRESS:, COMPLETE:, READY:, or REQUEST_CONTEXT: to indicate intent."
+        ),
+    ],
     project_id: str,
     from_agent: Annotated[str, Field(description="Your agent_id UUID (the executor identity, not job_id).")],
-    message_type: Annotated[str, Field(description="Message type: 'direct' (to specific agents), 'broadcast' (to all), or 'system' (internal). Default: 'direct'.")] = "direct",
-    priority: Annotated[str, Field(description="Priority: 'low', 'normal', 'high', or 'critical'. Default: 'normal'.")] = "normal",
-    requires_action: Annotated[bool, Field(description="True if recipient must act (rework, review, respond). False for informational messages. Only action-required messages trigger reactivation of completed agents.")] = False,
+    message_type: Annotated[
+        str,
+        Field(
+            description="Message type: 'direct' (to specific agents), 'broadcast' (to all), or 'system' (internal). Default: 'direct'."
+        ),
+    ] = "direct",
+    priority: Annotated[
+        str, Field(description="Priority: 'low', 'normal', 'high', or 'critical'. Default: 'normal'.")
+    ] = "normal",
+    requires_action: Annotated[
+        bool,
+        Field(
+            description="True if recipient must act (rework, review, respond). False for informational messages. Only action-required messages trigger reactivation of completed agents."
+        ),
+    ] = False,
     ctx: Context = None,
 ) -> dict:
     """Send a message to one or more agents."""
@@ -281,8 +303,13 @@ async def receive_messages(
     agent_id: Annotated[str, Field(description="Your agent_id UUID. Required to receive your messages.")] = "",
     limit: Annotated[int, Field(description="Max messages to return. Default: 10.")] = 10,
     exclude_self: Annotated[bool, Field(description="Exclude messages you sent yourself. Default: true.")] = True,
-    exclude_progress: Annotated[bool, Field(description="Exclude auto-generated progress messages. Default: true.")] = True,
-    message_types: Annotated[list[str] | None, Field(description="Filter by type: ['direct'], ['broadcast'], ['system']. Omit for all types.")] = None,
+    exclude_progress: Annotated[
+        bool, Field(description="Exclude auto-generated progress messages. Default: true.")
+    ] = True,
+    message_types: Annotated[
+        list[str] | None,
+        Field(description="Filter by type: ['direct'], ['broadcast'], ['system']. Omit for all types."),
+    ] = None,
     ctx: Context = None,
 ) -> dict:
     """Receive pending messages with optional filtering. Auto-acknowledges and removes from queue."""
@@ -303,7 +330,9 @@ async def receive_messages(
 )
 async def list_messages(
     agent_id: Annotated[str, Field(description="Filter by recipient agent_id UUID. Optional.")] = "",
-    status: Annotated[str, Field(description="Filter by status: 'pending', 'acknowledged', 'completed', 'failed'. Optional.")] = "",
+    status: Annotated[
+        str, Field(description="Filter by status: 'pending', 'acknowledged', 'completed', 'failed'. Optional.")
+    ] = "",
     limit: Annotated[int, Field(description="Max messages to return. Default: 50.")] = 50,
     ctx: Context = None,
 ) -> dict:
@@ -329,7 +358,9 @@ async def list_messages(
 async def create_task(
     title: Annotated[str, Field(description="Task title (required). Short, actionable description.")],
     description: Annotated[str, Field(description="Detailed task description (required).")],
-    priority: Annotated[str, Field(description="Priority: 'low', 'medium', 'high', or 'critical'. Default: 'medium'.")] = "medium",
+    priority: Annotated[
+        str, Field(description="Priority: 'low', 'medium', 'high', or 'critical'. Default: 'medium'.")
+    ] = "medium",
     category: Annotated[str, Field(description="Optional category label for grouping.")] = "",
     assigned_to: Annotated[str, Field(description="Optional assignee name.")] = "",
     ctx: Context = None,
@@ -481,7 +512,12 @@ async def get_agent_templates_for_export(
     ),
 )
 async def get_pending_jobs(
-    agent_display_name: Annotated[str, Field(description="Agent role to query, e.g. 'implementer', 'tester', 'analyzer'. Matches against job's agent_display_name.")],
+    agent_display_name: Annotated[
+        str,
+        Field(
+            description="Agent role to query, e.g. 'implementer', 'tester', 'analyzer'. Matches against job's agent_display_name."
+        ),
+    ],
     ctx: Context = None,
 ) -> dict:
     """Get pending jobs for agent type."""
@@ -497,8 +533,18 @@ async def get_pending_jobs(
 )
 async def report_progress(
     job_id: str,
-    todo_items: Annotated[list[dict] | None, Field(description="FULL TODO list (replaces existing). Each item: {content: str, status: 'pending'|'in_progress'|'completed'}. Include ALL items — completed + in_progress + pending. Never a partial list.")] = None,
-    todo_append: Annotated[list[dict] | None, Field(description="NEW items to append (does not replace). Same format as todo_items. Use this to add tasks discovered during work without overwriting existing list.")] = None,
+    todo_items: Annotated[
+        list[dict] | None,
+        Field(
+            description="FULL TODO list (replaces existing). Each item: {content: str, status: 'pending'|'in_progress'|'completed'}. Include ALL items — completed + in_progress + pending. Never a partial list."
+        ),
+    ] = None,
+    todo_append: Annotated[
+        list[dict] | None,
+        Field(
+            description="NEW items to append (does not replace). Same format as todo_items. Use this to add tasks discovered during work without overwriting existing list."
+        ),
+    ] = None,
     ctx: Context = None,
 ) -> dict:
     """Report incremental progress."""
@@ -519,7 +565,12 @@ async def report_progress(
 )
 async def complete_job(
     job_id: str,
-    result: Annotated[dict, Field(description="Completion result dict. Expected keys: 'summary' (str, what was accomplished), 'files_changed' (list[str], optional), 'decisions_made' (list[str], optional).")],
+    result: Annotated[
+        dict,
+        Field(
+            description="Completion result dict. Expected keys: 'summary' (str, what was accomplished), 'files_changed' (list[str], optional), 'decisions_made' (list[str], optional)."
+        ),
+    ],
     ctx: Context = None,
 ) -> dict:
     """Mark job as completed with results."""
@@ -592,9 +643,18 @@ async def dismiss_reactivation(
 )
 async def set_agent_status(
     job_id: str,
-    status: Annotated[str, Field(description="Target status: 'blocked', 'idle', or 'sleeping'. Other statuses are not valid here.")],
-    reason: Annotated[str, Field(description="Human-readable reason. REQUIRED for 'blocked' status. Displayed on dashboard.")] = "",
-    wake_in_minutes: Annotated[int | None, Field(description="Sleep interval hint for 'sleeping' status. Agent will auto-check-in after this many minutes.")] = None,
+    status: Annotated[
+        str, Field(description="Target status: 'blocked', 'idle', or 'sleeping'. Other statuses are not valid here.")
+    ],
+    reason: Annotated[
+        str, Field(description="Human-readable reason. REQUIRED for 'blocked' status. Displayed on dashboard.")
+    ] = "",
+    wake_in_minutes: Annotated[
+        int | None,
+        Field(
+            description="Sleep interval hint for 'sleeping' status. Agent will auto-check-in after this many minutes."
+        ),
+    ] = None,
     ctx: Context = None,
 ) -> dict:
     """Set agent resting/blocked status."""
@@ -656,12 +716,32 @@ async def get_agent_mission(
     ),
 )
 async def spawn_agent_job(
-    agent_display_name: Annotated[str, Field(description="Agent role label for UI display, e.g. 'implementer', 'tester', 'analyzer'.")],
-    agent_name: Annotated[str, Field(description="Agent template name from agent_templates list, e.g. 'tdd-implementor', 'code-reviewer'.")],
-    mission: Annotated[str, Field(description="The specific work assignment for this agent. Be detailed — this becomes the agent's full mission.")],
+    agent_display_name: Annotated[
+        str, Field(description="Agent role label for UI display, e.g. 'implementer', 'tester', 'analyzer'.")
+    ],
+    agent_name: Annotated[
+        str,
+        Field(description="Agent template name from agent_templates list, e.g. 'tdd-implementor', 'code-reviewer'."),
+    ],
+    mission: Annotated[
+        str,
+        Field(
+            description="The specific work assignment for this agent. Be detailed — this becomes the agent's full mission."
+        ),
+    ],
     project_id: str,
-    phase: Annotated[int | None, Field(description="Execution phase number (1, 2, 3...). Phase 1 runs first, phase 2 after phase 1 completes. Must be an integer.")] = None,
-    predecessor_job_id: Annotated[str, Field(description="Job ID of predecessor agent whose work this agent continues. Agent can call get_agent_result(predecessor_job_id) to read prior work.")] = "",
+    phase: Annotated[
+        int | None,
+        Field(
+            description="Execution phase number (1, 2, 3...). Phase 1 runs first, phase 2 after phase 1 completes. Must be an integer."
+        ),
+    ] = None,
+    predecessor_job_id: Annotated[
+        str,
+        Field(
+            description="Job ID of predecessor agent whose work this agent continues. Agent can call get_agent_result(predecessor_job_id) to read prior work."
+        ),
+    ] = "",
     ctx: Context = None,
 ) -> dict:
     """Create specialist agent job for execution."""
@@ -729,9 +809,21 @@ async def get_workflow_status(
 async def fetch_context(
     product_id: str,
     project_id: str = "",
-    agent_name: Annotated[str, Field(description="Agent template name (e.g. 'tdd-implementor') for self_identity category. Optional.")] = "",
-    categories: Annotated[list[str] | None, Field(description="List of categories to fetch: 'product_core', 'vision_documents', 'tech_stack', 'architecture', 'testing', 'memory_360', 'git_history', 'agent_templates', 'project', 'self_identity'. Must be a list, e.g. ['tech_stack', 'architecture']. Pass null/omit for all.")] = None,
-    depth_config: Annotated[dict | None, Field(description="Optional depth overrides per category, e.g. {'vision_documents': 'full', 'git_history': 'summary'}.")] = None,
+    agent_name: Annotated[
+        str, Field(description="Agent template name (e.g. 'tdd-implementor') for self_identity category. Optional.")
+    ] = "",
+    categories: Annotated[
+        list[str] | None,
+        Field(
+            description="List of categories to fetch: 'product_core', 'vision_documents', 'tech_stack', 'architecture', 'testing', 'memory_360', 'git_history', 'agent_templates', 'project', 'self_identity'. Must be a list, e.g. ['tech_stack', 'architecture']. Pass null/omit for all."
+        ),
+    ] = None,
+    depth_config: Annotated[
+        dict | None,
+        Field(
+            description="Optional depth overrides per category, e.g. {'vision_documents': 'full', 'git_history': 'summary'}."
+        ),
+    ] = None,
     output_format: Annotated[str, Field(description="Output format: 'structured' (default) or 'flat'.")] = "structured",
     ctx: Context = None,
 ) -> dict:
@@ -767,7 +859,12 @@ async def close_project_and_update_memory(
     summary: Annotated[str, Field(description="Brief summary of project outcome.")],
     key_outcomes: Annotated[list[str], Field(description="List of key achievements (max 20).")],
     decisions_made: Annotated[list[str], Field(description="List of key decisions with rationale (max 20).")],
-    git_commits: Annotated[list[dict] | None, Field(description="Git commits from project branch. Each: {sha: str, message: str, author: str}. Run 'git log --oneline' first.")] = None,
+    git_commits: Annotated[
+        list[dict] | None,
+        Field(
+            description="Git commits from project branch. Each: {sha: str, message: str, author: str}. Run 'git log --oneline' first."
+        ),
+    ] = None,
     ctx: Context = None,
 ) -> dict:
     """Close project and update 360 Memory."""
@@ -798,9 +895,21 @@ async def write_360_memory(
     summary: Annotated[str, Field(description="Brief summary of what was accomplished or handed over.")],
     key_outcomes: Annotated[list[str], Field(description="List of key outcomes/achievements (max 20).")],
     decisions_made: Annotated[list[str], Field(description="List of key decisions with rationale (max 20).")],
-    entry_type: Annotated[str, Field(description="Entry type: 'project_completion' (orchestrator closeout), 'handover_closeout' (agent context exhaustion handover), or 'session_handover' (session continuation).")] = "project_completion",
-    author_job_id: Annotated[str, Field(description="Job ID of the authoring agent (usually the orchestrator's job_id).")] = "",
-    git_commits: Annotated[list[dict] | None, Field(description="Git commits from project branch. Each entry: {sha: str, message: str, author: str}. Optional: date (ISO 8601), files_changed (int), lines_added (int).")] = None,
+    entry_type: Annotated[
+        str,
+        Field(
+            description="Entry type: 'project_completion' (orchestrator closeout), 'handover_closeout' (agent context exhaustion handover), or 'session_handover' (session continuation)."
+        ),
+    ] = "project_completion",
+    author_job_id: Annotated[
+        str, Field(description="Job ID of the authoring agent (usually the orchestrator's job_id).")
+    ] = "",
+    git_commits: Annotated[
+        list[dict] | None,
+        Field(
+            description="Git commits from project branch. Each entry: {sha: str, message: str, author: str}. Optional: date (ISO 8601), files_changed (int), lines_added (int)."
+        ),
+    ] = None,
     ctx: Context = None,
 ) -> dict:
     """Write 360 memory entry for project completion/handover."""

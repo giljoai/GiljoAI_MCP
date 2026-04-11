@@ -22,6 +22,7 @@ from src.giljo_mcp.models.projects import ProjectType
 
 from .schemas import ProjectTypeCreate, ProjectTypeUpdate
 
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROJECT_TYPES: list[dict[str, Any]] = [

@@ -24,6 +24,7 @@ from src.giljo_mcp.exceptions import (
     ValidationError,
 )
 
+
 # ============================================================================
 # TEST: change_password
 # ============================================================================
@@ -169,10 +170,14 @@ async def test_get_field_priority_config_custom(user_service, test_user, db_sess
 
     # Insert custom toggle rows
     for cat, enabled in [("tech_stack", True), ("git_history", True), ("testing", False)]:
-        db_session.add(UserFieldPriority(
-            user_id=test_user.id, tenant_key=test_user.tenant_key,
-            category=cat, enabled=enabled,
-        ))
+        db_session.add(
+            UserFieldPriority(
+                user_id=test_user.id,
+                tenant_key=test_user.tenant_key,
+                category=cat,
+                enabled=enabled,
+            )
+        )
     await db_session.commit()
 
     config = await user_service.get_field_priority_config(test_user.id)
@@ -251,10 +256,13 @@ async def test_update_field_priority_config_validation(user_service, test_user):
 async def test_reset_field_priority_config_clears_custom(user_service, test_user, db_session):
     """Test that reset_field_priority_config deletes all toggle rows"""
     # First set some custom toggles
-    await user_service.update_field_priority_config(test_user.id, {
-        "version": "4.0",
-        "priorities": {"tech_stack": {"toggle": False}, "git_history": {"toggle": True}},
-    })
+    await user_service.update_field_priority_config(
+        test_user.id,
+        {
+            "version": "4.0",
+            "priorities": {"tech_stack": {"toggle": False}, "git_history": {"toggle": True}},
+        },
+    )
 
     result = await user_service.reset_field_priority_config(test_user.id)
     assert result is None

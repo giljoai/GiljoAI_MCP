@@ -108,21 +108,17 @@ class TestToolAccessorCreateTaskValidation:
         """Test that tenant_manager is used when tenant_key parameter is None."""
         tool_accessor = _make_tool_accessor(tenant_key="tenant-from-manager")
 
-        with patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls, patch.object(
-            tool_accessor._task_service, "log_task", new_callable=AsyncMock
-        ) as mock_log_task:
-
+        with (
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
+        ):
             mock_product_service_instance = AsyncMock()
-            mock_product_service_instance.get_active_product = AsyncMock(
-                return_value=_make_mock_product("prod-123")
-            )
+            mock_product_service_instance.get_active_product = AsyncMock(return_value=_make_mock_product("prod-123"))
             mock_product_service_cls.return_value = mock_product_service_instance
 
             mock_log_task.return_value = "task-123"
 
-            await tool_accessor.create_task(
-                title="Test Task", description="Test description", tenant_key=None
-            )
+            await tool_accessor.create_task(title="Test Task", description="Test description", tenant_key=None)
 
             mock_product_service_cls.assert_called_once()
             call_kwargs = mock_product_service_cls.call_args[1]
@@ -137,14 +133,12 @@ class TestToolAccessorCreateTaskReturnValue:
         """Return value must be a dict containing success, task_id, and message fields."""
         tool_accessor = _make_tool_accessor()
 
-        with patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls, patch.object(
-            tool_accessor._task_service, "log_task", new_callable=AsyncMock
-        ) as mock_log_task:
-
+        with (
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
+        ):
             mock_product_service_instance = AsyncMock()
-            mock_product_service_instance.get_active_product = AsyncMock(
-                return_value=_make_mock_product("prod-456")
-            )
+            mock_product_service_instance.get_active_product = AsyncMock(return_value=_make_mock_product("prod-456"))
             mock_product_service_cls.return_value = mock_product_service_instance
 
             mock_log_task.return_value = "task-789"
@@ -172,14 +166,12 @@ class TestToolAccessorCreateTaskReturnValue:
         """Return dict should include the product_id for traceability."""
         tool_accessor = _make_tool_accessor()
 
-        with patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls, patch.object(
-            tool_accessor._task_service, "log_task", new_callable=AsyncMock
-        ) as mock_log_task:
-
+        with (
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
+        ):
             mock_product_service_instance = AsyncMock()
-            mock_product_service_instance.get_active_product = AsyncMock(
-                return_value=_make_mock_product("prod-999")
-            )
+            mock_product_service_instance.get_active_product = AsyncMock(return_value=_make_mock_product("prod-999"))
             mock_product_service_cls.return_value = mock_product_service_instance
 
             mock_log_task.return_value = "task-001"
@@ -201,14 +193,12 @@ class TestToolAccessorCreateTaskTitlePreservation:
         """log_task must receive the title parameter so it can be stored separately."""
         tool_accessor = _make_tool_accessor()
 
-        with patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls, patch.object(
-            tool_accessor._task_service, "log_task", new_callable=AsyncMock
-        ) as mock_log_task:
-
+        with (
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
+        ):
             mock_product_service_instance = AsyncMock()
-            mock_product_service_instance.get_active_product = AsyncMock(
-                return_value=_make_mock_product("prod-456")
-            )
+            mock_product_service_instance.get_active_product = AsyncMock(return_value=_make_mock_product("prod-456"))
             mock_product_service_cls.return_value = mock_product_service_instance
 
             mock_log_task.return_value = "task-789"
@@ -233,14 +223,12 @@ class TestToolAccessorCreateTaskTitlePreservation:
         """The content parameter (backwards compat) should use the title value."""
         tool_accessor = _make_tool_accessor()
 
-        with patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls, patch.object(
-            tool_accessor._task_service, "log_task", new_callable=AsyncMock
-        ) as mock_log_task:
-
+        with (
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
+        ):
             mock_product_service_instance = AsyncMock()
-            mock_product_service_instance.get_active_product = AsyncMock(
-                return_value=_make_mock_product("prod-456")
-            )
+            mock_product_service_instance.get_active_product = AsyncMock(return_value=_make_mock_product("prod-456"))
             mock_product_service_cls.return_value = mock_product_service_instance
 
             mock_log_task.return_value = "task-789"
@@ -263,14 +251,12 @@ class TestToolAccessorCreateTaskCategoryFallback:
         """When category is None, it should default to 'general', not the task title."""
         tool_accessor = _make_tool_accessor()
 
-        with patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls, patch.object(
-            tool_accessor._task_service, "log_task", new_callable=AsyncMock
-        ) as mock_log_task:
-
+        with (
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
+        ):
             mock_product_service_instance = AsyncMock()
-            mock_product_service_instance.get_active_product = AsyncMock(
-                return_value=_make_mock_product("prod-456")
-            )
+            mock_product_service_instance.get_active_product = AsyncMock(return_value=_make_mock_product("prod-456"))
             mock_product_service_cls.return_value = mock_product_service_instance
 
             mock_log_task.return_value = "task-789"
@@ -290,14 +276,12 @@ class TestToolAccessorCreateTaskCategoryFallback:
         """When category is empty string, it should default to 'general'."""
         tool_accessor = _make_tool_accessor()
 
-        with patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls, patch.object(
-            tool_accessor._task_service, "log_task", new_callable=AsyncMock
-        ) as mock_log_task:
-
+        with (
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
+        ):
             mock_product_service_instance = AsyncMock()
-            mock_product_service_instance.get_active_product = AsyncMock(
-                return_value=_make_mock_product("prod-456")
-            )
+            mock_product_service_instance.get_active_product = AsyncMock(return_value=_make_mock_product("prod-456"))
             mock_product_service_cls.return_value = mock_product_service_instance
 
             mock_log_task.return_value = "task-789"
@@ -317,14 +301,12 @@ class TestToolAccessorCreateTaskCategoryFallback:
         """When an explicit category is provided, it should be used as-is."""
         tool_accessor = _make_tool_accessor()
 
-        with patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls, patch.object(
-            tool_accessor._task_service, "log_task", new_callable=AsyncMock
-        ) as mock_log_task:
-
+        with (
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
+        ):
             mock_product_service_instance = AsyncMock()
-            mock_product_service_instance.get_active_product = AsyncMock(
-                return_value=_make_mock_product("prod-456")
-            )
+            mock_product_service_instance.get_active_product = AsyncMock(return_value=_make_mock_product("prod-456"))
             mock_product_service_cls.return_value = mock_product_service_instance
 
             mock_log_task.return_value = "task-789"
@@ -344,14 +326,12 @@ class TestToolAccessorCreateTaskCategoryFallback:
         """The return dict should show 'general' as category when none was provided."""
         tool_accessor = _make_tool_accessor()
 
-        with patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls, patch.object(
-            tool_accessor._task_service, "log_task", new_callable=AsyncMock
-        ) as mock_log_task:
-
+        with (
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
+        ):
             mock_product_service_instance = AsyncMock()
-            mock_product_service_instance.get_active_product = AsyncMock(
-                return_value=_make_mock_product("prod-456")
-            )
+            mock_product_service_instance.get_active_product = AsyncMock(return_value=_make_mock_product("prod-456"))
             mock_product_service_cls.return_value = mock_product_service_instance
 
             mock_log_task.return_value = "task-789"
@@ -374,14 +354,12 @@ class TestToolAccessorCreateTaskLogging:
         """A log.info message should be emitted on successful task creation."""
         tool_accessor = _make_tool_accessor()
 
-        with patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls, patch.object(
-            tool_accessor._task_service, "log_task", new_callable=AsyncMock
-        ) as mock_log_task:
-
+        with (
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
+        ):
             mock_product_service_instance = AsyncMock()
-            mock_product_service_instance.get_active_product = AsyncMock(
-                return_value=_make_mock_product("prod-456")
-            )
+            mock_product_service_instance.get_active_product = AsyncMock(return_value=_make_mock_product("prod-456"))
             mock_product_service_cls.return_value = mock_product_service_instance
 
             mock_log_task.return_value = "task-789"

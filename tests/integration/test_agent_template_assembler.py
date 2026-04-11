@@ -110,8 +110,14 @@ class TestAssemblerPlatformConsistency:
     def test_codex_has_required_fields(self):
         """Codex agents must have all required structured fields."""
         result = self.assembler.assemble(self.templates, "codex_cli")
-        required = {"agent_name", "description", "role", "developer_instructions",
-                     "suggested_model", "suggested_reasoning_effort"}
+        required = {
+            "agent_name",
+            "description",
+            "role",
+            "developer_instructions",
+            "suggested_model",
+            "suggested_reasoning_effort",
+        }
         for agent in result["agents"]:
             assert required.issubset(agent.keys())
 
@@ -143,12 +149,14 @@ class TestAssemblerEdgeCases:
 
     def test_template_with_empty_body_sections(self):
         """Templates with empty instructions still assemble."""
-        templates = [_make_template(
-            system_instructions="",
-            user_instructions="",
-            behavioral_rules=[],
-            success_criteria=[],
-        )]
+        templates = [
+            _make_template(
+                system_instructions="",
+                user_instructions="",
+                behavioral_rules=[],
+                success_criteria=[],
+            )
+        ]
         for platform in ("claude_code", "gemini_cli", "codex_cli"):
             result = self.assembler.assemble(templates, platform)
             assert len(result["agents"]) == 1

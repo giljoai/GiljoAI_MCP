@@ -133,16 +133,11 @@ async def test_update_task_blocks_cross_tenant(db_session, two_tenant_tasks):
             status="in_progress",
         )
 
-    assert (
-        "not found" in exc_info.value.message.lower()
-        or "access denied" in exc_info.value.message.lower()
-    )
+    assert "not found" in exc_info.value.message.lower() or "access denied" in exc_info.value.message.lower()
 
     # Verify the task was NOT modified (status unchanged)
     await db_session.refresh(task_b)
-    assert task_b.status == "pending", (
-        "Cross-tenant update modified another tenant's task!"
-    )
+    assert task_b.status == "pending", "Cross-tenant update modified another tenant's task!"
 
 
 @pytest.mark.tenant_isolation
@@ -174,9 +169,7 @@ async def test_update_task_same_tenant_succeeds(db_session, two_tenant_tasks):
 
 @pytest.mark.tenant_isolation
 @pytest.mark.asyncio
-async def test_update_task_no_tenant_context_raises_validation_error(
-    db_session, two_tenant_tasks
-):
+async def test_update_task_no_tenant_context_raises_validation_error(db_session, two_tenant_tasks):
     """
     update_task() with no tenant context must raise ValidationError,
     not silently proceed without filtering.
@@ -277,13 +270,10 @@ async def test_task_service_cross_tenant_audit(db_session, two_tenant_tasks):
     except (ResourceNotFoundError, ValidationError):
         pass
 
-    assert len(violations) == 0, (
-        "CRITICAL: Tenant isolation violated!\nViolations:\n"
-        + "\n".join(f"- {v}" for v in violations)
+    assert len(violations) == 0, "CRITICAL: Tenant isolation violated!\nViolations:\n" + "\n".join(
+        f"- {v}" for v in violations
     )
 
     # Verify task B was never modified by any operation
     await db_session.refresh(task_b)
-    assert task_b.status == "pending", (
-        "CRITICAL: Task B status was modified by cross-tenant operations!"
-    )
+    assert task_b.status == "pending", "CRITICAL: Task B status was modified by cross-tenant operations!"

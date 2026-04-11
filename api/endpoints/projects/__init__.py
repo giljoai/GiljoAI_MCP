@@ -21,6 +21,7 @@ from fastapi import APIRouter
 
 from . import completion, crud, lifecycle, status
 
+
 # Create main router for projects module
 router = APIRouter(prefix="/api/v1/projects", tags=["projects"])
 

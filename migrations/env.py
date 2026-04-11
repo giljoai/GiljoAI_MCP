@@ -9,13 +9,14 @@ from logging.config import fileConfig
 from pathlib import Path
 
 from alembic import context
+from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from giljo_mcp.models import Base
+from giljo_mcp.models import Base  # noqa: E402
 
 
 # this is the Alembic Config object, which provides
@@ -24,7 +25,6 @@ config = context.config
 
 # Override database URL with environment variable if set
 # CRITICAL: PostgreSQL is REQUIRED - SQLite is not supported
-from dotenv import load_dotenv
 
 
 load_dotenv()  # Load .env file

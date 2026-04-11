@@ -27,6 +27,7 @@ import pytest
 from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.tenant import TenantManager
 
+
 # ============================================================================
 # get_messages() -- Cross-Tenant Read Test
 # ============================================================================
@@ -143,9 +144,7 @@ async def test_complete_message_blocks_cross_tenant(db_session, two_tenant_messa
 
     # Verify the message was NOT completed (status unchanged)
     await db_session.refresh(message_b)
-    assert message_b.status == "pending", (
-        "Cross-tenant complete_message modified another tenant's message!"
-    )
+    assert message_b.status == "pending", "Cross-tenant complete_message modified another tenant's message!"
 
 
 @pytest.mark.tenant_isolation

@@ -34,6 +34,7 @@ from .models import (
     UsedSubseriesResponse,
 )
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

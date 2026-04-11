@@ -35,6 +35,7 @@ from api.middleware.auth_rate_limiter import get_rate_limiter
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -169,9 +170,7 @@ class VerifyPinResponse(BaseModel):
 
 
 @router.post("/verify-pin", response_model=VerifyPinResponse, tags=["auth"])
-async def verify_pin(
-    request_data: VerifyPinRequest = Body(...), db: AsyncSession = Depends(get_db_session)
-):
+async def verify_pin(request_data: VerifyPinRequest = Body(...), db: AsyncSession = Depends(get_db_session)):
     """
     Verify recovery PIN without resetting password.
 
@@ -301,5 +300,3 @@ async def complete_first_login(
     logger.info(f"First login completed - user: {current_user.username}")
 
     return CompleteFirstLoginResponse(message="First login completed successfully")
-
-

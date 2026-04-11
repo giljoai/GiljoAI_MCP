@@ -19,6 +19,7 @@ from typing import Callable
 from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+
 logger = logging.getLogger(__name__)
 
 

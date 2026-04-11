@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Base
 
+
 # =============================================================================
 # PRODUCTION DATABASE SAFETY GUARD
 # =============================================================================

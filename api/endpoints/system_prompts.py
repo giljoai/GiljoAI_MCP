@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from src.giljo_mcp.auth.dependencies import require_admin
 from src.giljo_mcp.models import User
 
+
 router = APIRouter()
 
 

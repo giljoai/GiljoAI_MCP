@@ -40,9 +40,7 @@ class TestCreateProjectActiveProductResolution:
 
         # Mock ProductService with active product
         with (
-            patch(
-                "src.giljo_mcp.tools.tool_accessor.ProductService"
-            ) as mock_product_service_cls,
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -53,9 +51,7 @@ class TestCreateProjectActiveProductResolution:
             mock_product.id = "prod-123"
 
             mock_ps_instance = AsyncMock()
-            mock_ps_instance.get_active_product = AsyncMock(
-                return_value=mock_product
-            )
+            mock_ps_instance.get_active_product = AsyncMock(return_value=mock_product)
             mock_product_service_cls.return_value = mock_ps_instance
 
             mock_project = Mock()
@@ -98,9 +94,7 @@ class TestCreateProjectActiveProductResolution:
         )
 
         with (
-            patch(
-                "src.giljo_mcp.tools.tool_accessor.ProductService"
-            ) as mock_product_service_cls,
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -145,9 +139,7 @@ class TestCreateProjectActiveProductResolution:
             test_session=None,
         )
 
-        with patch(
-            "src.giljo_mcp.tools.tool_accessor.ProductService"
-        ) as mock_product_service_cls:
+        with patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls:
             mock_ps_instance = AsyncMock()
             mock_ps_instance.get_active_product = AsyncMock(return_value=None)
             mock_product_service_cls.return_value = mock_ps_instance
@@ -176,9 +168,7 @@ class TestCreateProjectActiveProductResolution:
         )
 
         with (
-            patch(
-                "src.giljo_mcp.tools.tool_accessor.ProductService"
-            ) as mock_product_service_cls,
+            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -189,9 +179,7 @@ class TestCreateProjectActiveProductResolution:
             mock_product.id = "prod-999"
 
             mock_ps_instance = AsyncMock()
-            mock_ps_instance.get_active_product = AsyncMock(
-                return_value=mock_product
-            )
+            mock_ps_instance.get_active_product = AsyncMock(return_value=mock_product)
             mock_product_service_cls.return_value = mock_ps_instance
 
             mock_project = Mock()
@@ -318,6 +306,4 @@ class TestCreateProjectReturnValue:
                 "project_type",
                 "series_number",
             }
-            assert set(result.keys()) == expected_keys, (
-                f"Expected keys {expected_keys}, got {set(result.keys())}"
-            )
+            assert set(result.keys()) == expected_keys, f"Expected keys {expected_keys}, got {set(result.keys())}"

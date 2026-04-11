@@ -40,6 +40,7 @@ from src.giljo_mcp.exceptions import (
 )
 from src.giljo_mcp.services.product_service import ProductService
 
+
 # ============================================================================
 # TEST FIXTURES
 # ============================================================================

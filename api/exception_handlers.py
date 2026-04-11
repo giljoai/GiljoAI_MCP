@@ -15,6 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.giljo_mcp.exceptions import BaseGiljoError
 
+
 logger = logging.getLogger(__name__)
 
 

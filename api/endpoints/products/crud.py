@@ -34,6 +34,7 @@ from src.giljo_mcp.services import ProductService
 from .dependencies import get_product_service
 from .models import DeletedProductResponse, ProductCreate, ProductResponse, ProductUpdate
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

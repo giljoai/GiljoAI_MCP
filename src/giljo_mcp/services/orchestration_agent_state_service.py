@@ -472,9 +472,7 @@ class OrchestrationAgentStateService:
                 message="Failed to dismiss reactivation", context={"job_id": job_id, "error": str(e)}
             ) from e
 
-    async def close_job(
-        self, job_id: str, tenant_key: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def close_job(self, job_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """
         Mark a completed job as closed (final orchestrator acceptance). Handover 0435b.
 
@@ -560,9 +558,7 @@ class OrchestrationAgentStateService:
             raise
         except Exception as e:  # Broad catch: service boundary
             self._logger.exception("Failed to close job")
-            raise OrchestrationError(
-                message="Failed to close job", context={"job_id": job_id, "error": str(e)}
-            ) from e
+            raise OrchestrationError(message="Failed to close job", context={"job_id": job_id, "error": str(e)}) from e
 
     async def set_agent_status(
         self,

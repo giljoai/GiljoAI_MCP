@@ -27,6 +27,7 @@ from src.giljo_mcp.models.auth import User, UserFieldPriority
 from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.services.user_service import UserService
 
+
 # ============================================================================
 # FIXTURES
 # ============================================================================
@@ -103,14 +104,22 @@ async def user_with_toggles(db_session, test_tenant_key, test_organization):
 
     # Insert toggle rows
     for cat, enabled in [
-        ("tech_stack", True), ("architecture", True), ("testing", True),
-        ("vision_documents", True), ("memory_360", True),
-        ("agent_templates", True), ("git_history", False),
+        ("tech_stack", True),
+        ("architecture", True),
+        ("testing", True),
+        ("vision_documents", True),
+        ("memory_360", True),
+        ("agent_templates", True),
+        ("git_history", False),
     ]:
-        db_session.add(UserFieldPriority(
-            user_id=user.id, tenant_key=test_tenant_key,
-            category=cat, enabled=enabled,
-        ))
+        db_session.add(
+            UserFieldPriority(
+                user_id=user.id,
+                tenant_key=test_tenant_key,
+                category=cat,
+                enabled=enabled,
+            )
+        )
 
     await db_session.commit()
     await db_session.refresh(user)
@@ -148,6 +157,7 @@ async def test_field_toggles_persist_via_update(user_service, test_user, db_sess
 
     # Verify rows exist
     from sqlalchemy import and_, select
+
     stmt = select(UserFieldPriority).where(
         and_(UserFieldPriority.user_id == test_user.id, UserFieldPriority.tenant_key == test_user.tenant_key)
     )

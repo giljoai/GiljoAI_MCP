@@ -36,6 +36,7 @@ from src.giljo_mcp.models import User
 from src.giljo_mcp.services import AuthService
 from src.giljo_mcp.template_seeder import seed_tenant_templates
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -215,11 +216,17 @@ class RegisterUserRequest(BaseModel):
         default="My Organization", description="Organization name for first admin user (Handover 0424h)"
     )
     recovery_pin: str | None = Field(
-        default=None, min_length=4, max_length=4, pattern="^[0-9]{4}$",
+        default=None,
+        min_length=4,
+        max_length=4,
+        pattern="^[0-9]{4}$",
         description="4-digit recovery PIN for password reset",
     )
     confirm_pin: str | None = Field(
-        default=None, min_length=4, max_length=4, pattern="^[0-9]{4}$",
+        default=None,
+        min_length=4,
+        max_length=4,
+        pattern="^[0-9]{4}$",
         description="Confirm recovery PIN",
     )
 

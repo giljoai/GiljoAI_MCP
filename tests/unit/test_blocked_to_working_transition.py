@@ -104,9 +104,7 @@ async def test_report_progress_transitions_blocked_to_working(mock_db_manager, m
 
 
 @pytest.mark.asyncio
-async def test_report_progress_broadcasts_status_change_on_blocked_to_working(
-    mock_db_manager, mock_tenant_manager
-):
+async def test_report_progress_broadcasts_status_change_on_blocked_to_working(mock_db_manager, mock_tenant_manager):
     """When transitioning blocked->working, broadcast agent:status_changed event after commit."""
     db_manager, session = mock_db_manager
     mock_ws = Mock()

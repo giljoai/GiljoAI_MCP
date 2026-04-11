@@ -31,6 +31,7 @@ import pytest_asyncio
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.projects import Project
 
+
 # ============================================================================
 # Test Fixtures
 # ============================================================================

@@ -75,11 +75,13 @@ async def test_messages(db_session, test_tenant_key, test_project_with_data):
         )
         db_session.add(msg)
         await db_session.flush()
-        db_session.add(MessageRecipient(
-            message_id=msg.id,
-            agent_id="test_agent_2",
-            tenant_key=test_tenant_key,
-        ))
+        db_session.add(
+            MessageRecipient(
+                message_id=msg.id,
+                agent_id="test_agent_2",
+                tenant_key=test_tenant_key,
+            )
+        )
         messages.append(msg)
     await db_session.commit()
     return messages

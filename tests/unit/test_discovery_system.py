@@ -17,6 +17,7 @@ from pathlib import Path
 
 import yaml
 
+
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.giljo_mcp.database import DatabaseManager

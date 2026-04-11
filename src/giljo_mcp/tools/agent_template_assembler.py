@@ -26,6 +26,7 @@ from src.giljo_mcp.template_renderer import (
     render_generic_agent,
 )
 
+
 if TYPE_CHECKING:
     from src.giljo_mcp.models import AgentTemplate
 

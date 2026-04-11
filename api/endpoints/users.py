@@ -37,6 +37,7 @@ from src.giljo_mcp.auth.dependencies import (
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import UserService
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -71,7 +72,9 @@ class UserUpdate(BaseModel):
     full_name: str | None = Field(None, max_length=255)
     is_active: bool | None = None
     password: str | None = Field(None, min_length=8, description="New password (min 8 chars)")
-    recovery_pin: str | None = Field(None, min_length=4, max_length=4, pattern="^[0-9]{4}$", description="4-digit recovery PIN")
+    recovery_pin: str | None = Field(
+        None, min_length=4, max_length=4, pattern="^[0-9]{4}$", description="4-digit recovery PIN"
+    )
 
 
 class UserResponse(BaseModel):

@@ -20,6 +20,7 @@ from fastapi import APIRouter
 
 from . import crud, history, preview
 
+
 # Create main router for templates module
 router = APIRouter(prefix="/api/v1/templates", tags=["templates"])
 

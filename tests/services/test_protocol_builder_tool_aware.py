@@ -14,12 +14,12 @@ Verifies:
 5. Multi-terminal mode uses generic MCP language
 """
 
-
 from src.giljo_mcp.services.protocol_builder import (
     _build_ch1_mission,
     _build_ch3_spawning_rules,
     _build_orchestrator_protocol,
 )
+
 
 # --- CH1: Platform-specific "do not spawn" warning ---
 

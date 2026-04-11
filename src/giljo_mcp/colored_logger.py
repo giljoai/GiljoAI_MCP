@@ -20,6 +20,7 @@ import logging
 import sys
 from typing import ClassVar, Optional
 
+
 try:
     from colorama import Fore, Style
     from colorama import init as colorama_init

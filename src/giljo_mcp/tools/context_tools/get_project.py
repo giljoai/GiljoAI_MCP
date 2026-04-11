@@ -18,6 +18,7 @@ from sqlalchemy import select
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.projects import Project
 
+
 logger = structlog.get_logger(__name__)
 
 
