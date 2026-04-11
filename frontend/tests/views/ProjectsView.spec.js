@@ -351,30 +351,28 @@ describe('ProjectsView.vue', () => {
   })
 
   describe('Sorting', () => {
-    it('sorts by created date descending by default', async () => {
+    it('sorts by series_number ascending by default', async () => {
       const wrapper = await createWrapper()
-      // Default sort is created_at desc, but active projects are always first
-      expect(wrapper.vm.sortConfig).toEqual([{ key: 'created_at', order: 'desc' }])
+      // Default sort is series_number asc
+      expect(wrapper.vm.sortBy).toEqual([{ key: 'series_number', order: 'asc' }])
     })
 
     it('can change sort order', async () => {
       const wrapper = await createWrapper()
-      wrapper.vm.sortConfig = [{ key: 'name', order: 'asc' }]
+      wrapper.vm.sortBy = [{ key: 'name', order: 'asc' }]
       await wrapper.vm.$nextTick()
 
-      // sortedProjects returns projects with active on top, then sorted by name
-      const sortedProjects = wrapper.vm.sortedProjects
-      expect(sortedProjects.length).toBeGreaterThan(0)
+      const items = wrapper.vm.filteredProjects
+      expect(items.length).toBeGreaterThan(0)
     })
 
     it('sorts by status', async () => {
       const wrapper = await createWrapper()
-      wrapper.vm.sortConfig = [{ key: 'status', order: 'asc' }]
+      wrapper.vm.sortBy = [{ key: 'status', order: 'asc' }]
       await wrapper.vm.$nextTick()
 
-      const sortedProjects = wrapper.vm.sortedProjects
-      // Active projects always come first, then sorted by status
-      expect(sortedProjects.length).toBeGreaterThan(0)
+      const items = wrapper.vm.filteredProjects
+      expect(items.length).toBeGreaterThan(0)
     })
   })
 
