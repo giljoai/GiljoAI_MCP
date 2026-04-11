@@ -116,6 +116,15 @@ ignore = ["E501", "PERF203", "PERF401"]
 "migrations/env.py" = ["E402"]
 "src/giljo_mcp/services/protocol_sections/agent_lifecycle.py" = ["S608"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["giljo_mcp"]
+force-single-line = false
+force-sort-within-sections = false
+lines-after-imports = 2
+
+[tool.ruff.format]
+quote-style = "double"
+
 [tool.black]
 line-length = 120
 target-version = ['py310', 'py311', 'py312']
