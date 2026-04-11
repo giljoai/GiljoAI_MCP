@@ -263,22 +263,16 @@ async def test_get_summaries_filters_by_tenant(
     )
 
     # Tenant A should only see their own summaries
-    summaries_a = await vision_repo.get_summaries(
-        session=db_session, tenant_key=tenant_a, document_id=str(doc_a.id)
-    )
+    summaries_a = await vision_repo.get_summaries(session=db_session, tenant_key=tenant_a, document_id=str(doc_a.id))
     assert len(summaries_a) == 1
     assert summaries_a[0].summary == "Tenant A summary."
 
     # Tenant A cannot see tenant B's document summaries
-    cross_tenant = await vision_repo.get_summaries(
-        session=db_session, tenant_key=tenant_a, document_id=str(doc_b.id)
-    )
+    cross_tenant = await vision_repo.get_summaries(session=db_session, tenant_key=tenant_a, document_id=str(doc_b.id))
     assert len(cross_tenant) == 0
 
     # Tenant B should only see their own summaries
-    summaries_b = await vision_repo.get_summaries(
-        session=db_session, tenant_key=tenant_b, document_id=str(doc_b.id)
-    )
+    summaries_b = await vision_repo.get_summaries(session=db_session, tenant_key=tenant_b, document_id=str(doc_b.id))
     assert len(summaries_b) == 1
     assert summaries_b[0].summary == "Tenant B summary."
 

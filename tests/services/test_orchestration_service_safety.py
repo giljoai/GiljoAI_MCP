@@ -28,6 +28,7 @@ import pytest_asyncio
 from src.giljo_mcp.exceptions import AlreadyExistsError, ValidationError
 from src.giljo_mcp.models import AgentTemplate, Project
 
+
 # ============================================================================
 # Test Fixtures
 # ============================================================================
@@ -133,9 +134,7 @@ class TestDuplicateOrchestratorPrevention:
 
         assert "already exists" in str(exc_info.value).lower()
 
-    async def test_spawn_orchestrator_succession_allowed(
-        self, orchestration_service, test_project, test_tenant_key
-    ):
+    async def test_spawn_orchestrator_succession_allowed(self, orchestration_service, test_project, test_tenant_key):
         """Spawning with parent_job_id matching existing orchestrator's agent_id succeeds (handover succession)."""
         # First orchestrator
         result1 = await orchestration_service.spawn_agent_job(

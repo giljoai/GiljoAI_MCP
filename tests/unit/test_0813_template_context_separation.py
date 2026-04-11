@@ -20,9 +20,11 @@ import pytest
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_renderer import render_claude_agent
 
+
 # ---------------------------------------------------------------------------
 # 1. Renderer: user_instructions now included in exported .md files
 # ---------------------------------------------------------------------------
+
 
 class TestRendererIncludesUserInstructions:
     """render_claude_agent() must include user_instructions in output."""
@@ -103,6 +105,7 @@ class TestRendererIncludesUserInstructions:
 # 2. Renderer: old protocol sections NOT in exported files
 # ---------------------------------------------------------------------------
 
+
 class TestRendererExcludesOldProtocol:
     """Exported .md files should NOT contain protocol boilerplate.
     Protocol is delivered via full_protocol from get_agent_mission().
@@ -120,7 +123,7 @@ class TestRendererExcludesOldProtocol:
                 "You are part of a GiljoAI MCP orchestration system.\n\n"
                 "### STARTUP (MANDATORY)\n"
                 "1. Call `mcp__giljo_mcp__health_check()`\n"
-                "2. Call `mcp__giljo_mcp__get_agent_mission(job_id=\"<your_job_id>\")`\n"
+                '2. Call `mcp__giljo_mcp__get_agent_mission(job_id="<your_job_id>")`\n'
                 "3. Follow `full_protocol` for all lifecycle behavior\n"
             ),
             user_instructions="You are an implementation specialist.",
@@ -163,9 +166,7 @@ class TestRendererExcludesOldProtocol:
 
     def test_no_orchestrator_coordination_section(self):
         """ORCHESTRATOR COORDINATION section should NOT be in exported file."""
-        template = self._make_template_with_slim_bootstrap(
-            name="orchestrator", role="orchestrator"
-        )
+        template = self._make_template_with_slim_bootstrap(name="orchestrator", role="orchestrator")
         result = render_claude_agent(template)
         assert "## ORCHESTRATOR COORDINATION" not in result
 
@@ -173,6 +174,7 @@ class TestRendererExcludesOldProtocol:
 # ---------------------------------------------------------------------------
 # 3. Seeder: system_instructions is slim bootstrap
 # ---------------------------------------------------------------------------
+
 
 class TestSeederProducesSlimBootstrap:
     """seed_tenant_templates() should produce slim system_instructions."""
@@ -217,6 +219,7 @@ class TestSeederProducesSlimBootstrap:
 # 4. Refresh: regenerates slim format
 # ---------------------------------------------------------------------------
 
+
 class TestRefreshProducesSlimFormat:
     """refresh_tenant_template_instructions() should regenerate slim bootstrap."""
 
@@ -235,6 +238,7 @@ class TestRefreshProducesSlimFormat:
 # ---------------------------------------------------------------------------
 # 5. Export endpoint: includes user_instructions
 # ---------------------------------------------------------------------------
+
 
 class TestClaudeExportIncludesUserInstructions:
     """claude_export.py should include user_instructions in exported files."""
@@ -264,6 +268,7 @@ class TestClaudeExportIncludesUserInstructions:
 # ---------------------------------------------------------------------------
 # 6. Context tool: includes user_instructions in "full" mode
 # ---------------------------------------------------------------------------
+
 
 class TestGetAgentTemplatesIncludesUserInstructions:
     """get_agent_templates context tool should include user_instructions in 'full' mode."""
@@ -297,12 +302,8 @@ class TestGetAgentTemplatesIncludesUserInstructions:
         mock_session.execute.return_value = mock_result
 
         mock_db_manager = MagicMock()
-        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(
-            return_value=mock_session
-        )
-        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(
-            return_value=False
-        )
+        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(return_value=False)
 
         result = await get_agent_templates(
             product_id="test-product",
@@ -313,9 +314,7 @@ class TestGetAgentTemplatesIncludesUserInstructions:
 
         assert len(result["data"]) == 1
         template_data = result["data"][0]
-        assert "user_instructions" in template_data, (
-            "Full detail response must include user_instructions"
-        )
+        assert "user_instructions" in template_data, "Full detail response must include user_instructions"
         assert template_data["user_instructions"] == "You are an implementation specialist."
         assert "behavioral_rules" in template_data
         assert "success_criteria" in template_data
@@ -324,6 +323,7 @@ class TestGetAgentTemplatesIncludesUserInstructions:
 # ---------------------------------------------------------------------------
 # 7. Exported .md files are lean (~30-50 lines, not 108)
 # ---------------------------------------------------------------------------
+
 
 class TestExportedFileSize:
     """Exported .md files should be 30-50 lines, not 108+ of boilerplate."""
@@ -341,7 +341,7 @@ class TestExportedFileSize:
                 "tool calls prefixed `mcp__giljo_mcp__*` in your tool list.\n\n"
                 "### STARTUP (MANDATORY)\n"
                 "1. Call `mcp__giljo_mcp__health_check()` to verify MCP connectivity\n"
-                "2. Call `mcp__giljo_mcp__get_agent_mission(job_id=\"<your_job_id>\")` to receive:\n"
+                '2. Call `mcp__giljo_mcp__get_agent_mission(job_id="<your_job_id>")` to receive:\n'
                 "   - Your full operating protocols (`full_protocol`)\n"
                 "   - Your work order and team context (`mission`)\n"
                 "3. Follow `full_protocol` for all lifecycle behavior\n\n"
@@ -379,17 +379,14 @@ class TestExportedFileSize:
         lines = result.strip().split("\n")
 
         # Should be ~30-50 lines with the lean format
-        assert len(lines) <= 60, (
-            f"Exported file should be ~30-50 lines, got {len(lines)} lines"
-        )
-        assert len(lines) >= 20, (
-            f"Exported file should have at least 20 lines of content, got {len(lines)}"
-        )
+        assert len(lines) <= 60, f"Exported file should be ~30-50 lines, got {len(lines)} lines"
+        assert len(lines) >= 20, f"Exported file should have at least 20 lines of content, got {len(lines)}"
 
 
 # ---------------------------------------------------------------------------
 # 8. Multi-terminal mode: _resolve_spawn_template concatenation
 # ---------------------------------------------------------------------------
+
 
 class TestResolveSpawnTemplateContent:
     """Handover 0825: _resolve_spawn_template returns mission unchanged, captures template_id only."""
@@ -412,6 +409,4 @@ class TestResolveSpawnTemplateContent:
         # The old box-art framing should NOT appear in missions anymore
         box_art_markers = ["╔═", "╚═", "║"]
         for marker in box_art_markers:
-            assert marker not in original_mission, (
-                f"Mission should not contain box-art framing: {marker}"
-            )
+            assert marker not in original_mission, f"Mission should not contain box-art framing: {marker}"

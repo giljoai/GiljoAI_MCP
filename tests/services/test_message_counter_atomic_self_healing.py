@@ -41,6 +41,7 @@ from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
 
+
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -204,13 +205,10 @@ class TestCompleteJobAtomicCounterUpdate:
         # Assert: orchestrator waiting count incremented by 1
         await db_session.refresh(orch_exec)
         assert orch_exec.messages_waiting_count == 1, (
-            f"Expected orchestrator waiting_count=1 after specialist completion, "
-            f"got {orch_exec.messages_waiting_count}"
+            f"Expected orchestrator waiting_count=1 after specialist completion, got {orch_exec.messages_waiting_count}"
         )
 
-    async def test_complete_job_increments_agent_sent_count(
-        self, db_session, orch_service, project, tenant_key
-    ):
+    async def test_complete_job_increments_agent_sent_count(self, db_session, orch_service, project, tenant_key):
         """After complete_job, the completing agent's messages_sent_count increases by 1.
 
         The auto-generated completion_report counts as a sent message
@@ -252,8 +250,7 @@ class TestCompleteJobAtomicCounterUpdate:
         # Assert: specialist sent_count incremented by 1
         await db_session.refresh(spec_exec)
         assert spec_exec.messages_sent_count == 1, (
-            f"Expected specialist sent_count=1 after completion, "
-            f"got {spec_exec.messages_sent_count}"
+            f"Expected specialist sent_count=1 after completion, got {spec_exec.messages_sent_count}"
         )
 
     async def test_complete_job_counter_uses_tenant_key(
@@ -324,8 +321,7 @@ class TestCompleteJobAtomicCounterUpdate:
         # Assert: tenant B decoy was NOT affected
         await db_session.refresh(decoy_exec)
         assert decoy_exec.messages_waiting_count == 0, (
-            f"Tenant B decoy waiting_count should be 0 (untouched), "
-            f"got {decoy_exec.messages_waiting_count}"
+            f"Tenant B decoy waiting_count should be 0 (untouched), got {decoy_exec.messages_waiting_count}"
         )
 
 
@@ -429,11 +425,13 @@ class TestReceiveMessagesSelfHealingCounter:
             )
             db_session.add(msg)
             await db_session.flush()
-            db_session.add(MessageRecipient(
-                message_id=msg.id,
-                agent_id=analyzer.agent_id,
-                tenant_key=tenant_key,
-            ))
+            db_session.add(
+                MessageRecipient(
+                    message_id=msg.id,
+                    agent_id=analyzer.agent_id,
+                    tenant_key=tenant_key,
+                )
+            )
 
         # Set waiting_count to 3 to reflect the 3 pending messages
         analyzer.messages_waiting_count = 3
@@ -455,8 +453,7 @@ class TestReceiveMessagesSelfHealingCounter:
         # is different: SET to actual pending count, not blind subtract.
         await db_session.refresh(analyzer)
         assert analyzer.messages_waiting_count == 1, (
-            f"Expected waiting_count=1 (1 remaining pending), "
-            f"got {analyzer.messages_waiting_count}"
+            f"Expected waiting_count=1 (1 remaining pending), got {analyzer.messages_waiting_count}"
         )
 
     async def test_receive_messages_increments_read_count(
@@ -483,11 +480,13 @@ class TestReceiveMessagesSelfHealingCounter:
             )
             db_session.add(msg)
             await db_session.flush()
-            db_session.add(MessageRecipient(
-                message_id=msg.id,
-                agent_id=analyzer.agent_id,
-                tenant_key=tenant_key,
-            ))
+            db_session.add(
+                MessageRecipient(
+                    message_id=msg.id,
+                    agent_id=analyzer.agent_id,
+                    tenant_key=tenant_key,
+                )
+            )
 
         analyzer.messages_waiting_count = 2
         await db_session.commit()
@@ -507,8 +506,7 @@ class TestReceiveMessagesSelfHealingCounter:
         # Assert: read_count incremented by 2
         await db_session.refresh(analyzer)
         assert analyzer.messages_read_count == 2, (
-            f"Expected read_count=2 after receiving 2 messages, "
-            f"got {analyzer.messages_read_count}"
+            f"Expected read_count=2 after receiving 2 messages, got {analyzer.messages_read_count}"
         )
 
     async def test_receive_messages_self_heals_drifted_counter(
@@ -541,11 +539,13 @@ class TestReceiveMessagesSelfHealingCounter:
             )
             db_session.add(msg)
             await db_session.flush()
-            db_session.add(MessageRecipient(
-                message_id=msg.id,
-                agent_id=analyzer.agent_id,
-                tenant_key=tenant_key,
-            ))
+            db_session.add(
+                MessageRecipient(
+                    message_id=msg.id,
+                    agent_id=analyzer.agent_id,
+                    tenant_key=tenant_key,
+                )
+            )
 
         # Deliberately set a WRONG waiting_count to simulate drift
         # Actual pending = 3, but counter says 99 (drifted)
@@ -601,11 +601,13 @@ class TestReceiveMessagesSelfHealingCounter:
             )
             db_session.add(msg)
             await db_session.flush()
-            db_session.add(MessageRecipient(
-                message_id=msg.id,
-                agent_id=analyzer.agent_id,
-                tenant_key=tenant_key,
-            ))
+            db_session.add(
+                MessageRecipient(
+                    message_id=msg.id,
+                    agent_id=analyzer.agent_id,
+                    tenant_key=tenant_key,
+                )
+            )
 
         # Counter is 0 but actually 2 pending (drifted down)
         analyzer.messages_waiting_count = 0
@@ -655,11 +657,13 @@ class TestReceiveMessagesSelfHealingCounter:
         )
         db_session.add(msg)
         await db_session.flush()
-        db_session.add(MessageRecipient(
-            message_id=msg.id,
-            agent_id=analyzer.agent_id,
-            tenant_key=tenant_key,
-        ))
+        db_session.add(
+            MessageRecipient(
+                message_id=msg.id,
+                agent_id=analyzer.agent_id,
+                tenant_key=tenant_key,
+            )
+        )
 
         analyzer.messages_waiting_count = 1
 
@@ -703,8 +707,7 @@ class TestReceiveMessagesSelfHealingCounter:
         # Assert: tenant B decoy NOT affected
         await db_session.refresh(decoy_exec)
         assert decoy_exec.messages_waiting_count == 5, (
-            f"Tenant B decoy waiting_count should remain 5 (untouched), "
-            f"got {decoy_exec.messages_waiting_count}"
+            f"Tenant B decoy waiting_count should remain 5 (untouched), got {decoy_exec.messages_waiting_count}"
         )
 
     async def test_receive_messages_read_count_accumulates(
@@ -735,11 +738,13 @@ class TestReceiveMessagesSelfHealingCounter:
             )
             db_session.add(msg)
             await db_session.flush()
-            db_session.add(MessageRecipient(
-                message_id=msg.id,
-                agent_id=analyzer.agent_id,
-                tenant_key=tenant_key,
-            ))
+            db_session.add(
+                MessageRecipient(
+                    message_id=msg.id,
+                    agent_id=analyzer.agent_id,
+                    tenant_key=tenant_key,
+                )
+            )
 
         analyzer.messages_waiting_count = 4
         await db_session.commit()

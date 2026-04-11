@@ -27,6 +27,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.oauth_service import OAuthService
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

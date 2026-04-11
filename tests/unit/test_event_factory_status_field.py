@@ -17,6 +17,7 @@ import sys
 import types
 import uuid
 
+
 # Stub the api package before importing its submodules so that api/__init__.py
 # (which triggers create_app and requires the 'mcp' package) is never executed.
 if "api" not in sys.modules:
@@ -164,8 +165,14 @@ class TestEventFactoryStatusField:
     def test_agent_status_changed_all_valid_new_statuses_accepted(self):
         """Every known valid status is accepted without raising a validation error."""
         valid_statuses = [
-            "waiting", "working", "blocked", "complete",
-            "silent", "decommissioned", "idle", "sleeping",
+            "waiting",
+            "working",
+            "blocked",
+            "complete",
+            "silent",
+            "decommissioned",
+            "idle",
+            "sleeping",
         ]
         for status in valid_statuses:
             event = EventFactory.agent_status_changed(

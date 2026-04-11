@@ -16,6 +16,7 @@ import pytest
 
 from api.endpoints.mcp_sdk_server import _PLACEHOLDER_JOB_IDS
 
+
 # ---------------------------------------------------------------------------
 # 1. write_360_memory entry_type alias normalization
 # ---------------------------------------------------------------------------
@@ -95,8 +96,7 @@ class TestGetAgentMissionPlaceholderGuard:
 
     @pytest.mark.parametrize(
         "placeholder",
-        ["unknown", "none", "null", "", "undefined", "placeholder",
-         "UNKNOWN", "None", " unknown ", "  NULL  "],
+        ["unknown", "none", "null", "", "undefined", "placeholder", "UNKNOWN", "None", " unknown ", "  NULL  "],
     )
     def test_placeholder_detected(self, placeholder):
         """All placeholder values (case-insensitive, whitespace-trimmed) should match."""

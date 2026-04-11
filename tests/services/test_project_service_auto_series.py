@@ -58,9 +58,7 @@ class TestAutoAssignSeriesNumber:
         assert p2.series_number == 2
 
     @pytest.mark.asyncio
-    async def test_create_many_projects_without_taxonomy(
-        self, project_service: ProjectService, test_tenant_key: str
-    ):
+    async def test_create_many_projects_without_taxonomy(self, project_service: ProjectService, test_tenant_key: str):
         """Can create 5+ projects without taxonomy — no constraint violation."""
         projects = []
         for i in range(5):
@@ -75,9 +73,7 @@ class TestAutoAssignSeriesNumber:
         assert series_numbers == [1, 2, 3, 4, 5]
 
     @pytest.mark.asyncio
-    async def test_explicit_taxonomy_still_works(
-        self, project_service: ProjectService, test_tenant_key: str
-    ):
+    async def test_explicit_taxonomy_still_works(self, project_service: ProjectService, test_tenant_key: str):
         """Explicit series_number is preserved (no auto-assign)."""
         project = await project_service.create_project(
             name="Explicit Project",
@@ -157,8 +153,7 @@ class TestAutoAssignSeriesNumber:
 
     @pytest.mark.asyncio
     async def test_different_tenants_independent_series(
-        self, project_service_with_session, test_tenant_key: str,
-        db_manager, tenant_manager
+        self, project_service_with_session, test_tenant_key: str, db_manager, tenant_manager
     ):
         """Different tenants have independent series numbering."""
         from src.giljo_mcp.tenant import TenantManager

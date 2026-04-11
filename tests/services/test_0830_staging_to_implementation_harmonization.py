@@ -29,6 +29,7 @@ from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
+
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
@@ -145,9 +146,7 @@ class TestOrchestratorIdentityPopulated:
     """Verify get_agent_mission sets hardcoded identity for orchestrator."""
 
     @pytest.mark.asyncio
-    async def test_orchestrator_identity_is_non_null(
-        self, orchestration_service, mock_db_manager
-    ):
+    async def test_orchestrator_identity_is_non_null(self, orchestration_service, mock_db_manager):
         _db_manager, session = mock_db_manager
         job_id = str(uuid4())
         project_id = str(uuid4())
@@ -191,20 +190,14 @@ class TestOrchestratorIdentityPopulated:
         all_exec_result = MagicMock()
         all_exec_result.all = MagicMock(return_value=[(execution, job)])
 
-        session.execute = AsyncMock(
-            side_effect=[job_result, exec_result, project_result, all_exec_result]
-        )
+        session.execute = AsyncMock(side_effect=[job_result, exec_result, project_result, all_exec_result])
 
-        response = await orchestration_service.get_agent_mission(
-            job_id=job_id, tenant_key="tenant-test"
-        )
+        response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key="tenant-test")
 
         assert response.agent_identity is not None, "Orchestrator identity must be set"
 
     @pytest.mark.asyncio
-    async def test_orchestrator_identity_contains_orchestrator_keyword(
-        self, orchestration_service, mock_db_manager
-    ):
+    async def test_orchestrator_identity_contains_orchestrator_keyword(self, orchestration_service, mock_db_manager):
         _db_manager, session = mock_db_manager
         job_id = str(uuid4())
         project_id = str(uuid4())
@@ -248,20 +241,14 @@ class TestOrchestratorIdentityPopulated:
         all_exec_result = MagicMock()
         all_exec_result.all = MagicMock(return_value=[(execution, job)])
 
-        session.execute = AsyncMock(
-            side_effect=[job_result, exec_result, project_result, all_exec_result]
-        )
+        session.execute = AsyncMock(side_effect=[job_result, exec_result, project_result, all_exec_result])
 
-        response = await orchestration_service.get_agent_mission(
-            job_id=job_id, tenant_key="tenant-test"
-        )
+        response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key="tenant-test")
 
         assert "ORCHESTRATOR" in response.agent_identity
 
     @pytest.mark.asyncio
-    async def test_orchestrator_identity_contains_behavioral_phrases(
-        self, orchestration_service, mock_db_manager
-    ):
+    async def test_orchestrator_identity_contains_behavioral_phrases(self, orchestration_service, mock_db_manager):
         _db_manager, session = mock_db_manager
         job_id = str(uuid4())
         project_id = str(uuid4())
@@ -305,13 +292,9 @@ class TestOrchestratorIdentityPopulated:
         all_exec_result = MagicMock()
         all_exec_result.all = MagicMock(return_value=[(execution, job)])
 
-        session.execute = AsyncMock(
-            side_effect=[job_result, exec_result, project_result, all_exec_result]
-        )
+        session.execute = AsyncMock(side_effect=[job_result, exec_result, project_result, all_exec_result])
 
-        response = await orchestration_service.get_agent_mission(
-            job_id=job_id, tenant_key="tenant-test"
-        )
+        response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key="tenant-test")
 
         identity = response.agent_identity
         assert "coordinate" in identity.lower(), "Identity must mention coordination"
@@ -440,9 +423,7 @@ class TestOrchestratorPhaseGate:
     """Verify orchestrator-specific blocked message when implementation not launched."""
 
     @pytest.mark.asyncio
-    async def test_orchestrator_blocked_when_implementation_not_launched(
-        self, orchestration_service, mock_db_manager
-    ):
+    async def test_orchestrator_blocked_when_implementation_not_launched(self, orchestration_service, mock_db_manager):
         _db_manager, session = mock_db_manager
         job_id = str(uuid4())
         project_id = str(uuid4())
@@ -484,13 +465,9 @@ class TestOrchestratorPhaseGate:
         project_result = MagicMock()
         project_result.scalar_one_or_none = MagicMock(return_value=project)
 
-        session.execute = AsyncMock(
-            side_effect=[job_result, exec_result, project_result]
-        )
+        session.execute = AsyncMock(side_effect=[job_result, exec_result, project_result])
 
-        response = await orchestration_service.get_agent_mission(
-            job_id=job_id, tenant_key="tenant-test"
-        )
+        response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key="tenant-test")
 
         assert response.blocked is True
         assert response.mission is None
@@ -542,13 +519,9 @@ class TestOrchestratorPhaseGate:
         project_result = MagicMock()
         project_result.scalar_one_or_none = MagicMock(return_value=project)
 
-        session.execute = AsyncMock(
-            side_effect=[job_result, exec_result, project_result]
-        )
+        session.execute = AsyncMock(side_effect=[job_result, exec_result, project_result])
 
-        response = await orchestration_service.get_agent_mission(
-            job_id=job_id, tenant_key="tenant-test"
-        )
+        response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key="tenant-test")
 
         assert "dashboard" in response.user_instruction.lower()
         assert "Implement" in response.user_instruction
@@ -615,9 +588,7 @@ class TestGetOrchestratorInstructionsRedirectBranches:
         session.execute = AsyncMock(side_effect=[exec_result, project_result])
 
     @pytest.mark.asyncio
-    async def test_redirect_to_get_agent_mission_when_launched(
-        self, orchestration_service, mock_db_manager
-    ):
+    async def test_redirect_to_get_agent_mission_when_launched(self, orchestration_service, mock_db_manager):
         """When implementation_launched_at IS NOT NULL, returns redirect=get_agent_mission."""
         _, session = mock_db_manager
         job_id, job, execution, project = self._make_fixtures(
@@ -628,18 +599,14 @@ class TestGetOrchestratorInstructionsRedirectBranches:
 
         self._mock_session_for_get_orchestrator_instructions(session, execution, project)
 
-        result = await orchestration_service.get_orchestrator_instructions(
-            job_id=job_id, tenant_key="tenant-test"
-        )
+        result = await orchestration_service.get_orchestrator_instructions(job_id=job_id, tenant_key="tenant-test")
 
         assert result["staging_complete"] is True
         assert result["redirect"] == "get_agent_mission"
         assert "already launched" in result["message"].lower()
 
     @pytest.mark.asyncio
-    async def test_no_redirect_when_not_launched(
-        self, orchestration_service, mock_db_manager
-    ):
+    async def test_no_redirect_when_not_launched(self, orchestration_service, mock_db_manager):
         """When implementation_launched_at IS NULL, returns redirect=None."""
         _, session = mock_db_manager
         job_id, job, execution, project = self._make_fixtures(
@@ -649,18 +616,14 @@ class TestGetOrchestratorInstructionsRedirectBranches:
 
         self._mock_session_for_get_orchestrator_instructions(session, execution, project)
 
-        result = await orchestration_service.get_orchestrator_instructions(
-            job_id=job_id, tenant_key="tenant-test"
-        )
+        result = await orchestration_service.get_orchestrator_instructions(job_id=job_id, tenant_key="tenant-test")
 
         assert result["staging_complete"] is True
         assert result["redirect"] is None
         assert "click Implement" in result["message"]
 
     @pytest.mark.asyncio
-    async def test_launched_response_contains_identity_fields(
-        self, orchestration_service, mock_db_manager
-    ):
+    async def test_launched_response_contains_identity_fields(self, orchestration_service, mock_db_manager):
         """Redirect response includes job_id, project_id, project_name."""
         _, session = mock_db_manager
         job_id, job, execution, project = self._make_fixtures(
@@ -670,9 +633,7 @@ class TestGetOrchestratorInstructionsRedirectBranches:
 
         self._mock_session_for_get_orchestrator_instructions(session, execution, project)
 
-        result = await orchestration_service.get_orchestrator_instructions(
-            job_id=job_id, tenant_key="tenant-test"
-        )
+        result = await orchestration_service.get_orchestrator_instructions(job_id=job_id, tenant_key="tenant-test")
 
         identity = result["identity"]
         assert identity["job_id"] == job_id
@@ -680,9 +641,7 @@ class TestGetOrchestratorInstructionsRedirectBranches:
         assert identity["project_name"] == project.name
 
     @pytest.mark.asyncio
-    async def test_not_launched_response_contains_identity_fields(
-        self, orchestration_service, mock_db_manager
-    ):
+    async def test_not_launched_response_contains_identity_fields(self, orchestration_service, mock_db_manager):
         """Not-launched response also includes identity fields."""
         _, session = mock_db_manager
         job_id, job, execution, project = self._make_fixtures(
@@ -692,9 +651,7 @@ class TestGetOrchestratorInstructionsRedirectBranches:
 
         self._mock_session_for_get_orchestrator_instructions(session, execution, project)
 
-        result = await orchestration_service.get_orchestrator_instructions(
-            job_id=job_id, tenant_key="tenant-test"
-        )
+        result = await orchestration_service.get_orchestrator_instructions(job_id=job_id, tenant_key="tenant-test")
 
         identity = result["identity"]
         assert identity["job_id"] == job_id

@@ -29,6 +29,7 @@ from watchdog.observers import Observer
 # Import from centralized exceptions
 from .exceptions import ConfigValidationError
 
+
 logger = logging.getLogger(__name__)
 
 

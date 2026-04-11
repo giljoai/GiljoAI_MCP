@@ -99,6 +99,7 @@ except ImportError:
 
 import configparser
 
+
 # ---------------------------------------------------------------------------
 # Local config helpers (devtools.local.ini -- gitignored, per-developer)
 # ---------------------------------------------------------------------------
@@ -303,8 +304,7 @@ class GiljoDevControlPanel:
             else:
                 messagebox.showerror(
                     "Invalid Path",
-                    f"Not a GiljoAI MCP installation.\n\n"
-                    f"Could not find api/run_api.py in:\n{candidate}",
+                    f"Not a GiljoAI MCP installation.\n\nCould not find api/run_api.py in:\n{candidate}",
                 )
 
     def build_ui(self):
@@ -335,9 +335,7 @@ class GiljoDevControlPanel:
         target_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
         target_frame.grid_columnconfigure(1, weight=1)
 
-        ttk.Label(target_frame, text="Target:", font=("Arial", 9)).grid(
-            row=0, column=0, sticky="w", padx=(0, 5)
-        )
+        ttk.Label(target_frame, text="Target:", font=("Arial", 9)).grid(row=0, column=0, sticky="w", padx=(0, 5))
 
         self._target_path_var = StringVar(value=str(self.project_root))
         target_entry = ttk.Entry(
@@ -763,7 +761,10 @@ class GiljoDevControlPanel:
         self.root.after(2000, self.update_status)
 
     def _launch_in_terminal(
-        self, command: list[str], title: str = "", cwd: Optional[Path] = None,
+        self,
+        command: list[str],
+        title: str = "",
+        cwd: Optional[Path] = None,
         extra_path: Optional[str] = None,
     ) -> Optional[subprocess.Popen]:
         """
@@ -987,9 +988,7 @@ class GiljoDevControlPanel:
             try:
                 system = platform.system()
                 if system == "Windows":
-                    result = subprocess.run(
-                        ["netstat", "-ano"], check=False, capture_output=True, text=True, timeout=5
-                    )
+                    result = subprocess.run(["netstat", "-ano"], check=False, capture_output=True, text=True, timeout=5)
                     for line in result.stdout.splitlines():
                         if ":72" in line and "LISTENING" in line:
                             parts = line.split()
@@ -1005,9 +1004,7 @@ class GiljoDevControlPanel:
                                         pass
                 else:
                     # Linux/macOS: use ss (preferred) or lsof
-                    result = subprocess.run(
-                        ["ss", "-tlnp"], check=False, capture_output=True, text=True, timeout=5
-                    )
+                    result = subprocess.run(["ss", "-tlnp"], check=False, capture_output=True, text=True, timeout=5)
                     for line in result.stdout.splitlines():
                         if ":72" in line:
                             # ss output: LISTEN 0 128 0.0.0.0:7272 ... users:(("python3",pid=1234,...))
@@ -1019,6 +1016,7 @@ class GiljoDevControlPanel:
                                         if 7200 <= port <= 7299:
                                             # Extract PID from users:(...pid=NNNN...)
                                             import re
+
                                             pid_match = re.search(r"pid=(\d+)", line)
                                             pid = int(pid_match.group(1)) if pid_match else None
                                             if pid:
@@ -1062,9 +1060,7 @@ class GiljoDevControlPanel:
 
             try:
                 if system == "Windows":
-                    result = subprocess.run(
-                        ["netstat", "-ano"], check=False, capture_output=True, text=True, timeout=5
-                    )
+                    result = subprocess.run(["netstat", "-ano"], check=False, capture_output=True, text=True, timeout=5)
                     pids_to_kill = set()
                     for line in result.stdout.splitlines():
                         if f":{port}" in line and "LISTENING" in line:
@@ -1078,7 +1074,9 @@ class GiljoDevControlPanel:
                         try:
                             subprocess.run(
                                 ["taskkill", "/F", "/T", "/PID", pid],
-                                check=False, capture_output=True, timeout=5,
+                                check=False,
+                                capture_output=True,
+                                timeout=5,
                             )
                             pids_killed.add(pid)
                         except Exception:
@@ -1097,9 +1095,7 @@ class GiljoDevControlPanel:
                                     pass
                     except FileNotFoundError:
                         try:
-                            subprocess.run(
-                                ["fuser", "-k", f"{port}/tcp"], check=False, capture_output=True, timeout=5
-                            )
+                            subprocess.run(["fuser", "-k", f"{port}/tcp"], check=False, capture_output=True, timeout=5)
                         except FileNotFoundError:
                             pass
             except Exception as e:
@@ -1346,8 +1342,7 @@ class GiljoDevControlPanel:
             if not (frontend_dir / "node_modules" / ".package-lock.json").exists():
                 response = messagebox.askyesno(
                     "Dependencies Missing",
-                    "frontend/node_modules not found.\n\n"
-                    "Run 'npm install' now?",
+                    "frontend/node_modules not found.\n\nRun 'npm install' now?",
                     icon="warning",
                 )
                 if response:
@@ -1394,8 +1389,10 @@ class GiljoDevControlPanel:
             # Launch in terminal window with verbose output
             node_dir = self._find_nodejs_dir()
             self.frontend_process = self._launch_in_terminal(
-                command=command, title=f"GiljoAI Frontend Dev Server (Port {frontend_port})",
-                cwd=frontend_dir, extra_path=node_dir
+                command=command,
+                title=f"GiljoAI Frontend Dev Server (Port {frontend_port})",
+                cwd=frontend_dir,
+                extra_path=node_dir,
             )
 
             # Wait for frontend to start listening on port.
@@ -1489,9 +1486,10 @@ class GiljoDevControlPanel:
             if giljo_ports:
                 ports_found = sorted(giljo_ports.keys())
                 self.root.after(
-                    0, lambda: self.update_status_message(
+                    0,
+                    lambda: self.update_status_message(
                         f"Killing {len(giljo_ports)} process(es) on ports: {', '.join(map(str, ports_found))}"
-                    )
+                    ),
                 )
 
                 for port in ports_found:
@@ -1499,11 +1497,12 @@ class GiljoDevControlPanel:
 
                 remaining = self._find_all_giljo_ports()
                 if remaining:
-                    msg = (
-                        "Some processes could not be killed:\n\n"
-                        + "\n".join(f"Port {p}: PID {pid}" for p, pid in remaining.items())
+                    msg = "Some processes could not be killed:\n\n" + "\n".join(
+                        f"Port {p}: PID {pid}" for p, pid in remaining.items()
                     )
-                    self.root.after(0, lambda: self.update_status_message(f"WARNING: {len(remaining)} port(s) still in use!"))
+                    self.root.after(
+                        0, lambda: self.update_status_message(f"WARNING: {len(remaining)} port(s) still in use!")
+                    )
                     self.root.after(0, lambda: messagebox.showwarning("Incomplete Shutdown", msg))
                 else:
                     done_msg = (
@@ -1564,6 +1563,7 @@ class GiljoDevControlPanel:
         if not password:
             # 3. Prompt and persist
             from tkinter import simpledialog
+
             password = simpledialog.askstring(
                 "PostgreSQL Password",
                 "Enter postgres superuser password:\n\n"
@@ -2090,9 +2090,7 @@ class GiljoDevControlPanel:
             self.update_status_message("psql not found")
             messagebox.showerror(
                 "Error",
-                "psql not found!\n\n"
-                "Could not find PostgreSQL command-line tools.\n\n"
-                + self._get_pg_install_hint()
+                "psql not found!\n\nCould not find PostgreSQL command-line tools.\n\n" + self._get_pg_install_hint(),
             )
             return False
 
@@ -2319,8 +2317,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                 messagebox.showerror(
                     "Error",
                     "pg_dump not found!\n\n"
-                    "Could not find PostgreSQL command-line tools.\n\n"
-                    + self._get_pg_install_hint(),
+                    "Could not find PostgreSQL command-line tools.\n\n" + self._get_pg_install_hint(),
                 )
                 return
 
@@ -2701,6 +2698,7 @@ pg_restore -l {backup_file.name} | head -20
 
         # Prompt for dev admin username
         from tkinter import simpledialog
+
         dev_username = simpledialog.askstring(
             "Dev Admin Username",
             "Enter the admin username to reset:",
@@ -2713,8 +2711,7 @@ pg_restore -l {backup_file.name} | head -20
         # Prompt for temporary password
         dev_password = simpledialog.askstring(
             "Dev Admin Password",
-            f"Enter temporary password for '{dev_username}':\n\n"
-            "(You will be forced to change it on login)",
+            f"Enter temporary password for '{dev_username}':\n\n(You will be forced to change it on login)",
             initialvalue=saved_password,
             show="*",
             parent=self.root,
@@ -2765,9 +2762,7 @@ pg_restore -l {backup_file.name} | head -20
 
             with conn.cursor() as cur:
                 self.update_status_message(f"Resetting {dev_username} password...")
-                dev_admin_hash = _bcrypt.hashpw(
-                    dev_password.encode("utf-8"), _bcrypt.gensalt()
-                ).decode("utf-8")
+                dev_admin_hash = _bcrypt.hashpw(dev_password.encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
 
                 cur.execute(
                     """
@@ -3105,7 +3100,10 @@ pg_restore -l {backup_file.name} | head -20
                 try:
                     caroot_result = subprocess.run(
                         [mkcert_path, "-CAROOT"],
-                        capture_output=True, text=True, timeout=5, check=False,
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                        check=False,
                     )
                     if caroot_result.stdout.strip():
                         caroot_dir = Path(caroot_result.stdout.strip())
@@ -3240,9 +3238,15 @@ pg_restore -l {backup_file.name} | head -20
             if platform.system() == "Windows":
                 try:
                     subprocess.run(
-                        ["powershell", "-Command",
-                         f"[System.Environment]::SetEnvironmentVariable('{var_name}', $null, 'User')"],
-                        capture_output=True, text=True, timeout=10, check=False,
+                        [
+                            "powershell",
+                            "-Command",
+                            f"[System.Environment]::SetEnvironmentVariable('{var_name}', $null, 'User')",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                        check=False,
                     )
                 except Exception:
                     pass
@@ -3258,10 +3262,7 @@ pg_restore -l {backup_file.name} | head -20
                     if rc_file.exists():
                         try:
                             original = rc_file.read_text()
-                            cleaned = "\n".join(
-                                line for line in original.splitlines()
-                                if var_name not in line
-                            )
+                            cleaned = "\n".join(line for line in original.splitlines() if var_name not in line)
                             if cleaned != original:
                                 rc_file.write_text(cleaned + "\n")
                         except Exception:
@@ -3281,7 +3282,9 @@ pg_restore -l {backup_file.name} | head -20
         try:
             check = subprocess.run(
                 ["sudo", "-n", "true"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if check.returncode == 0:
                 return ""  # Empty string signals passwordless sudo
@@ -3317,7 +3320,10 @@ pg_restore -l {backup_file.name} | head -20
                 try:
                     result = subprocess.run(
                         [mkcert_path, "-CAROOT"],
-                        capture_output=True, text=True, timeout=5, check=False,
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                        check=False,
                     )
                     ca_dir = result.stdout.strip()
                     if ca_dir:
@@ -3325,7 +3331,10 @@ pg_restore -l {backup_file.name} | head -20
                         if ca_file.exists():
                             subprocess.run(
                                 ["certutil", "-delstore", "ROOT", "mkcert"],
-                                capture_output=True, text=True, timeout=10, check=False,
+                                capture_output=True,
+                                text=True,
+                                timeout=10,
+                                check=False,
                             )
                             removed.append("mkcert root CA (Windows cert store)")
                 except Exception:
@@ -3335,20 +3344,25 @@ pg_restore -l {backup_file.name} | head -20
             if giljo_cert.exists():
                 # Get sudo password via GUI prompt
                 sudo_pw = self._get_sudo_password(
-                    "Removing the mkcert root CA from the system\n"
-                    "trust store requires elevated privileges."
+                    "Removing the mkcert root CA from the system\ntrust store requires elevated privileges."
                 )
                 if sudo_pw is not None:
                     try:
                         subprocess.run(
                             ["sudo", "-S", "rm", "-f", str(giljo_cert)],
                             input=sudo_pw + "\n",
-                            capture_output=True, text=True, timeout=10, check=False,
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                            check=False,
                         )
                         subprocess.run(
                             ["sudo", "-S", "update-ca-certificates"],
                             input=sudo_pw + "\n",
-                            capture_output=True, text=True, timeout=15, check=False,
+                            capture_output=True,
+                            text=True,
+                            timeout=15,
+                            check=False,
                         )
                         removed.append("mkcert root CA (Linux ca-certificates)")
                     except Exception:
@@ -3359,22 +3373,25 @@ pg_restore -l {backup_file.name} | head -20
                 try:
                     result = subprocess.run(
                         [mkcert_path, "-CAROOT"],
-                        capture_output=True, text=True, timeout=5, check=False,
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                        check=False,
                     )
                     ca_dir = result.stdout.strip()
                     if ca_dir:
                         ca_file = Path(ca_dir) / "rootCA.pem"
                         if ca_file.exists():
                             sudo_pw = self._get_sudo_password(
-                                "Removing the mkcert root CA from the System\n"
-                                "keychain requires elevated privileges."
+                                "Removing the mkcert root CA from the System\nkeychain requires elevated privileges."
                             )
                             if sudo_pw is not None:
                                 subprocess.run(
-                                    ["sudo", "-S", "security", "remove-trusted-cert",
-                                     "-d", str(ca_file)],
+                                    ["sudo", "-S", "security", "remove-trusted-cert", "-d", str(ca_file)],
                                     input=sudo_pw + "\n",
-                                    capture_output=True, text=True, timeout=10,
+                                    capture_output=True,
+                                    text=True,
+                                    timeout=10,
                                     check=False,
                                 )
                                 removed.append("mkcert root CA (macOS System keychain)")
@@ -3410,7 +3427,9 @@ pg_restore -l {backup_file.name} | head -20
                 try:
                     result = subprocess.run(
                         [str(certutil), "-H"],
-                        capture_output=True, text=True, timeout=5,
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
                     )
                     if "-L" in result.stdout or "-L" in result.stderr:
                         return str(certutil)
@@ -3442,7 +3461,9 @@ pg_restore -l {backup_file.name} | head -20
                 try:
                     result = subprocess.run(
                         [trust_path, "list"],
-                        capture_output=True, text=True, timeout=15,
+                        capture_output=True,
+                        text=True,
+                        timeout=15,
                     )
                     current_uri = None
                     for line in result.stdout.splitlines():
@@ -3463,7 +3484,9 @@ pg_restore -l {backup_file.name} | head -20
                 try:
                     result = subprocess.run(
                         [certutil_path, "-L", "-d", f"sql:{nssdb_dir}"],
-                        capture_output=True, text=True, timeout=15,
+                        capture_output=True,
+                        text=True,
+                        timeout=15,
                     )
                     for line in result.stdout.splitlines():
                         if "mkcert" in line.lower():
@@ -3484,7 +3507,9 @@ pg_restore -l {backup_file.name} | head -20
                         try:
                             result = subprocess.run(
                                 [certutil_path, "-L", "-d", f"sql:{profile_dir}"],
-                                capture_output=True, text=True, timeout=15,
+                                capture_output=True,
+                                text=True,
+                                timeout=15,
                             )
                             for line in result.stdout.splitlines():
                                 if "mkcert" in line.lower():
@@ -3500,11 +3525,16 @@ pg_restore -l {backup_file.name} | head -20
             # Check user certificate store (CurrentUser\Root)
             try:
                 result = subprocess.run(
-                    ["powershell", "-Command",
-                     "Get-ChildItem Cert:\\CurrentUser\\Root | "
-                     "Where-Object { $_.Subject -like '*mkcert*' } | "
-                     "Select-Object -ExpandProperty Thumbprint"],
-                    capture_output=True, text=True, timeout=15,
+                    [
+                        "powershell",
+                        "-Command",
+                        "Get-ChildItem Cert:\\CurrentUser\\Root | "
+                        "Where-Object { $_.Subject -like '*mkcert*' } | "
+                        "Select-Object -ExpandProperty Thumbprint",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
                 )
                 thumbprint = result.stdout.strip()
                 if thumbprint:
@@ -3515,11 +3545,16 @@ pg_restore -l {backup_file.name} | head -20
             # Check machine certificate store (LocalMachine\Root)
             try:
                 result = subprocess.run(
-                    ["powershell", "-Command",
-                     "Get-ChildItem Cert:\\LocalMachine\\Root | "
-                     "Where-Object { $_.Subject -like '*mkcert*' } | "
-                     "Select-Object -ExpandProperty Thumbprint"],
-                    capture_output=True, text=True, timeout=15,
+                    [
+                        "powershell",
+                        "-Command",
+                        "Get-ChildItem Cert:\\LocalMachine\\Root | "
+                        "Where-Object { $_.Subject -like '*mkcert*' } | "
+                        "Select-Object -ExpandProperty Thumbprint",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
                 )
                 thumbprint = result.stdout.strip()
                 if thumbprint:
@@ -3537,22 +3572,22 @@ pg_restore -l {backup_file.name} | head -20
                         if nssdb.exists():
                             try:
                                 result = subprocess.run(
-                                    [nss_certutil, "-L", "-d",
-                                     f"sql:{profile_dir}"],
-                                    capture_output=True, text=True, timeout=15,
+                                    [nss_certutil, "-L", "-d", f"sql:{profile_dir}"],
+                                    capture_output=True,
+                                    text=True,
+                                    timeout=15,
                                 )
                                 for line in result.stdout.splitlines():
                                     if "mkcert" in line.lower():
                                         label = line.rsplit(None, 1)[0].strip()
-                                        found.setdefault(
-                                            "win_firefox_profiles", []
-                                        ).append({
-                                            "path": str(profile_dir),
-                                            "label": label,
-                                        })
+                                        found.setdefault("win_firefox_profiles", []).append(
+                                            {
+                                                "path": str(profile_dir),
+                                                "label": label,
+                                            }
+                                        )
                                         break
-                            except (subprocess.CalledProcessError,
-                                    subprocess.TimeoutExpired):
+                            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                                 pass
 
         return found if found else None
@@ -3571,14 +3606,12 @@ pg_restore -l {backup_file.name} | head -20
         sudo_password = None
 
         if platform.system() == "Linux":
-            needs_sudo = ("nss_no_certutil" in ca_info
-                          or "p11kit_uri" in ca_info)
+            needs_sudo = "nss_no_certutil" in ca_info or "p11kit_uri" in ca_info
 
             # Ask for sudo password once upfront if any operation needs it
             if needs_sudo:
                 sudo_password = self._get_sudo_password(
-                    "Removing orphaned mkcert certificates requires\n"
-                    "elevated privileges."
+                    "Removing orphaned mkcert certificates requires\nelevated privileges."
                 )
                 if sudo_password is None:
                     messagebox.showwarning(
@@ -3600,10 +3633,11 @@ pg_restore -l {backup_file.name} | head -20
                 if install:
                     try:
                         result = subprocess.run(
-                            ["sudo", "-S", "apt-get", "install", "-y",
-                             "libnss3-tools"],
+                            ["sudo", "-S", "apt-get", "install", "-y", "libnss3-tools"],
                             input=(sudo_password + "\n") if sudo_password else None,
-                            capture_output=True, text=True, timeout=60,
+                            capture_output=True,
+                            text=True,
+                            timeout=60,
                         )
                         if result.returncode == 0:
                             certutil_path = shutil.which("certutil")
@@ -3611,9 +3645,10 @@ pg_restore -l {backup_file.name} | head -20
                                 nssdb_dir = Path.home() / ".pki" / "nssdb"
                                 if nssdb_dir.exists():
                                     scan = subprocess.run(
-                                        [certutil_path, "-L", "-d",
-                                         f"sql:{nssdb_dir}"],
-                                        capture_output=True, text=True, timeout=15,
+                                        [certutil_path, "-L", "-d", f"sql:{nssdb_dir}"],
+                                        capture_output=True,
+                                        text=True,
+                                        timeout=15,
                                     )
                                     for line in scan.stdout.splitlines():
                                         if "mkcert" in line.lower():
@@ -3621,9 +3656,7 @@ pg_restore -l {backup_file.name} | head -20
                                             ca_info["nss_label"] = label
                                             break
                         else:
-                            self.logger.warning(
-                                f"libnss3-tools install failed: {result.stderr.strip()}"
-                            )
+                            self.logger.warning(f"libnss3-tools install failed: {result.stderr.strip()}")
                             all_removed = False
                     except subprocess.TimeoutExpired:
                         all_removed = False
@@ -3637,12 +3670,12 @@ pg_restore -l {backup_file.name} | head -20
                 try:
                     result = subprocess.run(
                         [certutil_path, "-D", "-d", f"sql:{nssdb_dir}", "-n", label],
-                        capture_output=True, text=True, timeout=15,
+                        capture_output=True,
+                        text=True,
+                        timeout=15,
                     )
                     if result.returncode != 0:
-                        self.logger.warning(
-                            f"NSS cert removal failed: {result.stderr.strip()}"
-                        )
+                        self.logger.warning(f"NSS cert removal failed: {result.stderr.strip()}")
                         all_removed = False
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                     all_removed = False
@@ -3654,23 +3687,23 @@ pg_restore -l {backup_file.name} | head -20
                 for cert_file in ca_certs_dir.glob("*.crt"):
                     try:
                         result = subprocess.run(
-                            ["openssl", "x509", "-in", str(cert_file),
-                             "-noout", "-subject"],
-                            capture_output=True, text=True, timeout=5,
+                            ["openssl", "x509", "-in", str(cert_file), "-noout", "-subject"],
+                            capture_output=True,
+                            text=True,
+                            timeout=5,
                         )
                         if "mkcert" in result.stdout.lower():
                             rm_result = subprocess.run(
                                 ["sudo", "-S", "rm", str(cert_file)],
                                 input=(sudo_password + "\n") if sudo_password else None,
-                                capture_output=True, text=True, timeout=10,
+                                capture_output=True,
+                                text=True,
+                                timeout=10,
                             )
                             if rm_result.returncode == 0:
                                 removed_file = True
                             else:
-                                self.logger.warning(
-                                    f"Failed to delete {cert_file}: "
-                                    f"{rm_result.stderr.strip()}"
-                                )
+                                self.logger.warning(f"Failed to delete {cert_file}: {rm_result.stderr.strip()}")
                     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                         pass
 
@@ -3679,7 +3712,9 @@ pg_restore -l {backup_file.name} | head -20
                         subprocess.run(
                             ["sudo", "-S", "update-ca-certificates"],
                             input=(sudo_password + "\n") if sudo_password else None,
-                            capture_output=True, text=True, timeout=30,
+                            capture_output=True,
+                            text=True,
+                            timeout=30,
                         )
                     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                         self.logger.warning("update-ca-certificates failed")
@@ -3691,14 +3726,14 @@ pg_restore -l {backup_file.name} | head -20
                 if certutil_path:
                     try:
                         result = subprocess.run(
-                            [certutil_path, "-D", "-d", f"sql:{profile['path']}",
-                             "-n", profile["label"]],
-                            capture_output=True, text=True, timeout=15,
+                            [certutil_path, "-D", "-d", f"sql:{profile['path']}", "-n", profile["label"]],
+                            capture_output=True,
+                            text=True,
+                            timeout=15,
                         )
                         if result.returncode != 0:
                             self.logger.warning(
-                                f"Firefox NSS cert removal failed for "
-                                f"{profile['path']}: {result.stderr.strip()}"
+                                f"Firefox NSS cert removal failed for {profile['path']}: {result.stderr.strip()}"
                             )
                             all_removed = False
                     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
@@ -3707,14 +3742,12 @@ pg_restore -l {backup_file.name} | head -20
             if all_removed:
                 messagebox.showinfo(
                     "Certificates Removed",
-                    "All orphaned mkcert root CAs have been removed\n"
-                    "from the system trust stores.",
+                    "All orphaned mkcert root CAs have been removed\nfrom the system trust stores.",
                 )
             else:
                 messagebox.showwarning(
                     "Partial Cleanup",
-                    "Some mkcert CAs could not be automatically removed.\n"
-                    "Check the control panel log for details.",
+                    "Some mkcert CAs could not be automatically removed.\nCheck the control panel log for details.",
                 )
 
         elif platform.system() == "Windows":
@@ -3726,14 +3759,14 @@ pg_restore -l {backup_file.name} | head -20
                 try:
                     result = subprocess.run(
                         ["certutil", "-delstore", "-user", "Root", thumbprint],
-                        capture_output=True, text=True, timeout=15,
+                        capture_output=True,
+                        text=True,
+                        timeout=15,
                     )
                     if result.returncode == 0:
                         stores_cleaned.append("User certificate store")
                     else:
-                        self.logger.warning(
-                            f"User cert store removal failed: {result.stderr.strip()}"
-                        )
+                        self.logger.warning(f"User cert store removal failed: {result.stderr.strip()}")
                         all_removed = False
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                     all_removed = False
@@ -3749,25 +3782,36 @@ pg_restore -l {backup_file.name} | head -20
                         f"else {{ exit 1 }}"
                     )
                     result = subprocess.run(
-                        ["powershell", "-Command",
-                         "Start-Process", "powershell",
-                         f"'-Command {ps_script}'",
-                         "-Verb", "RunAs", "-Wait"],
-                        capture_output=True, text=True, timeout=30,
+                        [
+                            "powershell",
+                            "-Command",
+                            "Start-Process",
+                            "powershell",
+                            f"'-Command {ps_script}'",
+                            "-Verb",
+                            "RunAs",
+                            "-Wait",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
                     )
                     verify = subprocess.run(
-                        ["powershell", "-Command",
-                         f"Get-ChildItem Cert:\\LocalMachine\\Root "
-                         f"| Where-Object {{ $_.Thumbprint -eq '{thumbprint}' }} "
-                         f"| Measure-Object | Select-Object -ExpandProperty Count"],
-                        capture_output=True, text=True, timeout=10,
+                        [
+                            "powershell",
+                            "-Command",
+                            f"Get-ChildItem Cert:\\LocalMachine\\Root "
+                            f"| Where-Object {{ $_.Thumbprint -eq '{thumbprint}' }} "
+                            f"| Measure-Object | Select-Object -ExpandProperty Count",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
                     )
                     if verify.stdout.strip() == "0":
                         stores_cleaned.append("Machine certificate store")
                     else:
-                        self.logger.warning(
-                            "Machine cert store removal: cert still present after UAC"
-                        )
+                        self.logger.warning("Machine cert store removal: cert still present after UAC")
                         all_removed = False
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                     all_removed = False
@@ -3778,19 +3822,15 @@ pg_restore -l {backup_file.name} | head -20
                 if nss_certutil:
                     try:
                         result = subprocess.run(
-                            [nss_certutil, "-D", "-d",
-                             f"sql:{profile['path']}",
-                             "-n", profile["label"]],
-                            capture_output=True, text=True, timeout=15,
+                            [nss_certutil, "-D", "-d", f"sql:{profile['path']}", "-n", profile["label"]],
+                            capture_output=True,
+                            text=True,
+                            timeout=15,
                         )
                         if result.returncode == 0:
-                            stores_cleaned.append(
-                                f"Firefox profile ({Path(profile['path']).name})"
-                            )
+                            stores_cleaned.append(f"Firefox profile ({Path(profile['path']).name})")
                         else:
-                            self.logger.warning(
-                                f"Firefox NSS removal failed: {result.stderr.strip()}"
-                            )
+                            self.logger.warning(f"Firefox NSS removal failed: {result.stderr.strip()}")
                             all_removed = False
                     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                         all_removed = False
@@ -3946,7 +3986,10 @@ pg_restore -l {backup_file.name} | head -20
             try:
                 result = subprocess.run(
                     ["powershell", "-Command", find_cmd],
-                    capture_output=True, text=True, timeout=10, check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=False,
                 )
                 thumbprints = [t.strip() for t in result.stdout.strip().splitlines() if t.strip()]
 
@@ -3957,26 +4000,26 @@ pg_restore -l {backup_file.name} | head -20
                 # Build removal script that runs elevated
                 remove_lines = []
                 for tp in thumbprints:
-                    remove_lines.append(
-                        f"Get-ChildItem Cert:\\LocalMachine\\Root\\{tp} "
-                        f"| Remove-Item -Force"
-                    )
+                    remove_lines.append(f"Get-ChildItem Cert:\\LocalMachine\\Root\\{tp} | Remove-Item -Force")
                 remove_script = "; ".join(remove_lines)
 
                 # Run elevated via Start-Process and wait for completion
-                elevated_cmd = (
-                    f"Start-Process powershell -Verb RunAs -Wait "
-                    f"-ArgumentList '-Command', '{remove_script}'"
-                )
+                elevated_cmd = f"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-Command', '{remove_script}'"
                 subprocess.run(
                     ["powershell", "-Command", elevated_cmd],
-                    capture_output=True, text=True, timeout=30, check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
                 )
 
                 # Verify removal
                 verify = subprocess.run(
                     ["powershell", "-Command", find_cmd],
-                    capture_output=True, text=True, timeout=10, check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=False,
                 )
                 remaining = [t.strip() for t in verify.stdout.strip().splitlines() if t.strip()]
 
@@ -3985,8 +4028,7 @@ pg_restore -l {backup_file.name} | head -20
                     self.logger.info("Removed %d mkcert CAs from LocalMachine\\Root", len(thumbprints))
                 else:
                     removed.append(
-                        f"WARNING: {len(remaining)} mkcert CA(s) still in store "
-                        f"(UAC declined or removal failed)"
+                        f"WARNING: {len(remaining)} mkcert CA(s) still in store (UAC declined or removal failed)"
                     )
                     self.logger.warning("mkcert CAs still present after removal attempt: %s", remaining)
 
@@ -3999,21 +4041,32 @@ pg_restore -l {backup_file.name} | head -20
             # Find and remove by label
             try:
                 find_result = subprocess.run(
-                    ["security", "find-certificate", "-c", "mkcert",
-                     "/Library/Keychains/System.keychain"],
-                    capture_output=True, text=True, timeout=10, check=False,
+                    ["security", "find-certificate", "-c", "mkcert", "/Library/Keychains/System.keychain"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=False,
                 )
                 if find_result.returncode == 0 and "mkcert" in find_result.stdout:
                     sudo_pw = self._get_sudo_password(
-                        "Removing the mkcert root CA from the System\n"
-                        "keychain requires elevated privileges."
+                        "Removing the mkcert root CA from the System\nkeychain requires elevated privileges."
                     )
                     if sudo_pw is not None:
                         subprocess.run(
-                            ["sudo", "-S", "security", "delete-certificate",
-                             "-c", "mkcert", "/Library/Keychains/System.keychain"],
+                            [
+                                "sudo",
+                                "-S",
+                                "security",
+                                "delete-certificate",
+                                "-c",
+                                "mkcert",
+                                "/Library/Keychains/System.keychain",
+                            ],
                             input=sudo_pw + "\n",
-                            capture_output=True, text=True, timeout=10, check=False,
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                            check=False,
                         )
                         removed.append("Removed mkcert CA from macOS System keychain")
                     else:
@@ -4028,20 +4081,25 @@ pg_restore -l {backup_file.name} | head -20
             giljo_cert = Path("/usr/local/share/ca-certificates/giljoai.crt")
             if giljo_cert.exists():
                 sudo_pw = self._get_sudo_password(
-                    "Removing the certificate from the system\n"
-                    "trust store requires elevated privileges."
+                    "Removing the certificate from the system\ntrust store requires elevated privileges."
                 )
                 if sudo_pw is not None:
                     try:
                         subprocess.run(
                             ["sudo", "-S", "rm", "-f", str(giljo_cert)],
                             input=sudo_pw + "\n",
-                            capture_output=True, text=True, timeout=10, check=False,
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                            check=False,
                         )
                         subprocess.run(
                             ["sudo", "-S", "update-ca-certificates"],
                             input=sudo_pw + "\n",
-                            capture_output=True, text=True, timeout=15, check=False,
+                            capture_output=True,
+                            text=True,
+                            timeout=15,
+                            check=False,
                         )
                         removed.append("Removed mkcert CA from Linux ca-certificates")
                     except Exception as e:

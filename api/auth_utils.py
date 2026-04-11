@@ -18,6 +18,7 @@ from fastapi import WebSocket, WebSocketException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
 logger = logging.getLogger(__name__)
 
 

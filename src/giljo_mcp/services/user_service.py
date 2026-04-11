@@ -38,6 +38,7 @@ from src.giljo_mcp.exceptions import (
 from src.giljo_mcp.models.auth import TOGGLEABLE_CATEGORIES, User, UserFieldPriority
 from src.giljo_mcp.services.user_auth_service import UserAuthService
 
+
 logger = logging.getLogger(__name__)
 
 

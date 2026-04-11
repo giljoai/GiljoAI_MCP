@@ -24,6 +24,7 @@ from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from .dependencies import get_db_manager
 from .models import MemoryEntriesResponse, MemoryEntryResponse
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

@@ -26,6 +26,7 @@ from src.giljo_mcp.template_renderer import hex_to_claude_color
 from .dependencies import get_template_service
 from .models import TemplatePreviewRequest, TemplatePreviewResponse
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

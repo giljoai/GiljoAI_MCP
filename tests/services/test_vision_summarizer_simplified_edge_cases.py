@@ -20,10 +20,10 @@ Coverage Target: >90%
 Updated Handover 0731: Migrated from dict returns to typed SummarizeMultiLevelResult.
 """
 
-
 from src.giljo_mcp.schemas.service_responses import SummarizeMultiLevelResult
 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 from tests.services.conftest import generate_realistic_document
+
 
 # ============================================================================
 # UNIT TESTS - Document Handling and Validation

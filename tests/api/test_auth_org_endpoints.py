@@ -69,9 +69,7 @@ async def test_create_first_admin_accepts_workspace_name(api_client, db_manager)
 
     # Check if any users already exist (endpoint rejects if total_users > 0, not just admins)
     async with db_manager.get_session_async() as session:
-        user_count_result = await session.execute(
-            select(func.count()).select_from(User)
-        )
+        user_count_result = await session.execute(select(func.count()).select_from(User))
         user_count = user_count_result.scalar()
 
     unique_suffix = str(uuid4())[:8]
@@ -142,9 +140,7 @@ async def test_create_first_admin_defaults_workspace_name(api_client, db_manager
 
     # Check if any users already exist (endpoint rejects if total_users > 0, not just admins)
     async with db_manager.get_session_async() as session:
-        user_count_result = await session.execute(
-            select(func.count()).select_from(User)
-        )
+        user_count_result = await session.execute(select(func.count()).select_from(User))
         user_count = user_count_result.scalar()
 
     unique_suffix = str(uuid4())[:8]

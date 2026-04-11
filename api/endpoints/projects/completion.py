@@ -35,6 +35,7 @@ from src.giljo_mcp.services.project_service import ProjectService
 from .dependencies import get_project_service
 from .models import ContinueWorkingResponse, ProjectCloseOutResponse
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

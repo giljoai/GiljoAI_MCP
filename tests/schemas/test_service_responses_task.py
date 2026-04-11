@@ -25,6 +25,7 @@ from src.giljo_mcp.schemas.service_responses import (
     TaskUpdateResult,
 )
 
+
 # ---------------------------------------------------------------------------
 # Task Service Models
 # ---------------------------------------------------------------------------

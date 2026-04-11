@@ -30,6 +30,7 @@ from src.giljo_mcp.models import Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.monitoring.health_config import AgentHealthStatus, HealthCheckConfig
 
+
 logger = logging.getLogger(__name__)
 
 

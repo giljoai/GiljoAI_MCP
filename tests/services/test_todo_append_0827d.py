@@ -33,6 +33,7 @@ from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
 
+
 # ============================================================================
 # Fixtures
 # ============================================================================

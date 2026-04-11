@@ -102,24 +102,18 @@ class TestBootstrapTemplateIntegration:
 
     def test_claude_placeholder_substitution(self):
         """Claude bootstrap has only SLASH_COMMANDS_URL placeholder (two-phase install)."""
-        result = BOOTSTRAP_CLAUDE_CODE.replace(
-            "{SLASH_COMMANDS_URL}", "https://example.com/slash.zip"
-        )
+        result = BOOTSTRAP_CLAUDE_CODE.replace("{SLASH_COMMANDS_URL}", "https://example.com/slash.zip")
         assert "{" not in result  # No remaining placeholders
         assert "https://example.com/slash.zip" in result
 
     def test_gemini_placeholder_substitution(self):
         """Gemini bootstrap has only SLASH_COMMANDS_URL placeholder (two-phase install)."""
-        result = BOOTSTRAP_GEMINI_CLI.replace(
-            "{SLASH_COMMANDS_URL}", "https://example.com/slash.zip"
-        )
+        result = BOOTSTRAP_GEMINI_CLI.replace("{SLASH_COMMANDS_URL}", "https://example.com/slash.zip")
         assert "{" not in result
 
     def test_codex_placeholder_substitution(self):
         """Codex bootstrap can have skills placeholder substituted."""
-        result = BOOTSTRAP_CODEX_CLI.replace(
-            "{SKILLS_URL}", "https://example.com/skills.zip"
-        )
+        result = BOOTSTRAP_CODEX_CLI.replace("{SKILLS_URL}", "https://example.com/skills.zip")
         assert "{SKILLS_URL}" not in result
         assert "https://example.com/skills.zip" in result
 
@@ -153,6 +147,7 @@ class TestTemplateQualityGates:
     def test_no_debug_markers(self, name, template):
         """No template contains developer debug markers (TODO:, FIXME:, HACK:)."""
         import re
+
         # Match developer markers with colon (e.g. "TODO:", "FIXME:", "HACK:")
         # but not the word "TODO" used as regular content (e.g. "a TODO", "TODOs")
         assert not re.search(r"\bTODO\s*:", template, re.IGNORECASE), f"{name} contains TODO: marker"

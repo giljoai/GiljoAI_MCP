@@ -41,6 +41,7 @@ from src.giljo_mcp.models import Product, User
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Vision Documents"])

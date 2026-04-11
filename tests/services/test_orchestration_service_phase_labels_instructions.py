@@ -14,6 +14,7 @@ Split from test_orchestration_service_phase_labels.py during test reorganization
 
 import pytest
 
+
 # ============================================================================
 # Change D: Phase assignment instructions in orchestrator protocol
 # ============================================================================
@@ -32,9 +33,7 @@ class TestOrchestratorPhaseInstructions:
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Spawn an orchestrator for the multi-terminal project
         spawn_result = await service.spawn_agent_job(
@@ -65,9 +64,7 @@ class TestOrchestratorPhaseInstructions:
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Spawn an orchestrator for the CLI project
         spawn_result = await service.spawn_agent_job(
@@ -94,9 +91,7 @@ class TestOrchestratorPhaseInstructions:
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         spawn_result = await service.spawn_agent_job(
             agent_display_name="orchestrator",
@@ -129,9 +124,7 @@ class TestOrchestratorPhaseInstructions:
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Default project (no explicit execution_mode = defaults to multi_terminal)
         spawn_result = await service.spawn_agent_job(

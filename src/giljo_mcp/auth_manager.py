@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config_manager import get_config
 
+
 logger = logging.getLogger(__name__)
 
 

@@ -39,6 +39,7 @@ from typing import Optional, Tuple
 import click
 from colorama import Fore, Style, init
 
+
 # ---------------------------------------------------------------------------
 # Virtualenv guard: always relaunch inside the project-managed interpreter
 # ---------------------------------------------------------------------------
@@ -913,26 +914,28 @@ def _check_and_stamp_migration_version() -> None:
 
         db_manager = DatabaseManager(database_url=db_url, is_async=False)
         with db_manager.get_session() as session:
-            result = session.execute(
-                text("SELECT version_num FROM alembic_version LIMIT 1")
-            )
+            result = session.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
             current = result.scalar()
 
             if not current or current == "baseline_v36":
                 return
 
             known_old = {
-                "baseline_v33", "baseline_v34", "baseline_v35",
-                "0855a_setup_state", "0904_auto_checkin", "0950b_exec_status",
-                "0960_checkin_min", "0435b_closed_status", "0435d_requires_action",
+                "baseline_v33",
+                "baseline_v34",
+                "baseline_v35",
+                "0855a_setup_state",
+                "0904_auto_checkin",
+                "0950b_exec_status",
+                "0960_checkin_min",
+                "0435b_closed_status",
+                "0435d_requires_action",
                 "bee938301ffa",
             }
 
             if current in known_old or current not in known_old:
                 print_info(f"Stamping migration: {current} -> baseline_v36")
-                session.execute(
-                    text("UPDATE alembic_version SET version_num = 'baseline_v36'")
-                )
+                session.execute(text("UPDATE alembic_version SET version_num = 'baseline_v36'"))
                 session.commit()
                 print_success("Migration version updated to baseline_v36")
 
@@ -944,6 +947,7 @@ def _get_database_url() -> Optional[str]:
     """Build database URL from environment (same source as check_database_connectivity)."""
     try:
         from dotenv import load_dotenv
+
         load_dotenv()
 
         database_url = os.getenv("DATABASE_URL")
@@ -951,6 +955,7 @@ def _get_database_url() -> Optional[str]:
             return database_url
 
         from urllib.parse import quote_plus
+
         db_host = os.getenv("DB_HOST", "localhost")
         db_port = os.getenv("DB_PORT", "5432")
         db_name = os.getenv("DB_NAME", "giljo_mcp")
@@ -999,8 +1004,11 @@ def run_database_migrations() -> bool:
 
 
 def run_startup(
-    check_only: bool = False, verbose: bool = False, no_browser: bool = False,
-    no_migrations: bool = False, no_ssl: bool = False,
+    check_only: bool = False,
+    verbose: bool = False,
+    no_browser: bool = False,
+    no_migrations: bool = False,
+    no_ssl: bool = False,
 ) -> int:
     """
     Main startup function.
@@ -1203,8 +1211,17 @@ def stop_services() -> int:
     try:
         if platform.system() == "Windows":
             result = subprocess.run(
-                ["wmic", "process", "where", "CommandLine like '%run_api.py%' and Name='python.exe'", "get", "ProcessId"],
-                capture_output=True, text=True, timeout=10,
+                [
+                    "wmic",
+                    "process",
+                    "where",
+                    "CommandLine like '%run_api.py%' and Name='python.exe'",
+                    "get",
+                    "ProcessId",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             for line in result.stdout.strip().split("\n")[1:]:
                 pid = line.strip()
@@ -1215,7 +1232,9 @@ def stop_services() -> int:
         else:
             result = subprocess.run(
                 ["pgrep", "-f", "run_api.py"],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             for pid in result.stdout.strip().split("\n"):
                 if pid.strip().isdigit():
@@ -1230,7 +1249,9 @@ def stop_services() -> int:
         if platform.system() == "Windows":
             result = subprocess.run(
                 ["wmic", "process", "where", "CommandLine like '%vite%' and Name='node.exe'", "get", "ProcessId"],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             for line in result.stdout.strip().split("\n")[1:]:
                 pid = line.strip()
@@ -1241,7 +1262,9 @@ def stop_services() -> int:
         else:
             result = subprocess.run(
                 ["pgrep", "-f", "vite"],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             for pid in result.stdout.strip().split("\n"):
                 if pid.strip().isdigit():
@@ -1267,7 +1290,9 @@ def stop_services() -> int:
 @click.option("--no-ssl", is_flag=True, help="Force HTTP even if HTTPS is configured (for Docker/CI/reverse-proxy)")
 @click.option("--stop", is_flag=True, help="Stop all running GiljoAI services")
 @click.option("--dev", is_flag=True, help="Force development mode (Vite dev server with hot-reload)")
-def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool, no_ssl: bool, stop: bool, dev: bool) -> None:
+def main(
+    check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool, no_ssl: bool, stop: bool, dev: bool
+) -> None:
     """
     GiljoAI MCP - Unified Startup Script
 
@@ -1283,8 +1308,11 @@ def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool,
             exit_code = stop_services()
         else:
             exit_code = run_startup(
-                check_only=check_only, verbose=verbose, no_browser=no_browser,
-                no_migrations=no_migrations, no_ssl=no_ssl,
+                check_only=check_only,
+                verbose=verbose,
+                no_browser=no_browser,
+                no_migrations=no_migrations,
+                no_ssl=no_ssl,
             )
     except KeyboardInterrupt:
         print_info("\nStartup cancelled by user")

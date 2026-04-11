@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,6 +32,7 @@ from src.giljo_mcp.services.product_service import ProductService
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.services.task_service import TaskService
 from src.giljo_mcp.tenant import TenantManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -60,17 +62,17 @@ def _build_setup_instructions(platform: str, download_url: str) -> str:
             "Extract to: ~/.gemini/ (create if needed, overwrite existing)\n"
             "Delete the downloaded zip.\n\n"
             "Step 2 — Enable custom agents:\n"
-            "Merge {\"experimental\": {\"enableAgents\": true}} into ~/.gemini/settings.json "
+            'Merge {"experimental": {"enableAgents": true}} into ~/.gemini/settings.json '
             "(create if it does not exist). Preserve all existing settings.\n"
             "IMPORTANT — Use a shell command for this step. Your file-write tool may be "
             "sandboxed to the workspace and unable to write to the home directory.\n"
-            "Linux/macOS: python3 -c \""
+            'Linux/macOS: python3 -c "'
             "import json,pathlib; "
             "p=pathlib.Path.home()/'.gemini'/'settings.json'; "
             "d=json.loads(p.read_text()) if p.exists() else {}; "
             "d.setdefault('experimental',{})['enableAgents']=True; "
-            "p.write_text(json.dumps(d,indent=2))\"\n"
-            "Windows PowerShell: $p=\"$env:USERPROFILE\\.gemini\\settings.json\"; "
+            'p.write_text(json.dumps(d,indent=2))"\n'
+            'Windows PowerShell: $p="$env:USERPROFILE\\.gemini\\settings.json"; '
             "$d=if(Test-Path $p){Get-Content $p -Raw|ConvertFrom-Json -AsHashtable}else{@{}}; "
             "if(-not $d.ContainsKey('experimental')){$d['experimental']=@{}}; "
             "$d['experimental']['enableAgents']=$true; "
@@ -115,13 +117,13 @@ def _build_setup_instructions(platform: str, download_url: str) -> str:
         "Back up config.toml before writing.\n"
         "Sandbox fallback: If your file-write tool cannot write outside the workspace, "
         "use a shell command instead: cp -p ~/.codex/config.toml ~/.codex/config.toml.bak "
-        "&& python3 -c \"import tomllib,pathlib; "
+        '&& python3 -c "import tomllib,pathlib; '
         "p=pathlib.Path.home()/'.codex'/'config.toml'; "
         "t=p.read_text() if p.exists() else ''; "
         "tomllib.loads(t) if t.strip() else None; "
         "t+='\\n[features]\\ndefault_mode_request_user_input = true\\nmulti_agent = true\\n' "
         "if '[features]' not in t else t; "
-        "p.write_text(t); tomllib.loads(p.read_text())\"\n"
+        'p.write_text(t); tomllib.loads(p.read_text())"\n'
         "IMPORTANT — Windows BOM trap: Use your built-in write_file tool if available. "
         "If you must use PowerShell: $utf8NoBom = New-Object System.Text.UTF8Encoding($false); "
         "[System.IO.File]::WriteAllText($path, $content, $utf8NoBom). "

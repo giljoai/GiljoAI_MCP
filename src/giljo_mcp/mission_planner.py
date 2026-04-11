@@ -16,6 +16,7 @@ import logging
 from .database import DatabaseManager
 from .models import Product, Project
 
+
 logger = logging.getLogger(__name__)
 
 

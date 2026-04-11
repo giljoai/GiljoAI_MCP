@@ -23,11 +23,13 @@ import warnings
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+
 
 # Enable all warnings
 warnings.filterwarnings("always")
