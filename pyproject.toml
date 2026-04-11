@@ -92,6 +92,8 @@ exclude = [
     "__pycache__", "build", "dist", "node_modules", "migrations",
     "temp", "backups", "logs", "data", ".serena", ".giljo-config",
     "dev_tools/",
+    "installer/",
+    "installers/",
 ]
 
 [tool.ruff.lint]
