@@ -177,6 +177,7 @@ exclude = [
     "data",
     ".serena",
     ".giljo-config",
+    "dev_tools",
 ]
 
 # Allow unused variables when underscore-prefixed
