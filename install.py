@@ -57,7 +57,7 @@ def _bootstrap_dependencies():
     print(f"Installing bootstrap dependencies: {', '.join(missing)}...")
     use_user = sys.prefix == sys.base_prefix  # Not in a venv
 
-    cmd = [sys.executable, "-m", "pip", "install", "-q"] + missing
+    cmd = [sys.executable, "-m", "pip", "install", "-q", "--no-cache-dir"] + missing
     if use_user:
         cmd.insert(5, "--user")
 
@@ -1428,7 +1428,7 @@ class UnifiedInstaller:
             print(f"{Fore.WHITE}You will see pip's progress output below...{Style.RESET_ALL}\n")
 
             subprocess.run(
-                [str(python_executable), "-m", "pip", "install", "-r", str(self.requirements_file)],
+                [str(python_executable), "-m", "pip", "install", "--no-cache-dir", "-r", str(self.requirements_file)],
                 check=True,
                 text=True,
                 timeout=300,  # 5 minute timeout
@@ -1443,7 +1443,7 @@ class UnifiedInstaller:
                 try:
                     python_executable = self.platform.get_venv_python(self.venv_dir)
                     subprocess.run(
-                        [str(python_executable), "-m", "pip", "install", "-q", "pre-commit>=3.5.0"],
+                        [str(python_executable), "-m", "pip", "install", "-q", "--no-cache-dir", "pre-commit>=3.5.0"],
                         check=True,
                         capture_output=True,
                         timeout=60,
