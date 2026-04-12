@@ -86,6 +86,21 @@ def _build_db_url() -> str | None:
     return f"postgresql://{user}:{password}@{host}:{port}/{name}"
 
 
+def _load_revision_registry() -> set[str]:
+    """Load known revision IDs from the revision registry."""
+    registry_path = ROOT / "migrations" / "revision_registry.json"
+    if not registry_path.exists():
+        return set()
+    try:
+        import json
+
+        with open(registry_path) as f:
+            data = json.load(f)
+        return set(data.get("known_revisions", []))
+    except (json.JSONDecodeError, OSError):
+        return set()
+
+
 def _get_revisions(db_url: str) -> tuple[str | None, str | None]:
     """Return (current_revision, head_revision). Either may be None on failure."""
     alembic_ini = ROOT / "alembic.ini"
@@ -113,6 +128,62 @@ def _get_revisions(db_url: str) -> tuple[str | None, str | None]:
     except Exception as exc:
         err(f"Could not read Alembic revision: {exc}")
         return None, None
+
+
+def _stamp_bridge(db_url: str, current: str, head: str) -> bool:
+    """Stamp the DB to the current head if the current revision is a known old one.
+
+    After a baseline squash, old incremental revision IDs no longer exist in the
+    migration chain. Alembic would fail trying to find an upgrade path. Instead,
+    we stamp directly to the new head -- the schema is already correct because the
+    squash absorbed all incrementals.
+
+    Returns True if a stamp was applied, False otherwise.
+    """
+    known = _load_revision_registry()
+    if not known:
+        return False
+
+    if current not in known:
+        return False
+
+    # Current revision is a known old one that's no longer in the active chain.
+    # Check if Alembic can find it -- if not, we need to stamp.
+    try:
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+
+        alembic_cfg = Config(str(ROOT / "alembic.ini"))
+        script = ScriptDirectory.from_config(alembic_cfg)
+
+        # Try to get the revision object -- if it exists in the chain, no stamp needed
+        try:
+            script.get_revision(current)
+            return False  # Revision exists in chain, normal upgrade will work
+        except Exception:
+            pass  # Revision not in chain -- need to stamp
+
+        info(f"Bridging old revision {current} -> {head} (baseline was squashed)")
+
+        proc = subprocess.run(
+            [sys.executable, "-m", "alembic", "stamp", head],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(ROOT),
+            env={**os.environ, "DATABASE_URL": db_url},
+            check=False,
+        )
+
+        if proc.returncode == 0:
+            ok(f"Stamped database to {head}")
+            return True
+        err(f"Stamp failed: {proc.stderr}")
+        return False
+
+    except Exception as exc:
+        err(f"Stamp bridge error: {exc}")
+        return False
 
 
 def main() -> int:
@@ -156,6 +227,17 @@ def main() -> int:
     else:
         info(f"Current revision : {current or '(none)'}")
         info(f"Target revision  : {head}")
+
+    # --- Stamp bridge for squashed baselines ---
+    if current and current != head:
+        stamped = _stamp_bridge(db_url, current, head)
+        if stamped:
+            # Re-check after stamp -- may already be at head
+            current, head = _get_revisions(db_url)
+            if current == head:
+                ok("Database is up to date (after stamp bridge).")
+                print()
+                return 0
 
     # --- Run migrations ---
     info("Running database migrations...")
