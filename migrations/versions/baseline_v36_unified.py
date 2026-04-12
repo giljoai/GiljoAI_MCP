@@ -143,7 +143,7 @@ def upgrade() -> None:
         sa.Column("depth_vision_documents", sa.String(length=20), server_default=sa.text("'medium'"), nullable=True),
         sa.Column("depth_memory_last_n", sa.Integer(), server_default=sa.text("3"), nullable=True),
         sa.Column("depth_git_commits", sa.Integer(), server_default=sa.text("25"), nullable=True),
-        sa.Column("depth_agent_templates", sa.String(length=20), server_default=sa.text("'type_only'"), nullable=True),
+        sa.Column("depth_agent_templates", sa.String(length=20), server_default=sa.text("'basic'"), nullable=True),
         sa.Column("depth_tech_stack_sections", sa.String(length=20), server_default=sa.text("'all'"), nullable=True),
         sa.Column("depth_architecture", sa.String(length=20), server_default=sa.text("'overview'"), nullable=True),
         sa.Column("execution_mode", sa.String(length=20), server_default=sa.text("'claude_code'"), nullable=True),

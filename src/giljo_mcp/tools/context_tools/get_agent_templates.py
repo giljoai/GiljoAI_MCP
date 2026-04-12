@@ -5,15 +5,15 @@
 
 """MCP tool for fetching agent templates with depth control.
 
-Handover 0351: Renamed detail levels to type_only/full, removed truncation
+Handover 0351: Renamed detail levels to basic/full, removed truncation
 
 Reuses logic from:
 - thin_prompt_generator._get_agent_templates() (line 778)
 - AgentTemplate model queries with tenant isolation
 
 Token Budget by Depth:
-- "type_only": Name + role + full description (~400 tokens)
-- "full": Complete template JSON (~2400 tokens)
+- "basic": Name + role + full description (~400 tokens) - team roster + minimal identity
+- "full": Complete template JSON (~2400 tokens) - full agent definitions for tools without local templates
 """
 
 from typing import Any
@@ -39,7 +39,7 @@ def estimate_tokens(data: Any) -> int:
 async def get_agent_templates(
     product_id: str,
     tenant_key: str,
-    detail: str = "type_only",
+    detail: str = "basic",
     offset: int = 0,
     limit: int = None,
     db_manager: DatabaseManager | None = None,
@@ -53,7 +53,7 @@ async def get_agent_templates(
     Args:
         product_id: Product UUID (for context, not filtering - templates are tenant-wide)
         tenant_key: Tenant isolation key
-        detail: Detail level ("type_only", "full")
+        detail: Detail level ("basic", "full")
         offset: Skip first N items (reserved for future pagination)
         limit: Max items to return (reserved for future pagination)
         db_manager: Database manager instance
@@ -66,7 +66,7 @@ async def get_agent_templates(
         Dict with agent templates and metadata:
         {
             "source": "agent_templates",
-            "depth": "type_only",
+            "depth": "basic",
             "data": [
                 {
                     "name": "implementer",
@@ -89,7 +89,7 @@ async def get_agent_templates(
         result = await get_agent_templates(
             product_id="123e4567-e89b-12d3-a456-426614174000",
             tenant_key="tenant_abc",
-            detail="type_only"
+            detail="basic"
         )
     """
     logger.info("fetching_agent_templates_context", product_id=product_id, tenant_key=tenant_key, depth=detail)
@@ -119,11 +119,11 @@ async def get_agent_templates(
             }
 
         # Convert to dict format based on detail level
-        # Handover 0351: Renamed detail levels to type_only/full, removed truncation
+        # Handover 0351: Renamed detail levels to basic/full, removed truncation
         template_list = []
 
         for template in templates:
-            if detail == "type_only":
+            if detail == "basic":
                 # Type only: name + role + full description (NO truncation)
                 template_dict = {
                     "name": template.name,
