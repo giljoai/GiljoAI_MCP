@@ -10,7 +10,7 @@ Split from test_agent_discovery.py.
 
 Test Coverage:
 - _format_agent_info() includes staleness fields
-- Staleness fields with type_only depth
+- Staleness fields with basic depth
 - get_available_agents() staleness warning when stale agents detected
 - No staleness warning when all agents are fresh
 - Actionable guidance in staleness warning
@@ -67,8 +67,8 @@ class TestAgentStalenessDetection:
         assert result["updated_at"] == now.isoformat()
 
     @pytest.mark.asyncio
-    async def test_format_agent_info_staleness_fields_with_type_only_depth(self, db_session):
-        """Test that staleness fields are included even with type_only depth."""
+    async def test_format_agent_info_staleness_fields_with_basic_depth(self, db_session):
+        """Test that staleness fields are included even with basic depth."""
         from src.giljo_mcp.tools.agent_discovery import _format_agent_info
 
         now = datetime.now(timezone.utc)
@@ -84,8 +84,8 @@ class TestAgentStalenessDetection:
             last_exported_at=now - timedelta(days=1),
         )
 
-        # Format with type_only depth
-        result = _format_agent_info(template, depth="type_only")
+        # Format with basic depth
+        result = _format_agent_info(template, depth="basic")
 
         # Staleness fields should still be present (always included)
         assert "may_be_stale" in result
