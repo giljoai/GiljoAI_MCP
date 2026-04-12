@@ -31,7 +31,11 @@ from src.giljo_mcp.models import Base
 
 PRODUCTION_DB_NAME = "giljo_mcp"
 TEST_DB_SUFFIX = "_test"
-ALLOWED_TEST_DBS = {"giljo_mcp_test", "giljo_test", "postgres"}  # postgres needed for admin operations, giljo_test for CI
+ALLOWED_TEST_DBS = {
+    "giljo_mcp_test",
+    "giljo_test",
+    "postgres",
+}  # postgres needed for admin operations, giljo_test for CI
 
 
 def validate_database_name(database: str) -> None:
