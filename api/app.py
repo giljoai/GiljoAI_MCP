@@ -28,7 +28,7 @@ from dotenv import load_dotenv
 
 
 try:
-    from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+    from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
     from fastapi.exceptions import WebSocketException
     from fastapi.middleware.cors import CORSMiddleware
     from sqlalchemy import select, text
@@ -155,6 +155,9 @@ class APIState:
         self.startup_complete: bool = False
         self.degraded_services: list[str] = []
         self.license: Optional[LicenseResult] = None  # Set during lifespan startup
+        self.pending_migration: bool = False
+        self.update_available: dict | None = None  # {"commits_behind": int, "message": str}
+        self.update_checker_task: Optional[asyncio.Task] = None
 
 
 state = APIState()
@@ -191,6 +194,16 @@ async def lifespan(app: FastAPI):
 
     # Phase 1: Database and configuration
     await init_database(state)
+
+    # Phase 1.5: Check for pending migrations (read-only)
+    try:
+        from api.startup.migration_check import check_pending_migrations
+
+        state.pending_migration = await check_pending_migrations(state)
+        if state.pending_migration:
+            logger.warning("Database has pending migrations. Run: python update.py")
+    except Exception as e:
+        logger.warning("Could not check migration status: %s", e)
 
     # Phase 2: Core services
     await init_core_services(state)
@@ -754,6 +767,21 @@ def _register_event_handlers(app: FastAPI) -> None:
         status = "healthy" if all(v == "healthy" or isinstance(v, int) for v in checks.values()) else "degraded"
 
         return {"status": status, "checks": checks}
+
+    from src.giljo_mcp.auth.dependencies import get_current_active_user
+    from src.giljo_mcp.models.auth import User
+
+    @app.get("/api/system/status")
+    async def system_status(current_user: User = Depends(get_current_active_user)):
+        """System status for admin dashboard notifications.
+
+        Returns pending migration flag and update availability. Requires
+        a valid authenticated session.
+        """
+        return {
+            "pending_migration": state.pending_migration,
+            "update_available": state.update_available,
+        }
 
     @app.websocket("/ws/{client_id}")
     async def websocket_endpoint(

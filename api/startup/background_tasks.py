@@ -189,6 +189,17 @@ async def init_background_tasks(state: APIState) -> None:
     except Exception as e:  # Broad catch: background task startup, non-fatal
         logger.error(f"Failed to start API metrics sync task: {e}", exc_info=True)
 
+    # Start git update checker
+    try:
+        from api.startup.update_checker import start_update_checker
+
+        update_task = await start_update_checker(state)
+        if update_task:
+            state.update_checker_task = update_task
+            logger.info("Git update checker started (runs every 6 hours)")
+    except Exception as e:  # noqa: BLE001 — background task startup, non-fatal
+        logger.debug("Git update checker not available: %s", e)
+
     # Run one-time purge of expired deleted items
     if state.db_manager:
         await purge_expired_deleted_items(state.db_manager, state.tenant_manager)
