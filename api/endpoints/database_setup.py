@@ -114,12 +114,14 @@ async def test_database_connection(request: DatabaseSetupRequest) -> dict:
                 status_code=503,
                 detail="Cannot connect to PostgreSQL server. Is PostgreSQL running?",
             ) from e
-        raise HTTPException(status_code=503, detail=f"Connection failed: {e!s}") from e
+        logger.error("Database connection failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=503, detail="Connection failed. Check server logs.") from e
 
     except (ImportError, OSError, ValueError) as e:
         if isinstance(e, ImportError):
             raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
-        raise HTTPException(status_code=500, detail=f"Connection test failed: {e!s}") from e
+        logger.error("Connection test failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Connection test failed. Check server logs.") from e
 
 
 @router.post("/setup")
@@ -348,13 +350,14 @@ async def verify_database_setup() -> dict:
                     status_code=503,
                     detail="Cannot connect to PostgreSQL server. Is PostgreSQL running?",
                 ) from e
+            logger.error("Database connection failed: %s", e, exc_info=True)
             raise HTTPException(
                 status_code=503,
-                detail=f"Database connection failed: {e!s}",
+                detail="Database connection failed. Check server logs.",
             ) from e
 
     except (ImportError, OSError, ValueError) as e:
         if isinstance(e, ImportError):
             raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
-        logger.error(f"Database verification failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Database verification failed: {e!s}") from e
+        logger.error("Database verification failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Database verification failed. Check server logs.") from e

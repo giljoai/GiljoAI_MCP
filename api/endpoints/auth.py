@@ -35,6 +35,7 @@ from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import AuthService
 from src.giljo_mcp.template_seeder import seed_tenant_templates
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -340,7 +341,7 @@ async def login(
     cookie_params = _build_cookie_params(request)
     response.set_cookie(value=token, **cookie_params)
 
-    logger.info(f"User logged in successfully: {auth_result.username} (role: {auth_result.role})")
+    logger.info(f"User logged in successfully: {sanitize(auth_result.username)} (role: {sanitize(auth_result.role)})")
 
     # v3.0 Unified: Include password change requirement in response for frontend handling
     response_data = {
@@ -436,7 +437,7 @@ async def refresh_token(
     cookie_params = _build_cookie_params(request)
     response.set_cookie(value=new_token, **cookie_params)
 
-    logger.info(f"Token refreshed for user: {user.username}")
+    logger.info(f"Token refreshed for user: {sanitize(user.username)}")
     return {"message": "Token refreshed", "username": user.username}
 
 
@@ -653,7 +654,9 @@ async def create_api_key(
         permissions=request.permissions,
     )
 
-    logger.info(f"API key created: {key_data.name} (user: {current_user.username}, prefix: {key_data.key_prefix})")
+    logger.info(
+        f"API key created: {sanitize(key_data.name)} (user: {sanitize(current_user.username)}, prefix: {sanitize(key_data.key_prefix)})"
+    )
 
     return APIKeyCreateResponse(
         id=key_data.id,
@@ -691,7 +694,7 @@ async def revoke_api_key(
     # Service raises ResourceNotFoundError on failure (0480 migration)
     await auth_service.revoke_api_key(str(key_id), str(current_user.id))
 
-    logger.info(f"API key revoked (user: {current_user.username})")
+    logger.info(f"API key revoked (user: {sanitize(current_user.username)})")
 
     # Need to get key name for response - let's list keys and find it
     keys = await auth_service.list_api_keys(str(current_user.id), include_revoked=True)
@@ -781,7 +784,9 @@ async def register_user(
         requesting_admin_id=str(current_user.id),
     )
 
-    logger.info(f"User registered: {user_data.username} (role: {user_data.role}, by admin: {current_user.username})")
+    logger.info(
+        f"User registered: {sanitize(user_data.username)} (role: {sanitize(user_data.role)}, by admin: {sanitize(current_user.username)})"
+    )
 
     return RegisterUserResponse(
         id=user_data.id,
@@ -831,7 +836,7 @@ async def create_first_admin_user(
     """
     # Log client IP for audit trail (LAN access allowed for remote setup)
     client_ip = request.client.host
-    logger.info(f"[SETUP] Admin creation attempt from IP: {client_ip}")
+    logger.info(f"[SETUP] Admin creation attempt from IP: {sanitize(client_ip)}")
 
     # CRITICAL SECURITY FIX (Handover 0034): Acquire lock to prevent race condition
     # Without this lock, multiple concurrent requests could all check user_count == 0
@@ -872,7 +877,7 @@ async def create_first_admin_user(
                         request_body.recovery_pin.encode("utf-8"), bcrypt.gensalt()
                     ).decode("utf-8")
                     await db.commit()
-                    logger.info(f"[SETUP] Recovery PIN set for admin user: {request_body.username}")
+                    logger.info(f"[SETUP] Recovery PIN set for admin user: {sanitize(request_body.username)}")
 
         # Seed default agent templates for this tenant (Handover 0041 Phase 2)
         # CRITICAL: Templates are seeded with the user's tenant_key (not default_tenant_key)

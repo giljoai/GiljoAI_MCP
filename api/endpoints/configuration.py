@@ -405,9 +405,10 @@ async def update_database_password(update: DatabasePasswordUpdate, current_user:
         engine.dispose()
 
     except Exception as e:  # Broad catch: API boundary, converts to HTTP error
+        logger.error("Failed to update PostgreSQL password: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to update PostgreSQL password: {e!s}. Please verify current password is correct.",
+            detail="Failed to update PostgreSQL password. Please verify current password is correct.",
         ) from e
 
     # Step 2: Update .env file with new password
@@ -433,7 +434,7 @@ async def update_database_password(update: DatabasePasswordUpdate, current_user:
             pass  # Best effort rollback  # nosec B110
 
         raise HTTPException(
-            status_code=500, detail=f"Failed to update .env file: {e!s}. PostgreSQL password has been rolled back."
+            status_code=500, detail="Failed to update .env file. PostgreSQL password has been rolled back."
         ) from e
 
     # Step 3: Test new connection
@@ -447,7 +448,7 @@ async def update_database_password(update: DatabasePasswordUpdate, current_user:
     except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         raise HTTPException(
             status_code=500,
-            detail=f"Password updated but connection test failed: {e!s}. Application restart required.",
+            detail="Password updated but connection test failed. Application restart required.",
         ) from e
 
     return {
@@ -553,7 +554,7 @@ async def toggle_ssl(request_body: SSLToggleRequest, current_user: User = Depend
         except subprocess.CalledProcessError as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Certificate generation failed: {e.stderr}",
+                detail="Certificate generation failed. Check server logs for details.",
             ) from e
 
         # Update paths in config
@@ -737,4 +738,5 @@ async def check_database_health(current_user: User = Depends(get_current_active_
             raise HTTPException(status_code=503, detail="Database health check failed")
 
     except (RuntimeError, OSError, ValueError) as e:
-        raise HTTPException(status_code=503, detail=f"Database connection failed: {e!s}") from e
+        logger.error("Database connection failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=503, detail="Database connection failed. Check server logs.") from e
