@@ -452,6 +452,8 @@ child table rows (`tech_stack`, `architecture`, `test_config`) on the first writ
 | design_patterns | str | No | Design patterns applied. |
 | api_style | str | No | API style (e.g. REST, GraphQL). |
 | architecture_notes | str | No | Additional architecture notes. |
+| coding_conventions | str | No | Coding conventions and standards. |
+| brand_guidelines | str | No | Brand and design guidelines for frontend work. |
 | quality_standards | str | No | Quality and coding standards. |
 | testing_strategy | str | No | Overall testing approach. |
 | testing_frameworks | str | No | Testing frameworks in use. |
