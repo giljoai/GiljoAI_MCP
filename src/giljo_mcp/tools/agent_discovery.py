@@ -43,7 +43,7 @@ def _format_agent_info(template: AgentTemplate, depth: str = "full") -> dict[str
 
     Args:
         template: AgentTemplate database model instance
-        depth: Detail level - "type_only" (name/role/version) or "full" (includes description)
+        depth: Detail level - "basic" (name/role/version) or "full" (includes description)
 
     Returns:
         dict with formatted agent information
@@ -105,7 +105,7 @@ async def get_available_agents(session: AsyncSession, tenant_key: str, depth: st
     Args:
         session: Database session
         tenant_key: Tenant isolation key
-        depth: Detail level - "type_only" (name/role/version only, ~50 tokens) or
+        depth: Detail level - "basic" (name/role/version only, ~50 tokens) or
                "full" (includes description, ~1.2k tokens). Default: "full"
 
     Returns:
@@ -141,7 +141,7 @@ async def get_available_agents(session: AsyncSession, tenant_key: str, depth: st
             }
         }
 
-    Example Response (depth="type_only"):
+    Example Response (depth="basic"):
         {
             "success": True,
             "data": {
@@ -154,7 +154,7 @@ async def get_available_agents(session: AsyncSession, tenant_key: str, depth: st
                 ],
                 "count": 5,
                 "fetched_at": "2025-11-24T12:30:00",
-                "note": "Templates fetched dynamically (type_only depth)"
+                "note": "Templates fetched dynamically (basic depth)"
             }
         }
 

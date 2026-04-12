@@ -148,7 +148,7 @@ class User(Base):
     depth_vision_documents = Column(String(20), nullable=False, default="medium", server_default="medium")
     depth_memory_last_n = Column(Integer, nullable=False, default=3, server_default="3")
     depth_git_commits = Column(Integer, nullable=False, default=25, server_default="25")
-    depth_agent_templates = Column(String(20), nullable=False, default="type_only", server_default="type_only")
+    depth_agent_templates = Column(String(20), nullable=False, default="basic", server_default="basic")
     depth_tech_stack_sections = Column(String(20), nullable=False, default="all", server_default="all")
     depth_architecture = Column(String(20), nullable=False, default="overview", server_default="overview")
     execution_mode = Column(String(20), nullable=False, default="claude_code", server_default="claude_code")
