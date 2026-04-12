@@ -273,6 +273,16 @@ inline-quotes = "double"
     "T201",   # CLI installer - print() for user-facing output
     "BLE001", # Broad exception OK for graceful install error handling
 ]
+"update.py" = [
+    "T201",   # CLI tool - print() for user-facing update output
+    "BLE001", # Broad exception OK for graceful error handling
+]
+"api/startup/migration_check.py" = [
+    "BLE001", # Broad exception OK - defensive startup check must never block server
+]
+"api/startup/update_checker.py" = [
+    "BLE001", # Broad exception OK - background task must never crash server
+]
 "reset.py" = [
     "T201",   # CLI tool - print() for user-facing reset output
     "BLE001", # Broad exception OK for graceful error handling
