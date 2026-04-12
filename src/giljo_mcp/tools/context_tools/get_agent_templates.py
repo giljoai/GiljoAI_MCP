@@ -92,6 +92,10 @@ async def get_agent_templates(
             detail="basic"
         )
     """
+    # Backward compat: accept old "type_only" value from pre-migration DBs
+    if detail == "type_only":
+        detail = "basic"
+
     logger.info("fetching_agent_templates_context", product_id=product_id, tenant_key=tenant_key, depth=detail)
 
     if db_manager is None:
