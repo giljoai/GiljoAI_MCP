@@ -38,7 +38,7 @@ class TestRenderGenericAgent:
 
         # Verify plaintext format (no YAML)
         assert result.startswith("# codex-implementer")
-        assert "**Role:**implementer" in result
+        assert "**Role:** implementer" in result
         assert "Implement features with TDD approach." in result
         assert "## Behavioral Rules" in result
         assert "- Rule 1: Write tests first" in result
@@ -61,7 +61,7 @@ class TestRenderGenericAgent:
         result = render_generic_agent(template)
 
         assert "# gemini-tester" in result
-        assert "**Role:**tester" in result
+        assert "**Role:** tester" in result
         assert "Write comprehensive tests." in result
         assert "## Behavioral Rules" not in result
         assert "## Success Criteria" in result
@@ -98,7 +98,7 @@ class TestRenderGenericAgent:
         result = render_generic_agent(template)
 
         assert result.startswith("# simple")
-        assert "**Role:**simple" in result
+        assert "**Role:** simple" in result
         assert "Simple content." in result
         assert "## Behavioral Rules" not in result
         assert "## Success Criteria" not in result
@@ -159,7 +159,7 @@ class TestRenderTemplate:
 
         # Should be plaintext format
         assert result.startswith("# implementer")
-        assert "**Role:**implementer" in result
+        assert "**Role:** implementer" in result
         assert "---" not in result  # No YAML
 
     def test_dispatch_gemini(self):
@@ -175,7 +175,7 @@ class TestRenderTemplate:
 
         # Should be plaintext format
         assert result.startswith("# tester")
-        assert "**Role:**tester" in result
+        assert "**Role:** tester" in result
         assert "---" not in result
 
     def test_dispatch_generic(self):
@@ -191,7 +191,7 @@ class TestRenderTemplate:
 
         # Should be plaintext format
         assert result.startswith("# analyzer")
-        assert "**Role:**analyzer" in result
+        assert "**Role:** analyzer" in result
         assert "---" not in result
 
     def test_dispatch_none_fallback(self):
