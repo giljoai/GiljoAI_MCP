@@ -37,6 +37,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import Project, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -409,13 +410,18 @@ async def generate_staging_prompt(
                     "tool": tool,
                 },
             )
-            logger.info(f"[STAGING PROMPT THIN] WebSocket broadcast sent for orchestrator {result['orchestrator_id']}")
+            logger.info(
+                "[STAGING PROMPT THIN] WebSocket broadcast sent for orchestrator %s",
+                sanitize(str(result["orchestrator_id"])),
+            )
 
         # Log successful generation
         logger.info(
-            f"[STAGING PROMPT THIN] Generated for project={project_id}, "
-            f"tool={tool}, tokens={result['estimated_prompt_tokens']}, "
-            f"user={current_user.username}"
+            "[STAGING PROMPT THIN] Generated for project=%s, tool=%s, tokens=%s, user=%s",
+            sanitize(project_id),
+            sanitize(tool),
+            result["estimated_prompt_tokens"],
+            sanitize(current_user.username),
         )
 
         # Return response with 'prompt' key for frontend compatibility
@@ -430,7 +436,9 @@ async def generate_staging_prompt(
 
     except ValueError as e:
         # Project not found or invalid tool
-        logger.warning(f"[STAGING PROMPT THIN] Validation error for project={project_id}: {e}")
+        logger.warning(
+            "[STAGING PROMPT THIN] Validation error for project=%s: %s", sanitize(project_id), sanitize(str(e))
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
     except Exception as e:  # Broad catch: API boundary, converts to HTTP error
@@ -616,9 +624,11 @@ async def get_implementation_prompt(
     )
 
     logger.info(
-        f"[IMPLEMENTATION PROMPT] Generated for project={project_id}, "
-        f"orchestrator={orchestrator_execution.agent_id}, agents={len(agent_executions)}, "
-        f"user={current_user.username}"
+        "[IMPLEMENTATION PROMPT] Generated for project=%s, orchestrator=%s, agents=%d, user=%s",
+        sanitize(project_id),
+        sanitize(str(orchestrator_execution.agent_id)),
+        len(agent_executions),
+        sanitize(current_user.username),
     )
 
     # 6. Return implementation prompt response
@@ -778,9 +788,11 @@ agent_id: {orchestrator.agent_id}
 project_id: {project_id}"""
 
     logger.info(
-        f"[TERMINATION PROMPT] Generated for project={project_id}, "
-        f"orchestrator={orchestrator.agent_id}, agents={len(agents)}, "
-        f"user={current_user.username}"
+        "[TERMINATION PROMPT] Generated for project=%s, orchestrator=%s, agents=%d, user=%s",
+        sanitize(project_id),
+        sanitize(str(orchestrator.agent_id)),
+        len(agents),
+        sanitize(current_user.username),
     )
 
     return TerminationPromptResponse(

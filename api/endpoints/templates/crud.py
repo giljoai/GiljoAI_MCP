@@ -28,6 +28,7 @@ from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.template_seeder import _get_mcp_bootstrap_section
 from src.giljo_mcp.template_validation import get_role_color, slugify_name
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_template_service
 from .models import TemplateCreate, TemplateResponse, TemplateUpdate
@@ -109,7 +110,7 @@ async def get_template(
 
     Migrated to TemplateService - Handover 1011 Phase 2.
     """
-    logger.debug(f"User {current_user.username} getting template {template_id}")
+    logger.debug("User %s getting template %s", sanitize(current_user.username), sanitize(template_id))
 
     template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 
@@ -132,7 +133,7 @@ async def list_templates(
 
     Migrated to TemplateService - Handover 1011 Phase 2.
     """
-    logger.debug(f"User {current_user.username} listing templates")
+    logger.debug("User %s listing templates", sanitize(current_user.username))
 
     templates = await template_service.list_templates_with_filters(
         session, current_user.tenant_key, role=role, is_active=is_active
@@ -226,7 +227,7 @@ async def create_template(
     await session.commit()
     await session.refresh(new_template)
 
-    logger.info(f"Created template {new_template.id} for tenant {context['tenant_key']}")
+    logger.info("Created template %s for tenant %s", new_template.id, sanitize(context["tenant_key"]))
 
     return _convert_to_response(new_template)
 
@@ -303,7 +304,7 @@ async def update_template(
     await session.commit()
     await session.refresh(template)
 
-    logger.info(f"Updated template {template_id}")
+    logger.info("Updated template %s", sanitize(template_id))
 
     return _convert_to_response(template)
 
@@ -347,7 +348,7 @@ async def delete_template(
 
         await session.commit()
 
-        logger.info(f"Hard deleted template {template_id} ({template_name})")
+        logger.info("Hard deleted template %s (%s)", sanitize(template_id), sanitize(template_name))
 
         return {"message": f"Template '{template_name}' permanently deleted", "template_id": template_id}
 

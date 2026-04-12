@@ -25,6 +25,7 @@ Usage:
 Cross-platform: Works on Windows, Linux, and macOS
 """
 
+import atexit
 import os
 import platform
 import shutil
@@ -34,7 +35,7 @@ import sys
 import time
 import webbrowser
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import IO, Optional, Tuple
 
 import click
 from colorama import Fore, Style, init
@@ -353,24 +354,59 @@ def check_first_run() -> Tuple[bool, Optional[dict]]:
     """
     Check if this is the first run (setup not completed).
 
+    Queries the setup_state table directly for any row with
+    first_admin_created=True. This is the definitive signal that
+    install.py completed and the admin account was created via the
+    setup wizard.
+
     Returns:
         Tuple of (is_first_run, state_dict)
     """
     try:
-        from src.giljo_mcp.setup.state_manager import SetupStateManager
+        import os
 
-        # Get setup state
-        state_manager = SetupStateManager.get_instance(tenant_key="default")
-        state = state_manager.get_state()
+        db_url = os.environ.get("DATABASE_URL", "")
+        if not db_url:
+            # Try reading from config.yaml
+            from src.giljo_mcp._config_io import read_config
 
-        is_first_run = not state.get("completed", False)
+            config = read_config()
+            db_cfg = config.get("database", {})
+            host = db_cfg.get("host", "127.0.0.1")
+            port = db_cfg.get("port", 5432)
+            user = db_cfg.get("user") or db_cfg.get("username", "")
+            password = db_cfg.get("password", "")
+            name = db_cfg.get("name") or db_cfg.get("database", "")
+            if user and name:
+                db_url = f"postgresql://{user}:{password}@{host}:{port}/{name}"
 
-        if is_first_run:
-            print_info("First-run detected - setup wizard will open")
-        else:
-            print_success("Setup completed previously - launching dashboard")
+        if not db_url:
+            print_warning("No database URL available - assuming first run")
+            return True, None
 
-        return is_first_run, state
+        from sqlalchemy import create_engine, text
+
+        engine = create_engine(db_url, connect_args={"connect_timeout": 5})
+        try:
+            with engine.connect() as conn:
+                # Check if setup_state table exists and has a completed row
+                row = conn.execute(
+                    text(
+                        "SELECT first_admin_created, database_initialized "
+                        "FROM setup_state "
+                        "WHERE first_admin_created = true "
+                        "LIMIT 1"
+                    )
+                ).fetchone()
+
+                if row is not None:
+                    print_success("Setup completed previously - launching dashboard")
+                    return False, {"first_admin_created": True, "database_initialized": True}
+
+                print_info("First-run detected - setup wizard will open")
+                return True, None
+        finally:
+            engine.dispose()
 
     except Exception as e:
         print_warning(f"Could not determine setup status: {e}")
@@ -612,8 +648,10 @@ def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             # Background mode: hide output for quiet startup
             logs_dir = Path.cwd() / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
-            api_stdout = open(logs_dir / "api_stdout.log", "a", buffering=1, encoding="utf-8")
-            api_stderr = open(logs_dir / "api_stderr.log", "a", buffering=1, encoding="utf-8")
+            api_stdout: IO[str] = open(logs_dir / "api_stdout.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            api_stderr: IO[str] = open(logs_dir / "api_stderr.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            atexit.register(api_stdout.close)
+            atexit.register(api_stderr.close)
             popen_kwargs["stdout"] = api_stdout
             popen_kwargs["stderr"] = api_stderr
 
@@ -690,8 +728,10 @@ def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             # Background mode: hide output for quiet startup
             logs_dir = Path.cwd() / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
-            fe_stdout = open(logs_dir / "frontend_stdout.log", "a", buffering=1, encoding="utf-8")
-            fe_stderr = open(logs_dir / "frontend_stderr.log", "a", buffering=1, encoding="utf-8")
+            fe_stdout: IO[str] = open(logs_dir / "frontend_stdout.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            fe_stderr: IO[str] = open(logs_dir / "frontend_stderr.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            atexit.register(fe_stdout.close)
+            atexit.register(fe_stderr.close)
             popen_kwargs["stdout"] = fe_stdout
             popen_kwargs["stderr"] = fe_stderr
 

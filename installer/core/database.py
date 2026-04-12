@@ -596,6 +596,7 @@ Write-Host "You can now return to the installer and press Enter to continue." -F
 Write-Host ""
 '''
 
+        # noqa: S105 — generated passwords are written into the elevation script for one-time use during install
         script_path.write_text(script_content, encoding="utf-8")
         self.logger.info(f"Generated Windows script: {script_path}")
         return script_path
@@ -752,6 +753,7 @@ echo "You can now return to the installer and press Enter to continue."
 echo ""
 '''
 
+        # noqa: S105 — generated passwords are written into the elevation script for one-time use during install
         script_path.write_text(script_content, encoding="utf-8")
         script_path.chmod(0o755)
         self.logger.info(f"Generated Unix script: {script_path}")
@@ -950,6 +952,7 @@ OWNER_URL=postgresql://giljo_owner:{self.owner_password}@{self.host}:{self.port}
 USER_URL=postgresql://giljo_user:{self.user_password}@{self.host}:{self.port}/{self.db_name}
 """
 
+        # noqa: S105 — credentials file written with restricted permissions (0o600), required for installer handoff
         self.credentials_file.write_text(content)
 
         # Set restrictive permissions on non-Windows

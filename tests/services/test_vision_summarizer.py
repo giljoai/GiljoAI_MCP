@@ -46,37 +46,11 @@ def generate_test_document(tokens: int = 1000) -> str:
     """
     # Sample technical paragraphs with diverse content
     base_paragraphs = [
-        (
-            "The GiljoAI system architecture leverages a multi-agent orchestration "
-            "framework built on FastAPI and PostgreSQL. Each agent operates independently "
-            "with specialized capabilities including code generation, testing, and "
-            "deployment automation. The system employs context prioritization to manage "
-            "token budgets efficiently across distributed agent workflows."
-        ),
-        (
-            "Vision documents provide high-level architectural guidance to orchestrators "
-            "during project initialization and execution phases. These documents describe "
-            "the overall system goals, technical constraints, and implementation strategies "
-            "that guide agent decision-making throughout the development lifecycle."
-        ),
-        (
-            "The orchestrator agent coordinates work across multiple specialist agents, "
-            "each focusing on specific aspects of software development. Specialist agents "
-            "include implementers for code generation, testers for quality assurance, "
-            "analyzers for code review, and deployment agents for production releases."
-        ),
-        (
-            "Context management is critical for efficient token usage in large language models. "
-            "The system prioritizes essential information and summarizes verbose content to "
-            "maximize the utility of available context windows. This enables agents to work "
-            "effectively even with complex, multi-faceted software projects."
-        ),
-        (
-            "Multi-tenant isolation ensures secure separation of data across different users "
-            "and organizations. Each tenant operates in a completely isolated environment with "
-            "dedicated database partitions and access controls. This architecture supports "
-            "enterprise deployments while maintaining data security and privacy."
-        ),
+        "The GiljoAI system architecture leverages a multi-agent orchestration framework built on FastAPI and PostgreSQL. Each agent operates independently with specialized capabilities including code generation, testing, and deployment automation. The system employs context prioritization to manage token budgets efficiently across distributed agent workflows.",
+        "Vision documents provide high-level architectural guidance to orchestrators during project initialization and execution phases. These documents describe the overall system goals, technical constraints, and implementation strategies that guide agent decision-making throughout the development lifecycle.",
+        "The orchestrator agent coordinates work across multiple specialist agents, each focusing on specific aspects of software development. Specialist agents include implementers for code generation, testers for quality assurance, analyzers for code review, and deployment agents for production releases.",
+        "Context management is critical for efficient token usage in large language models. The system prioritizes essential information and summarizes verbose content to maximize the utility of available context windows. This enables agents to work effectively even with complex, multi-faceted software projects.",
+        "Multi-tenant isolation ensures secure separation of data across different users and organizations. Each tenant operates in a completely isolated environment with dedicated database partitions and access controls. This architecture supports enterprise deployments while maintaining data security and privacy.",
     ]
 
     # Calculate how many paragraphs needed

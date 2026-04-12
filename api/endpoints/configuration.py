@@ -8,6 +8,7 @@ Configuration management API endpoints
 """
 
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -17,6 +18,9 @@ from pydantic import BaseModel, Field
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, require_admin
 from src.giljo_mcp.models import User
+
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
@@ -163,7 +167,10 @@ async def update_configurations(update: ConfigurationUpdate, current_user: User 
             state.config.set(key, value)
             updated.append(key)
         except Exception as e:  # noqa: BLE001, PERF203 - Partial update resilience: collect failures, continue loop
-            failed.append({"key": key, "error": str(e)})
+            # Log full detail server-side; return a generic message to avoid
+            # leaking internal exception text to the caller (CodeQL: py/stack-trace-exposure)
+            logger.warning("Configuration update failed for key %r: %s", key, e)
+            failed.append({"key": key, "error": "Failed to update configuration key"})
 
     return {
         "success": len(failed) == 0,
@@ -507,7 +514,17 @@ async def toggle_ssl(request_body: SSLToggleRequest, current_user: User = Depend
         generated_key = certs_dir / "ssl_key.pem"
         generated_cert = certs_dir / "ssl_cert.pem"
 
+        import re
         import subprocess
+
+        # Validate domain against allowlist of safe hostname characters before
+        # interpolating into the openssl -subj argument (CodeQL: py/command-line-injection)
+        domain = request_body.domain or ""
+        if not re.fullmatch(r"[A-Za-z0-9.\-]{1,253}", domain):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid domain: must contain only letters, digits, hyphens, and dots.",
+            )
 
         cmd = [
             "openssl",
@@ -523,7 +540,7 @@ async def toggle_ssl(request_body: SSLToggleRequest, current_user: User = Depend
             "365",
             "-nodes",
             "-subj",
-            f"/CN={request_body.domain}/O=GiljoAI MCP/C=US",
+            f"/CN={domain}/O=GiljoAI MCP/C=US",
         ]
 
         try:

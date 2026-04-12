@@ -22,6 +22,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import Message, User
 from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.tasks import MessageRecipient
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -90,7 +91,9 @@ async def get_job_messages(
     Example:
         GET /api/agent-jobs/{job_id}/messages?limit=100
     """
-    logger.debug(f"User {current_user.username} retrieving messages for job {job_id} (limit={limit})")
+    logger.debug(
+        "User %s retrieving messages for job %s (limit=%d)", sanitize(current_user.username), sanitize(job_id), limit
+    )
 
     # Get execution to verify tenant access and get agent_id
     exec_stmt = select(AgentExecution).where(
@@ -100,7 +103,7 @@ async def get_job_messages(
     execution = (await session.execute(exec_stmt)).scalar_one_or_none()
 
     if not execution:
-        logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
+        logger.warning("Job %s not found for tenant %s", sanitize(job_id), sanitize(current_user.tenant_key))
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Build agent_id -> display name lookup for sender resolution
@@ -136,8 +139,11 @@ async def get_job_messages(
     messages = (await session.execute(msg_stmt)).scalars().unique().all()
 
     logger.info(
-        f"Retrieved {len(messages)} messages for job {job_id} "
-        f"(agent_id={execution.agent_id}, tenant={current_user.tenant_key})"
+        "Retrieved %d messages for job %s (agent_id=%s, tenant=%s)",
+        len(messages),
+        sanitize(job_id),
+        execution.agent_id,
+        sanitize(current_user.tenant_key),
     )
 
     # Build response with resolved sender names

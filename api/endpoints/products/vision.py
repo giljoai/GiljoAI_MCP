@@ -30,6 +30,7 @@ from src.giljo_mcp.exceptions import (
 )
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.product_vision_service import ProductVisionService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_product_vision_service
 from .models import VisionChunk
@@ -57,7 +58,12 @@ async def upload_vision_document(
     Handover 0503: Updated path from /upload-vision to /vision (canonical endpoint).
     Handover 0500: Implemented vision upload with intelligent chunking.
     """
-    logger.info(f"User {current_user.username} uploading vision document '{file.filename}' for product {product_id}")
+    logger.info(
+        "User %s uploading vision document '%s' for product %s",
+        sanitize(current_user.username),
+        sanitize(file.filename),
+        sanitize(product_id),
+    )
 
     # Validate file size (10MB limit)
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -95,8 +101,10 @@ async def upload_vision_document(
         )
 
         logger.info(
-            f"Successfully uploaded vision document {result.document_id}: "
-            f"{result.chunks_created} chunks, {result.total_tokens} tokens"
+            "Successfully uploaded vision document %s: %d chunks, %d tokens",
+            result.document_id,
+            result.chunks_created,
+            result.total_tokens,
         )
 
         return {
@@ -154,7 +162,9 @@ async def list_vision_documents(
 
     from src.giljo_mcp.models import VisionDocument
 
-    logger.debug(f"User {current_user.username} listing vision documents for product {product_id}")
+    logger.debug(
+        "User %s listing vision documents for product %s", sanitize(current_user.username), sanitize(product_id)
+    )
 
     # Query vision documents for this product
     stmt = (
@@ -208,7 +218,7 @@ async def list_vision_documents(
             )
         )
 
-    logger.debug(f"Retrieved {len(response_docs)} vision documents for product {product_id}")
+    logger.debug("Retrieved %d vision documents for product %s", len(response_docs), sanitize(product_id))
 
     return response_docs
 
@@ -232,7 +242,12 @@ async def delete_vision_document(
 
     from src.giljo_mcp.models import MCPContextIndex, VisionDocument
 
-    logger.info(f"User {current_user.username} deleting vision document {doc_id} for product {product_id}")
+    logger.info(
+        "User %s deleting vision document %s for product %s",
+        sanitize(current_user.username),
+        sanitize(doc_id),
+        sanitize(product_id),
+    )
 
     # Verify document exists and belongs to this product/tenant
     stmt = select(VisionDocument).where(
@@ -262,7 +277,7 @@ async def delete_vision_document(
     await db.delete(doc)
     await db.commit()
 
-    logger.info(f"Successfully deleted vision document {doc_id}")
+    logger.info("Successfully deleted vision document %s", sanitize(doc_id))
 
 
 @router.get("/{product_id}/vision-chunks", response_model=List[VisionChunk])
@@ -286,7 +301,9 @@ async def get_vision_chunks(
 
     from src.giljo_mcp.models import MCPContextIndex
 
-    logger.debug(f"User {current_user.username} retrieving vision chunks for product {product_id}")
+    logger.debug(
+        "User %s retrieving vision chunks for product %s", sanitize(current_user.username), sanitize(product_id)
+    )
 
     # Query context chunks for this product
     stmt = (
@@ -320,6 +337,6 @@ async def get_vision_chunks(
             )
         )
 
-    logger.debug(f"Retrieved {len(response_chunks)} vision chunks for product {product_id}")
+    logger.debug("Retrieved %d vision chunks for product %s", len(response_chunks), sanitize(product_id))
 
     return response_chunks
