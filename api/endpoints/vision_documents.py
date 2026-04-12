@@ -20,6 +20,7 @@ Summaries (light/medium) generated via VisionDocumentSummarizer for large docume
 """
 
 import logging
+import uuid
 from decimal import Decimal
 from pathlib import Path
 
@@ -233,6 +234,12 @@ async def create_vision_document(
 
         if not product:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product {product_id} not found")
+
+        # Validate product_id is a valid UUID to prevent path traversal
+        try:
+            uuid.UUID(product_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid product ID format.") from None
 
         # Determine storage type and get content
         document_content = content

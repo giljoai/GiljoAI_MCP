@@ -229,7 +229,7 @@ def main() -> int:
         info(f"Target revision  : {head}")
 
     # --- Stamp bridge for squashed baselines ---
-    if current and current != head:
+    if current:
         stamped = _stamp_bridge(db_url, current, head)
         if stamped:
             # Re-check after stamp -- may already be at head
