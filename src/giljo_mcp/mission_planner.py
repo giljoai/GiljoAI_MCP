@@ -162,8 +162,8 @@ class MissionPlanner:
                 elif field == "git_history":
                     instruction["params"]["limit"] = depth_config.get("git_history", 20)
                 elif field == "agent_templates":
-                    agent_depth = depth_config.get("agent_templates", "type_only")
-                    if agent_depth == "type_only":
+                    agent_depth = depth_config.get("agent_templates", "basic")
+                    if agent_depth == "basic":
                         continue  # Already inline - no fetch needed
                     instruction["params"]["depth"] = agent_depth
                     instruction["framing"] = "Full agent templates with complete prompts for spawning."

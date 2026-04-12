@@ -302,7 +302,7 @@ async def test_get_depth_config_defaults(user_service, test_user):
     assert config["vision_documents"] == "medium"
     assert config["memory_last_n_projects"] == 3
     assert config["git_commits"] == 25
-    assert config["agent_templates"] == "type_only"
+    assert config["agent_templates"] == "basic"
 
 
 # ============================================================================
