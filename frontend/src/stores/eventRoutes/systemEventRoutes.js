@@ -105,6 +105,13 @@ export const SYSTEM_EVENT_ROUTES = {
     },
   },
 
+  // System update notifications (Handover 0965 Phase 4)
+  'system:update_available': {
+    handler: async (payload) => {
+      dispatchWindowEvent('ws-system-update-available', payload)
+    },
+  },
+
   // Tasks (MCP tool creates — frontend needs refresh)
   'task:created': {
     handler: async () => {
