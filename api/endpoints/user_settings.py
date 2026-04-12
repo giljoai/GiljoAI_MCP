@@ -28,6 +28,7 @@ from src.giljo_mcp._config_io import read_config as _read_config_raw
 from src.giljo_mcp._config_io import write_config as _write_config_raw
 from src.giljo_mcp.auth.dependencies import get_db_session, require_admin
 from src.giljo_mcp.models import User
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -119,7 +120,7 @@ def _read_config() -> dict:
     """Read config.yaml, raising HTTPException if missing or unreadable."""
     config_path = get_config_path()
     if not config_path.exists():
-        logger.error(f"config.yaml not found at {config_path}")
+        logger.error("config.yaml not found at %s", config_path)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Configuration file not found. System may not be properly installed.",
@@ -193,7 +194,7 @@ async def get_cookie_domains(
         HTTPException: 403 if user is not admin
         HTTPException: 500 if config file cannot be read
     """
-    logger.info(f"Admin {current_user.username} retrieving cookie domain whitelist")
+    logger.info("Admin %s retrieving cookie domain whitelist", sanitize(current_user.username))
 
     # Read config
     config = _read_config()
@@ -232,7 +233,7 @@ async def add_cookie_domain(
         HTTPException: 500 if config file cannot be updated
     """
     domain = request.domain.lower().strip()
-    logger.info(f"Admin {current_user.username} adding cookie domain: {domain}")
+    logger.info("Admin %s adding cookie domain: %s", sanitize(current_user.username), sanitize(domain))
 
     # Read config
     config = _read_config()
@@ -243,7 +244,7 @@ async def add_cookie_domain(
     # Add domain if not already present (idempotent)
     if domain not in domains:
         domains.append(domain)
-        logger.info(f"Added domain to whitelist: {domain}")
+        logger.info("Added domain to whitelist: %s", sanitize(domain))
     else:
         logger.debug(f"Domain already in whitelist: {domain}")
 
@@ -281,7 +282,7 @@ async def remove_cookie_domain(
         HTTPException: 500 if config file cannot be updated
     """
     domain = request.domain.lower().strip()
-    logger.info(f"Admin {current_user.username} removing cookie domain: {domain}")
+    logger.info("Admin %s removing cookie domain: %s", sanitize(current_user.username), sanitize(domain))
 
     # Read config
     config = _read_config()
@@ -291,11 +292,11 @@ async def remove_cookie_domain(
 
     # Remove domain
     if domain not in domains:
-        logger.warning(f"Domain not found in whitelist: {domain}")
+        logger.warning("Domain not found in whitelist: %s", sanitize(domain))
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Domain '{domain}' not found in whitelist")
 
     domains.remove(domain)
-    logger.info(f"Removed domain from whitelist: {domain}")
+    logger.info("Removed domain from whitelist: %s", sanitize(domain))
 
     # Update config
     _set_cookie_domains(config, domains)

@@ -36,6 +36,7 @@ from api.schemas.task import (
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import Product, Task, User
 from src.giljo_mcp.services.task_service import TaskService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -156,7 +157,7 @@ async def list_tasks(
         ValidationError: No tenant context
         DatabaseError: Database operation failed
     """
-    logger.debug(f"User {current_user.username} listing tasks (filter_type: {filter_type})")
+    logger.debug("User %s listing tasks (filter_type: %s)", sanitize(current_user.username), sanitize(str(filter_type)))
 
     # Build filters for service call
     created_by_user_id = str(current_user.id) if created_by_me else None
@@ -173,7 +174,7 @@ async def list_tasks(
     )
 
     # Service returns list[Task] ORM objects directly (0731 typed returns)
-    logger.info(f"Found {len(result)} tasks for user {current_user.username}")
+    logger.info("Found %d tasks for user %s", len(result), sanitize(current_user.username))
 
     # Convert Task ORM objects to TaskResponse using helper
     return [task_to_response(task) for task in result]
@@ -191,7 +192,11 @@ async def create_task(
     The creator becomes the task owner. Product binding is required (Handover 0433)
     to ensure all tasks are isolated to a specific product.
     """
-    logger.debug(f"User {getattr(current_user, 'username', 'unknown')} creating task '{task_create.title}'")
+    logger.debug(
+        "User %s creating task '%s'",
+        sanitize(getattr(current_user, "username", "unknown")),
+        sanitize(task_create.title),
+    )
 
     # Validate the product exists, is active, and belongs to the user's tenant
     stmt = select(Product).where(
@@ -236,7 +241,7 @@ async def create_task(
     await db.commit()
     await db.refresh(task)
 
-    logger.info(f"Created task {task.id} by user {current_user.username}")
+    logger.info("Created task %s by user %s", task.id, sanitize(current_user.username))
     return task_to_response(task)
 
 
@@ -316,21 +321,21 @@ async def update_task(
         HTTPException: 403 if user lacks permission
         HTTPException: 404 if task not found
     """
-    logger.debug(f"User {current_user.username} updating task {task_id}")
+    logger.debug("User %s updating task %s", sanitize(current_user.username), sanitize(task_id))
 
     # First verify task exists and user has permission via get_task
     task = await task_service.get_task(task_id)
 
     # Simple permission check: admin or creator (Task ORM attribute access)
     if current_user.role != "admin" and str(task.created_by_user_id) != str(current_user.id):
-        logger.warning(f"User {current_user.username} not authorized to update task {task_id}")
+        logger.warning("User %s not authorized to update task %s", sanitize(current_user.username), sanitize(task_id))
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this task")
 
     # Use TaskService.update_task() to perform the update
     update_data = task_update.dict(exclude_unset=True)
     await task_service.update_task(task_id, **update_data)
 
-    logger.info(f"Updated task {task_id} by user {current_user.username}")
+    logger.info("Updated task %s by user %s", sanitize(task_id), sanitize(current_user.username))
 
     # Fetch updated task for response
     task = await task_service.get_task(task_id)
@@ -360,11 +365,11 @@ async def delete_task(
         AuthorizationError: User not authorized to delete task
         DatabaseError: Database operation failed
     """
-    logger.debug(f"User {current_user.username} deleting task {task_id}")
+    logger.debug("User %s deleting task %s", sanitize(current_user.username), sanitize(task_id))
 
     await task_service.delete_task(task_id, str(current_user.id))
 
-    logger.info(f"Deleted task {task_id} by user {current_user.username}")
+    logger.info("Deleted task %s by user %s", sanitize(task_id), sanitize(current_user.username))
 
 
 @router.post("/{task_id}/convert", response_model=ProjectConversionResponse)

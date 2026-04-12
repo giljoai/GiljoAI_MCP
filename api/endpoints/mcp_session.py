@@ -128,7 +128,7 @@ class MCPSessionManager:
             await self.db.execute(stmt)
             await self.db.commit()
         except Exception as e:  # noqa: BLE001 - API boundary: non-fatal IP logging
-            logger.warning("Failed to log IP for API key %s: %s", api_key_id, e)
+            logger.warning("Failed to log IP for API key: %s", e)
 
     async def get_or_create_session(self, api_key_value: str, project_id: str | None = None) -> MCPSession | None:
         """Authenticate and return an existing or newly created MCP session.

@@ -29,6 +29,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import Project, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.thin_prompt_generator import build_continuation_prompt, build_retirement_prompt
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -194,7 +195,7 @@ async def simple_handover(
                 },
             )
     except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
-        logger.warning(f"WebSocket broadcast failed: {ws_error}")
+        logger.warning("WebSocket broadcast failed: %s", sanitize(str(ws_error)))
 
     return SimpleHandoverResponse(
         success=True,

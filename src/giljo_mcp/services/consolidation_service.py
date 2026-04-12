@@ -20,6 +20,7 @@ from sqlalchemy.orm import selectinload
 from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.schemas.service_responses import ConsolidationResult, SummaryLevel
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ class ConsolidatedVisionService:
         product = result.scalar_one_or_none()
 
         if not product:
-            logger.warning("consolidate_vision_documents.product_not_found: product_id=%s", product_id)
+            logger.warning("consolidate_vision_documents.product_not_found: product_id=%s", sanitize(product_id))
             raise ResourceNotFoundError(
                 message="Product not found", error_code="PRODUCT_NOT_FOUND", context={"product_id": product_id}
             )
@@ -71,7 +72,9 @@ class ConsolidatedVisionService:
 
         # Check if content has changed (unless force=True)
         if not force and product.consolidated_vision_hash == aggregate_hash:
-            logger.info("consolidate_vision_documents.no_changes: product_id=%s hash=%s", product_id, aggregate_hash)
+            logger.info(
+                "consolidate_vision_documents.no_changes: product_id=%s hash=%s", sanitize(product_id), aggregate_hash
+            )
             raise ValidationError(
                 message="No changes detected in vision documents",
                 error_code="NO_CHANGES",
@@ -81,7 +84,7 @@ class ConsolidatedVisionService:
         # Generate summaries
         logger.info(
             "consolidate_vision_documents.generating_summaries: product_id=%s aggregate_tokens=%d source_docs=%d",
-            product_id,
+            sanitize(product_id),
             self.summarizer.estimate_tokens(aggregate_text),
             len(source_doc_ids),
         )
@@ -101,7 +104,7 @@ class ConsolidatedVisionService:
 
         logger.info(
             "consolidate_vision_documents.success: product_id=%s light_tokens=%d medium_tokens=%d",
-            product_id,
+            sanitize(product_id),
             summary_result.light.tokens,
             summary_result.medium.tokens,
         )
