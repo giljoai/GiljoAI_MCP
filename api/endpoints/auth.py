@@ -340,9 +340,7 @@ async def login(
     cookie_params = _build_cookie_params(request)
     response.set_cookie(value=token, **cookie_params)
 
-    logger.info(
-        f"User logged in successfully: {auth_result.username} (role: {auth_result.role}) (password_change_required: {password_change_required})"
-    )
+    logger.info(f"User logged in successfully: {auth_result.username} (role: {auth_result.role})")
 
     # v3.0 Unified: Include password change requirement in response for frontend handling
     response_data = {

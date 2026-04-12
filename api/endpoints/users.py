@@ -36,6 +36,7 @@ from src.giljo_mcp.auth.dependencies import (
 )
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import UserService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -311,12 +312,12 @@ async def list_users(
         AuthorizationError: User is not admin (403)
         BaseGiljoError: Database operation failed (500)
     """
-    logger.debug(f"Admin {current_user.username} listing all users (cross-tenant admin view)")
+    logger.debug("Admin %s listing all users (cross-tenant admin view)", sanitize(current_user.username))
 
     # Admin sees all users across all tenants for user management
     users = await user_service.list_users(include_all_tenants=True)
 
-    logger.info(f"Found {len(users)} users (all tenants)")
+    logger.info("Found %d users (all tenants)", len(users))
 
     # 0731d: UserService returns list[User] ORM objects - use attribute access
     return [user_to_response(user) for user in users]
@@ -346,7 +347,7 @@ async def create_user(
         AuthorizationError: User is not admin (403)
         BaseGiljoError: Database operation failed (500)
     """
-    logger.debug(f"Admin {current_user.username} creating user: {user_data.username}")
+    logger.debug("Admin %s creating user: %s", sanitize(current_user.username), sanitize(user_data.username))
 
     user = await user_service.create_user(
         username=user_data.username,
@@ -357,7 +358,12 @@ async def create_user(
         is_active=user_data.is_active,
     )
 
-    logger.info(f"Created user: {user_data.username} (role: {user_data.role}) in tenant {current_user.tenant_key}")
+    logger.info(
+        "Created user: %s (role: %s) in tenant %s",
+        sanitize(user_data.username),
+        sanitize(user_data.role),
+        sanitize(current_user.tenant_key),
+    )
 
     # 0731d: UserService returns User ORM object - use helper
     return user_to_response(user)
@@ -388,7 +394,7 @@ async def get_user(
         ResourceNotFoundError: User not found (404)
         BaseGiljoError: Database operation failed (500)
     """
-    logger.debug(f"User {current_user.username} retrieving user {user_id}")
+    logger.debug("User %s retrieving user %s", sanitize(current_user.username), sanitize(str(user_id)))
 
     # Admin can access users across all tenants for user management
     is_admin = current_user.role == "admin"
@@ -397,7 +403,7 @@ async def get_user(
     # 0731d: UserService returns User ORM object - use attribute access
     # Authorization: admin can view any user, non-admin can only view self
     if not is_admin and str(user.id) != str(current_user.id):
-        logger.warning(f"Non-admin {current_user.username} tried to view user {user.username}")
+        logger.warning("Non-admin %s tried to view user %s", sanitize(current_user.username), sanitize(user.username))
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot view other users' profiles")
 
     return user_to_response(user)
@@ -430,7 +436,7 @@ async def update_user(
         ResourceNotFoundError: User not found (404)
         BaseGiljoError: Database operation failed (500)
     """
-    logger.debug(f"User {current_user.username} updating user {user_id}")
+    logger.debug("User %s updating user %s", sanitize(current_user.username), sanitize(str(user_id)))
 
     # Admin can access users across all tenants for user management
     is_admin = current_user.role == "admin"
@@ -440,7 +446,7 @@ async def update_user(
 
     # 0731d: UserService returns User ORM object - use attribute access
     if not is_admin and str(user.id) != str(current_user.id):
-        logger.warning(f"Non-admin {current_user.username} tried to update user {user.username}")
+        logger.warning("Non-admin %s tried to update user %s", sanitize(current_user.username), sanitize(user.username))
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot update other users' profiles")
 
     # Build updates dict (only include non-None values)
@@ -476,11 +482,11 @@ async def update_user(
                     user_data.recovery_pin.encode("utf-8"), bcrypt.gensalt()
                 ).decode("utf-8")
                 await db.commit()
-                logger.info(f"Recovery PIN updated for user: {target_user.username}")
+                logger.info("Recovery PIN updated for user: %s", sanitize(target_user.username))
 
     updated_user = await user_service.update_user(str(user_id), include_all_tenants=is_admin, **updates)
 
-    logger.info(f"Updated user: {user.username}")
+    logger.info("Updated user: %s", sanitize(user.username))
 
     return user_to_response(updated_user)
 
@@ -506,11 +512,11 @@ async def delete_user(
         ResourceNotFoundError: User not found (404)
         BaseGiljoError: Database operation failed (500)
     """
-    logger.debug(f"Admin {current_user.username} deactivating user {user_id}")
+    logger.debug("Admin %s deactivating user %s", sanitize(current_user.username), sanitize(str(user_id)))
 
     await user_service.delete_user(str(user_id))
 
-    logger.info(f"Deactivated user: {user_id}")
+    logger.info("Deactivated user: %s", sanitize(str(user_id)))
 
 
 @router.put("/{user_id}/role", response_model=RoleChangeResponse)

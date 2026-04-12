@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.template_service import TemplateService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_template_service
 from .models import TemplateHistoryResponse, TemplateResponse
@@ -41,7 +42,7 @@ async def get_template_history(
 
     Migrated to TemplateService - Handover 1011 Phase 2.
     """
-    logger.info("User %s requesting history for template %s", current_user.username, template_id)
+    logger.info("User %s requesting history for template %s", sanitize(current_user.username), sanitize(template_id))
 
     template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
     if not template:
@@ -84,9 +85,9 @@ async def restore_template(
     """
     logger.info(
         "User %s restoring template %s from archive %s",
-        current_user.username,
-        template_id,
-        archive_id,
+        sanitize(current_user.username),
+        sanitize(template_id),
+        sanitize(archive_id),
     )
 
     archive = await template_service.get_archive_by_id(session, archive_id, template_id, current_user.tenant_key)
@@ -127,7 +128,7 @@ async def reset_template(
 
     Migrated to TemplateService - Handover 1011 Phase 2.
     """
-    logger.info("User %s resetting template %s", current_user.username, template_id)
+    logger.info("User %s resetting template %s", sanitize(current_user.username), sanitize(template_id))
 
     template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 
@@ -162,7 +163,9 @@ async def reset_system_instructions(
 
     Migrated to TemplateService - Handover 1011 Phase 2.
     """
-    logger.info("User %s resetting system instructions for template %s", current_user.username, template_id)
+    logger.info(
+        "User %s resetting system instructions for template %s", sanitize(current_user.username), sanitize(template_id)
+    )
 
     template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 

@@ -228,8 +228,10 @@ async def setup_database(request: DatabaseSetupRequest) -> dict:
         }
 
     except (ImportError, OSError, ValueError) as e:
-        logger.error(f"Database setup failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Database setup failed: {e!s}") from e
+        # Log full detail server-side; return a generic message to avoid leaking
+        # internal exception text or paths to the caller (CodeQL: py/stack-trace-exposure)
+        logger.error("Database setup failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Database setup failed. Check server logs for details.") from e
 
 
 @router.get("/verify")

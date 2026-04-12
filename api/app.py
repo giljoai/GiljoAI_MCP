@@ -109,6 +109,8 @@ try:
     from .endpoints.organizations import members as org_members
 
     logger.info("Loading middleware and websocket...")
+    from src.giljo_mcp.utils.log_sanitizer import sanitize
+
     from .exception_handlers import register_exception_handlers
     from .middleware import (
         APIMetricsMiddleware,
@@ -593,14 +595,10 @@ async def _authenticate_ws_connection(
             tenant_key_from_user = user_info.get("tenant_key")
 
             if not tenant_key_from_user and not is_setup:
-                logger.error(f"WebSocket rejected for {client_id}: missing tenant_key in auth context")
+                logger.error("WebSocket rejected for %s: missing tenant_key in auth context", sanitize(client_id))
                 await websocket.close(code=1008, reason="Missing tenant key")
                 return None
 
-            logger.info(
-                f"[WS AUTH DEBUG] auth_result keys: {list(auth_result.keys())}, "
-                f"user_info keys: {list(user_info.keys())}, tenant_key={tenant_key_from_user}"
-            )
             auth_context = {
                 "user": user_info,
                 "context": auth_result.get("context", "normal"),
@@ -618,8 +616,10 @@ async def _authenticate_ws_connection(
 
             auth_type = auth_context.get("auth_type", "setup")
             logger.info(
-                f"WebSocket connected: {client_id} "
-                f"(context: {auth_result.get('context', 'normal')}, auth_type: {auth_type})"
+                "WebSocket connected: %s (context: %s, auth_type: %s)",
+                sanitize(client_id),
+                sanitize(str(auth_result.get("context", "normal"))),
+                sanitize(auth_type),
             )
             return auth_context
 
@@ -628,7 +628,7 @@ async def _authenticate_ws_connection(
                 await session_cm.__aexit__(None, None, None)
 
     except WebSocketException as e:
-        logger.warning(f"WebSocket authentication failed for {client_id}: {e.reason}")
+        logger.warning("WebSocket authentication failed for %s: %s", sanitize(client_id), sanitize(str(e.reason)))
         await websocket.close(code=1008, reason=e.reason or "Unauthorized")
         return None
 
@@ -823,7 +823,7 @@ def _register_event_handlers(app: FastAPI) -> None:
         except WebSocketDisconnect:
             state.websocket_manager.disconnect(client_id)
             del state.connections[client_id]
-            logger.info(f"WebSocket disconnected: {client_id}")
+            logger.info("WebSocket disconnected: %s", sanitize(client_id))
         except (RuntimeError, ValueError, KeyError):
             logger.exception("WebSocket error for {client_id}")
             state.websocket_manager.disconnect(client_id)

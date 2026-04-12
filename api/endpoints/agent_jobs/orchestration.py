@@ -32,6 +32,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import Project, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_orchestration_service
 from .models import WorkflowStatusResponse
@@ -104,12 +105,14 @@ async def get_workflow_status(
     Raises:
         HTTPException 404: Project not found
     """
-    logger.debug(f"User {current_user.username} getting workflow status for project {project_id}")
+    logger.debug(
+        "User %s getting workflow status for project %s", sanitize(current_user.username), sanitize(project_id)
+    )
 
     # Get workflow status via OrchestrationService
     result = await orchestration_service.get_workflow_status(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    logger.info(f"Retrieved workflow status for project {project_id}")
+    logger.info("Retrieved workflow status for project %s", sanitize(project_id))
 
     # 0731d: OrchestrationService returns WorkflowStatus typed model
     return WorkflowStatusResponse(
@@ -160,7 +163,7 @@ async def launch_project(
         HTTPException 400: Project missing mission or no agents spawned
     """
     project_id_str = str(request.project_id)
-    logger.info(f"Launch project requested for {project_id_str} by {current_user.username}")
+    logger.info("Launch project requested for %s by %s", sanitize(project_id_str), sanitize(current_user.username))
 
     # Fetch project with multi-tenant isolation
     stmt = select(Project).where(
@@ -171,12 +174,14 @@ async def launch_project(
     project = result.scalar_one_or_none()
 
     if not project or project.deleted_at is not None:
-        logger.warning(f"Project {project_id_str} not found for tenant {current_user.tenant_key}")
+        logger.warning(
+            "Project %s not found for tenant %s", sanitize(project_id_str), sanitize(current_user.tenant_key)
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     # Validate mission exists
     if not project.mission or project.mission.strip() == "":
-        logger.error(f"Project {project_id_str} has no mission")
+        logger.error("Project %s has no mission", sanitize(project_id_str))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Project mission has not been created. Please complete staging first.",
@@ -196,7 +201,7 @@ async def launch_project(
     agents = agent_result.scalars().all()
 
     if not agents:
-        logger.error(f"Project {project_id_str} has no spawned agents")
+        logger.error("Project %s has no spawned agents", sanitize(project_id_str))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No agents have been spawned for this project. Please complete staging first.",
@@ -208,7 +213,7 @@ async def launch_project(
     try:
         await db.commit()
         await db.refresh(project)
-        logger.info(f"Project {project_id_str} launching implementation ({len(agents)} agents)")
+        logger.info("Project %s launching implementation (%d agents)", sanitize(project_id_str), len(agents))
     except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         await db.rollback()
         logger.exception("Failed to update project status")
@@ -244,7 +249,7 @@ async def launch_project(
                 "launched_by": current_user.username,
             },
         )
-        logger.info(f"WebSocket event 'project:launched' broadcasted for {project_id_str}")
+        logger.info("WebSocket event 'project:launched' broadcasted for %s", sanitize(project_id_str))
     except Exception:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("Failed to broadcast WebSocket event")
 
@@ -297,7 +302,9 @@ async def launch_implementation(
     Raises:
         HTTPException 404: Project not found or tenant isolation violation
     """
-    logger.info(f"Launch implementation requested for project {project_id} by {current_user.username}")
+    logger.info(
+        "Launch implementation requested for project %s by %s", sanitize(project_id), sanitize(current_user.username)
+    )
 
     # Get project with tenant isolation (query-level filtering, not post-fetch check)
     project_result = await db.execute(
@@ -313,7 +320,7 @@ async def launch_implementation(
 
     # Check if already launched (idempotent)
     if project.implementation_launched_at is not None:
-        logger.info(f"Project {project_id} already launched at {project.implementation_launched_at}")
+        logger.info("Project %s already launched at %s", sanitize(project_id), project.implementation_launched_at)
         return LaunchImplementationResponse(
             already_launched=True, launched_at=project.implementation_launched_at.isoformat()
         )
@@ -323,7 +330,9 @@ async def launch_implementation(
     await db.commit()
     await db.refresh(project)
 
-    logger.info(f"Implementation launched for project {project_id} at {project.implementation_launched_at}")
+    logger.info(
+        "Implementation launched for project %s at %s", sanitize(project_id), project.implementation_launched_at
+    )
 
     return LaunchImplementationResponse(
         success=True, implementation_launched_at=project.implementation_launched_at.isoformat()

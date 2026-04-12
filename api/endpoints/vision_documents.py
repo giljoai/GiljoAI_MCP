@@ -40,6 +40,7 @@ from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models import Product, User
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -244,7 +245,17 @@ async def create_vision_document(
             storage_path = Path("./products") / product_id / "vision"
             storage_path.mkdir(parents=True, exist_ok=True)  # CROSS-PLATFORM: creates subdirs
 
-            file_path = storage_path / vision_file.filename
+            # Resolve both the storage base and the candidate file path to prevent
+            # directory traversal via a crafted filename (CodeQL: py/path-injection)
+            resolved_base = storage_path.resolve()
+            # Use only the plain filename component -- discard any directory parts
+            safe_filename = Path(vision_file.filename).name
+            file_path = storage_path / safe_filename
+            if not file_path.resolve().is_relative_to(resolved_base):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid filename: path traversal detected.",
+                )
             async with aiofiles.open(file_path, "wb") as f:
                 content_bytes = await vision_file.read()
                 await f.write(content_bytes)
@@ -256,7 +267,7 @@ async def create_vision_document(
             try:
                 document_content = content_bytes.decode("utf-8")
             except UnicodeDecodeError:
-                logger.warning(f"File {vision_file.filename} is not UTF-8 encoded, falling back to latin-1")
+                logger.warning("File %s is not UTF-8 encoded, falling back to latin-1", sanitize(vision_file.filename))
                 document_content = content_bytes.decode("latin-1")
             storage_type = "hybrid" if content else "file"
         elif content:
@@ -296,7 +307,7 @@ async def create_vision_document(
             try:
                 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
-                logger.info(f"Generating multi-level summaries for doc {doc.id}: {total_tokens} tokens")
+                logger.info("Generating multi-level summaries for doc %s: %d tokens", doc.id, total_tokens)
 
                 summarizer = VisionDocumentSummarizer()
                 summaries = summarizer.summarize_multi_level(document_content)
@@ -333,7 +344,7 @@ async def create_vision_document(
             try:
                 from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 
-                logger.info(f"Chunking document {doc.id}: {total_tokens} tokens exceeds 25K threshold")
+                logger.info("Chunking document %s: %d tokens exceeds 25K threshold", doc.id, total_tokens)
 
                 chunker = VisionDocumentChunker(target_chunk_size=25000)
                 chunk_result = await chunker.chunk_vision_document(
@@ -343,11 +354,15 @@ async def create_vision_document(
 
                 if chunk_result.get("success"):
                     logger.info(
-                        f"Chunked document {doc.id}: {chunk_result.get('chunks_created', 0)} chunks, "
-                        f"{chunk_result.get('total_tokens', 0)} tokens"
+                        "Chunked document %s: %d chunks, %d tokens",
+                        doc.id,
+                        chunk_result.get("chunks_created", 0),
+                        chunk_result.get("total_tokens", 0),
                     )
                 else:
-                    logger.warning(f"Document {doc.id} created but chunking failed: {chunk_result.get('error')}")
+                    logger.warning(
+                        "Document %s created but chunking failed: %s", doc.id, sanitize(str(chunk_result.get("error")))
+                    )
             except (ImportError, SQLAlchemyError, ValueError) as e:
                 # Chunking failed but document created - log warning and continue
                 logger.warning(f"Document {doc.id} created but chunking failed: {e}")
@@ -503,7 +518,7 @@ async def update_vision_document(
             try:
                 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
-                logger.info(f"Regenerating summaries for updated doc {document_id}: {total_tokens} tokens")
+                logger.info("Regenerating summaries for updated doc %s: %d tokens", sanitize(document_id), total_tokens)
 
                 summarizer = VisionDocumentSummarizer()
                 summaries = summarizer.summarize_multi_level(content)
@@ -729,7 +744,7 @@ async def regenerate_summaries(
             )
 
         # Generate summaries
-        logger.info(f"Regenerating summaries for doc {document_id}")
+        logger.info("Regenerating summaries for doc %s", sanitize(document_id))
         summarizer = VisionDocumentSummarizer()
         summaries = summarizer.summarize_multi_level(content)
 

@@ -22,6 +22,7 @@ from api.dependencies.websocket import WebSocketDependency, get_websocket_depend
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_orchestration_service
 from .models import (
@@ -64,11 +65,15 @@ async def spawn_agent_job(
         HTTPException 403: User not authorized
         HTTPException 400: Invalid request or spawn failed
     """
-    logger.debug(f"User {current_user.username} spawning agent job: {request.agent_display_name}")
+    logger.debug(
+        "User %s spawning agent job: %s", sanitize(current_user.username), sanitize(request.agent_display_name)
+    )
 
     # Permission check - only admins can spawn agents
     if current_user.role != "admin":
-        logger.warning(f"User {current_user.username} (role={current_user.role}) attempted to spawn agent")
+        logger.warning(
+            "User %s (role=%s) attempted to spawn agent", sanitize(current_user.username), sanitize(current_user.role)
+        )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required to spawn agents")
 
     result = await orchestration_service.spawn_agent_job(
@@ -101,12 +106,12 @@ async def spawn_agent_job(
                 "mission": request.mission,  # Handover 0464: Include mission for UI display
             },
         )
-        logger.info(f"Agent spawn broadcasted: {result.job_id}")
+        logger.info("Agent spawn broadcasted: %s", sanitize(str(result.job_id)))
     except Exception:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("Failed to broadcast agent spawn event")
         # Non-critical - continue without broadcast
 
-    logger.info(f"Spawned agent job {result.job_id} for tenant {current_user.tenant_key}")
+    logger.info("Spawned agent job %s for tenant %s", sanitize(str(result.job_id)), sanitize(current_user.tenant_key))
 
     return SpawnAgentResponse(
         success=True,
@@ -140,7 +145,7 @@ async def complete_job(
         HTTPException 404: Job not found
         HTTPException 400: Invalid status transition
     """
-    logger.debug(f"User {current_user.username} completing job {job_id}")
+    logger.debug("User %s completing job %s", sanitize(current_user.username), sanitize(job_id))
 
     # Service expects result as dict, wrap string result for compatibility
     result_dict = {"summary": complete_request.result} if complete_request.result else {"summary": "Job completed"}
@@ -148,7 +153,7 @@ async def complete_job(
         job_id=job_id, tenant_key=current_user.tenant_key, result=result_dict
     )
 
-    logger.info(f"Completed job {job_id} for tenant {current_user.tenant_key}")
+    logger.info("Completed job %s for tenant %s", sanitize(job_id), sanitize(current_user.tenant_key))
 
     # 0731d: OrchestrationService returns CompleteJobResult typed model
     # Response model expects execution status, not result status
@@ -183,13 +188,13 @@ async def report_job_error(
         HTTPException 404: Job not found
         HTTPException 400: Invalid status transition
     """
-    logger.debug(f"User {current_user.username} reporting error for job {job_id}")
+    logger.debug("User %s reporting error for job %s", sanitize(current_user.username), sanitize(job_id))
 
     result = await orchestration_service.set_agent_status(
         job_id=job_id, tenant_key=current_user.tenant_key, status="blocked", reason=error_request.error
     )
 
-    logger.info(f"Reported error for job {job_id} for tenant {current_user.tenant_key}")
+    logger.info("Reported error for job %s for tenant %s", sanitize(job_id), sanitize(current_user.tenant_key))
 
     # 0731d: OrchestrationService returns ErrorReportResult typed model
     # Response model expects execution status (blocked), not result status
