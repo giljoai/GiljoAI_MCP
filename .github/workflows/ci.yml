@@ -126,6 +126,7 @@ jobs:
         # Tests run and report but don't block until CI environment is fully configured.
         run: |
           pytest tests/unit/ -v --tb=short --timeout=30 \
+            --no-cov \
             --ignore=tests/manual \
             --ignore=tests/saas \
             -m "not slow and not e2e and not stress and not network and not server_mode" 
