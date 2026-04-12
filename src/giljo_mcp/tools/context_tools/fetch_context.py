@@ -72,7 +72,7 @@ DEFAULT_DEPTHS = {
     "testing": None,
     "memory_360": _CANONICAL_DEPTHS.get("memory_last_n_projects", 3),
     "git_history": _CANONICAL_DEPTHS.get("git_commits", 25),
-    "agent_templates": _CANONICAL_DEPTHS.get("agent_templates", "type_only"),
+    "agent_templates": _CANONICAL_DEPTHS.get("agent_templates", "basic"),
     "project": None,
     "self_identity": None,
 }

@@ -121,8 +121,8 @@ def _build_ch2_fetch_calls(
         "agent_templates": {
             "framing": "Full agent templates with complete prompts for spawning.",
             "depth_aware": True,
-            "skip_on_depth": "type_only",
-            "default_depth": "type_only",
+            "skip_on_depth": "basic",
+            "default_depth": "basic",
         },
     }
 
@@ -139,7 +139,7 @@ def _build_ch2_fetch_calls(
         if not config:
             continue
 
-        # Handle agent_templates skip for type_only
+        # Handle agent_templates skip for basic depth
         if config.get("depth_aware"):
             field_depth = depth_config.get(field, config.get("default_depth"))
             skip_value = config.get("skip_on_depth")
