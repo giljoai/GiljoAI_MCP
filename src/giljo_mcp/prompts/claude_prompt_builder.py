@@ -175,9 +175,7 @@ class ClaudePromptBuilder:
                     "- Do NOT use agent_display_name (e.g., 'implementer') - it will fail",
                     "",
                     "### Spawning Strategy",
-                    "**Spawning Mode**: Use foreground (default) when you need to observe agent output "
-                    "in real-time. Use `run_in_background=true` for independent parallel agents — poll "
-                    "status via `get_workflow_status()`. Background execution is fully supported and reliable.",
+                    "**Spawning Mode**: Use foreground (default) when you need to observe agent output in real-time. Use `run_in_background=true` for independent parallel agents — poll status via `get_workflow_status()`. Background execution is fully supported and reliable.",
                     "",
                     "Choose spawning approach based on job requirements:",
                     "- **Sequential**: Spawn one agent, wait for completion, then next (best for dependent tasks)",
@@ -318,8 +316,7 @@ class ClaudePromptBuilder:
             "   ```python",
             "   mcp__giljo_mcp__complete_job(",
             '       job_id="<their_job_id>",',
-            '       result={"summary": "Force-completed by orchestrator during closeout.", '
-            '"status": "force_completed"}',
+            '       result={"summary": "Force-completed by orchestrator during closeout.", "status": "force_completed"}',
             "   )",
             "   ```",
             '   Do NOT call complete_job() on agents already in "complete" status.',

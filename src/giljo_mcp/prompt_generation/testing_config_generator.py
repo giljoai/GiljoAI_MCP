@@ -126,18 +126,20 @@ class Calculator:
 # Expected: PASSED (GREEN state)
 
 # Phase 3: REFACTOR (Improve code while keeping tests green)
-class Calculator:
-    def add(self, a, b):
-        '''Add two numbers.
-
-        Args:
-            a: First number
-            b: Second number
-
-        Returns:
-            Sum of a and b
-        '''
-        return a + b  # Added documentation, tests still pass
+# Refactor Calculator.add to add documentation (same class, same tests pass)
+#
+# class Calculator:
+#     def add(self, a, b):
+#         '''Add two numbers.
+#
+#         Args:
+#             a: First number
+#             b: Second number
+#
+#         Returns:
+#             Sum of a and b
+#         '''
+#         return a + b  # Added documentation, tests still pass
 ```
 
 ### When Implementing Features

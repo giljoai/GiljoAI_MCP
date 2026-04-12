@@ -30,6 +30,7 @@ from src.giljo_mcp.exceptions import ResourceNotFoundError
 # Model imports: Use modular pattern (Post-0128a refactoring)
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.services import ProductService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_product_service
 from .models import DeletedProductResponse, ProductCreate, ProductResponse, ProductUpdate
@@ -174,7 +175,7 @@ async def list_products(
     """
     products = await service.list_products(include_inactive=include_inactive)
 
-    logger.debug(f"Found {len(products)} products")
+    logger.debug("Found %d products", len(products))
 
     responses = []
     for product in products:
@@ -212,7 +213,7 @@ async def list_deleted_products(
             stats = await service.get_product_statistics(str(p.id))
         except (ResourceNotFoundError, ValueError, KeyError):
             # Product is deleted so get_product_statistics may raise ResourceNotFoundError
-            logger.debug(f"Could not get statistics for deleted product {p.id}")
+            logger.debug("Could not get statistics for deleted product %s", p.id)
 
         result.append(
             DeletedProductResponse(
@@ -247,8 +248,8 @@ async def get_product(
     # Handover 0412: Ensure product_memory is passed through correctly
     pm = product.product_memory
     if pm is None:
-        logger.warning(f"Product {product_id}: product_memory is None, using default")
-    logger.info(f"Product {product_id}: product_memory keys={list((pm or {}).keys())}")
+        logger.warning("Product %s: product_memory is None, using default", sanitize(product_id))
+    logger.info("Product %s: product_memory keys=%s", sanitize(product_id), list((pm or {}).keys()))
 
     return _build_product_response(product, stats)
 
@@ -274,6 +275,6 @@ async def update_product(
     # Get statistics for the updated product
     stats = await service.get_product_statistics(str(product.id))
 
-    logger.info(f"Updated product {product_id}")
+    logger.info("Updated product %s", sanitize(product_id))
 
     return _build_product_response(product, stats)

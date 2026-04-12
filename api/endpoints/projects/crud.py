@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, Query, status
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.project_service import ProjectService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_project_service
 from .models import (
@@ -62,7 +63,7 @@ async def create_project(
         HTTPException 400: Project creation failed
         HTTPException 403: User not authorized
     """
-    logger.debug(f"User {current_user.username} creating project: {project.name}")
+    logger.debug("User %s creating project: %s", sanitize(current_user.username), sanitize(project.name))
 
     # Create project via ProjectService (raises exceptions on error - Handover 0730b)
     created_project = await project_service.create_project(
@@ -78,7 +79,7 @@ async def create_project(
         subseries=project.subseries,
     )
 
-    logger.info(f"Created project {created_project.id} for tenant {current_user.tenant_key}")
+    logger.info("Created project %s for tenant %s", created_project.id, sanitize(current_user.tenant_key))
 
     # Build response
     return ProjectResponse(
@@ -125,7 +126,7 @@ async def list_projects(
     Returns:
         List of ProjectResponse objects
     """
-    logger.debug(f"User {current_user.username} listing projects (status={status_filter})")
+    logger.debug("User %s listing projects (status=%s)", sanitize(current_user.username), sanitize(str(status_filter)))
 
     # List projects via ProjectService (raises exceptions on error)
     projects = await project_service.list_projects(status=status_filter, tenant_key=current_user.tenant_key)
@@ -385,7 +386,7 @@ async def get_project(
     Raises:
         HTTPException 404: Project not found
     """
-    logger.debug(f"User {current_user.username} getting project {project_id}")
+    logger.debug("User %s getting project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Get project via ProjectService (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
@@ -448,7 +449,7 @@ async def update_project(
         HTTPException 404: Project not found
         HTTPException 400: Update failed
     """
-    logger.debug(f"User {current_user.username} updating project {project_id}")
+    logger.debug("User %s updating project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Convert updates to dict, excluding unset fields
     update_dict = updates.dict(exclude_unset=True)

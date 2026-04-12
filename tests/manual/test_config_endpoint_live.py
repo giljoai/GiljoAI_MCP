@@ -150,7 +150,7 @@ async def test_config_endpoint():
         # Check database password is masked
         db_password = config.get("database", {}).get("password")
         if db_password and ("*" in db_password or db_password == ""):
-            print(f"  ✓ Database password masked: '{db_password}'")
+            print("  ✓ Database password masked correctly")
         elif db_password:
             print("  ⚠ WARNING: Database password may not be properly masked")
         else:

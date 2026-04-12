@@ -73,11 +73,11 @@ async def create_test_key():
         print("SUCCESS: API Key Created Successfully!")
         print(f"   User: {user.username}")
         print(f"   Tenant: {user.tenant_key}")
-        print(f"   API Key: {api_key}")
+        print(f"   API Key: {api_key}")  # noqa: S106 — dev tool, key shown intentionally for local testing
         print(f"   Key ID: {api_key_record.id}")
         print()
         print("Use this API key for testing:")
-        print(f'export TEST_API_KEY="{api_key}"')
+        print(f'export TEST_API_KEY="{api_key}"')  # noqa: S106 — dev tool, key shown intentionally for local testing
 
         return api_key
 

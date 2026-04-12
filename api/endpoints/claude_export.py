@@ -318,6 +318,17 @@ async def export_templates_to_claude_code(
     if not export_dir.is_dir():
         raise ValueError(f"Export path is not a directory: {export_dir}")
 
+    # Confirm the resolved path still ends with .claude/agents to prevent a
+    # symlink or traversal sequence from escaping the intended boundary
+    # (CodeQL: py/path-injection)
+    resolved_export = export_dir.resolve()
+    resolved_str = resolved_export.as_posix()
+    if not resolved_str.endswith(("/.claude/agents", "\\.claude\\agents")):
+        raise ValueError(
+            "Export path must resolve to a '.claude/agents' directory. "
+            "Symlinks or traversal sequences that redirect outside this boundary are not permitted."
+        )
+
     # Create backup before export (Handover 0075)
     backup_path = create_zip_backup(export_dir)
     backup_info = None
