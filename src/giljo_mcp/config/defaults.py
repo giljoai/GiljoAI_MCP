@@ -24,7 +24,7 @@ Depth Controls:
     - depth_vision_documents: "medium" (66% summary)
     - depth_memory_last_n: 3 (last 3 projects)
     - depth_git_commits: 25
-    - depth_agent_templates: "type_only" (~250 tokens)
+    - depth_agent_templates: "basic" (~250 tokens)
     - depth_tech_stack_sections: "all"
     - depth_architecture: "overview"
     - execution_mode: "claude_code"
@@ -73,7 +73,7 @@ DEFAULT_DEPTH_CONFIG: dict[str, Any] = {
     "vision_documents": "medium",
     "memory_last_n_projects": 3,
     "git_commits": 25,
-    "agent_templates": "type_only",
+    "agent_templates": "basic",
     "tech_stack_sections": "all",
     "architecture_depth": "overview",
 }

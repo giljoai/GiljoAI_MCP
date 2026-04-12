@@ -226,8 +226,8 @@ const contexts = [
   {
     key: 'agent_templates',
     label: 'Agent Templates',
-    options: ['type_only', 'full'],
-    helpText: 'Type Only = Minimal metadata (~250 tokens) | Full = Complete prompts (~12.5K tokens)'
+    options: ['basic', 'full'],
+    helpText: 'Basic = Team roster with descriptions (~400 tokens) | Full = Complete agent definitions (~2.4K tokens)'
   },
 ]
 
@@ -268,7 +268,7 @@ function getDepthLabel(key: string): string {
     const labels: Record<string, string> = { light: 'Light', medium: 'Medium', full: 'Full' }
     return labels[value as string] || 'Light'
   } else if (key === 'agent_templates') {
-    return value === 'type_only' ? 'Type Only' : 'Full'
+    return value === 'basic' ? 'Basic' : 'Full'
   }
   return String(value)
 }
@@ -287,7 +287,7 @@ const config = ref<Record<string, ContextConfig>>({
   vision_documents: { enabled: true, depth: 'medium' },
   memory_360: { enabled: true, count: 3 },
   git_history: { enabled: false, count: 25 },
-  agent_templates: { enabled: true, depth: 'type_only' },
+  agent_templates: { enabled: true, depth: 'basic' },
 })
 
 const loading = ref(false)
@@ -359,14 +359,14 @@ function formatOptions(context: { key: string; options?: (string | number)[] }) 
   if (context.key === 'agent_templates') {
     return [
       {
-        title: 'Type Only (~250 tokens for 5 agents)',
-        value: 'type_only',
-        subtitle: 'Name, role, description only - token efficient'
+        title: 'Basic (~400 tokens for 5 agents)',
+        value: 'basic',
+        subtitle: 'Team roster: name, role, description - for tools with local templates'
       },
       {
-        title: 'Full (~12,500 tokens for 5 agents)',
+        title: 'Full (~2,400 tokens for 5 agents)',
         value: 'full',
-        subtitle: 'Complete agent prompts - for nuanced task assignment'
+        subtitle: 'Complete agent definitions - for tools without local templates'
       }
     ]
   }
@@ -519,7 +519,7 @@ async function saveConfig() {
           memory_last_n_projects: config.value.memory_360?.count || 3,
           git_commits: config.value.git_history?.count || 25,
           vision_documents: config.value.vision_documents?.depth || 'light',
-          agent_templates: config.value.agent_templates?.depth || 'type_only',
+          agent_templates: config.value.agent_templates?.depth || 'basic',
         }
       })
     } catch (depthError) {
@@ -541,7 +541,7 @@ function resetToDefaults() {
     vision_documents: { enabled: true, depth: 'medium' },
     memory_360: { enabled: true, count: 3 },
     git_history: { enabled: true, count: 25 },
-    agent_templates: { enabled: true, depth: 'type_only' },
+    agent_templates: { enabled: true, depth: 'basic' },
   }
 
   if (!props.gitIntegrationEnabled) {
