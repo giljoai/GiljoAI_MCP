@@ -41,14 +41,12 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { useWebSocketStore } from '@/stores/websocket'
 import { apiClient } from '@/services/api'
 
 const SESSION_KEY_MIGRATION = 'dismissed_migration_banner'
 const SESSION_KEY_UPDATE = 'dismissed_update_banner'
 
 const userStore = useUserStore()
-const wsStore = useWebSocketStore()
 
 const pendingMigration = ref(false)
 const updateAvailable = ref(false)
@@ -104,24 +102,14 @@ function dismissUpdate() {
   sessionStorage.setItem(SESSION_KEY_UPDATE, 'true')
 }
 
-let unsubscribeWs = null
-
 onMounted(async () => {
   await fetchSystemStatus()
 
-  // Register WebSocket handler for real-time update notifications
-  unsubscribeWs = wsStore.on('system:update_available', (payload) => {
-    handleUpdateAvailableEvent(payload)
-  })
-
-  // Also listen for the window event dispatched by systemEventRoutes
+  // Listen for WebSocket events dispatched by systemEventRoutes
   window.addEventListener('ws-system-update-available', handleUpdateAvailableEvent)
 })
 
 onUnmounted(() => {
-  if (typeof unsubscribeWs === 'function') {
-    unsubscribeWs()
-  }
   window.removeEventListener('ws-system-update-available', handleUpdateAvailableEvent)
 })
 </script>
