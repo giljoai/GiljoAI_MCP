@@ -308,19 +308,22 @@ async def test_write_product_core_fields(
         product_name="Updated Product Name",
         product_description="A new description.",
         core_features="Feature A, Feature B",
+        brand_guidelines="Dark navy theme, #ffd700 brand yellow, WCAG AA contrast",
     )
 
     assert result["success"] is True
-    assert result["fields_written"] == 3
+    assert result["fields_written"] == 4
     assert "product_name" in result["fields"]
     assert "product_description" in result["fields"]
     assert "core_features" in result["fields"]
+    assert "brand_guidelines" in result["fields"]
 
     # Verify values persisted
     await db_session.refresh(product_a)
     assert product_a.name == "Updated Product Name"
     assert product_a.description == "A new description."
     assert product_a.core_features == "Feature A, Feature B"
+    assert product_a.brand_guidelines == "Dark navy theme, #ffd700 brand yellow, WCAG AA contrast"
 
 
 @pytest.mark.asyncio
@@ -376,10 +379,12 @@ async def test_write_product_architecture(
         architecture_pattern="Microservices",
         api_style="REST + GraphQL",
         design_patterns="CQRS, Event Sourcing",
+        coding_conventions="PEP 8, 200-line function limit",
     )
 
     assert result["success"] is True
     assert "architecture_pattern" in result["fields"]
+    assert "coding_conventions" in result["fields"]
 
     stmt = select(ProductArchitecture).where(
         ProductArchitecture.product_id == product_a.id,
@@ -390,6 +395,7 @@ async def test_write_product_architecture(
     assert row.primary_pattern == "Microservices"
     assert row.api_style == "REST + GraphQL"
     assert row.design_patterns == "CQRS, Event Sourcing"
+    assert row.coding_conventions == "PEP 8, 200-line function limit"
 
 
 @pytest.mark.asyncio
