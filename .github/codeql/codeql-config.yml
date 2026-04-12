@@ -2,3 +2,6 @@ name: "GiljoAI CodeQL Config"
 # Register custom sanitizer functions as taint barriers.
 # Without this, CodeQL flags log calls using sanitize() as log-injection
 # even though the function strips all control characters (CWE-117 fix).
+
+extensions:
+  - .github/codeql/extensions/log-sanitizer.model.yml
