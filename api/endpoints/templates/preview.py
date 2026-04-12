@@ -22,6 +22,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.template_renderer import hex_to_claude_color
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_template_service
 from .models import TemplatePreviewRequest, TemplatePreviewResponse
@@ -47,7 +48,7 @@ async def preview_template(
 
     Migrated to TemplateService - Handover 1011 Phase 2.
     """
-    logger.info(f"User {current_user.username} previewing template {template_id}")
+    logger.info("User %s previewing template %s", sanitize(current_user.username), sanitize(template_id))
 
     template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 

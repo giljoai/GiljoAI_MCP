@@ -31,6 +31,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.models.schemas import ProjectLaunchResponse
 from src.giljo_mcp.services.project_service import ProjectService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_project_service
 from .models import (
@@ -106,12 +107,14 @@ async def activate_project(
         HTTPException 404: Project not found
         HTTPException 400: Activation failed
     """
-    logger.info(f"User {current_user.username} activating project {project_id} (force={force})")
+    logger.info(
+        "User %s activating project %s (force=%s)", sanitize(current_user.username), sanitize(project_id), force
+    )
 
     # Activate via ProjectService (raises exceptions on error - Handover 0730b)
     await project_service.activate_project(project_id=project_id, force=force, tenant_key=current_user.tenant_key)
 
-    logger.info(f"Activated project {project_id}")
+    logger.info("Activated project %s", sanitize(project_id))
 
     # Get full project details with agents (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
@@ -144,12 +147,12 @@ async def deactivate_project(
         HTTPException 404: Project not found
         HTTPException 400: Deactivation failed
     """
-    logger.info(f"User {current_user.username} deactivating project {project_id}")
+    logger.info("User %s deactivating project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Deactivate via ProjectService (raises exceptions on error - Handover 0730b)
     await project_service.deactivate_project(project_id=project_id, tenant_key=current_user.tenant_key, reason=reason)
 
-    logger.info(f"Deactivated project {project_id}")
+    logger.info("Deactivated project %s", sanitize(project_id))
 
     # Get updated project with agents (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
@@ -180,12 +183,12 @@ async def cancel_project(
         HTTPException 404: Project not found
         HTTPException 400: Cancellation failed
     """
-    logger.info(f"User {current_user.username} cancelling project {project_id}")
+    logger.info("User %s cancelling project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Cancel via ProjectService (raises exceptions on error)
     await project_service.cancel_project(project_id=project_id, tenant_key=current_user.tenant_key, reason=reason)
 
-    logger.info(f"Cancelled project {project_id}")
+    logger.info("Cancelled project %s", sanitize(project_id))
 
     # Get updated project (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
@@ -214,13 +217,13 @@ async def restore_project(
         HTTPException 404: Project not found
         HTTPException 400: Restore failed
     """
-    logger.info(f"User {current_user.username} restoring project {project_id}")
+    logger.info("User %s restoring project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Restore via ProjectService (raises exceptions on error)
     # SECURITY: Explicit tenant_key prevents cross-tenant project restoration
     await project_service.restore_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    logger.info(f"Restored project {project_id}")
+    logger.info("Restored project %s", sanitize(project_id))
 
     # Get updated project (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
@@ -254,12 +257,12 @@ async def cancel_project_staging(
         HTTPException 404: Project not found
         HTTPException 400: Cancellation failed
     """
-    logger.info(f"User {current_user.username} cancelling staging for project {project_id}")
+    logger.info("User %s cancelling staging for project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Cancel staging via ProjectService (raises exceptions on error)
     await project_service.cancel_staging(project_id=project_id)
 
-    logger.info(f"Cancelled staging for project {project_id}")
+    logger.info("Cancelled staging for project %s", sanitize(project_id))
 
     # Get updated project (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
@@ -348,7 +351,7 @@ async def archive_project(
         HTTPException 404: Project not found
         HTTPException 400: Archive failed
     """
-    logger.info(f"User {current_user.username} archiving project {project_id}")
+    logger.info("User %s archiving project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Get project first to validate (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
@@ -366,7 +369,7 @@ async def archive_project(
         project_id=project_id, updates={"status": target_status, "completed_at": datetime.now(timezone.utc)}
     )
 
-    logger.info(f"Archived project {project_id}")
+    logger.info("Archived project %s", sanitize(project_id))
 
     # Get updated project (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
@@ -386,7 +389,7 @@ async def delete_project(
     Marks the project as status='deleted' and sets deleted_at. Purging after 10 days
     is handled by ProjectService.purge_expired_deleted_projects().
     """
-    logger.info(f"User {current_user.username} deleting project {project_id}")
+    logger.info("User %s deleting project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Service raises exceptions on error
     result = await project_service.delete_project(project_id)
@@ -425,14 +428,14 @@ async def launch_project(
         HTTPException 404: Project not found
         HTTPException 400: Launch failed
     """
-    logger.info(f"User {current_user.username} launching project {project_id}")
+    logger.info("User %s launching project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Launch via ProjectService (raises exceptions on error)
     launch_data = await project_service.launch_project(
         project_id=project_id, user_id=str(current_user.id), launch_config=launch_config
     )
 
-    logger.info(f"Launched project {project_id}")
+    logger.info("Launched project %s", sanitize(project_id))
 
     # 0731d: ProjectService returns ProjectLaunchResult typed model
     return ProjectLaunchResponse(

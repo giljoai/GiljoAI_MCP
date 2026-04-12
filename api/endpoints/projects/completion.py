@@ -31,6 +31,7 @@ from api.schemas.prompt import (
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.project_service import ProjectService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_project_service
 from .models import ContinueWorkingResponse, ProjectCloseOutResponse
@@ -54,7 +55,7 @@ async def can_close_project(
     """
     Evaluate whether a project is ready for closeout based on agent status.
     """
-    logger.info(f"User {current_user.username} checking can-close for project {project_id}")
+    logger.info("User %s checking can-close for project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Service raises exceptions on error, returns CanCloseResult typed model
     result = await project_service.can_close_project(project_id=project_id, tenant_key=current_user.tenant_key)
@@ -81,7 +82,9 @@ async def generate_closeout_prompt(
     """
     Generate closeout prompt and checklist for project completion.
     """
-    logger.info(f"User {current_user.username} generating closeout prompt for project {project_id}")
+    logger.info(
+        "User %s generating closeout prompt for project %s", sanitize(current_user.username), sanitize(project_id)
+    )
 
     # Service raises exceptions on error, returns CloseoutPromptResult typed model
     result = await project_service.generate_closeout_prompt(project_id=project_id, tenant_key=current_user.tenant_key)
@@ -109,7 +112,7 @@ async def complete_project(
     """
     Complete project and update product's 360 Memory with learnings.
     """
-    logger.info(f"User {current_user.username} completing project {project_id}")
+    logger.info("User %s completing project %s", sanitize(current_user.username), sanitize(project_id))
 
     if not request.confirm_closeout:
         raise HTTPException(
@@ -150,7 +153,7 @@ async def get_project_closeout_data(
 
     Called by CloseoutModal.vue when the user initiates project closeout.
     """
-    logger.info(f"User {current_user.username} fetching closeout data for project {project_id}")
+    logger.info("User %s fetching closeout data for project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Service raises exceptions on error, returns CloseoutData typed model
     result = await project_service.get_closeout_data(project_id=project_id)
@@ -188,12 +191,12 @@ async def close_out_project(
         HTTPException 404: Project not found
         HTTPException 400: Close-out failed
     """
-    logger.info(f"User {current_user.username} closing out project {project_id}")
+    logger.info("User %s closing out project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Close out project via ProjectService (raises exceptions on error)
     result = await project_service.close_out_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    logger.info(f"Closed out project {project_id}")
+    logger.info("Closed out project %s", sanitize(project_id))
 
     return ProjectCloseOutResponse(
         success=True,
@@ -225,12 +228,12 @@ async def continue_working(
         HTTPException 404: Project not found
         HTTPException 400: Invalid state transition
     """
-    logger.info(f"User {current_user.username} resuming work on project {project_id}")
+    logger.info("User %s resuming work on project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Resume work via ProjectService (raises exceptions on error)
     result = await project_service.continue_working(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    logger.info(f"Resumed work on project {project_id}")
+    logger.info("Resumed work on project %s", sanitize(project_id))
 
     return ContinueWorkingResponse(
         success=True,

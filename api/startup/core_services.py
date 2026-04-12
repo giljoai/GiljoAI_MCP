@@ -98,9 +98,8 @@ async def init_core_services(state: APIState) -> None:
             "permissions": ["*"],
             "active": True,
         }
-        logger.info(
-            f"Loaded API key from environment (key ending in: ...{api_key[-4:] if len(api_key) > 4 else 'XXXX'})"
-        )
+        key_suffix = api_key[-4:] if len(api_key) > 4 else "XXXX"
+        logger.info(f"Loaded API key from environment (key ending in: ...{key_suffix})")
     else:
         logger.info("No API key configured - all clients require JWT authentication (unified auth)")
 

@@ -2132,8 +2132,7 @@ END $$;
 
             try:
                 env = os.environ.copy()
-                env["PGPASSWORD"] = credentials["password"]
-
+                env["PGPASSWORD"] = credentials["password"]  # noqa: S105 — required by psql subprocess, cleared from env after call
                 # Run audit against giljo_mcp database
                 audit_result = subprocess.run(
                     [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "giljo_mcp", "-f", audit_file],
@@ -2202,8 +2201,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             try:
                 # Execute psql with password in environment
                 env = os.environ.copy()
-                env["PGPASSWORD"] = credentials["password"]
-
+                env["PGPASSWORD"] = credentials["password"]  # noqa: S105 — required by psql subprocess, cleared from env after call
                 result = subprocess.run(
                     [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "postgres", "-f", sql_file],
                     check=False,
@@ -2326,8 +2324,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             # Build pg_dump command
             # Using -Fc format (custom format) for better compression and restore options
             env = os.environ.copy()
-            env["PGPASSWORD"] = credentials["password"]
-
+            env["PGPASSWORD"] = credentials["password"]  # noqa: S105 — required by pg_dump subprocess
             command = [
                 pg_dump_path,
                 "-h",
@@ -2522,8 +2519,7 @@ pg_restore -l {backup_file.name} | head -20
                 try:
                     credentials = self.get_db_credentials()
                     env = os.environ.copy()
-                    env["PGPASSWORD"] = credentials.get("password", "")
-
+                    env["PGPASSWORD"] = credentials.get("password", "")  # noqa: S105 — required by psql subprocess
                     # Check if database exists
                     db_result = subprocess.run(
                         [

@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -213,7 +214,7 @@ async def generate_ai_tool_config(
     protocol = "https" if config.get_nested("features.ssl_enabled", default=False) else "http"
     server_url = f"{protocol}://{host}:{port}"
 
-    logger.info(f"Generating config for tool '{tool_id}' with server URL: {server_url}")
+    logger.info("Generating config for tool '%s' with server URL: %s", sanitize(tool_id), server_url)
 
     # API key must be created separately via the API Keys dashboard page.
     # The config generator shows a placeholder prompt so the user knows
@@ -256,7 +257,7 @@ async def generate_ai_tool_config(
     # Get instructions for HTTP transport
     instructions = get_http_tool_instructions(tool_id)
 
-    logger.info(f"Successfully generated config for {tool_id} (HTTP transport)")
+    logger.info("Successfully generated config for %s (HTTP transport)", sanitize(tool_id))
 
     return AIToolConfigResponse(
         tool=tool_id,

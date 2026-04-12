@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_orchestration_service
 from .models import ProgressReportRequest, ProgressReportResponse
@@ -55,7 +56,10 @@ async def report_progress(
         HTTPException 400: Invalid progress data
     """
     logger.debug(
-        f"User {current_user.username} reporting progress for job {job_id}: {progress_request.progress_percent}%"
+        "User %s reporting progress for job %s: %s%%",
+        sanitize(current_user.username),
+        sanitize(job_id),
+        progress_request.progress_percent,
     )
 
     # Build progress data dict for legacy format
@@ -74,7 +78,10 @@ async def report_progress(
     )
 
     logger.info(
-        f"Reported progress for job {job_id}: {progress_request.progress_percent}% for tenant {current_user.tenant_key}"
+        "Reported progress for job %s: %s%% for tenant %s",
+        sanitize(job_id),
+        progress_request.progress_percent,
+        sanitize(current_user.tenant_key),
     )
 
     return ProgressReportResponse(

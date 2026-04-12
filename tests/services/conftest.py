@@ -1082,62 +1082,14 @@ def generate_realistic_document(tokens: int) -> str:
     """
     # Technical paragraphs with diverse semantic content
     base_paragraphs = [
-        (
-            "The GiljoAI Agent Orchestration system provides a sophisticated multi-agent "
-            "framework for complex software development tasks. The orchestrator coordinates "
-            "specialized agents including implementors, testers, analyzers, and deployment "
-            "specialists. Each agent operates with context awareness and token budget management "
-            "to ensure efficient use of available language model capacity."
-        ),
-        (
-            "Vision documents serve as high-level architectural guidance for orchestrators "
-            "during project initialization and execution phases. These documents describe "
-            "the overall system goals, technical constraints, implementation strategies, "
-            "and design patterns that guide agent decision-making throughout the development "
-            "lifecycle. Proper vision documentation ensures consistency across project phases."
-        ),
-        (
-            "The system architecture leverages FastAPI for backend services with PostgreSQL "
-            "for persistent storage and multi-tenant isolation. Frontend components are built "
-            "using Vue 3 with Vuetify for material design components. Real-time updates are "
-            "handled through WebSocket connections that provide live status updates to the "
-            "dashboard interface for monitoring agent execution progress."
-        ),
-        (
-            "Context management is critical for efficient token usage in large language models. "
-            "The system employs a two-dimensional prioritization model combining field priority "
-            "with depth configuration. This enables agents to access essential information while "
-            "staying within context budget limits. Priority levels range from critical to excluded, "
-            "while depth levels control the amount of detail included for each context field."
-        ),
-        (
-            "Multi-tenant isolation ensures secure separation of data across different users "
-            "and organizations. Each tenant operates in a completely isolated environment with "
-            "dedicated database partitions enforced through tenant_key filtering. Access controls "
-            "prevent cross-tenant data leakage. This architecture supports enterprise deployments "
-            "while maintaining strict data security and privacy requirements."
-        ),
-        (
-            "Agent job management provides lifecycle control for spawned agents including "
-            "creation, execution monitoring, cancellation, and handover coordination. The system "
-            "tracks context usage and supports manual succession via UI or slash commands. "
-            "Job status updates are broadcast through WebSocket events to enable "
-            "real-time UI updates and orchestrator coordination across distributed agents."
-        ),
-        (
-            "Testing strategy encompasses unit tests with pytest for service layer validation, "
-            "integration tests for API endpoints and database operations, and end-to-end tests "
-            "for complete workflow verification. Code coverage targets exceed 80 percent across "
-            "all critical paths. Frontend testing uses Vitest for component tests and Cypress "
-            "for browser-based integration testing of user workflows."
-        ),
-        (
-            "Authentication implements JWT tokens with refresh token rotation for enhanced security. "
-            "Password hashing uses bcrypt with configurable work factors. Rate limiting protects "
-            "against brute force attacks on authentication endpoints. Recovery mechanisms include "
-            "PIN-based password reset with expiration and rate limiting to prevent abuse while "
-            "maintaining user accessibility for account recovery scenarios."
-        ),
+        "The GiljoAI Agent Orchestration system provides a sophisticated multi-agent framework for complex software development tasks. The orchestrator coordinates specialized agents including implementors, testers, analyzers, and deployment specialists. Each agent operates with context awareness and token budget management to ensure efficient use of available language model capacity.",
+        "Vision documents serve as high-level architectural guidance for orchestrators during project initialization and execution phases. These documents describe the overall system goals, technical constraints, implementation strategies, and design patterns that guide agent decision-making throughout the development lifecycle. Proper vision documentation ensures consistency across project phases.",
+        "The system architecture leverages FastAPI for backend services with PostgreSQL for persistent storage and multi-tenant isolation. Frontend components are built using Vue 3 with Vuetify for material design components. Real-time updates are handled through WebSocket connections that provide live status updates to the dashboard interface for monitoring agent execution progress.",
+        "Context management is critical for efficient token usage in large language models. The system employs a two-dimensional prioritization model combining field priority with depth configuration. This enables agents to access essential information while staying within context budget limits. Priority levels range from critical to excluded, while depth levels control the amount of detail included for each context field.",
+        "Multi-tenant isolation ensures secure separation of data across different users and organizations. Each tenant operates in a completely isolated environment with dedicated database partitions enforced through tenant_key filtering. Access controls prevent cross-tenant data leakage. This architecture supports enterprise deployments while maintaining strict data security and privacy requirements.",
+        "Agent job management provides lifecycle control for spawned agents including creation, execution monitoring, cancellation, and handover coordination. The system tracks context usage and supports manual succession via UI or slash commands. Job status updates are broadcast through WebSocket events to enable real-time UI updates and orchestrator coordination across distributed agents.",
+        "Testing strategy encompasses unit tests with pytest for service layer validation, integration tests for API endpoints and database operations, and end-to-end tests for complete workflow verification. Code coverage targets exceed 80 percent across all critical paths. Frontend testing uses Vitest for component tests and Cypress for browser-based integration testing of user workflows.",
+        "Authentication implements JWT tokens with refresh token rotation for enhanced security. Password hashing uses bcrypt with configurable work factors. Rate limiting protects against brute force attacks on authentication endpoints. Recovery mechanisms include PIN-based password reset with expiration and rate limiting to prevent abuse while maintaining user accessibility for account recovery scenarios.",
     ]
 
     # Calculate how many paragraphs needed to reach target

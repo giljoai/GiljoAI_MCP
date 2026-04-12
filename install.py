@@ -405,7 +405,7 @@ class UnifiedInstaller:
 
         print(f"{Fore.WHITE}What will be installed:{Style.RESET_ALL}")
         db_display = self.settings.get("db_name", "giljo_mcp")
-        print(f"  • PostgreSQL database setup ({db_display})")
+        print(f"  • PostgreSQL database setup ({db_display})")  # CodeQL: db_name is not sensitive
         print("  • Python dependencies (FastAPI, SQLAlchemy, etc.)")
         print("  • Configuration files (.env, config.yaml)")
         print("  • API server + Frontend dashboard")
@@ -600,20 +600,20 @@ class UnifiedInstaller:
         network_mode = self.settings.get("network_mode", "localhost")
         if network_mode == "auto":
             adapter = self.settings.get("selected_adapter", "unknown")
-            print(f"  • Network mode: {Fore.GREEN}Auto-detect{Style.RESET_ALL} ({adapter})")
+            print(f"  • Network mode: {Fore.GREEN}Auto-detect{Style.RESET_ALL} ({adapter})")  # CodeQL: adapter name is not sensitive
             print("    → IP will be re-detected on each startup")
         elif network_mode == "static":
             adapter = self.settings.get("selected_adapter", "")
-            print(f"  • Network mode: Static [{adapter}]")
+            print(f"  • Network mode: Static [{adapter}]")  # CodeQL: adapter name is not sensitive
         else:
-            print(f"  • Network mode: {network_mode}")
-        print(f"  • External access host: {self.settings.get('external_host', 'localhost')}")
+            print(f"  • Network mode: {network_mode}")  # CodeQL: network_mode is not sensitive
+        print(f"  • External access host: {self.settings.get('external_host', 'localhost')}")  # CodeQL: hostname is not sensitive
         print(f"  • PostgreSQL password: {'*' * 8} (secured)")
         db_name = self.settings.get("db_name", "giljo_mcp")
         if db_name != "giljo_mcp":
-            print(f"  • Database name: {Fore.YELLOW}{db_name}{Style.RESET_ALL} (custom)")
+            print(f"  • Database name: {Fore.YELLOW}{db_name}{Style.RESET_ALL} (custom)")  # CodeQL: db_name is not sensitive
         if platform.system() == "Windows":
-            print(f"  • Create shortcuts: {self.settings['create_shortcuts']}")
+            print(f"  • Create shortcuts: {self.settings['create_shortcuts']}")  # CodeQL: shortcut setting is not sensitive
 
     def check_python_version(self) -> bool:
         """
@@ -2409,7 +2409,7 @@ class UnifiedInstaller:
         # Database credentials
         if self.database_credentials:
             db_display = self.settings.get("db_name", "giljo_mcp")
-            print(
+            print(  # CodeQL: db_name and role names are not sensitive
                 f"{Fore.YELLOW}Database: {Fore.WHITE}{db_display} @ localhost:5432 (owner: giljo_owner, user: giljo_user){Style.RESET_ALL}\n"
             )
 
@@ -2427,7 +2427,7 @@ class UnifiedInstaller:
 
         # Where to go
         print(f"{Fore.CYAN}{Style.BRIGHT}Then open your browser:{Style.RESET_ALL}")
-        print(f"  {Fore.CYAN}{protocol}://localhost:{frontend_port}{Style.RESET_ALL}")
+        print(f"  {Fore.CYAN}{protocol}://localhost:{frontend_port}{Style.RESET_ALL}")  # CodeQL: URL is not sensitive
 
         # Show network IPs only if not in localhost mode
         network_mode = self.settings.get("network_mode", "localhost")
@@ -2435,11 +2435,11 @@ class UnifiedInstaller:
             network_ips = self._get_all_network_ips()
             if network_ips:
                 for ip in network_ips:
-                    print(f"  {Fore.WHITE}{protocol}://{ip}:{frontend_port}  (LAN){Style.RESET_ALL}")
+                    print(f"  {Fore.WHITE}{protocol}://{ip}:{frontend_port}  (LAN){Style.RESET_ALL}")  # CodeQL: LAN IP is not sensitive
         print()
 
         # API docs
-        print(f"{Fore.WHITE}API docs: {Fore.CYAN}{protocol}://localhost:{api_port}/docs{Style.RESET_ALL}")
+        print(f"{Fore.WHITE}API docs: {Fore.CYAN}{protocol}://localhost:{api_port}/docs{Style.RESET_ALL}")  # CodeQL: URL is not sensitive
         print()
 
         print(f"{Fore.GREEN}Create your administrator account on first visit.{Style.RESET_ALL}\n")

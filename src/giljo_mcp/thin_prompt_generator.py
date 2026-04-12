@@ -41,6 +41,7 @@ from src.giljo_mcp.prompts.codex_prompt_builder import CodexPromptBuilder
 from src.giljo_mcp.prompts.gemini_prompt_builder import GeminiPromptBuilder
 from src.giljo_mcp.prompts.multi_terminal_prompt_builder import MultiTerminalPromptBuilder
 from src.giljo_mcp.prompts.staging_prompt_builder import StagingPromptBuilder
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -357,8 +358,10 @@ class ThinClientPromptGenerator:
         estimated_tokens = len(thin_prompt) // 4
 
         logger.info(
-            f"[ThinPromptGenerator] Generated thin prompt for {orchestrator_id}: "
-            f"~{estimated_tokens} tokens (target: 600, reduction from fat: ~{3500 - estimated_tokens})"
+            "[ThinPromptGenerator] Generated thin prompt for %s: ~%d tokens (target: 600, reduction from fat: ~%d)",
+            sanitize(str(orchestrator_id)),
+            estimated_tokens,
+            3500 - estimated_tokens,
         )
 
         regenerated_mission = self._staging_builder.regenerate_mission(
@@ -369,11 +372,14 @@ class ThinClientPromptGenerator:
 
         if regenerated_mission:
             logger.info(
-                f"[ThinPromptGenerator] Regenerated orchestrator instructions for {orchestrator_id}: "
-                f"~{estimated_mission_tokens} tokens (reflects current toggle config)"
+                "[ThinPromptGenerator] Regenerated orchestrator instructions for %s: ~%d tokens (reflects current toggle config)",
+                sanitize(str(orchestrator_id)),
+                estimated_mission_tokens,
             )
         else:
-            logger.warning(f"[ThinPromptGenerator] Mission regeneration returned empty for {orchestrator_id}")
+            logger.warning(
+                "[ThinPromptGenerator] Mission regeneration returned empty for %s", sanitize(str(orchestrator_id))
+            )
 
         return {
             "orchestrator_id": orchestrator_id,
