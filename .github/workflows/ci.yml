@@ -128,4 +128,4 @@ jobs:
           pytest tests/unit/ -v --tb=short --timeout=30 \
             --ignore=tests/manual \
             --ignore=tests/saas \
-            -m "not slow and not e2e and not stress and not network and not server_mode" || true
+            -m "not slow and not e2e and not stress and not network and not server_mode" 
