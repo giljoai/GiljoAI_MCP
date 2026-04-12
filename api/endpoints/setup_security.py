@@ -56,7 +56,7 @@ async def get_setup_security_status(db: AsyncSession = Depends(get_db_session)):
         if is_fresh_install:
             logger.info("[SETUP] Fresh install detected - no users exist. Will show create admin account flow.")
         else:
-            logger.debug(f"[SETUP] Normal operation - {total_users_count} user(s) exist. Will show login flow.")
+            logger.debug("[SETUP] Normal operation - %d user(s) exist. Will show login flow.", total_users_count)
 
         return {
             "is_fresh_install": is_fresh_install,

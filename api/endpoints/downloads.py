@@ -27,6 +27,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import AgentTemplate, User
 from src.giljo_mcp.tools.slash_command_templates import get_all_templates
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,7 @@ def get_server_url(request=None) -> str:
 
         return f"{scheme}://{host}:{port}"
     except (OSError, ValueError, KeyError) as e:
-        logger.warning(f"Failed to get server URL from config: {e}")
+        logger.warning("Failed to get server URL from config: %s", sanitize(str(e)))
         return "http://localhost:7272"
 
 
@@ -134,7 +135,7 @@ async def download_slash_commands(
     Example:
         curl http://localhost:7272/api/download/slash-commands.zip?platform=claude_code
     """
-    logger.info(f"Generating slash commands ZIP (public download, platform={platform})")
+    logger.info("Generating slash commands ZIP (public download, platform=%s)", sanitize(platform))
 
     # Get platform-specific slash command templates
     templates = get_all_templates(platform=platform)
@@ -236,8 +237,10 @@ async def download_agent_templates(
     if current_user:
         # Authenticated: Use tenant-specific templates
         logger.info(
-            f"Generating agent templates ZIP for user: {current_user.username} "
-            f"(tenant: {current_user.tenant_key}, active_only: {active_only})"
+            "Generating agent templates ZIP for user: %s (tenant: %s, active_only: %s)",
+            sanitize(current_user.username),
+            sanitize(current_user.tenant_key),
+            active_only,
         )
 
         # Query templates with multi-tenant isolation
@@ -254,7 +257,9 @@ async def download_agent_templates(
         templates = result.scalars().all()
 
         if not templates:
-            logger.warning(f"No templates found for tenant: {current_user.tenant_key} (active_only: {active_only})")
+            logger.warning(
+                "No templates found for tenant: %s (active_only: %s)", sanitize(current_user.tenant_key), active_only
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No agent templates found. Please create templates first.",
@@ -339,10 +344,12 @@ async def download_agent_templates(
             template.last_exported_at = export_timestamp
 
         await db.commit()
-        logger.info(f"Updated last_exported_at for {len(selected)} templates (tenant: {current_user.tenant_key})")
+        logger.info(
+            "Updated last_exported_at for %d templates (tenant: %s)", len(selected), sanitize(current_user.tenant_key)
+        )
 
-    user_info = f"user: {current_user.username}" if current_user else "public/unauthenticated"
-    logger.info(f"Agent templates ZIP generated ({user_info}): {len(files)} files (max 8), {len(zip_bytes)} bytes")
+    user_info = f"user: {sanitize(current_user.username)}" if current_user else "public/unauthenticated"
+    logger.info("Agent templates ZIP generated (%s): %d files (max 8), %d bytes", user_info, len(files), len(zip_bytes))
 
     if current_user:
         try:
@@ -357,7 +364,7 @@ async def download_agent_templates(
                 )
                 await ws_manager.broadcast_event_to_tenant(tenant_key=current_user.tenant_key, event=event)
         except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as e:
-            logger.debug(f"Setup agents_downloaded event emission failed (non-blocking): {e}")
+            logger.debug("Setup agents_downloaded event emission failed (non-blocking): %s", sanitize(str(e)))
 
     return Response(
         content=zip_bytes,
@@ -418,7 +425,7 @@ async def download_install_script(
             detail="Invalid type. Must be 'slash-commands' or 'agent-templates'",
         )
 
-    logger.info(f"Generating install script (public): extension={extension}, type={script_type}")
+    logger.info("Generating install script (public): extension=%s, type=%s", sanitize(extension), sanitize(script_type))
 
     # Get server URL
     server_url = get_server_url(request)
@@ -514,8 +521,10 @@ async def get_bootstrap_prompt(
     }
 
     logger.info(
-        f"Generating bootstrap prompt for user: {current_user.username} "
-        f"(tenant: {current_user.tenant_key}, platform: {platform})"
+        "Generating bootstrap prompt for user: %s (tenant: %s, platform: %s)",
+        sanitize(current_user.username),
+        sanitize(current_user.tenant_key),
+        sanitize(platform),
     )
 
     # Generate token and stage slash_commands ZIP (reuse generate-token logic)
@@ -540,7 +549,7 @@ async def get_bootstrap_prompt(
 
     if not zip_path:
         await token_manager.mark_failed(token, message)
-        logger.error(f"Failed to stage slash commands for bootstrap prompt: {message}")
+        logger.error("Failed to stage slash commands for bootstrap prompt: %s", sanitize(str(message)))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=message)
 
     # 3) Mark ready
@@ -635,8 +644,10 @@ async def generate_download_token(
         )
 
     logger.info(
-        f"Generating download token for user: {current_user.username} "
-        f"(tenant: {current_user.tenant_key}, content_type: {content_type})"
+        "Generating download token for user: %s (tenant: %s, content_type: %s)",
+        sanitize(current_user.username),
+        sanitize(current_user.tenant_key),
+        sanitize(str(content_type)),
     )
 
     from src.giljo_mcp.downloads.token_manager import TokenManager

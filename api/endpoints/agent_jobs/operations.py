@@ -24,6 +24,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.exceptions import ResourceNotFoundError
 from src.giljo_mcp.models import User
 from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .models import (
     JobHealthResponse,
@@ -59,7 +60,7 @@ async def get_job_health(
         HTTPException 404: Job not found
         HTTPException 403: User not authorized (tenant mismatch)
     """
-    logger.debug(f"User {current_user.username} checking health of job {job_id}")
+    logger.debug("User %s checking health of job %s", sanitize(current_user.username), sanitize(job_id))
 
     # Initialize repository
     repo = AgentJobRepository(None)  # Repository doesn't use db_manager for queries
@@ -135,7 +136,7 @@ async def update_agent_mission(
         HTTPException 422: Validation error (empty or too long)
         HTTPException 500: Internal server error
     """
-    logger.debug(f"User {current_user.username} updating mission for job {job_id}")
+    logger.debug("User %s updating mission for job %s", sanitize(current_user.username), sanitize(job_id))
 
     # Initialize repository
     repo = AgentJobRepository(None)
@@ -155,7 +156,10 @@ async def update_agent_mission(
     await session.refresh(job)
 
     logger.info(
-        f"Mission updated for job {job_id} by user {current_user.username}. New length: {len(request.mission)} chars"
+        "Mission updated for job %s by user %s. New length: %d chars",
+        sanitize(job_id),
+        sanitize(current_user.username),
+        len(request.mission),
     )
 
     # Get current execution for WebSocket event

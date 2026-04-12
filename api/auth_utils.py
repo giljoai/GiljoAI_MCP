@@ -150,7 +150,7 @@ async def authenticate_websocket(websocket: WebSocket, db: AsyncSession = None) 
     if api_key:
         validated_key = await validate_api_key(api_key, db)
         if validated_key:
-            logger.info(f"WebSocket authenticated via API key: {validated_key.get('name')}")
+            logger.info("WebSocket authenticated via API key")
             return {
                 "authenticated": True,
                 "user": {

@@ -22,6 +22,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import User
 from src.giljo_mcp.models.schemas import ProjectSummaryResponse
 from src.giljo_mcp.services.project_service import ProjectService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_project_service
 from .models import OrchestratorResponse
@@ -55,12 +56,12 @@ async def get_project_summary(
         HTTPException 404: Project not found
         HTTPException 500: Internal server error
     """
-    logger.debug(f"User {current_user.username} getting summary for project {project_id}")
+    logger.debug("User %s getting summary for project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Get summary via ProjectService (raises exceptions on error, returns ProjectSummaryResult)
     summary_data = await project_service.get_project_summary(project_id=project_id)
 
-    logger.info(f"Retrieved summary for project {project_id}")
+    logger.info("Retrieved summary for project %s", sanitize(project_id))
 
     # 0731d: ProjectService returns ProjectSummaryResult typed model
     return ProjectSummaryResponse(
@@ -122,7 +123,7 @@ async def get_project_orchestrator(
     from src.giljo_mcp.models import Project
     from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
-    logger.debug(f"User {current_user.username} getting orchestrator for project {project_id}")
+    logger.debug("User %s getting orchestrator for project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Verify project exists and user has access
     project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
@@ -156,12 +157,16 @@ async def get_project_orchestrator(
     if not orchestrator_execution:
         # Handover 0506: No auto-creation - return null orchestrator
         # Frontend shows "Re-launch Orchestrator" button when orchestrator is null
-        logger.info(f"No orchestrator found for project {project_id} (user: {current_user.username})")
+        logger.info(
+            "No orchestrator found for project %s (user: %s)", sanitize(project_id), sanitize(current_user.username)
+        )
         return OrchestratorResponse(success=True, orchestrator=None)
 
     logger.info(
-        f"Retrieved orchestrator execution {orchestrator_execution.agent_id} "
-        f"(job: {orchestrator_execution.job_id}) for project {project_id}"
+        "Retrieved orchestrator execution %s (job: %s) for project %s",
+        sanitize(str(orchestrator_execution.agent_id)),
+        sanitize(str(orchestrator_execution.job_id)),
+        sanitize(project_id),
     )
 
     # Return orchestrator data - map from AgentExecution + AgentJob

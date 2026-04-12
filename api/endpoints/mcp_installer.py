@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.auth.dependencies import get_current_user, get_db_session
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -87,7 +88,7 @@ def get_server_url() -> str:
         protocol = "https" if config.get_nested("features.ssl_enabled", default=False) else "http"
         return f"{protocol}://{host}:{port}"
     except (OSError, ValueError, KeyError) as e:
-        logger.warning(f"Failed to get server URL from config: {e}")
+        logger.warning("Failed to get server URL from config: %s", sanitize(str(e)))
         return "http://localhost:7272"
 
 
@@ -131,7 +132,7 @@ def validate_token(token: str) -> Optional[dict]:
         # Check expiration
         expires_at = datetime.fromisoformat(payload["expires_at"].replace("Z", "+00:00"))
         if datetime.now(timezone.utc) > expires_at:
-            logger.warning(f"Token expired: {expires_at}")
+            logger.warning("Token expired: %s", expires_at)
             return None
 
         return payload
@@ -139,7 +140,7 @@ def validate_token(token: str) -> Optional[dict]:
         logger.warning("Token signature expired")
         return None
     except jwt.InvalidTokenError as e:
-        logger.warning(f"Invalid token: {e}")
+        logger.warning("Invalid token: %s", sanitize(str(e)))
         return None
     except (OSError, ValueError, KeyError):
         logger.exception("Token validation error")
@@ -230,7 +231,7 @@ async def download_windows_installer(current_user: Optional[User] = Depends(get_
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required for MCP installer download"
         )
 
-    logger.info(f"Generating Windows installer for user: {current_user.username}")
+    logger.info("Generating Windows installer for user: %s", sanitize(current_user.username))
 
     # Get template path
     template_path = Path(__file__).parent.parent.parent / "installer" / "templates" / "giljo-mcp-setup.bat.template"
@@ -263,7 +264,7 @@ async def download_windows_installer(current_user: Optional[User] = Depends(get_
             detail="Installer template not found. Please contact administrator.",
         ) from e
 
-    logger.info(f"Windows installer generated successfully for: {current_user.username}")
+    logger.info("Windows installer generated successfully for: %s", sanitize(current_user.username))
 
     return Response(
         content=script_content,
@@ -298,7 +299,7 @@ async def download_unix_installer(current_user: Optional[User] = Depends(get_cur
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required for MCP installer download"
         )
 
-    logger.info(f"Generating Unix installer for user: {current_user.username}")
+    logger.info("Generating Unix installer for user: %s", sanitize(current_user.username))
 
     # Get template path
     template_path = Path(__file__).parent.parent.parent / "installer" / "templates" / "giljo-mcp-setup.sh.template"
@@ -329,7 +330,7 @@ async def download_unix_installer(current_user: Optional[User] = Depends(get_cur
             detail="Installer template not found. Please contact administrator.",
         ) from e
 
-    logger.info(f"Unix installer generated successfully for: {current_user.username}")
+    logger.info("Unix installer generated successfully for: %s", sanitize(current_user.username))
 
     return Response(
         content=script_content,
@@ -363,7 +364,7 @@ async def generate_share_link(current_user: Optional[User] = Depends(get_current
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required to generate share links"
         )
 
-    logger.info(f"Generating share link for user: {current_user.username}")
+    logger.info("Generating share link for user: %s", sanitize(current_user.username))
 
     # Generate token with 7-day expiration
     token = generate_secure_token(
@@ -380,7 +381,7 @@ async def generate_share_link(current_user: Optional[User] = Depends(get_current
     unix_url = f"{base_url}/download/mcp/{token}/unix"
     expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat() + "Z"
 
-    logger.info(f"Share link generated for {current_user.username}, expires: {expires_at}")
+    logger.info("Share link generated for %s, expires: %s", sanitize(current_user.username), expires_at)
 
     return ShareLinkResponse(windows_url=windows_url, unix_url=unix_url, expires_at=expires_at, token=token)
 
@@ -407,7 +408,7 @@ async def download_via_token(token: str, platform: str, session: AsyncSession = 
         HTTPException: 400 if platform invalid
         HTTPException: 500 if template not found
     """
-    logger.info(f"Download via token requested: platform={platform}")
+    logger.info("Download via token requested: platform=%s", sanitize(platform))
 
     # Validate token
     user_info = validate_token(token)
@@ -421,7 +422,7 @@ async def download_via_token(token: str, platform: str, session: AsyncSession = 
     user = await get_user_by_id(session, user_id, tenant_key=tenant_key)
 
     if not user:
-        logger.warning(f"User not found for token: {user_id}")
+        logger.warning("User not found for token: %s", sanitize(str(user_id)))
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     # Validate platform
@@ -430,7 +431,7 @@ async def download_via_token(token: str, platform: str, session: AsyncSession = 
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid platform. Must be 'windows' or 'unix'"
         )
 
-    logger.info(f"Token validated for user: {user.username}, platform: {platform}")
+    logger.info("Token validated for user: %s, platform: %s", sanitize(user.username), sanitize(platform))
 
     # Generate appropriate script
     if platform == "windows":

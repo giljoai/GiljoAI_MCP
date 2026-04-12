@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import ProductService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_product_service
 from .models import GitIntegrationRequest, GitIntegrationResponse
@@ -66,8 +67,11 @@ async def update_git_integration(
     - 403: User lacks permission
     """
     logger.info(
-        f"User {current_user.username} updating git integration for product {product_id}: "
-        f"enabled={settings.enabled}, commit_limit={settings.commit_limit}"
+        "User %s updating git integration for product %s: enabled=%s, commit_limit=%s",
+        sanitize(current_user.username),
+        sanitize(product_id),
+        settings.enabled,
+        settings.commit_limit,
     )
 
     # Handover 0731d: update_git_integration now returns the settings dict directly
@@ -105,7 +109,9 @@ async def get_git_integration(
     - 404: Product not found
     - 403: User lacks permission
     """
-    logger.info(f"User {current_user.username} retrieving git integration for product {product_id}")
+    logger.info(
+        "User %s retrieving git integration for product %s", sanitize(current_user.username), sanitize(product_id)
+    )
 
     # Handover 0731d: get_product now returns Product ORM model directly (no dict wrapper)
     product = await service.get_product(product_id)

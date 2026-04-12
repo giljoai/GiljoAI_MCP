@@ -22,6 +22,7 @@ from api.dependencies import get_tenant_key
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import ProductService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .crud import _build_product_response
 from .dependencies import get_product_service
@@ -52,7 +53,7 @@ async def activate_product(
     Uses ProductService.activate_product() for database operations.
     Handover 0503: Updated response to match frontend expectations.
     """
-    logger.info(f"User {current_user.username} activating product {product_id}")
+    logger.info("User %s activating product %s", sanitize(current_user.username), sanitize(product_id))
 
     try:
         # Get currently active product (if any) before activation
@@ -98,7 +99,7 @@ async def activate_product(
                     },
                 )
         except Exception as pub_err:  # noqa: BLE001 - fire-and-forget WS event
-            logger.warning(f"Failed to publish product activation event: {pub_err}")
+            logger.warning("Failed to publish product activation event: %s", sanitize(str(pub_err)))
 
 
 @router.post("/{product_id}/deactivate", response_model=ProductResponse)
@@ -112,7 +113,7 @@ async def deactivate_product(
 
     Uses ProductService.deactivate_product() for database operations.
     """
-    logger.info(f"User {current_user.username} deactivating product {product_id}")
+    logger.info("User %s deactivating product %s", sanitize(current_user.username), sanitize(product_id))
 
     try:
         await service.deactivate_product(product_id)
@@ -137,7 +138,7 @@ async def deactivate_product(
                     },
                 )
         except Exception as pub_err:  # noqa: BLE001 - fire-and-forget WS event
-            logger.warning(f"Failed to publish product deactivation event: {pub_err}")
+            logger.warning("Failed to publish product deactivation event: %s", sanitize(str(pub_err)))
 
 
 @router.delete("/{product_id}", response_model=ProductDeleteResponse)
@@ -152,7 +153,7 @@ async def delete_product(
     Uses ProductService.delete_product() for database operations.
     Returns enhanced response with deletion context (was_active, remaining count).
     """
-    logger.info(f"User {current_user.username} deleting product {product_id}")
+    logger.info("User %s deleting product %s", sanitize(current_user.username), sanitize(product_id))
 
     # Get product state before deletion for response
     product = await service.get_product(product_id)
@@ -186,7 +187,7 @@ async def purge_product(
     Cascades to: projects, tasks, vision documents, memory entries, context chunks,
     tech_stack, architecture, test_config.
     """
-    logger.info(f"User {current_user.username} permanently deleting product {product_id}")
+    logger.info("User %s permanently deleting product %s", sanitize(current_user.username), sanitize(product_id))
     result = await service.purge_product(product_id)
     return ProductPurgeResponse(**result)
 
