@@ -66,7 +66,7 @@ async def toggle_serena(request: SerenaToggleRequest, current_user: User = Depen
     except OSError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-    logger.info(f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}")
+    logger.info("Serena prompts %s", "enabled" if request.use_in_prompts else "disabled")
 
     # Return format expected by frontend (success, enabled, message)
     return {

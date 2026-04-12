@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 from src.giljo_mcp._config_io import read_config, write_config
 from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -83,7 +84,7 @@ async def toggle_git_integration(
     except OSError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-    logger.info(f"Git integration toggled to {request.enabled} by user {current_user.username}")
+    logger.info("Git integration toggled to %s by user %s", request.enabled, sanitize(current_user.username))
 
     # Emit WebSocket event for real-time UI updates
     try:
@@ -93,9 +94,9 @@ async def toggle_git_integration(
             event_type="product:git:settings:changed",
             data={"enabled": request.enabled, "settings": config["features"]["git_integration"]},
         )
-        logger.info(f"[WEBSOCKET] Broadcasted git integration change to tenant {tenant_key}")
+        logger.info("[WEBSOCKET] Broadcasted git integration change to tenant %s", sanitize(tenant_key))
     except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
-        logger.warning(f"[WEBSOCKET] Failed to broadcast git integration update: {ws_error}")
+        logger.warning("[WEBSOCKET] Failed to broadcast git integration update: %s", sanitize(str(ws_error)))
 
     return GitToggleResponse(
         success=True,
@@ -133,7 +134,7 @@ async def update_git_settings(
     except OSError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-    logger.info(f"Git settings updated by user {current_user.username}")
+    logger.info("Git settings updated by user %s", sanitize(current_user.username))
 
     return GitToggleResponse(
         success=True,

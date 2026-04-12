@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.settings_service import SettingsService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ async def get_general_settings(
     current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ) -> SettingsResponse:
     """Get general settings - accessible to all authenticated users"""
-    logger.debug(f"User {current_user.username} retrieving general settings")
+    logger.debug("User %s retrieving general settings", sanitize(current_user.username))
 
     service = SettingsService(db, current_user.tenant_key)
     settings = await service.get_settings("general")
@@ -104,7 +105,7 @@ async def update_general_settings(
     request: SettingsUpdate, current_user: User = Depends(require_admin), db: AsyncSession = Depends(get_db_session)
 ) -> SettingsUpdateResponse:
     """Update general settings - admin only"""
-    logger.info(f"Admin {current_user.username} updating general settings")
+    logger.info("Admin %s updating general settings", sanitize(current_user.username))
 
     service = SettingsService(db, current_user.tenant_key)
     settings = await service.update_settings("general", request.settings)
@@ -122,7 +123,7 @@ async def get_network_settings(
     current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ) -> SettingsResponse:
     """Get network settings - accessible to all authenticated users"""
-    logger.debug(f"User {current_user.username} retrieving network settings")
+    logger.debug("User %s retrieving network settings", sanitize(current_user.username))
 
     service = SettingsService(db, current_user.tenant_key)
     settings = await service.get_settings("network")
@@ -140,7 +141,7 @@ async def update_network_settings(
     request: SettingsUpdate, current_user: User = Depends(require_admin), db: AsyncSession = Depends(get_db_session)
 ) -> SettingsUpdateResponse:
     """Update network settings - admin only"""
-    logger.info(f"Admin {current_user.username} updating network settings")
+    logger.info("Admin %s updating network settings", sanitize(current_user.username))
 
     service = SettingsService(db, current_user.tenant_key)
     settings = await service.update_settings("network", request.settings)
@@ -158,7 +159,7 @@ async def get_database_settings(
     current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ) -> SettingsResponse:
     """Get database settings - read-only for all authenticated users"""
-    logger.debug(f"User {current_user.username} retrieving database settings")
+    logger.debug("User %s retrieving database settings", sanitize(current_user.username))
 
     service = SettingsService(db, current_user.tenant_key)
     settings = await service.get_settings("database")
@@ -179,7 +180,7 @@ async def get_product_info(current_user: User = Depends(get_current_active_user)
     Returns static product information - no database queries.
     Accessible to all authenticated users.
     """
-    logger.debug(f"User {current_user.username} retrieving product info")
+    logger.debug("User %s retrieving product info", sanitize(current_user.username))
 
     return ProductInfoResponse(
         product="GiljoAI MCP",
@@ -211,7 +212,7 @@ async def get_cookie_domain(
     Reads from network settings and returns cookie configuration.
     Accessible to all authenticated users.
     """
-    logger.debug(f"User {current_user.username} retrieving cookie domain config")
+    logger.debug("User %s retrieving cookie domain config", sanitize(current_user.username))
 
     service = SettingsService(db, current_user.tenant_key)
     network_settings = await service.get_settings("network")

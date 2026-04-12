@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import Project
 from src.giljo_mcp.models.projects import ProjectType
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .schemas import ProjectTypeCreate, ProjectTypeUpdate
 
@@ -53,7 +54,7 @@ async def ensure_default_types_seeded(session: AsyncSession, tenant_key: str) ->
     if count and count > 0:
         return
 
-    logger.info(f"Seeding {len(DEFAULT_PROJECT_TYPES)} default project types for tenant {tenant_key}")
+    logger.info("Seeding %d default project types for tenant %s", len(DEFAULT_PROJECT_TYPES), sanitize(tenant_key))
 
     for i, pt_def in enumerate(DEFAULT_PROJECT_TYPES):
         project_type = ProjectType(
@@ -144,7 +145,12 @@ async def create_project_type(session: AsyncSession, tenant_key: str, data: Proj
     await session.flush()
     await session.refresh(project_type)
 
-    logger.info(f"Created project type '{data.abbreviation}' ({data.label}) for tenant {tenant_key}")
+    logger.info(
+        "Created project type '%s' (%s) for tenant %s",
+        sanitize(data.abbreviation),
+        sanitize(data.label),
+        sanitize(tenant_key),
+    )
     return project_type
 
 
@@ -185,7 +191,7 @@ async def update_project_type(
     await session.flush()
     await session.refresh(project_type)
 
-    logger.info(f"Updated project type '{project_type.abbreviation}' for tenant {tenant_key}")
+    logger.info("Updated project type '%s' for tenant %s", sanitize(project_type.abbreviation), sanitize(tenant_key))
     return project_type
 
 
@@ -228,7 +234,7 @@ async def delete_project_type(session: AsyncSession, tenant_key: str, type_id: s
     await session.delete(project_type)
     await session.flush()
 
-    logger.info(f"Deleted project type '{project_type.abbreviation}' for tenant {tenant_key}")
+    logger.info("Deleted project type '%s' for tenant %s", sanitize(project_type.abbreviation), sanitize(tenant_key))
 
 
 async def get_next_series_number(session: AsyncSession, tenant_key: str, type_id: str) -> int:

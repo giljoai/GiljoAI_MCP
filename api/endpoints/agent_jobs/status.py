@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, Query
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from src.giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_orchestration_service
 from .models import JobListResponse, JobMissionResponse, JobResponse, PendingJobsResponse, TodoItemResponse
@@ -123,9 +124,13 @@ async def list_jobs(
         GET /api/agent-jobs/?project_id=abc123&status=active&limit=50
     """
     logger.debug(
-        f"User {current_user.username} listing jobs "
-        f"(project={project_id}, status={status}, type={agent_display_name}, "
-        f"limit={limit}, offset={offset})"
+        "User %s listing jobs (project=%s, status=%s, type=%s, limit=%d, offset=%d)",
+        sanitize(current_user.username),
+        sanitize(project_id) if project_id else None,
+        sanitize(status) if status else None,
+        sanitize(agent_display_name) if agent_display_name else None,
+        limit,
+        offset,
     )
 
     # Service raises OrchestrationError on failure, caught by global exception handler
@@ -140,7 +145,11 @@ async def list_jobs(
 
     # 0731d: OrchestrationService returns JobListResult typed model
     logger.info(
-        f"Found {len(result.jobs)} jobs for user {current_user.username} (total={result.total}, offset={offset})"
+        "Found %d jobs for user %s (total=%d, offset=%d)",
+        len(result.jobs),
+        sanitize(current_user.username),
+        result.total,
+        offset,
     )
 
     # Convert job dicts to JobResponse models
@@ -171,14 +180,14 @@ async def list_pending_jobs(
     Returns:
         PendingJobsResponse with list of pending jobs
     """
-    logger.debug(f"User {current_user.username} listing pending jobs")
+    logger.debug("User %s listing pending jobs", sanitize(current_user.username))
 
     # Service raises exceptions on failure, caught by global exception handler
     result = await orchestration_service.get_pending_jobs(tenant_key=current_user.tenant_key)
 
     # 0731d: OrchestrationService returns PendingJobsResult typed model
     jobs = result.jobs
-    logger.info(f"Found {len(jobs)} pending jobs for tenant {current_user.tenant_key}")
+    logger.info("Found %d pending jobs for tenant %s", len(jobs), sanitize(current_user.tenant_key))
 
     return PendingJobsResponse(jobs=[job_to_response(job) for job in jobs], count=len(jobs))
 
@@ -203,11 +212,11 @@ async def get_job(
     Raises:
         HTTPException 404: Job not found (includes multi-tenant isolation)
     """
-    logger.debug(f"User {current_user.username} getting job {job_id}")
+    logger.debug("User %s getting job %s", sanitize(current_user.username), sanitize(job_id))
 
     result = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=current_user.tenant_key)
 
-    logger.info(f"Retrieved job {job_id} for tenant {current_user.tenant_key}")
+    logger.info("Retrieved job %s for tenant %s", sanitize(job_id), sanitize(current_user.tenant_key))
 
     # 0731d: OrchestrationService returns MissionResponse typed model
     # Convert to JobResponse via dict bridge (MissionResponse has different field set)
@@ -250,11 +259,11 @@ async def get_job_mission(
     Raises:
         HTTPException 404: Job not found (includes multi-tenant isolation)
     """
-    logger.debug(f"User {current_user.username} getting mission for job {job_id}")
+    logger.debug("User %s getting mission for job %s", sanitize(current_user.username), sanitize(job_id))
 
     result = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=current_user.tenant_key)
 
-    logger.info(f"Retrieved mission for job {job_id} for tenant {current_user.tenant_key}")
+    logger.info("Retrieved mission for job %s for tenant %s", sanitize(job_id), sanitize(current_user.tenant_key))
 
     # 0731d: OrchestrationService returns MissionResponse typed model
     return JobMissionResponse(
