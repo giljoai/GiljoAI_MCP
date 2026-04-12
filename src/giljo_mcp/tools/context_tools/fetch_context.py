@@ -207,6 +207,10 @@ async def _load_user_depth_config(
                     tenant_key=tenant_key,
                 )
 
+            # Normalize agent_templates "type_only" -> "basic" (renamed in v36 migration)
+            if normalized.get("agent_templates") == "type_only":
+                normalized["agent_templates"] = "basic"
+
             logger.info(
                 "depth_config_loaded_from_db",
                 tenant_key=tenant_key,
