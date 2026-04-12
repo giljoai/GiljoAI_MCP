@@ -31,7 +31,7 @@ from src.giljo_mcp.models import Base
 
 PRODUCTION_DB_NAME = "giljo_mcp"
 TEST_DB_SUFFIX = "_test"
-ALLOWED_TEST_DBS = {"giljo_mcp_test", "postgres"}  # postgres needed for admin operations
+ALLOWED_TEST_DBS = {"giljo_mcp_test", "giljo_test", "postgres"}  # postgres needed for admin operations, giljo_test for CI
 
 
 def validate_database_name(database: str) -> None:
@@ -95,7 +95,8 @@ class PostgreSQLTestHelper:
     - Performance optimized for test suites
     """
 
-    # Default test database configuration
+    # Default test database configuration (local dev).
+    # CI overrides via DATABASE_URL env var.
     DEFAULT_CONFIG = {
         "host": "localhost",
         "port": 5432,
@@ -105,9 +106,35 @@ class PostgreSQLTestHelper:
     }
 
     @staticmethod
+    def _config_from_env() -> dict | None:
+        """Parse DATABASE_URL env var into config dict if set."""
+        import os
+
+        db_url = os.environ.get("DATABASE_URL", "")
+        if not db_url:
+            return None
+        # Parse: postgresql://user:pass@host:port/dbname
+        match = re.match(
+            r"postgresql(?:\+\w+)?://([^:]+):([^@]+)@([^:]+):(\d+)/(.+?)(?:\?|$)",
+            db_url,
+        )
+        if not match:
+            return None
+        return {
+            "username": match.group(1),
+            "password": match.group(2),
+            "host": match.group(3),
+            "port": int(match.group(4)),
+            "database": match.group(5),
+        }
+
+    @staticmethod
     def get_test_db_url(database: str = "giljo_mcp_test", async_driver: bool = True) -> str:
         """
         Build PostgreSQL test database URL.
+
+        Uses DATABASE_URL env var if set (CI), otherwise falls back to
+        DEFAULT_CONFIG (local development).
 
         SAFETY: Validates database name to prevent production access.
 
@@ -125,7 +152,9 @@ class PostgreSQLTestHelper:
         if database not in ALLOWED_TEST_DBS:
             validate_database_name(database)
 
-        config = PostgreSQLTestHelper.DEFAULT_CONFIG.copy()
+        # Use DATABASE_URL env var if available (CI), else local defaults
+        env_config = PostgreSQLTestHelper._config_from_env()
+        config = env_config if env_config else PostgreSQLTestHelper.DEFAULT_CONFIG.copy()
         config["database"] = database
 
         url = (
