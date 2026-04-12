@@ -431,7 +431,7 @@ class ThinClientPromptGenerator:
                 "vision_documents": "medium",
                 "memory_last_n_projects": 3,
                 "git_commits": 25,
-                "agent_templates": "type_only",
+                "agent_templates": "basic",
                 "tech_stack_sections": "all",
                 "architecture_depth": "overview",
             }

@@ -52,7 +52,7 @@ class TestDepthDefaultsConsolidation:
         assert canonical["memory_last_n_projects"] == 3
         assert canonical["git_commits"] == 25
         assert canonical["vision_documents"] == "medium"
-        assert canonical["agent_templates"] == "type_only"
+        assert canonical["agent_templates"] == "basic"
 
 
 class TestCH2InlineFetchCalls:
@@ -79,7 +79,7 @@ class TestCH2InlineFetchCalls:
                 "memory_360": 3,
                 "git_history": 25,
                 "vision_documents": "medium",
-                "agent_templates": "type_only",
+                "agent_templates": "basic",
             }
         return _build_ch2_startup(
             orchestrator_id="orch-001",
@@ -249,10 +249,10 @@ class TestCH2InlineFetchCalls:
         assert "STEP 3" in ch2
         assert "STEP 4" in ch2
 
-    def test_ch2_agent_templates_type_only_skipped(self):
-        """agent_templates with type_only depth should not generate fetch call."""
+    def test_ch2_agent_templates_basic_skipped(self):
+        """agent_templates with basic depth should not generate fetch call."""
         toggles = {"agent_templates": True}
-        depth = {"agent_templates": "type_only"}
+        depth = {"agent_templates": "basic"}
         ch2 = self._build_ch2(field_toggles=toggles, depth_config=depth)
         assert 'categories=["agent_templates"]' not in ch2
 
@@ -308,7 +308,7 @@ class TestFetchContextDepthFromDB:
         user.depth_vision_documents = depth_kwargs.get("vision_documents", "medium")
         user.depth_memory_last_n = depth_kwargs.get("memory_last_n_projects", 3)
         user.depth_git_commits = depth_kwargs.get("git_commits", 25)
-        user.depth_agent_templates = depth_kwargs.get("agent_templates", "type_only")
+        user.depth_agent_templates = depth_kwargs.get("agent_templates", "basic")
         user.depth_tech_stack_sections = depth_kwargs.get("tech_stack_sections", "all")
         user.depth_architecture = depth_kwargs.get("architecture_depth", "overview")
         return user

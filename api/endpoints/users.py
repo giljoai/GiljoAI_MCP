@@ -228,7 +228,7 @@ class DepthConfig(BaseModel):
     - vision_documents: none, optional, light, medium, full (0347e)
     - memory_last_n_projects: 1, 3, 5, 10
     - git_commits: 10, 25, 50, 100
-    - agent_templates: type_only, full (0347d)
+    - agent_templates: basic, full (0347d)
     - tech_stack_sections: required, all
     - architecture_depth: overview, detailed
     """
@@ -240,8 +240,9 @@ class DepthConfig(BaseModel):
         default=3, description="Number of recent projects to include in 360 memory"
     )
     git_commits: Literal[5, 10, 25, 50, 100] = Field(default=25, description="Number of recent git commits to include")
-    agent_templates: Literal["type_only", "full"] = Field(
-        default="type_only", description="Detail level for agent templates: type_only/full (Handover 0347d)"
+    agent_templates: Literal["basic", "full"] = Field(
+        default="basic",
+        description="Detail level for agent templates: basic (team roster) / full (complete definitions)",
     )
     tech_stack_sections: Literal["required", "all"] = Field(default="all", description="Tech stack sections to include")
     architecture_depth: Literal["overview", "detailed"] = Field(
@@ -254,7 +255,7 @@ class DepthConfig(BaseModel):
                 "vision_documents": "medium",
                 "memory_last_n_projects": 3,
                 "git_commits": 25,
-                "agent_templates": "type_only",
+                "agent_templates": "basic",
                 "tech_stack_sections": "all",
                 "architecture_depth": "overview",
             }
@@ -796,7 +797,7 @@ async def get_depth_config(
                 "vision_documents": "medium",
                 "memory_last_n_projects": 3,
                 "git_commits": 25,
-                "agent_templates": "type_only",
+                "agent_templates": "basic",
                 "tech_stack_sections": "all",
                 "architecture_depth": "overview"
             }
