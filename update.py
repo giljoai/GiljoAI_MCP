@@ -186,10 +186,41 @@ def _stamp_bridge(db_url: str, current: str, head: str) -> bool:
         return False
 
 
+def _ensure_dependencies() -> bool:
+    """Check that key packages are installed; run pip install if not."""
+    try:
+        import alembic  # noqa: F401
+        import sqlalchemy  # noqa: F401
+
+        return True
+    except ImportError:
+        pass
+
+    req_file = ROOT / "requirements.txt"
+    if not req_file.exists():
+        err("requirements.txt not found. Cannot install missing dependencies.")
+        return False
+
+    info("Installing missing dependencies (first run after update)...")
+    proc = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-q", "-r", str(req_file)],
+        check=False,
+    )
+    if proc.returncode != 0:
+        err("Failed to install dependencies. Run manually: pip install -r requirements.txt")
+        return False
+    ok("Dependencies installed.")
+    return True
+
+
 def main() -> int:
     print()
     print(f"{Fore.YELLOW}  GiljoAI MCP — post-update{Style.RESET_ALL}")
     print()
+
+    # --- Ensure dependencies are installed ---
+    if not _ensure_dependencies():
+        return 1
 
     # --- Locate alembic.ini ---
     alembic_ini = ROOT / "alembic.ini"
