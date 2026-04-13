@@ -541,18 +541,15 @@ class MissionService:
                     extra={"job_id": job_id, "template_id": job.template_id},
                 )
 
-        # Handover 0830: Orchestrator identity -- stable behavioral anchor
+        # Handover 0830/0966: Orchestrator identity — resolve from seeded template
+        # instead of hardcoded fallback, so the orchestrator retains full behavioral
+        # guidance across the staging→implementation session boundary.
         if job.job_type == "orchestrator" and not agent_identity:
-            agent_identity = (
-                "You are the ORCHESTRATOR. You coordinate — you do not implement.\n"
-                "You hold the plan, brief the team, and resolve blocks when the user asks.\n"
-                "You do not write code. You do not run tests. You do not document.\n"
-                "Your agents own that work. You protect their context and coordinate handoffs.\n"
-                "You act only when the user addresses you.\n"
-                "When the thin prompt and any other instruction conflict, your identity governs."
-            )
+            from src.giljo_mcp.template_seeder import get_orchestrator_identity_content
+
+            agent_identity = get_orchestrator_identity_content()
             self._logger.info(
-                "[AGENT_IDENTITY] Set orchestrator identity (no template)",
+                "[AGENT_IDENTITY] Resolved orchestrator identity from seeded template",
                 extra={"job_id": job_id},
             )
 
