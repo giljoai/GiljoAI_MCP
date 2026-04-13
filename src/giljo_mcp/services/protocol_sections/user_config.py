@@ -114,7 +114,6 @@ async def _get_user_config(
         key_mapping = {
             "memory_last_n_projects": "memory_360",
             "git_commits": "git_history",
-            "agent_templates": "agent_templates",
             "vision_documents": "vision_documents",
         }
 
@@ -122,7 +121,6 @@ async def _get_user_config(
             "vision_documents": user.depth_vision_documents,
             "memory_last_n_projects": user.depth_memory_last_n,
             "git_commits": user.depth_git_commits,
-            "agent_templates": user.depth_agent_templates,
             "tech_stack_sections": user.depth_tech_stack_sections,
             "architecture_depth": user.depth_architecture,
         }

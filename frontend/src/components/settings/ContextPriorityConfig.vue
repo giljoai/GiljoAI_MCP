@@ -223,12 +223,6 @@ const contexts = [
     options: [5, 10, 25, 50, 100],
     helpText: 'Number of git commits in CLI examples'
   },
-  {
-    key: 'agent_templates',
-    label: 'Agent Templates',
-    options: ['basic', 'full'],
-    helpText: 'Basic = Team roster with descriptions (~400 tokens) | Full = Complete agent definitions (~2.4K tokens)'
-  },
 ]
 
 // Map UI categories to backend categories for API requests
@@ -238,7 +232,6 @@ const UI_TO_BACKEND_CATEGORY_MAP: Record<string, string> = {
   architecture: 'architecture',
   testing: 'testing',
   vision_documents: 'vision_documents',
-  agent_templates: 'agent_templates',
   memory_360: 'memory_360',
   git_history: 'git_history',
 }
@@ -249,7 +242,6 @@ const BACKEND_TO_UI_CATEGORY_MAP: Record<string, string[]> = {
   architecture: ['architecture'],
   testing: ['testing'],
   vision_documents: ['vision_documents'],
-  agent_templates: ['agent_templates'],
   memory_360: ['memory_360'],
   git_history: ['git_history'],
 }
@@ -267,8 +259,6 @@ function getDepthLabel(key: string): string {
   } else if (key === 'vision_documents') {
     const labels: Record<string, string> = { light: 'Light', medium: 'Medium', full: 'Full' }
     return labels[value as string] || 'Light'
-  } else if (key === 'agent_templates') {
-    return value === 'basic' ? 'Basic' : 'Full'
   }
   return String(value)
 }
@@ -352,21 +342,6 @@ function formatOptions(context: { key: string; options?: (string | number)[] }) 
         title: 'Full (100% Complete)',
         value: 'full',
         subtitle: 'All content, paginated ≤25K/call'
-      }
-    ]
-  }
-
-  if (context.key === 'agent_templates') {
-    return [
-      {
-        title: 'Basic (~400 tokens for 5 agents)',
-        value: 'basic',
-        subtitle: 'Team roster: name, role, description - for tools with local templates'
-      },
-      {
-        title: 'Full (~2,400 tokens for 5 agents)',
-        value: 'full',
-        subtitle: 'Complete agent definitions - for tools without local templates'
       }
     ]
   }

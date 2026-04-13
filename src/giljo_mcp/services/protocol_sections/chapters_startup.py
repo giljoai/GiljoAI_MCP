@@ -118,12 +118,6 @@ def _build_ch2_fetch_calls(
             "depth_aware": True,
             "default_depth": 25,
         },
-        "agent_templates": {
-            "framing": "Full agent templates with complete prompts for spawning.",
-            "depth_aware": True,
-            "skip_on_depth": "basic",
-            "default_depth": "basic",
-        },
     }
 
     inlined_fields = {"project_description"}
