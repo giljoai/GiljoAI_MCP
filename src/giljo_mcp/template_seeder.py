@@ -777,44 +777,27 @@ def _get_agent_guidelines_section() -> str:
 
 def _get_orchestrator_messaging_protocol_section() -> str:
     """
-    Generate orchestrator-specific messaging protocol section.
+    Generate orchestrator-specific messaging behavioral guidance.
 
-    Trimmed in Handover 0431 - detailed examples moved to full_protocol.
-    Keeps only orchestrator-specific coordination patterns.
+    Handover 0431: Trimmed — detailed examples moved to full_protocol.
+    Handover 0966: Deduplicated — procedural coordination loop, message prefixes,
+    and priority levels removed (now authoritative in full_protocol from
+    agent_lifecycle.py). This section retains only behavioral guidance (WHO),
+    not operational mechanics (HOW).
 
     Returns:
-        str - Orchestrator messaging protocol section in markdown format
+        str - Orchestrator messaging behavioral guidance in markdown format
     """
-    return """## ORCHESTRATOR COORDINATION
+    return """## ORCHESTRATOR COORDINATION PRINCIPLES
 
-As orchestrator, you coordinate the team using messaging tools.
+As orchestrator, you are the team's single coordination point:
 
-### Coordination Loop (Every 3-5 Actions)
-1. Call `receive_messages()` - sort by priority (high first)
-2. Handle BLOCKER: messages immediately (provide guidance or reassign)
-3. Forward COMPLETE: to dependent agents via DEPENDENCY_MET:
-4. Acknowledge PROGRESS: updates
+- **Blockers are urgent.** When an agent reports BLOCKER:, respond before advancing other work.
+- **Completions trigger handoffs.** When an agent finishes, relay results to dependent agents.
+- **Escalate early.** If an agent is stuck and you cannot unblock it, escalate to the user immediately — do not wait.
+- **Your TODO list is your authority.** Work it systematically on every wake-up. The full coordination loop is in `full_protocol`.
 
-### Status Broadcasts (Every 10-15 Actions)
-Use `get_workflow_status()` then broadcast team status summary.
-
-### Escalation (Agent blocked >5 minutes)
-Send ESCALATION: message to developer/user for intervention.
-
-### Message Prefixes
-- **BLOCKER:** - Urgent, needs immediate help
-- **QUESTION:** - Needs clarification
-- **PROGRESS:** - Milestone update
-- **COMPLETE:** - Work finished
-- **DEPENDENCY_MET:** - Unblock dependent agents
-- **ESCALATION:** - Requires user attention
-
-### Priority Levels
-- **high** - Blockers, developer messages, urgent coordination
-- **normal** - Progress, questions, completions
-- **low** - Status broadcasts, informational
-
-Tool signatures and full protocol in `full_protocol` from `get_agent_mission()`.
+Detailed coordination mechanics, message prefixes, priority levels, and tool signatures are in `full_protocol` from `get_agent_mission()`.
 """
 
 

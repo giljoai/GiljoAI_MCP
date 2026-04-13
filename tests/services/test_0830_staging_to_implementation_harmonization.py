@@ -249,6 +249,9 @@ class TestOrchestratorIdentityPopulated:
 
     @pytest.mark.asyncio
     async def test_orchestrator_identity_contains_behavioral_phrases(self, orchestration_service, mock_db_manager):
+        """Handover 0966: Identity now comes from get_orchestrator_identity_content()
+        instead of a 6-line hardcoded fallback. Verify it contains the key behavioral
+        concepts: coordination role, mission breakdown, and agent coordination."""
         _db_manager, session = mock_db_manager
         job_id = str(uuid4())
         project_id = str(uuid4())
@@ -298,7 +301,9 @@ class TestOrchestratorIdentityPopulated:
 
         identity = response.agent_identity
         assert "coordinate" in identity.lower(), "Identity must mention coordination"
-        assert "do not implement" in identity.lower(), "Identity must prohibit implementation"
+        assert "mission breakdown" in identity.lower() or "agent coordination" in identity.lower(), (
+            "Identity must describe orchestrator responsibilities"
+        )
 
 
 # ---------------------------------------------------------------------------
