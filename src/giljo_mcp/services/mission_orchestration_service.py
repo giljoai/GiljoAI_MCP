@@ -358,10 +358,7 @@ class MissionOrchestrationService:
         depth_config = ctx["depth_config"]
         templates = ctx["templates"]
 
-        template_list = [
-            {"name": t.name, "role": t.role, "description": t.description[:200] if t.description else ""}
-            for t in templates
-        ]
+        template_list = [{"name": t.name, "role": t.role, "description": t.description or ""} for t in templates]
 
         project_path = None
         if product is not None:
