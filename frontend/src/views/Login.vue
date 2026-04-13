@@ -178,30 +178,18 @@ import ForgotPasswordPin from '@/components/ForgotPasswordPin.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
-import { getApiBaseURL } from '@/config/api'
+import { getRuntimeConfig } from '@/config/api'
 
 // Composables
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
-// Hostname mismatch detection
-const currentHostname = window.location.hostname
-const apiBaseUrl = getApiBaseURL()
-const apiHostname = (() => {
-  try { return new URL(apiBaseUrl).hostname } catch { return '' }
-})()
-const hostnameMismatch = ref(
-  (currentHostname === 'localhost' || currentHostname === '127.0.0.1') &&
-  apiHostname && apiHostname !== 'localhost' && apiHostname !== '127.0.0.1'
-)
-const correctHost = apiHostname
-const correctUrl = (() => {
-  try {
-    const u = new URL(apiBaseUrl)
-    return `${u.protocol}//${u.hostname}:${window.location.port || u.port}${window.location.pathname}`
-  } catch { return apiBaseUrl }
-})()
+// Hostname mismatch detection (populated after runtime config loads)
+const hostnameMismatch = ref(false)
+const currentHostname = ref('')
+const correctHost = ref('')
+const correctUrl = ref('')
 
 // State
 const username = ref('')
@@ -343,6 +331,33 @@ function handlePasswordResetSuccess(message) {
 
 // Check if already authenticated on mount
 onMounted(async () => {
+  // Check hostname mismatch after runtime config loads
+  // Poll briefly since initializeApiConfig runs in background after mount
+  const checkMismatch = () => {
+    const cfg = getRuntimeConfig()
+    if (!cfg?.api?.host) return false
+    const pageHost = window.location.hostname
+    const serverHost = cfg.api.host
+    const isLocalPage = pageHost === 'localhost' || pageHost === '127.0.0.1'
+    const isRemoteServer = serverHost !== 'localhost' && serverHost !== '127.0.0.1'
+    if (isLocalPage && isRemoteServer) {
+      currentHostname.value = pageHost
+      correctHost.value = serverHost
+      const proto = cfg.api.protocol || 'https'
+      const port = window.location.port || cfg.api.port || 7272
+      correctUrl.value = `${proto}://${serverHost}:${port}${window.location.pathname}`
+      hostnameMismatch.value = true
+    }
+    return true
+  }
+  if (!checkMismatch()) {
+    // Config not loaded yet, retry a few times
+    let attempts = 0
+    const interval = setInterval(() => {
+      if (checkMismatch() || ++attempts > 10) clearInterval(interval)
+    }, 500)
+  }
+
   // Check for password change success message
   if (route.query.passwordChanged === 'true') {
     successMessage.value = 'Password changed successfully! Please log in with your new credentials.'

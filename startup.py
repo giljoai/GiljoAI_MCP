@@ -1184,42 +1184,37 @@ def run_startup(
 
     print_header("Opening Browser")
 
+    # Determine the correct host for browser URLs
+    # Use the configured external_host/network IP when not in localhost mode
+    server_host = get_network_ip() or "localhost"
+
     if no_browser:
-        network_ip = get_network_ip()
-        if network_ip:
-            print_info("Login to your published IP on your PC to begin setup!")
-            print_success(f"Setup URL: {http_proto}://{network_ip}:{browser_port}/setup")
-        else:
-            print_info("Login to your published IP on your PC to begin setup!")
-            print_success(f"Localhost URL: {http_proto}://localhost:{browser_port}/setup")
+        print_info("Login to your server to begin setup!")
+        print_success(f"Setup URL: {http_proto}://{server_host}:{browser_port}/setup")
 
         print_header("Welcome to GiljoAI MCP! -Gil")
     else:
         if is_first_run:
             target_route = "/welcome"
-            # Setup wizard paths (/welcome, /create-admin, /api/auth/create-first-admin)
-            # are public endpoints that bypass auth middleware — no need to use
-            # network IP to dodge auto-login. Always use localhost to stay within
-            # the CSP connect-src 'self' policy and CORS allowed origins.
-            setup_url = f"{http_proto}://localhost:{browser_port}{target_route}"
+            setup_url = f"{http_proto}://{server_host}:{browser_port}{target_route}"
             print_info("First-run detected - opening welcome setup screen...")
 
             open_browser(setup_url, delay=2)
         else:
-            dashboard_url = f"{http_proto}://localhost:{browser_port}"
+            dashboard_url = f"{http_proto}://{server_host}:{browser_port}"
             print_info("Opening dashboard...")
             open_browser(dashboard_url, delay=2)
 
     # Step 10: Display status
     mode_label = "PRODUCTION" if production_mode else "DEVELOPMENT"
     print_header(f"Services Running ({mode_label})")
-    print_success(f"API Server: {http_proto}://localhost:{api_port}")
-    print_success(f"API Docs: {http_proto}://localhost:{api_port}/docs")
+    print_success(f"API Server: {http_proto}://{server_host}:{api_port}")
+    print_success(f"API Docs: {http_proto}://{server_host}:{api_port}/docs")
 
     if production_mode:
-        print_success(f"Frontend (Production): {http_proto}://localhost:{api_port}")
+        print_success(f"Frontend (Production): {http_proto}://{server_host}:{api_port}")
     elif frontend_process:
-        print_success(f"Frontend (Dev): {http_proto}://localhost:{frontend_port}")
+        print_success(f"Frontend (Dev): {http_proto}://{server_host}:{frontend_port}")
 
     print_info("\nPress Ctrl+C to stop all services")
 
