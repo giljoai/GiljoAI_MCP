@@ -18,6 +18,7 @@ Handover 0431: Added pre-closeout verification protocol.
 """
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from inspect import iscoroutine
@@ -500,7 +501,7 @@ async def write_360_memory(
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
-            # Use agent-supplied commits (passive server); fall back to GitHub API
+            # Use agent-supplied commits; SaaS can fall back to GitHub API
             if git_commits is not None:
                 git_commits = validate_git_commits(git_commits)
                 logger.info(
@@ -508,10 +509,16 @@ async def write_360_memory(
                     len(git_commits),
                     project_id,
                 )
-            else:
+            elif os.environ.get("GILJO_MODE") == "saas":
                 git_commits = await _fetch_git_commits_for_project(
                     product_memory=product_memory,
                     project=project,
+                )
+            else:
+                git_commits = []
+                logger.info(
+                    "No agent-supplied git commits for project %s (CE server is passive)",
+                    project_id,
                 )
 
             repo = ProductMemoryRepository()

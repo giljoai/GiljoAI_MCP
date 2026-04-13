@@ -10,6 +10,7 @@ Handles project completion and updates product memory with sequential history en
 """
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from inspect import iscoroutine
@@ -258,14 +259,14 @@ async def close_project_and_update_memory(
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
-            # Use agent-supplied commits (passive server); fall back to GitHub API
+            # Use agent-supplied commits; SaaS can fall back to GitHub API
             if git_commits is not None:
                 logger.info(
                     "Using %d agent-supplied git commits for project %s",
                     len(git_commits),
                     project_id,
                 )
-            else:
+            elif os.environ.get("GILJO_MODE") == "saas":
                 git_config = _get_git_config(product_memory)
                 if git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner"):
                     git_commits = await _fetch_github_commits(
@@ -275,6 +276,12 @@ async def close_project_and_update_memory(
                         project_created_at=project.created_at,
                         project_completed_at=project.completed_at or datetime.now(timezone.utc),
                     )
+            else:
+                git_commits = []
+                logger.info(
+                    "No agent-supplied git commits for project %s (CE server is passive)",
+                    project_id,
+                )
 
             if git_commits is None:
                 git_commits = []
