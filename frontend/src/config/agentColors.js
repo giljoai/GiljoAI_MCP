@@ -85,6 +85,14 @@ const AGENT_SYNONYMS = {
  */
 export function getAgentColor(displayName) {
   const normalizedType = displayName?.toLowerCase() || ''
+  // Direct match or synonym lookup
   const canonical = AGENT_SYNONYMS[normalizedType] || normalizedType
-  return AGENT_COLORS[canonical] || AGENT_COLORS.orchestrator
+  if (AGENT_COLORS[canonical]) return AGENT_COLORS[canonical]
+  // Segment match: "implementer-backend" → check "implementer", then "backend"
+  const segments = normalizedType.split('-')
+  for (const seg of segments) {
+    const resolved = AGENT_SYNONYMS[seg] || seg
+    if (AGENT_COLORS[resolved]) return AGENT_COLORS[resolved]
+  }
+  return AGENT_COLORS.orchestrator
 }
