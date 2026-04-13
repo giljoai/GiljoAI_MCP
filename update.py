@@ -55,6 +55,16 @@ def err(msg: str) -> None:
 
 def _build_db_url() -> str | None:
     """Return a DATABASE_URL, preferring the env var then falling back to config.yaml."""
+    # Load .env so DATABASE_URL is available even if not exported in the shell
+    env_path = ROOT / ".env"
+    if env_path.exists():
+        try:
+            from dotenv import load_dotenv
+
+            load_dotenv(env_path)
+        except ImportError:
+            pass
+
     url = os.environ.get("DATABASE_URL")
     if url:
         return url
