@@ -80,7 +80,7 @@
         prepend-icon="mdi-plus"
         :disabled="!activeProduct"
         aria-label="Create new project"
-        @click="showCreateDialog = true"
+        @click="openNewProjectDialog"
       >
         New Project
       </v-btn>
@@ -563,6 +563,11 @@ function handleRowClick(event, row) {
   } else {
     editProject(item)
   }
+}
+
+function openNewProjectDialog() {
+  editingProject.value = null
+  showCreateDialog.value = true
 }
 
 async function editProject(project) {

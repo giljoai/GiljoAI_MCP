@@ -173,6 +173,7 @@ class ProjectLifecycleService:
                             project_id=project.id,
                             update_type="status_changed",
                             project_data=_build_ws_project_data(project),
+                            tenant_key=project.tenant_key,
                         )
                     except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                         self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
@@ -387,6 +388,7 @@ class ProjectLifecycleService:
                         project_id=project.id,
                         update_type="status_changed",
                         project_data=_build_ws_project_data(project),
+                        tenant_key=project.tenant_key,
                     )
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
@@ -452,6 +454,7 @@ class ProjectLifecycleService:
                         project_id=project.id,
                         update_type="cancelled",
                         project_data=_build_ws_project_data(project),
+                        tenant_key=project.tenant_key,
                     )
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
@@ -607,6 +610,19 @@ class ProjectLifecycleService:
         if commit:
             await session.commit()
 
+        # Broadcast project status change to all browsers
+        ws_mgr = self._websocket_manager
+        if ws_mgr:
+            try:
+                await ws_mgr.broadcast_project_update(
+                    project_id=project_id,
+                    update_type="status_changed",
+                    project_data={"name": project.name, "status": "completed", "mission": project.mission},
+                    tenant_key=tenant_key,
+                )
+            except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
+                self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
+
         await self._broadcast_memory_update(
             project_id=project_id,
             project_name=project.name,
@@ -761,6 +777,19 @@ class ProjectLifecycleService:
                 await session.commit()
 
                 self._logger.info(f"Resumed project {project_id} with {len(resumed_ids)} agents resumed")
+
+                # Broadcast status change to all browsers
+                ws_mgr = self._websocket_manager
+                if ws_mgr:
+                    try:
+                        await ws_mgr.broadcast_project_update(
+                            project_id=project_id,
+                            update_type="status_changed",
+                            project_data={"name": project.name, "status": "inactive", "mission": project.mission},
+                            tenant_key=tenant_key,
+                        )
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
+                        self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
                 return ProjectResumeResult(
                     message="Project resumed successfully",

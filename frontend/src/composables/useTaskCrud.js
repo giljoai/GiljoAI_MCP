@@ -53,6 +53,8 @@ export function useTaskCrud() {
     if (!productStore.effectiveProductId) {
       return { noProduct: true }
     }
+    editingTask.value = null
+    currentTask.value = DEFAULT_TASK()
     showTaskDialog.value = true
     return { noProduct: false }
   }

@@ -48,7 +48,7 @@
           hide-details
           class="filter-select"
         />
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="showDialog = true">
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="openNewProductDialog">
           New Product
         </v-btn>
         <v-btn
@@ -561,6 +561,11 @@ async function handleProductRefresh() {
   if (tuningProduct.value) {
     tuningProduct.value = productStore.products.find((product) => product.id === tuningProduct.value.id) || tuningProduct.value
   }
+}
+
+function openNewProductDialog() {
+  editingProduct.value = null
+  showDialog.value = true
 }
 
 async function editProduct(product) {
