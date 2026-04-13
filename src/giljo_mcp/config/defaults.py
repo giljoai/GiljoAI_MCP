@@ -52,7 +52,6 @@ DEFAULT_FIELD_PRIORITY: dict[str, Any] = {
         "testing": {"toggle": True},
         "vision_documents": {"toggle": True},
         "architecture": {"toggle": True},
-        "agent_templates": {"toggle": True},
         "git_history": {"toggle": False},  # OFF by default until Git Integration enabled
     },
 }
@@ -65,7 +64,6 @@ DEFAULT_CATEGORY_TOGGLES: dict[str, bool] = {
     "vision_documents": True,
     "memory_360": True,
     "git_history": False,  # OFF by default
-    "agent_templates": True,
 }
 
 # Default depth values matching users table column defaults
@@ -73,7 +71,6 @@ DEFAULT_DEPTH_CONFIG: dict[str, Any] = {
     "vision_documents": "medium",
     "memory_last_n_projects": 3,
     "git_commits": 25,
-    "agent_templates": "basic",
     "tech_stack_sections": "all",
     "architecture_depth": "overview",
 }
