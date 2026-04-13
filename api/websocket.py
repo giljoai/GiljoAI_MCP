@@ -459,23 +459,33 @@ class WebSocketManager:
         self,
         project_id: str,
         update_type: str,
-        project_data: dict,  # 'created', 'status_changed', 'closed'
+        project_data: dict,  # 'created', 'status_changed', 'closed', 'updated'
+        tenant_key: str | None = None,
     ):
-        """Broadcast project updates to subscribed clients"""
-        message = {
-            "type": "project_update",
-            "data": {
+        """Broadcast project updates to all clients in the tenant.
+
+        Uses tenant-scoped delivery so both project detail views and the
+        project list page receive real-time updates across all browsers.
+        """
+        if not tenant_key:
+            from src.giljo_mcp.tenant import TenantManager
+
+            tenant_key = TenantManager.get_current_tenant()
+        if not tenant_key:
+            logger.warning("broadcast_project_update: no tenant_key available for project %s", project_id)
+            return
+
+        await self.broadcast_to_tenant(
+            tenant_key=tenant_key,
+            event_type="project_update",
+            data={
                 "project_id": project_id,
                 "update_type": update_type,
                 "name": project_data.get("name"),
                 "status": project_data.get("status"),
                 "mission": project_data.get("mission"),
             },
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-
-        # Notify project subscribers
-        await self.notify_entity_update("project", project_id, message)
+        )
 
     # Heartbeat mechanism
 

@@ -142,6 +142,18 @@ class ProjectCloseoutService:
                     f"Closed out project {project_id} with {len(decommissioned_ids)} agents decommissioned"
                 )
 
+                # Broadcast status change to all browsers
+                if self._websocket_manager:
+                    try:
+                        await self._websocket_manager.broadcast_project_update(
+                            project_id=project_id,
+                            update_type="closed",
+                            project_data={"name": project.name, "status": "completed", "mission": project.mission},
+                            tenant_key=tenant_key,
+                        )
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
+                        self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
+
                 return ProjectCloseOutResult(
                     message="Project closed out successfully",
                     agents_decommissioned=len(decommissioned_ids),
