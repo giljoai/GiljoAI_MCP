@@ -387,6 +387,7 @@ class ProjectLaunchService:
                     project_id=project.id,
                     update_type="launched",
                     project_data=project_data,
+                    tenant_key=project.tenant_key,
                 )
             except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience
                 self._logger.warning(f"WebSocket broadcast failed: {ws_error}")

@@ -296,6 +296,18 @@ class ProjectService:
 
                 self._logger.info(f"Created project {project.id} with status '{status}' and tenant key {tenant_key}")
 
+                # Broadcast WebSocket event so all browsers refresh the project list
+                if self._websocket_manager:
+                    try:
+                        await self._websocket_manager.broadcast_project_update(
+                            project_id=project.id,
+                            update_type="created",
+                            project_data=_build_ws_project_data(project),
+                            tenant_key=tenant_key,
+                        )
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
+                        self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
+
                 return project
 
         except IntegrityError as e:
@@ -910,6 +922,7 @@ class ProjectService:
                         project_id=project.id,
                         update_type="updated",
                         project_data=_build_ws_project_data(project),
+                        tenant_key=self.tenant_manager.get_current_tenant(),
                     )
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
