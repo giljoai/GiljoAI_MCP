@@ -43,16 +43,12 @@ class TestDepthDefaultsConsolidation:
         # vision_documents - same key
         assert DEFAULT_DEPTHS["vision_documents"] == canonical["vision_documents"]
 
-        # agent_templates - same key
-        assert DEFAULT_DEPTHS["agent_templates"] == canonical["agent_templates"]
-
     def test_canonical_defaults_have_expected_values(self):
         """Verify canonical defaults match handover 0823 decision."""
         canonical = RAW_DEPTH_CONFIG
         assert canonical["memory_last_n_projects"] == 3
         assert canonical["git_commits"] == 25
         assert canonical["vision_documents"] == "medium"
-        assert canonical["agent_templates"] == "basic"
 
 
 class TestCH2InlineFetchCalls:
@@ -249,19 +245,13 @@ class TestCH2InlineFetchCalls:
         assert "STEP 3" in ch2
         assert "STEP 4" in ch2
 
-    def test_ch2_agent_templates_basic_skipped(self):
-        """agent_templates with basic depth should not generate fetch call."""
-        toggles = {"agent_templates": True}
-        depth = {"agent_templates": "basic"}
-        ch2 = self._build_ch2(field_toggles=toggles, depth_config=depth)
-        assert 'categories=["agent_templates"]' not in ch2
-
-    def test_ch2_agent_templates_full_generates_fetch(self):
-        """agent_templates with 'full' depth should generate fetch call."""
+    def test_ch2_agent_templates_not_in_fetch_calls(self):
+        """Handover 0967: agent_templates removed from CH2 fetch calls.
+        Orchestrator gets slim roster from get_orchestrator_instructions instead."""
         toggles = {"agent_templates": True}
         depth = {"agent_templates": "full"}
         ch2 = self._build_ch2(field_toggles=toggles, depth_config=depth)
-        assert 'categories=["agent_templates"]' in ch2
+        assert 'categories=["agent_templates"]' not in ch2
 
 
 class TestResponseStructure:
