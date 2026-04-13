@@ -24,6 +24,22 @@
           <v-divider />
 
           <v-card-text class="pa-6">
+            <!-- Hostname mismatch warning -->
+            <AppAlert
+              v-if="hostnameMismatch"
+              type="warning"
+              variant="tonal"
+              class="mb-4"
+            >
+              You're connected via <strong>{{ currentHostname }}</strong>, but the server is at
+              <strong>{{ correctHost }}</strong>.
+              API requests will be blocked by your browser.
+              <br />
+              <a :href="correctUrl" class="font-weight-bold text-warning">
+                Open correct address &rarr;
+              </a>
+            </AppAlert>
+
             <!-- Alert for errors -->
             <AppAlert
               v-if="error"
@@ -162,11 +178,30 @@ import ForgotPasswordPin from '@/components/ForgotPasswordPin.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
+import { getApiBaseURL } from '@/config/api'
 
 // Composables
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+
+// Hostname mismatch detection
+const currentHostname = window.location.hostname
+const apiBaseUrl = getApiBaseURL()
+const apiHostname = (() => {
+  try { return new URL(apiBaseUrl).hostname } catch { return '' }
+})()
+const hostnameMismatch = ref(
+  (currentHostname === 'localhost' || currentHostname === '127.0.0.1') &&
+  apiHostname && apiHostname !== 'localhost' && apiHostname !== '127.0.0.1'
+)
+const correctHost = apiHostname
+const correctUrl = (() => {
+  try {
+    const u = new URL(apiBaseUrl)
+    return `${u.protocol}//${u.hostname}:${window.location.port || u.port}${window.location.pathname}`
+  } catch { return apiBaseUrl }
+})()
 
 // State
 const username = ref('')
