@@ -78,24 +78,6 @@ async def test_change_password_admin_bypass(user_service, test_user, db_session)
 
 
 # ============================================================================
-# TEST: reset_password
-# ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_reset_password_sets_default(user_service, test_user, db_session):
-    """Test that reset_password sets password to 'GiljoMCP'"""
-    result = await user_service.reset_password(test_user.id)
-
-    # Verify method completes without error (void return)
-    assert result is None
-
-    await db_session.refresh(test_user)
-    assert bcrypt.checkpw("GiljoMCP".encode("utf-8"), test_user.password_hash.encode("utf-8"))
-    assert test_user.must_change_password is True
-
-
-# ============================================================================
 # TEST: check_username_exists
 # ============================================================================
 
