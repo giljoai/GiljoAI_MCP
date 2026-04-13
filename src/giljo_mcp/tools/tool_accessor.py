@@ -334,6 +334,212 @@ class ToolAccessor:
             ),
         }
 
+    # ------------------------------------------------------------------
+    # list_projects / update_project_metadata — MCP tool layer
+    # ------------------------------------------------------------------
+
+    _VALID_PROJECT_STATUS_FILTERS = frozenset({"inactive", "active", "completed", "all"})
+    _VALID_PROJECT_UPDATE_STATUSES = frozenset({"inactive", "active", "completed"})
+
+    async def list_projects(
+        self,
+        status_filter: str = "all",
+        tenant_key: str | None = None,
+    ) -> dict[str, Any]:
+        """List projects for the active product with optional status filter.
+
+        Args:
+            status_filter: One of "inactive", "active", "completed", "all" (default "all").
+            tenant_key: Tenant isolation key (injected by MCP security layer).
+
+        Returns:
+            Dict with success flag and list of project summaries.
+
+        Raises:
+            ValidationError: Invalid status_filter or no active product.
+        """
+        # Validate status_filter (untrusted agent input)
+        if status_filter not in self._VALID_PROJECT_STATUS_FILTERS:
+            raise ValidationError(
+                f"Invalid status_filter '{status_filter}'. "
+                f"Must be one of: {', '.join(sorted(self._VALID_PROJECT_STATUS_FILTERS))}",
+                context={"operation": "list_projects"},
+            )
+
+        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+
+        # Resolve active product (same pattern as create_project)
+        product_service = ProductService(
+            db_manager=self.db_manager,
+            tenant_key=effective_tenant_key,
+            websocket_manager=self._websocket_manager,
+            test_session=self._test_session,
+        )
+        active_product = await product_service.get_active_product()
+        if not active_product:
+            raise ValidationError(
+                "No active product set. Please activate a product first.",
+                context={"tenant_key": effective_tenant_key, "operation": "list_projects"},
+            )
+
+        # Delegate to service — pass status=None when filter is "all"
+        svc_status = None if status_filter == "all" else status_filter
+        all_projects = await self._project_service.list_projects(
+            status=svc_status,
+            tenant_key=effective_tenant_key,
+        )
+
+        # Filter to active product only
+        product_projects = [p for p in all_projects if p.product_id == active_product.id]
+
+        # Build response with truncated descriptions
+        projects_out = []
+        for p in product_projects:
+            desc = p.description or ""
+            if len(desc) > 200:
+                desc = desc[:200]
+            projects_out.append(
+                {
+                    "project_id": p.id,
+                    "name": p.name,
+                    "description": desc,
+                    "status": p.status,
+                    "project_type": getattr(p.project_type, "abbreviation", None) if p.project_type else None,
+                    "series_number": p.series_number,
+                    "taxonomy_alias": p.taxonomy_alias,
+                    "created_at": p.created_at,
+                }
+            )
+
+        return {
+            "success": True,
+            "product_id": active_product.id,
+            "count": len(projects_out),
+            "projects": projects_out,
+        }
+
+    async def update_project_metadata(
+        self,
+        project_id: str,
+        name: str | None = None,
+        description: str | None = None,
+        status: str | None = None,
+        tenant_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Update project metadata fields (name, description, status).
+
+        Args:
+            project_id: Project UUID (required).
+            name: New name (max 200 chars, optional).
+            description: New description (max 5000 chars, optional).
+            status: New status — "inactive", "active", or "completed" (optional).
+            tenant_key: Tenant isolation key (injected by MCP security layer).
+
+        Returns:
+            Dict with success flag and updated project summary.
+
+        Raises:
+            ValidationError: On invalid input (empty project_id, bad status, field too long, no fields).
+            ResourceNotFoundError: Project not found or not in active product.
+        """
+        # --- Input validation (untrusted agent input) ---
+        if not project_id or not project_id.strip():
+            raise ValidationError(
+                "Project ID is required and cannot be empty.",
+                context={"operation": "update_project_metadata"},
+            )
+        project_id = project_id.strip()
+
+        # Validate at least one field is provided
+        if name is None and description is None and status is None:
+            raise ValidationError(
+                "At least one field (name, description, status) must be provided.",
+                context={"operation": "update_project_metadata"},
+            )
+
+        # Validate field lengths
+        if name is not None:
+            name = name.strip()
+            if len(name) > 200:
+                raise ValidationError(
+                    f"Name exceeds 200 character limit (got {len(name)}).",
+                    context={"operation": "update_project_metadata"},
+                )
+            if not name:
+                raise ValidationError(
+                    "Name cannot be empty.",
+                    context={"operation": "update_project_metadata"},
+                )
+
+        if description is not None and len(description) > 5000:
+            raise ValidationError(
+                f"Description exceeds 5000 character limit (got {len(description)}).",
+                context={"operation": "update_project_metadata"},
+            )
+
+        if status is not None and status not in self._VALID_PROJECT_UPDATE_STATUSES:
+            raise ValidationError(
+                f"Invalid status '{status}'. Must be one of: {', '.join(sorted(self._VALID_PROJECT_UPDATE_STATUSES))}",
+                context={"operation": "update_project_metadata"},
+            )
+
+        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+
+        # Resolve active product and verify project belongs to it
+        product_service = ProductService(
+            db_manager=self.db_manager,
+            tenant_key=effective_tenant_key,
+            websocket_manager=self._websocket_manager,
+            test_session=self._test_session,
+        )
+        active_product = await product_service.get_active_product()
+        if not active_product:
+            raise ValidationError(
+                "No active product set. Please activate a product first.",
+                context={"tenant_key": effective_tenant_key, "operation": "update_project_metadata"},
+            )
+
+        # Fetch project to verify it belongs to the active product
+        project = await self._project_service.get_project(
+            project_id=project_id,
+            tenant_key=effective_tenant_key,
+        )
+        if project.product_id != active_product.id:
+            raise ValidationError(
+                "Project does not belong to the active product.",
+                context={
+                    "project_id": project_id,
+                    "project_product_id": project.product_id,
+                    "active_product_id": active_product.id,
+                },
+            )
+
+        # Build updates dict — only include provided fields
+        updates: dict[str, Any] = {}
+        if name is not None:
+            updates["name"] = name
+        if description is not None:
+            updates["description"] = description
+        if status is not None:
+            updates["status"] = status
+
+        # Delegate to service (single write path)
+        updated = await self._project_service.update_project(
+            project_id=project_id,
+            updates=updates,
+            websocket_manager=self._websocket_manager,
+        )
+
+        return {
+            "success": True,
+            "project_id": updated.id,
+            "name": updated.name,
+            "description": updated.description,
+            "status": updated.status,
+            "updated_at": updated.updated_at,
+            "message": f"Project '{updated.name}' updated successfully.",
+        }
+
     async def update_project_mission(self, project_id: str, mission: str) -> dict[str, Any]:
         """Update the mission field (delegates to ProjectService)"""
         # SECURITY FIX (Handover 0424): Always pass tenant_key for isolation

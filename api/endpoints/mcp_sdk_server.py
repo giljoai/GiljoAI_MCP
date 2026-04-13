@@ -169,6 +169,61 @@ async def create_project(
 
 @mcp.tool(
     description=(
+        "List projects for the active product with optional status filter. "
+        "Returns project summaries (descriptions truncated to 200 chars). "
+        "Requires an active product to be set."
+    ),
+)
+async def list_projects(
+    status_filter: str = "all",
+    ctx: Context = None,
+) -> dict:
+    """List projects for the active product.
+
+    Args:
+        status_filter: Filter by status — "inactive", "active", "completed", or "all" (default).
+    """
+    return await _call_tool(
+        ctx,
+        "list_projects",
+        {"status_filter": status_filter},
+    )
+
+
+@mcp.tool(
+    description=(
+        "Update project metadata (name, description, status). "
+        "Project must belong to the active product. "
+        "Only provided fields are updated — omit fields to leave them unchanged."
+    ),
+)
+async def update_project(
+    project_id: str,
+    name: str = "",
+    description: str = "",
+    status: str = "",
+    ctx: Context = None,
+) -> dict:
+    """Update project metadata fields.
+
+    Args:
+        project_id: Project UUID (required).
+        name: New project name (max 200 chars). Leave empty to keep current.
+        description: New description (max 5000 chars). Leave empty to keep current.
+        status: New status — "inactive", "active", or "completed". Leave empty to keep current.
+    """
+    params: dict = {"project_id": project_id}
+    if name:
+        params["name"] = name
+    if description:
+        params["description"] = description
+    if status:
+        params["status"] = status
+    return await _call_tool(ctx, "update_project_metadata", params)
+
+
+@mcp.tool(
+    description=(
         "Save orchestrator's mission plan to database. Called by: ORCHESTRATOR ONLY "
         "after creating execution strategy (Step 3 of staging workflow). "
         "Persists the OUTPUT of mission planning. "
