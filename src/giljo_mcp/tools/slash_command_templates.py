@@ -64,6 +64,7 @@ description: "Add a task or project to the GiljoAI dashboard. Routes to task (te
 ## Routing
 - **Task**: technical debt, TODOs, bugs, small fixes, scope creep punts -> `mcp__giljo_mcp__create_task`
 - **Project**: actionable work items, features, multi-step dev work -> `mcp__giljo_mcp__create_project`
+- **Update project**: if the user wants to update/modify/change an existing project, first call `mcp__giljo_mcp__list_projects` to find it, then call `mcp__giljo_mcp__update_project` with the new values
 
 ## Task parameters
 - `title` (required), `description` (optional), `priority` (low|medium|high|critical, default: medium), `category` (frontend|backend|database|infra|docs|general, default: general)
@@ -256,6 +257,7 @@ prompt = '''
 ## Routing
 - Task: technical debt, TODOs, bugs, small fixes, scope creep punts -> create_task MCP tool
 - Project: actionable work items, features, multi-step dev work -> create_project MCP tool
+- Update project: if the user wants to update/modify/change an existing project, first call list_projects to find it, then call update_project with the new values
 
 ## Task parameters
 - title (required), description (optional), priority (low|medium|high|critical, default: medium), category (frontend|backend|database|infra|docs|general, default: general)
@@ -517,6 +519,7 @@ description: "Add a task or project to the GiljoAI dashboard"
 ## Routing
 - **Task**: technical debt, TODOs, bugs, small fixes, scope creep punts -> `create_task` MCP tool
 - **Project**: actionable work items, features, multi-step dev work -> `create_project` MCP tool
+- **Update project**: if the user wants to update/modify/change an existing project, first call `list_projects` to find it, then call `update_project` with the new values
 
 ## Task parameters
 - `title` (required), `description` (optional), `priority` (low|medium|high|critical, default: medium), `category` (frontend|backend|database|infra|docs|general, default: general)
