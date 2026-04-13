@@ -205,18 +205,27 @@ async def test_complete_job_emits_status_changed_with_duration_seconds(
         job_type="orchestrator",
     )
 
-    # complete_job makes 6 execute calls:
+    # complete_job makes 8 execute calls for orchestrator jobs:
     # 1. execution lookup (scalar_one_or_none)
     # 2. job lookup (scalar_one_or_none)
     # 3. unread messages (scalars().all())
     # 4. todo items (scalars().all())
     # 5. other active executions (scalar_one_or_none)
     # 6. find orchestrator execution for auto-completion message (scalar_one_or_none)
+    # 7. _check_360_memory_written: project lookup (scalar_one_or_none)
+    # 8. _check_360_memory_written: product memory entry lookup (scalar_one_or_none)
     unread_result = MagicMock()
     unread_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
 
     todo_result = MagicMock()
     todo_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+
+    # Project mock for 360 memory check (has product_id so memory query runs)
+    project_for_memory = SimpleNamespace(
+        id=job.project_id,
+        tenant_key=tenant_key,
+        product_id=str(uuid4()),
+    )
 
     session.execute.side_effect = [
         _scalar_result(execution),
@@ -225,6 +234,8 @@ async def test_complete_job_emits_status_changed_with_duration_seconds(
         todo_result,  # todo items (empty list)
         _scalar_result(None),  # other active executions (none)
         _scalar_result(None),  # find_orchestrator_execution (none — skip auto-message)
+        _scalar_result(project_for_memory),  # 360 memory: project lookup
+        _scalar_result(None),  # 360 memory: no entry found (triggers warning)
     ]
 
     result = await orchestration_service.complete_job(job_id=job_id, result={"ok": True}, tenant_key=tenant_key)
