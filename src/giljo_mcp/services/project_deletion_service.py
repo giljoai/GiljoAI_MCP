@@ -142,6 +142,18 @@ class ProjectDeletionService:
                 f"Decommissioned {decommissioned_jobs_count} agent jobs."
             )
 
+            # Broadcast status change to all browsers
+            if self._websocket_manager:
+                try:
+                    await self._websocket_manager.broadcast_project_update(
+                        project_id=project_id,
+                        update_type="status_changed",
+                        project_data={"name": project.name, "status": "deleted"},
+                        tenant_key=tenant_key,
+                    )
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
+                    self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
+
             return SoftDeleteResult(
                 message="Project deleted successfully",
                 deleted_at=project.deleted_at.isoformat() if project.deleted_at else None,
@@ -305,6 +317,7 @@ class ProjectDeletionService:
                             "name": project_name,
                             "deleted_counts": deleted_counts,
                         },
+                        tenant_key=tenant_key,
                     )
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
