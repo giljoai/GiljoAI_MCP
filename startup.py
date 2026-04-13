@@ -1165,6 +1165,26 @@ def run_startup(
         print_error("Failed to start API server")
         return 1
 
+    # Rebuild frontend if not in dev mode (ensures dist/ matches pulled code)
+    dev_mode = "--dev" in sys.argv
+    frontend_dir = Path.cwd() / "frontend"
+    if not dev_mode and frontend_dir.exists() and (frontend_dir / "package.json").exists():
+        print_info("Rebuilding frontend...")
+        npm_cmd = "npm.cmd" if platform.system() == "Windows" else "npm"
+        build_result = subprocess.run(
+            [npm_cmd, "run", "build"],
+            cwd=str(frontend_dir),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if build_result.returncode == 0:
+            print_success("Frontend build complete")
+        else:
+            print_warning("Frontend build failed -- using existing dist/ if available")
+            if verbose:
+                print_warning(build_result.stderr[:500] if build_result.stderr else "No error output")
+
     print_info("Starting frontend server...")
     frontend_process = start_frontend_server(verbose=verbose)
 

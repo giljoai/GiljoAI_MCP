@@ -336,48 +336,43 @@ COMPLETION PROTOCOL (After ALL agents finish their work):
         if not git_integration_enabled
         else '''
 ── STEP 0: Git Commit (Git Integration Enabled) ───────────────────────────
-Before writing 360 memory, ensure all work is committed to git:
+Before closeout, ensure all work is committed to git:
 1. Review changes: run `git status` in the project directory
 2. Stage deliverables: `git add` relevant files (never `git add -A`)
 3. Commit with a descriptive message summarizing the project work
-4. Record the commit hash for inclusion in 360 memory and completion result
+4. Record the commit hash for inclusion in closeout and completion result
 This preserves a clean audit trail before the project is closed out.
 ────────────────────────────────────────────────────────────────────────────
 '''
     }
-── STEP 1: Write 360 Memory ────────────────────────────────────────────────
-Call: write_360_memory(
+── STEP 1: Mark Complete ───────────────────────────────────────────────────
+Call: complete_job(
+          job_id='{orchestrator_id}',
+          result={{"summary": "...", "artifacts": [...]}}
+      )
+Note: tenant_key auto-injected by server from API key session
+
+IMPORTANT: Complete your own orchestrator job FIRST, before closing the project.
+The server requires all agents (including orchestrator) to be complete before
+project closeout.
+
+── STEP 2: Close Project & Write 360 Memory ────────────────────────────────
+Call: close_project_and_update_memory(
           project_id='{project_id}',
           summary='2-3 paragraph mission accomplishment overview',
           key_outcomes=['Achievement 1', 'Achievement 2', ...],
           decisions_made=['Decision 1 + rationale', ...],
-          entry_type='project_completion',
-          author_job_id='{orchestrator_id}'
+          git_commits=[...]
       )
 Note: tenant_key auto-injected by server from API key session
 
 CRITICAL: Auto-generate content from your knowledge.
           Never ask user to fill placeholders.
 
-Purpose: Creates sequential history entry in Product.product_memory
-Visible: User sees in UI Product Memory timeline
+This atomically closes the project and writes 360 memory to the product timeline.
 
-── STEP 2: Mark Complete ───────────────────────────────────────────────────
-Call: complete_job(
-          job_id='{orchestrator_id}',
-          result={{"summary": "...", "status": "completed"}}
-      )
-Note: tenant_key auto-injected by server from API key session
-
-This transitions orchestrator job from 'active' to 'completed'
-
-── STEP 3: User Review ─────────────────────────────────────────────────────
-User reviews 360 memory entry in UI
-User chooses:
-  - "Continue Working" → Spawns new orchestrator for next iteration
-  - "Close Out Project" → Marks project as completed
-
-Orchestrator waits for user decision (no further action)
+── STEP 3: User Guidance ──────────────────────────────────────────────────
+Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
 
 ────────────────────────────────────────────────────────────────────────────
 
