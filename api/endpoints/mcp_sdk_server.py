@@ -170,7 +170,7 @@ async def create_project(
 @mcp.tool(
     description=(
         "List projects for the active product with optional status filter. "
-        "Returns project summaries (descriptions truncated to 200 chars). "
+        "Returns full project details including complete descriptions. "
         "Requires an active product to be set."
     ),
 )

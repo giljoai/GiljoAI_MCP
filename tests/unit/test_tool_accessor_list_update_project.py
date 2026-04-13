@@ -228,8 +228,8 @@ class TestListProjectsBehavior:
                 await accessor.list_projects(tenant_key="tenant-test")
 
     @pytest.mark.asyncio
-    async def test_description_truncated_to_200_chars(self):
-        """Descriptions longer than 200 chars should be truncated in response."""
+    async def test_description_returned_in_full(self):
+        """Full descriptions should be returned without truncation."""
         accessor = _make_accessor()
 
         mock_product = Mock()
@@ -262,7 +262,8 @@ class TestListProjectsBehavior:
             result = await accessor.list_projects(tenant_key="tenant-test")
 
         desc = result["projects"][0]["description"]
-        assert len(desc) <= 200
+        assert desc == long_desc
+        assert len(desc) == 300
 
     @pytest.mark.asyncio
     async def test_rejects_invalid_status_filter(self):

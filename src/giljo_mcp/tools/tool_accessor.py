@@ -392,24 +392,20 @@ class ToolAccessor:
         # Filter to active product only
         product_projects = [p for p in all_projects if p.product_id == active_product.id]
 
-        # Build response with truncated descriptions
-        projects_out = []
-        for p in product_projects:
-            desc = p.description or ""
-            if len(desc) > 200:
-                desc = desc[:200]
-            projects_out.append(
-                {
-                    "project_id": p.id,
-                    "name": p.name,
-                    "description": desc,
-                    "status": p.status,
-                    "project_type": getattr(p.project_type, "abbreviation", None) if p.project_type else None,
-                    "series_number": p.series_number,
-                    "taxonomy_alias": p.taxonomy_alias,
-                    "created_at": p.created_at,
-                }
-            )
+        # Build response with full descriptions
+        projects_out = [
+            {
+                "project_id": p.id,
+                "name": p.name,
+                "description": p.description or "",
+                "status": p.status,
+                "project_type": getattr(p.project_type, "abbreviation", None) if p.project_type else None,
+                "series_number": p.series_number,
+                "taxonomy_alias": p.taxonomy_alias,
+                "created_at": p.created_at,
+            }
+            for p in product_projects
+        ]
 
         return {
             "success": True,
