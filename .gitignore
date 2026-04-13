@@ -32,6 +32,7 @@ MANIFEST
 # Virtual Environments
 venv/
 .venv/
+uv.lock
 env/
 ENV/
 env.bak/

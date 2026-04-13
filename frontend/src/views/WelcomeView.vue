@@ -293,7 +293,7 @@ const activeTemplates = computed(() =>
   templates.value
     .filter(t => t.is_active)
     .map(t => {
-      const color = getAgentColor(t.agent_type || t.name)
+      const color = getAgentColor(t.role || t.name)
       return {
         id: t.id,
         name: t.display_name || t.name,
