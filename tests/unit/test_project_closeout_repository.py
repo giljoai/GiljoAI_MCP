@@ -306,50 +306,48 @@ class TestRepositoryIntegration:
         }
 
         with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
-            with patch("src.giljo_mcp.tools.project_closeout._fetch_github_commits") as mock_fetch:
-                mock_fetch.return_value = [{"sha": "abc123", "message": "Test commit", "date": "2025-11-15T10:00:00Z"}]
+            mock_repo = MagicMock()
+            mock_repo_class.return_value = mock_repo
+            mock_repo.get_next_sequence = AsyncMock(return_value=1)
+            mock_repo.create_entry = AsyncMock(return_value=mock_memory_entry)
 
-                mock_repo = MagicMock()
-                mock_repo_class.return_value = mock_repo
-                mock_repo.get_next_sequence = AsyncMock(return_value=1)
-                mock_repo.create_entry = AsyncMock(return_value=mock_memory_entry)
+            await close_project_and_update_memory(
+                project_id=str(mock_project.id),
+                summary="Comprehensive test summary with details",
+                key_outcomes=["Outcome A", "Outcome B", "Outcome C"],
+                decisions_made=["Decision X", "Decision Y"],
+                git_commits=[{"sha": "abc123", "message": "Test commit", "date": "2025-11-15T10:00:00Z"}],
+                tenant_key=tenant_key,
+                db_manager=mock_db_manager,
+            )
 
-                await close_project_and_update_memory(
-                    project_id=str(mock_project.id),
-                    summary="Comprehensive test summary with details",
-                    key_outcomes=["Outcome A", "Outcome B", "Outcome C"],
-                    decisions_made=["Decision X", "Decision Y"],
-                    tenant_key=tenant_key,
-                    db_manager=mock_db_manager,
-                )
+            # Verify all computed fields were passed
+            call_kwargs = mock_repo.create_entry.call_args[1]
 
-                # Verify all computed fields were passed
-                call_kwargs = mock_repo.create_entry.call_args[1]
+            # Check git_commits
+            assert len(call_kwargs["git_commits"]) == 1
+            assert call_kwargs["git_commits"][0]["sha"] == "abc123"
 
-                # Check git_commits
-                assert len(call_kwargs["git_commits"]) == 1
-                assert call_kwargs["git_commits"][0]["sha"] == "abc123"
+            # Check deliverables (derived from key_outcomes)
+            assert call_kwargs["deliverables"] == ["Outcome A", "Outcome B", "Outcome C"]
 
-                # Check deliverables (derived from key_outcomes)
-                assert call_kwargs["deliverables"] == ["Outcome A", "Outcome B", "Outcome C"]
+            # Check metrics
+            assert "commits" in call_kwargs["metrics"]
+            assert call_kwargs["metrics"]["commits"] == 1
+            assert call_kwargs["metrics"]["test_coverage"] == 0.0
 
-                # Check metrics
-                assert "commits" in call_kwargs["metrics"]
-                assert call_kwargs["metrics"]["commits"] == 1
-                assert call_kwargs["metrics"]["test_coverage"] == 0.0
+            # Check priority (should be 2 for key_outcomes present)
+            assert call_kwargs["priority"] == 2
 
-                # Check priority (should be 2 for key_outcomes present)
-                assert call_kwargs["priority"] == 2
+            # Check significance_score
+            assert 0.0 <= call_kwargs["significance_score"] <= 1.0
 
-                # Check significance_score
-                assert 0.0 <= call_kwargs["significance_score"] <= 1.0
+            # Check token_estimate
+            assert call_kwargs["token_estimate"] > 0
 
-                # Check token_estimate
-                assert call_kwargs["token_estimate"] > 0
-
-                # Check tags
-                assert isinstance(call_kwargs["tags"], list)
-                assert len(call_kwargs["tags"]) > 0
+            # Check tags
+            assert isinstance(call_kwargs["tags"], list)
+            assert len(call_kwargs["tags"]) > 0
 
     @pytest.mark.asyncio
     async def test_git_commits_empty_when_disabled(self, mock_product, mock_project, tenant_key, mock_memory_entry):
