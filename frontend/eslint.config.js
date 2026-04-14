@@ -1,6 +1,5 @@
 import js from '@eslint/js'
 import pluginVue from 'eslint-plugin-vue'
-import vueParser from 'vue-eslint-parser'
 import globals from 'globals'
 
 export default [
@@ -54,10 +53,13 @@ export default [
       'no-var': 'error',
     },
   },
+  ...pluginVue.configs['flat/recommended'].map((config) => ({
+    ...config,
+    files: ['src/**/*.vue'],
+  })),
   {
     files: ['src/**/*.vue'],
     languageOptions: {
-      parser: vueParser,
       parserOptions: {
         parser: '@babel/eslint-parser',
         requireConfigFile: false,
@@ -76,7 +78,6 @@ export default [
       },
     },
     rules: {
-      ...pluginVue.configs['vue3-recommended'].rules,
       'vue/multi-word-component-names': 'off',
       'vue/no-v-html': 'warn',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
@@ -92,9 +93,6 @@ export default [
       'prefer-template': 'error',
       'prefer-arrow-callback': 'error',
       'no-var': 'error',
-    },
-    plugins: {
-      vue: pluginVue,
     },
   },
   {
