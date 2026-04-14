@@ -114,6 +114,8 @@ class ProjectResponse(BaseModel):
     series_number: int | None = None
     subseries: str | None = None
     taxonomy_alias: str | None = None
+    # CE-OPT-4: UI visibility flag
+    hidden: bool = False
 
 
 class DeletedProjectResponse(BaseModel):
