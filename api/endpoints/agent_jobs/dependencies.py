@@ -29,7 +29,7 @@ async def get_db_manager() -> DatabaseManager:
     Returns the database manager from the FastAPI application state.
     """
     # Get db_manager from application state (set during startup)
-    from api.app import state
+    from api.app_state import state
 
     return state.db_manager
 
@@ -40,7 +40,7 @@ async def get_tenant_manager():
 
     Returns the tenant manager from the FastAPI application state.
     """
-    from api.app import state
+    from api.app_state import state
 
     return state.tenant_manager
 
@@ -62,7 +62,7 @@ async def get_orchestration_service(
         Service creates its own sessions via db_manager.get_session_async().
     """
     # Import state lazily to avoid circular import
-    from api.app import state
+    from api.app_state import state
 
     logger.debug(f"get_orchestration_service called for user {current_user.username}")
     logger.debug(f"state.db_manager is None: {state.db_manager is None}")

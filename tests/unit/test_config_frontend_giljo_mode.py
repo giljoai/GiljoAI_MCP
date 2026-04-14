@@ -47,8 +47,8 @@ class TestFrontendConfigGiljoMode:
         state_mock.config = self._make_config()
 
         with (
-            patch("api.app.GILJO_MODE", giljo_mode_value),
-            patch("api.app.state", state_mock),
+            patch("api.app_state.GILJO_MODE", giljo_mode_value),
+            patch("api.app_state.state", state_mock),
         ):
             return await get_frontend_configuration(self._make_request())
 
@@ -92,8 +92,8 @@ class TestFrontendConfigGiljoMode:
         state_mock.config = None
 
         with (
-            patch("api.app.GILJO_MODE", "ce"),
-            patch("api.app.state", state_mock),
+            patch("api.app_state.GILJO_MODE", "ce"),
+            patch("api.app_state.state", state_mock),
             pytest.raises(HTTPException) as exc_info,
         ):
             await get_frontend_configuration(self._make_request())
