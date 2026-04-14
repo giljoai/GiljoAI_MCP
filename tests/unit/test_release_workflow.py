@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 
@@ -146,13 +147,16 @@ class TestReleaseWorkflowStructure:
         )
 
 
+@pytest.mark.skipif(
+    not (Path(__file__).resolve().parents[2] / ".export-exclude").exists(),
+    reason=".export-exclude not present (public repo)",
+)
 class TestExportExcludeAllowsRelease:
     """Verify .export-exclude allows release.yml through to the public repo."""
 
     def setup_method(self):
         """Load .export-exclude lines."""
         exclude_file = REPO_ROOT / ".export-exclude"
-        assert exclude_file.exists(), ".export-exclude not found"
         with open(exclude_file) as f:
             self.lines = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
 
