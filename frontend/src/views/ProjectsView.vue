@@ -474,7 +474,19 @@ const headers = [
   { title: 'Status', key: 'status', sortable: true, width: '13%', align: 'center' },
   { title: 'Staged', key: 'staging_status', sortable: true, width: '9%', align: 'center' },
   { title: 'Created', key: 'created_at', sortable: true, width: '13%' },
-  { title: 'Completed', key: 'completed_at', sortable: true, width: '13%', align: 'center' },
+  {
+    title: 'Completed',
+    key: 'completed_at',
+    sortable: true,
+    width: '13%',
+    align: 'center',
+    sort: (a, b) => {
+      if (!a && !b) return 0
+      if (!a) return 1
+      if (!b) return -1
+      return new Date(a) - new Date(b)
+    },
+  },
   { title: 'Actions', key: 'quick_action', sortable: false, width: '5%', align: 'center' },
   { title: '', key: 'menu', sortable: false, width: '3%', align: 'center' },
 ]
