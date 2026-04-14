@@ -20,7 +20,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any, Optional
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.config_manager import get_config
@@ -301,6 +301,13 @@ class MissionOrchestrationService:
         )
         templates = result.scalars().all()
 
+        # CE-OPT-001: Build category_metadata with Modified timestamps
+        category_metadata = await self._build_category_metadata(
+            session=session,
+            product=product,
+            tenant_key=tenant_key,
+        )
+
         return {
             "execution": execution,
             "agent_job": agent_job,
@@ -310,7 +317,60 @@ class MissionOrchestrationService:
             "field_toggles": field_toggles,
             "depth_config": depth_config,
             "templates": templates,
+            "category_metadata": category_metadata,
         }
+
+    @staticmethod
+    async def _build_category_metadata(
+        session: AsyncSession,
+        product: Any | None,
+        tenant_key: str,
+    ) -> dict[str, dict]:
+        """Build category_metadata dict with Modified timestamps for protocol display.
+
+        CE-OPT-001: Enables warm orchestrators to skip unchanged context categories.
+
+        Returns:
+            Dict mapping category name -> {modified: str, entries?: int}
+        """
+        from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+
+        metadata: dict[str, dict] = {}
+        if not product:
+            return metadata
+
+        # Product-level categories use product.updated_at
+        product_updated = getattr(product, "updated_at", None)
+        if product_updated:
+            # Truncate to minute precision, ISO format
+            ts = product_updated.strftime("%Y-%m-%dT%H:%M")
+            for cat in ("product_core", "vision_documents", "tech_stack", "architecture", "testing"):
+                metadata[cat] = {"modified": ts}
+
+        # memory_360: COUNT + MAX(created_at) from ProductMemoryEntry
+        result = await session.execute(
+            select(
+                func.count(ProductMemoryEntry.id),
+                func.max(ProductMemoryEntry.created_at),
+            ).where(
+                and_(
+                    ProductMemoryEntry.product_id == product.id,
+                    ProductMemoryEntry.tenant_key == tenant_key,
+                    ProductMemoryEntry.deleted_by_user.is_(False),
+                )
+            )
+        )
+        row = result.one()
+        entry_count, max_created = row[0], row[1]
+        if entry_count > 0 and max_created:
+            metadata["memory_360"] = {
+                "modified": max_created.strftime("%Y-%m-%dT%H:%M"),
+                "entries": entry_count,
+            }
+
+        # git_history: skip (no server-side data, falls back to local git)
+
+        return metadata
 
     @staticmethod
     def _check_staging_redirect(project: Any, job_id: str) -> dict[str, Any] | None:
@@ -443,6 +503,9 @@ class MissionOrchestrationService:
         auto_checkin_enabled = getattr(project, "auto_checkin_enabled", False)
         auto_checkin_interval = getattr(project, "auto_checkin_interval", 10)
 
+        # CE-OPT-001: Thread category timestamps into protocol
+        category_metadata = ctx.get("category_metadata")
+
         orchestrator_protocol = _build_orchestrator_protocol(
             cli_mode=cli_mode,
             project_id=str(project.id),
@@ -456,6 +519,7 @@ class MissionOrchestrationService:
             auto_checkin_enabled=auto_checkin_enabled,
             auto_checkin_interval=auto_checkin_interval,
             git_integration_enabled=git_integration_enabled,
+            category_metadata=category_metadata,
         )
         response["orchestrator_protocol"] = orchestrator_protocol
 
