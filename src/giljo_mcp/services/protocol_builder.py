@@ -77,6 +77,7 @@ def _build_orchestrator_protocol(
     auto_checkin_enabled: bool = False,
     auto_checkin_interval: int = 10,
     git_integration_enabled: bool = False,
+    category_metadata: dict[str, dict] | None = None,
 ) -> dict:
     """
     Build chapter-based orchestrator protocol.
@@ -109,6 +110,7 @@ def _build_orchestrator_protocol(
         depth_config=depth_config,
         product_id=product_id,
         tenant_key=tenant_key,
+        category_metadata=category_metadata,
     )
     ch3 = _build_ch3_spawning_rules(effective_tool)
     ch4 = _build_ch4_error_handling()

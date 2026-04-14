@@ -63,6 +63,7 @@ def _build_ch2_fetch_calls(
     depth_config: dict[str, Any],
     product_id: str,
     tenant_key: str,
+    category_metadata: dict[str, dict] | None = None,
 ) -> str:
     """
     Generate numbered, inline fetch_context() calls for CH2 Step 2 (Handover 0823).
@@ -74,11 +75,15 @@ def _build_ch2_fetch_calls(
     The depth_config parameter is still needed for the agent_templates skip check
     (skip_on_depth logic).
 
+    CE-OPT-001: category_metadata adds Modified timestamps and entry counts to
+    framing lines, enabling warm orchestrators to skip unchanged categories.
+
     Args:
         field_toggles: Dict mapping category name -> bool (enabled/disabled)
         depth_config: Dict mapping category name -> depth value (used only for skip logic)
         product_id: Product UUID
         tenant_key: Tenant isolation key
+        category_metadata: Optional dict mapping category -> {modified, entries} metadata
 
     Returns:
         Formatted string with numbered fetch calls, or empty string if none enabled.
@@ -146,15 +151,27 @@ def _build_ch2_fetch_calls(
         # Framing text is now static/generic (no depth placeholders per 0823b)
         framing = config["framing"]
 
-        calls.append((call_str, framing))
+        calls.append((call_str, framing, field))
 
     if not calls:
         return ""
 
     lines = []
-    for i, (call_str, framing) in enumerate(calls, 1):
+    for i, (call_str, framing, field) in enumerate(calls, 1):
         lines.append(f"{i}. {call_str}")
-        lines.append(f"   -> {framing}")
+
+        # CE-OPT-001: Append metadata suffix (Modified date, entry count)
+        meta = (category_metadata or {}).get(field, {})
+        modified = meta.get("modified")
+        suffix_parts = []
+        if modified:
+            suffix_parts.append(f"Modified: {modified}")
+        entry_count = meta.get("entries")
+        if entry_count is not None:
+            suffix_parts.append(f"entries: {entry_count}")
+        suffix = f" \u2014 {', '.join(suffix_parts)}" if suffix_parts else ""
+
+        lines.append(f"   -> {framing}{suffix}")
         lines.append("")
 
     return "\n".join(lines)
@@ -167,12 +184,15 @@ def _build_ch2_startup(
     depth_config: dict[str, Any] | None = None,
     product_id: str | None = None,
     tenant_key: str | None = None,
+    category_metadata: dict[str, dict] | None = None,
 ) -> str:
     """
     Build CH2: STARTUP SEQUENCE section (Handover 0823: inline fetch calls).
 
     When field_toggles and depth_config are provided, Step 2 contains explicit
     numbered fetch_context() calls. The agent sees exactly what to call.
+
+    CE-OPT-001: category_metadata threads Modified timestamps to fetch call framing.
 
     Args:
         orchestrator_id: Job ID for parameter substitution
@@ -181,6 +201,7 @@ def _build_ch2_startup(
         depth_config: Depth settings per category. If None, uses defaults.
         product_id: Product UUID for fetch calls.
         tenant_key: Tenant key for fetch calls.
+        category_metadata: Optional dict mapping category -> {modified, entries} metadata.
     """
     # Build the dynamic Step 2 content
     if field_toggles and product_id and tenant_key:
@@ -189,6 +210,7 @@ def _build_ch2_startup(
             depth_config=depth_config or {},
             product_id=product_id,
             tenant_key=tenant_key,
+            category_metadata=category_metadata,
         )
         step2_body = f"""── STEP 2: Fetch Context ───────────────────────────────────────────────────
 Call: get_orchestrator_instructions(job_id='{orchestrator_id}')
@@ -197,9 +219,9 @@ Returns: project_description, mission, field_toggles, orchestrator_protocol
 
 Read this protocol via orchestrator_protocol field.
 
-Then call fetch_context() for EVERY category below.
-You MUST call each one. These are configured by the user and are NOT optional.
-Do NOT skip any.
+Then call fetch_context() for each category below.
+If you have already fetched a category in the current session and its Modified date has not changed, you may skip it.
+Otherwise, fetch it — these are configured by the user and provide essential context.
 
 {fetch_calls}"""
     else:
