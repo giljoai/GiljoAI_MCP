@@ -87,7 +87,7 @@ async def activate_product(
     finally:
         # Publish WS event via EventBus (tenant-scoped)
         try:
-            from api.app import state
+            from api.app_state import state
 
             if getattr(state, "event_bus", None):
                 await state.event_bus.publish(
@@ -126,7 +126,7 @@ async def deactivate_product(
     finally:
         # Publish WS event via EventBus (tenant-scoped)
         try:
-            from api.app import state
+            from api.app_state import state
 
             if getattr(state, "event_bus", None):
                 await state.event_bus.publish(

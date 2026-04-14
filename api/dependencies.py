@@ -21,7 +21,7 @@ def _get_default_tenant_key() -> str:
     1. ConfigManager (loaded from config.yaml tenant.default_key)
     2. DEFAULT_TENANT_KEY environment variable
     """
-    from api.app import state
+    from api.app_state import state
 
     if hasattr(state, "config") and state.config and state.config.tenant.default_tenant_key:
         return state.config.tenant.default_tenant_key
@@ -47,7 +47,7 @@ async def get_tenant_key(request: Request) -> str:
     """
     from fastapi import HTTPException
 
-    from api.app import state
+    from api.app_state import state
     from src.giljo_mcp.config_manager import get_config
 
     # Check if we're in setup mode first
@@ -119,7 +119,7 @@ async def get_db():
         use get_db_session() from src.giljo_mcp.auth.dependencies which includes
         additional HTTP exception handling.
     """
-    from api.app import state
+    from api.app_state import state
 
     if not state.db_manager:
         raise RuntimeError("Database manager not initialized")

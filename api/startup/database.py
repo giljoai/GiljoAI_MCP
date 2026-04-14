@@ -11,7 +11,7 @@ Extracted from api/app.py lifespan function (lines ~160-214).
 
 import os
 
-from api.app import APIState
+from api.app_state import APIState
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.logging import ErrorCode, get_logger
