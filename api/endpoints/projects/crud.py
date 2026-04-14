@@ -484,6 +484,7 @@ async def update_project(
         proj_series = detail.series_number
         proj_subseries = detail.subseries
         proj_tax_alias = detail.taxonomy_alias
+        proj_hidden = getattr(detail, "hidden", False) is True
     else:
         # Update via ProjectService (raises exceptions on error, returns ProjectData)
         proj = await project_service.update_project(project_id=project_id, updates=update_dict)
@@ -509,6 +510,7 @@ async def update_project(
         proj_series = proj.series_number
         proj_subseries = proj.subseries
         proj_tax_alias = proj.taxonomy_alias
+        proj_hidden = proj.hidden is True
 
     logger.info(f"Updated project {project_id}")
 
@@ -536,5 +538,5 @@ async def update_project(
         series_number=proj_series,
         subseries=proj_subseries,
         taxonomy_alias=proj_tax_alias,
-        hidden=proj.hidden if hasattr(proj, "hidden") else False,
+        hidden=proj_hidden,
     )
