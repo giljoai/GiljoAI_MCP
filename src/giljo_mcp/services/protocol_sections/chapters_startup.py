@@ -55,6 +55,13 @@ End with: STAGING_COMPLETE broadcast (see CH2)
 Fresh orchestrator retrieves your plan via get_agent_mission()
 Executes coordination logic you defined in update_agent_mission()
 Completion protocol applies (see CH5 - shown in implementation only)
+
+VERIFICATION AGENT DEFERRAL:
+During staging, spawn only DELIVERABLE agents (implementer, analyzer, documenter).
+Do NOT spawn verification agents (tester, reviewer) during staging.
+Verification agents are spawned during implementation after deliverable agents
+complete — the orchestrator builds their missions from real get_agent_result() data
+instead of speculative descriptions.
 """
 
 

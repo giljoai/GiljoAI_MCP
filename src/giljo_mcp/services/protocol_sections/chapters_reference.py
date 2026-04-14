@@ -163,6 +163,21 @@ SPAWNING LIMITS:
 - Max instances per type: Unlimited (can spawn multiple 'implementer' agents)
 - Budget awareness: Each agent costs ~1,253 tokens for thin prompt
 
+VERIFICATION AGENT DEFERRAL:
+
+Verification agents (tester, reviewer) are NOT spawned during staging.
+Spawn only deliverable agents: implementer, analyzer, documenter.
+
+During IMPLEMENTATION PHASE, after all deliverable agents complete:
+1. Call get_agent_result(job_id) for each completed deliverable agent
+2. Build a precise verification mission from REAL results (files, commits, APIs)
+3. Call spawn_agent_job() for tester/reviewer with the data-driven mission
+4. Launch the verification agent
+
+This ensures testers receive precise missions instead of speculative ones.
+The orchestrator may skip verification agents entirely for documentation-only
+or analysis-only projects where no code was produced.
+
 VALIDATION BEFORE SPAWNING:
 
 1. Verify agent_name exists in agent_templates from get_orchestrator_instructions()

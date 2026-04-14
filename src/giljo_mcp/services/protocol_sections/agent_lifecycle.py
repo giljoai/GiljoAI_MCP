@@ -170,6 +170,13 @@ completing, an unblock event, or any other trigger — execute this loop:
   → `mcp__giljo_mcp__send_message(to_agents=['all'], content="...", from_agent="{executor_id}", project_id="...", message_type="broadcast")`
   → Broadcasts are informational by default (requires_action=false). Set requires_action=true only if ALL recipients must act.
 
+**Spawn verification agent (after all deliverable agents complete):**
+  → For each completed deliverable agent: `mcp__giljo_mcp__get_agent_result(job_id="<their_job_id>")`
+  → Build a precise tester/reviewer mission from the REAL results (files_changed, commits, summary)
+  → `mcp__giljo_mcp__spawn_agent_job(agent_name="tester", agent_display_name="tester", mission="...", project_id="...")`
+  → In subagent mode: launch directly. In multi-terminal: tell user "Verification agent spawned, start it from dashboard"
+  → Update the relevant TODO item
+
 **PROGRESS REPORTING (MANDATORY after every coordination action):**
   → To update statuses: `report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_items=[...FULL list with updated statuses...])`
   → To add NEW tasks: `report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_append=[...new items only...])`
