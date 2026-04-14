@@ -8,8 +8,6 @@ import configService from './services/configService'
 // Vuetify
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
 import '@mdi/font/css/materialdesignicons.css'
 
 // Custom Directives
@@ -24,8 +22,6 @@ import { darkTheme } from './config/theme'
 
 // Create Vuetify instance with theme
 const vuetify = createVuetify({
-  components,
-  directives,
   theme: {
     defaultTheme: 'dark',
     themes: {
