@@ -82,7 +82,8 @@ async def toggle_git_integration(
     try:
         write_config(config)
     except OSError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to save git integration config: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to save configuration. Check server logs.") from e
 
     logger.info("Git integration toggled to %s by user %s", request.enabled, sanitize(current_user.username))
 
@@ -132,7 +133,8 @@ async def update_git_settings(
     try:
         write_config(config)
     except OSError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to save git settings config: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to save configuration. Check server logs.") from e
 
     logger.info("Git settings updated by user %s", sanitize(current_user.username))
 

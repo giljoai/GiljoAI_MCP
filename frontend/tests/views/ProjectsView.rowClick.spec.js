@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useProjectStore } from '@/stores/projects'
 
 // Track router.push calls
 const pushMock = vi.fn()

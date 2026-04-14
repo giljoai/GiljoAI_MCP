@@ -133,9 +133,10 @@ def _write_config(config: dict) -> None:
     try:
         _write_config_raw(config)
     except OSError as e:
+        logger.error("Failed to update configuration file: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update configuration file: {e!s}",
+            detail="Failed to update configuration file. Check server logs.",
         ) from e
 
 
