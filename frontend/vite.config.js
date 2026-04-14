@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import vuetify from 'vite-plugin-vuetify'
 import { fileURLToPath, URL } from 'node:url'
 import { resolve } from 'path'
 import fs from 'fs'
@@ -56,11 +57,20 @@ const apiProtocol = sslEnabled ? 'https' : 'http'
 const API_TARGET = `${apiProtocol}://${apiHost}:${apiPort}`
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    vuetify({ autoImport: true }),
+  ],
   build: {
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html')
+      },
+      output: {
+        manualChunks: {
+          'vuetify': ['vuetify'],
+          'vue-vendor': ['vue', 'vue-router', 'pinia'],
+        }
       }
     }
   },

@@ -303,8 +303,9 @@ import configService from '@/services/configService'
 import setupService from '@/services/setupService'
 import api from '@/services/api'
 import NotificationDropdown from '@/components/navigation/NotificationDropdown.vue'
-import ConnectionDebugDialog from '@/components/navigation/ConnectionDebugDialog.vue'
-import UserProfileDialog from '@/components/UserProfileDialog.vue'
+import { defineAsyncComponent } from 'vue'
+const ConnectionDebugDialog = defineAsyncComponent(() => import('@/components/navigation/ConnectionDebugDialog.vue'))
+const UserProfileDialog = defineAsyncComponent(() => import('@/components/UserProfileDialog.vue'))
 import RoleBadge from '@/components/common/RoleBadge.vue'
 
 const props = defineProps({
