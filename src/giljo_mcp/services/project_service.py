@@ -824,6 +824,7 @@ class ProjectService:
             "subseries",
             "auto_checkin_enabled",
             "auto_checkin_interval",
+            "hidden",
         }
         for field, value in updates.items():
             if field in allowed_fields:
@@ -857,6 +858,7 @@ class ProjectService:
             series_number=project.series_number,
             subseries=project.subseries,
             taxonomy_alias=project.taxonomy_alias,
+            hidden=getattr(project, "hidden", False),
         )
 
     async def update_project(
