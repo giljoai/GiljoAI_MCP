@@ -13,7 +13,7 @@ past the configurable threshold).
 
 import logging
 
-from api.app import APIState
+from api.app_state import APIState
 
 
 logger = logging.getLogger(__name__)

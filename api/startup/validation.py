@@ -11,7 +11,7 @@ Extracted from api/app.py lifespan function (lines ~461-507).
 
 import logging
 
-from api.app import APIState
+from api.app_state import APIState
 
 
 logger = logging.getLogger(__name__)

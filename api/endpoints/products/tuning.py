@@ -60,7 +60,7 @@ def _validate_product_id(product_id: str) -> None:
 
 async def _get_tuning_service(current_user: User, db_manager) -> ProductTuningService:
     """Create a ProductTuningService with WebSocket manager from app state."""
-    from api.app import state
+    from api.app_state import state
 
     ws_manager = getattr(state, "websocket_manager", None)
     return ProductTuningService(

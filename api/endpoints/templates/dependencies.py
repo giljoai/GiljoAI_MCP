@@ -32,6 +32,6 @@ def get_template_service(
         Service creates its own sessions via db_manager.get_session_async().
     """
     # Import state lazily to avoid circular import
-    from api.app import state
+    from api.app_state import state
 
     return TemplateService(db_manager=state.db_manager, tenant_manager=state.tenant_manager)

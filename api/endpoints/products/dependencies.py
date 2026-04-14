@@ -24,7 +24,7 @@ async def get_db_manager() -> DatabaseManager:
     Returns the database manager from the FastAPI application state.
     """
     # Get db_manager from application state (set during startup)
-    from api.app import state
+    from api.app_state import state
 
     return state.db_manager
 

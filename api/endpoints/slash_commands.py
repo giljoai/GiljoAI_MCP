@@ -64,7 +64,7 @@ async def execute_slash_command(request: SlashCommandRequest, current_user: User
         raise HTTPException(status_code=404, detail=f"Slash command /{request.command} not found")
 
     # Import here to avoid circular dependency
-    from api.app import state
+    from api.app_state import state
 
     # Execute handler with async database session
     async with state.db_manager.get_session_async() as session:

@@ -36,7 +36,7 @@ class OrchestratorPromptUpdateRequest(BaseModel):
 async def get_orchestrator_prompt(current_user: User = Depends(require_admin)):
     """Return the current orchestrator prompt (default or override)."""
     # Lazy import to avoid circular dependency
-    from api.app import state
+    from api.app_state import state
 
     service = state.system_prompt_service
     if not service:
@@ -57,7 +57,7 @@ async def update_orchestrator_prompt(
 ):
     """Persist an admin override for the orchestrator prompt."""
     # Lazy import to avoid circular dependency
-    from api.app import state
+    from api.app_state import state
 
     service = state.system_prompt_service
     if not service:
@@ -86,7 +86,7 @@ async def update_orchestrator_prompt(
 async def reset_orchestrator_prompt(current_user: User = Depends(require_admin)):
     """Remove the override and restore the default prompt."""
     # Lazy import to avoid circular dependency
-    from api.app import state
+    from api.app_state import state
 
     service = state.system_prompt_service
     if not service:

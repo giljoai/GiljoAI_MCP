@@ -15,7 +15,7 @@ import contextlib
 import logging
 import time
 
-from api.app import APIState
+from api.app_state import APIState
 
 
 logger = logging.getLogger(__name__)

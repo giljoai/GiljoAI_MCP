@@ -65,7 +65,7 @@ async def send_message(
     routing_service: MessageRoutingService = Depends(get_message_routing_service),
 ):
     """Send a message to agents"""
-    from api.app import state
+    from api.app_state import state
 
     # Service raises exceptions on error
     result = await routing_service.send_message(
@@ -152,7 +152,7 @@ async def list_messages(
     message_service: MessageService = Depends(get_message_service),
 ):
     """List all messages with optional filters."""
-    from api.app import state
+    from api.app_state import state
 
     # Check if database is available (not in setup mode)
     if not state.db_manager:
@@ -260,7 +260,7 @@ async def complete_message(
     message_service: MessageService = Depends(get_message_service),
 ):
     """Mark message as completed"""
-    from api.app import state
+    from api.app_state import state
 
     # SECURITY: Explicit tenant_key prevents cross-tenant message completion
     await message_service.complete_message(
@@ -293,7 +293,7 @@ async def broadcast_message(
     routing_service: MessageRoutingService = Depends(get_message_routing_service),
 ):
     """Broadcast message to all active agents in a project"""
-    from api.app import state
+    from api.app_state import state
 
     # Check if database is available
     if not state.db_manager:

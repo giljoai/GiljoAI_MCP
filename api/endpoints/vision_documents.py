@@ -153,7 +153,7 @@ async def get_db():
     Returns:
         AsyncSession: SQLAlchemy async database session
     """
-    from api.app import state
+    from api.app_state import state
 
     if not state.db_manager:
         raise RuntimeError("Database manager not initialized")
@@ -170,7 +170,7 @@ def get_vision_repo():
     Returns:
         VisionDocumentRepository: Repository instance
     """
-    from api.app import state
+    from api.app_state import state
 
     if not state.db_manager:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database not available")

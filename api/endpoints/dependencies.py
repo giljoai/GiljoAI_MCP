@@ -28,7 +28,7 @@ async def get_db_manager() -> DatabaseManager:
     Returns the database manager from the FastAPI application state.
     """
     # Get db_manager from application state (set during startup)
-    from api.app import state
+    from api.app_state import state
 
     return state.db_manager
 
@@ -72,14 +72,14 @@ async def get_tenant_manager() -> TenantManager:
     Returns the tenant manager from the FastAPI application state.
     """
     # Get tenant_manager from application state (set during startup)
-    from api.app import state
+    from api.app_state import state
 
     return state.tenant_manager
 
 
 async def get_websocket_manager():
     """Get WebSocketManager instance from app state."""
-    from api.app import state
+    from api.app_state import state
 
     return state.websocket_manager
 

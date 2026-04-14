@@ -14,7 +14,7 @@ import os
 import sys
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 
 # Set up logging early to catch import issues
@@ -45,8 +45,10 @@ env_path = project_root / ".env"
 load_dotenv(dotenv_path=env_path)
 logger.info(f"Environment variables loaded from .env file: {env_path}")
 
-# Edition detection: "ce" (default), "demo", or "saas"
-GILJO_MODE = os.environ.get("GILJO_MODE", "ce").lower()
+# Edition detection: canonical source is api.app_state
+from api.app_state import GILJO_MODE
+
+
 logger.info(f"GILJO_MODE: {GILJO_MODE}")
 
 # Log JWT secret availability for debugging
@@ -61,14 +63,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 logger.debug(f"Added to Python path: {Path(__file__).parent.parent / 'src'}")
 
 try:
-    from src.giljo_mcp.auth import AuthManager
-    from src.giljo_mcp.database import DatabaseManager
+    from src.giljo_mcp.auth import AuthManager  # noqa: F401 — startup validation
+    from src.giljo_mcp.database import DatabaseManager  # noqa: F401 — startup validation
     from src.giljo_mcp.models import Project
     from src.giljo_mcp.models.agent_identity import AgentJob
     from src.giljo_mcp.models.tasks import Message
-    from src.giljo_mcp.system_prompts import SystemPromptService
-    from src.giljo_mcp.tenant import TenantManager
-    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+    from src.giljo_mcp.system_prompts import SystemPromptService  # noqa: F401 — startup validation
+    from src.giljo_mcp.tenant import TenantManager  # noqa: F401 — startup validation
+    from src.giljo_mcp.tools.tool_accessor import ToolAccessor  # noqa: F401 — startup validation
 
     logger.info("GiljoAI MCP core modules loaded successfully")
 except ImportError as e:
@@ -124,49 +126,14 @@ try:
         RateLimitMiddleware,
         SecurityHeadersMiddleware,
     )
-    from .websocket import WebSocketManager
+    from .websocket import WebSocketManager  # noqa: F401 — startup validation
 
     logger.info("API endpoint modules loaded successfully")
 except ImportError as e:
     logger.error(f"Failed to import API modules: {e}", exc_info=True)
     raise
 
-if TYPE_CHECKING:
-    from src.giljo_mcp.config_manager import ConfigManager
-    from src.giljo_mcp.licensing.validator import LicenseResult
-
-
-class APIState:
-    """Shared application state"""
-
-    def __init__(self):
-        self.db_manager: Optional[DatabaseManager] = None
-        self.config: Optional[ConfigManager] = None
-        self.auth: Optional[AuthManager] = None
-        self.tenant_manager: Optional[TenantManager] = None
-        self.tool_accessor: Optional[ToolAccessor] = None
-        self.websocket_manager: Optional[WebSocketManager] = None
-        self.websocket_broker = None  # WebSocketEventBroker (0379e)
-        self.event_bus = None  # EventBus instance (Handover 0111 Issue #1)
-        self.connections: dict[str, WebSocket] = {}
-        self.heartbeat_task: Optional[asyncio.Task] = None
-        self.cleanup_task: Optional[asyncio.Task] = None
-        self.metrics_sync_task: Optional[asyncio.Task] = None
-        self.health_monitor = None
-        self.health_monitor_task: Optional[asyncio.Task] = None
-        self.silence_detector = None  # SilenceDetector (Handover 0491)
-        self.api_call_count: dict[str, int] = {}
-        self.mcp_call_count: dict[str, int] = {}
-        self.system_prompt_service: Optional[SystemPromptService] = None
-        self.startup_complete: bool = False
-        self.degraded_services: list[str] = []
-        self.license: Optional[LicenseResult] = None  # Set during lifespan startup
-        self.pending_migration: bool = False
-        self.update_available: dict | None = None  # {"commits_behind": int, "message": str}
-        self.update_checker_task: Optional[asyncio.Task] = None
-
-
-state = APIState()
+from api.app_state import APIState, state  # noqa: F401 — canonical source, re-exported
 
 
 @asynccontextmanager
@@ -240,7 +207,6 @@ async def lifespan(app: FastAPI):
     # Suppress Windows ProactorEventLoop ConnectionResetError noise
     # (Python 3.12+ on Windows: browser closes keep-alive connections,
     # proactor transport logs ERROR trying to shutdown already-closed sockets)
-    import asyncio
     import sys
 
     if sys.platform == "win32":

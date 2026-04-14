@@ -13,7 +13,7 @@ import asyncio
 import logging
 import os
 
-from api.app import APIState
+from api.app_state import APIState
 from api.websocket import WebSocketManager
 from src.giljo_mcp.auth import AuthManager
 from src.giljo_mcp.tenant import TenantManager

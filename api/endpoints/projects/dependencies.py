@@ -43,7 +43,7 @@ def get_project_service(
         Service creates its own sessions via db_manager.get_session_async().
     """
     # Import state lazily to avoid circular import
-    from api.app import state
+    from api.app_state import state
 
     # DEBUG: Log tenant context state
     logger.debug(f"[get_project_service] Dependency called with tenant_key={tenant_key}")
