@@ -91,10 +91,10 @@ class TestCH2InlineFetchCalls:
         ch2 = self._build_ch2()
         assert "fetch_context(" in ch2, "CH2 must contain fetch_context() calls"
 
-    def test_ch2_contains_mandatory_framing(self):
-        """CH2 Step 2 must tell agent calls are NOT optional."""
+    def test_ch2_contains_essential_framing(self):
+        """CH2 Step 2 must tell agent context categories are essential (CE-OPT-001)."""
         ch2 = self._build_ch2()
-        assert "MUST" in ch2 or "NOT optional" in ch2 or "Do NOT skip" in ch2
+        assert "essential context" in ch2 or "configured by the user" in ch2
 
     def test_ch2_includes_product_id_and_tenant_key(self):
         """Each fetch call must include product_id and tenant_key."""
@@ -410,3 +410,106 @@ class TestFetchContextDepthFromDB:
 
         assert result is not None
         assert result["vision_documents"] == "light"
+
+
+class TestCH2CategoryMetadata:
+    """CE-OPT-001: Verify category_metadata timestamps appear in CH2 fetch calls."""
+
+    def test_fetch_calls_with_metadata_shows_modified(self):
+        """_build_ch2_fetch_calls with category_metadata produces lines containing 'Modified:'."""
+        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
+
+        result = _build_ch2_fetch_calls(
+            field_toggles={"product_core": True, "tech_stack": True},
+            depth_config={},
+            product_id="prod-123",
+            tenant_key="tk_test",
+            category_metadata={
+                "product_core": {"modified": "2026-04-13T20:22"},
+                "tech_stack": {"modified": "2026-04-12T10:00"},
+            },
+        )
+        assert "Modified: 2026-04-13T20:22" in result
+        assert "Modified: 2026-04-12T10:00" in result
+
+    def test_fetch_calls_without_metadata_no_modified(self):
+        """_build_ch2_fetch_calls without category_metadata produces lines WITHOUT 'Modified:'."""
+        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
+
+        result = _build_ch2_fetch_calls(
+            field_toggles={"product_core": True, "tech_stack": True},
+            depth_config={},
+            product_id="prod-123",
+            tenant_key="tk_test",
+        )
+        assert "Modified:" not in result
+
+    def test_fetch_calls_memory_360_shows_entries_count(self):
+        """memory_360 metadata with entries count appears as 'entries: N'."""
+        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
+
+        result = _build_ch2_fetch_calls(
+            field_toggles={"memory_360": True},
+            depth_config={"memory_360": 3},
+            product_id="prod-123",
+            tenant_key="tk_test",
+            category_metadata={
+                "memory_360": {"modified": "2026-04-13T18:00", "entries": 7},
+            },
+        )
+        assert "entries: 7" in result
+        assert "Modified: 2026-04-13T18:00" in result
+
+    def test_fetch_calls_metadata_partial_categories(self):
+        """When metadata exists for only some categories, others show no suffix."""
+        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
+
+        result = _build_ch2_fetch_calls(
+            field_toggles={"product_core": True, "tech_stack": True},
+            depth_config={},
+            product_id="prod-123",
+            tenant_key="tk_test",
+            category_metadata={
+                "product_core": {"modified": "2026-04-13T20:22"},
+            },
+        )
+        # product_core has Modified, tech_stack does not
+        lines = result.split("\n")
+        product_core_framing = [line for line in lines if "Product name" in line]
+        tech_stack_framing = [line for line in lines if "Programming languages" in line]
+
+        assert len(product_core_framing) == 1
+        assert "Modified:" in product_core_framing[0]
+        assert len(tech_stack_framing) == 1
+        assert "Modified:" not in tech_stack_framing[0]
+
+    def test_protocol_text_allows_skipping_unchanged(self):
+        """Protocol text contains the new 'may skip' wording when field_toggles provided."""
+        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_startup
+
+        ch2 = _build_ch2_startup(
+            orchestrator_id="orch-001",
+            project_id="proj-001",
+            field_toggles={"product_core": True},
+            depth_config={},
+            product_id="prod-123",
+            tenant_key="tk_test",
+            category_metadata={"product_core": {"modified": "2026-04-13T20:22"}},
+        )
+        assert "may skip it" in ch2 or "may skip" in ch2
+        assert "MUST call each one" not in ch2
+
+    def test_protocol_text_backward_compat_without_metadata(self):
+        """Without category_metadata, protocol text still uses the new skip wording."""
+        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_startup
+
+        ch2 = _build_ch2_startup(
+            orchestrator_id="orch-001",
+            project_id="proj-001",
+            field_toggles={"product_core": True},
+            depth_config={},
+            product_id="prod-123",
+            tenant_key="tk_test",
+        )
+        # The new wording is always used when field_toggles are provided
+        assert "may skip" in ch2
