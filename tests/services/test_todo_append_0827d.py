@@ -326,17 +326,21 @@ async def test_todo_items_full_replace_still_works(
     working_agent_with_todos: tuple[AgentJob, AgentExecution],
     test_tenant_key: str,
 ):
-    """todo_items should still DELETE-all + INSERT-all (existing behavior)."""
+    """todo_items full replace works when completed count is maintained."""
     job, agent = working_agent_with_todos
 
-    # Replace with 3 new items
+    # Replace with new items — must keep at least 5 completed (matching DB state)
     result = await orchestration_service.report_progress(
         job_id=job.job_id,
         tenant_key=test_tenant_key,
         todo_items=[
+            {"content": "Step 1 (done)", "status": "completed"},
+            {"content": "Step 2 (done)", "status": "completed"},
+            {"content": "Step 3 (done)", "status": "completed"},
+            {"content": "Step 4 (done)", "status": "completed"},
+            {"content": "Step 5 (done)", "status": "completed"},
             {"content": "New A", "status": "pending"},
             {"content": "New B", "status": "in_progress"},
-            {"content": "New C", "status": "completed"},
         ],
     )
 
@@ -350,11 +354,30 @@ async def test_todo_items_full_replace_still_works(
     )
     items = items_result.scalars().all()
 
-    # All 5 originals should be gone, replaced by 3 new ones
-    assert len(items) == 3
-    assert items[0].content == "New A"
-    assert items[1].content == "New B"
-    assert items[2].content == "New C"
+    # All 5 originals replaced by 7 new ones (5 completed + 2 new)
+    assert len(items) == 7
+    assert items[5].content == "New A"
+    assert items[6].content == "New B"
+
+
+@pytest.mark.asyncio
+async def test_todo_items_regression_guard_rejects_lossy_replace(
+    orchestration_service: OrchestrationService,
+    working_agent_with_todos: tuple[AgentJob, AgentExecution],
+    test_tenant_key: str,
+):
+    """Regression guard rejects todo_items that would lose completed work."""
+    job, agent = working_agent_with_todos
+
+    with pytest.raises(ValidationError, match="regression rejected"):
+        await orchestration_service.report_progress(
+            job_id=job.job_id,
+            tenant_key=test_tenant_key,
+            todo_items=[
+                {"content": "New A", "status": "pending"},
+                {"content": "New B", "status": "completed"},
+            ],
+        )
 
 
 # ============================================================================
