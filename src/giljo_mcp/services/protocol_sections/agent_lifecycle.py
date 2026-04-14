@@ -110,6 +110,11 @@ def _build_orchestrator_protocol_body(
 
 ### PHASE 1 — STARTUP (execute once, after get_agent_mission)
 
+**MANDATORY:** You MUST call `get_agent_mission(job_id="{job_id}")` at the start of every
+implementation session, even if you already have context from a prior phase. This call
+transitions your status from `waiting` to `working` on the server — it is a deterministic
+state signal, not just a data fetch. Skipping it leaves you invisible on the dashboard.
+
 1. Read the `current_team_state` field from this response — it is live-queried, not stale.
 2. Read your pre-planned coordination TODOs (written during staging, waiting for you).
    **DO NOT drop any items.** To update statuses, use `todo_items` with the FULL list (all items, updated statuses).
@@ -169,6 +174,13 @@ completing, an unblock event, or any other trigger — execute this loop:
 **Broadcast to team:**
   → `mcp__giljo_mcp__send_message(to_agents=['all'], content="...", from_agent="{executor_id}", project_id="...", message_type="broadcast")`
   → Broadcasts are informational by default (requires_action=false). Set requires_action=true only if ALL recipients must act.
+
+**Spawn verification agent (after all deliverable agents complete):**
+  → For each completed deliverable agent: `mcp__giljo_mcp__get_agent_result(job_id="<their_job_id>")`
+  → Build a precise tester/reviewer mission from the REAL results (files_changed, commits, summary)
+  → `mcp__giljo_mcp__spawn_agent_job(agent_name="tester", agent_display_name="tester", mission="...", project_id="...")`
+  → In subagent mode: launch directly. In multi-terminal: tell user "Verification agent spawned, start it from dashboard"
+  → Update the relevant TODO item
 
 **PROGRESS REPORTING (MANDATORY after every coordination action):**
   → To update statuses: `report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_items=[...FULL list with updated statuses...])`
