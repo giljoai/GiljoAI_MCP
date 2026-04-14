@@ -1,0 +1,788 @@
+#Requires -Version 5.1
+
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition -- source-available, single-user use only.
+
+<#
+.SYNOPSIS
+    GiljoAI MCP -- Windows One-Liner Installer
+
+.DESCRIPTION
+    Downloads, verifies, and installs GiljoAI MCP from the latest GitHub release.
+    Handles prerequisite checking/installation, SHA256 verification, environment
+    setup, and first-run launch.
+
+    Quick install:
+        irm giljo.ai/install.ps1 | iex
+
+    Customized install:
+        .\install.ps1 -InstallDir "D:\GiljoAI" -SkipPrereqs
+
+.PARAMETER InstallDir
+    Installation directory. Defaults to $HOME\GiljoAI_MCP.
+
+.PARAMETER SkipPrereqs
+    Skip prerequisite checks and installation.
+
+.PARAMETER Update
+    Update an existing installation to the latest version.
+#>
+
+param(
+    [string]$InstallDir = "",
+    [switch]$SkipPrereqs,
+    [switch]$Update
+)
+
+$ErrorActionPreference = 'Stop'
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+$script:GITHUB_REPO       = "giljoai/GiljoAI_MCP"
+$script:GITHUB_API_URL    = "https://api.github.com/repos/$script:GITHUB_REPO/releases/latest"
+$script:DEFAULT_INSTALL   = Join-Path $HOME "GiljoAI_MCP"
+$script:MIN_PYTHON_MAJOR  = 3
+$script:MIN_PYTHON_MINOR  = 12
+$script:MIN_NODE_MAJOR    = 20
+$script:SERVER_PORT       = 7272
+$script:BRAND_COLOR       = "Yellow"
+$script:SUCCESS_COLOR     = "Green"
+$script:ERROR_COLOR       = "Red"
+$script:INFO_COLOR        = "Cyan"
+$script:MUTED_COLOR       = "Gray"
+
+# ---------------------------------------------------------------------------
+# Utility functions
+# ---------------------------------------------------------------------------
+
+function Write-Banner {
+    $banner = @"
+
+    ========================================================
+      _____ _ _  _        _    ___   __  __  ___ ___
+     / ____(_) |(_)      / \  |_ _| |  \/  |/ __| _ \
+    | |  __ _| | _  ___ / _ \  | |  | |\/| | (__|  _/
+    | |_| | | || |/ _ / ___  | | |  | |  | |\__ |_|
+     \_____|_|_|/ \___/_/   \_|___| |_|  |_||___/
+              |__/
+    ========================================================
+         Windows Installer
+    ========================================================
+
+"@
+    Write-Host $banner -ForegroundColor $script:BRAND_COLOR
+}
+
+function Write-Phase {
+    param([string]$Number, [string]$Title)
+    Write-Host ""
+    Write-Host "  [$Number/6] $Title" -ForegroundColor $script:BRAND_COLOR
+    Write-Host "  $('-' * (6 + $Title.Length))" -ForegroundColor $script:MUTED_COLOR
+}
+
+function Write-Step {
+    param([string]$Message)
+    Write-Host "    > $Message" -ForegroundColor $script:INFO_COLOR
+}
+
+function Write-Ok {
+    param([string]$Message)
+    Write-Host "    [OK] $Message" -ForegroundColor $script:SUCCESS_COLOR
+}
+
+function Write-Warn {
+    param([string]$Message)
+    Write-Host "    [!] $Message" -ForegroundColor $script:BRAND_COLOR
+}
+
+function Write-Fail {
+    param([string]$Message)
+    Write-Host "    [FAIL] $Message" -ForegroundColor $script:ERROR_COLOR
+}
+
+function Exit-WithError {
+    param([string]$Message)
+    Write-Host ""
+    Write-Fail $Message
+    Write-Host ""
+    throw $Message
+}
+
+function Test-CommandExists {
+    param([string]$Command)
+    try {
+        Get-Command $Command -ErrorAction Stop | Out-Null
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function Get-ParsedVersion {
+    <#
+    .SYNOPSIS
+        Parses a version string like "Python 3.12.4" or "v20.11.0" and returns
+        major, minor as integers.
+    #>
+    param([string]$VersionString)
+
+    if ($VersionString -match '(\d+)\.(\d+)') {
+        return @{
+            Major = [int]$Matches[1]
+            Minor = [int]$Matches[2]
+        }
+    }
+    return $null
+}
+
+function Refresh-PathEnv {
+    <#
+    .SYNOPSIS
+        Reloads PATH from the registry so newly installed tools are visible
+        without restarting the shell.
+    #>
+    $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+    $userPath    = [System.Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path    = "$machinePath;$userPath"
+}
+
+# ---------------------------------------------------------------------------
+# Phase 1 -- Prerequisites
+# ---------------------------------------------------------------------------
+
+function Test-Prerequisites {
+    Write-Phase "1" "Checking prerequisites"
+
+    $missing = @()
+
+    # -- Python --
+    Write-Step "Checking Python..."
+    if (Test-CommandExists "python") {
+        $pyVersionRaw = & python --version 2>&1
+        $pyVersion = Get-ParsedVersion $pyVersionRaw
+        if ($pyVersion -and
+            ($pyVersion.Major -gt $script:MIN_PYTHON_MAJOR -or
+            ($pyVersion.Major -eq $script:MIN_PYTHON_MAJOR -and $pyVersion.Minor -ge $script:MIN_PYTHON_MINOR))) {
+            Write-Ok "Python $($pyVersion.Major).$($pyVersion.Minor) found"
+        } else {
+            Write-Warn "Python found but version too old: $pyVersionRaw (need $($script:MIN_PYTHON_MAJOR).$($script:MIN_PYTHON_MINOR)+)"
+            $missing += "python"
+        }
+    } else {
+        Write-Warn "Python not found"
+        $missing += "python"
+    }
+
+    # -- Node.js --
+    Write-Step "Checking Node.js..."
+    if (Test-CommandExists "node") {
+        $nodeVersionRaw = & node --version 2>&1
+        $nodeVersion = Get-ParsedVersion $nodeVersionRaw
+        if ($nodeVersion -and $nodeVersion.Major -ge $script:MIN_NODE_MAJOR) {
+            Write-Ok "Node.js $($nodeVersion.Major).$($nodeVersion.Minor) found"
+        } else {
+            Write-Warn "Node.js found but version too old: $nodeVersionRaw (need $($script:MIN_NODE_MAJOR)+)"
+            $missing += "node"
+        }
+    } else {
+        Write-Warn "Node.js not found"
+        $missing += "node"
+    }
+
+    # -- Git --
+    Write-Step "Checking Git..."
+    if (Test-CommandExists "git") {
+        $gitVersionRaw = & git --version 2>&1
+        Write-Ok "Git found: $gitVersionRaw"
+    } else {
+        Write-Warn "Git not found"
+        $missing += "git"
+    }
+
+    # -- PostgreSQL --
+    Write-Step "Checking PostgreSQL..."
+    $pgFound = $false
+    if (Test-CommandExists "pg_isready") {
+        Write-Ok "PostgreSQL found (pg_isready available)"
+        $pgFound = $true
+    } else {
+        # Check if PostgreSQL service is running
+        $pgService = Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue
+        if ($pgService) {
+            Write-Ok "PostgreSQL service found: $($pgService.DisplayName)"
+            $pgFound = $true
+        }
+    }
+    if (-not $pgFound) {
+        Write-Warn "PostgreSQL not detected"
+        $missing += "postgresql"
+    }
+
+    if ($missing.Count -eq 0) {
+        Write-Ok "All prerequisites satisfied"
+        return
+    }
+
+    # -- Install missing prerequisites --
+    Write-Host ""
+    Write-Step "Missing prerequisites: $($missing -join ', ')"
+
+    $hasWinget = Test-CommandExists "winget"
+
+    # Handle non-PostgreSQL items via winget
+    $wingetItems = $missing | Where-Object { $_ -ne "postgresql" }
+
+    if ($wingetItems.Count -gt 0) {
+        if (-not $hasWinget) {
+            Exit-WithError "winget is required to install missing prerequisites ($($wingetItems -join ', ')). Please install them manually or install winget first."
+        }
+
+        Write-Step "Installing missing packages via winget..."
+
+        $wingetMap = @{
+            "python" = "Python.Python.3.12"
+            "node"   = "OpenJS.NodeJS.LTS"
+            "git"    = "Git.Git"
+        }
+
+        foreach ($item in $wingetItems) {
+            $packageId = $wingetMap[$item]
+            Write-Step "Installing $packageId..."
+            try {
+                & winget install --id $packageId --accept-package-agreements --accept-source-agreements --silent 2>&1 | Out-Null
+                Write-Ok "$item installed"
+            } catch {
+                Exit-WithError "Failed to install $item via winget. Please install manually and re-run this script."
+            }
+        }
+
+        # Refresh PATH so newly installed tools are visible
+        Refresh-PathEnv
+        Write-Step "PATH refreshed after installations"
+    }
+
+    # Handle PostgreSQL separately -- cannot fully automate
+    if ($missing -contains "postgresql") {
+        Write-Host ""
+        Write-Host "    -------------------------------------------------------" -ForegroundColor $script:BRAND_COLOR
+        Write-Host "    PostgreSQL must be installed manually on Windows." -ForegroundColor $script:BRAND_COLOR
+        Write-Host ""
+        Write-Host "    Download: https://www.postgresql.org/download/windows/" -ForegroundColor $script:INFO_COLOR
+        Write-Host ""
+        Write-Host "    During installation:" -ForegroundColor $script:MUTED_COLOR
+        Write-Host "      - Use the default port (5432)" -ForegroundColor $script:MUTED_COLOR
+        Write-Host "      - Remember the password you set for the postgres user" -ForegroundColor $script:MUTED_COLOR
+        Write-Host "      - Add PostgreSQL bin to PATH when prompted" -ForegroundColor $script:MUTED_COLOR
+        Write-Host "    -------------------------------------------------------" -ForegroundColor $script:BRAND_COLOR
+        Write-Host ""
+        Write-Host "    Press Enter after PostgreSQL is installed..." -ForegroundColor $script:BRAND_COLOR -NoNewline
+        Read-Host
+
+        Refresh-PathEnv
+
+        # Verify PostgreSQL is now available
+        $pgNow = (Test-CommandExists "pg_isready") -or
+                 (Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue)
+        if (-not $pgNow) {
+            Exit-WithError "PostgreSQL still not detected. Please install it and ensure it is running, then re-run this script."
+        }
+        Write-Ok "PostgreSQL detected after manual install"
+    }
+
+    # Final verification of winget-installed items
+    foreach ($item in $wingetItems) {
+        $cmd = switch ($item) {
+            "python" { "python" }
+            "node"   { "node" }
+            "git"    { "git" }
+        }
+        if (-not (Test-CommandExists $cmd)) {
+            Exit-WithError "$item was installed but is not on PATH. Please close and reopen your terminal, then re-run this script."
+        }
+    }
+
+    Write-Ok "All prerequisites satisfied after installation"
+}
+
+# ---------------------------------------------------------------------------
+# Phase 2 -- Download and verify
+# ---------------------------------------------------------------------------
+
+function Get-LatestRelease {
+    Write-Phase "2" "Downloading latest release"
+
+    # Fetch release metadata
+    Write-Step "Fetching latest release info from GitHub..."
+    try {
+        $releaseInfo = Invoke-RestMethod -Uri $script:GITHUB_API_URL -UseBasicParsing
+    } catch {
+        Exit-WithError "Failed to fetch release info from GitHub. Check your internet connection."
+    }
+
+    $version = $releaseInfo.tag_name -replace '^v', ''
+    Write-Ok "Latest version: $version"
+
+    # Find version-manifest.json asset
+    $manifestAsset = $releaseInfo.assets | Where-Object { $_.name -eq "version-manifest.json" }
+    if (-not $manifestAsset) {
+        Exit-WithError "Release is missing version-manifest.json. This release may be malformed."
+    }
+
+    # Download and parse the manifest
+    Write-Step "Downloading version manifest..."
+    $manifestUrl = $manifestAsset.browser_download_url
+    $manifestContent = Invoke-RestMethod -Uri $manifestUrl -UseBasicParsing
+
+    $tarballUrl = $manifestContent.tarball_url
+    $expectedSha = $manifestContent.sha256
+
+    if (-not $tarballUrl -or -not $expectedSha) {
+        Exit-WithError "Version manifest is incomplete (missing tarball_url or sha256)."
+    }
+
+    # Download tarball
+    $tarballName = "giljoai-mcp-$version.tar.gz"
+    $tempDir     = Join-Path ([System.IO.Path]::GetTempPath()) "giljoai-install"
+    if (-not (Test-Path $tempDir)) {
+        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+    }
+    $tarballPath = Join-Path $tempDir $tarballName
+
+    Write-Step "Downloading $tarballName..."
+    try {
+        Invoke-WebRequest -Uri $tarballUrl -OutFile $tarballPath -UseBasicParsing
+    } catch {
+        Exit-WithError "Failed to download tarball from $tarballUrl"
+    }
+    Write-Ok "Downloaded to $tarballPath"
+
+    # Verify SHA256
+    Write-Step "Verifying SHA256 checksum..."
+    $actualHash = (Get-FileHash -Path $tarballPath -Algorithm SHA256).Hash.ToLower()
+    $expectedHash = $expectedSha.ToLower()
+
+    if ($actualHash -ne $expectedHash) {
+        Remove-Item -Path $tarballPath -Force -ErrorAction SilentlyContinue
+        Exit-WithError "SHA256 mismatch! Expected: $expectedHash, Got: $actualHash. The download may be corrupted or tampered with."
+    }
+    Write-Ok "SHA256 verified: $actualHash"
+
+    return @{
+        Version     = $version
+        TarballPath = $tarballPath
+        TempDir     = $tempDir
+    }
+}
+
+function Install-Release {
+    param(
+        [hashtable]$Release,
+        [string]$TargetDir,
+        [bool]$IsUpdate
+    )
+
+    # Ask for install directory if not provided
+    if (-not $TargetDir) {
+        $TargetDir = $script:DEFAULT_INSTALL
+        Write-Host ""
+        Write-Host "    Install directory [$TargetDir]: " -ForegroundColor $script:INFO_COLOR -NoNewline
+        $userInput = Read-Host
+        if ($userInput) {
+            $TargetDir = $userInput
+        }
+    }
+
+    # Resolve to absolute path
+    $TargetDir = [System.IO.Path]::GetFullPath($TargetDir)
+
+    # Back up config files before extraction if updating
+    $backupDir = $null
+    if ($IsUpdate) {
+        Write-Step "Backing up configuration files..."
+        $backupDir = Join-Path $Release.TempDir "config-backup"
+        New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
+
+        $configFiles = @(".env", "config.yaml")
+        foreach ($f in $configFiles) {
+            $src = Join-Path $TargetDir $f
+            if (Test-Path $src) {
+                Copy-Item -Path $src -Destination (Join-Path $backupDir $f) -Force
+                Write-Ok "Backed up $f"
+            }
+        }
+    }
+
+    # Create or verify target directory
+    if (-not (Test-Path $TargetDir)) {
+        New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
+        Write-Ok "Created directory: $TargetDir"
+    }
+
+    # Extract tarball
+    Write-Step "Extracting release to $TargetDir..."
+    try {
+        & tar -xzf $Release.TarballPath -C $TargetDir
+    } catch {
+        Exit-WithError "Failed to extract tarball. Ensure 'tar' is available (Windows 10+ includes it)."
+    }
+    Write-Ok "Extraction complete"
+
+    # Restore backed-up config files
+    if ($IsUpdate -and $backupDir) {
+        Write-Step "Restoring configuration files..."
+        $configFiles = @(".env", "config.yaml")
+        foreach ($f in $configFiles) {
+            $backup = Join-Path $backupDir $f
+            if (Test-Path $backup) {
+                Copy-Item -Path $backup -Destination (Join-Path $TargetDir $f) -Force
+                Write-Ok "Restored $f"
+            }
+        }
+    }
+
+    # Write VERSION file
+    $Release.Version | Out-File -FilePath (Join-Path $TargetDir "VERSION") -Encoding UTF8 -NoNewline
+
+    # Clean up temp files
+    Remove-Item -Path $Release.TarballPath -Force -ErrorAction SilentlyContinue
+
+    return $TargetDir
+}
+
+# ---------------------------------------------------------------------------
+# Phase 3 -- Environment setup
+# ---------------------------------------------------------------------------
+
+function Initialize-Environment {
+    param([string]$TargetDir)
+
+    Write-Phase "3" "Setting up environment"
+
+    $venvDir = Join-Path $TargetDir "venv"
+    $venvPython = Join-Path $venvDir "Scripts" "python.exe"
+    $venvPip    = Join-Path $venvDir "Scripts" "pip.exe"
+
+    # Create venv if it does not exist
+    if (-not (Test-Path $venvPython)) {
+        Write-Step "Creating Python virtual environment..."
+        & python -m venv $venvDir
+        Write-Ok "Virtual environment created"
+    } else {
+        Write-Ok "Virtual environment already exists"
+    }
+
+    # Upgrade pip
+    Write-Step "Upgrading pip..."
+    & $venvPython -m pip install --upgrade pip --quiet 2>&1 | Out-Null
+    Write-Ok "pip upgraded"
+
+    # Install Python dependencies
+    $requirementsPath = Join-Path $TargetDir "requirements.txt"
+    if (Test-Path $requirementsPath) {
+        Write-Step "Installing Python dependencies (this may take a few minutes)..."
+        & $venvPip install -r $requirementsPath --quiet 2>&1 | Out-Null
+        Write-Ok "Python dependencies installed"
+    } else {
+        Write-Warn "requirements.txt not found -- skipping pip install"
+    }
+
+    # Build frontend
+    $frontendDir = Join-Path $TargetDir "frontend"
+    if (Test-Path (Join-Path $frontendDir "package.json")) {
+        Write-Step "Installing frontend dependencies..."
+        Push-Location $frontendDir
+        try {
+            & npm install --silent 2>&1 | Out-Null
+            Write-Ok "Frontend dependencies installed"
+
+            Write-Step "Building frontend (this may take a minute)..."
+            & npm run build 2>&1 | Out-Null
+            Write-Ok "Frontend built"
+        } finally {
+            Pop-Location
+        }
+    } else {
+        Write-Warn "Frontend package.json not found -- skipping frontend build"
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Phase 4 -- Database and configuration via install.py
+# ---------------------------------------------------------------------------
+
+function Invoke-InstallPy {
+    param([string]$TargetDir)
+
+    Write-Phase "4" "Database and configuration setup"
+
+    $venvPython = Join-Path $TargetDir "venv" "Scripts" "python.exe"
+    $installPy  = Join-Path $TargetDir "install.py"
+
+    if (-not (Test-Path $installPy)) {
+        Exit-WithError "install.py not found in $TargetDir. The release may be incomplete."
+    }
+
+    Write-Step "Running install.py for database setup, config generation, and template seeding..."
+    Write-Host ""
+
+    Push-Location $TargetDir
+    try {
+        & $venvPython $installPy
+        if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+            Exit-WithError "install.py exited with code $LASTEXITCODE. Check the output above for details."
+        }
+    } finally {
+        Pop-Location
+    }
+
+    Write-Ok "Database and configuration setup complete"
+}
+
+# ---------------------------------------------------------------------------
+# Phase 5 -- Shortcuts and launcher
+# ---------------------------------------------------------------------------
+
+function Install-Shortcuts {
+    param([string]$TargetDir, [string]$Version)
+
+    Write-Phase "5" "Creating shortcuts and launcher"
+
+    # Create start-giljoai.bat
+    $batPath = Join-Path $TargetDir "start-giljoai.bat"
+    $batContent = @"
+@echo off
+title GiljoAI MCP Server
+cd /d "%~dp0"
+call venv\Scripts\activate.bat
+python -m api.run_api
+pause
+"@
+    Set-Content -Path $batPath -Value $batContent -Encoding ASCII
+    Write-Ok "Created start-giljoai.bat"
+
+    # Create Start Menu shortcut
+    $startMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
+    $shortcutPath = Join-Path $startMenuDir "GiljoAI MCP.lnk"
+
+    try {
+        $wshShell = New-Object -ComObject WScript.Shell
+        $shortcut = $wshShell.CreateShortcut($shortcutPath)
+        $shortcut.TargetPath = $batPath
+        $shortcut.WorkingDirectory = $TargetDir
+        $shortcut.Description = "GiljoAI MCP Server v$Version"
+        $shortcut.Save()
+        Write-Ok "Start Menu shortcut created"
+    } catch {
+        Write-Warn "Could not create Start Menu shortcut: $_"
+    }
+
+    # Offer desktop shortcut
+    Write-Host ""
+    Write-Host "    Create desktop shortcut? [Y/n]: " -ForegroundColor $script:INFO_COLOR -NoNewline
+    $desktopChoice = Read-Host
+    if ($desktopChoice -ne 'n' -and $desktopChoice -ne 'N') {
+        $desktopPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "GiljoAI MCP.lnk"
+        try {
+            $wshShell2 = New-Object -ComObject WScript.Shell
+            $desktopShortcut = $wshShell2.CreateShortcut($desktopPath)
+            $desktopShortcut.TargetPath = $batPath
+            $desktopShortcut.WorkingDirectory = $TargetDir
+            $desktopShortcut.Description = "GiljoAI MCP Server v$Version"
+            $desktopShortcut.Save()
+            Write-Ok "Desktop shortcut created"
+        } catch {
+            Write-Warn "Could not create desktop shortcut: $_"
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Phase 6 -- First run
+# ---------------------------------------------------------------------------
+
+function Start-FirstRun {
+    param([string]$TargetDir, [string]$Version)
+
+    Write-Phase "6" "First run"
+
+    $venvPython = Join-Path $TargetDir "venv" "Scripts" "python.exe"
+
+    Write-Step "Starting GiljoAI MCP server..."
+    $serverProcess = Start-Process -FilePath $venvPython `
+        -ArgumentList "-m", "api.run_api" `
+        -WorkingDirectory $TargetDir `
+        -PassThru `
+        -WindowStyle Normal
+
+    # Wait for server to start
+    Write-Step "Waiting for server to start..."
+    $maxWait = 15
+    $waited = 0
+    $serverReady = $false
+    while ($waited -lt $maxWait) {
+        Start-Sleep -Seconds 1
+        $waited++
+        try {
+            $response = Invoke-WebRequest -Uri "http://localhost:$($script:SERVER_PORT)/api/health" `
+                -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
+            if ($response.StatusCode -eq 200) {
+                $serverReady = $true
+                break
+            }
+        } catch {
+            # Server not ready yet
+        }
+    }
+
+    if ($serverReady) {
+        Write-Ok "Server is running on port $($script:SERVER_PORT)"
+
+        # Open browser
+        Write-Step "Opening browser..."
+        Start-Process "http://localhost:$($script:SERVER_PORT)"
+    } else {
+        Write-Warn "Server did not respond within $maxWait seconds."
+        Write-Warn "You can start it manually: start-giljoai.bat"
+    }
+
+    # Print completion summary
+    Write-Host ""
+    Write-Host "    ========================================================" -ForegroundColor $script:BRAND_COLOR
+    Write-Host "      Installation complete!" -ForegroundColor $script:SUCCESS_COLOR
+    Write-Host "    ========================================================" -ForegroundColor $script:BRAND_COLOR
+    Write-Host ""
+    Write-Host "    Version:    $Version" -ForegroundColor $script:INFO_COLOR
+    Write-Host "    Location:   $TargetDir" -ForegroundColor $script:INFO_COLOR
+    Write-Host "    URL:        http://localhost:$($script:SERVER_PORT)" -ForegroundColor $script:INFO_COLOR
+    Write-Host ""
+    Write-Host "    To start the server later:" -ForegroundColor $script:MUTED_COLOR
+    Write-Host "      - Use the Start Menu shortcut, or" -ForegroundColor $script:MUTED_COLOR
+    Write-Host "      - Run start-giljoai.bat from $TargetDir" -ForegroundColor $script:MUTED_COLOR
+    Write-Host ""
+    Write-Host "    To update to a newer version:" -ForegroundColor $script:MUTED_COLOR
+    Write-Host "      irm giljo.ai/install.ps1 | iex" -ForegroundColor $script:MUTED_COLOR
+    Write-Host "      (the installer detects existing installs automatically)" -ForegroundColor $script:MUTED_COLOR
+    Write-Host ""
+}
+
+# ---------------------------------------------------------------------------
+# Update detection
+# ---------------------------------------------------------------------------
+
+function Test-ExistingInstall {
+    <#
+    .SYNOPSIS
+        Checks if a previous installation exists and returns its version.
+        Returns $null if no existing install, or a hashtable with version info.
+    #>
+    param([string]$TargetDir)
+
+    $versionFile = Join-Path $TargetDir "VERSION"
+    if (Test-Path $versionFile) {
+        $currentVersion = (Get-Content $versionFile -Raw).Trim()
+        return @{ CurrentVersion = $currentVersion }
+    }
+    return $null
+}
+
+function Confirm-UpdateAction {
+    <#
+    .SYNOPSIS
+        Prompts user to choose between Update, Reinstall, or Cancel when an
+        existing installation is detected.
+    #>
+    param([string]$CurrentVersion, [string]$LatestVersion)
+
+    Write-Host ""
+    Write-Host "    Existing installation detected!" -ForegroundColor $script:BRAND_COLOR
+    Write-Host "    Current version: $CurrentVersion" -ForegroundColor $script:INFO_COLOR
+    Write-Host "    Latest version:  $LatestVersion" -ForegroundColor $script:INFO_COLOR
+    Write-Host ""
+    Write-Host "    [U] Update (preserves config and data)" -ForegroundColor $script:INFO_COLOR
+    Write-Host "    [R] Reinstall (fresh install)" -ForegroundColor $script:INFO_COLOR
+    Write-Host "    [C] Cancel" -ForegroundColor $script:MUTED_COLOR
+    Write-Host ""
+    Write-Host "    Choice [U/R/C]: " -ForegroundColor $script:BRAND_COLOR -NoNewline
+    $choice = Read-Host
+
+    switch ($choice.ToUpper()) {
+        "U" { return "update" }
+        "R" { return "reinstall" }
+        default { return "cancel" }
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Main entry point -- wrapped in a function to avoid variable leaks via iex
+# ---------------------------------------------------------------------------
+
+function Invoke-GiljoInstaller {
+    Write-Banner
+
+    # Resolve install directory
+    $targetDir = if ($InstallDir) {
+        [System.IO.Path]::GetFullPath($InstallDir)
+    } else {
+        $script:DEFAULT_INSTALL
+    }
+
+    # Check for existing installation
+    $isUpdate = $false
+    if (-not $Update) {
+        $existing = Test-ExistingInstall -TargetDir $targetDir
+        if ($existing) {
+            # Need to fetch latest version for comparison before prompting
+            try {
+                $releasePreview = Invoke-RestMethod -Uri $script:GITHUB_API_URL -UseBasicParsing
+                $latestVersion = $releasePreview.tag_name -replace '^v', ''
+            } catch {
+                $latestVersion = "(could not fetch)"
+            }
+
+            $action = Confirm-UpdateAction -CurrentVersion $existing.CurrentVersion -LatestVersion $latestVersion
+            switch ($action) {
+                "update"    { $isUpdate = $true }
+                "reinstall" { $isUpdate = $false }
+                "cancel" {
+                    Write-Host "    Installation cancelled." -ForegroundColor $script:MUTED_COLOR
+                    return
+                }
+            }
+        }
+    } else {
+        $isUpdate = $true
+    }
+
+    # Phase 1 -- Prerequisites
+    if (-not $SkipPrereqs) {
+        Test-Prerequisites
+    } else {
+        Write-Phase "1" "Checking prerequisites"
+        Write-Ok "Skipped (SkipPrereqs flag)"
+    }
+
+    # Phase 2 -- Download and verify
+    $release = Get-LatestRelease
+
+    # Phase 3 subset -- install to directory
+    $targetDir = Install-Release -Release $release -TargetDir $targetDir -IsUpdate $isUpdate
+
+    # Phase 3 -- Environment setup
+    Initialize-Environment -TargetDir $targetDir
+
+    # Phase 4 -- Database and config
+    Invoke-InstallPy -TargetDir $targetDir
+
+    # Phase 5 -- Shortcuts
+    Install-Shortcuts -TargetDir $targetDir -Version $release.Version
+
+    # Phase 6 -- First run
+    Start-FirstRun -TargetDir $targetDir -Version $release.Version
+}
+
+# Run the installer
+Invoke-GiljoInstaller

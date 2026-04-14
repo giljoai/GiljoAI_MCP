@@ -175,6 +175,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/download/temp",  # Public download with token auth (one-time tokens)
             "/api/oauth/token",  # OAuth token exchange (public, PKCE-protected)
             "/api/oauth/.well-known/oauth-authorization-server",  # OAuth server metadata
+            "/api/version/",  # Version check (installers need this before auth exists)
         ]
         # Always allow token download path (token is the auth)
         if path.startswith("/api/download/temp") or "/api/download/temp/" in path:
