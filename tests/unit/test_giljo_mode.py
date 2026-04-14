@@ -6,7 +6,7 @@
 """
 Tests for GILJO_MODE detection and env var parsing (SAAS-001).
 
-Verifies that api/app.py correctly reads GILJO_MODE from the environment,
+Verifies that api/app_state.py correctly reads GILJO_MODE from the environment,
 defaults to 'ce', and normalises case.
 
 SaaS-specific conditional loading tests (endpoint/middleware registration)
@@ -25,8 +25,8 @@ import sys
 # ---------------------------------------------------------------------------
 
 
-def _reload_app_module(monkeypatch, mode_value: str | None = None):
-    """Reload api.app with a controlled GILJO_MODE env var.
+def _reload_app_state_module(monkeypatch, mode_value: str | None = None):
+    """Reload api.app_state with a controlled GILJO_MODE env var.
 
     Because GILJO_MODE is read at module level, we must reload the module
     for the env var change to take effect.  We also need to clear the
@@ -40,8 +40,8 @@ def _reload_app_module(monkeypatch, mode_value: str | None = None):
         monkeypatch.setenv("GILJO_MODE", mode_value)
 
     # Remove cached module so reload picks up the new env value
-    sys.modules.pop("api.app", None)
-    mod = importlib.import_module("api.app")
+    sys.modules.pop("api.app_state", None)
+    mod = importlib.import_module("api.app_state")
     return mod
 
 
@@ -55,30 +55,30 @@ class TestGiljoModeDetection:
 
     def test_default_mode_is_ce(self, monkeypatch):
         """When GILJO_MODE is not set, the detected mode must be 'ce'."""
-        mod = _reload_app_module(monkeypatch, mode_value=None)
+        mod = _reload_app_state_module(monkeypatch, mode_value=None)
         assert mod.GILJO_MODE == "ce"
 
     def test_demo_mode_detected(self, monkeypatch):
         """GILJO_MODE=demo is correctly parsed."""
-        mod = _reload_app_module(monkeypatch, "demo")
+        mod = _reload_app_state_module(monkeypatch, "demo")
         assert mod.GILJO_MODE == "demo"
 
     def test_saas_mode_detected(self, monkeypatch):
         """GILJO_MODE=saas is correctly parsed."""
-        mod = _reload_app_module(monkeypatch, "saas")
+        mod = _reload_app_state_module(monkeypatch, "saas")
         assert mod.GILJO_MODE == "saas"
 
     def test_case_insensitive_saas(self, monkeypatch):
         """GILJO_MODE=SAAS (uppercase) normalises to 'saas'."""
-        mod = _reload_app_module(monkeypatch, "SAAS")
+        mod = _reload_app_state_module(monkeypatch, "SAAS")
         assert mod.GILJO_MODE == "saas"
 
     def test_case_insensitive_demo(self, monkeypatch):
         """GILJO_MODE=Demo (mixed case) normalises to 'demo'."""
-        mod = _reload_app_module(monkeypatch, "Demo")
+        mod = _reload_app_state_module(monkeypatch, "Demo")
         assert mod.GILJO_MODE == "demo"
 
     def test_ce_mode_explicit(self, monkeypatch):
         """GILJO_MODE=ce is correctly parsed when set explicitly."""
-        mod = _reload_app_module(monkeypatch, "ce")
+        mod = _reload_app_state_module(monkeypatch, "ce")
         assert mod.GILJO_MODE == "ce"

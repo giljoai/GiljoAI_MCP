@@ -67,7 +67,8 @@ async def api_client(db_manager):
             response = await api_client.get("/api/v1/endpoint")
             assert response.status_code == 200
     """
-    from api.app import app, state
+    from api.app import app
+    from api.app_state import state
     from src.giljo_mcp.auth import AuthManager
     from src.giljo_mcp.auth.dependencies import get_db_session
     from src.giljo_mcp.tenant import TenantManager

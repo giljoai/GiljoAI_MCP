@@ -55,7 +55,7 @@ mcp = FastMCP(
 
 def _get_tool_accessor():
     """Lazy import to avoid circular dependency with api.app at module load."""
-    from api.app import state
+    from api.app_state import state
 
     if not state.tool_accessor:
         raise RuntimeError("Tool accessor not initialized")
@@ -63,7 +63,7 @@ def _get_tool_accessor():
 
 
 def _get_tenant_manager():
-    from api.app import state
+    from api.app_state import state
 
     return state.tenant_manager
 
@@ -113,7 +113,7 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
     job_id = kwargs.get("job_id")
     if job_id:
         try:
-            from api.app import state as app_state
+            from api.app_state import state as app_state
             from src.giljo_mcp.services.silence_detector import auto_clear_silent
 
             ws_manager = getattr(app_state, "websocket_manager", None)
@@ -124,7 +124,7 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
 
         # Server-side heartbeat: update last_activity_at with 30s debounce
         try:
-            from api.app import state as app_state
+            from api.app_state import state as app_state
             from src.giljo_mcp.services.heartbeat import touch_heartbeat
 
             async with app_state.db_manager.get_session_async() as db:
@@ -503,7 +503,7 @@ async def giljo_setup(
 
     # Emit setup:bootstrap_complete WebSocket event
     try:
-        from api.app import state as app_state
+        from api.app_state import state as app_state
 
         ws_manager = getattr(app_state, "websocket_manager", None)
         tenant_key = _resolve_tenant(ctx)
@@ -558,7 +558,7 @@ async def get_agent_templates_for_export(
 
     # Handover 0855b: Emit setup:agents_downloaded when CLI fetches templates via MCP
     try:
-        from api.app import state as app_state
+        from api.app_state import state as app_state
 
         ws_manager = getattr(app_state, "websocket_manager", None)
         tenant_key = _resolve_tenant(ctx)
@@ -1191,7 +1191,7 @@ class MCPAuthMiddleware:
         # Path 2: API key (via MCPSessionManager for DB lookup)
         if not tenant_key and api_key_value:
             try:
-                from api.app import state
+                from api.app_state import state
                 from api.endpoints.mcp_session import MCPSessionManager
 
                 if not state.db_manager:
@@ -1235,7 +1235,7 @@ class MCPAuthMiddleware:
         if notify_key not in self._notified_keys:
             self._notified_keys.add(notify_key)
             try:
-                from api.app import state as app_state
+                from api.app_state import state as app_state
 
                 ws_manager = getattr(app_state, "websocket_manager", None)
                 if ws_manager and tenant_key:

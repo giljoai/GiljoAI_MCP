@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from api.app import APIState
+from api.app_state import APIState
 
 
 @pytest.mark.asyncio
