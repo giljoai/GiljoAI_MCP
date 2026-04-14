@@ -56,6 +56,8 @@ class ProjectUpdate(BaseModel):
     project_type_id: str | None = None
     series_number: int | None = None
     subseries: str | None = None
+    # CE-OPT-4: UI visibility flag
+    hidden: bool | None = None
     # Handover 0904/0960: Orchestrator auto check-in
     auto_checkin_enabled: bool | None = None
     auto_checkin_interval: int | None = Field(
