@@ -143,6 +143,7 @@ class ProjectSummaryService:
                         func.max(AgentExecution.completed_at),
                         func.max(AgentExecution.started_at),
                         func.max(AgentExecution.last_progress_at),
+                        func.max(AgentExecution.last_activity_at),
                     )
                 )
                 .select_from(AgentExecution)
