@@ -403,7 +403,10 @@ def _configure_middleware(app: FastAPI) -> None:
     # Add middleware in reverse order of execution
     # (last middleware added = first middleware executed in request chain)
 
-    # Add authentication middleware (executes 5th - after CORS, security, rate limit, setup)
+    # Add API metrics middleware (executes after auth — needs tenant_key from request.state)
+    app.add_middleware(APIMetricsMiddleware)
+
+    # Add authentication middleware (sets request.state.tenant_key for downstream middleware)
     app.add_middleware(AuthMiddleware, auth_manager=lambda: state.auth)
 
     # Add rate limiting middleware (executes 4th - protects endpoints, 60 requests/minute for LAN security)
@@ -424,9 +427,6 @@ def _configure_middleware(app: FastAPI) -> None:
     # Add input validation middleware (executes 3rd - validates query params, blocks malicious input)
     # Handover 0129c: Protection against SQL injection, XSS, path traversal
     app.add_middleware(InputValidationMiddleware, strict_mode=False)
-
-    # Add API metrics middleware (executes 4th - counts API and MCP calls)
-    app.add_middleware(APIMetricsMiddleware)
 
     # CSRF protection middleware (executes after auth, before route handlers)
     # Handover 0765f: Enabled with double-submit cookie pattern
