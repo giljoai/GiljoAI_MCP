@@ -75,6 +75,7 @@ def _build_project_response(proj, agents=None) -> ProjectResponse:
         agent_count=proj.agent_count,
         message_count=proj.message_count,
         agents=agents,
+        hidden=getattr(proj, "hidden", False) is True,
     )
 
 

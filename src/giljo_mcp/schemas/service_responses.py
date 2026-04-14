@@ -727,6 +727,9 @@ class ProjectDetail(BaseModel):
     subseries: Optional[str] = None
     taxonomy_alias: Optional[str] = None
 
+    # CE-OPT-4: UI visibility flag
+    hidden: bool = False
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -752,6 +755,9 @@ class ProjectListItem(BaseModel):
     series_number: Optional[int] = None
     subseries: Optional[str] = None
     taxonomy_alias: Optional[str] = None
+
+    # CE-OPT-4: UI visibility flag
+    hidden: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -781,6 +787,9 @@ class ActiveProjectDetail(BaseModel):
     series_number: Optional[int] = None
     subseries: Optional[str] = None
     taxonomy_alias: Optional[str] = None
+
+    # CE-OPT-4: UI visibility flag
+    hidden: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
