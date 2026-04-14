@@ -153,7 +153,7 @@ async def get_dashboard_stats(
     All data is filtered by tenant_key for isolation. Optional product_id
     narrows results to a specific product.
     """
-    from api.app import state
+    from api.app_state import state
 
     tenant_key = getattr(request.state, "tenant_key", None)
     if not tenant_key:
@@ -220,7 +220,7 @@ async def get_dashboard_stats(
 @router.get("/call-counts", response_model=CallCountsResponse)
 async def get_call_counts(request: Request, current_user: User = Depends(get_current_active_user)):
     """Get total API and MCP call counts."""
-    from api.app import state
+    from api.app_state import state
 
     tenant_key = getattr(request.state, "tenant_key", None)
     if not tenant_key:
@@ -249,7 +249,7 @@ async def get_call_counts(request: Request, current_user: User = Depends(get_cur
 @router.get("/system", response_model=SystemStatsResponse)
 async def get_system_statistics(request: Request, current_user: User = Depends(get_current_active_user)):
     """Get overall system statistics"""
-    from api.app import state
+    from api.app_state import state
 
     tenant_key = getattr(request.state, "tenant_key", None)
     if not tenant_key:
@@ -311,7 +311,7 @@ async def get_project_statistics(
     current_user: User = Depends(get_current_active_user),
 ):
     """Get statistics for all projects"""
-    from api.app import state
+    from api.app_state import state
 
     # CRITICAL: Get tenant_key for security (MISSING IN ORIGINAL!)
     tenant_key = getattr(request.state, "tenant_key", None)
@@ -366,7 +366,7 @@ async def get_project_statistics_by_id(
     request: Request, project_id: str, current_user: User = Depends(get_current_active_user)
 ):
     """Get statistics for a specific project"""
-    from api.app import state
+    from api.app_state import state
 
     tenant_key = getattr(request.state, "tenant_key", None)
     if not tenant_key:
@@ -414,7 +414,7 @@ async def get_agent_statistics(
     current_user: User = Depends(get_current_active_user),
 ):
     """Get statistics for all agents"""
-    from api.app import state
+    from api.app_state import state
 
     # CRITICAL: Get tenant_key for security (MISSING IN ORIGINAL!)
     tenant_key = getattr(request.state, "tenant_key", None)
@@ -479,7 +479,7 @@ async def get_message_statistics(
     current_user: User = Depends(get_current_active_user),
 ):
     """Get message statistics"""
-    from api.app import state
+    from api.app_state import state
 
     # CRITICAL: Get tenant_key for security (MISSING IN ORIGINAL!)
     tenant_key = getattr(request.state, "tenant_key", None)
@@ -545,7 +545,7 @@ async def get_performance_metrics(current_user: User = Depends(get_current_activ
 
     import psutil
 
-    from api.app import state
+    from api.app_state import state
 
     # Measure API response time
     start_time = time.time()
@@ -600,7 +600,7 @@ async def get_performance_metrics(current_user: User = Depends(get_current_activ
 @router.get("/health/detailed", response_model=DetailedHealthResponse)
 async def get_detailed_health(current_user: User = Depends(get_current_active_user)):
     """Get detailed health status of all system components"""
-    from api.app import state
+    from api.app_state import state
 
     health = {"overall": "healthy", "components": {}, "checks_passed": 0, "checks_failed": 0}
 

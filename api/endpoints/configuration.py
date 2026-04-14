@@ -105,7 +105,7 @@ async def get_configuration(
     key_path: str, default: Optional[Any] = None, current_user: User = Depends(get_current_active_user)
 ):
     """Get specific configuration value by key path"""
-    from api.app import state
+    from api.app_state import state
 
     if not state.config:
         raise HTTPException(status_code=503, detail="Configuration manager not available")
@@ -128,7 +128,7 @@ async def get_configuration(
 @router.put("/key/{key_path}")
 async def set_configuration(key_path: str, config: ConfigurationSet, current_user: User = Depends(require_admin)):
     """Set configuration value (runtime only, not persisted)"""
-    from api.app import state
+    from api.app_state import state
 
     if not state.config:
         raise HTTPException(status_code=503, detail="Configuration manager not available")
@@ -154,7 +154,7 @@ async def set_configuration(key_path: str, config: ConfigurationSet, current_use
 @router.patch("/")
 async def update_configurations(update: ConfigurationUpdate, current_user: User = Depends(require_admin)):
     """Update multiple configuration values at once"""
-    from api.app import state
+    from api.app_state import state
 
     if not state.config:
         raise HTTPException(status_code=503, detail="Configuration manager not available")
@@ -183,7 +183,7 @@ async def update_configurations(update: ConfigurationUpdate, current_user: User 
 @router.post("/reload")
 async def reload_configuration(current_user: User = Depends(require_admin)):
     """Reload configuration from files and environment"""
-    from api.app import state
+    from api.app_state import state
 
     if not state.config:
         raise HTTPException(status_code=503, detail="Configuration manager not available")
@@ -197,7 +197,7 @@ async def reload_configuration(current_user: User = Depends(require_admin)):
 @router.get("/tenant", response_model=dict[str, Any])
 async def get_tenant_configuration(request: Request, current_user: User = Depends(get_current_active_user)):
     """Get configuration for the authenticated user's tenant"""
-    from api.app import state
+    from api.app_state import state
 
     tenant_key = getattr(request.state, "tenant_key", None)
     if not tenant_key:
@@ -229,7 +229,7 @@ async def set_tenant_configuration(
     current_user: User = Depends(require_admin),
 ):
     """Set configuration for the authenticated user's tenant"""
-    from api.app import state
+    from api.app_state import state
 
     tenant_key = getattr(request.state, "tenant_key", None)
     if not tenant_key:
@@ -268,7 +268,7 @@ async def set_tenant_configuration(
 @router.delete("/tenant")
 async def delete_tenant_configuration(request: Request, current_user: User = Depends(require_admin)):
     """Delete all configurations for the authenticated user's tenant"""
-    from api.app import state
+    from api.app_state import state
 
     tenant_key = getattr(request.state, "tenant_key", None)
     if not tenant_key:
@@ -618,7 +618,7 @@ async def get_frontend_configuration(request: Request):
         HTTPS (mkcert). Bind address derived from install-time network choice.
         The frontend connects via the configured external_host (set during installation).
     """
-    from api.app import GILJO_MODE, state
+    from api.app_state import GILJO_MODE, state
 
     if not state.config:
         raise HTTPException(status_code=503, detail="Configuration manager not available")
@@ -697,7 +697,7 @@ async def download_root_ca():
     """
     import subprocess
 
-    from api.app import state
+    from api.app_state import state
 
     ssl_enabled = state.config.get_nested("features.ssl_enabled", default=False) if state.config else False
     if not ssl_enabled:
@@ -733,7 +733,7 @@ async def download_root_ca():
 @router.get("/health/database")
 async def check_database_health(current_user: User = Depends(get_current_active_user)):
     """Test database connection (requires authentication)"""
-    from api.app import state
+    from api.app_state import state
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database manager not initialized")

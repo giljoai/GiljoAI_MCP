@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 
-from api.app import APIState
+from api.app_state import APIState
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import ApiMetrics, Product, Project
 from src.giljo_mcp.services.product_service import ProductService
