@@ -80,7 +80,7 @@
       </div>
 
       <div class="stat-pill smooth-border main-window-reveal main-window-delay-4">
-        <div class="stat-pill-label">Taxonomy</div>
+        <div class="stat-pill-label">Project Types</div>
         <div class="stat-pill-value">{{ taxonomyPill.total }}<small>types</small></div>
         <div class="micro-bar">
           <div
