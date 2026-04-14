@@ -212,6 +212,7 @@ async def auto_clear_silent(
     session: AsyncSession,
     job_id: str,
     ws_manager,
+    tenant_key: str = "",
 ) -> None:
     """Auto-clear silent status when an agent makes an MCP call.
 
@@ -224,19 +225,19 @@ async def auto_clear_silent(
         session: Database session
         job_id: The job_id extracted from MCP tool arguments
         ws_manager: WebSocket manager for broadcasting
+        tenant_key: Tenant isolation key
     """
-    # TENANT ISOLATION NOTE (Phase C audit, Feb 2026):
-    # This query filters by job_id (UUID) which uniquely identifies one agent's job.
-    # MCP authentication resolves job_id from the authenticated tenant's context,
-    # so a tenant cannot call this with another tenant's job_id. Cross-tenant risk
-    # is mitigated by UUID uniqueness + MCP auth layer. System-level by design.
+    conditions = [
+        AgentExecution.job_id == job_id,
+        AgentExecution.status == "silent",
+    ]
+    if tenant_key:
+        conditions.append(AgentExecution.tenant_key == tenant_key)
+
     stmt = (
         select(AgentExecution, AgentJob.project_id)
         .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-        .where(
-            AgentExecution.job_id == job_id,
-            AgentExecution.status == "silent",
-        )
+        .where(*conditions)
     )
     result = await session.execute(stmt)
     row = result.one_or_none()

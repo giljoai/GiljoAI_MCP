@@ -118,7 +118,7 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
 
             ws_manager = getattr(app_state, "websocket_manager", None)
             async with app_state.db_manager.get_session_async() as db:
-                await auto_clear_silent(db, job_id, ws_manager)
+                await auto_clear_silent(db, job_id, ws_manager, tenant_key=tenant_key)
         except (OSError, RuntimeError, ValueError, TypeError, AttributeError, KeyError):
             logger.warning("auto_clear_silent failed for job_id=%s (non-blocking)", job_id)
 
@@ -128,7 +128,7 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
             from src.giljo_mcp.services.heartbeat import touch_heartbeat
 
             async with app_state.db_manager.get_session_async() as db:
-                await touch_heartbeat(db, job_id)
+                await touch_heartbeat(db, job_id, tenant_key=tenant_key)
         except (OSError, RuntimeError, ValueError, TypeError, AttributeError, KeyError):
             logger.debug("heartbeat update failed for job_id=%s (non-blocking)", job_id)
 
@@ -153,6 +153,7 @@ async def create_project(
     description: str,
     project_type: str = "",
     series_number: int = 0,
+    subseries: str = "",
     ctx: Context = None,
 ) -> dict:
     """Create a new project bound to the active product.
@@ -166,6 +167,9 @@ async def create_project(
             Combined with series_number to form the project serial (e.g. FE-0001).
         series_number: Sequential number within the type series (1-9999).
             Forms serial like TYPE-0001. Use 0 for auto-assign.
+        subseries: Single-letter suffix (a-z) for injecting projects into an existing
+            series. E.g. series_number=5 + subseries="b" creates FE-0005b.
+            Leave empty for no suffix.
     """
     params = {
         "name": name,
@@ -174,6 +178,8 @@ async def create_project(
     }
     if series_number > 0:
         params["series_number"] = series_number
+    if subseries:
+        params["subseries"] = subseries
     return await _call_tool(ctx, "create_project", params)
 
 
@@ -212,6 +218,9 @@ async def update_project(
     name: str = "",
     description: str = "",
     status: str = "",
+    project_type: str = "",
+    series_number: int = 0,
+    subseries: str = "",
     ctx: Context = None,
 ) -> dict:
     """Update project metadata fields.
@@ -221,6 +230,9 @@ async def update_project(
         name: New project name (max 200 chars). Leave empty to keep current.
         description: New description (max 5000 chars). Leave empty to keep current.
         status: New status — "inactive", "active", or "completed". Leave empty to keep current.
+        project_type: Taxonomy type abbreviation (e.g. FE, BE). Leave empty to keep current.
+        series_number: Sequential number within the type series (1-9999). Use 0 to keep current.
+        subseries: Single-letter suffix (a-z). Leave empty to keep current.
     """
     params: dict = {"project_id": project_id}
     if name:
@@ -229,6 +241,12 @@ async def update_project(
         params["description"] = description
     if status:
         params["status"] = status
+    if project_type:
+        params["project_type"] = project_type
+    if series_number > 0:
+        params["series_number"] = series_number
+    if subseries:
+        params["subseries"] = subseries
     return await _call_tool(ctx, "update_project_metadata", params)
 
 
