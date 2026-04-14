@@ -184,10 +184,21 @@
                 <v-list-item-title>User Guide</v-list-item-title>
               </v-list-item>
 
-              <v-divider v-if="currentUser && currentUser.role === 'admin'" />
+              <!-- Reset Password (SaaS/demo only) -->
+              <v-list-item
+                v-if="giljoMode !== 'ce'"
+                @click="handleResetPassword"
+              >
+                <template v-slot:prepend>
+                  <v-icon>mdi-lock-reset</v-icon>
+                </template>
+                <v-list-item-title>Reset Password</v-list-item-title>
+              </v-list-item>
+
+              <v-divider v-if="currentUser && currentUser.role === 'admin' && giljoMode === 'ce'" />
 
               <v-list-item
-                v-if="currentUser && currentUser.role === 'admin'"
+                v-if="currentUser && currentUser.role === 'admin' && giljoMode === 'ce'"
                 :to="{ name: 'SystemSettings' }"
               >
                 <template v-slot:prepend>
@@ -217,8 +228,8 @@
         </div>
 
         <!-- Edition Footer -->
-        <div v-if="edition === 'community'" class="edition-footer">
-          <span class="edition-label">{{ rail ? 'CE' : 'Community Edition' }}</span>
+        <div class="edition-footer">
+          <span class="edition-label">{{ editionFooterLabel }}</span>
         </div>
       </div>
 
@@ -282,6 +293,7 @@
 
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue'
+import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
@@ -334,13 +346,45 @@ const licenseStatus = ref('Licensed')
 
 // Edition state
 const edition = ref('')
+const giljoMode = ref('ce')
 
 async function checkEdition() {
   try {
     await configService.fetchConfig()
     edition.value = configService.getEdition()
+    giljoMode.value = configService.getGiljoMode()
   } catch {
     edition.value = 'community'
+    giljoMode.value = 'ce'
+  }
+}
+
+// Edition footer label
+const editionFooterLabel = computed(() => {
+  switch (giljoMode.value) {
+    case 'demo': return props.rail ? 'Demo' : 'Demo Edition'
+    case 'saas': return props.rail ? 'SaaS' : 'SaaS Edition'
+    default: return props.rail ? 'CE' : 'Community Edition'
+  }
+})
+
+// Reset password (SaaS/demo mode)
+async function handleResetPassword() {
+  try {
+    const email = props.currentUser?.email
+    if (!email) return
+
+    let baseUrl = ''
+    if (!import.meta.env.DEV && configService.config) {
+      const { host, port } = configService.config.api
+      const protocol = configService.config.api?.protocol || (window.location.protocol === 'https:' ? 'https' : 'http')
+      baseUrl = `${protocol}://${host}:${port}`
+    }
+
+    await axios.post(`${baseUrl}/api/saas/password-reset/request`, { email })
+    // TODO: Show toast notification -- "Reset email sent" (requires useToast integration)
+  } catch {
+    // TODO: Show error toast
   }
 }
 
