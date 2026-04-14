@@ -241,6 +241,12 @@
                     title="Duplicate"
                     @click="duplicateProject(item)"
                   ></v-list-item>
+                  <!-- CE-OPT-4: Hide/Unhide toggle -->
+                  <v-list-item
+                    :prepend-icon="item.hidden ? 'mdi-eye' : 'mdi-eye-off'"
+                    :title="item.hidden ? 'Unhide' : 'Hide'"
+                    @click="toggleHidden(item)"
+                  ></v-list-item>
                   <v-divider class="my-1" />
                   <v-list-item
                     prepend-icon="mdi-delete"
@@ -465,7 +471,7 @@ const sortBy = ref([{ key: 'series_number', order: 'asc' }])
 const tableItems = computed(() => filteredProjects.value)
 
 // 0873: v-select items for filter bar dropdowns
-const statusSelectOptions = ['active', 'inactive', 'completed', 'cancelled', 'terminated']
+const statusSelectOptions = ['active', 'inactive', 'completed', 'cancelled', 'terminated', 'hidden']
 
 // Table headers
 const headers = [
@@ -615,6 +621,16 @@ async function duplicateProject(project) {
   } catch (error) {
     console.error('[PROJECTS] Failed to duplicate project:', error)
     showToast({ message: error.response?.data?.detail || 'Failed to duplicate project', type: 'error' })
+  }
+}
+
+async function toggleHidden(project) {
+  try {
+    await projectStore.updateProject(project.id, { hidden: !project.hidden })
+    showToast({ message: project.hidden ? `"${project.name}" is now visible` : `"${project.name}" hidden`, type: 'success' })
+  } catch (error) {
+    console.error('[PROJECTS] Failed to toggle hidden:', error)
+    showToast({ message: 'Failed to update project visibility', type: 'error' })
   }
 }
 
