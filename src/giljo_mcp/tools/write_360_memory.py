@@ -501,6 +501,24 @@ async def write_360_memory(
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
+            # Hard gate: if git integration is enabled, require commits
+            git_integration_enabled = False
+            try:
+                from giljo_mcp._config_io import read_config
+
+                cfg = read_config()
+                git_integration_enabled = cfg.get("features", {}).get("git_integration", {}).get("enabled", False)
+            except Exception:  # noqa: BLE001, S110
+                pass  # Config read failure is not a blocker
+
+            if git_integration_enabled and not git_commits:
+                return {
+                    "success": False,
+                    "error": "GIT_COMMITS_REQUIRED",
+                    "message": "Git integration is enabled. Provide at least one commit before writing 360 memory.",
+                    "project_id": project_id,
+                }
+
             # Use agent-supplied commits; SaaS can fall back to GitHub API
             if git_commits is not None:
                 git_commits = validate_git_commits(git_commits)

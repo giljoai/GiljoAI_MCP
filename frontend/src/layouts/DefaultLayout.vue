@@ -35,7 +35,8 @@ import { initWebsocketEventRouter } from '@/stores/websocketEventRouter'
 import StarField from '@/components/StarField.vue'
 import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
 import ToastManager from '@/components/ToastManager.vue'
-import LicensingDialog from '@/components/LicensingDialog.vue'
+import { defineAsyncComponent } from 'vue'
+const LicensingDialog = defineAsyncComponent(() => import('@/components/LicensingDialog.vue'))
 import SystemStatusBanner from '@/components/system/SystemStatusBanner.vue'
 import setupService from '@/services/setupService'
 

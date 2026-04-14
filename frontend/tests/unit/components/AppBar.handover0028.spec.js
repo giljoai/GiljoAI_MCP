@@ -45,7 +45,8 @@ vi.mock('@/components/navigation/NotificationDropdown.vue', () => ({
 }))
 
 vi.mock('@/components/UserProfileDialog.vue', () => ({
-  default: { template: '<div></div>', props: ['modelValue', 'user'] }
+  __esModule: true,
+  default: { template: '<div></div>', props: ['modelValue', 'user'], __isTeleport: false, __isSuspense: false }
 }))
 
 vi.mock('@/components/common/RoleBadge.vue', () => ({

@@ -25,6 +25,7 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentT
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from src.giljo_mcp.schemas.jsonb_validators import validate_git_commits
 from src.giljo_mcp.tools._memory_helpers import (
     MAX_DECISIONS_MADE,
     MAX_KEY_OUTCOMES,
@@ -259,8 +260,25 @@ async def close_project_and_update_memory(
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
+            # Hard gate: if git integration is enabled, require commits
+            git_integration_enabled = False
+            try:
+                from giljo_mcp._config_io import read_config
+
+                cfg = read_config()
+                git_integration_enabled = cfg.get("features", {}).get("git_integration", {}).get("enabled", False)
+            except Exception:  # noqa: BLE001, S110
+                pass  # Config read failure is not a blocker
+
+            if git_integration_enabled and not git_commits:
+                raise ValidationError(
+                    message="Git integration is enabled. Provide at least one commit before closing the project.",
+                    context={"project_id": project_id, "error_code": "GIT_COMMITS_REQUIRED"},
+                )
+
             # Use agent-supplied commits; SaaS can fall back to GitHub API
             if git_commits is not None:
+                git_commits = validate_git_commits(git_commits)
                 logger.info(
                     "Using %d agent-supplied git commits for project %s",
                     len(git_commits),
