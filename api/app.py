@@ -45,6 +45,10 @@ env_path = project_root / ".env"
 load_dotenv(dotenv_path=env_path)
 logger.info(f"Environment variables loaded from .env file: {env_path}")
 
+# Edition detection: "ce" (default), "demo", or "saas"
+GILJO_MODE = os.environ.get("GILJO_MODE", "ce").lower()
+logger.info(f"GILJO_MODE: {GILJO_MODE}")
+
 # Log JWT secret availability for debugging
 jwt_secret = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY") or os.getenv("SECRET_KEY")
 if jwt_secret:
@@ -448,6 +452,19 @@ def _configure_middleware(app: FastAPI) -> None:
 
     # v3.0: Setup mode middleware removed - unified authentication for all endpoints
 
+    # SaaS/Demo middleware registration (conditional)
+    # Follows Section F of docs/EDITION_ISOLATION_GUIDE.md
+    if GILJO_MODE in ("demo", "saas"):
+        _saas_middleware_dir = Path(__file__).parent / "saas_middleware"
+        if _saas_middleware_dir.is_dir():
+            try:
+                from api.saas_middleware import register_saas_middleware
+
+                register_saas_middleware(app)
+                logger.info("SaaS middleware registered")
+            except ImportError:
+                logger.info("SaaS middleware directory exists but no middleware registered")
+
     # Add CORS middleware (executes 1st - MUST be first to handle OPTIONS preflight requests)
     # This MUST execute before all other middleware to add CORS headers to OPTIONS responses
     app.add_middleware(
@@ -554,6 +571,20 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(org_crud.router, prefix="/api/organizations", tags=["organizations"])
     app.include_router(org_members.router, prefix="/api/organizations", tags=["organization-members"])
     app.include_router(org_members.transfer_router, prefix="/api/organizations", tags=["organization-transfer"])
+
+    # SaaS/Demo endpoint registration (conditional)
+    # Follows Section F of docs/EDITION_ISOLATION_GUIDE.md:
+    # directory existence check + GILJO_MODE gate + try-except ImportError
+    if GILJO_MODE in ("demo", "saas"):
+        _saas_endpoints_dir = Path(__file__).parent / "saas_endpoints"
+        if _saas_endpoints_dir.is_dir():
+            try:
+                from api.saas_endpoints import register_saas_routes
+
+                register_saas_routes(app)
+                logger.info("SaaS endpoint routes registered")
+            except ImportError:
+                logger.info("SaaS endpoints directory exists but no routes registered")
 
 
 async def _authenticate_ws_connection(
