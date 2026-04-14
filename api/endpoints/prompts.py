@@ -211,11 +211,12 @@ async def generate_orchestrator_prompt_thin(
 
     except ValueError as e:
         logger.exception("Validation error generating thin orchestrator prompt")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requested resource not found.") from e
     except Exception as e:  # Broad catch: API boundary, converts to HTTP error
-        logger.error(f"Error generating thin orchestrator prompt: {e}", exc_info=True)
+        logger.error("Error generating thin orchestrator prompt: %s", e, exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate orchestrator prompt: {e!s}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate orchestrator prompt. Check server logs.",
         ) from e
 
 
@@ -439,13 +440,14 @@ async def generate_staging_prompt(
         logger.warning(
             "[STAGING PROMPT THIN] Validation error for project=%s: %s", sanitize(project_id), sanitize(str(e))
         )
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requested resource not found.") from e
 
     except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         # Unexpected error during generation
-        logger.exception("[STAGING PROMPT THIN] Generation failed for project={project_id}")
+        logger.exception("[STAGING PROMPT THIN] Generation failed for project=%s", sanitize(project_id))
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate thin staging prompt: {e!s}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate staging prompt. Check server logs.",
         ) from e
 
 

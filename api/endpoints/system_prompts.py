@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,6 +18,7 @@ from src.giljo_mcp.models import User
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class OrchestratorPromptResponse(BaseModel):
@@ -66,9 +68,11 @@ async def update_orchestrator_prompt(
             content=payload.content, updated_by=current_user.email or current_user.username or current_user.id
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        logger.warning("System prompt update validation failed: %s", exc)
+        raise HTTPException(status_code=400, detail="Invalid prompt content.") from exc
     except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        logger.exception("System prompt service error")
+        raise HTTPException(status_code=503, detail="System prompt service temporarily unavailable.") from exc
 
     return OrchestratorPromptResponse(
         content=prompt.content,

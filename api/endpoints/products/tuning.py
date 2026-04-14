@@ -87,7 +87,7 @@ async def get_eligible_sections(
         sections = await service.get_eligible_sections(product_id, current_user.id)
         return EligibleSectionsResponse(sections=sections)
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=404, detail="Product not found.") from e
 
 
 @router.post("/{product_id}/tuning/generate-prompt")
@@ -114,6 +114,6 @@ async def generate_tuning_prompt(
         )
         return GeneratePromptResponse(**result)
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=404, detail="Product not found.") from e
     except ValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Invalid tuning request.") from e

@@ -62,7 +62,7 @@ async def get_memory_entries(
     except ValueError as e:
         raise HTTPException(
             status_code=422,
-            detail=f"Invalid UUID format: {e!s}",
+            detail="Invalid UUID format.",
         ) from e
 
     async with db_manager.get_tenant_session_async(tenant_key) as session:

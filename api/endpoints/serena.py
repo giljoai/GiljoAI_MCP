@@ -64,7 +64,8 @@ async def toggle_serena(request: SerenaToggleRequest, current_user: User = Depen
     try:
         write_config(config)
     except OSError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to save Serena config: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to save configuration. Check server logs.") from e
 
     logger.info("Serena prompts %s", "enabled" if request.use_in_prompts else "disabled")
 

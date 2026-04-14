@@ -2872,19 +2872,23 @@ except Exception as e:
 
         Returns True if password was set successfully.
         """
-        # Escape single quotes in password for SQL
-        safe_password = password.replace("'", "''")
-        sql = f"ALTER USER postgres PASSWORD '{safe_password}';"
+        # Use psycopg2 adapt() for safe SQL literal quoting (prevents SQL injection via password).
+        # This is executed via subprocess/psql (not a DB cursor), so we need a rendered string.
+        # adapt().getquoted() is psycopg2's canonical literal-escaping for this use case.
+        from psycopg2.extensions import adapt
+
+        safe_password_literal = adapt(password).getquoted().decode("utf-8")
+        safe_sql = f"ALTER USER postgres PASSWORD {safe_password_literal};"
 
         system = platform.system()
         try:
             if system == "Darwin":
                 # macOS (Homebrew): postgres runs as current user
-                cmd = ["psql", "-U", "postgres", "-d", "postgres", "-c", sql]
+                cmd = ["psql", "-U", "postgres", "-d", "postgres", "-c", safe_sql]
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             else:
                 # Linux: use sudo -u postgres for peer auth
-                cmd = ["sudo", "-u", "postgres", "psql", "-c", sql]
+                cmd = ["sudo", "-u", "postgres", "psql", "-c", safe_sql]
                 self._print_info("Setting PostgreSQL password (sudo may ask for your password)...")
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 

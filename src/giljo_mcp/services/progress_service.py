@@ -465,6 +465,35 @@ class ProgressService:
         todo_items = progress.get("todo_items")
         if isinstance(todo_items, list) and len(todo_items) > 0:
             from sqlalchemy import delete as sql_delete
+            from sqlalchemy import func as sa_func
+
+            # Regression guard: reject todo_items that would lose completed work.
+            # Agents sometimes rebuild the list from scratch, accidentally resetting
+            # completed items back to pending. This check prevents that.
+            existing_completed_result = await session.execute(
+                select(sa_func.count(AgentTodoItem.id))
+                .where(AgentTodoItem.job_id == job_id)
+                .where(AgentTodoItem.tenant_key == tenant_key)
+                .where(AgentTodoItem.status == "completed")
+            )
+            existing_completed = existing_completed_result.scalar() or 0
+
+            if existing_completed > 0:
+                incoming_completed = len([t for t in todo_items if t.get("status") == "completed"])
+                if incoming_completed < existing_completed:
+                    raise ValidationError(
+                        message=(
+                            f"todo_items regression rejected: incoming list has {incoming_completed} completed "
+                            f"items but DB already has {existing_completed}. todo_items is a FULL REPLACEMENT — "
+                            f"include ALL prior items with their current statuses. Use todo_append to add new items."
+                        ),
+                        context={
+                            "method": "report_progress",
+                            "job_id": job_id,
+                            "existing_completed": existing_completed,
+                            "incoming_completed": incoming_completed,
+                        },
+                    )
 
             # Delete existing items for this job (replace strategy)
             # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)

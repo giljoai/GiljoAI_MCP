@@ -357,7 +357,7 @@ async def delete_template(
     except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("Failed to delete template")
         await session.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to delete template: {e!s}") from e
+        raise HTTPException(status_code=500, detail="Failed to delete template. Check server logs.") from e
 
 
 @router.get("/stats/active-count", response_model=dict)

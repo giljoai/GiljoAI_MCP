@@ -386,9 +386,10 @@ async def create_vision_document(
         raise
     except (SQLAlchemyError, OSError, UnicodeDecodeError, ValueError) as e:
         await db.rollback()
-        logger.error(f"Failed to create vision document: {e}", exc_info=True)
+        logger.error("Failed to create vision document: %s", e, exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to create vision document: {e!s}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create vision document. Check server logs.",
         ) from e
 
 
@@ -567,9 +568,10 @@ async def update_vision_document(
         raise
     except (SQLAlchemyError, ValueError) as e:
         await db.rollback()
-        logger.error(f"Failed to update vision document: {e}", exc_info=True)
+        logger.error("Failed to update vision document: %s", e, exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update vision document: {e!s}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update vision document. Check server logs.",
         ) from e
 
 
@@ -634,9 +636,10 @@ async def delete_vision_document(
         raise
     except SQLAlchemyError as e:
         await db.rollback()
-        logger.error(f"Failed to delete vision document: {e}", exc_info=True)
+        logger.error("Failed to delete vision document: %s", e, exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete vision document: {e!s}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete vision document. Check server logs.",
         ) from e
 
 
@@ -791,9 +794,10 @@ async def regenerate_summaries(
         raise
     except (ImportError, SQLAlchemyError, ValueError, KeyError) as e:
         await db.rollback()
-        logger.error(f"Failed to regenerate summaries: {e}", exc_info=True)
+        logger.error("Failed to regenerate summaries: %s", e, exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to regenerate summaries: {e!s}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to regenerate summaries. Check server logs.",
         ) from e
 
 

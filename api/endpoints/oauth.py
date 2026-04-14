@@ -100,9 +100,10 @@ async def authorize(
             scope=body.scope,
         )
     except ValueError as exc:
+        logger.warning("OAuth authorize validation failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
+            detail="Invalid authorization request parameters.",
         ) from exc
 
     code = await oauth_service.generate_authorization_code(
@@ -175,9 +176,10 @@ async def token(
             redirect_uri=redirect_uri,
         )
     except ValueError as exc:
+        logger.warning("OAuth token exchange failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
+            detail="Invalid token exchange request.",
         ) from exc
 
     return TokenResponse(

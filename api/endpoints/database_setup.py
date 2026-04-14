@@ -19,7 +19,7 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from src.giljo_mcp._config_io import get_config_path, read_config, write_config
@@ -27,6 +27,49 @@ from src.giljo_mcp._config_io import get_config_path, read_config, write_config
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def require_setup_incomplete() -> None:
+    """Dependency that blocks setup endpoints after initial setup is complete.
+
+    Checks if the database has users (first admin created). If so, setup
+    is already done and these endpoints should be locked down.
+    """
+    try:
+        import psycopg2
+
+        db_host = os.getenv("POSTGRES_HOST") or os.getenv("DB_HOST")
+        db_port = os.getenv("POSTGRES_PORT") or os.getenv("DB_PORT")
+        db_name = os.getenv("POSTGRES_DB") or os.getenv("DB_NAME")
+        db_user = os.getenv("POSTGRES_USER") or os.getenv("DB_USER")
+        db_password = os.getenv("POSTGRES_PASSWORD") or os.getenv("DB_PASSWORD")
+
+        if not all([db_host, db_port, db_name, db_user, db_password]):
+            return  # No credentials yet -- setup not complete
+
+        with (
+            psycopg2.connect(
+                host=db_host,
+                port=int(db_port),
+                database=db_name,
+                user=db_user,
+                password=db_password,
+                connect_timeout=3,
+            ) as conn,
+            conn.cursor() as cur,
+        ):
+            cur.execute("SELECT COUNT(*) FROM users")
+            user_count = cur.fetchone()[0]
+
+        if user_count > 0:
+            raise HTTPException(
+                status_code=403,
+                detail="Setup already completed. Use admin panel to reconfigure.",
+            )
+    except HTTPException:
+        raise
+    except Exception:  # noqa: BLE001 -- broad catch intentional: any DB failure means setup is not complete
+        return
 
 
 class DatabaseSetupRequest(BaseModel):
@@ -39,7 +82,7 @@ class DatabaseSetupRequest(BaseModel):
     database_name: str = Field(default="giljo_mcp", description="Database name to create")
 
 
-@router.post("/test-connection")
+@router.post("/test-connection", dependencies=[Depends(require_setup_incomplete)])
 async def test_database_connection(request: DatabaseSetupRequest) -> dict:
     """
     Test connection to PostgreSQL server.
@@ -124,7 +167,7 @@ async def test_database_connection(request: DatabaseSetupRequest) -> dict:
         raise HTTPException(status_code=500, detail="Connection test failed. Check server logs.") from e
 
 
-@router.post("/setup")
+@router.post("/setup", dependencies=[Depends(require_setup_incomplete)])
 async def setup_database(request: DatabaseSetupRequest) -> dict:
     """
     Set up PostgreSQL database for GiljoAI MCP.
@@ -162,9 +205,10 @@ async def setup_database(request: DatabaseSetupRequest) -> dict:
 
         if not setup_result.get("success"):
             errors = setup_result.get("errors", ["Unknown error during database setup"])
+            logger.error("Database setup failed: %s", "; ".join(errors))
             raise HTTPException(
                 status_code=500,
-                detail=f"Database setup failed: {'; '.join(errors)}",
+                detail="Database setup failed. Check server logs for details.",
             )
 
         # Setup succeeded - run migrations
@@ -236,7 +280,7 @@ async def setup_database(request: DatabaseSetupRequest) -> dict:
         raise HTTPException(status_code=500, detail="Database setup failed. Check server logs for details.") from e
 
 
-@router.get("/verify")
+@router.get("/verify", dependencies=[Depends(require_setup_incomplete)])
 async def verify_database_setup() -> dict:
     """
     Verify database setup from CLI installation.

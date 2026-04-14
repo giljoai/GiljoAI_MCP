@@ -397,9 +397,15 @@ async def update_database_password(update: DatabasePasswordUpdate, current_user:
         engine = create_engine(current_db_url)
 
         with engine.connect() as conn:
-            # Execute ALTER USER with new password
-            # Use parameterized query to prevent SQL injection
-            conn.execute(text(f"ALTER USER {db_user} WITH PASSWORD :new_password"), {"new_password": update.password})
+            # Use psycopg2.sql.Identifier for safe identifier quoting (prevents SQL injection via db_user)
+            from psycopg2 import sql as psycopg2_sql
+
+            safe_stmt = psycopg2_sql.SQL("ALTER USER {} WITH PASSWORD %(new_password)s").format(
+                psycopg2_sql.Identifier(db_user)
+            )
+            raw_conn = conn.connection.dbapi_connection
+            with raw_conn.cursor() as cur:
+                cur.execute(safe_stmt, {"new_password": update.password})
             conn.commit()
 
         engine.dispose()
@@ -425,9 +431,14 @@ async def update_database_password(update: DatabasePasswordUpdate, current_user:
             rollback_db_url = f"postgresql://{db_user}:{update.password}@{db_host}:{db_port}/{db_name}"
             rollback_engine = create_engine(rollback_db_url)
             with rollback_engine.connect() as conn:
-                conn.execute(
-                    text(f"ALTER USER {db_user} WITH PASSWORD :old_password"), {"old_password": current_password}
+                from psycopg2 import sql as psycopg2_sql
+
+                safe_stmt = psycopg2_sql.SQL("ALTER USER {} WITH PASSWORD %(old_password)s").format(
+                    psycopg2_sql.Identifier(db_user)
                 )
+                raw_conn = conn.connection.dbapi_connection
+                with raw_conn.cursor() as cur:
+                    cur.execute(safe_stmt, {"old_password": current_password})
                 conn.commit()
             rollback_engine.dispose()
         except (OSError, ValueError):
