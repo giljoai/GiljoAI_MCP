@@ -57,7 +57,8 @@ vi.mock('@/components/ToastManager.vue', () => ({
 }))
 
 vi.mock('@/components/LicensingDialog.vue', () => ({
-  default: { name: 'LicensingDialog', template: '<div>LicensingDialog</div>' }
+  __esModule: true,
+  default: { name: 'LicensingDialog', template: '<div>LicensingDialog</div>', __isTeleport: false, __isSuspense: false }
 }))
 
 // Mock stores and services
