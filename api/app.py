@@ -63,14 +63,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 logger.debug(f"Added to Python path: {Path(__file__).parent.parent / 'src'}")
 
 try:
-    from src.giljo_mcp.auth import AuthManager  # noqa: F401 — startup validation
-    from src.giljo_mcp.database import DatabaseManager  # noqa: F401 — startup validation
     from src.giljo_mcp.models import Project
     from src.giljo_mcp.models.agent_identity import AgentJob
     from src.giljo_mcp.models.tasks import Message
-    from src.giljo_mcp.system_prompts import SystemPromptService  # noqa: F401 — startup validation
-    from src.giljo_mcp.tenant import TenantManager  # noqa: F401 — startup validation
-    from src.giljo_mcp.tools.tool_accessor import ToolAccessor  # noqa: F401 — startup validation
 
     logger.info("GiljoAI MCP core modules loaded successfully")
 except ImportError as e:
@@ -126,7 +121,6 @@ try:
         RateLimitMiddleware,
         SecurityHeadersMiddleware,
     )
-    from .websocket import WebSocketManager  # noqa: F401 — startup validation
 
     logger.info("API endpoint modules loaded successfully")
 except ImportError as e:
