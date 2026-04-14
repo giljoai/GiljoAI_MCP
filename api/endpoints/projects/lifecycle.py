@@ -369,6 +369,18 @@ async def archive_project(
         project_id=project_id, updates={"status": target_status, "completed_at": datetime.now(timezone.utc)}
     )
 
+    # Handover 0435b: transition 'complete' agents to 'closed' on user archive action
+    try:
+        from src.giljo_mcp.tools.project_closeout import _close_completed_agents
+
+        async with project_service.db_manager.get_session_async() as session:
+            closed_names = await _close_completed_agents(session, project_id, current_user.tenant_key)
+            if closed_names:
+                logger.info("Closed %d agent(s) on archive: %s", len(closed_names), ", ".join(closed_names))
+            await session.commit()
+    except (ImportError, OSError):
+        logger.warning("Failed to close agents during project archive")
+
     logger.info("Archived project %s", sanitize(project_id))
 
     # Get updated project (raises exceptions on error)

@@ -252,8 +252,8 @@ async def close_project_and_update_memory(
                 blockers=blockers,
             )
 
-            # Handover 0435b: transition all 'complete' agents to 'closed' during closeout
-            await _close_completed_agents(active_session, project_id, tenant_key)
+            # Handover 0435b: agent 'complete' → 'closed' moved to archive endpoint
+            # (user action, not orchestrator MCP call). Agents stay 'complete' here.
 
             product_memory: dict[str, Any] = product.product_memory or {}
             if not isinstance(product_memory, dict):
