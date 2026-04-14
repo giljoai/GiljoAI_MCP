@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 DEBOUNCE_SECONDS = 30
 
 
-async def touch_heartbeat(session: AsyncSession, job_id: str) -> None:
+async def touch_heartbeat(session: AsyncSession, job_id: str, tenant_key: str = "") -> None:
     """Update last_activity_at for the agent execution tied to job_id.
 
     Debounce: skips the write if last_activity_at is less than
@@ -37,23 +37,22 @@ async def touch_heartbeat(session: AsyncSession, job_id: str) -> None:
     Args:
         session: Async database session.
         job_id: The job_id from the MCP tool call.
+        tenant_key: Tenant isolation key.
     """
     now = datetime.now(timezone.utc)
     threshold = now - timedelta(seconds=DEBOUNCE_SECONDS)
 
     # Single UPDATE with WHERE clause for debounce -- no SELECT needed.
     # Only writes if last_activity_at is NULL or older than threshold.
-    result = await session.execute(
-        update(AgentExecution)
-        .where(
-            and_(
-                AgentExecution.job_id == job_id,
-                AgentExecution.status.notin_(["complete", "closed", "decommissioned"]),
-                ((AgentExecution.last_activity_at.is_(None)) | (AgentExecution.last_activity_at < threshold)),
-            )
-        )
-        .values(last_activity_at=now)
-    )
+    conditions = [
+        AgentExecution.job_id == job_id,
+        AgentExecution.status.notin_(["complete", "closed", "decommissioned"]),
+        ((AgentExecution.last_activity_at.is_(None)) | (AgentExecution.last_activity_at < threshold)),
+    ]
+    if tenant_key:
+        conditions.append(AgentExecution.tenant_key == tenant_key)
+
+    result = await session.execute(update(AgentExecution).where(and_(*conditions)).values(last_activity_at=now))
     if result.rowcount:
         await session.flush()
         logger.debug("Heartbeat updated for job_id=%s", job_id)

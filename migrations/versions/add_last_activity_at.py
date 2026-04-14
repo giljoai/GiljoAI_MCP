@@ -22,14 +22,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "ALTER TABLE agent_executions "
-        "ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ"
-    )
+    op.execute("ALTER TABLE agent_executions ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ")
 
 
 def downgrade() -> None:
-    op.execute(
-        "ALTER TABLE agent_executions "
-        "DROP COLUMN IF EXISTS last_activity_at"
-    )
+    op.execute("ALTER TABLE agent_executions DROP COLUMN IF EXISTS last_activity_at")

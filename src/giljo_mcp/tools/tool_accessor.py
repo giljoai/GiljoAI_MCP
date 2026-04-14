@@ -221,6 +221,7 @@ class ToolAccessor:
         tenant_key: str | None = None,
         project_type: str | None = None,
         series_number: int | None = None,
+        subseries: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a new project bound to the active product.
@@ -290,6 +291,7 @@ class ToolAccessor:
             status="inactive",
             project_type_id=project_type_id,
             series_number=series_number,
+            subseries=subseries,
         )
 
         logger.info(
@@ -421,8 +423,11 @@ class ToolAccessor:
         description: str | None = None,
         status: str | None = None,
         tenant_key: str | None = None,
+        project_type: str | None = None,
+        series_number: int | None = None,
+        subseries: str | None = None,
     ) -> dict[str, Any]:
-        """Update project metadata fields (name, description, status).
+        """Update project metadata fields (name, description, status, taxonomy).
 
         Args:
             project_id: Project UUID (required).
@@ -430,6 +435,9 @@ class ToolAccessor:
             description: New description (max 5000 chars, optional).
             status: New status — "inactive", "active", or "completed" (optional).
             tenant_key: Tenant isolation key (injected by MCP security layer).
+            project_type: Taxonomy type label (resolved to ID internally, optional).
+            series_number: Sequential number within type series (1-9999, optional).
+            subseries: Single-letter suffix a-z (optional).
 
         Returns:
             Dict with success flag and updated project summary.
@@ -447,9 +455,9 @@ class ToolAccessor:
         project_id = project_id.strip()
 
         # Validate at least one field is provided
-        if name is None and description is None and status is None:
+        if all(v is None for v in (name, description, status, project_type, series_number, subseries)):
             raise ValidationError(
-                "At least one field (name, description, status) must be provided.",
+                "At least one field must be provided.",
                 context={"operation": "update_project_metadata"},
             )
 
@@ -510,6 +518,29 @@ class ToolAccessor:
                 },
             )
 
+        # Resolve taxonomy type label to ID if provided
+        if project_type is not None:
+            resolved_type = await self._project_service.get_project_type_by_label(project_type, effective_tenant_key)
+            if resolved_type:
+                project_type = resolved_type.id
+            else:
+                raise ValidationError(
+                    f"Unknown project type '{project_type}'. Use discovery(category='project_types') to see valid types.",
+                    context={"operation": "update_project_metadata"},
+                )
+
+        # Validate taxonomy fields
+        if series_number is not None and (series_number < 1 or series_number > 9999):
+            raise ValidationError(
+                f"series_number must be 1-9999, got {series_number}.",
+                context={"operation": "update_project_metadata"},
+            )
+        if subseries is not None and (len(subseries) != 1 or not subseries.isalpha() or not subseries.islower()):
+            raise ValidationError(
+                f"subseries must be a single lowercase letter (a-z), got '{subseries}'.",
+                context={"operation": "update_project_metadata"},
+            )
+
         # Build updates dict — only include provided fields
         updates: dict[str, Any] = {}
         if name is not None:
@@ -518,6 +549,12 @@ class ToolAccessor:
             updates["description"] = description
         if status is not None:
             updates["status"] = status
+        if project_type is not None:
+            updates["project_type_id"] = project_type
+        if series_number is not None:
+            updates["series_number"] = series_number
+        if subseries is not None:
+            updates["subseries"] = subseries
 
         # Delegate to service (single write path)
         updated = await self._project_service.update_project(

@@ -106,6 +106,7 @@
           :items-per-page="itemsPerPage"
           :page="currentPage"
           :sort-by="sortBy"
+          :custom-key-sort="customKeySort"
           class="elevation-0"
           item-key="id"
           fixed-header
@@ -467,8 +468,31 @@ const {
 // Default sort: serial number ascending
 const sortBy = ref([{ key: 'series_number', order: 'asc' }])
 
-// Items for the table — filteredProjects already has series_number as integer
-const tableItems = computed(() => filteredProjects.value)
+// Custom sort for completed_at — uses completed_at or updated_at (matching display),
+// pushes nulls to the end regardless of sort direction
+const customKeySort = {
+  completed_at: (a, b) => {
+    const aVal = a || null
+    const bVal = b || null
+    if (!aVal && !bVal) return 0
+    if (!aVal) return 1
+    if (!bVal) return -1
+    return new Date(aVal) - new Date(bVal)
+  },
+}
+
+// Items for the table — filteredProjects already has series_number as integer.
+// Normalize completed_at: for completed/cancelled/terminated projects without a
+// completed_at timestamp, fall back to updated_at so sorting matches what's displayed.
+const tableItems = computed(() =>
+  filteredProjects.value.map((p) => {
+    const isTerminal = ['completed', 'cancelled', 'terminated'].includes(p.status)
+    if (isTerminal && !p.completed_at && p.updated_at) {
+      return { ...p, completed_at: p.updated_at }
+    }
+    return p
+  }),
+)
 
 // 0873: v-select items for filter bar dropdowns
 const statusSelectOptions = ['active', 'inactive', 'completed', 'cancelled', 'terminated', 'hidden']
@@ -480,19 +504,7 @@ const headers = [
   { title: 'Status', key: 'status', sortable: true, width: '13%', align: 'center' },
   { title: 'Staged', key: 'staging_status', sortable: true, width: '9%', align: 'center' },
   { title: 'Created', key: 'created_at', sortable: true, width: '13%' },
-  {
-    title: 'Completed',
-    key: 'completed_at',
-    sortable: true,
-    width: '13%',
-    align: 'center',
-    sort: (a, b) => {
-      if (!a && !b) return 0
-      if (!a) return 1
-      if (!b) return -1
-      return new Date(a) - new Date(b)
-    },
-  },
+  { title: 'Completed', key: 'completed_at', sortable: true, width: '13%', align: 'center' },
   { title: 'Actions', key: 'quick_action', sortable: false, width: '5%', align: 'center' },
   { title: '', key: 'menu', sortable: false, width: '3%', align: 'center' },
 ]
