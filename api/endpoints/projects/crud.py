@@ -106,6 +106,7 @@ async def create_project(
         series_number=created_project.series_number,
         subseries=created_project.subseries,
         taxonomy_alias=created_project.taxonomy_alias,
+        hidden=getattr(created_project, "hidden", False),
     )
 
 
@@ -157,6 +158,7 @@ async def list_projects(
             series_number=proj.series_number,
             subseries=proj.subseries,
             taxonomy_alias=proj.taxonomy_alias,
+            hidden=getattr(proj, "hidden", False),
         )
         for proj in projects
     ]
@@ -216,6 +218,7 @@ async def get_deleted_projects(
             series_number=proj.series_number,
             subseries=proj.subseries,
             taxonomy_alias=proj.taxonomy_alias,
+            hidden=getattr(proj, "hidden", False),
         )
         for proj in projects
     ]
@@ -275,6 +278,7 @@ async def get_active_project(
         series_number=proj.series_number,
         subseries=proj.subseries,
         taxonomy_alias=proj.taxonomy_alias,
+        hidden=getattr(proj, "hidden", False),
     )
 
 
@@ -420,6 +424,7 @@ async def get_project(
         series_number=proj.series_number,
         subseries=proj.subseries,
         taxonomy_alias=proj.taxonomy_alias,
+        hidden=getattr(proj, "hidden", False),
     )
 
 
@@ -531,4 +536,5 @@ async def update_project(
         series_number=proj_series,
         subseries=proj_subseries,
         taxonomy_alias=proj_tax_alias,
+        hidden=proj.hidden if hasattr(proj, "hidden") else False,
     )
