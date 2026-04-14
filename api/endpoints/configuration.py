@@ -607,7 +607,7 @@ async def get_frontend_configuration(request: Request):
         HTTPS (mkcert). Bind address derived from install-time network choice.
         The frontend connects via the configured external_host (set during installation).
     """
-    from api.app import state
+    from api.app import GILJO_MODE, state
 
     if not state.config:
         raise HTTPException(status_code=503, detail="Configuration manager not available")
@@ -648,6 +648,7 @@ async def get_frontend_configuration(request: Request):
             "default_tenant_key": default_tenant_key,
         },
         "edition": state.config.get_nested("edition", "community"),
+        "giljo_mode": GILJO_MODE,
     }
 
 

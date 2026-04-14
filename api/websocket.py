@@ -482,6 +482,7 @@ class WebSocketManager:
                 "project_id": project_id,
                 "update_type": update_type,
                 "name": project_data.get("name"),
+                "description": project_data.get("description"),
                 "status": project_data.get("status"),
                 "mission": project_data.get("mission"),
             },

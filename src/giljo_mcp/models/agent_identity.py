@@ -233,6 +233,11 @@ class AgentExecution(Base):
         nullable=True,
         comment="Timestamp when agent first fetched mission",
     )
+    last_activity_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp of last authenticated MCP call (heartbeat, 30s debounce)",
+    )
 
     # Tool assignment
     tool_type = Column(

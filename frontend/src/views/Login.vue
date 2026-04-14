@@ -16,7 +16,7 @@
               />
               <h1 class="text-h5 font-weight-bold">GiljoAI MCP Login</h1>
               <span class="edition-badge mt-2 text-caption">
-                Community Edition
+                {{ editionLabel }}
               </span>
             </div>
           </v-card-title>
@@ -130,6 +130,12 @@
                 </v-btn>
               </div>
 
+              <!-- Register link (SaaS/demo only) -->
+              <div v-if="giljoMode !== 'ce'" class="text-center mt-3">
+                <span class="text-caption text-muted-a11y">Don't have an account?</span>
+                <router-link to="/register" class="text-caption font-weight-bold ml-1">Register</router-link>
+              </div>
+
               <!-- Forgot Password Link -->
               <div class="text-center mt-4">
                 <v-btn
@@ -172,18 +178,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import ForgotPasswordPin from '@/components/ForgotPasswordPin.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
 import { getRuntimeConfig } from '@/config/api'
+import configService from '@/services/configService'
 
 // Composables
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+
+// Edition mode
+const giljoMode = ref('ce')
+const editionLabel = computed(() => {
+  switch (giljoMode.value) {
+    case 'demo': return 'Demo Edition'
+    case 'saas': return 'SaaS Edition'
+    default: return 'Community Edition'
+  }
+})
 
 // Hostname mismatch detection (populated after runtime config loads)
 const hostnameMismatch = ref(false)
@@ -197,6 +214,7 @@ const password = ref('')
 const rememberMe = ref(false)
 const showPassword = ref(false)
 const showForgotPassword = ref(false)
+const showForgotPasswordEmail = ref(false) // SAAS-006: will wire to email-based forgot-password dialog
 const loading = ref(false)
 const error = ref('')
 const successMessage = ref('')
@@ -318,9 +336,13 @@ async function handleLogin() {
   }
 }
 
-// Handle forgot password click
+// Handle forgot password click -- CE uses PIN-based dialog, SaaS/demo uses email-based
 function handleForgotPasswordClick() {
-  showForgotPassword.value = true
+  if (giljoMode.value === 'ce') {
+    showForgotPassword.value = true
+  } else {
+    showForgotPasswordEmail.value = true
+  }
 }
 
 // Handle password reset success
@@ -356,6 +378,14 @@ onMounted(async () => {
     const interval = setInterval(() => {
       if (checkMismatch() || ++attempts > 10) clearInterval(interval)
     }, 500)
+  }
+
+  // Load giljo_mode from config
+  try {
+    await configService.fetchConfig()
+    giljoMode.value = configService.getGiljoMode()
+  } catch {
+    // Default to CE on config failure
   }
 
   // Check for password change success message

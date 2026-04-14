@@ -181,6 +181,14 @@ class ConfigService {
   }
 
   /**
+   * Get GILJO_MODE (ce, demo, saas)
+   * @returns {string} Mode identifier
+   */
+  getGiljoMode() {
+    return this.config?.giljo_mode || 'ce'
+  }
+
+  /**
    * Check if config was fetched successfully or is using fallback
    * @returns {boolean} True if using fallback config
    */

@@ -756,6 +756,20 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  align-items: stretch;
+}
+
+/* WI-3: Both bottom-grid panels share the same height; content scrolls if needed */
+.bottom-grid > .panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 440px;
+}
+
+.bottom-grid > .panel > .panel-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 /* ═══ COMMIT ROWS ═══ */

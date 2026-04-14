@@ -99,9 +99,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { useProjectStore } from '@/stores/projects'
 import { api } from '@/services/api'
 import ProjectTabs from '@/components/projects/ProjectTabs.vue'
 
@@ -113,6 +114,22 @@ const loading = ref(true)
 const error = ref(null)
 
 const { showToast } = useToast()
+const projectStore = useProjectStore()
+
+// WI-5 Gap 4: Watch the store's project entry for WebSocket-driven updates
+// and patch the local ref so the view reacts without a full API refetch.
+watch(
+  () => projectStore.projectById(projectId.value),
+  (storeProject) => {
+    if (!storeProject || !project.value) return
+    // Patch only the fields that the store's handleRealtimeUpdate updates
+    if (storeProject.name) project.value.name = storeProject.name
+    if (storeProject.description !== undefined) project.value.description = storeProject.description
+    if (storeProject.status) project.value.status = storeProject.status
+    if (storeProject.mission !== undefined) project.value.mission = storeProject.mission
+  },
+  { deep: true },
+)
 
 // Edit dialog state
 const showEditDialog = ref(false)

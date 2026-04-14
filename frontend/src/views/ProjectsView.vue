@@ -551,15 +551,25 @@ async function activateAndLaunch(projectId) {
   router.push({ name: 'ProjectLaunch', params: { projectId }, query: { via: 'jobs', ...(staged ? { tab: 'jobs' } : {}) } })
 }
 
-// Handle row click — completed projects open review summary, others open edit modal
+// Handle row click — route based on project status and staging state
 function handleRowClick(event, row) {
   const item = row?.item
   if (!item?.id) return
   const status = normalizeStatus(item.status)
-  if (status === 'completed') {
+
+  if (status === 'completed' || status === 'cancelled' || status === 'terminated') {
     reviewProjectId.value = item.id
     reviewProductId.value = item.product_id
     showReviewModal.value = true
+  } else if (status === 'active') {
+    // WI-4: Active projects navigate to staging or implement page
+    if (isProjectStaged(item)) {
+      // Staged (has agents) — go to jobs/implement view
+      router.push({ name: 'ProjectLaunch', params: { projectId: item.id }, query: { tab: 'jobs' } })
+    } else {
+      // Not yet staged — go to staging page
+      router.push({ name: 'ProjectLaunch', params: { projectId: item.id } })
+    }
   } else {
     editProject(item)
   }

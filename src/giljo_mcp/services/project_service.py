@@ -89,6 +89,7 @@ def _build_ws_project_data(project) -> dict:
     """
     return {
         "name": project.name,
+        "description": project.description,
         "status": project.status,
         "mission": project.mission,
     }
@@ -859,7 +860,10 @@ class ProjectService:
         )
 
     async def update_project(
-        self, project_id: str, updates: dict[str, Any], websocket_manager: Any | None = None
+        self,
+        project_id: str,
+        updates: dict[str, Any],
+        websocket_manager: Any | None = None,
     ) -> ProjectData:
         """
         Update project fields.
@@ -870,7 +874,7 @@ class ProjectService:
         Args:
             project_id: Project UUID
             updates: Dict of field updates (allowed: name, description, mission, config_data)
-            websocket_manager: Optional WebSocket manager for real-time updates
+            websocket_manager: Deprecated -- ignored. Uses self._websocket_manager instead.
 
         Returns:
             Updated project data dictionary
@@ -915,10 +919,11 @@ class ProjectService:
 
             self._logger.info(f"Updated project {project_id}")
 
-            # Broadcast WebSocket event
-            if websocket_manager:
+            # Broadcast WebSocket event (use constructor-injected manager, not method param)
+            ws = self._websocket_manager
+            if ws:
                 try:
-                    await websocket_manager.broadcast_project_update(
+                    await ws.broadcast_project_update(
                         project_id=project.id,
                         update_type="updated",
                         project_data=_build_ws_project_data(project),

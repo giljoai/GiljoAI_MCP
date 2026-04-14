@@ -310,7 +310,7 @@ export const useProjectStore = defineStore('projects', () => {
 
   // Handle real-time updates from WebSocket
   function handleRealtimeUpdate(data) {
-    const { project_id, update_type, name, status, mission } = data
+    const { project_id, update_type, name, status, mission, description } = data
 
     // Find project by ID
     const projectIndex = projects.value.findIndex((p) => p.id === project_id)
@@ -331,6 +331,12 @@ export const useProjectStore = defineStore('projects', () => {
 
       if (update_type === 'closed') {
         project.status = 'closed'
+      } else if (update_type === 'updated') {
+        // Patch fields from a general project update
+        if (name) project.name = name
+        if (description !== undefined) project.description = description
+        if (status) project.status = status
+        if (mission !== undefined) project.mission = mission
       } else if (
         update_type === 'status_changed' ||
         update_type === 'activated' ||
@@ -346,12 +352,14 @@ export const useProjectStore = defineStore('projects', () => {
         }
       }
 
-      // Update other fields if provided
-      if (name) {
-        project.name = name
-      }
-      if (mission) {
-        project.mission = mission
+      // Update other fields if provided (for non-'updated' branches)
+      if (update_type !== 'updated') {
+        if (name) {
+          project.name = name
+        }
+        if (mission) {
+          project.mission = mission
+        }
       }
 
       project.updated_at = new Date().toISOString()

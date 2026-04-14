@@ -122,6 +122,16 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
         except (OSError, RuntimeError, ValueError, TypeError, AttributeError, KeyError):
             logger.warning("auto_clear_silent failed for job_id=%s (non-blocking)", job_id)
 
+        # Server-side heartbeat: update last_activity_at with 30s debounce
+        try:
+            from api.app import state as app_state
+            from src.giljo_mcp.services.heartbeat import touch_heartbeat
+
+            async with app_state.db_manager.get_session_async() as db:
+                await touch_heartbeat(db, job_id)
+        except (OSError, RuntimeError, ValueError, TypeError, AttributeError, KeyError):
+            logger.debug("heartbeat update failed for job_id=%s (non-blocking)", job_id)
+
     return result
 
 

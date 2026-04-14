@@ -264,6 +264,10 @@ const router = createRouter({
   routes,
 })
 
+// SaaS routes are registered by frontend/src/saas/routes.js
+// which calls router.addRoute() after config loads.
+// CE router never imports from saas/ -- Deletion Test holds.
+
 // Navigation guard (Handover 0034 - simplified fresh install detection)
 router.beforeEach(async (to, from, next) => {
   // Set page title
