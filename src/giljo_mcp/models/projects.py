@@ -126,6 +126,15 @@ class Project(Base):
         comment="Single-letter subseries suffix (e.g., 'a' in BE-0001a)",
     )
 
+    # CE-OPT-4: UI visibility flag (hidden projects excluded from default list view)
+    hidden = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+        comment="Whether project is hidden from default list view",
+    )
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
