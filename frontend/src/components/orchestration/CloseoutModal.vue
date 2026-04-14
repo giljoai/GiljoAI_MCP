@@ -235,10 +235,14 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useDisplay } from 'vuetify'
+import { useRouter } from 'vue-router'
 import { useFormatDate } from '@/composables/useFormatDate'
+import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 
 const { formatDateTime } = useFormatDate()
+const router = useRouter()
+const { showToast } = useToast()
 
 const props = defineProps({
   show: {
@@ -351,6 +355,12 @@ const handleCloseOutProject = async () => {
 
     emit('closeout', response.data)
     emit('close')
+
+    // WI-2: Show success toast centered at top, hold 2 seconds, then navigate to /projects
+    showToast({ message: 'Project closed out successfully', type: 'success' })
+    setTimeout(() => {
+      router.push('/projects')
+    }, 2000)
   } catch (err) {
     console.error('[CloseoutModal] Failed to close out project:', err)
     error.value = err.response?.data?.message || err.message || 'Failed to close out project'
