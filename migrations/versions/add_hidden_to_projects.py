@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "add_hidden_to_projects"
-down_revision = "rename_type_only"
+down_revision = "add_last_activity_at"
 branch_labels = None
 depends_on = None
 
