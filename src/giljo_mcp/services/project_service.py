@@ -623,6 +623,7 @@ class ProjectService:
                         series_number=project.series_number,
                         subseries=project.subseries,
                         taxonomy_alias=project.taxonomy_alias,
+                        hidden=project.hidden is True,
                     )
                     for project in projects
                 ]
