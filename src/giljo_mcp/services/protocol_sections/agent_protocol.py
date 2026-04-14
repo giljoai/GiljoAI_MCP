@@ -118,6 +118,10 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 **Backend automatically calculates percent and step counts from your list.**
 Status values: "pending", "in_progress", "completed"
 
+**WARNING: todo_items is a FULL REPLACEMENT.** Always include ALL prior items with their
+current statuses. Omitting completed items will be REJECTED by the server (regression guard).
+Use todo_append to add genuinely new items discovered mid-work.
+
 ### CRITICAL: Sync TodoWrite with MCP Progress (Handover 0392)
 
 Every time you update TodoWrite status (mark item complete or in_progress),

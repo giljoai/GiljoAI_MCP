@@ -80,8 +80,8 @@ async def create_type(
 
     try:
         pt = await create_project_type(session, tenant_key, data)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from None
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Project type already exists.") from None
 
     return ProjectTypeResponse(
         id=str(pt.id),
@@ -108,8 +108,8 @@ async def update_type(
 
     try:
         pt = await update_project_type(session, tenant_key, type_id, data)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from None
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project type not found.") from None
 
     project_count_result = await session.execute(
         select(func.count(Project.id)).where(
