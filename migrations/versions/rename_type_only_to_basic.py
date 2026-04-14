@@ -22,20 +22,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "UPDATE users SET depth_agent_templates = 'basic' "
-        "WHERE depth_agent_templates = 'type_only'"
-    )
-    op.execute(
-        "ALTER TABLE users ALTER COLUMN depth_agent_templates SET DEFAULT 'basic'"
-    )
+    op.execute("UPDATE users SET depth_agent_templates = 'basic' WHERE depth_agent_templates = 'type_only'")
+    op.execute("ALTER TABLE users ALTER COLUMN depth_agent_templates SET DEFAULT 'basic'")
 
 
 def downgrade() -> None:
-    op.execute(
-        "UPDATE users SET depth_agent_templates = 'type_only' "
-        "WHERE depth_agent_templates = 'basic'"
-    )
-    op.execute(
-        "ALTER TABLE users ALTER COLUMN depth_agent_templates SET DEFAULT 'type_only'"
-    )
+    op.execute("UPDATE users SET depth_agent_templates = 'type_only' WHERE depth_agent_templates = 'basic'")
+    op.execute("ALTER TABLE users ALTER COLUMN depth_agent_templates SET DEFAULT 'type_only'")

@@ -34,7 +34,8 @@ export function useProjectCloseout({ project, projectId, sortedJobs, onComplete 
     if (['completed', 'terminated', 'cancelled'].includes(project.value?.status)) return false
     const jobs = sortedJobs.value || []
     if (!jobs.length) return false
-    const isTerminal = (status) => status === 'complete' || status === 'completed' || status === 'decommissioned'
+    const isTerminal = (status) =>
+      status === 'complete' || status === 'completed' || status === 'decommissioned' || status === 'closed'
     const allTerminal = jobs.every((job) => isTerminal(job.status))
     if (!allTerminal) return false
     const orchestrator = jobs.find((job) => job.agent_display_name === 'orchestrator')
