@@ -1,0 +1,199 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
+"""
+Version checking service.
+
+Reads the installed version from the VERSION file and fetches the latest
+release metadata from the GitHub API. Results are cached for 1 hour to
+respect rate limits (60 req/hr unauthenticated).
+"""
+
+import logging
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
+
+import httpx
+
+
+logger = logging.getLogger(__name__)
+
+GITHUB_RELEASES_URL = "https://api.github.com/repos/giljoai/GiljoAI_MCP/releases/latest"
+CACHE_TTL_SECONDS = 3600  # 1 hour
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+
+
+@dataclass
+class VersionInfo:
+    """Structured version check result."""
+
+    installed_version: str
+    latest_version: Optional[str] = None
+    latest_tarball_url: Optional[str] = None
+    latest_sha256: Optional[str] = None
+    update_available: bool = False
+    checked_at: Optional[str] = None
+
+
+@dataclass
+class _CacheEntry:
+    """Internal cache entry with timestamp."""
+
+    data: VersionInfo
+    fetched_at: float = field(default_factory=time.monotonic)
+
+
+_cache_store: dict[str, _CacheEntry] = {}
+
+
+def get_installed_version(root: Optional[Path] = None) -> str:
+    """Read installed version from the VERSION file.
+
+    Returns 'unknown' if the file is missing or unreadable.
+    """
+    version_path = (root or PROJECT_ROOT) / "VERSION"
+    try:
+        return version_path.read_text(encoding="utf-8").strip()
+    except (FileNotFoundError, OSError):
+        logger.warning("VERSION file not found at %s", version_path)
+        return "unknown"
+
+
+def _parse_version_tuple(version_str: str) -> Optional[tuple[int, ...]]:
+    """Parse a semver-like string into a comparable tuple.
+
+    Returns None if the string cannot be parsed.
+    """
+    try:
+        return tuple(int(p) for p in version_str.split("."))
+    except (ValueError, AttributeError):
+        return None
+
+
+def compare_versions(installed: str, latest: str) -> bool:
+    """Return True if latest is newer than installed."""
+    inst = _parse_version_tuple(installed)
+    lat = _parse_version_tuple(latest)
+    if inst is None or lat is None:
+        return False
+    return lat > inst
+
+
+async def _fetch_latest_from_github(
+    client: Optional[httpx.AsyncClient] = None,
+) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """Fetch latest release info from GitHub API.
+
+    Returns (version, tarball_url, sha256) or (None, None, None) on failure.
+    """
+    own_client = client is None
+    if own_client:
+        client = httpx.AsyncClient(timeout=10.0)
+    try:
+        resp = await client.get(
+            GITHUB_RELEASES_URL,
+            headers={"Accept": "application/vnd.github+json"},
+        )
+        if resp.status_code == 404:
+            logger.info("No releases found on GitHub (404)")
+            return None, None, None
+        if resp.status_code == 403:
+            logger.warning("GitHub API rate limit likely exceeded (403)")
+            return None, None, None
+        resp.raise_for_status()
+        data = resp.json()
+
+        tag = data.get("tag_name", "")
+        version = tag.lstrip("v") if tag else None
+
+        tarball_url = None
+        sha256 = None
+
+        assets = data.get("assets", [])
+        manifest_asset = None
+        for asset in assets:
+            name = asset.get("name", "")
+            if name.endswith(".tar.gz"):
+                tarball_url = asset.get("browser_download_url")
+            if name == "version-manifest.json":
+                manifest_asset = asset
+
+        if manifest_asset:
+            manifest_url = manifest_asset.get("browser_download_url")
+            if manifest_url:
+                try:
+                    manifest_resp = await client.get(manifest_url)
+                    manifest_resp.raise_for_status()
+                    manifest_data = manifest_resp.json()
+                    if manifest_data.get("tarball_url"):
+                        tarball_url = manifest_data["tarball_url"]
+                    if manifest_data.get("sha256"):
+                        sha256 = manifest_data["sha256"]
+                except (httpx.HTTPError, ValueError, KeyError) as exc:
+                    logger.warning("Failed to parse version-manifest.json: %s", exc)
+
+        return version, tarball_url, sha256
+
+    except httpx.HTTPError as exc:
+        logger.warning("GitHub API request failed: %s", exc)
+        return None, None, None
+    finally:
+        if own_client:
+            await client.aclose()
+
+
+async def get_version_info(
+    root: Optional[Path] = None,
+    client: Optional[httpx.AsyncClient] = None,
+    _now: Optional[float] = None,
+) -> VersionInfo:
+    """Return installed + latest version info, with 1-hour caching.
+
+    Args:
+        root: Override project root for VERSION file lookup.
+        client: Optional httpx.AsyncClient (for testing).
+        _now: Override monotonic time (for testing cache expiry).
+    """
+    installed = get_installed_version(root)
+    now = _now if _now is not None else time.monotonic()
+
+    entry = _cache_store.get("latest")
+    if entry is not None and (now - entry.fetched_at) < CACHE_TTL_SECONDS:
+        cached = entry.data
+        return VersionInfo(
+            installed_version=installed,
+            latest_version=cached.latest_version,
+            latest_tarball_url=cached.latest_tarball_url,
+            latest_sha256=cached.latest_sha256,
+            update_available=compare_versions(installed, cached.latest_version) if cached.latest_version else False,
+            checked_at=cached.checked_at,
+        )
+
+    version, tarball_url, sha256 = await _fetch_latest_from_github(client)
+
+    from datetime import datetime, timezone
+
+    checked_at = datetime.now(timezone.utc).isoformat()
+
+    update_available = compare_versions(installed, version) if version else False
+
+    info = VersionInfo(
+        installed_version=installed,
+        latest_version=version,
+        latest_tarball_url=tarball_url,
+        latest_sha256=sha256,
+        update_available=update_available,
+        checked_at=checked_at,
+    )
+
+    _cache_store["latest"] = _CacheEntry(data=info, fetched_at=now)
+    return info
+
+
+def clear_cache() -> None:
+    """Clear the version cache (for testing)."""
+    _cache_store.clear()
