@@ -110,6 +110,11 @@ def _build_orchestrator_protocol_body(
 
 ### PHASE 1 — STARTUP (execute once, after get_agent_mission)
 
+**MANDATORY:** You MUST call `get_agent_mission(job_id="{job_id}")` at the start of every
+implementation session, even if you already have context from a prior phase. This call
+transitions your status from `waiting` to `working` on the server — it is a deterministic
+state signal, not just a data fetch. Skipping it leaves you invisible on the dashboard.
+
 1. Read the `current_team_state` field from this response — it is live-queried, not stale.
 2. Read your pre-planned coordination TODOs (written during staging, waiting for you).
    **DO NOT drop any items.** To update statuses, use `todo_items` with the FULL list (all items, updated statuses).
