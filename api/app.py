@@ -104,6 +104,7 @@ try:
         templates,
         user_settings,
         users,
+        version,
         vision_documents,
     )
     from .endpoints.organizations import crud as org_crud
@@ -479,6 +480,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(serena.router, prefix="/api/serena", tags=["serena"])
     app.include_router(git.router, prefix="/api/git", tags=["git"])
     app.include_router(network.router, prefix="/api/network", tags=["network"])
+    app.include_router(version.router, prefix="/api/version", tags=["version"])
 
     # MCP Installer endpoints for downloadable script generation (Phase 2.1)
     app.include_router(mcp_installer.router, prefix="/api/mcp-installer", tags=["MCP Integration"])
