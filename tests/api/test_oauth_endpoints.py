@@ -143,7 +143,12 @@ class TestOAuthTokenEndpoint:
             },
         )
         assert response.status_code == 400
-        assert "pkce" in response.json()["message"].lower()
+        body = response.json()
+        # Security hardening: error detail must NOT reveal PKCE specifics
+        assert "detail" in body or "message" in body
+        detail_text = body.get("detail", body.get("message", "")).lower()
+        assert "pkce" not in detail_text, "Error should not leak PKCE details"
+        assert "verifier" not in detail_text, "Error should not leak verifier details"
 
     @pytest.mark.asyncio
     async def test_token_endpoint_returns_jwt(self, api_client, db_manager):

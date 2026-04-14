@@ -19,6 +19,7 @@ Target chunk size: 24000 tokens (VISION_DELIVERY_BUDGET) with semantic boundarie
 """
 
 import logging
+from pathlib import Path
 from typing import Any
 
 import tiktoken
@@ -279,8 +280,6 @@ class VisionDocumentChunker:
                 "error": str (if failed)
             }
         """
-        from pathlib import Path
-
         # Import repositories
         try:
             from giljo_mcp.models import MCPContextIndex
@@ -304,17 +303,23 @@ class VisionDocumentChunker:
         content = ""
         try:
             if doc.storage_type in ("file", "hybrid") and doc.vision_path:
-                # IMPORTANT: Normalize path to handle legacy backslash paths
-                # (prevents escape sequence bugs like \v being interpreted as vertical tab)
+                # Normalize path to handle legacy backslash paths then resolve to prevent traversal
                 normalized_path = doc.vision_path.replace("\\", "/")
-                file_path = Path(normalized_path)
+                resolved_path = Path(normalized_path).resolve()
 
-                if file_path.exists():
-                    content += file_path.read_text(encoding="utf-8")
+                # Containment check: vision files must reside under the products directory
+                # (matches upload path in api/endpoints/vision_documents.py)
+                allowed_base = Path("./products").resolve()
+                if not resolved_path.is_relative_to(allowed_base):
+                    error_msg = f"Path traversal blocked for document {vision_document_id}"
+                    logger.error(error_msg)
+                    raise ContextError(error_msg)
+
+                if resolved_path.exists():
+                    content += resolved_path.read_text(encoding="utf-8")
                 else:
                     logger.warning(f"File path {normalized_path} does not exist for document {vision_document_id}")
                     if doc.storage_type == "file":
-                        # For file-only storage, this is an error
                         raise GiljoFileNotFoundError(f"File not found: {normalized_path}")
 
             if doc.storage_type in ("inline", "hybrid") and doc.vision_document:
