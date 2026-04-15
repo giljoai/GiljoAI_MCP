@@ -165,18 +165,23 @@ exit_with_error() {
 }
 
 HAS_TTY=false
+TTY_FD=""
 if [[ -t 0 ]]; then
     HAS_TTY=true
-elif [[ -r /dev/tty ]] && echo -n '' < /dev/tty 2>/dev/null; then
-    HAS_TTY=true
+elif [[ -c /dev/tty ]]; then
+    # Try to open /dev/tty on fd 3 for interactive reads
+    if exec 3</dev/tty 2>/dev/null; then
+        HAS_TTY=true
+        TTY_FD=3
+    fi
 fi
 
 read_input() {
     if [[ "$HAS_TTY" == true ]]; then
         if [[ -t 0 ]]; then
             read -r "$@"
-        else
-            read -r "$@" < /dev/tty
+        elif [[ -n "$TTY_FD" ]]; then
+            read -r "$@" <&${TTY_FD}
         fi
         return 0
     fi
@@ -718,10 +723,10 @@ run_install_py() {
     print_step "Running install.py for database setup, config generation, and template seeding..."
     echo ""
 
-    # Redirect /dev/tty into install.py so interactive prompts work
+    # Redirect TTY into install.py so interactive prompts work
     # even when the bash script itself was piped via curl | bash
-    if [[ "$HAS_TTY" == true ]] && ! [[ -t 0 ]]; then
-        (cd "$target_dir" && "$venv_python" "$install_py" --setup-only < /dev/tty) || \
+    if [[ -n "$TTY_FD" ]]; then
+        (cd "$target_dir" && "$venv_python" "$install_py" --setup-only <&${TTY_FD}) || \
             exit_with_error "install.py failed. Check the output above for details."
     else
         (cd "$target_dir" && "$venv_python" "$install_py" --setup-only) || \
