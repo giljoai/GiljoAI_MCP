@@ -758,7 +758,7 @@ After=network.target postgresql.service
 Type=simple
 User=${current_user}
 WorkingDirectory=${target_dir}
-ExecStart=${target_dir}/venv/bin/python -m api.run_api
+ExecStart=${target_dir}/venv/bin/python ${target_dir}/startup.py
 Restart=on-failure
 RestartSec=5
 Environment=PATH=${target_dir}/venv/bin:/usr/local/bin:/usr/bin
@@ -796,8 +796,7 @@ setup_launchd_agent() {
     <key>ProgramArguments</key>
     <array>
         <string>${target_dir}/venv/bin/python</string>
-        <string>-m</string>
-        <string>api.run_api</string>
+        <string>${target_dir}/startup.py</string>
     </array>
     <key>WorkingDirectory</key>
     <string>${target_dir}</string>
@@ -836,49 +835,7 @@ setup_launchd_agent() {
 first_run() {
     local target_dir="$1"
     local version="$2"
-    print_phase "6" "First run"
-
-    local venv_python="${target_dir}/venv/bin/python"
-    local server_ready=false
-
-    # Check if service is already running (started in phase 5)
-    if curl -sf "http://localhost:${SERVER_PORT}/api/health" &>/dev/null; then
-        print_ok "Server is already running on port ${SERVER_PORT}"
-    else
-        print_step "Starting GiljoAI MCP server..."
-        (cd "$target_dir" && "$venv_python" -m api.run_api &) 2>/dev/null
-
-        # Wait for server to start
-        print_step "Waiting for server to start..."
-        local waited=0
-        local max_wait=15
-        server_ready=false
-        while [[ $waited -lt $max_wait ]]; do
-            sleep 1
-            waited=$((waited + 1))
-            if curl -sf "http://localhost:${SERVER_PORT}/api/health" &>/dev/null; then
-                server_ready=true
-                break
-            fi
-        done
-
-        if [[ "$server_ready" == true ]]; then
-            print_ok "Server is running on port ${SERVER_PORT}"
-        else
-            print_warn "Server did not respond within ${max_wait} seconds."
-            print_warn "You can start it manually: cd $target_dir && venv/bin/python -m api.run_api"
-        fi
-    fi
-
-    # Open browser
-    if [[ "$server_ready" == true ]] || curl -sf "http://localhost:${SERVER_PORT}/api/health" &>/dev/null; then
-        print_step "Opening browser..."
-        local url="http://localhost:${SERVER_PORT}"
-        case "$OS_TYPE" in
-            linux)  xdg-open "$url" 2>/dev/null || true ;;
-            macos)  open "$url" 2>/dev/null || true ;;
-        esac
-    fi
+    print_phase "6" "Done"
 
     # Print completion summary
     echo ""
@@ -890,17 +847,11 @@ first_run() {
     echo -e "    ${CYAN}Location:   ${target_dir}${NC}"
     echo -e "    ${CYAN}URL:        http://localhost:${SERVER_PORT}${NC}"
     echo ""
-    echo -e "    ${MUTED}To start the server later:${NC}"
-    case "$OS_TYPE" in
-        linux)
-            echo -e "    ${MUTED}  sudo systemctl start giljoai-mcp${NC}"
-            echo -e "    ${MUTED}  -- or: cd $target_dir && venv/bin/python -m api.run_api${NC}"
-            ;;
-        macos)
-            echo -e "    ${MUTED}  launchctl load ~/Library/LaunchAgents/com.giljoai.mcp.plist${NC}"
-            echo -e "    ${MUTED}  -- or: cd $target_dir && venv/bin/python -m api.run_api${NC}"
-            ;;
-    esac
+    echo -e "    ${MUTED}Start the server:${NC}"
+    echo -e "    ${MUTED}  cd $target_dir && python startup.py${NC}"
+    echo ""
+    echo -e "    ${MUTED}Or via systemd:${NC}"
+    echo -e "    ${MUTED}  sudo systemctl start giljoai-mcp${NC}"
     echo ""
     echo -e "    ${MUTED}To update to a newer version:${NC}"
     echo -e "    ${MUTED}  curl -fsSL giljo.ai/install.sh | bash -s -- --update${NC}"
