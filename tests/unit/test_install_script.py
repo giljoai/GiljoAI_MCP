@@ -73,8 +73,8 @@ class TestInstallPs1Structure:
     def test_phase_5_shortcuts(self):
         assert "function Install-Shortcuts" in self.content
 
-    def test_phase_6_first_run(self):
-        assert "function Start-FirstRun" in self.content
+    def test_phase_6_completion(self):
+        assert "function Show-Completion" in self.content
 
     def test_main_wrapper_function(self):
         assert "function Invoke-GiljoInstaller" in self.content
