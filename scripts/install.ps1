@@ -688,7 +688,7 @@ function Start-FirstRun {
         Start-Sleep -Seconds 2
         $waited += 2
         try {
-            $response = Invoke-WebRequest -Uri "http://localhost:$($script:SERVER_PORT)/api/health" `
+            $response = Invoke-WebRequest -Uri "http://localhost:$($script:SERVER_PORT)/" `
                 -UseBasicParsing -TimeoutSec 3 -ErrorAction SilentlyContinue
             if ($response.StatusCode -eq 200) {
                 $serverReady = $true
