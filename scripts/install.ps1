@@ -557,12 +557,29 @@ function Initialize-Environment {
         Write-Step "Installing frontend dependencies..."
         Push-Location $frontendDir
         try {
-            & npm install --silent 2>&1 | Out-Null
+            & npm install --silent 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warn "npm install failed (exit code $LASTEXITCODE) — retrying without --silent..."
+                & npm install
+                if ($LASTEXITCODE -ne 0) { throw "npm install failed with exit code $LASTEXITCODE" }
+            }
             Write-Ok "Frontend dependencies installed"
 
             Write-Step "Building frontend (this may take a minute)..."
-            & npm run build 2>&1 | Out-Null
+            & npm run build 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warn "npm run build failed (exit code $LASTEXITCODE) — retrying with output..."
+                & npm run build
+                if ($LASTEXITCODE -ne 0) { throw "npm run build failed with exit code $LASTEXITCODE" }
+            }
             Write-Ok "Frontend built"
+
+            # Verify dist was created
+            if (-not (Test-Path (Join-Path $frontendDir "dist" "index.html"))) {
+                Write-Warn "Frontend build completed but dist/index.html not found — frontend may not load"
+            }
+        } catch {
+            Write-Warn "Frontend build failed: $_ — server will run without the dashboard UI"
         } finally {
             Pop-Location
         }
