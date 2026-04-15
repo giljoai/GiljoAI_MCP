@@ -317,10 +317,23 @@ function Test-Prerequisites {
         # Install PostgreSQL via winget
         Write-Step "Installing PostgreSQL 17 via winget..."
         try {
-            $overrideStr = "--superpassword `"$pgPw1`" --serverport 5432 --enable-components server,commandlinetools"
-            & winget install PostgreSQL.PostgreSQL.17 --silent --accept-source-agreements --accept-package-agreements --override $overrideStr
-            if ($LASTEXITCODE -ne 0) {
-                throw "winget exited with code $LASTEXITCODE"
+            # Build override as a single string for the EDB PostgreSQL installer.
+            # Winget's --override passes this verbatim to the installer executable.
+            $escapedPw = $pgPw1 -replace '"', '\"'
+            $pgArgs = @(
+                "install"
+                "PostgreSQL.PostgreSQL.17"
+                "--silent"
+                "--accept-source-agreements"
+                "--accept-package-agreements"
+                "--override"
+            )
+            # Use Start-Process with a single-line ArgumentList string so the
+            # override value (which contains spaces) stays as one token.
+            $argLine = ($pgArgs -join " ") + " `"--superpassword $escapedPw --serverport 5432 --enable-components server,commandlinetools`""
+            $pgProc = Start-Process -FilePath "winget" -ArgumentList $argLine -Wait -PassThru -NoNewWindow
+            if ($pgProc.ExitCode -ne 0) {
+                throw "winget exited with code $($pgProc.ExitCode)"
             }
             Write-Ok "PostgreSQL 17 installed"
         } catch {
