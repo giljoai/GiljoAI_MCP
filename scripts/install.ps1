@@ -551,8 +551,30 @@ function Initialize-Environment {
         Write-Warn "requirements.txt not found -- skipping pip install"
     }
 
-    # Frontend build is handled by startup.py on first run — skip here to avoid
-    # PowerShell irm|iex pipeline issues with npm command parsing.
+    # Build frontend — use Start-Process to avoid irm|iex pipeline mangling npm
+    $frontendDir = Join-Path $TargetDir "frontend"
+    if (Test-Path (Join-Path $frontendDir "package.json")) {
+        Write-Step "Installing frontend dependencies..."
+        $npmPath = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
+        if (-not $npmPath) { $npmPath = (Get-Command npm -ErrorAction SilentlyContinue).Source }
+        if ($npmPath) {
+            $proc1 = Start-Process -FilePath $npmPath -ArgumentList "install" -WorkingDirectory $frontendDir -Wait -PassThru -NoNewWindow
+            if ($proc1.ExitCode -eq 0) {
+                Write-Ok "Frontend dependencies installed"
+                Write-Step "Building frontend (this may take a minute)..."
+                $proc2 = Start-Process -FilePath $npmPath -ArgumentList "run build" -WorkingDirectory $frontendDir -Wait -PassThru -NoNewWindow
+                if ($proc2.ExitCode -eq 0 -and (Test-Path (Join-Path $frontendDir "dist" "index.html"))) {
+                    Write-Ok "Frontend built"
+                } else {
+                    Write-Warn "Frontend build failed — startup.py will retry on first run"
+                }
+            } else {
+                Write-Warn "npm install failed — startup.py will handle this on first run"
+            }
+        } else {
+            Write-Warn "npm not found — startup.py will handle frontend on first run"
+        }
+    }
 }
 
 # ---------------------------------------------------------------------------
