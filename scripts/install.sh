@@ -24,7 +24,7 @@ set -euo pipefail
 
 GITHUB_REPO="giljoai/GiljoAI_MCP"
 GITHUB_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
-DEFAULT_INSTALL_DIR="$HOME/giljoai-mcp"
+DEFAULT_INSTALL_DIR="$PWD"
 MIN_PYTHON_MAJOR=3
 MIN_PYTHON_MINOR=12
 MIN_NODE_MAJOR=20
