@@ -263,6 +263,8 @@ class UnifiedInstaller:
         result = {"success": False, "steps": []}
 
         try:
+            setup_only = self.settings.get("setup_only", False)
+
             # Step 1: Welcome screen
             self.welcome_screen()
             result["steps"].append("welcome_shown")
@@ -273,40 +275,41 @@ class UnifiedInstaller:
                 self.ask_installation_questions()
                 result["steps"].append("configuration_gathered")
 
-            # Step 2: Check Python version
-            self._print_header("Checking Python Version")
-            if not self.check_python_version():
-                self._print_error("Python version check failed")
-                result["error"] = "Python 3.10+ required"
-                return result
-            result["steps"].append("python_verified")
+            if not setup_only:
+                # Step 2: Check Python version
+                self._print_header("Checking Python Version")
+                if not self.check_python_version():
+                    self._print_error("Python version check failed")
+                    result["error"] = "Python 3.10+ required"
+                    return result
+                result["steps"].append("python_verified")
 
-            # Step 3: Discover PostgreSQL
-            self._print_header("Discovering PostgreSQL")
-            pg_result = self.discover_postgresql()
-            if not pg_result["found"]:
-                self._print_error("PostgreSQL not found")
-                self._print_postgresql_install_guide()
-                result["error"] = "PostgreSQL 18 required"
-                return result
-            result["steps"].append("postgresql_found")
+                # Step 3: Discover PostgreSQL
+                self._print_header("Discovering PostgreSQL")
+                pg_result = self.discover_postgresql()
+                if not pg_result["found"]:
+                    self._print_error("PostgreSQL not found")
+                    self._print_postgresql_install_guide()
+                    result["error"] = "PostgreSQL 18 required"
+                    return result
+                result["steps"].append("postgresql_found")
 
-            # Step 3.5: Discover Node.js (soft requirement for frontend)
-            self._print_header("Discovering Node.js")
-            node_result = self.discover_nodejs()
-            if node_result["found"]:
-                result["steps"].append("nodejs_found")
-            else:
-                self._print_warning("Continuing without Node.js - frontend will be unavailable")
+                # Step 3.5: Discover Node.js (soft requirement for frontend)
+                self._print_header("Discovering Node.js")
+                node_result = self.discover_nodejs()
+                if node_result["found"]:
+                    result["steps"].append("nodejs_found")
+                else:
+                    self._print_warning("Continuing without Node.js - frontend will be unavailable")
 
-            # Step 4: Install dependencies
-            self._print_header("Installing Dependencies")
-            dep_result = self.install_dependencies()
-            if not dep_result["success"]:
-                self._print_error("Dependency installation failed")
-                result["error"] = dep_result.get("error", "Unknown error")
-                return result
-            result["steps"].append("dependencies_installed")
+                # Step 4: Install dependencies
+                self._print_header("Installing Dependencies")
+                dep_result = self.install_dependencies()
+                if not dep_result["success"]:
+                    self._print_error("Dependency installation failed")
+                    result["error"] = dep_result.get("error", "Unknown error")
+                    return result
+                result["steps"].append("dependencies_installed")
 
             # Step 5: Generate configs (MUST happen before database setup!)
             # Table creation in step 6 needs .env file with DATABASE_URL
@@ -350,18 +353,19 @@ class UnifiedInstaller:
 
             # Demo data seeding happens inside setup_database() — no duplicate call here
 
-            # Step 7: Install frontend dependencies (NEW - using production-grade npm system)
-            self._print_header("Installing Frontend Dependencies")
-            frontend_result = self.install_frontend_dependencies()
-            if not frontend_result["success"] and not frontend_result.get("skipped", False):
-                self._print_error("Frontend dependency installation failed")
-                result["error"] = frontend_result.get("error", "Frontend dependencies failed")
-                return result
-            result["steps"].append("frontend_dependencies_installed")
+            if not setup_only:
+                # Step 7: Install frontend dependencies
+                self._print_header("Installing Frontend Dependencies")
+                frontend_result = self.install_frontend_dependencies()
+                if not frontend_result["success"] and not frontend_result.get("skipped", False):
+                    self._print_error("Frontend dependency installation failed")
+                    result["error"] = frontend_result.get("error", "Frontend dependencies failed")
+                    return result
+                result["steps"].append("frontend_dependencies_installed")
 
-            # Step 7.1: Production / Development mode prompt
-            if frontend_result["success"] and not frontend_result.get("skipped", False):
-                self._prompt_frontend_mode()
+                # Step 7.1: Production / Development mode prompt
+                if frontend_result["success"] and not frontend_result.get("skipped", False):
+                    self._prompt_frontend_mode()
 
             # Step 7.5: HTTPS setup (automatic for LAN/WAN, skipped for localhost)
             if not self.settings.get("headless"):
@@ -370,11 +374,12 @@ class UnifiedInstaller:
                 if https_result.get("enabled"):
                     result["steps"].append("https_configured")
 
-            # Step 8: Create desktop shortcuts (if requested - Windows only)
-            if self.settings.get("create_shortcuts", False):
-                self._print_header("Creating Desktop Shortcuts")
-                self.create_desktop_shortcuts()
-                result["steps"].append("shortcuts_created")
+            if not setup_only:
+                # Step 8: Create desktop shortcuts (if requested - Windows only)
+                if self.settings.get("create_shortcuts", False):
+                    self._print_header("Creating Desktop Shortcuts")
+                    self.create_desktop_shortcuts()
+                    result["steps"].append("shortcuts_created")
 
             # Success
             result["success"] = True
@@ -2931,12 +2936,14 @@ except Exception as e:
 @click.option("--pg-password", default=None, help="PostgreSQL admin password (REQUIRED)")
 @click.option("--api-port", default=DEFAULT_API_PORT, type=int, help="API server port")
 @click.option("--frontend-port", default=DEFAULT_FRONTEND_PORT, type=int, help="Frontend port")
-def main(headless: bool, dev: bool, pg_password: str, api_port: int, frontend_port: int) -> None:
+@click.option("--setup-only", is_flag=True, help="Setup-only mode (skip prereqs and deps, just configure)")
+def main(headless: bool, dev: bool, pg_password: str, api_port: int, frontend_port: int, setup_only: bool) -> None:
     """
     GiljoAI MCP v3.0 - Unified Installer
 
     Single-command installation for all platforms.
     Use --dev to include developer tools (pre-commit hooks, NLTK data).
+    Use --setup-only when called from installer scripts (prereqs and deps already handled).
     """
     try:
         # Prepare settings
@@ -2947,6 +2954,7 @@ def main(headless: bool, dev: bool, pg_password: str, api_port: int, frontend_po
             "dashboard_port": frontend_port,
             "headless": headless,
             "dev": dev,
+            "setup_only": setup_only,
         }
 
         # Create installer
