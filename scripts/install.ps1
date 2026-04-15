@@ -641,24 +641,7 @@ pause
         Write-Warn "Could not create Start Menu shortcut: $_"
     }
 
-    # Offer desktop shortcut
-    Write-Host ""
-    Write-Host "    Create desktop shortcut? [Y/n]: " -ForegroundColor $script:INFO_COLOR -NoNewline
-    $desktopChoice = Read-Host
-    if ($desktopChoice -ne 'n' -and $desktopChoice -ne 'N') {
-        $desktopPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "GiljoAI MCP.lnk"
-        try {
-            $wshShell2 = New-Object -ComObject WScript.Shell
-            $desktopShortcut = $wshShell2.CreateShortcut($desktopPath)
-            $desktopShortcut.TargetPath = $batPath
-            $desktopShortcut.WorkingDirectory = $TargetDir
-            $desktopShortcut.Description = "GiljoAI MCP Server v$Version"
-            $desktopShortcut.Save()
-            Write-Ok "Desktop shortcut created"
-        } catch {
-            Write-Warn "Could not create desktop shortcut: $_"
-        }
-    }
+    # Desktop shortcut is handled by install.py — no need to prompt again
 }
 
 # ---------------------------------------------------------------------------
@@ -679,25 +662,27 @@ function Start-FirstRun {
         -PassThru `
         -WindowStyle Normal
 
-    # Wait for server to start
-    Write-Step "Waiting for server to start..."
-    $maxWait = 15
+    # Wait for server to start (up to 60 seconds)
+    Write-Step "Waiting for server to respond on port $($script:SERVER_PORT)..."
+    $maxWait = 60
     $waited = 0
     $serverReady = $false
     while ($waited -lt $maxWait) {
-        Start-Sleep -Seconds 1
-        $waited++
+        Start-Sleep -Seconds 2
+        $waited += 2
         try {
             $response = Invoke-WebRequest -Uri "http://localhost:$($script:SERVER_PORT)/api/health" `
-                -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
+                -UseBasicParsing -TimeoutSec 3 -ErrorAction SilentlyContinue
             if ($response.StatusCode -eq 200) {
                 $serverReady = $true
                 break
             }
         } catch {
             # Server not ready yet
+            Write-Host "." -NoNewline
         }
     }
+    if (-not $serverReady) { Write-Host "" }
 
     if ($serverReady) {
         Write-Ok "Server is running on port $($script:SERVER_PORT)"
