@@ -82,8 +82,11 @@ def _bootstrap_dependencies():
 _bootstrap_dependencies()
 
 # Standard library imports
+import io
+import logging
 import os
 import platform
+import re
 import shutil
 import socket
 import time
@@ -101,6 +104,65 @@ from installer.platforms import get_platform_handler
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
+
+
+# ---------------------------------------------------------------------------
+# Install logger — writes to install.log in the working directory
+# ---------------------------------------------------------------------------
+_log_path = Path.cwd() / "install.log"
+_logger = logging.getLogger("giljoai_install")
+_logger.setLevel(logging.DEBUG)
+_file_handler = logging.FileHandler(_log_path, mode="a", encoding="utf-8")
+_file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+_logger.addHandler(_file_handler)
+_logger.info("=" * 60)
+_logger.info("GiljoAI MCP Installer started")
+_logger.info("=" * 60)
+
+# Patterns that look like credentials — redact before writing to install.log
+_SENSITIVE_PATTERNS = re.compile(r"(password|passwd|secret|token|key|credential)[=:\s]+\S+", re.IGNORECASE)
+
+
+def _sanitize_log(text: str) -> str:
+    """Redact potential credentials before writing to log file."""
+    return _SENSITIVE_PATTERNS.sub(r"\1=***REDACTED***", text)
+
+
+# ---------------------------------------------------------------------------
+# TTY-aware input — reads from /dev/tty when stdin is piped (curl | bash)
+# ---------------------------------------------------------------------------
+_tty_file: Optional[io.TextIOWrapper] = None
+
+
+def _get_tty() -> Optional[io.TextIOWrapper]:
+    """Open /dev/tty once and cache the handle."""
+    global _tty_file
+    if _tty_file is not None:
+        return _tty_file
+    if sys.stdin.isatty():
+        return None  # stdin is fine, no override needed
+    try:
+        _tty_file = open("/dev/tty", "r")  # noqa: SIM115
+        import atexit
+
+        atexit.register(lambda: _tty_file.close() if _tty_file else None)
+        return _tty_file
+    except OSError:
+        return None
+
+
+def tty_input(prompt: str = "") -> str:
+    """Drop-in replacement for input() that reads from /dev/tty when piped."""
+    tty = _get_tty()
+    if tty is None:
+        # stdin is a real terminal — use normal input()
+        result = input(prompt)
+    else:
+        # stdin is piped — print prompt to stderr (visible) and read from tty
+        print(prompt, end="", flush=True)
+        result = tty.readline().rstrip("\n")
+    _logger.debug("User input for %r → %r", prompt.strip(), _sanitize_log(result))
+    return result
 
 
 # Constants
@@ -155,16 +217,23 @@ def getpass_with_asterisks(prompt: str = "Password: ") -> str:
                 except UnicodeDecodeError:
                     pass  # Ignore non-UTF8 characters
     else:
-        # Unix/Linux/Mac
+        # Unix/Linux/Mac — use /dev/tty if stdin is piped
         import termios
         import tty
 
-        fd = sys.stdin.fileno()
+        if sys.stdin.isatty():
+            tty_fd_owner = None
+            tty_stream = sys.stdin
+        else:
+            tty_fd_owner = open("/dev/tty", "r")
+            tty_stream = tty_fd_owner
+
+        fd = tty_stream.fileno()
         old_settings = termios.tcgetattr(fd)
         try:
             tty.setraw(fd)
             while True:
-                char = sys.stdin.read(1)
+                char = tty_stream.read(1)
                 # Enter key
                 if char in ("\r", "\n"):
                     # Raw mode: \n only moves down, need \r to return to column 0
@@ -185,6 +254,8 @@ def getpass_with_asterisks(prompt: str = "Password: ") -> str:
                     print("*", end="", flush=True)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            if tty_fd_owner is not None:
+                tty_fd_owner.close()
 
     return "".join(password)
 
@@ -452,7 +523,7 @@ class UnifiedInstaller:
 
         # Get user choice
         while True:
-            choice = input(f"\n{Fore.YELLOW}Select installation type [1]: {Style.RESET_ALL}").strip()
+            choice = tty_input(f"\n{Fore.YELLOW}Select installation type [1]: {Style.RESET_ALL}").strip()
 
             if not choice or choice == "1":
                 # Localhost mode — bind 127.0.0.1 (HTTP only, no HTTPS needed)
@@ -492,7 +563,9 @@ class UnifiedInstaller:
                     self._print_info("HTTPS will be configured automatically")
                     break
                 if choice_num == custom_option:
-                    custom_addr = input(f"{Fore.YELLOW}Enter custom address (IP or domain): {Style.RESET_ALL}").strip()
+                    custom_addr = tty_input(
+                        f"{Fore.YELLOW}Enter custom address (IP or domain): {Style.RESET_ALL}"
+                    ).strip()
                     if custom_addr:
                         self.settings["external_host"] = custom_addr
                         self.settings["network_mode"] = "custom"
@@ -576,7 +649,7 @@ class UnifiedInstaller:
         print(f"\n{Fore.CYAN}[Database Name]{Style.RESET_ALL}")
         print(f"Default database name is {Fore.WHITE}giljo_mcp{Style.RESET_ALL}.")
         print("Change this if you run multiple installations on the same PostgreSQL server.")
-        db_name_input = input(f"{Fore.YELLOW}Database name [giljo_mcp]: {Style.RESET_ALL}").strip()
+        db_name_input = tty_input(f"{Fore.YELLOW}Database name [giljo_mcp]: {Style.RESET_ALL}").strip()
         if db_name_input:
             self.settings["db_name"] = db_name_input
             self._print_info(f"Database name: {db_name_input}")
@@ -595,7 +668,7 @@ class UnifiedInstaller:
         if platform.system() == "Windows":
             print(f"\n{Fore.CYAN}[Post-Installation Options]{Style.RESET_ALL}")
             print("Would you like to create desktop shortcuts?")
-            shortcuts_response = input(f"{Fore.YELLOW}Create shortcuts? (Y/n): {Style.RESET_ALL}").strip().lower()
+            shortcuts_response = tty_input(f"{Fore.YELLOW}Create shortcuts? (Y/n): {Style.RESET_ALL}").strip().lower()
             self.settings["create_shortcuts"] = shortcuts_response != "n"
         else:
             self.settings["create_shortcuts"] = False
@@ -729,7 +802,7 @@ class UnifiedInstaller:
             return result
 
         print(f"\n{Fore.YELLOW}Do you have PostgreSQL installed at a custom location? (y/n): {Style.RESET_ALL}", end="")
-        response = input().strip().lower()
+        response = tty_input().strip().lower()
 
         if response not in ["y", "yes"]:
             return result
@@ -741,7 +814,7 @@ class UnifiedInstaller:
             print(f"{Fore.WHITE}Example: C:\\custom\\postgres\\bin or /opt/custom/postgres/bin{Style.RESET_ALL}")
             print(f"{Fore.YELLOW}Path: {Style.RESET_ALL}", end="")
 
-            custom_path = input().strip()
+            custom_path = tty_input().strip()
 
             if not custom_path:
                 self._print_warning("Empty path provided")
@@ -904,7 +977,7 @@ class UnifiedInstaller:
                     end="",
                     flush=True,
                 )
-                response = input().strip().lower()
+                response = tty_input().strip().lower()
                 if response not in ("", "y", "yes"):
                     self._print_warning("Skipping Node.js installation")
                     self._print_warning("Frontend will not be available. Backend-only installation will continue.")
@@ -942,7 +1015,7 @@ class UnifiedInstaller:
                     end="",
                     flush=True,
                 )
-                response = input().strip().lower()
+                response = tty_input().strip().lower()
                 if response not in ("", "y", "yes"):
                     self._print_warning("Skipping Node.js installation")
                     self._print_warning("Frontend will not be available. Backend-only installation will continue.")
@@ -1077,7 +1150,7 @@ class UnifiedInstaller:
                 end="",
                 flush=True,
             )
-            input()
+            tty_input()
 
         self._print_info("Installing local Certificate Authority into trust stores...")
         try:
@@ -1094,7 +1167,7 @@ class UnifiedInstaller:
                     end="",
                     flush=True,
                 )
-                input()
+                tty_input()
             self._print_success("Local CA installed — browsers will trust certificates from this machine")
         except subprocess.CalledProcessError as e:
             stderr_msg = e.stderr if e.stderr else "User may have declined the certificate trust dialog"
@@ -1259,7 +1332,7 @@ class UnifiedInstaller:
                         end="",
                         flush=True,
                     )
-                    response = input().strip().lower()
+                    response = tty_input().strip().lower()
                     if response not in ("", "y", "yes"):
                         return None
 
@@ -1316,7 +1389,7 @@ class UnifiedInstaller:
                         end="",
                         flush=True,
                     )
-                    response = input().strip().lower()
+                    response = tty_input().strip().lower()
                     if response not in ("", "y", "yes"):
                         return None
 
@@ -1356,7 +1429,7 @@ class UnifiedInstaller:
                         end="",
                         flush=True,
                     )
-                    response = input().strip().lower()
+                    response = tty_input().strip().lower()
                     if response not in ("", "y", "yes"):
                         return None
 
@@ -2255,7 +2328,7 @@ class UnifiedInstaller:
             self._print_info("  1. Production (recommended) - Single port, optimized build")
             self._print_info("  2. Contributor / Dev mode - Two ports, hot-reload for code changes")
             try:
-                mode = input("\nSelect [1/2] (default: 1): ").strip() or "1"
+                mode = tty_input("\nSelect [1/2] (default: 1): ").strip() or "1"
             except EOFError:
                 mode = "1"
 
@@ -2868,6 +2941,7 @@ except Exception as e:
         print(f"\n{Fore.CYAN}{Style.BRIGHT}{separator}{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{Style.BRIGHT}  {text}{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{Style.BRIGHT}{separator}{Style.RESET_ALL}\n")
+        _logger.info("--- %s ---", _sanitize_log(text))
 
     def _set_postgres_password_via_peer(self, password: str) -> bool:
         """Set PostgreSQL password using local peer/trust authentication.
@@ -2916,18 +2990,22 @@ except Exception as e:
     def _print_success(self, text: str) -> None:
         """Print success message"""
         print(f"{Fore.GREEN}[OK]{Style.RESET_ALL} {text}")
+        _logger.info("[OK] %s", _sanitize_log(text))
 
     def _print_error(self, text: str) -> None:
-        """Print error message"""
+        """Print error message (status only, never passwords/credentials)."""
         print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} {text}")
+        _logger.error("[ERROR] %s", _sanitize_log(text))
 
     def _print_warning(self, text: str) -> None:
-        """Print warning message"""
+        """Print warning message (status only, never passwords/credentials)."""
         print(f"{Fore.YELLOW}[!]{Style.RESET_ALL} {text}")
+        _logger.warning("[!] %s", _sanitize_log(text))
 
     def _print_info(self, text: str) -> None:
-        """Print info message"""
+        """Print info message (status only, never passwords/credentials)."""
         print(f"{Fore.BLUE}[INFO]{Style.RESET_ALL} {text}")
+        _logger.info("[INFO] %s", _sanitize_log(text))
 
 
 @click.command()
@@ -2967,11 +3045,14 @@ def main(headless: bool, dev: bool, pg_password: str, api_port: int, frontend_po
         sys.exit(0 if result["success"] else 1)
 
     except KeyboardInterrupt:
+        _logger.info("Installation cancelled by user")
         print(f"\n{Fore.YELLOW}Installation cancelled{Style.RESET_ALL}")
         sys.exit(0)
 
     except Exception as e:
+        _logger.exception("Installation failed")
         print(f"\n{Fore.RED}Installation failed: {e}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}See install.log for details{Style.RESET_ALL}")
         sys.exit(1)
 
 
