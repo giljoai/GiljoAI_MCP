@@ -164,21 +164,36 @@ exit_with_error() {
     exit 1
 }
 
+HAS_TTY=false
+if [[ -t 0 ]]; then
+    HAS_TTY=true
+elif [[ -r /dev/tty ]] && echo -n '' < /dev/tty 2>/dev/null; then
+    HAS_TTY=true
+fi
+
+read_input() {
+    if [[ "$HAS_TTY" == true ]]; then
+        if [[ -t 0 ]]; then
+            read -r "$@"
+        else
+            read -r "$@" < /dev/tty
+        fi
+        return 0
+    fi
+    return 1
+}
+
 confirm() {
     local prompt="$1"
     if [[ "$AUTO_YES" == true ]]; then
         return 0
     fi
-    # When piped (no TTY), default to yes
-    if ! [[ -t 0 ]] && ! [[ -e /dev/tty ]]; then
+    if [[ "$HAS_TTY" != true ]]; then
         return 0
     fi
     echo -en "    ${CYAN}$prompt [Y/n]: ${NC}"
-    if [[ -t 0 ]]; then
-        read -r answer
-    else
-        read -r answer < /dev/tty
-    fi
+    local answer
+    read_input answer
     case "$answer" in
         n|N|no|No|NO) return 1 ;;
         *) return 0 ;;
@@ -993,11 +1008,7 @@ main() {
                 echo -e "    ${MUTED}[C] Cancel${NC}"
                 echo ""
                 echo -en "    ${BRAND}Choice [U/R/C]: ${NC}"
-                if [[ -t 0 ]]; then
-                    read -r choice
-                elif [[ -e /dev/tty ]]; then
-                    read -r choice < /dev/tty
-                else
+                if ! read_input choice; then
                     choice="U"
                 fi
                 case "${choice^^}" in
@@ -1014,11 +1025,7 @@ main() {
             if [[ -z "$INSTALL_DIR" && "$AUTO_YES" != true ]]; then
                 echo ""
                 echo -en "    ${CYAN}Install directory [$target_dir]: ${NC}"
-                if [[ -t 0 ]]; then
-                    read -r user_dir
-                elif [[ -e /dev/tty ]]; then
-                    read -r user_dir < /dev/tty
-                else
+                if ! read_input user_dir; then
                     user_dir=""
                 fi
                 if [[ -n "$user_dir" ]]; then
