@@ -327,21 +327,9 @@ function Test-Prerequisites {
             Write-Host "    ║  Please wait and do not close this window.              ║" -ForegroundColor $script:BRAND_COLOR
             Write-Host "    ╚══════════════════════════════════════════════════════════╝" -ForegroundColor $script:BRAND_COLOR
             Write-Host ""
-            Write-Host "    Installing" -NoNewline -ForegroundColor $script:MUTED_COLOR
-            $pgJob = Start-Job -ScriptBlock {
-                param($al)
-                $p = Start-Process -FilePath "winget" -ArgumentList $al -Wait -PassThru -NoNewWindow
-                return $p.ExitCode
-            } -ArgumentList $argLine
-            while ($pgJob.State -eq 'Running') {
-                Start-Sleep -Seconds 5
-                Write-Host "." -NoNewline -ForegroundColor $script:MUTED_COLOR
-            }
-            Write-Host ""
-            $pgExitCode = Receive-Job -Job $pgJob
-            Remove-Job -Job $pgJob
-            if ($pgExitCode -ne 0) {
-                throw "winget exited with code $pgExitCode"
+            $pgProc = Start-Process -FilePath "winget" -ArgumentList $argLine -Wait -PassThru -NoNewWindow
+            if ($pgProc.ExitCode -ne 0) {
+                throw "winget exited with code $($pgProc.ExitCode)"
             }
             Write-Ok "PostgreSQL installed"
         } catch {
