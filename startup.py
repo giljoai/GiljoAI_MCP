@@ -481,13 +481,31 @@ def get_config_ports() -> Tuple[int, int]:
     return DEFAULT_API_PORT, DEFAULT_FRONTEND_PORT
 
 
+def _get_network_mode() -> str:
+    """Read security.network.mode from config.yaml. Returns 'localhost' if not set."""
+    try:
+        import yaml
+
+        config_path = Path.cwd() / "config.yaml"
+        if config_path.exists():
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+            return config.get("security", {}).get("network", {}).get("mode", "localhost")
+    except Exception:
+        pass
+    return "localhost"
+
+
 def get_ssl_enabled() -> bool:
     """
     Check if SSL is enabled in config.yaml.
+    Always returns False for localhost mode — SSL is only for LAN/WAN.
 
     Returns:
-        True if ssl_enabled is set in features config, False otherwise
+        True if ssl_enabled is set in features config AND not localhost mode
     """
+    if _get_network_mode() == "localhost":
+        return False
     try:
         import yaml
 
@@ -509,14 +527,20 @@ def get_network_ip() -> Optional[str]:
     """
     Get network IP address for display purposes.
 
-    Tries multiple sources in order:
-    1. config.yaml (server.ip or security.network.initial_ip)
-    2. Runtime detection using psutil (fallback for fresh installs)
+    Respects the user's install-time network mode choice:
+    - localhost mode → always returns None (caller falls back to "localhost")
+    - auto/static/custom → reads from config or detects at runtime
 
     Returns:
-        Network IP address or None if not available
+        Network IP address or None if localhost mode
     """
-    # Try config.yaml first (existing behavior - backward compatibility)
+    network_mode = _get_network_mode()
+
+    # Localhost mode: honor the user's choice, don't detect LAN IPs
+    if network_mode == "localhost":
+        return None
+
+    # LAN/WAN modes: try config.yaml first
     try:
         import yaml
 
@@ -542,7 +566,7 @@ def get_network_ip() -> Optional[str]:
     except Exception as e:
         print_warning(f"Could not read network IP from config.yaml: {e}")
 
-    # Fallback: Detect primary network IP at runtime (for fresh installs)
+    # Fallback: Detect primary network IP at runtime (for LAN/WAN installs)
     try:
         import psutil
 
