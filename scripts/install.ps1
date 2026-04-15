@@ -69,7 +69,7 @@ function Write-Banner {
 function Write-Phase {
     param([string]$Number, [string]$Title)
     Write-Host ""
-    Write-Host "  [$Number/6] $Title" -ForegroundColor $script:BRAND_COLOR
+    Write-Host "  [$Number/5] $Title" -ForegroundColor $script:BRAND_COLOR
     Write-Host "  $('-' * (6 + $Title.Length))" -ForegroundColor $script:MUTED_COLOR
 }
 
@@ -651,26 +651,26 @@ pause
 }
 
 # ---------------------------------------------------------------------------
-# Phase 6 -- Launch
+# Phase 6 -- Done
 # ---------------------------------------------------------------------------
 
-function Start-Server {
+function Show-Completion {
     param([string]$TargetDir, [string]$Version)
 
-    Write-Phase "6" "Launching server"
-
-    $venvPython = Join-Path $TargetDir "venv" "Scripts" "python.exe"
-    $startupPy  = Join-Path $TargetDir "startup.py"
-
-    Write-Step "Starting GiljoAI MCP via startup.py..."
     Write-Host ""
-
-    Push-Location $TargetDir
-    try {
-        & $venvPython $startupPy --verbose
-    } finally {
-        Pop-Location
-    }
+    Write-Host "    ========================================================" -ForegroundColor $script:BRAND_COLOR
+    Write-Host "      Installation complete!" -ForegroundColor $script:SUCCESS_COLOR
+    Write-Host "    ========================================================" -ForegroundColor $script:BRAND_COLOR
+    Write-Host ""
+    Write-Host "    Version:    $Version" -ForegroundColor $script:INFO_COLOR
+    Write-Host "    Location:   $TargetDir" -ForegroundColor $script:INFO_COLOR
+    Write-Host ""
+    Write-Host "    To start the server:" -ForegroundColor $script:INFO_COLOR
+    Write-Host "      cd $TargetDir" -ForegroundColor White
+    Write-Host "      python startup.py" -ForegroundColor White
+    Write-Host ""
+    Write-Host "    Then open: http://localhost:$($script:SERVER_PORT)" -ForegroundColor $script:MUTED_COLOR
+    Write-Host ""
 }
 
 # ---------------------------------------------------------------------------
@@ -784,8 +784,8 @@ function Invoke-GiljoInstaller {
     # Phase 5 -- Shortcuts
     Install-Shortcuts -TargetDir $targetDir -Version $release.Version
 
-    # Phase 6 -- Launch
-    Start-Server -TargetDir $targetDir -Version $release.Version
+    # Done
+    Show-Completion -TargetDir $targetDir -Version $release.Version
 }
 
 # Run the installer
