@@ -44,7 +44,7 @@ $ErrorActionPreference = 'Stop'
 
 $script:GITHUB_REPO       = "giljoai/GiljoAI_MCP"
 $script:GITHUB_API_URL    = "https://api.github.com/repos/$script:GITHUB_REPO/releases/latest"
-$script:DEFAULT_INSTALL   = $PWD.Path
+$script:DEFAULT_INSTALL   = Join-Path $HOME "GiljoAI_MCP"
 $script:MIN_PYTHON_MAJOR  = 3
 $script:MIN_PYTHON_MINOR  = 12
 $script:MIN_NODE_MAJOR    = 20
@@ -60,16 +60,27 @@ $script:MUTED_COLOR       = "Gray"
 # ---------------------------------------------------------------------------
 
 function Write-Banner {
-    Write-Host ""
-    Write-Host "    GiljoAI MCP Community Edition" -ForegroundColor Yellow
-    Write-Host "    Windows Installer" -ForegroundColor $script:MUTED_COLOR
-    Write-Host ""
+    $banner = @"
+
+    ========================================================
+      _____ _ _  _        _    ___   __  __  ___ ___
+     / ____(_) |(_)      / \  |_ _| |  \/  |/ __| _ \
+    | |  __ _| | _  ___ / _ \  | |  | |\/| | (__|  _/
+    | |_| | | || |/ _ / ___  | | |  | |  | |\__ |_|
+     \_____|_|_|/ \___/_/   \_|___| |_|  |_||___/
+              |__/
+    ========================================================
+         Windows Installer
+    ========================================================
+
+"@
+    Write-Host $banner -ForegroundColor $script:BRAND_COLOR
 }
 
 function Write-Phase {
     param([string]$Number, [string]$Title)
     Write-Host ""
-    Write-Host "  [$Number/5] $Title" -ForegroundColor $script:BRAND_COLOR
+    Write-Host "  [$Number/6] $Title" -ForegroundColor $script:BRAND_COLOR
     Write-Host "  $('-' * (6 + $Title.Length))" -ForegroundColor $script:MUTED_COLOR
 }
 
@@ -254,94 +265,22 @@ function Test-Prerequisites {
         Write-Step "PATH refreshed after installations"
     }
 
-    # Handle PostgreSQL via winget with user-provided settings
+    # Handle PostgreSQL separately -- cannot fully automate
     if ($missing -contains "postgresql") {
         Write-Host ""
         Write-Host "    -------------------------------------------------------" -ForegroundColor $script:BRAND_COLOR
-        Write-Host "    PostgreSQL will be installed automatically via winget." -ForegroundColor $script:BRAND_COLOR
+        Write-Host "    PostgreSQL must be installed manually on Windows." -ForegroundColor $script:BRAND_COLOR
+        Write-Host ""
+        Write-Host "    Download: https://www.postgresql.org/download/windows/" -ForegroundColor $script:INFO_COLOR
+        Write-Host ""
+        Write-Host "    During installation:" -ForegroundColor $script:MUTED_COLOR
+        Write-Host "      - Use the default port (5432)" -ForegroundColor $script:MUTED_COLOR
+        Write-Host "      - Remember the password you set for the postgres user" -ForegroundColor $script:MUTED_COLOR
+        Write-Host "      - Add PostgreSQL bin to PATH when prompted" -ForegroundColor $script:MUTED_COLOR
         Write-Host "    -------------------------------------------------------" -ForegroundColor $script:BRAND_COLOR
         Write-Host ""
-
-        if (-not $hasWinget) {
-            Exit-WithError "winget is required to install PostgreSQL. Please install PostgreSQL manually from https://www.postgresql.org/download/windows/ and re-run this script."
-        }
-
-        # A) Prompt for admin password
-        Write-Host "    Choose a password for the PostgreSQL 'postgres' admin user." -ForegroundColor $script:INFO_COLOR
-        Write-Host "    You will need this password again during application setup." -ForegroundColor $script:MUTED_COLOR
-        Write-Host ""
-        do {
-            $pgSecure1 = Read-Host "    PostgreSQL admin password" -AsSecureString
-            $pgSecure2 = Read-Host "    Confirm password" -AsSecureString
-
-            $pgPw1 = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-                [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pgSecure1))
-            $pgPw2 = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-                [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pgSecure2))
-
-            if ([string]::IsNullOrWhiteSpace($pgPw1)) {
-                Write-Warn "Password cannot be empty."
-                $pgPwOk = $false
-            } elseif ($pgPw1 -ne $pgPw2) {
-                Write-Warn "Passwords do not match. Try again."
-                $pgPwOk = $false
-            } else {
-                $pgPwOk = $true
-            }
-        } while (-not $pgPwOk)
-        Write-Ok "PostgreSQL password set"
-
-        # B) Prompt for database name
-        Write-Host ""
-        Write-Host "    Choose the database name for GiljoAI MCP." -ForegroundColor $script:INFO_COLOR
-        Write-Host "    Change this only if running multiple installations on the same server." -ForegroundColor $script:MUTED_COLOR
-        $pgDbInput = Read-Host "    Database name [giljo_mcp]"
-        if ([string]::IsNullOrWhiteSpace($pgDbInput)) {
-            $script:PG_DB_NAME = "giljo_mcp"
-        } else {
-            $script:PG_DB_NAME = $pgDbInput
-        }
-        Write-Ok "Database name: $script:PG_DB_NAME"
-
-        # Install PostgreSQL via winget
-        Write-Step "Installing PostgreSQL via winget..."
-        try {
-            # Build override as a single string for the EDB PostgreSQL installer.
-            # Winget's --override passes this verbatim to the installer executable.
-            $escapedPw = $pgPw1 -replace '"', '\"'
-            $pgArgs = @(
-                "install"
-                "PostgreSQL.PostgreSQL.18"
-                "--silent"
-                "--accept-source-agreements"
-                "--accept-package-agreements"
-                "--override"
-            )
-            # Use Start-Process with a single-line ArgumentList string so the
-            # override value (which contains spaces) stays as one token.
-            $argLine = ($pgArgs -join " ") + " `"--mode unattended --unattendedmodeui none --superpassword $escapedPw --serverport 5432 --enable-components server,commandlinetools --disable-components pgAdmin,stackbuilder`""
-            Write-Host "    This may take a few minutes..." -ForegroundColor $script:MUTED_COLOR
-            $pgProc = Start-Process -FilePath "winget" -ArgumentList $argLine -Wait -PassThru -NoNewWindow
-            if ($pgProc.ExitCode -ne 0) {
-                throw "winget exited with code $($pgProc.ExitCode)"
-            }
-            Write-Ok "PostgreSQL installed"
-        } catch {
-            Exit-WithError "PostgreSQL installation failed: $_`nPlease install manually from https://www.postgresql.org/download/windows/ and re-run this script."
-        }
-
-        # Add PostgreSQL bin to PATH for this session
-        $pgBinPaths = @(
-            "C:\Program Files\PostgreSQL\18\bin",
-            "C:\Program Files\PostgreSQL\17\bin",
-            "C:\Program Files\PostgreSQL\16\bin"
-        )
-        foreach ($p in $pgBinPaths) {
-            if (Test-Path $p) {
-                $env:PATH = "$p;$env:PATH"
-                break
-            }
-        }
+        Write-Host "    Press Enter after PostgreSQL is installed..." -ForegroundColor $script:BRAND_COLOR -NoNewline
+        Read-Host
 
         Refresh-PathEnv
 
@@ -349,9 +288,9 @@ function Test-Prerequisites {
         $pgNow = (Test-CommandExists "pg_isready") -or
                  (Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue)
         if (-not $pgNow) {
-            Exit-WithError "PostgreSQL was installed but is not detected. Try restarting your terminal and re-running this script."
+            Exit-WithError "PostgreSQL still not detected. Please install it and ensure it is running, then re-run this script."
         }
-        Write-Ok "PostgreSQL detected after install"
+        Write-Ok "PostgreSQL detected after manual install"
     }
 
     # Final verification of winget-installed items
@@ -551,29 +490,23 @@ function Initialize-Environment {
         Write-Warn "requirements.txt not found -- skipping pip install"
     }
 
-    # Build frontend — use Start-Process to avoid irm|iex pipeline mangling npm
+    # Build frontend
     $frontendDir = Join-Path $TargetDir "frontend"
     if (Test-Path (Join-Path $frontendDir "package.json")) {
         Write-Step "Installing frontend dependencies..."
-        $npmPath = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
-        if (-not $npmPath) { $npmPath = (Get-Command npm -ErrorAction SilentlyContinue).Source }
-        if ($npmPath) {
-            $proc1 = Start-Process -FilePath $npmPath -ArgumentList "install" -WorkingDirectory $frontendDir -Wait -PassThru -NoNewWindow
-            if ($proc1.ExitCode -eq 0) {
-                Write-Ok "Frontend dependencies installed"
-                Write-Step "Building frontend (this may take a minute)..."
-                $proc2 = Start-Process -FilePath $npmPath -ArgumentList "run build" -WorkingDirectory $frontendDir -Wait -PassThru -NoNewWindow
-                if ($proc2.ExitCode -eq 0 -and (Test-Path (Join-Path $frontendDir "dist" "index.html"))) {
-                    Write-Ok "Frontend built"
-                } else {
-                    Write-Warn "Frontend build failed — startup.py will retry on first run"
-                }
-            } else {
-                Write-Warn "npm install failed — startup.py will handle this on first run"
-            }
-        } else {
-            Write-Warn "npm not found — startup.py will handle frontend on first run"
+        Push-Location $frontendDir
+        try {
+            & npm install --silent 2>&1 | Out-Null
+            Write-Ok "Frontend dependencies installed"
+
+            Write-Step "Building frontend (this may take a minute)..."
+            & npm run build 2>&1 | Out-Null
+            Write-Ok "Frontend built"
+        } finally {
+            Pop-Location
         }
+    } else {
+        Write-Warn "Frontend package.json not found -- skipping frontend build"
     }
 }
 
@@ -647,28 +580,76 @@ pause
         Write-Warn "Could not create Start Menu shortcut: $_"
     }
 
-    # Desktop shortcut
-    $desktopPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "GiljoAI MCP.lnk"
-    try {
-        $wshShell2 = New-Object -ComObject WScript.Shell
-        $desktopShortcut = $wshShell2.CreateShortcut($desktopPath)
-        $desktopShortcut.TargetPath = $batPath
-        $desktopShortcut.WorkingDirectory = $TargetDir
-        $desktopShortcut.Description = "GiljoAI MCP Server v$Version"
-        $desktopShortcut.Save()
-        Write-Ok "Desktop shortcut created"
-    } catch {
-        Write-Warn "Could not create desktop shortcut: $_"
+    # Offer desktop shortcut
+    Write-Host ""
+    Write-Host "    Create desktop shortcut? [Y/n]: " -ForegroundColor $script:INFO_COLOR -NoNewline
+    $desktopChoice = Read-Host
+    if ($desktopChoice -ne 'n' -and $desktopChoice -ne 'N') {
+        $desktopPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "GiljoAI MCP.lnk"
+        try {
+            $wshShell2 = New-Object -ComObject WScript.Shell
+            $desktopShortcut = $wshShell2.CreateShortcut($desktopPath)
+            $desktopShortcut.TargetPath = $batPath
+            $desktopShortcut.WorkingDirectory = $TargetDir
+            $desktopShortcut.Description = "GiljoAI MCP Server v$Version"
+            $desktopShortcut.Save()
+            Write-Ok "Desktop shortcut created"
+        } catch {
+            Write-Warn "Could not create desktop shortcut: $_"
+        }
     }
 }
 
 # ---------------------------------------------------------------------------
-# Phase 6 -- Done
+# Phase 6 -- First run
 # ---------------------------------------------------------------------------
 
-function Show-Completion {
+function Start-FirstRun {
     param([string]$TargetDir, [string]$Version)
 
+    Write-Phase "6" "First run"
+
+    $venvPython = Join-Path $TargetDir "venv" "Scripts" "python.exe"
+
+    Write-Step "Starting GiljoAI MCP server..."
+    $serverProcess = Start-Process -FilePath $venvPython `
+        -ArgumentList "-m", "api.run_api" `
+        -WorkingDirectory $TargetDir `
+        -PassThru `
+        -WindowStyle Normal
+
+    # Wait for server to start
+    Write-Step "Waiting for server to start..."
+    $maxWait = 15
+    $waited = 0
+    $serverReady = $false
+    while ($waited -lt $maxWait) {
+        Start-Sleep -Seconds 1
+        $waited++
+        try {
+            $response = Invoke-WebRequest -Uri "http://localhost:$($script:SERVER_PORT)/api/health" `
+                -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
+            if ($response.StatusCode -eq 200) {
+                $serverReady = $true
+                break
+            }
+        } catch {
+            # Server not ready yet
+        }
+    }
+
+    if ($serverReady) {
+        Write-Ok "Server is running on port $($script:SERVER_PORT)"
+
+        # Open browser
+        Write-Step "Opening browser..."
+        Start-Process "http://localhost:$($script:SERVER_PORT)"
+    } else {
+        Write-Warn "Server did not respond within $maxWait seconds."
+        Write-Warn "You can start it manually: start-giljoai.bat"
+    }
+
+    # Print completion summary
     Write-Host ""
     Write-Host "    ========================================================" -ForegroundColor $script:BRAND_COLOR
     Write-Host "      Installation complete!" -ForegroundColor $script:SUCCESS_COLOR
@@ -676,15 +657,15 @@ function Show-Completion {
     Write-Host ""
     Write-Host "    Version:    $Version" -ForegroundColor $script:INFO_COLOR
     Write-Host "    Location:   $TargetDir" -ForegroundColor $script:INFO_COLOR
+    Write-Host "    URL:        http://localhost:$($script:SERVER_PORT)" -ForegroundColor $script:INFO_COLOR
     Write-Host ""
-    Write-Host "    To start the server:" -ForegroundColor $script:INFO_COLOR
-    Write-Host "      cd $TargetDir" -ForegroundColor White
-    Write-Host "      python startup.py" -ForegroundColor White
-    Write-Host ""
-    Write-Host "    startup.py will start the server and open your browser." -ForegroundColor $script:MUTED_COLOR
+    Write-Host "    To start the server later:" -ForegroundColor $script:MUTED_COLOR
+    Write-Host "      - Use the Start Menu shortcut, or" -ForegroundColor $script:MUTED_COLOR
+    Write-Host "      - Run start-giljoai.bat from $TargetDir" -ForegroundColor $script:MUTED_COLOR
     Write-Host ""
     Write-Host "    To update to a newer version:" -ForegroundColor $script:MUTED_COLOR
     Write-Host "      irm giljo.ai/install.ps1 | iex" -ForegroundColor $script:MUTED_COLOR
+    Write-Host "      (the installer detects existing installs automatically)" -ForegroundColor $script:MUTED_COLOR
     Write-Host ""
 }
 
@@ -799,8 +780,8 @@ function Invoke-GiljoInstaller {
     # Phase 5 -- Shortcuts
     Install-Shortcuts -TargetDir $targetDir -Version $release.Version
 
-    # Done
-    Show-Completion -TargetDir $targetDir -Version $release.Version
+    # Phase 6 -- First run
+    Start-FirstRun -TargetDir $targetDir -Version $release.Version
 }
 
 # Run the installer
