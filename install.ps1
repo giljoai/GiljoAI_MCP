@@ -99,157 +99,43 @@ function Test-Python {
     Write-Log "Python $pythonVersion detected"
 }
 
-# Prompt for PostgreSQL settings (password + db name) before install
-function Get-PostgreSQLSettings {
-    Write-Host ""
-    Write-Host "  [PostgreSQL Configuration]" -ForegroundColor Cyan
-    Write-Host ""
-
-    # A) Admin password
-    Write-Host "  Choose a password for the PostgreSQL 'postgres' admin user."
-    Write-Host "  This will be used during installation and by the application." -ForegroundColor Gray
-    Write-Host ""
-    do {
-        $script:PG_PASSWORD = Read-Host "  PostgreSQL admin password" -AsSecureString
-        $script:PG_PASSWORD_CONFIRM = Read-Host "  Confirm password" -AsSecureString
-
-        $pw1 = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($script:PG_PASSWORD))
-        $pw2 = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($script:PG_PASSWORD_CONFIRM))
-
-        if ([string]::IsNullOrWhiteSpace($pw1)) {
-            Write-Warning "Password cannot be empty."
-            $passwordOk = $false
-        }
-        elseif ($pw1 -ne $pw2) {
-            Write-Warning "Passwords do not match. Try again."
-            $passwordOk = $false
-        }
-        else {
-            $passwordOk = $true
-        }
-    } while (-not $passwordOk)
-
-    $script:PG_PASSWORD_PLAIN = $pw1
-    Write-Success "PostgreSQL password set"
-    Write-Log "PostgreSQL password configured"
-
-    # B) Database name
-    Write-Host ""
-    Write-Host "  Choose the database name for GiljoAI MCP."
-    Write-Host "  Change this only if running multiple installations on the same server." -ForegroundColor Gray
-    $dbInput = Read-Host "  Database name [giljo_mcp]"
-    if ([string]::IsNullOrWhiteSpace($dbInput)) {
-        $script:PG_DB_NAME = "giljo_mcp"
-    }
-    else {
-        $script:PG_DB_NAME = $dbInput
-    }
-    Write-Success "Database name: $script:PG_DB_NAME"
-    Write-Log "Database name: $script:PG_DB_NAME"
-}
-
-# Install PostgreSQL via winget
-function Install-PostgreSQL {
-    Write-Info "Installing PostgreSQL via winget..."
-    Write-Log "Installing PostgreSQL via winget"
-
-    # Check winget is available
-    if (-not (Test-CommandExists "winget")) {
-        Write-Error-Custom "winget is not available on this system"
-        Write-Host ""
-        Write-Host "  Please install PostgreSQL manually:"
-        Write-Host "    https://www.postgresql.org/download/windows/"
-        Write-Host ""
-        Write-Log "ERROR: winget not found, cannot auto-install PostgreSQL"
-        exit 1
-    }
-
-    # Install with the user-provided superuser password
-    try {
-        $installArgs = @(
-            "install", "PostgreSQL.PostgreSQL.17",
-            "--silent",
-            "--accept-source-agreements",
-            "--accept-package-agreements",
-            "--override", "--superpassword `"$script:PG_PASSWORD_PLAIN`" --serverport 5432 --enable-components server,commandlinetools"
-        )
-        $proc = Start-Process -FilePath "winget" -ArgumentList $installArgs -Wait -PassThru -NoNewWindow
-        if ($proc.ExitCode -ne 0) {
-            throw "winget exited with code $($proc.ExitCode)"
-        }
-        Write-Success "PostgreSQL installed successfully"
-        Write-Log "PostgreSQL winget install completed"
-    }
-    catch {
-        Write-Error-Custom "PostgreSQL installation failed: $_"
-        Write-Host ""
-        Write-Host "  You can install manually from:"
-        Write-Host "    https://www.postgresql.org/download/windows/"
-        Write-Host ""
-        Write-Log "ERROR: PostgreSQL install failed - $_"
-        exit 1
-    }
-
-    # Add PostgreSQL bin to PATH for this session
-    $pgPaths = @(
-        "C:\Program Files\PostgreSQL\17\bin",
-        "C:\Program Files\PostgreSQL\16\bin",
-        "C:\Program Files\PostgreSQL\15\bin"
-    )
-    foreach ($pgPath in $pgPaths) {
-        if (Test-Path $pgPath) {
-            $env:PATH = "$pgPath;$env:PATH"
-            Write-Log "Added $pgPath to session PATH"
-            break
-        }
-    }
-}
-
 # Check PostgreSQL
 function Test-PostgreSQL {
     Write-Info "Checking PostgreSQL installation..."
     Write-Log "Checking PostgreSQL installation"
-
+    
     if (-not (Test-CommandExists "psql")) {
-        Write-Warning "PostgreSQL not found — will install automatically"
-        Write-Log "PostgreSQL not found, prompting for settings before install"
-
-        # Collect settings first, then install
-        Get-PostgreSQLSettings
-        Install-PostgreSQL
-
-        # Verify it's now available
-        if (-not (Test-CommandExists "psql")) {
-            Write-Error-Custom "PostgreSQL was installed but psql is not in PATH"
-            Write-Host ""
-            Write-Host "  Try restarting your terminal and running the installer again."
-            Write-Host ""
-            Write-Log "ERROR: psql still not found after install"
-            exit 1
-        }
+        Write-Error-Custom "PostgreSQL is not installed or not in PATH"
+        Write-Host ""
+        Write-Host "Please install PostgreSQL 14 or higher:"
+        Write-Host "  Download: https://www.postgresql.org/download/windows/"
+        Write-Host "  Note: Add PostgreSQL bin directory to PATH"
+        Write-Host ""
+        Write-Log "ERROR: PostgreSQL not found"
+        exit 1
     }
-
+    
     $pgVersionOutput = psql --version 2>&1
     $versionMatch = $pgVersionOutput -match "(\d+)\.(\d+)"
-
+    
     if (-not $versionMatch) {
         Write-Error-Custom "Could not determine PostgreSQL version"
         Write-Log "ERROR: Could not parse PostgreSQL version"
         exit 1
     }
-
+    
     $pgMajorVersion = [int]$matches[1]
-
+    
     if ($pgMajorVersion -lt 14) {
         Write-Error-Custom "PostgreSQL $pgMajorVersion is installed, but version 14 or higher is required"
         Write-Host ""
-        Write-Host "  Please upgrade PostgreSQL:"
-        Write-Host "    https://www.postgresql.org/download/windows/"
+        Write-Host "Please upgrade PostgreSQL:"
+        Write-Host "  https://www.postgresql.org/download/windows/"
         Write-Host ""
         Write-Log "ERROR: PostgreSQL version $pgMajorVersion < 14"
         exit 1
     }
-
+    
     Write-Success "PostgreSQL $pgMajorVersion detected"
     Write-Log "PostgreSQL $pgMajorVersion detected"
 }
@@ -466,7 +352,7 @@ function Invoke-Installer {
     
     # Set environment variable to indicate scripted installation
     $env:GILJO_SCRIPTED_INSTALL = "true"
-
+    
     try {
         python install.py
         Write-Log "install.py completed successfully"
