@@ -125,7 +125,7 @@ class TestInstallShPhases:
         assert "--setup-only" in self.content
 
     def test_phase_5_service(self):
-        assert "setup_service" in self.content
+        assert "save_service_files" in self.content
 
     def test_phase_6_first_run(self):
         assert "first_run" in self.content
@@ -184,7 +184,7 @@ class TestInstallShServiceTemplates:
 
     def test_systemd_exec_start(self):
         assert "ExecStart=" in self.content
-        assert "api.run_api" in self.content
+        assert "startup.py" in self.content
 
     def test_launchd_plist_label(self):
         assert "com.giljoai.mcp" in self.content
