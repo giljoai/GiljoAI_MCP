@@ -318,15 +318,9 @@ function Test-Prerequisites {
         Write-Step "Installing PostgreSQL 17 via winget..."
         try {
             $overrideStr = "--superpassword `"$pgPw1`" --serverport 5432 --enable-components server,commandlinetools"
-            $pgProc = Start-Process -FilePath "winget" -ArgumentList @(
-                "install", "PostgreSQL.PostgreSQL.17",
-                "--silent",
-                "--accept-source-agreements",
-                "--accept-package-agreements",
-                "--override", "`"$overrideStr`""
-            ) -Wait -PassThru -NoNewWindow
-            if ($pgProc.ExitCode -ne 0) {
-                throw "winget exited with code $($pgProc.ExitCode)"
+            & winget install PostgreSQL.PostgreSQL.17 --silent --accept-source-agreements --accept-package-agreements --override $overrideStr
+            if ($LASTEXITCODE -ne 0) {
+                throw "winget exited with code $LASTEXITCODE"
             }
             Write-Ok "PostgreSQL 17 installed"
         } catch {
