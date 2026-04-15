@@ -44,7 +44,7 @@ $ErrorActionPreference = 'Stop'
 
 $script:GITHUB_REPO       = "giljoai/GiljoAI_MCP"
 $script:GITHUB_API_URL    = "https://api.github.com/repos/$script:GITHUB_REPO/releases/latest"
-$script:DEFAULT_INSTALL   = Join-Path $HOME "GiljoAI_MCP"
+$script:DEFAULT_INSTALL   = $PWD.Path
 $script:MIN_PYTHON_MAJOR  = 3
 $script:MIN_PYTHON_MINOR  = 12
 $script:MIN_NODE_MAJOR    = 20
