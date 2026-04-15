@@ -69,7 +69,7 @@ function Write-Banner {
 function Write-Phase {
     param([string]$Number, [string]$Title)
     Write-Host ""
-    Write-Host "  [$Number/6] $Title" -ForegroundColor $script:BRAND_COLOR
+    Write-Host "  [$Number/5] $Title" -ForegroundColor $script:BRAND_COLOR
     Write-Host "  $('-' * (6 + $Title.Length))" -ForegroundColor $script:MUTED_COLOR
 }
 
@@ -551,34 +551,8 @@ function Initialize-Environment {
         Write-Warn "requirements.txt not found -- skipping pip install"
     }
 
-    # Build frontend
-    $frontendDir = Join-Path $TargetDir "frontend"
-    if (Test-Path (Join-Path $frontendDir "package.json")) {
-        Write-Step "Installing frontend dependencies..."
-        Push-Location $frontendDir
-        try {
-            $npmCmd = (Get-Command npm -ErrorAction Stop).Source
-            & $npmCmd install 2>&1 | Out-Host
-            if ($LASTEXITCODE -ne 0) { throw "npm install failed with exit code $LASTEXITCODE" }
-            Write-Ok "Frontend dependencies installed"
-
-            Write-Step "Building frontend (this may take a minute)..."
-            & $npmCmd run build 2>&1 | Out-Host
-            if ($LASTEXITCODE -ne 0) { throw "npm run build failed with exit code $LASTEXITCODE" }
-
-            # Verify dist was created
-            if (-not (Test-Path (Join-Path $frontendDir "dist" "index.html"))) {
-                throw "Build completed but dist/index.html not found"
-            }
-            Write-Ok "Frontend built"
-        } catch {
-            Write-Warn "Frontend build failed: $_ — server will run without the dashboard UI"
-        } finally {
-            Pop-Location
-        }
-    } else {
-        Write-Warn "Frontend package.json not found -- skipping frontend build"
-    }
+    # Frontend build is handled by startup.py on first run — skip here to avoid
+    # PowerShell irm|iex pipeline issues with npm command parsing.
 }
 
 # ---------------------------------------------------------------------------
@@ -655,57 +629,12 @@ pause
 }
 
 # ---------------------------------------------------------------------------
-# Phase 6 -- First run
+# Phase 6 -- Done
 # ---------------------------------------------------------------------------
 
-function Start-FirstRun {
+function Show-Completion {
     param([string]$TargetDir, [string]$Version)
 
-    Write-Phase "6" "First run"
-
-    $venvPython = Join-Path $TargetDir "venv" "Scripts" "python.exe"
-
-    Write-Step "Starting GiljoAI MCP server..."
-    $serverProcess = Start-Process -FilePath $venvPython `
-        -ArgumentList "-m", "api.run_api" `
-        -WorkingDirectory $TargetDir `
-        -PassThru `
-        -WindowStyle Normal
-
-    # Wait for server to start (up to 60 seconds)
-    Write-Step "Waiting for server to respond on port $($script:SERVER_PORT)..."
-    $maxWait = 60
-    $waited = 0
-    $serverReady = $false
-    while ($waited -lt $maxWait) {
-        Start-Sleep -Seconds 2
-        $waited += 2
-        try {
-            $response = Invoke-WebRequest -Uri "http://localhost:$($script:SERVER_PORT)/" `
-                -UseBasicParsing -TimeoutSec 3 -ErrorAction SilentlyContinue
-            if ($response.StatusCode -eq 200) {
-                $serverReady = $true
-                break
-            }
-        } catch {
-            # Server not ready yet
-            Write-Host "." -NoNewline
-        }
-    }
-    if (-not $serverReady) { Write-Host "" }
-
-    if ($serverReady) {
-        Write-Ok "Server is running on port $($script:SERVER_PORT)"
-
-        # Open browser
-        Write-Step "Opening browser..."
-        Start-Process "http://localhost:$($script:SERVER_PORT)"
-    } else {
-        Write-Warn "Server did not respond within $maxWait seconds."
-        Write-Warn "You can start it manually: start-giljoai.bat"
-    }
-
-    # Print completion summary
     Write-Host ""
     Write-Host "    ========================================================" -ForegroundColor $script:BRAND_COLOR
     Write-Host "      Installation complete!" -ForegroundColor $script:SUCCESS_COLOR
@@ -713,15 +642,15 @@ function Start-FirstRun {
     Write-Host ""
     Write-Host "    Version:    $Version" -ForegroundColor $script:INFO_COLOR
     Write-Host "    Location:   $TargetDir" -ForegroundColor $script:INFO_COLOR
-    Write-Host "    URL:        http://localhost:$($script:SERVER_PORT)" -ForegroundColor $script:INFO_COLOR
     Write-Host ""
-    Write-Host "    To start the server later:" -ForegroundColor $script:MUTED_COLOR
-    Write-Host "      - Use the Start Menu shortcut, or" -ForegroundColor $script:MUTED_COLOR
-    Write-Host "      - Run start-giljoai.bat from $TargetDir" -ForegroundColor $script:MUTED_COLOR
+    Write-Host "    To start the server:" -ForegroundColor $script:INFO_COLOR
+    Write-Host "      cd $TargetDir" -ForegroundColor White
+    Write-Host "      python startup.py" -ForegroundColor White
     Write-Host ""
-    Write-Host "    To update to a newer version:" -ForegroundColor $script:MUTED_COLOR
-    Write-Host "      irm giljo.ai/install.ps1 | iex" -ForegroundColor $script:MUTED_COLOR
-    Write-Host "      (the installer detects existing installs automatically)" -ForegroundColor $script:MUTED_COLOR
+    Write-Host "    startup.py will build the frontend, start the server," -ForegroundColor $script:MUTED_COLOR
+    Write-Host "    and open your browser at http://localhost:$($script:SERVER_PORT)" -ForegroundColor $script:MUTED_COLOR
+    Write-Host ""
+    Write-Host "    Or use the Start Menu shortcut / start-giljoai.bat" -ForegroundColor $script:MUTED_COLOR
     Write-Host ""
 }
 
@@ -836,8 +765,8 @@ function Invoke-GiljoInstaller {
     # Phase 5 -- Shortcuts
     Install-Shortcuts -TargetDir $targetDir -Version $release.Version
 
-    # Phase 6 -- First run
-    Start-FirstRun -TargetDir $targetDir -Version $release.Version
+    # Done
+    Show-Completion -TargetDir $targetDir -Version $release.Version
 }
 
 # Run the installer
