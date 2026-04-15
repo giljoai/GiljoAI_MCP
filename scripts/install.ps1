@@ -647,19 +647,7 @@ pause
         Write-Warn "Could not create Start Menu shortcut: $_"
     }
 
-    # Desktop shortcut
-    $desktopPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "GiljoAI MCP.lnk"
-    try {
-        $wshShell2 = New-Object -ComObject WScript.Shell
-        $desktopShortcut = $wshShell2.CreateShortcut($desktopPath)
-        $desktopShortcut.TargetPath = $batPath
-        $desktopShortcut.WorkingDirectory = $TargetDir
-        $desktopShortcut.Description = "GiljoAI MCP Server v$Version"
-        $desktopShortcut.Save()
-        Write-Ok "Desktop shortcut created"
-    } catch {
-        Write-Warn "Could not create desktop shortcut: $_"
-    }
+    # Desktop shortcut is handled by install.py
 }
 
 # ---------------------------------------------------------------------------
