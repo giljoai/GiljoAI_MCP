@@ -330,7 +330,8 @@ function Test-Prerequisites {
             )
             # Use Start-Process with a single-line ArgumentList string so the
             # override value (which contains spaces) stays as one token.
-            $argLine = ($pgArgs -join " ") + " `"--mode unattended --superpassword $escapedPw --serverport 5432 --enable-components server,commandlinetools`""
+            $argLine = ($pgArgs -join " ") + " `"--mode unattended --unattendedmodeui none --superpassword $escapedPw --serverport 5432 --enable-components server,commandlinetools --disable-components pgAdmin,stackbuilder`""
+            Write-Host "    This may take a few minutes..." -ForegroundColor $script:MUTED_COLOR
             $pgProc = Start-Process -FilePath "winget" -ArgumentList $argLine -Wait -PassThru -NoNewWindow
             if ($pgProc.ExitCode -ne 0) {
                 throw "winget exited with code $($pgProc.ExitCode)"
