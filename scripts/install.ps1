@@ -60,21 +60,10 @@ $script:MUTED_COLOR       = "Gray"
 # ---------------------------------------------------------------------------
 
 function Write-Banner {
-    $banner = @"
-
-    ========================================================
-      _____ _ _  _        _    ___   __  __  ___ ___
-     / ____(_) |(_)      / \  |_ _| |  \/  |/ __| _ \
-    | |  __ _| | _  ___ / _ \  | |  | |\/| | (__|  _/
-    | |_| | | || |/ _ / ___  | | |  | |  | |\__ |_|
-     \_____|_|_|/ \___/_/   \_|___| |_|  |_||___/
-              |__/
-    ========================================================
-         Windows Installer
-    ========================================================
-
-"@
-    Write-Host $banner -ForegroundColor $script:BRAND_COLOR
+    Write-Host ""
+    Write-Host "    GiljoAI MCP Community Edition" -ForegroundColor Yellow
+    Write-Host "    Windows Installer" -ForegroundColor $script:MUTED_COLOR
+    Write-Host ""
 }
 
 function Write-Phase {
