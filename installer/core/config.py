@@ -178,6 +178,7 @@ class ConfigManager:
             frontend_port = self.settings.get("dashboard_port", 7274)
 
             # Bind address derived from install-time network choice (localhost=127.0.0.1/HTTP, LAN/WAN=0.0.0.0/HTTPS via mkcert)
+            bind_address = self.settings.get("bind", "127.0.0.1")
             api_url_host = "localhost"  # Default for frontend connections
             ssl_enabled = self.settings.get("ssl_enabled", False)
             http_proto = "https" if ssl_enabled else "http"
@@ -235,8 +236,8 @@ DATABASE_URL=postgresql://giljo_user:{user_password}@{pg_host}:{pg_port}/giljo_m
 DEPLOYMENT_CONTEXT=localhost
 
 # API Host (bind address derived from install-time network choice)
-GILJO_API_HOST=0.0.0.0
-SERVICE_BIND=0.0.0.0
+GILJO_API_HOST={bind_address}
+SERVICE_BIND={bind_address}
 
 # =============================================================================
 # FRONTEND CONFIGURATION
@@ -385,6 +386,9 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
             # Get install directory
             install_dir = self.settings.get("install_dir", str(Path.cwd()))
 
+            # Bind address: localhost=127.0.0.1 (safe), LAN/WAN=0.0.0.0 (exposed)
+            bind_address = self.settings.get("bind", "127.0.0.1")
+
             config = {
                 "version": "3.0.0",  # v3.0: Unified authentication architecture
                 "deployment_context": "localhost",  # Informational only (not a mode)
@@ -422,17 +426,17 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                 "server": {
                     # Bind address derived from install-time network choice
                     # (localhost=127.0.0.1/HTTP, LAN/WAN=0.0.0.0/HTTPS via mkcert)
-                    "api_host": "0.0.0.0",
+                    "api_host": bind_address,
                     "api_port": api_port,
-                    "dashboard_host": "0.0.0.0",
+                    "dashboard_host": bind_address,
                     "dashboard_port": frontend_port,
-                    "mcp_host": "0.0.0.0",
+                    "mcp_host": bind_address,
                     "mcp_port": api_port,  # MCP uses same port as API in v2.0+
                     "api_key": None,  # Generated on first run if needed
                 },
                 "services": {
                     "api": {
-                        "host": "0.0.0.0",  # Bind address derived from install-time network choice
+                        "host": bind_address,  # Bind address derived from install-time network choice
                         "port": api_port,
                         "unified_port": True,  # v2.0 uses single port for API+WebSocket
                         "description": "Main API server (REST + WebSocket + MCP)",
