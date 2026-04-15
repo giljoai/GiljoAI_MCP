@@ -434,11 +434,13 @@ class UnifiedInstaller:
                     result["steps"].append("https_configured")
 
             if not setup_only:
-                # Step 8: Create desktop shortcuts (if requested - Windows only)
-                if self.settings.get("create_shortcuts", False):
-                    self._print_header("Creating Desktop Shortcuts")
-                    self.create_desktop_shortcuts()
-                    result["steps"].append("shortcuts_created")
+                pass  # Reserved for future non-setup-only steps
+
+            # Create desktop shortcuts (if requested - Windows only)
+            if self.settings.get("create_shortcuts", False):
+                self._print_header("Creating Desktop Shortcuts")
+                self.create_desktop_shortcuts()
+                result["steps"].append("shortcuts_created")
 
             # Success
             result["success"] = True
