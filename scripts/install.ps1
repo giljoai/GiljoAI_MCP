@@ -265,22 +265,87 @@ function Test-Prerequisites {
         Write-Step "PATH refreshed after installations"
     }
 
-    # Handle PostgreSQL separately -- cannot fully automate
+    # Handle PostgreSQL via winget with user-provided settings
     if ($missing -contains "postgresql") {
         Write-Host ""
         Write-Host "    -------------------------------------------------------" -ForegroundColor $script:BRAND_COLOR
-        Write-Host "    PostgreSQL must be installed manually on Windows." -ForegroundColor $script:BRAND_COLOR
-        Write-Host ""
-        Write-Host "    Download: https://www.postgresql.org/download/windows/" -ForegroundColor $script:INFO_COLOR
-        Write-Host ""
-        Write-Host "    During installation:" -ForegroundColor $script:MUTED_COLOR
-        Write-Host "      - Use the default port (5432)" -ForegroundColor $script:MUTED_COLOR
-        Write-Host "      - Remember the password you set for the postgres user" -ForegroundColor $script:MUTED_COLOR
-        Write-Host "      - Add PostgreSQL bin to PATH when prompted" -ForegroundColor $script:MUTED_COLOR
+        Write-Host "    PostgreSQL will be installed automatically via winget." -ForegroundColor $script:BRAND_COLOR
         Write-Host "    -------------------------------------------------------" -ForegroundColor $script:BRAND_COLOR
         Write-Host ""
-        Write-Host "    Press Enter after PostgreSQL is installed..." -ForegroundColor $script:BRAND_COLOR -NoNewline
-        Read-Host
+
+        if (-not $hasWinget) {
+            Exit-WithError "winget is required to install PostgreSQL. Please install PostgreSQL manually from https://www.postgresql.org/download/windows/ and re-run this script."
+        }
+
+        # A) Prompt for admin password
+        Write-Host "    Choose a password for the PostgreSQL 'postgres' admin user." -ForegroundColor $script:INFO_COLOR
+        Write-Host "    You will need this password again during application setup." -ForegroundColor $script:MUTED_COLOR
+        Write-Host ""
+        do {
+            $pgSecure1 = Read-Host "    PostgreSQL admin password" -AsSecureString
+            $pgSecure2 = Read-Host "    Confirm password" -AsSecureString
+
+            $pgPw1 = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pgSecure1))
+            $pgPw2 = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pgSecure2))
+
+            if ([string]::IsNullOrWhiteSpace($pgPw1)) {
+                Write-Warn "Password cannot be empty."
+                $pgPwOk = $false
+            } elseif ($pgPw1 -ne $pgPw2) {
+                Write-Warn "Passwords do not match. Try again."
+                $pgPwOk = $false
+            } else {
+                $pgPwOk = $true
+            }
+        } while (-not $pgPwOk)
+        Write-Ok "PostgreSQL password set"
+
+        # B) Prompt for database name
+        Write-Host ""
+        Write-Host "    Choose the database name for GiljoAI MCP." -ForegroundColor $script:INFO_COLOR
+        Write-Host "    Change this only if running multiple installations on the same server." -ForegroundColor $script:MUTED_COLOR
+        $pgDbInput = Read-Host "    Database name [giljo_mcp]"
+        if ([string]::IsNullOrWhiteSpace($pgDbInput)) {
+            $script:PG_DB_NAME = "giljo_mcp"
+        } else {
+            $script:PG_DB_NAME = $pgDbInput
+        }
+        Write-Ok "Database name: $script:PG_DB_NAME"
+
+        # Install PostgreSQL via winget
+        Write-Step "Installing PostgreSQL 17 via winget..."
+        try {
+            $pgInstallArgs = @(
+                "install", "PostgreSQL.PostgreSQL.17",
+                "--silent",
+                "--accept-source-agreements",
+                "--accept-package-agreements",
+                "--override",
+                "--superpassword `"$pgPw1`" --serverport 5432 --enable-components server,commandlinetools"
+            )
+            $pgProc = Start-Process -FilePath "winget" -ArgumentList $pgInstallArgs -Wait -PassThru -NoNewWindow
+            if ($pgProc.ExitCode -ne 0) {
+                throw "winget exited with code $($pgProc.ExitCode)"
+            }
+            Write-Ok "PostgreSQL 17 installed"
+        } catch {
+            Exit-WithError "PostgreSQL installation failed: $_`nPlease install manually from https://www.postgresql.org/download/windows/ and re-run this script."
+        }
+
+        # Add PostgreSQL bin to PATH for this session
+        $pgBinPaths = @(
+            "C:\Program Files\PostgreSQL\17\bin",
+            "C:\Program Files\PostgreSQL\16\bin",
+            "C:\Program Files\PostgreSQL\15\bin"
+        )
+        foreach ($p in $pgBinPaths) {
+            if (Test-Path $p) {
+                $env:PATH = "$p;$env:PATH"
+                break
+            }
+        }
 
         Refresh-PathEnv
 
@@ -288,9 +353,9 @@ function Test-Prerequisites {
         $pgNow = (Test-CommandExists "pg_isready") -or
                  (Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue)
         if (-not $pgNow) {
-            Exit-WithError "PostgreSQL still not detected. Please install it and ensure it is running, then re-run this script."
+            Exit-WithError "PostgreSQL was installed but is not detected. Try restarting your terminal and re-running this script."
         }
-        Write-Ok "PostgreSQL detected after manual install"
+        Write-Ok "PostgreSQL detected after install"
     }
 
     # Final verification of winget-installed items
