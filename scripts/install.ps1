@@ -322,9 +322,9 @@ function Test-Prerequisites {
             $argLine = ($pgArgs -join " ") + " `"--mode unattended --unattendedmodeui none --superpassword $escapedPw --serverport 5432 --enable-components server,commandlinetools --disable-components pgAdmin,stackbuilder`""
             Write-Host ""
             Write-Host "    ╔══════════════════════════════════════════════════════════╗" -ForegroundColor $script:BRAND_COLOR
-            Write-Host "    ║  PostgreSQL is installing silently — this takes 3-5     ║" -ForegroundColor $script:BRAND_COLOR
-            Write-Host "    ║  minutes. Microsoft C++ dependencies may also install.  ║" -ForegroundColor $script:BRAND_COLOR
-            Write-Host "    ║  Please wait and do not close this window.              ║" -ForegroundColor $script:BRAND_COLOR
+            Write-Host "    ║  PostgreSQL is installing silently — this takes 3-5      ║" -ForegroundColor $script:BRAND_COLOR
+            Write-Host "    ║  minutes. Microsoft C++ dependencies may also install.   ║" -ForegroundColor $script:BRAND_COLOR
+            Write-Host "    ║  Please wait and do not close this window.               ║" -ForegroundColor $script:BRAND_COLOR
             Write-Host "    ╚══════════════════════════════════════════════════════════╝" -ForegroundColor $script:BRAND_COLOR
             Write-Host ""
             $pgProc = Start-Process -FilePath "winget" -ArgumentList $argLine -Wait -PassThru -NoNewWindow
