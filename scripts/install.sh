@@ -400,8 +400,11 @@ install_prereqs_linux() {
                         ;;
                     postgresql)
                         print_step "Installing PostgreSQL..."
+                        # Remove any stale pgdg repo config to avoid duplicates
+                        sudo rm -f /etc/apt/sources.list.d/pgdg.list /etc/apt/sources.list.d/pgdg.sources
                         sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-                        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+                        # Refresh GPG key (overwrite if stale)
+                        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/pgdg.gpg
                         sudo apt-get update -qq
                         sudo apt-get install -y -qq postgresql postgresql-client
                         sudo systemctl start postgresql
@@ -654,14 +657,14 @@ setup_environment() {
 
     # Upgrade pip
     print_step "Upgrading pip..."
-    "$venv_python" -m pip install --upgrade pip --quiet 2>&1 | tail -n 0
+    "$venv_python" -m pip install --upgrade pip --quiet 2>/dev/null
     print_ok "pip upgraded"
 
     # Install Python dependencies
     local requirements="${target_dir}/requirements.txt"
     if [[ -f "$requirements" ]]; then
         print_step "Installing Python dependencies (this may take a few minutes)..."
-        "$venv_pip" install -r "$requirements" --quiet 2>&1 | tail -n 0
+        "$venv_pip" install -r "$requirements" --quiet 2>/dev/null
         print_ok "Python dependencies installed"
     else
         print_warn "requirements.txt not found -- skipping pip install"
@@ -671,11 +674,11 @@ setup_environment() {
     local frontend_dir="${target_dir}/frontend"
     if [[ -f "${frontend_dir}/package.json" ]]; then
         print_step "Installing frontend dependencies..."
-        (cd "$frontend_dir" && npm install --silent 2>&1 | tail -n 0)
+        (cd "$frontend_dir" && npm install --silent > /dev/null 2>&1)
         print_ok "Frontend dependencies installed"
 
         print_step "Building frontend (this may take a minute)..."
-        (cd "$frontend_dir" && npm run build 2>&1 | tail -n 0)
+        (cd "$frontend_dir" && npm run build > /dev/null 2>&1)
         print_ok "Frontend built"
     else
         print_warn "Frontend package.json not found -- skipping frontend build"
