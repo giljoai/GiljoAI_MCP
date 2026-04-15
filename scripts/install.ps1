@@ -669,7 +669,7 @@ function Show-Completion {
     Write-Host "      cd $TargetDir" -ForegroundColor White
     Write-Host "      python startup.py" -ForegroundColor White
     Write-Host ""
-    Write-Host "    Then open: http://localhost:$($script:SERVER_PORT)" -ForegroundColor $script:MUTED_COLOR
+    Write-Host "    startup.py will start the server and open your browser." -ForegroundColor $script:MUTED_COLOR
     Write-Host ""
 }
 
