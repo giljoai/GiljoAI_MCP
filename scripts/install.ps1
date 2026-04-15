@@ -607,6 +607,20 @@ function Invoke-InstallPy {
     }
 
     Write-Ok "Database and configuration setup complete"
+
+    # Rebuild frontend after install.py since config.yaml may have changed
+    $frontendDir = Join-Path $TargetDir "frontend"
+    if (Test-Path (Join-Path $frontendDir "package.json")) {
+        $npmPath = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
+        if (-not $npmPath) { $npmPath = (Get-Command npm -ErrorAction SilentlyContinue).Source }
+        if ($npmPath -and (Test-Path (Join-Path $frontendDir "node_modules"))) {
+            Write-Step "Rebuilding frontend with final configuration..."
+            $rebuildProc = Start-Process -FilePath $npmPath -ArgumentList "run build" -WorkingDirectory $frontendDir -Wait -PassThru -NoNewWindow
+            if ($rebuildProc.ExitCode -eq 0) {
+                Write-Ok "Frontend rebuilt"
+            }
+        }
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -631,6 +645,12 @@ pause
     Set-Content -Path $batPath -Value $batContent -Encoding ASCII
     Write-Ok "Created start-giljoai.bat"
 
+    # Resolve icon path
+    $iconPath = Join-Path $TargetDir "frontend" "public" "giljo.ico"
+    if (-not (Test-Path $iconPath)) {
+        $iconPath = Join-Path $TargetDir "frontend" "dist" "giljo.ico"
+    }
+
     # Create Start Menu shortcut
     $startMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
     $shortcutPath = Join-Path $startMenuDir "GiljoAI MCP.lnk"
@@ -641,6 +661,7 @@ pause
         $shortcut.TargetPath = $batPath
         $shortcut.WorkingDirectory = $TargetDir
         $shortcut.Description = "GiljoAI MCP Server v$Version"
+        if (Test-Path $iconPath) { $shortcut.IconLocation = "$iconPath, 0" }
         $shortcut.Save()
         Write-Ok "Start Menu shortcut created"
     } catch {
@@ -655,6 +676,7 @@ pause
         $desktopShortcut.TargetPath = $batPath
         $desktopShortcut.WorkingDirectory = $TargetDir
         $desktopShortcut.Description = "GiljoAI MCP Server v$Version"
+        if (Test-Path $iconPath) { $desktopShortcut.IconLocation = "$iconPath, 0" }
         $desktopShortcut.Save()
         Write-Ok "Desktop shortcut created"
     } catch {
