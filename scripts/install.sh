@@ -111,10 +111,22 @@ else
 fi
 
 print_banner() {
-    echo ""
-    echo -e "    ${BRAND}GiljoAI MCP Community Edition${NC}"
-    echo -e "    ${MUTED}Linux / macOS Installer${NC}"
-    echo ""
+    echo -e "${BRAND}"
+    cat <<'BANNER'
+
+    ========================================================
+      _____ _ _  _        _    ___   __  __  ___ ___
+     / ____(_) |(_)      / \  |_ _| |  \/  |/ __| _ \
+    | |  __ _| | _  ___ / _ \  | |  | |\/| | (__|  _/
+    | |_| | | || |/ _ / ___  | | |  | |  | |\__ |_|
+     \_____|_|_|/ \___/_/   \_|___| |_|  |_||___/
+              |__/
+    ========================================================
+         Linux / macOS Installer
+    ========================================================
+
+BANNER
+    echo -e "${NC}"
 }
 
 print_phase() {
@@ -152,41 +164,13 @@ exit_with_error() {
     exit 1
 }
 
-HAS_TTY=false
-TTY_FD=""
-if [[ -t 0 ]]; then
-    HAS_TTY=true
-elif [[ -c /dev/tty ]]; then
-    # Try to open /dev/tty on fd 3 for interactive reads
-    if exec 3</dev/tty 2>/dev/null; then
-        HAS_TTY=true
-        TTY_FD=3
-    fi
-fi
-
-read_input() {
-    if [[ "$HAS_TTY" == true ]]; then
-        if [[ -t 0 ]]; then
-            read -r "$@"
-        elif [[ -n "$TTY_FD" ]]; then
-            read -r "$@" <&${TTY_FD}
-        fi
-        return 0
-    fi
-    return 1
-}
-
 confirm() {
     local prompt="$1"
     if [[ "$AUTO_YES" == true ]]; then
         return 0
     fi
-    if [[ "$HAS_TTY" != true ]]; then
-        return 0
-    fi
     echo -en "    ${CYAN}$prompt [Y/n]: ${NC}"
-    local answer
-    read_input answer
+    read -r answer
     case "$answer" in
         n|N|no|No|NO) return 1 ;;
         *) return 0 ;;
@@ -408,11 +392,8 @@ install_prereqs_linux() {
                         ;;
                     postgresql)
                         print_step "Installing PostgreSQL..."
-                        # Remove any stale pgdg repo config to avoid duplicates
-                        sudo rm -f /etc/apt/sources.list.d/pgdg.list /etc/apt/sources.list.d/pgdg.sources
                         sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-                        # Refresh GPG key (overwrite if stale)
-                        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/pgdg.gpg
+                        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
                         sudo apt-get update -qq
                         sudo apt-get install -y -qq postgresql postgresql-client
                         sudo systemctl start postgresql
@@ -665,14 +646,14 @@ setup_environment() {
 
     # Upgrade pip
     print_step "Upgrading pip..."
-    "$venv_python" -m pip install --upgrade pip --quiet 2>/dev/null
+    "$venv_python" -m pip install --upgrade pip --quiet 2>&1 | tail -n 0
     print_ok "pip upgraded"
 
     # Install Python dependencies
     local requirements="${target_dir}/requirements.txt"
     if [[ -f "$requirements" ]]; then
         print_step "Installing Python dependencies (this may take a few minutes)..."
-        "$venv_pip" install -r "$requirements" --quiet 2>/dev/null
+        "$venv_pip" install -r "$requirements" --quiet 2>&1 | tail -n 0
         print_ok "Python dependencies installed"
     else
         print_warn "requirements.txt not found -- skipping pip install"
@@ -682,11 +663,11 @@ setup_environment() {
     local frontend_dir="${target_dir}/frontend"
     if [[ -f "${frontend_dir}/package.json" ]]; then
         print_step "Installing frontend dependencies..."
-        (cd "$frontend_dir" && npm install --silent > /dev/null 2>&1)
+        (cd "$frontend_dir" && npm install --silent 2>&1 | tail -n 0)
         print_ok "Frontend dependencies installed"
 
         print_step "Building frontend (this may take a minute)..."
-        (cd "$frontend_dir" && npm run build > /dev/null 2>&1)
+        (cd "$frontend_dir" && npm run build 2>&1 | tail -n 0)
         print_ok "Frontend built"
     else
         print_warn "Frontend package.json not found -- skipping frontend build"
@@ -711,15 +692,8 @@ run_install_py() {
     print_step "Running install.py for database setup, config generation, and template seeding..."
     echo ""
 
-    # Redirect TTY into install.py so interactive prompts work
-    # even when the bash script itself was piped via curl | bash
-    if [[ -n "$TTY_FD" ]]; then
-        (cd "$target_dir" && "$venv_python" "$install_py" --setup-only <&${TTY_FD}) || \
-            exit_with_error "install.py failed. Check the output above for details."
-    else
-        (cd "$target_dir" && "$venv_python" "$install_py" --setup-only) || \
-            exit_with_error "install.py failed. Check the output above for details."
-    fi
+    (cd "$target_dir" && "$venv_python" "$install_py" --setup-only) || \
+        exit_with_error "install.py failed. Check the output above for details."
 
     print_ok "Database and configuration setup complete"
 }
@@ -728,17 +702,29 @@ run_install_py() {
 # Phase 5 -- Service setup
 # ---------------------------------------------------------------------------
 
-save_service_files() {
+setup_service() {
     local target_dir="$1"
-    print_phase "5" "Service files"
-
-    local current_user
-    current_user="$(whoami)"
+    local version="$2"
+    print_phase "5" "Service setup"
 
     case "$OS_TYPE" in
         linux)
-            cat > "${target_dir}/giljoai-mcp.service" <<UNIT
-[Unit]
+            setup_systemd_service "$target_dir"
+            ;;
+        macos)
+            setup_launchd_agent "$target_dir"
+            ;;
+    esac
+}
+
+setup_systemd_service() {
+    local target_dir="$1"
+    local current_user
+    current_user="$(whoami)"
+
+    local service_file="/etc/systemd/system/giljoai-mcp.service"
+    local unit_content
+    unit_content="[Unit]
 Description=GiljoAI MCP Server
 After=network.target postgresql.service
 
@@ -746,28 +732,46 @@ After=network.target postgresql.service
 Type=simple
 User=${current_user}
 WorkingDirectory=${target_dir}
-ExecStart=${target_dir}/venv/bin/python ${target_dir}/startup.py
+ExecStart=${target_dir}/venv/bin/python -m api.run_api
 Restart=on-failure
 RestartSec=5
 Environment=PATH=${target_dir}/venv/bin:/usr/local/bin:/usr/bin
 
 [Install]
-WantedBy=multi-user.target
-UNIT
-            print_ok "Saved giljoai-mcp.service (optional — for running as a background service)"
-            ;;
-        macos)
-            cat > "${target_dir}/com.giljoai.mcp.plist" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
+WantedBy=multi-user.target"
+
+    print_step "Generated systemd service configuration"
+
+    if confirm "Install and enable systemd service (giljoai-mcp)?"; then
+        echo "$unit_content" | sudo tee "$service_file" > /dev/null
+        sudo systemctl daemon-reload
+        sudo systemctl enable --now giljoai-mcp
+        print_ok "systemd service installed and started"
+        print_step "Manage with: sudo systemctl {start|stop|restart|status} giljoai-mcp"
+    else
+        # Save the unit file locally for reference
+        echo "$unit_content" > "${target_dir}/giljoai-mcp.service"
+        print_ok "Service file saved to ${target_dir}/giljoai-mcp.service"
+        print_step "To install later: sudo cp giljoai-mcp.service /etc/systemd/system/ && sudo systemctl enable --now giljoai-mcp"
+    fi
+}
+
+setup_launchd_agent() {
+    local target_dir="$1"
+    local plist_dir="$HOME/Library/LaunchAgents"
+    local plist_file="${plist_dir}/com.giljoai.mcp.plist"
+    local plist_content
+    plist_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\">
 <dict>
     <key>Label</key>
     <string>com.giljoai.mcp</string>
     <key>ProgramArguments</key>
     <array>
         <string>${target_dir}/venv/bin/python</string>
-        <string>${target_dir}/startup.py</string>
+        <string>-m</string>
+        <string>api.run_api</string>
     </array>
     <key>WorkingDirectory</key>
     <string>${target_dir}</string>
@@ -780,11 +784,23 @@ UNIT
     <key>StandardErrorPath</key>
     <string>${target_dir}/logs/server.err</string>
 </dict>
-</plist>
-PLIST
-            print_ok "Saved com.giljoai.mcp.plist (optional — for running as a background service)"
-            ;;
-    esac
+</plist>"
+
+    print_step "Generated launchd agent configuration"
+
+    if confirm "Install and load launchd agent (com.giljoai.mcp)?"; then
+        mkdir -p "$plist_dir"
+        mkdir -p "${target_dir}/logs"
+        echo "$plist_content" > "$plist_file"
+        launchctl load "$plist_file"
+        print_ok "launchd agent installed and loaded"
+        print_step "Manage with: launchctl {load|unload} ~/Library/LaunchAgents/com.giljoai.mcp.plist"
+    else
+        # Save plist locally for reference
+        echo "$plist_content" > "${target_dir}/com.giljoai.mcp.plist"
+        print_ok "Plist saved to ${target_dir}/com.giljoai.mcp.plist"
+        print_step "To install later: cp com.giljoai.mcp.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.giljoai.mcp.plist"
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -794,7 +810,49 @@ PLIST
 first_run() {
     local target_dir="$1"
     local version="$2"
-    print_phase "6" "Done"
+    print_phase "6" "First run"
+
+    local venv_python="${target_dir}/venv/bin/python"
+    local server_ready=false
+
+    # Check if service is already running (started in phase 5)
+    if curl -sf "http://localhost:${SERVER_PORT}/api/health" &>/dev/null; then
+        print_ok "Server is already running on port ${SERVER_PORT}"
+    else
+        print_step "Starting GiljoAI MCP server..."
+        (cd "$target_dir" && "$venv_python" -m api.run_api &) 2>/dev/null
+
+        # Wait for server to start
+        print_step "Waiting for server to start..."
+        local waited=0
+        local max_wait=15
+        server_ready=false
+        while [[ $waited -lt $max_wait ]]; do
+            sleep 1
+            waited=$((waited + 1))
+            if curl -sf "http://localhost:${SERVER_PORT}/api/health" &>/dev/null; then
+                server_ready=true
+                break
+            fi
+        done
+
+        if [[ "$server_ready" == true ]]; then
+            print_ok "Server is running on port ${SERVER_PORT}"
+        else
+            print_warn "Server did not respond within ${max_wait} seconds."
+            print_warn "You can start it manually: cd $target_dir && venv/bin/python -m api.run_api"
+        fi
+    fi
+
+    # Open browser
+    if [[ "$server_ready" == true ]] || curl -sf "http://localhost:${SERVER_PORT}/api/health" &>/dev/null; then
+        print_step "Opening browser..."
+        local url="http://localhost:${SERVER_PORT}"
+        case "$OS_TYPE" in
+            linux)  xdg-open "$url" 2>/dev/null || true ;;
+            macos)  open "$url" 2>/dev/null || true ;;
+        esac
+    fi
 
     # Print completion summary
     echo ""
@@ -804,9 +862,19 @@ first_run() {
     echo ""
     echo -e "    ${CYAN}Version:    ${version}${NC}"
     echo -e "    ${CYAN}Location:   ${target_dir}${NC}"
+    echo -e "    ${CYAN}URL:        http://localhost:${SERVER_PORT}${NC}"
     echo ""
-    echo -e "    ${MUTED}Start the server:${NC}"
-    echo -e "    ${MUTED}  cd $target_dir && python3 startup.py${NC}"
+    echo -e "    ${MUTED}To start the server later:${NC}"
+    case "$OS_TYPE" in
+        linux)
+            echo -e "    ${MUTED}  sudo systemctl start giljoai-mcp${NC}"
+            echo -e "    ${MUTED}  -- or: cd $target_dir && venv/bin/python -m api.run_api${NC}"
+            ;;
+        macos)
+            echo -e "    ${MUTED}  launchctl load ~/Library/LaunchAgents/com.giljoai.mcp.plist${NC}"
+            echo -e "    ${MUTED}  -- or: cd $target_dir && venv/bin/python -m api.run_api${NC}"
+            ;;
+    esac
     echo ""
     echo -e "    ${MUTED}To update to a newer version:${NC}"
     echo -e "    ${MUTED}  curl -fsSL giljo.ai/install.sh | bash -s -- --update${NC}"
@@ -914,9 +982,7 @@ main() {
                 echo -e "    ${MUTED}[C] Cancel${NC}"
                 echo ""
                 echo -en "    ${BRAND}Choice [U/R/C]: ${NC}"
-                if ! read_input choice; then
-                    choice="U"
-                fi
+                read -r choice
                 case "${choice^^}" in
                     U) is_update=true ;;
                     R) is_update=false ;;
@@ -931,9 +997,7 @@ main() {
             if [[ -z "$INSTALL_DIR" && "$AUTO_YES" != true ]]; then
                 echo ""
                 echo -en "    ${CYAN}Install directory [$target_dir]: ${NC}"
-                if ! read_input user_dir; then
-                    user_dir=""
-                fi
+                read -r user_dir
                 if [[ -n "$user_dir" ]]; then
                     target_dir="$user_dir"
                 fi
@@ -966,18 +1030,20 @@ main() {
     # Phase 4 -- Database and config via install.py
     run_install_py "$target_dir"
 
-    # Phase 5 -- Service files + migrations (if updating)
+    # Phase 5 -- Service setup
     if [[ "$is_update" == true ]]; then
-        print_phase "5" "Database migrations"
+        # For updates, run alembic migrations and restart
+        print_phase "5" "Service setup"
         local venv_python="${target_dir}/venv/bin/python"
         if [[ -f "${target_dir}/alembic.ini" ]]; then
             print_step "Running database migrations..."
             (cd "$target_dir" && "$venv_python" -m alembic upgrade head 2>&1) || \
                 print_warn "Alembic migration failed -- may need manual intervention"
         fi
-        print_ok "Update applied — restart the server to use the new version"
+        restart_service "$target_dir"
+        print_ok "Service restarted with updated code"
     else
-        save_service_files "$target_dir"
+        setup_service "$target_dir" "$RELEASE_VERSION"
     fi
 
     # Phase 6 -- First run
