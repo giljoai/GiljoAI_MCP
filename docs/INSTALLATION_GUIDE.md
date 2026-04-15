@@ -14,12 +14,12 @@ database, builds the frontend, and walks you through configuration.
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/giljoai/GiljoAI_MCP/master/scripts/install.ps1 | iex
+irm giljo.ai/install.ps1 | iex
 ```
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/giljoai/GiljoAI_MCP/master/scripts/install.sh | bash
+curl -fsSL giljo.ai/install.sh | bash
 ```
 
 When the installer finishes, start the server:
