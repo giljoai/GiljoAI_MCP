@@ -1158,14 +1158,7 @@ def run_startup(
     if verbose:
         print_info("Verbose mode enabled - services will open in separate console windows")
 
-    print_info("Starting API server...")
-    api_process = start_api_server(verbose=verbose)
-
-    if not api_process:
-        print_error("Failed to start API server")
-        return 1
-
-    # Rebuild frontend if not in dev mode (ensures dist/ matches pulled code)
+    # Rebuild frontend before starting API so static files are ready to serve
     dev_mode = "--dev" in sys.argv
     frontend_dir = Path.cwd() / "frontend"
     if not dev_mode and frontend_dir.exists() and (frontend_dir / "package.json").exists():
@@ -1184,6 +1177,13 @@ def run_startup(
             print_warning("Frontend build failed -- using existing dist/ if available")
             if verbose:
                 print_warning(build_result.stderr[:500] if build_result.stderr else "No error output")
+
+    print_info("Starting API server...")
+    api_process = start_api_server(verbose=verbose)
+
+    if not api_process:
+        print_error("Failed to start API server")
+        return 1
 
     print_info("Starting frontend server...")
     frontend_process = start_frontend_server(verbose=verbose)
