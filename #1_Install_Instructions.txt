@@ -1,20 +1,31 @@
 Thank you for downloading GiljoAI MCP!
 
-Prerequisites
-─────────────
-  - Python 3.10 or higher (3.12+ recommended)
-  - PostgreSQL 14 or higher (18 recommended)
-  - Node.js 20 LTS (for the dashboard; optional for backend-only use)
-
-Quick Start
-───────────
-  Windows (PowerShell as Administrator):
-    python install.py
+Quick Install (recommended)
+───────────────────────────
+  Windows (PowerShell):
+    irm https://raw.githubusercontent.com/giljoai/GiljoAI_MCP/master/scripts/install.ps1 | iex
 
   Linux / macOS:
-    python3 install.py
+    curl -fsSL https://raw.githubusercontent.com/giljoai/GiljoAI_MCP/master/scripts/install.sh | bash
 
-The installer will guide you through the full setup with recommended
-defaults. It detects Python, PostgreSQL, and Node.js automatically.
+  The installer handles everything: checks for Python and PostgreSQL,
+  downloads the latest release, sets up the database, builds the frontend,
+  and walks you through configuration.
+
+  When done, start the server:
+    python startup.py
+
+Manual Install
+──────────────
+  Prerequisites:
+    - Python 3.10+ (3.12+ recommended)
+    - PostgreSQL 14+ (18 recommended)
+    - Node.js 20 LTS
+
+  Steps:
+    git clone https://github.com/giljoai/GiljoAI_MCP.git
+    cd GiljoAI_MCP
+    python install.py
+    python startup.py
 
 For detailed instructions, see docs/INSTALLATION_GUIDE.md

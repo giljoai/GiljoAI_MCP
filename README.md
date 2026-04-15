@@ -58,16 +58,29 @@ GiljoAI sits at the intersection of product thinking and development. Whether yo
 <img src="docs/images/section-quick-start.png" alt="Quick Start" width="100%">
 </div>
 
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/giljoai/GiljoAI_MCP/master/scripts/install.ps1 | iex
+```
+
+**Linux / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/giljoai/GiljoAI_MCP/master/scripts/install.sh | bash
+```
+
+The installer checks for prerequisites, downloads the latest release, sets up the database, builds the frontend, and walks you through configuration. When done, run `python startup.py` to start the server. First run opens the Setup Wizard in your browser.
+
+<details>
+<summary>Manual install (advanced)</summary>
+
 ```bash
 git clone https://github.com/giljoai/GiljoAI_MCP.git
 cd GiljoAI_MCP
 python install.py
 python startup.py
 ```
-
-First run opens the Setup Wizard in your browser. It walks you through tool configuration, MCP connection, and skill installation. Subsequent runs go straight to the dashboard at `http://localhost:7272`.
-
-**Prerequisites:** Python 3.10+, PostgreSQL 14+ (18 recommended), Node.js 20+
+Requires Python 3.10+, PostgreSQL 14+ (18 recommended), Node.js 20+.
+</details>
 
 <br>
 
