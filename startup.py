@@ -1158,33 +1158,30 @@ def run_startup(
     if verbose:
         print_info("Verbose mode enabled - services will open in separate console windows")
 
-    # Build frontend before starting API so static files are ready to serve
+    # Always rebuild frontend before starting API so static files are current.
+    # Must complete before API starts — the API mounts dist/ at init time.
     dev_mode = "--dev" in sys.argv
     frontend_dir = Path.cwd() / "frontend"
-    dist_index = frontend_dir / "dist" / "index.html"
     if not dev_mode and frontend_dir.exists() and (frontend_dir / "package.json").exists():
-        if dist_index.exists():
-            print_success("Frontend already built (frontend/dist/)")
+        print_info("Rebuilding frontend...")
+        npm_cmd = "npm.cmd" if platform.system() == "Windows" else "npm"
+        # Ensure node_modules exist
+        if not (frontend_dir / "node_modules" / ".package-lock.json").exists():
+            print_info("Installing frontend dependencies...")
+            subprocess.run([npm_cmd, "install"], cwd=str(frontend_dir), check=True)
+        build_result = subprocess.run(
+            [npm_cmd, "run", "build"],
+            cwd=str(frontend_dir),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if build_result.returncode == 0:
+            print_success("Frontend build complete")
         else:
-            print_info("Building frontend...")
-            npm_cmd = "npm.cmd" if platform.system() == "Windows" else "npm"
-            # Ensure node_modules exist
-            if not (frontend_dir / "node_modules" / ".package-lock.json").exists():
-                print_info("Installing frontend dependencies...")
-                subprocess.run([npm_cmd, "install"], cwd=str(frontend_dir), check=True)
-            build_result = subprocess.run(
-                [npm_cmd, "run", "build"],
-                cwd=str(frontend_dir),
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-            if build_result.returncode == 0:
-                print_success("Frontend build complete")
-            else:
-                print_warning("Frontend build failed -- using existing dist/ if available")
-                if verbose:
-                    print_warning(build_result.stderr[:500] if build_result.stderr else "No error output")
+            print_warning("Frontend build failed -- using existing dist/ if available")
+            if verbose:
+                print_warning(build_result.stderr[:500] if build_result.stderr else "No error output")
 
     print_info("Starting API server...")
     api_process = start_api_server(verbose=verbose)
