@@ -304,7 +304,7 @@ function Test-Prerequisites {
         Write-Ok "Database name: $script:PG_DB_NAME"
 
         # Install PostgreSQL via winget
-        Write-Step "Installing PostgreSQL 17 via winget..."
+        Write-Step "Installing PostgreSQL via winget..."
         try {
             # Build override as a single string for the EDB PostgreSQL installer.
             # Winget's --override passes this verbatim to the installer executable.
@@ -325,7 +325,7 @@ function Test-Prerequisites {
             if ($pgProc.ExitCode -ne 0) {
                 throw "winget exited with code $($pgProc.ExitCode)"
             }
-            Write-Ok "PostgreSQL 17 installed"
+            Write-Ok "PostgreSQL installed"
         } catch {
             Exit-WithError "PostgreSQL installation failed: $_`nPlease install manually from https://www.postgresql.org/download/windows/ and re-run this script."
         }
