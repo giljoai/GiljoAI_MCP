@@ -794,22 +794,12 @@ PLIST
 first_run() {
     local target_dir="$1"
     local version="$2"
-    print_phase "6" "Done"
 
-    # Print completion summary
     echo ""
-    echo -e "    ${BRAND}========================================================${NC}"
-    echo -e "      ${GREEN}Installation complete!${NC}"
-    echo -e "    ${BRAND}========================================================${NC}"
+    echo -e "    ${CYAN}Installer finished. To start the server:${NC}"
     echo ""
-    echo -e "    ${CYAN}Version:    ${version}${NC}"
-    echo -e "    ${CYAN}Location:   ${target_dir}${NC}"
-    echo ""
-    echo -e "    ${MUTED}Start the server:${NC}"
-    echo -e "    ${MUTED}  cd $target_dir && python3 startup.py${NC}"
-    echo ""
-    echo -e "    ${MUTED}To update to a newer version:${NC}"
-    echo -e "    ${MUTED}  curl -fsSL giljo.ai/install.sh | bash -s -- --update${NC}"
+    echo -e "    ${NC}  cd $target_dir${NC}"
+    echo -e "    ${NC}  python3 startup.py --verbose${NC}"
     echo ""
 }
 
