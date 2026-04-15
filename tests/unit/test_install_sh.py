@@ -121,6 +121,9 @@ class TestInstallShPhases:
     def test_phase_4_install_py(self):
         assert "run_install_py" in self.content
 
+    def test_install_py_uses_setup_only_flag(self):
+        assert "--setup-only" in self.content
+
     def test_phase_5_service(self):
         assert "setup_service" in self.content
 
