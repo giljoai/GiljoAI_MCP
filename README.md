@@ -60,12 +60,12 @@ GiljoAI sits at the intersection of product thinking and development. Whether yo
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/giljoai/GiljoAI_MCP/master/scripts/install.ps1 | iex
+irm giljo.ai/install.ps1 | iex
 ```
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/giljoai/GiljoAI_MCP/master/scripts/install.sh | bash
+curl -fsSL giljo.ai/install.sh | bash
 ```
 
 The installer checks for prerequisites, downloads the latest release, sets up the database, builds the frontend, and walks you through configuration. When done, run `python startup.py` to start the server. First run opens the Setup Wizard in your browser.

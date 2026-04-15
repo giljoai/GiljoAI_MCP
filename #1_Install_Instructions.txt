@@ -3,10 +3,10 @@ Thank you for downloading GiljoAI MCP!
 Quick Install (recommended)
 ───────────────────────────
   Windows (PowerShell):
-    irm https://raw.githubusercontent.com/giljoai/GiljoAI_MCP/master/scripts/install.ps1 | iex
+    irm giljo.ai/install.ps1 | iex
 
   Linux / macOS:
-    curl -fsSL https://raw.githubusercontent.com/giljoai/GiljoAI_MCP/master/scripts/install.sh | bash
+    curl -fsSL giljo.ai/install.sh | bash
 
   The installer handles everything: checks for Python and PostgreSQL,
   downloads the latest release, sets up the database, builds the frontend,
