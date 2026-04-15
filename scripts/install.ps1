@@ -320,10 +320,28 @@ function Test-Prerequisites {
             # Use Start-Process with a single-line ArgumentList string so the
             # override value (which contains spaces) stays as one token.
             $argLine = ($pgArgs -join " ") + " `"--mode unattended --unattendedmodeui none --superpassword $escapedPw --serverport 5432 --enable-components server,commandlinetools --disable-components pgAdmin,stackbuilder`""
-            Write-Host "    This may take a few minutes..." -ForegroundColor $script:MUTED_COLOR
-            $pgProc = Start-Process -FilePath "winget" -ArgumentList $argLine -Wait -PassThru -NoNewWindow
-            if ($pgProc.ExitCode -ne 0) {
-                throw "winget exited with code $($pgProc.ExitCode)"
+            Write-Host ""
+            Write-Host "    ╔══════════════════════════════════════════════════════════╗" -ForegroundColor $script:BRAND_COLOR
+            Write-Host "    ║  PostgreSQL is installing silently — this takes 3-5     ║" -ForegroundColor $script:BRAND_COLOR
+            Write-Host "    ║  minutes. Microsoft C++ dependencies may also install.  ║" -ForegroundColor $script:BRAND_COLOR
+            Write-Host "    ║  Please wait and do not close this window.              ║" -ForegroundColor $script:BRAND_COLOR
+            Write-Host "    ╚══════════════════════════════════════════════════════════╝" -ForegroundColor $script:BRAND_COLOR
+            Write-Host ""
+            Write-Host "    Installing" -NoNewline -ForegroundColor $script:MUTED_COLOR
+            $pgJob = Start-Job -ScriptBlock {
+                param($al)
+                $p = Start-Process -FilePath "winget" -ArgumentList $al -Wait -PassThru -NoNewWindow
+                return $p.ExitCode
+            } -ArgumentList $argLine
+            while ($pgJob.State -eq 'Running') {
+                Start-Sleep -Seconds 5
+                Write-Host "." -NoNewline -ForegroundColor $script:MUTED_COLOR
+            }
+            Write-Host ""
+            $pgExitCode = Receive-Job -Job $pgJob
+            Remove-Job -Job $pgJob
+            if ($pgExitCode -ne 0) {
+                throw "winget exited with code $pgExitCode"
             }
             Write-Ok "PostgreSQL installed"
         } catch {
@@ -558,15 +576,16 @@ function Initialize-Environment {
         $npmPath = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
         if (-not $npmPath) { $npmPath = (Get-Command npm -ErrorAction SilentlyContinue).Source }
         if ($npmPath) {
-            $proc1 = Start-Process -FilePath $npmPath -ArgumentList "install" -WorkingDirectory $frontendDir -Wait -PassThru -NoNewWindow
+            $npmLog = Join-Path $TargetDir "npm-build.log"
+            $proc1 = Start-Process -FilePath $npmPath -ArgumentList "install" -WorkingDirectory $frontendDir -Wait -PassThru -NoNewWindow -RedirectStandardOutput $npmLog -RedirectStandardError (Join-Path $TargetDir "npm-build-err.log")
             if ($proc1.ExitCode -eq 0) {
                 Write-Ok "Frontend dependencies installed"
                 Write-Step "Building frontend (this may take a minute)..."
-                $proc2 = Start-Process -FilePath $npmPath -ArgumentList "run build" -WorkingDirectory $frontendDir -Wait -PassThru -NoNewWindow
+                $proc2 = Start-Process -FilePath $npmPath -ArgumentList "run build" -WorkingDirectory $frontendDir -Wait -PassThru -NoNewWindow -RedirectStandardOutput $npmLog -RedirectStandardError (Join-Path $TargetDir "npm-build-err.log")
                 if ($proc2.ExitCode -eq 0 -and (Test-Path (Join-Path $frontendDir "dist" "index.html"))) {
                     Write-Ok "Frontend built"
                 } else {
-                    Write-Warn "Frontend build failed — startup.py will retry on first run"
+                    Write-Warn "Frontend build failed — see npm-build.log for details"
                 }
             } else {
                 Write-Warn "npm install failed — startup.py will handle this on first run"
@@ -615,7 +634,8 @@ function Invoke-InstallPy {
         if (-not $npmPath) { $npmPath = (Get-Command npm -ErrorAction SilentlyContinue).Source }
         if ($npmPath -and (Test-Path (Join-Path $frontendDir "node_modules"))) {
             Write-Step "Rebuilding frontend with final configuration..."
-            $rebuildProc = Start-Process -FilePath $npmPath -ArgumentList "run build" -WorkingDirectory $frontendDir -Wait -PassThru -NoNewWindow
+            $npmLog = Join-Path $TargetDir "npm-build.log"
+            $rebuildProc = Start-Process -FilePath $npmPath -ArgumentList "run build" -WorkingDirectory $frontendDir -Wait -PassThru -NoNewWindow -RedirectStandardOutput $npmLog -RedirectStandardError (Join-Path $TargetDir "npm-build-err.log")
             if ($rebuildProc.ExitCode -eq 0) {
                 Write-Ok "Frontend rebuilt"
             }
@@ -692,21 +712,10 @@ function Show-Completion {
     param([string]$TargetDir, [string]$Version)
 
     Write-Host ""
-    Write-Host "    ========================================================" -ForegroundColor $script:BRAND_COLOR
-    Write-Host "      Installation complete!" -ForegroundColor $script:SUCCESS_COLOR
-    Write-Host "    ========================================================" -ForegroundColor $script:BRAND_COLOR
+    Write-Host "    Installer finished. To start the server:" -ForegroundColor $script:INFO_COLOR
     Write-Host ""
-    Write-Host "    Version:    $Version" -ForegroundColor $script:INFO_COLOR
-    Write-Host "    Location:   $TargetDir" -ForegroundColor $script:INFO_COLOR
-    Write-Host ""
-    Write-Host "    To start the server:" -ForegroundColor $script:INFO_COLOR
     Write-Host "      cd $TargetDir" -ForegroundColor White
-    Write-Host "      python startup.py" -ForegroundColor White
-    Write-Host ""
-    Write-Host "    startup.py will start the server and open your browser." -ForegroundColor $script:MUTED_COLOR
-    Write-Host ""
-    Write-Host "    To update to a newer version:" -ForegroundColor $script:MUTED_COLOR
-    Write-Host "      irm giljo.ai/install.ps1 | iex" -ForegroundColor $script:MUTED_COLOR
+    Write-Host "      python startup.py --verbose" -ForegroundColor White
     Write-Host ""
 }
 
