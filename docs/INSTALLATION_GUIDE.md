@@ -1,13 +1,42 @@
 # GiljoAI MCP: Installation Guide
 
-*Last updated: 2026-04-06*
+*Last updated: 2026-04-15*
 
 GiljoAI MCP is a self-hosted AI agent orchestration platform. This guide covers
 installing the server, completing the setup wizard, and connecting your AI coding tools.
 
 ---
 
-## Prerequisites
+## Quick Install (recommended)
+
+A single command downloads the latest release, checks for prerequisites, sets up your
+database, builds the frontend, and walks you through configuration.
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/giljoai/GiljoAI_MCP/master/scripts/install.ps1 | iex
+```
+
+**Linux / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/giljoai/GiljoAI_MCP/master/scripts/install.sh | bash
+```
+
+When the installer finishes, start the server:
+```bash
+python startup.py
+```
+
+The installer will prompt you to install Python and PostgreSQL if they are not found.
+On Linux, it installs them automatically via your package manager.
+
+---
+
+## Manual Install
+
+Use this if you prefer to clone the repository and run the installer yourself.
+
+### Prerequisites
 
 | Requirement | Version | Notes |
 |-------------|---------|-------|
@@ -19,18 +48,11 @@ installing the server, completing the setup wizard, and connecting your AI codin
 
 **Supported platforms:** Windows, Linux, macOS.
 
-The installer detects Python, PostgreSQL, and Node.js automatically. You only need to
-supply your PostgreSQL password and a network mode choice.
-
----
-
-## Installation Steps
-
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/GiljoAI/giljo-mcp.git
-cd giljo-mcp
+git clone https://github.com/giljoai/GiljoAI_MCP.git
+cd GiljoAI_MCP
 ```
 
 ### 2. Run the installer
