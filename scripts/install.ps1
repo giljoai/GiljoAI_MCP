@@ -671,6 +671,9 @@ function Show-Completion {
     Write-Host ""
     Write-Host "    startup.py will start the server and open your browser." -ForegroundColor $script:MUTED_COLOR
     Write-Host ""
+    Write-Host "    To update to a newer version:" -ForegroundColor $script:MUTED_COLOR
+    Write-Host "      irm giljo.ai/install.ps1 | iex" -ForegroundColor $script:MUTED_COLOR
+    Write-Host ""
 }
 
 # ---------------------------------------------------------------------------
