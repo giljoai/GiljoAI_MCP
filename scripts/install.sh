@@ -169,8 +169,16 @@ confirm() {
     if [[ "$AUTO_YES" == true ]]; then
         return 0
     fi
+    # When piped (no TTY), default to yes
+    if ! [[ -t 0 ]] && ! [[ -e /dev/tty ]]; then
+        return 0
+    fi
     echo -en "    ${CYAN}$prompt [Y/n]: ${NC}"
-    read -r answer
+    if [[ -t 0 ]]; then
+        read -r answer
+    else
+        read -r answer < /dev/tty
+    fi
     case "$answer" in
         n|N|no|No|NO) return 1 ;;
         *) return 0 ;;
@@ -982,7 +990,13 @@ main() {
                 echo -e "    ${MUTED}[C] Cancel${NC}"
                 echo ""
                 echo -en "    ${BRAND}Choice [U/R/C]: ${NC}"
-                read -r choice
+                if [[ -t 0 ]]; then
+                    read -r choice
+                elif [[ -e /dev/tty ]]; then
+                    read -r choice < /dev/tty
+                else
+                    choice="U"
+                fi
                 case "${choice^^}" in
                     U) is_update=true ;;
                     R) is_update=false ;;
@@ -997,7 +1011,13 @@ main() {
             if [[ -z "$INSTALL_DIR" && "$AUTO_YES" != true ]]; then
                 echo ""
                 echo -en "    ${CYAN}Install directory [$target_dir]: ${NC}"
-                read -r user_dir
+                if [[ -t 0 ]]; then
+                    read -r user_dir
+                elif [[ -e /dev/tty ]]; then
+                    read -r user_dir < /dev/tty
+                else
+                    user_dir=""
+                fi
                 if [[ -n "$user_dir" ]]; then
                     target_dir="$user_dir"
                 fi
