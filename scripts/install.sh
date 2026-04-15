@@ -728,29 +728,17 @@ run_install_py() {
 # Phase 5 -- Service setup
 # ---------------------------------------------------------------------------
 
-setup_service() {
+save_service_files() {
     local target_dir="$1"
-    local version="$2"
-    print_phase "5" "Service setup"
+    print_phase "5" "Service files"
 
-    case "$OS_TYPE" in
-        linux)
-            setup_systemd_service "$target_dir"
-            ;;
-        macos)
-            setup_launchd_agent "$target_dir"
-            ;;
-    esac
-}
-
-setup_systemd_service() {
-    local target_dir="$1"
     local current_user
     current_user="$(whoami)"
 
-    local service_file="/etc/systemd/system/giljoai-mcp.service"
-    local unit_content
-    unit_content="[Unit]
+    case "$OS_TYPE" in
+        linux)
+            cat > "${target_dir}/giljoai-mcp.service" <<UNIT
+[Unit]
 Description=GiljoAI MCP Server
 After=network.target postgresql.service
 
@@ -764,32 +752,15 @@ RestartSec=5
 Environment=PATH=${target_dir}/venv/bin:/usr/local/bin:/usr/bin
 
 [Install]
-WantedBy=multi-user.target"
-
-    print_step "Generated systemd service configuration"
-
-    if confirm "Install and enable systemd service (giljoai-mcp)?"; then
-        echo "$unit_content" | sudo tee "$service_file" > /dev/null
-        sudo systemctl daemon-reload
-        sudo systemctl enable --now giljoai-mcp
-        print_ok "systemd service installed and started"
-        print_step "Manage with: sudo systemctl {start|stop|restart|status} giljoai-mcp"
-    else
-        # Save the unit file locally for reference
-        echo "$unit_content" > "${target_dir}/giljoai-mcp.service"
-        print_ok "Service file saved to ${target_dir}/giljoai-mcp.service"
-        print_step "To install later: sudo cp giljoai-mcp.service /etc/systemd/system/ && sudo systemctl enable --now giljoai-mcp"
-    fi
-}
-
-setup_launchd_agent() {
-    local target_dir="$1"
-    local plist_dir="$HOME/Library/LaunchAgents"
-    local plist_file="${plist_dir}/com.giljoai.mcp.plist"
-    local plist_content
-    plist_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
-<plist version=\"1.0\">
+WantedBy=multi-user.target
+UNIT
+            print_ok "Saved giljoai-mcp.service (optional — for running as a background service)"
+            ;;
+        macos)
+            cat > "${target_dir}/com.giljoai.mcp.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
 <dict>
     <key>Label</key>
     <string>com.giljoai.mcp</string>
@@ -809,23 +780,11 @@ setup_launchd_agent() {
     <key>StandardErrorPath</key>
     <string>${target_dir}/logs/server.err</string>
 </dict>
-</plist>"
-
-    print_step "Generated launchd agent configuration"
-
-    if confirm "Install and load launchd agent (com.giljoai.mcp)?"; then
-        mkdir -p "$plist_dir"
-        mkdir -p "${target_dir}/logs"
-        echo "$plist_content" > "$plist_file"
-        launchctl load "$plist_file"
-        print_ok "launchd agent installed and loaded"
-        print_step "Manage with: launchctl {load|unload} ~/Library/LaunchAgents/com.giljoai.mcp.plist"
-    else
-        # Save plist locally for reference
-        echo "$plist_content" > "${target_dir}/com.giljoai.mcp.plist"
-        print_ok "Plist saved to ${target_dir}/com.giljoai.mcp.plist"
-        print_step "To install later: cp com.giljoai.mcp.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.giljoai.mcp.plist"
-    fi
+</plist>
+PLIST
+            print_ok "Saved com.giljoai.mcp.plist (optional — for running as a background service)"
+            ;;
+    esac
 }
 
 # ---------------------------------------------------------------------------
@@ -847,7 +806,7 @@ first_run() {
     echo -e "    ${CYAN}Location:   ${target_dir}${NC}"
     echo ""
     echo -e "    ${MUTED}Start the server:${NC}"
-    echo -e "    ${MUTED}  cd $target_dir && python startup.py${NC}"
+    echo -e "    ${MUTED}  cd $target_dir && python3 startup.py${NC}"
     echo ""
     echo -e "    ${MUTED}To update to a newer version:${NC}"
     echo -e "    ${MUTED}  curl -fsSL giljo.ai/install.sh | bash -s -- --update${NC}"
@@ -1007,20 +966,18 @@ main() {
     # Phase 4 -- Database and config via install.py
     run_install_py "$target_dir"
 
-    # Phase 5 -- Service setup
+    # Phase 5 -- Service files + migrations (if updating)
     if [[ "$is_update" == true ]]; then
-        # For updates, run alembic migrations and restart
-        print_phase "5" "Service setup"
+        print_phase "5" "Database migrations"
         local venv_python="${target_dir}/venv/bin/python"
         if [[ -f "${target_dir}/alembic.ini" ]]; then
             print_step "Running database migrations..."
             (cd "$target_dir" && "$venv_python" -m alembic upgrade head 2>&1) || \
                 print_warn "Alembic migration failed -- may need manual intervention"
         fi
-        restart_service "$target_dir"
-        print_ok "Service restarted with updated code"
+        print_ok "Update applied — restart the server to use the new version"
     else
-        setup_service "$target_dir" "$RELEASE_VERSION"
+        save_service_files "$target_dir"
     fi
 
     # Phase 6 -- First run
