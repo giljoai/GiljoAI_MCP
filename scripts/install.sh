@@ -718,8 +718,15 @@ run_install_py() {
     print_step "Running install.py for database setup, config generation, and template seeding..."
     echo ""
 
-    (cd "$target_dir" && "$venv_python" "$install_py" --setup-only) || \
-        exit_with_error "install.py failed. Check the output above for details."
+    # Redirect /dev/tty into install.py so interactive prompts work
+    # even when the bash script itself was piped via curl | bash
+    if [[ "$HAS_TTY" == true ]] && ! [[ -t 0 ]]; then
+        (cd "$target_dir" && "$venv_python" "$install_py" --setup-only < /dev/tty) || \
+            exit_with_error "install.py failed. Check the output above for details."
+    else
+        (cd "$target_dir" && "$venv_python" "$install_py" --setup-only) || \
+            exit_with_error "install.py failed. Check the output above for details."
+    fi
 
     print_ok "Database and configuration setup complete"
 }
