@@ -531,7 +531,7 @@ function Invoke-InstallPy {
 
     Push-Location $TargetDir
     try {
-        & $venvPython $installPy
+        & $venvPython $installPy --setup-only
         if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
             Exit-WithError "install.py exited with code $LASTEXITCODE. Check the output above for details."
         }

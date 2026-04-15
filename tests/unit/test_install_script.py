@@ -67,6 +67,9 @@ class TestInstallPs1Structure:
     def test_phase_4_install_py(self):
         assert "function Invoke-InstallPy" in self.content
 
+    def test_install_py_uses_setup_only_flag(self):
+        assert "--setup-only" in self.content
+
     def test_phase_5_shortcuts(self):
         assert "function Install-Shortcuts" in self.content
 

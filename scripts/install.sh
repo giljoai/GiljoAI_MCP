@@ -692,7 +692,7 @@ run_install_py() {
     print_step "Running install.py for database setup, config generation, and template seeding..."
     echo ""
 
-    (cd "$target_dir" && "$venv_python" "$install_py") || \
+    (cd "$target_dir" && "$venv_python" "$install_py" --setup-only) || \
         exit_with_error "install.py failed. Check the output above for details."
 
     print_ok "Database and configuration setup complete"
