@@ -311,7 +311,7 @@ function Test-Prerequisites {
             $escapedPw = $pgPw1 -replace '"', '\"'
             $pgArgs = @(
                 "install"
-                "PostgreSQL.PostgreSQL.17"
+                "PostgreSQL.PostgreSQL.18"
                 "--silent"
                 "--accept-source-agreements"
                 "--accept-package-agreements"
@@ -332,9 +332,9 @@ function Test-Prerequisites {
 
         # Add PostgreSQL bin to PATH for this session
         $pgBinPaths = @(
+            "C:\Program Files\PostgreSQL\18\bin",
             "C:\Program Files\PostgreSQL\17\bin",
-            "C:\Program Files\PostgreSQL\16\bin",
-            "C:\Program Files\PostgreSQL\15\bin"
+            "C:\Program Files\PostgreSQL\16\bin"
         )
         foreach ($p in $pgBinPaths) {
             if (Test-Path $p) {
