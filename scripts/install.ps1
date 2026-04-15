@@ -557,12 +557,13 @@ function Initialize-Environment {
         Write-Step "Installing frontend dependencies..."
         Push-Location $frontendDir
         try {
-            & npm install 2>&1 | Out-Host
+            $npmCmd = (Get-Command npm -ErrorAction Stop).Source
+            & $npmCmd install 2>&1 | Out-Host
             if ($LASTEXITCODE -ne 0) { throw "npm install failed with exit code $LASTEXITCODE" }
             Write-Ok "Frontend dependencies installed"
 
             Write-Step "Building frontend (this may take a minute)..."
-            & npm run build 2>&1 | Out-Host
+            & $npmCmd run build 2>&1 | Out-Host
             if ($LASTEXITCODE -ne 0) { throw "npm run build failed with exit code $LASTEXITCODE" }
 
             # Verify dist was created
