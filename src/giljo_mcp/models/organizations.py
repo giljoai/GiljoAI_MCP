@@ -53,6 +53,9 @@ class Organization(Base):
         nullable=True,  # FIXED: Remove server_default and onupdate (0424m)
     )
     settings = Column(JSONB, default=dict, nullable=False)
+    org_setup_complete = Column(
+        Boolean, default=False, server_default="false", nullable=False
+    )  # SAAS-007: First-login org setup wizard completion flag
 
     # Relationships
     members = relationship(

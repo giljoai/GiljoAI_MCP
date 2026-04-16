@@ -152,9 +152,17 @@
             </v-form>
           </v-card-text>
 
-          <!-- Forgot Password Modal -->
+          <!-- Forgot Password Modal (CE: PIN-based) -->
           <ForgotPasswordPin
             v-model:show="showForgotPassword"
+            @success="handlePasswordResetSuccess"
+          />
+
+          <!-- Forgot Password Modal (SaaS/demo: email-based, loaded dynamically) -->
+          <component
+            :is="forgotPasswordEmailComponent"
+            v-if="forgotPasswordEmailComponent"
+            v-model:show="showForgotPasswordEmail"
             @success="handlePasswordResetSuccess"
           />
 
@@ -178,7 +186,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, shallowRef } from 'vue'
+import axios from 'axios'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import ForgotPasswordPin from '@/components/ForgotPasswordPin.vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -186,6 +195,9 @@ import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
 import { getRuntimeConfig } from '@/config/api'
 import configService from '@/services/configService'
+
+// SaaS ForgotPasswordEmail loaded dynamically to keep CE clean (Deletion Test)
+const forgotPasswordEmailComponent = shallowRef(null)
 
 // Composables
 const router = useRouter()
@@ -214,7 +226,7 @@ const password = ref('')
 const rememberMe = ref(false)
 const showPassword = ref(false)
 const showForgotPassword = ref(false)
-const showForgotPasswordEmail = ref(false) // SAAS-006: will wire to email-based forgot-password dialog
+const showForgotPasswordEmail = ref(false)
 const loading = ref(false)
 const error = ref('')
 const successMessage = ref('')
@@ -266,6 +278,26 @@ async function handleLogin() {
       // Redirect to first login page for password setup
       router.push('/first-login')
       return
+    }
+
+    // SaaS/demo: check if org setup is needed before proceeding to dashboard
+    if (giljoMode.value !== 'ce') {
+      try {
+        let baseUrl = ''
+        if (!import.meta.env.DEV && configService.config) {
+          const { host, port } = configService.config.api
+          const protocol = configService.config.api?.protocol || (window.location.protocol === 'https:' ? 'https' : 'http')
+          baseUrl = `${protocol}://${host}:${port}`
+        }
+        const orgStatus = await axios.get(`${baseUrl}/api/saas/org-setup/status`)
+        if (orgStatus.data?.needs_setup) {
+          router.push('/org-setup')
+          return
+        }
+      } catch {
+        // Silently continue to dashboard if org-setup check fails
+        // (endpoint may not exist, network issue, etc.)
+      }
     }
 
     // SECURITY: Mark setup as completed (user successfully logged in after setup)
@@ -386,6 +418,16 @@ onMounted(async () => {
     giljoMode.value = configService.getGiljoMode()
   } catch {
     // Default to CE on config failure
+  }
+
+  // Dynamically load SaaS ForgotPasswordEmail when not CE (Deletion Test safe)
+  if (giljoMode.value !== 'ce') {
+    try {
+      const mod = await import(/* @vite-ignore */ '../saas/components/ForgotPasswordEmail.vue')
+      forgotPasswordEmailComponent.value = mod.default
+    } catch {
+      // SaaS component absent (CE export) -- silently skip
+    }
   }
 
   // Check for password change success message

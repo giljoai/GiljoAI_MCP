@@ -102,14 +102,14 @@
       <v-btn
         class="stage-button"
         variant="outlined"
-        :color="executionModeSelected && !hasActiveOrchestrator ? 'yellow-darken-2' : undefined"
-        :loading="loadingStageProject"
-        :disabled="!executionModeSelected || hasActiveOrchestrator"
-        :title="!executionModeSelected ? 'Select an execution mode first' : (hasActiveOrchestrator ? 'An orchestrator is already active for this project' : 'Generate orchestrator prompt')"
+        :color="stageButtonColor"
+        :loading="loadingStageProject && !canRestage"
+        :disabled="stageButtonDisabled"
+        :title="stageButtonTitle"
         data-testid="stage-project-btn"
-        @click="handleStageProject"
+        @click="handleStageOrRestage"
       >
-        Stage Project
+        {{ stageButtonText }}
       </v-btn>
 
       <v-btn
@@ -359,7 +359,7 @@ const missionText = computed(
  * Execution mode is locked when orchestrator has generated a mission
  */
 const isExecutionModeLocked = computed(() => {
-  return Boolean(missionText.value)
+  return Boolean(missionText.value) || isProjectStaging.value
 })
 
 /**
@@ -453,6 +453,75 @@ const hasActiveOrchestrator = computed(() => {
   return Boolean(state?.stagingComplete)
 })
 
+/**
+ * Computed: Current project isStaging state from store
+ */
+const isProjectStaging = computed(() => {
+  const state = projectStateStore.getProjectState(projectId.value)
+  return Boolean(state?.isStaging)
+})
+
+/**
+ * Computed: Orchestrator job status from loaded jobs data
+ */
+const orchestratorStatus = computed(() => {
+  const orchJob = sortedJobs.value.find(
+    (j) => j.agent_display_name === 'orchestrator' || j.agent_name === 'orchestrator',
+  )
+  return orchJob?.status || null
+})
+
+/**
+ * Computed: Can restage (isStaging + orchestrator waiting)
+ */
+const canRestage = computed(() => {
+  return isProjectStaging.value && orchestratorStatus.value === 'waiting'
+})
+
+/**
+ * Computed: Staging is actively running (isStaging + orchestrator working)
+ */
+const isStagingLive = computed(() => {
+  return isProjectStaging.value && orchestratorStatus.value === 'working'
+})
+
+/**
+ * Computed: Stage button text lifecycle
+ */
+const stageButtonText = computed(() => {
+  if (isStagingLive.value) return 'Staging...'
+  if (canRestage.value) return 'Re-Stage'
+  return 'Stage Project'
+})
+
+/**
+ * Computed: Stage button disabled state
+ */
+const stageButtonDisabled = computed(() => {
+  if (isStagingLive.value) return true
+  if (canRestage.value) return false
+  return !executionModeSelected.value || hasActiveOrchestrator.value
+})
+
+/**
+ * Computed: Stage button color
+ */
+const stageButtonColor = computed(() => {
+  if (canRestage.value) return 'yellow-darken-2'
+  if (executionModeSelected.value && !hasActiveOrchestrator.value) return 'yellow-darken-2'
+  return undefined
+})
+
+/**
+ * Computed: Stage button title/tooltip
+ */
+const stageButtonTitle = computed(() => {
+  if (isStagingLive.value) return 'Staging is in progress'
+  if (canRestage.value) return 'Reset staging and start fresh'
+  if (!executionModeSelected.value) return 'Select an execution mode first'
+  if (hasActiveOrchestrator.value) return 'An orchestrator is already active for this project'
+  return 'Generate orchestrator prompt'
+})
 
 function showError(message) {
   showToast({ message: message || 'Unexpected error', type: 'error' })
@@ -621,6 +690,41 @@ async function handleExecutionModeChange(newValue) {
       type: 'error',
       timeout: 3000
     })
+  }
+}
+
+/**
+ * Handle stage or restage based on current state
+ */
+async function handleStageOrRestage() {
+  if (canRestage.value) {
+    await handleRestageProject()
+  } else {
+    await handleStageProject()
+  }
+}
+
+/**
+ * Handle restage: reset staging and clear UI state
+ */
+async function handleRestageProject() {
+  try {
+    await projectStateStore.restageProject(projectId.value)
+
+    // Clear execution mode selection so user must pick again
+    executionPlatform.value = null
+
+    // Clear mission text in state (staging is reset)
+    projectStateStore.setMission(projectId.value, '')
+
+    showToast({
+      message: 'Project restaged successfully. Select an execution mode and stage again.',
+      type: 'success',
+    })
+  } catch (error) {
+    console.error('Restage failed:', error)
+    const msg = error.response?.data?.detail || error.message || 'Failed to restage project'
+    showError(msg)
   }
 }
 

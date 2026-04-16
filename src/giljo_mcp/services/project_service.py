@@ -764,6 +764,14 @@ class ProjectService:
         """Facade: delegates to ProjectLifecycleService."""
         return await self._lifecycle.cancel_staging(project_id, websocket_manager)
 
+    def check_staging_allowed(self, project: Any) -> None:
+        """Facade: delegates to ProjectLifecycleService."""
+        self._lifecycle.check_staging_allowed(project)
+
+    async def restage(self, project_id: str) -> dict:
+        """Facade: delegates to ProjectLifecycleService."""
+        return await self._lifecycle.restage(project_id)
+
     async def get_project_summary(self, project_id: str) -> ProjectSummaryResult:
         """Facade: delegates to ProjectSummaryService."""
         return await self._summary.get_project_summary(project_id)

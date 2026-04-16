@@ -12,6 +12,7 @@ Handles project lifecycle operations:
 - POST /{project_id}/cancel - Cancel project
 - POST /{project_id}/restore - Restore cancelled project
 - POST /{project_id}/cancel-staging - Cancel staging phase (Handover 0504)
+- POST /{project_id}/restage - Reset staging and create fresh orchestrator
 - POST /{project_id}/launch - Launch orchestrator (Handover 0504)
 - POST /{project_id}/archive - Archive completed project (Handover 0412)
 - DELETE /{project_id} - Soft delete project
@@ -25,9 +26,10 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError
 from src.giljo_mcp.models import User
 from src.giljo_mcp.models.schemas import ProjectLaunchResponse
 from src.giljo_mcp.services.project_service import ProjectService
@@ -269,6 +271,57 @@ async def cancel_project_staging(
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return _build_project_response(proj)
+
+
+@router.post("/{project_id}/restage")
+async def restage_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+) -> dict:
+    """
+    Restage a project by resetting staging state and creating a fresh orchestrator.
+
+    Guards:
+        - Project must have staging_status == 'staging'
+        - Orchestrator execution must be in 'waiting' status
+
+    Actions:
+        - Resets staging_status to null
+        - Resets execution_mode to 'multi_terminal'
+        - Decommissions existing orchestrator
+        - Creates fresh orchestrator fixture
+
+    Args:
+        project_id: Project UUID
+        current_user: Authenticated user (from dependency)
+        project_service: Project service (from dependency)
+
+    Returns:
+        Dict with success message and project_id
+
+    Raises:
+        HTTPException 404: Project not found
+        HTTPException 409: Invalid state for restage
+    """
+    logger.info("User %s restaging project %s", sanitize(current_user.username), sanitize(project_id))
+
+    try:
+        result = await project_service.restage(project_id=project_id)
+    except ResourceNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except ProjectStateError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        ) from e
+
+    logger.info("Restaged project %s", sanitize(project_id))
+
+    return {"message": result["message"], "project_id": result["project_id"]}
 
 
 @router.delete("/deleted", response_model=ProjectPurgeResponse)
