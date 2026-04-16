@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { immutableMapSet, immutableObjectPatch } from './immutableHelpers'
+import api from '@/services/api'
 
 function resolveProjectId(value) {
   if (!value) return null
@@ -19,7 +20,7 @@ function normalizeProjectState(project) {
     status: project?.status || null,
     execution_mode: project?.execution_mode || null,
     stagingComplete: Boolean(project?.stagingComplete) || project?.staging_status === 'staging_complete' || false,
-    isStaging: Boolean(project?.isStaging) || false,
+    isStaging: Boolean(project?.isStaging) || (project?.staging_status === 'staging' && project?.staging_status !== 'staging_complete') || false,
     isLaunched: Boolean(project?.isLaunched) || false,
   }
 }
@@ -90,6 +91,17 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
     upsertProjectState(projectId, { isLaunched: Boolean(isLaunched) })
   }
 
+  async function restageProject(projectId) {
+    const resolved = resolveProjectId(projectId)
+    if (!resolved) return
+
+    await api.projects.restage(resolved)
+    upsertProjectState(resolved, {
+      isStaging: false,
+      stagingComplete: false,
+    })
+  }
+
   // =========================
   // WebSocket event handlers
   // =========================
@@ -147,6 +159,7 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
     setMission,
     setIsStaging,
     setLaunched,
+    restageProject,
 
     // ws handlers
     handleMissionUpdated,
