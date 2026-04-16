@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
@@ -248,6 +248,7 @@ class ProductMemoryRepository:
         self,
         session: AsyncSession,
         product_id: UUID,
+        tenant_key: str = "",
     ) -> int:
         """
         Get the next available sequence number for a product.
@@ -257,13 +258,15 @@ class ProductMemoryRepository:
         Args:
             session: Database session
             product_id: Product ID
+            tenant_key: Tenant isolation key
 
         Returns:
             Next sequence number (1-based)
         """
-        stmt = select(func.max(ProductMemoryEntry.sequence)).where(
-            ProductMemoryEntry.product_id == str(product_id),
-        )
+        filters = [ProductMemoryEntry.product_id == str(product_id)]
+        if tenant_key:
+            filters.append(ProductMemoryEntry.tenant_key == tenant_key)
+        stmt = select(func.max(ProductMemoryEntry.sequence)).where(*filters)
         result = await session.execute(stmt)
         max_seq = result.scalar_one_or_none()
         return (max_seq or 0) + 1
@@ -375,3 +378,111 @@ class ProductMemoryRepository:
         # Sort by date descending, limit
         all_commits.sort(key=lambda c: c.get("date", ""), reverse=True)
         return all_commits[:limit]
+
+    async def get_entries_by_tag_prefix(
+        self,
+        session: AsyncSession,
+        product_id: UUID,
+        tenant_key: str,
+        prefix: str = "action_required",
+        include_deleted: bool = False,
+    ) -> list[ProductMemoryEntry]:
+        """
+        Get entries that have at least one tag starting with the given prefix.
+
+        Uses PostgreSQL jsonb_array_elements_text to check tag prefixes.
+
+        Args:
+            session: Database session
+            product_id: Product ID to query
+            tenant_key: Tenant isolation key
+            prefix: Tag prefix to match (default: "action_required")
+            include_deleted: Include soft-deleted entries
+
+        Returns:
+            List of entries with at least one matching tag
+        """
+        # Use EXISTS subquery with jsonb_array_elements_text
+        tag_filter = text(
+            "EXISTS (SELECT 1 FROM jsonb_array_elements_text(tags) elem WHERE elem LIKE :prefix_pattern)"
+        ).bindparams(prefix_pattern=f"{prefix}:%")
+
+        stmt = (
+            select(ProductMemoryEntry)
+            .where(
+                ProductMemoryEntry.product_id == str(product_id),
+                ProductMemoryEntry.tenant_key == tenant_key,
+                tag_filter,
+            )
+            .order_by(ProductMemoryEntry.sequence.desc())
+        )
+
+        if not include_deleted:
+            stmt = stmt.where(ProductMemoryEntry.deleted_by_user == False)  # noqa: E712
+
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def resolve_action_tags(
+        self,
+        session: AsyncSession,
+        product_id: UUID,
+        tenant_key: str,
+        resolved_items: list[str],
+    ) -> int:
+        """
+        Remove matching action_required tags from entries.
+
+        For each entry with action_required:* tags: if the tag description
+        (after 'action_required:') matches any resolved item (case-insensitive
+        substring match), remove that tag.
+
+        Args:
+            session: Database session
+            product_id: Product ID to scope
+            tenant_key: Tenant isolation key
+            resolved_items: List of description strings to match against
+
+        Returns:
+            Count of tags removed
+        """
+        if not resolved_items:
+            return 0
+
+        # Fetch entries with action_required tags
+        entries = await self.get_entries_by_tag_prefix(
+            session=session,
+            product_id=product_id,
+            tenant_key=tenant_key,
+            prefix="action_required",
+            include_deleted=False,
+        )
+
+        resolved_lower = [item.lower() for item in resolved_items]
+        total_removed = 0
+
+        for entry in entries:
+            original_tags = list(entry.tags) if entry.tags else []
+            new_tags = []
+
+            for tag in original_tags:
+                if tag.startswith("action_required:"):
+                    description = tag[len("action_required:") :].lower()
+                    if any(resolved in description or description in resolved for resolved in resolved_lower):
+                        total_removed += 1
+                        continue
+                new_tags.append(tag)
+
+            if len(new_tags) != len(original_tags):
+                # Reassign full list (not in-place mutation) to trigger SQLAlchemy dirty detection
+                entry.tags = new_tags
+
+        await session.flush()
+
+        if total_removed > 0:
+            logger.info(
+                f"Resolved {total_removed} action tags for product {product_id}",
+                extra={"tenant_key": tenant_key},
+            )
+
+        return total_removed
