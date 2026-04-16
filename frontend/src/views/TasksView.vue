@@ -495,7 +495,7 @@ const errorMessage = ref('')
 const headers = [
   { title: 'Status', key: 'status', width: '120', align: 'center' },
   { title: 'Priority', key: 'priority', width: '95' },
-  { title: 'Task', key: 'title' },
+  { title: 'Task', key: 'title', maxWidth: '400' },
   { title: 'Category', key: 'category', width: '100', align: 'center' },
   { title: 'Due Date', key: 'due_date', width: '110' },
   { title: 'Convert', key: 'convert', width: '60', align: 'center', sortable: false },
@@ -841,12 +841,21 @@ onMounted(async () => {
   color: $color-text-muted;
 }
 
-/* 0870h: task title — brand yellow */
+/* Task content wrapper — constrain for truncation */
+.task-content {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* 0870h: task title — brand yellow, truncated */
 .task-title {
   font-size: 0.82rem;
   font-weight: 500;
   color: $color-brand-yellow;
   margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 0870h: task description — muted text, clamped */
@@ -966,6 +975,8 @@ onMounted(async () => {
   transition: all $transition-normal ease;
   min-height: 48px;
   cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .task-row-content:hover {
