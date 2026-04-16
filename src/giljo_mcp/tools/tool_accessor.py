@@ -1149,6 +1149,7 @@ class ToolAccessor:
         entry_type: str = "project_completion",
         author_job_id: str | None = None,
         git_commits: list[dict[str, Any]] | None = None,
+        tags: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Write a 360 memory entry for project completion or handover (Handover 0412).
@@ -1165,6 +1166,7 @@ class ToolAccessor:
             entry_type: Type of entry ("project_completion", "handover_closeout", or "session_handover")
             author_job_id: Job ID of agent writing entry (optional)
             git_commits: Agent-supplied git commits (from local git log)
+            tags: Tags for categorization (e.g. 'action_required:description')
 
         Returns:
             Success/error response with sequence number
@@ -1181,6 +1183,7 @@ class ToolAccessor:
             entry_type=entry_type,
             author_job_id=author_job_id,
             git_commits=git_commits,
+            tags=tags,
             db_manager=self.db_manager,
         )
 

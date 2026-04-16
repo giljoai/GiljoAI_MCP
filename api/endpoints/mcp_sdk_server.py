@@ -993,6 +993,12 @@ async def write_360_memory(
             description="Git commits from project branch. Each entry: {sha: str, message: str, author: str}. Optional: date (ISO 8601), files_changed (int), lines_added (int)."
         ),
     ] = None,
+    tags: Annotated[
+        list[str] | None,
+        Field(
+            description="Tags for categorization. Use 'action_required:description' for items that must persist beyond depth window."
+        ),
+    ] = None,
     ctx: Context = None,
 ) -> dict:
     """Write 360 memory entry for project completion/handover."""
@@ -1007,6 +1013,8 @@ async def write_360_memory(
         kwargs["author_job_id"] = author_job_id
     if git_commits is not None:
         kwargs["git_commits"] = git_commits
+    if tags is not None:
+        kwargs["tags"] = tags
     return await _call_tool(ctx, "write_360_memory", kwargs)
 
 

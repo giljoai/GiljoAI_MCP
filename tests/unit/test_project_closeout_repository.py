@@ -156,7 +156,9 @@ class TestRepositoryIntegration:
             )
 
             # Verify repository was used
-            mock_repo.get_next_sequence.assert_called_once_with(session=mock_session, product_id=mock_product.id)
+            mock_repo.get_next_sequence.assert_called_once_with(
+                session=mock_session, product_id=mock_product.id, tenant_key=tenant_key
+            )
             assert "entry_id" in result
             assert "message" in result
             assert result["sequence_number"] == 5

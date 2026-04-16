@@ -206,6 +206,18 @@ async def _get_360_memory_impl(
     has_more = (offset + returned_projects) < total_projects
     next_offset = offset + returned_projects if has_more else None
 
+    # Fetch action_required tagged entries beyond depth window
+    depth_entry_ids = {str(e.id) for e in entries}
+    tagged_entries = await repo.get_entries_by_tag_prefix(
+        session=session,
+        product_id=product_id,
+        tenant_key=tenant_key,
+        prefix="action_required",
+    )
+    # Deduplicate: exclude entries already in depth-limited results
+    extra_tagged = [e for e in tagged_entries if str(e.id) not in depth_entry_ids]
+    action_required_items = [e.to_dict() for e in extra_tagged]
+
     # Calculate token estimate
     total_tokens = estimate_tokens(paginated_history)
 
@@ -220,9 +232,10 @@ async def _get_360_memory_impl(
         returned_entries=len(paginated_history),
         has_more=has_more,
         estimated_tokens=total_tokens,
+        action_required_count=len(action_required_items),
     )
 
-    return {
+    result = {
         "source": "360_memory",
         "depth": last_n_projects,
         "data": paginated_history,
@@ -238,3 +251,9 @@ async def _get_360_memory_impl(
             "next_offset": next_offset,
         },
     }
+
+    if action_required_items:
+        result["action_required_items"] = action_required_items
+        result["metadata"]["action_required_count"] = len(action_required_items)
+
+    return result
