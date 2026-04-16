@@ -5,10 +5,99 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Beta 1.0.0] - 2026-04 (First Public Beta)
+## [1.1.5] - 2026-04-15
+
+### Fixed
+- Windows installer: revert PostgreSQL install to direct `Start-Process` for reliability
+- Windows installer: suppress npm noise, add PostgreSQL wait banner with progress indicator
+- Localhost bind address: honor network mode setting instead of hardcoding `0.0.0.0`
+- Frontend build: always rebuild, never skip based on existing `dist/` directory
+- Linux installer: fix TTY detection, stale PostgreSQL GPG key, frontend build crash
 
 ### Changed
-- Version alignment: all public-facing version numbers unified to Beta 1.0.0
+- Default Linux install directory to current working directory
+- Use short `giljo.ai/install` URLs in all install documentation
+
+### Added
+- `linux_reset.py` developer tool for full system cleanup and rookie install testing
+- Windows developer reset script for clean install testing
+- CodeQL log-sanitizer taint barrier for `install.py`
+
+## [1.1.4] - 2026-04-14
+
+### Added
+- **One-liner installers:** Windows (`irm giljo.ai/install | iex`) and Linux/macOS (`curl -fsSL giljo.ai/install | bash`)
+- Cloudflare Worker for installer hosting at `giljo.ai/install`
+- `--setup-only` flag for `install.py` enabling script-driven installs
+- `GET /api/version/latest` endpoint for update checking
+- Release pipeline with tarball, checksum, and version manifest (0969)
+- CI guardrails: 5 automated checks to prevent quality re-drift
+- Server-side heartbeat + WebSocket broadcast on project updates
+- Hide/Unhide toggle for projects in dashboard
+
+### Fixed
+- Frontend bundle reduced 827 KB to 308 KB via Vuetify auto-import and chunk splitting
+- Desktop shortcuts created correctly in `--setup-only` mode
+- `startup.py` used as proper entry point with `--verbose` flag
+- Hardcoded localhost URLs removed from completion messages
+- API/MCP call counters always showing zero
+- Completed column sort now pushes null dates to end
+- 6 unused imports removed from `api/app.py` (CodeQL alerts)
+
+### Changed
+- Renamed Taxonomy to Project Types in UI
+- Extract `APIState` into `api/app_state.py` to break cyclic imports
+- Defer tester/reviewer agent spawning to implementation phase (CE-OPT-002)
+- Dashboard polish with project reactivity improvements (CE-OPT-003)
+
+### Security
+- 5 HIGH vulnerabilities resolved from security audit (SEC-SPRINT-001a)
+- CodeQL scanning with log sanitizer recognition
+
+## [1.1.3] - 2026-04-13
+
+### Fixed
+- Registration endpoint and tenant provisioning (SAAS-004) infrastructure
+- Agent complete-to-closed transition moved to user archive action
+- `get_agent_mission()` made mandatory at implementation start for proper status transitions
+- `alembic.ini` inline comment removed to fix migration path parsing
+
+### Added
+- Password reset request endpoint
+- `giljo_mode` exposed in config endpoint for edition detection
+
+## [1.1.2] - 2026-04-13
+
+### Fixed
+- SaaS-dependent test isolation: moved to `tests/saas/` for CE CI compatibility
+- Export script excludes `frontend/tests/saas/` and `tests/saas/` directories
+
+## [1.1.1] - 2026-04-13
+
+### Added
+- Vitest upgraded 3 to 4, coverage-v8 and UI packages updated
+- `marked` upgraded ^17 to ^18, `jsdom` ^27 to ^29
+- Heartbeat and project realtime update edge-case test coverage
+
+### Fixed
+- CodeQL workflow configuration with extensions directive
+- CI pytest coverage threshold disabled (unit-only tests cannot meet 80%)
+
+## [1.1.0] - 2026-04-12
+
+### Added
+- **CI/CD pipeline:** GitHub Actions for tests, linting, CodeQL security scanning
+- **Dependabot** configuration for automated dependency updates
+- **CODEOWNERS** for review routing
+- Release automation workflow
+
+### Changed
+- First post-release export cycle established between private and public repos
+
+## [1.0.0] - 2026-04-10 (First Public Beta)
+
+### Changed
+- Version alignment: all public-facing version numbers unified to 1.0.0
 - Release packaging updates (0732): CHANGELOG brought current, convention violations fixed
 
 ---
