@@ -379,44 +379,44 @@ install_prereqs_linux() {
     case "$PKG_MANAGER" in
         apt)
             print_step "Updating package lists..."
-            sudo apt-get update -qq
+            sudo apt-get update -qq </dev/null
 
             for item in "${items[@]}"; do
                 case "$item" in
                     python)
                         print_step "Installing Python 3.12..."
                         if apt-cache show python3.12 &>/dev/null; then
-                            sudo apt-get install -y -qq python3.12 python3.12-venv python3-pip
+                            sudo apt-get install -y -qq python3.12 python3.12-venv python3-pip </dev/null
                         else
                             print_step "Adding deadsnakes PPA for Python 3.12..."
-                            sudo add-apt-repository -y ppa:deadsnakes/ppa
-                            sudo apt-get update -qq
-                            sudo apt-get install -y -qq python3.12 python3.12-venv python3-pip
+                            sudo add-apt-repository -y ppa:deadsnakes/ppa </dev/null
+                            sudo apt-get update -qq </dev/null
+                            sudo apt-get install -y -qq python3.12 python3.12-venv python3-pip </dev/null
                         fi
                         print_ok "Python installed"
                         ;;
                     node)
                         print_step "Installing Node.js 20..."
-                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-                        sudo apt-get install -y -qq nodejs
+                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - </dev/null
+                        sudo apt-get install -y -qq nodejs </dev/null
                         print_ok "Node.js installed"
                         ;;
                     git)
                         print_step "Installing Git..."
-                        sudo apt-get install -y -qq git
+                        sudo apt-get install -y -qq git </dev/null
                         print_ok "Git installed"
                         ;;
                     postgresql)
                         print_step "Installing PostgreSQL..."
                         # Remove any stale pgdg repo config to avoid duplicates
-                        sudo rm -f /etc/apt/sources.list.d/pgdg.list /etc/apt/sources.list.d/pgdg.sources
+                        sudo rm -f /etc/apt/sources.list.d/pgdg.list /etc/apt/sources.list.d/pgdg.sources </dev/null
                         sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
                         # Refresh GPG key (overwrite if stale)
                         curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/pgdg.gpg
-                        sudo apt-get update -qq
-                        sudo apt-get install -y -qq postgresql postgresql-client
-                        sudo systemctl start postgresql
-                        sudo systemctl enable postgresql
+                        sudo apt-get update -qq </dev/null
+                        sudo apt-get install -y -qq postgresql postgresql-client </dev/null
+                        sudo systemctl start postgresql </dev/null
+                        sudo systemctl enable postgresql </dev/null
                         print_ok "PostgreSQL installed and started"
                         ;;
                 esac
@@ -427,28 +427,28 @@ install_prereqs_linux() {
                 case "$item" in
                     python)
                         print_step "Installing Python 3.12..."
-                        sudo "$PKG_MANAGER" install -y python3.12 python3-pip python3-devel 2>/dev/null || \
-                            sudo "$PKG_MANAGER" install -y python3 python3-pip python3-devel
+                        sudo "$PKG_MANAGER" install -y python3.12 python3-pip python3-devel </dev/null 2>/dev/null || \
+                            sudo "$PKG_MANAGER" install -y python3 python3-pip python3-devel </dev/null
                         print_ok "Python installed"
                         ;;
                     node)
                         print_step "Installing Node.js 20..."
-                        curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
-                        sudo "$PKG_MANAGER" install -y nodejs
+                        curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash - </dev/null
+                        sudo "$PKG_MANAGER" install -y nodejs </dev/null
                         print_ok "Node.js installed"
                         ;;
                     git)
                         print_step "Installing Git..."
-                        sudo "$PKG_MANAGER" install -y git
+                        sudo "$PKG_MANAGER" install -y git </dev/null
                         print_ok "Git installed"
                         ;;
                     postgresql)
                         print_step "Installing PostgreSQL..."
-                        sudo "$PKG_MANAGER" install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm 2>/dev/null || true
-                        sudo "$PKG_MANAGER" install -y postgresql-server postgresql
-                        sudo postgresql-setup --initdb 2>/dev/null || true
-                        sudo systemctl start postgresql
-                        sudo systemctl enable postgresql
+                        sudo "$PKG_MANAGER" install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm </dev/null 2>/dev/null || true
+                        sudo "$PKG_MANAGER" install -y postgresql-server postgresql </dev/null
+                        sudo postgresql-setup --initdb </dev/null 2>/dev/null || true
+                        sudo systemctl start postgresql </dev/null
+                        sudo systemctl enable postgresql </dev/null
                         print_ok "PostgreSQL installed and started"
                         ;;
                 esac
@@ -825,7 +825,7 @@ stop_existing_service() {
     case "$OS_TYPE" in
         linux)
             if systemctl is-active giljoai-mcp &>/dev/null; then
-                sudo systemctl stop giljoai-mcp
+                sudo systemctl stop giljoai-mcp </dev/null
                 print_ok "systemd service stopped"
             fi
             ;;
@@ -846,7 +846,7 @@ restart_service() {
     case "$OS_TYPE" in
         linux)
             if systemctl is-enabled giljoai-mcp &>/dev/null; then
-                sudo systemctl restart giljoai-mcp
+                sudo systemctl restart giljoai-mcp </dev/null
                 print_ok "systemd service restarted"
             fi
             ;;
