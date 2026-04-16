@@ -419,7 +419,7 @@ describe('ProjectTabs - Re-Stage Button Lifecycle', () => {
   describe('State Persistence', () => {
     it('isStaging hydrates from staging_status on project load', async () => {
       // Project has staging_status = 'staging' from backend
-      const wrapper = createWrapper({ staging_status: 'staging' })
+      createWrapper({ staging_status: 'staging' })
       await flushPromises()
 
       const stateStore = useProjectStateStore()
@@ -429,7 +429,7 @@ describe('ProjectTabs - Re-Stage Button Lifecycle', () => {
     })
 
     it('isStaging is false when staging_status is null', async () => {
-      const wrapper = createWrapper({ staging_status: null })
+      createWrapper({ staging_status: null })
       await flushPromises()
 
       const stateStore = useProjectStateStore()
@@ -438,7 +438,7 @@ describe('ProjectTabs - Re-Stage Button Lifecycle', () => {
     })
 
     it('isStaging is false when staging_status is staging_complete', async () => {
-      const wrapper = createWrapper({ staging_status: 'staging_complete' })
+      createWrapper({ staging_status: 'staging_complete' })
       await flushPromises()
 
       const stateStore = useProjectStateStore()
