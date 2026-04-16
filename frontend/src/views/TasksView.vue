@@ -493,13 +493,13 @@ const errorMessage = ref('')
 
 // Table headers
 const headers = [
-  { title: 'Status', key: 'status', width: '140', align: 'center' },
-  { title: 'Priority', key: 'priority', width: '110' },
+  { title: 'Status', key: 'status', width: '120', align: 'center' },
+  { title: 'Priority', key: 'priority', width: '95' },
   { title: 'Task', key: 'title' },
-  { title: 'Category', key: 'category', width: '120', align: 'center' },
-  { title: 'Due Date', key: 'due_date', width: '120' },
-  { title: 'Convert', key: 'convert', width: '80', align: 'center', sortable: false },
-  { title: 'Actions', key: 'actions', sortable: false, width: '120' },
+  { title: 'Category', key: 'category', width: '100', align: 'center' },
+  { title: 'Due Date', key: 'due_date', width: '110' },
+  { title: 'Convert', key: 'convert', width: '60', align: 'center', sortable: false },
+  { title: 'Actions', key: 'actions', sortable: false, width: '80' },
 ]
 
 // Filter options
@@ -788,7 +788,7 @@ onMounted(async () => {
   border-radius: $border-radius-pill;
   font-size: 0.65rem;
   font-weight: 600;
-  min-width: 100px;
+  min-width: 80px;
   justify-content: center;
 }
 

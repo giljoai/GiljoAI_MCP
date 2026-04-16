@@ -412,7 +412,7 @@ async def archive_project(
     current_status = proj.status
 
     # Only deactivate if not already inactive/completed
-    if current_status not in ("inactive", "completed", "archived", "terminated"):
+    if current_status not in ("inactive", "completed", "cancelled", "archived", "terminated"):
         await project_service.deactivate_project(project_id=project_id, reason="User archived project after completion")
 
     # Check early_termination flag to determine target status (Handover 0498)

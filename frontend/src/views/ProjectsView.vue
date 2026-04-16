@@ -110,7 +110,7 @@
           class="elevation-0"
           item-key="id"
           fixed-header
-          :item-props="() => ({ 'data-testid': 'project-card' })"
+          :item-props="getRowProps"
           @update:page="currentPage = $event"
           @update:sort-by="sortBy = $event"
           @click:row="handleRowClick"
@@ -305,6 +305,25 @@
       </v-alert>
     </BaseDialog>
 
+    <!-- Cancel Project Confirmation Dialog -->
+    <BaseDialog
+      v-model="showCancelDialog"
+      type="warning"
+      title="Cancel Project?"
+      confirm-label="Cancel Project"
+      size="sm"
+      @confirm="executeCancelProject"
+      @cancel="showCancelDialog = false"
+    >
+      <p class="mb-3">
+        Are you sure you want to cancel project <strong>"{{ projectToCancel?.name }}"</strong>?
+      </p>
+      <v-alert type="warning" variant="tonal" density="compact">
+        Cancelled projects will be hidden from the default view but can be
+        reopened later if needed.
+      </v-alert>
+    </BaseDialog>
+
     <!-- Clear Mission Confirmation Dialog -->
     <BaseDialog
       v-model="showClearMissionDialog"
@@ -428,6 +447,8 @@ const showReviewModal = ref(false)
 const editingProject = ref(null)
 const projectToDelete = ref(null)
 const projectToPurge = ref(null)
+const projectToCancel = ref(null)
+const showCancelDialog = ref(false)
 
 // Closeout / review state
 const closeoutProjectId = ref(null)
@@ -508,6 +529,15 @@ const headers = [
   { title: 'Actions', key: 'quick_action', sortable: false, width: '5%', align: 'center' },
   { title: '', key: 'menu', sortable: false, width: '3%', align: 'center' },
 ]
+
+/* Row props: adds cancelled-row class for visual distinction */
+function getRowProps({ item }) {
+  const props = { 'data-testid': 'project-card' }
+  if (normalizeStatus(item.status) === 'cancelled') {
+    props.class = 'cancelled-row'
+  }
+  return props
+}
 
 /* 0870h: tinted square badge style for project taxonomy IDs */
 function projectIdBadgeStyle(color) {
@@ -664,6 +694,21 @@ async function deleteProject() {
   }
 }
 
+async function executeCancelProject() {
+  if (projectToCancel.value) {
+    try {
+      await projectStore.cancelProject(projectToCancel.value.id)
+      notificationStore.clearForProject(projectToCancel.value.id)
+      showCancelDialog.value = false
+      projectToCancel.value = null
+      await projectStore.fetchProjects()
+    } catch (error) {
+      console.error('Failed to cancel project:', error)
+      showToast({ message: 'Failed to cancel project. Please try again.', type: 'error' })
+    }
+  }
+}
+
 async function restoreFromDelete(project) {
   try {
     await projectStore.restoreProject(project.id)
@@ -745,10 +790,14 @@ async function handleStatusAction({ action, projectId }) {
       case 'reopen':
         await api.projects.restore(projectId)
         break
-      case 'cancel':
-        await projectStore.cancelProject(projectId)
-        notificationStore.clearForProject(projectId)
-        break
+      case 'cancel': {
+        const projectToCancelById = projectStore.projectById(projectId)
+        if (projectToCancelById) {
+          projectToCancel.value = projectToCancelById
+          showCancelDialog.value = true
+        }
+        return // Early return — dialog handles the action
+      }
       case 'delete': {
         const projectToDeleteById = projectStore.projectById(projectId)
         if (projectToDeleteById) {
@@ -882,6 +931,11 @@ onMounted(async () => {
   font-size: 0.72rem;
   text-transform: none;
   letter-spacing: 0;
+}
+
+/* Cancelled project rows: greyed out for visual distinction */
+:deep(.cancelled-row) {
+  opacity: 0.5;
 }
 
 /* Clickable rows — entire row opens edit/review */

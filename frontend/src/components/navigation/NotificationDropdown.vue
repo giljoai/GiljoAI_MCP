@@ -4,7 +4,7 @@
     :close-on-content-click="false"
     :location="compact ? 'right' : 'bottom end'"
     offset="8"
-    max-width="350"
+    max-width="400"
   >
     <template v-slot:activator="{ props: menuProps }">
       <!-- Compact: orb style for navbar -->
@@ -96,10 +96,17 @@
               {{ notification.title }}
             </v-list-item-title>
             <v-list-item-subtitle
-              :class="['text-body-2', { 'message-truncated': !notification._expanded, 'text-wrap': notification._expanded }]"
-              @click.stop="toggleExpand(notification)"
+              :class="['text-body-2', { 'message-truncated': !isExpanded(notification.id), 'text-wrap': isExpanded(notification.id) }]"
+              @click.stop="toggleExpand(notification.id)"
             >
               {{ notification.message }}
+              <v-icon
+                size="14"
+                class="expand-chevron ml-1"
+                :aria-label="isExpanded(notification.id) ? 'Collapse message' : 'Expand message'"
+              >
+                {{ isExpanded(notification.id) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+              </v-icon>
             </v-list-item-subtitle>
 
             <!-- Handover 0259: Project context link -->
@@ -169,6 +176,7 @@ const notificationStore = useNotificationStore()
 const wsStore = useWebSocketStore()
 
 const menuOpen = ref(false)
+const expandedIds = ref(new Set())
 let unsubscribeNotification = null
 
 // Computed properties
@@ -246,9 +254,16 @@ const getNotificationAriaLabel = (notification) => {
   return base
 }
 
-// Toggle message expand/collapse
-const toggleExpand = (notification) => {
-  notification._expanded = !notification._expanded
+// Toggle message expand/collapse using local reactive Set (not object mutation)
+const isExpanded = (id) => expandedIds.value.has(id)
+const toggleExpand = (id) => {
+  const next = new Set(expandedIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  expandedIds.value = next
 }
 
 // Handover 0259: Navigate to the project associated with a notification
@@ -372,7 +387,7 @@ onUnmounted(() => {
 }
 
 .notification-dropdown {
-  width: 420px;
+  width: 440px;
   max-height: 500px;
   display: flex;
   flex-direction: column;
@@ -391,6 +406,18 @@ onUnmounted(() => {
 .message-truncated:hover {
   text-decoration: underline;
   text-decoration-style: dotted;
+}
+
+.expand-chevron {
+  vertical-align: middle;
+  color: var(--text-muted, #8895a8);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.expand-chevron:hover {
+  opacity: 1;
 }
 
 .notification-header {

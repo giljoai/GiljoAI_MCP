@@ -362,6 +362,7 @@ class SpawnResult(BaseModel):
     job_id: str
     agent_id: str
     execution_id: Optional[str] = None
+    agent_display_name: Optional[str] = None  # v1.1.6: Resolved display name (after auto-suffix)
     agent_prompt: str
     mission_stored: bool = True
     thin_client: bool = True
