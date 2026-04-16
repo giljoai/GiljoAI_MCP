@@ -283,12 +283,7 @@ async function handleLogin() {
     // SaaS/demo: check if org setup is needed before proceeding to dashboard
     if (giljoMode.value !== 'ce') {
       try {
-        let baseUrl = ''
-        if (!import.meta.env.DEV && configService.config) {
-          const { host, port } = configService.config.api
-          const protocol = configService.config.api?.protocol || (window.location.protocol === 'https:' ? 'https' : 'http')
-          baseUrl = `${protocol}://${host}:${port}`
-        }
+        const baseUrl = configService.getApiBaseUrl()
         const orgStatus = await axios.get(`${baseUrl}/api/saas/org-setup/status`)
         if (orgStatus.data?.needs_setup) {
           router.push('/org-setup')
@@ -423,7 +418,8 @@ onMounted(async () => {
   // Dynamically load SaaS ForgotPasswordEmail when not CE (Deletion Test safe)
   if (giljoMode.value !== 'ce') {
     try {
-      const mod = await import(/* @vite-ignore */ '../saas/components/ForgotPasswordEmail.vue')
+      const componentPath = `../saas/components/ForgotPasswordEmail.vue`
+      const mod = await import(/* @vite-ignore */ componentPath)
       forgotPasswordEmailComponent.value = mod.default
     } catch {
       // SaaS component absent (CE export) -- silently skip
