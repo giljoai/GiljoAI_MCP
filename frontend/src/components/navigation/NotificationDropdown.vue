@@ -95,19 +95,20 @@
             <v-list-item-title class="text-body-1 font-weight-medium mb-1">
               {{ notification.title }}
             </v-list-item-title>
-            <v-list-item-subtitle
-              :class="['text-body-2', { 'message-truncated': !isExpanded(notification.id), 'text-wrap': isExpanded(notification.id) }]"
+            <div
+              :class="['notification-message', 'text-body-2', { 'message-truncated': !isExpanded(notification.id) }]"
               @click.stop="toggleExpand(notification.id)"
             >
               {{ notification.message }}
-              <v-icon
-                size="14"
-                class="expand-chevron ml-1"
-                :aria-label="isExpanded(notification.id) ? 'Collapse message' : 'Expand message'"
-              >
-                {{ isExpanded(notification.id) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
-              </v-icon>
-            </v-list-item-subtitle>
+            </div>
+            <v-icon
+              size="14"
+              class="expand-chevron mt-1"
+              :aria-label="isExpanded(notification.id) ? 'Collapse message' : 'Expand message'"
+              @click.stop="toggleExpand(notification.id)"
+            >
+              {{ isExpanded(notification.id) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+            </v-icon>
 
             <!-- Handover 0259: Project context link -->
             <div
@@ -393,6 +394,18 @@ onUnmounted(() => {
   flex-direction: column;
 }
 
+/* Notification message text */
+.notification-message {
+  color: $color-text-muted;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.notification-message:hover {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
 /* Message truncation - click to expand */
 .message-truncated {
   display: -webkit-box;
@@ -400,19 +413,12 @@ onUnmounted(() => {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
-}
-
-.message-truncated:hover {
-  text-decoration: underline;
-  text-decoration-style: dotted;
 }
 
 .expand-chevron {
-  vertical-align: middle;
-  color: var(--text-muted, #8895a8);
+  color: $color-brand-yellow;
   cursor: pointer;
-  opacity: 0.7;
+  opacity: 0.8;
   transition: opacity 0.2s ease;
 }
 
