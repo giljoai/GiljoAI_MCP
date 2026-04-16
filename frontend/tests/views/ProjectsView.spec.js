@@ -411,11 +411,12 @@ describe('ProjectsView.vue', () => {
       expect(projectStore.deactivateProject).toHaveBeenCalledWith('proj-1')
     })
 
-    it('handles cancel action', async () => {
+    it('handles cancel action by opening confirmation dialog', async () => {
       const wrapper = await createWrapper()
       await wrapper.vm.handleStatusAction({ action: 'cancel', projectId: 'proj-1' })
 
-      expect(projectStore.cancelProject).toHaveBeenCalledWith('proj-1')
+      expect(wrapper.vm.showCancelDialog).toBe(true)
+      expect(wrapper.vm.projectToCancel?.id).toBe('proj-1')
     })
 
     it('handles delete action by opening confirmation dialog', async () => {

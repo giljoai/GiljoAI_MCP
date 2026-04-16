@@ -67,13 +67,6 @@ export function useProjectFilters({ projects, projectTypes, activeProduct }) {
     }
     results = results.filter((p) => !p.hidden)
 
-    // Cancelled projects are excluded from default view, shown only when
-    // filterStatus is explicitly 'cancelled'.
-    if (filterStatus.value === 'cancelled') {
-      return results.filter((p) => p.status === 'cancelled')
-    }
-    results = results.filter((p) => p.status !== 'cancelled')
-
     if (filterStatus.value && filterStatus.value !== 'all') {
       return results.filter((p) => p.status === filterStatus.value)
     }
