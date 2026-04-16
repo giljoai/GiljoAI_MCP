@@ -22,7 +22,6 @@ Usage:
 Requires: Python 3.10+ (uses no external packages)
 """
 
-import glob
 import os
 import platform
 import shutil
@@ -154,7 +153,7 @@ def clean_mkcert(dry_run: bool) -> int:
             info("Would run: mkcert -uninstall")
         else:
             try:
-                result = run_quiet([mkcert_bin, "-uninstall"])
+                run_quiet([mkcert_bin, "-uninstall"])
                 ok("Root CA removed from system trust store")
             except Exception as e:
                 fail(f"mkcert -uninstall failed: {e}")
@@ -208,9 +207,9 @@ def clean_mkcert(dry_run: bool) -> int:
     # Step 4: Remove mkcert cert from Windows cert store (if -uninstall missed it)
     if not dry_run:
         try:
-            result = run_quiet([
+            run_quiet([
                 "powershell", "-Command",
-                "Get-ChildItem Cert:\\CurrentUser\\Root "
+                "Get-ChildItem Cert:\\CurrentUser\\Root "  # noqa: ISC001
                 "| Where-Object { $_.Subject -like '*mkcert*' } "
                 "| Remove-Item -Force",
             ])
@@ -574,7 +573,7 @@ def verify_clean() -> None:
     try:
         r = run_quiet([
             "powershell", "-Command",
-            "(Get-ChildItem Cert:\\CurrentUser\\Root "
+            "(Get-ChildItem Cert:\\CurrentUser\\Root "  # noqa: ISC001
             "| Where-Object { $_.Subject -like '*mkcert*' }).Count",
         ])
         checks.append(("mkcert in cert store", int(r.stdout.strip() or "0") > 0))

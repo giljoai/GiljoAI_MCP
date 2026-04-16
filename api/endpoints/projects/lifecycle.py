@@ -304,7 +304,7 @@ async def restage_project(
         HTTPException 404: Project not found
         HTTPException 409: Invalid state for restage
     """
-    logger.info("User %s restaging project %s", sanitize(current_user.username), sanitize(project_id))
+    logger.info("Restage requested", extra={"user": str(current_user.username), "project_id": str(project_id)})
 
     try:
         result = await project_service.restage(project_id=project_id)
@@ -319,7 +319,7 @@ async def restage_project(
             detail=str(e),
         ) from e
 
-    logger.info("Restaged project %s", sanitize(project_id))
+    logger.info("Restage completed", extra={"project_id": str(project_id)})
 
     return {"message": result["message"], "project_id": result["project_id"]}
 
