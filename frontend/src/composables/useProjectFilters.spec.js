@@ -109,19 +109,18 @@ describe('useProjectFilters', () => {
     activeProduct = ref({ id: 'prod-1', name: 'Test Product' })
   })
 
-  it('returns non-deleted, non-hidden, non-cancelled projects when no filters', () => {
+  it('returns non-deleted, non-hidden projects when no filters', () => {
     const { filteredProjects } = useProjectFilters({
       projectTypes,
       projects,
       activeProduct,
     })
     const ids = filteredProjects.value.map((p) => p.id)
-    expect(ids).toEqual(expect.arrayContaining(['p1', 'p2', 'p3']))
+    expect(ids).toEqual(expect.arrayContaining(['p1', 'p2', 'p3', 'p8']))
     expect(ids).not.toContain('p4')
     expect(ids).not.toContain('p5')
     expect(ids).not.toContain('p6')
     expect(ids).not.toContain('p7')
-    expect(ids).not.toContain('p8')
   })
 
   it('returns empty list when no active product', () => {
@@ -306,18 +305,18 @@ describe('useProjectFilters', () => {
   })
 
   // --- Fix 5: Cancelled project filter exclusion ---
-  describe('cancelled project exclusion', () => {
-    it('excludes cancelled projects from default view', () => {
+  describe('cancelled project visibility', () => {
+    it('shows cancelled projects in default view', () => {
       const { filteredProjects } = useProjectFilters({
         projectTypes,
         projects,
         activeProduct,
       })
       const ids = filteredProjects.value.map((p) => p.id)
-      expect(ids).not.toContain('p8')
+      expect(ids).toContain('p8')
     })
 
-    it('shows cancelled projects when status filter is cancelled', () => {
+    it('shows only cancelled projects when status filter is cancelled', () => {
       const { filteredProjects, filterStatus } = useProjectFilters({
         projectTypes,
         projects,
@@ -329,7 +328,7 @@ describe('useProjectFilters', () => {
       expect(ids).not.toContain('p1')
     })
 
-    it('excludes cancelled projects when only type filter is active', () => {
+    it('shows cancelled projects when type filter is active', () => {
       const { filteredProjects, filterType } = useProjectFilters({
         projectTypes,
         projects,
@@ -338,7 +337,7 @@ describe('useProjectFilters', () => {
       filterType.value = 'type-be'
       const ids = filteredProjects.value.map((p) => p.id)
       expect(ids).toContain('p1')
-      expect(ids).not.toContain('p8')
+      expect(ids).toContain('p8')
     })
   })
 })
