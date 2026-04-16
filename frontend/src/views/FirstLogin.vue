@@ -231,8 +231,10 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import api from '@/services/api'
+import configService from '@/services/configService'
 
 // Composables
 const router = useRouter()
@@ -347,6 +349,24 @@ async function handleSubmit() {
       recovery_pin: recoveryPin.value,
       confirm_pin: confirmPin.value,
     })
+
+    // SaaS/demo: check if org setup is needed before going to dashboard
+    const mode = configService.getGiljoMode()
+    if (mode !== 'ce') {
+      try {
+        let baseUrl = ''
+        if (!import.meta.env.DEV && configService.config) {
+          baseUrl = configService.getApiBaseUrl()
+        }
+        const orgStatus = await axios.get(`${baseUrl}/api/saas/org-setup/status`)
+        if (orgStatus.data?.needs_setup) {
+          router.push('/org-setup')
+          return
+        }
+      } catch {
+        // Silently continue to dashboard if org-setup check fails
+      }
+    }
 
     // Redirect to dashboard
     router.push('/')

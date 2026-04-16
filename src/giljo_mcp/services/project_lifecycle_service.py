@@ -395,6 +395,123 @@ class ProjectLifecycleService:
 
             return project
 
+    def check_staging_allowed(self, project: Project) -> None:
+        """Check if a project can be staged. Raises if staging is already in progress.
+
+        Args:
+            project: The project to check.
+
+        Raises:
+            ProjectStateError: If project.staging_status is 'staging'.
+        """
+        if project.staging_status == "staging":
+            raise ProjectStateError(
+                message="Staging already in progress. Use Re-Stage to reset first.",
+                context={"project_id": project.id, "staging_status": project.staging_status},
+            )
+
+    async def restage(self, project_id: str) -> dict:
+        """Reset a staged project so it can be re-staged with a fresh orchestrator.
+
+        Guards:
+            1. project.staging_status must be 'staging' — otherwise reject.
+            2. The orchestrator AgentExecution must have status 'waiting'.
+
+        Actions (single transaction):
+            1. Set project.staging_status = None
+            2. Set project.execution_mode = 'multi_terminal'
+            3. Decommission the existing orchestrator execution
+            4. Create a fresh orchestrator fixture
+
+        Args:
+            project_id: Project UUID.
+
+        Returns:
+            Dict with message, project_id, and new_orchestrator fixture info.
+
+        Raises:
+            ResourceNotFoundError: Project not found.
+            ProjectStateError: Invalid state for restage.
+        """
+        tenant_key = self.tenant_manager.get_current_tenant()
+
+        async with self._get_session() as session:
+            # 1. Fetch project
+            result = await session.execute(
+                select(Project).where(
+                    and_(
+                        Project.id == project_id,
+                        Project.tenant_key == tenant_key,
+                    )
+                )
+            )
+            project = result.scalar_one_or_none()
+
+            if not project:
+                raise ResourceNotFoundError(
+                    message="Project not found",
+                    context={"project_id": project_id},
+                )
+
+            # 2. Guard: must be in 'staging' state
+            if project.staging_status != "staging":
+                raise ProjectStateError(
+                    message="Project is not currently staged",
+                    context={
+                        "project_id": project_id,
+                        "staging_status": project.staging_status,
+                    },
+                )
+
+            # 3. Find orchestrator execution
+            orch_result = await session.execute(
+                select(AgentExecution)
+                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                .where(
+                    AgentJob.project_id == project_id,
+                    AgentExecution.agent_display_name == "orchestrator",
+                    AgentExecution.tenant_key == tenant_key,
+                    ~AgentExecution.status.in_(["decommissioned"]),
+                )
+            )
+            orchestrator = orch_result.scalar_one_or_none()
+
+            # 4. Guard: orchestrator must be waiting
+            if orchestrator and orchestrator.status != "waiting":
+                raise ProjectStateError(
+                    message="Cannot restage: orchestrator agent is already active",
+                    context={
+                        "project_id": project_id,
+                        "orchestrator_status": orchestrator.status,
+                    },
+                )
+
+            # 5. Reset project state
+            project.staging_status = None
+            project.execution_mode = "multi_terminal"
+            project.updated_at = datetime.now(timezone.utc)
+
+            # 6. Decommission existing orchestrator
+            if orchestrator:
+                orchestrator.status = "decommissioned"
+
+            await session.commit()
+
+            # 7. Create fresh orchestrator fixture
+            new_fixture = await self._ensure_orchestrator_fixture(session, project)
+
+            self._logger.info(
+                "[RESTAGE] Project %s restaged, new orchestrator: %s",
+                project_id,
+                new_fixture,
+            )
+
+            return {
+                "message": "Project restaged successfully",
+                "project_id": project.id,
+                "new_orchestrator": new_fixture,
+            }
+
     async def cancel_staging(self, project_id: str, websocket_manager: Any | None = None) -> ProjectData:
         """
         Cancel a project in staging state.

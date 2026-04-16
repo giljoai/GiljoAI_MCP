@@ -373,7 +373,20 @@ async def generate_staging_prompt(
         HTTPException 400: Invalid tool parameter
         HTTPException 500: Prompt generation error
     """
+    from sqlalchemy import and_ as _and
+
     from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+
+    # Staging guard: prevent re-staging when already in progress
+    proj_result = await db.execute(
+        select(Project).where(_and(Project.id == project_id, Project.tenant_key == current_user.tenant_key))
+    )
+    project = proj_result.scalar_one_or_none()
+    if project and project.staging_status == "staging":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Staging already in progress. Use Re-Stage to reset first.",
+        )
 
     try:
         # Initialize thin client generator

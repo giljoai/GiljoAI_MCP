@@ -616,7 +616,7 @@ class MissionService:
             tenant_key=tenant_key,
             agent_name=execution.agent_display_name,
             agent_id=str(execution.agent_id),
-            execution_mode=project_exec_mode,
+            execution_mode=agent_tool,
             git_integration_enabled=git_enabled,
             job_type=job.job_type,
             tool=agent_tool,

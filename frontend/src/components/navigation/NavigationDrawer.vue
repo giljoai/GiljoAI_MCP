@@ -299,6 +299,7 @@ import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
 import { useUserStore } from '@/stores/user'
 import { useWebSocketStore } from '@/stores/websocket'
+import { useToast } from '@/composables/useToast'
 import configService from '@/services/configService'
 import setupService from '@/services/setupService'
 import api from '@/services/api'
@@ -335,6 +336,7 @@ const projectStore = useProjectStore()
 const productsStore = useProductStore()
 const userStore = useUserStore()
 const wsStore = useWebSocketStore()
+const { showToast } = useToast()
 
 // Track which nav item is selected
 const selected = ref([])
@@ -383,9 +385,10 @@ async function handleResetPassword() {
     }
 
     await axios.post(`${baseUrl}/api/saas/password-reset/request`, { email })
-    // TODO: Show toast notification -- "Reset email sent" (requires useToast integration)
-  } catch {
-    // TODO: Show error toast
+    showToast({ message: 'Password reset email sent. Check your inbox.', type: 'success' })
+  } catch (err) {
+    const detail = err?.response?.data?.detail
+    showToast({ message: detail || 'Unable to send reset email. Please try again later.', type: 'error' })
   }
 }
 
