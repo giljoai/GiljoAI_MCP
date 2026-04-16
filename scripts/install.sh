@@ -885,6 +885,13 @@ restart_service() {
 main() {
     parse_args "$@"
     print_banner
+    echo -e "    ${BRAND}╔══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "    ${BRAND}║  This installer will set up GiljoAI MCP and all         ║${NC}"
+    echo -e "    ${BRAND}║  prerequisites (Python, Node.js, PostgreSQL).           ║${NC}"
+    echo -e "    ${BRAND}║  This may take 3-5 minutes. Please do not close         ║${NC}"
+    echo -e "    ${BRAND}║  this terminal.                                         ║${NC}"
+    echo -e "    ${BRAND}╚══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
     detect_os
 
     print_step "Detected OS: ${OS_TYPE} (${DISTRO})"
