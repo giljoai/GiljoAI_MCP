@@ -40,7 +40,7 @@ router = APIRouter()
 
 
 @router.post("/spawn", response_model=SpawnAgentResponse, status_code=status.HTTP_201_CREATED)
-async def spawn_agent_job(
+async def spawn_job(
     request: SpawnAgentRequest,
     current_user: User = Depends(get_current_active_user),
     orchestration_service: OrchestrationService = Depends(get_orchestration_service),
@@ -76,7 +76,7 @@ async def spawn_agent_job(
         )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required to spawn agents")
 
-    result = await orchestration_service.spawn_agent_job(
+    result = await orchestration_service.spawn_job(
         agent_display_name=request.agent_display_name,
         agent_name=request.agent_name or request.agent_display_name,
         mission=request.mission,

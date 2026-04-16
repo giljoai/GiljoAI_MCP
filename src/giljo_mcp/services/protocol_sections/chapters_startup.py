@@ -33,7 +33,7 @@ YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
 You are STAGING the project. Your job:
 1. Analyze requirements from project_description
 2. Create condensed mission plan
-3. Assign work to specialist agents via spawn_agent_job()
+3. Assign work to specialist agents via spawn_job()
 
 WHAT YOU ARE NOT:
 - You do NOT execute implementation work
@@ -328,7 +328,7 @@ This stores your plan in Project.mission for UI display
 
 ── STEP 6: Spawn Agents ────────────────────────────────────────────────────
 For each agent in your plan:
-  spawn_agent_job(
+  spawn_job(
       agent_name='exact-template-name',  # From Step 3
       agent_display_name='implementer',   # Display category
       mission='Agent-specific instructions',

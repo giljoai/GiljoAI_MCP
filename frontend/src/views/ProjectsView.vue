@@ -980,7 +980,7 @@ onMounted(async () => {
   padding: 2px 8px;
   border-radius: $border-radius-sharp;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.62rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 

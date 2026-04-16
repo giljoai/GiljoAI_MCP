@@ -23,7 +23,7 @@ Design Philosophy:
 - Succession: New execution, SAME job (job_id persists, agent_id changes)
 
 Test Coverage:
-1. spawn_agent_job creates BOTH AgentJob and AgentExecution
+1. spawn_job creates BOTH AgentJob and AgentExecution
 2. Succession creates new execution, NOT new job
 3. Query methods correctly join AgentJob + AgentExecution
 4. Update methods target AgentExecution (not AgentJob)
@@ -90,14 +90,14 @@ async def test_project(db_session, test_tenant_key, test_agent_templates) -> Pro
 
 
 # ============================================================================
-# Test Class: spawn_agent_job Creates BOTH Job and Execution
+# Test Class: spawn_job Creates BOTH Job and Execution
 # ============================================================================
 
 
 @pytest.mark.asyncio
 class TestSpawnAgentJobDualModel:
     """
-    Tests that spawn_agent_job creates BOTH AgentJob and AgentExecution.
+    Tests that spawn_job creates BOTH AgentJob and AgentExecution.
 
     Expected Behavior:
     - Creates AgentJob record (work order)
@@ -108,14 +108,14 @@ class TestSpawnAgentJobDualModel:
     """
 
     async def test_spawn_creates_both_job_and_execution(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify spawn_agent_job creates BOTH AgentJob and AgentExecution."""
+        """Verify spawn_job creates BOTH AgentJob and AgentExecution."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement authentication system",
@@ -166,7 +166,7 @@ class TestSpawnAgentJobDualModel:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         mission = "Build OAuth2 authentication with JWT tokens"
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="implementer",
             agent_name="auth-impl",
             mission=mission,
@@ -188,14 +188,14 @@ class TestSpawnAgentJobDualModel:
         assert not hasattr(execution, "mission")
 
     async def test_spawn_returns_both_ids(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify spawn_agent_job returns dict with both job_id and agent_id."""
+        """Verify spawn_job returns dict with both job_id and agent_id."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="tester",
             agent_name="test-1",
             mission="Write integration tests",
@@ -248,7 +248,7 @@ class TestQueryMethodsDualModel:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Spawn an agent
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement feature X",
@@ -279,7 +279,7 @@ class TestQueryMethodsDualModel:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Spawn waiting agent
-        waiting_result = await service.spawn_agent_job(
+        waiting_result = await service.spawn_job(
             agent_display_name="implementer",
             agent_name="impl-waiting",
             mission="Waiting task",
@@ -288,7 +288,7 @@ class TestQueryMethodsDualModel:
         )
 
         # Spawn working agent
-        working_result = await service.spawn_agent_job(
+        working_result = await service.spawn_job(
             agent_display_name="tester",
             agent_name="test-working",
             mission="Working task",
@@ -323,7 +323,7 @@ class TestQueryMethodsDualModel:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         mission = "Build comprehensive test suite"
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="tester",
             agent_name="tester-1",
             mission=mission,
@@ -349,14 +349,14 @@ class TestQueryMethodsDualModel:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Spawn multiple agents
-        await service.spawn_agent_job(
+        await service.spawn_job(
             agent_display_name="implementer",
             agent_name="impl-1",
             mission="Task 1",
             project_id=test_project.id,
             tenant_key=test_tenant_key,
         )
-        await service.spawn_agent_job(
+        await service.spawn_job(
             agent_display_name="tester",
             agent_name="test-1",
             mission="Task 2",
@@ -400,7 +400,7 @@ class TestUpdateMethodsDualModel:
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement feature",
@@ -440,7 +440,7 @@ class TestUpdateMethodsDualModel:
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement feature",

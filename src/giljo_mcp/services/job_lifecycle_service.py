@@ -10,7 +10,7 @@ Extracted from OrchestrationService (Handover 0769) as part of the facade patter
 refactoring to keep individual modules under 1000 lines.
 
 Responsibilities:
-- Agent job spawning (spawn_agent_job)
+- Agent job spawning (spawn_job)
 - Spawn validation (template names, duplicate prevention)
 - Template resolution for job creation
 - Predecessor context injection for recovery spawning
@@ -30,6 +30,7 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
     AlreadyExistsError,
     DatabaseError,
+    ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -49,6 +50,9 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+# Statuses that indicate a project is closed and must not be modified.
+IMMUTABLE_PROJECT_STATUSES: frozenset[str] = frozenset({"completed", "cancelled"})
 
 
 class JobLifecycleService:
@@ -88,7 +92,7 @@ class JobLifecycleService:
 
         return self.db_manager.get_session_async()
 
-    async def spawn_agent_job(
+    async def spawn_job(
         self,
         agent_display_name: str,
         agent_name: str,
@@ -130,7 +134,7 @@ class JobLifecycleService:
             DatabaseError: Failed to spawn agent
 
         Example:
-            >>> result = await service.spawn_agent_job(
+            >>> result = await service.spawn_job(
             ...     agent_display_name="Code Implementer",
             ...     agent_name="impl-1",
             ...     mission="Implement feature X",
@@ -153,6 +157,14 @@ class JobLifecycleService:
                 if not project:
                     raise ResourceNotFoundError(
                         message="Project not found", context={"project_id": project_id, "tenant_key": tenant_key}
+                    )
+
+                # Guard: block spawning into immutable projects
+                if project.status in IMMUTABLE_PROJECT_STATUSES:
+                    raise ProjectStateError(
+                        message=f"Cannot modify project in '{project.status}' status. "
+                        "Only inactive and active projects can be updated.",
+                        context={"project_id": project_id, "status": project.status},
                     )
 
                 # Handover 0497e: Predecessor context injection for recovery spawning
@@ -247,7 +259,7 @@ class JobLifecycleService:
                     predecessor_job_id=predecessor_job_id,  # Handover 0497e
                 )
 
-        except (ResourceNotFoundError, AlreadyExistsError, ValidationError):
+        except (ResourceNotFoundError, AlreadyExistsError, ValidationError, ProjectStateError):
             raise
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)

@@ -969,7 +969,7 @@ async def tenant_key() -> str:
 
 @pytest_asyncio.fixture
 async def agent_templates(db_session, tenant_key):
-    """Create agent templates needed by spawn_agent_job validation."""
+    """Create agent templates needed by spawn_job validation."""
     for name in ["specialist-1", "tdd-implementor", "orchestrator"]:
         template = AgentTemplate(
             tenant_key=tenant_key,
@@ -1052,7 +1052,7 @@ async def service(db_session, db_manager) -> "OrchestrationService":  # noqa: F8
 
 async def _spawn_and_complete(service, project_id, tenant_key, result_payload, agent_name="specialist-1"):
     """Helper: spawn an agent, complete it with a result, return spawn result."""
-    spawn = await service.spawn_agent_job(
+    spawn = await service.spawn_job(
         agent_display_name="predecessor",
         agent_name=agent_name,
         mission="Do predecessor work",

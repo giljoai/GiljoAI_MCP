@@ -231,7 +231,7 @@ async def generate_agent_prompt(
 
     Returns a lightweight prompt (~50 tokens) that instructs the agent to call
     get_agent_mission() via MCP to retrieve its full mission and protocol.
-    Matches the same thin prompt pattern used at spawn time by spawn_agent_job().
+    Matches the same thin prompt pattern used at spawn time by spawn_job().
 
     Args:
         agent_id: Agent execution ID
@@ -280,7 +280,7 @@ async def generate_agent_prompt(
     mission = agent.job.mission if agent.job else ""
     mission_preview = mission[:200] + "..." if len(mission) > 200 else mission
 
-    # Build thin prompt (matches spawn_agent_job pattern)
+    # Build thin prompt (matches spawn_job pattern)
     prompt = f"""I am {agent_name} (Agent {agent_display_name}) for Project "{project_name}".
 
 ## MCP TOOL USAGE

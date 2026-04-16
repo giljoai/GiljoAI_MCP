@@ -25,7 +25,7 @@ from src.giljo_mcp.models import AgentJob, AgentTemplate
 
 @pytest.mark.asyncio
 class TestSpawnPopulatesTemplateId:
-    """Tests that spawn_agent_job populates template_id on AgentJob when template is found."""
+    """Tests that spawn_job populates template_id on AgentJob when template is found."""
 
     async def test_template_id_set_in_multi_terminal_mode(
         self, db_session, db_manager, test_project_multi_terminal, test_tenant_key
@@ -37,7 +37,7 @@ class TestSpawnPopulatesTemplateId:
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="analyzer",
             agent_name="analyzer-1",
             mission="Analyze the codebase",
@@ -69,7 +69,7 @@ class TestSpawnPopulatesTemplateId:
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate project",
@@ -102,7 +102,7 @@ class TestListJobsIncludesPhase:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Create a job with phase
-        await service.spawn_agent_job(
+        await service.spawn_job(
             agent_display_name="analyzer",
             agent_name="analyzer-1",
             mission="Analyze the codebase",
@@ -133,7 +133,7 @@ class TestListJobsIncludesPhase:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Create a job without phase
-        await service.spawn_agent_job(
+        await service.spawn_job(
             agent_display_name="impl",
             agent_name="impl-1",
             mission="Implement feature",
@@ -162,7 +162,7 @@ class TestListJobsIncludesPhase:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Create jobs with different phases
-        await service.spawn_agent_job(
+        await service.spawn_job(
             agent_display_name="analyzer",
             agent_name="analyzer-1",
             mission="Analyze first",
@@ -170,7 +170,7 @@ class TestListJobsIncludesPhase:
             tenant_key=test_tenant_key,
             phase=1,
         )
-        await service.spawn_agent_job(
+        await service.spawn_job(
             agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement second",
@@ -178,7 +178,7 @@ class TestListJobsIncludesPhase:
             tenant_key=test_tenant_key,
             phase=2,
         )
-        await service.spawn_agent_job(
+        await service.spawn_job(
             agent_display_name="tester",
             agent_name="tester-1",
             mission="Test third",

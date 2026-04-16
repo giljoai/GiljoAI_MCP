@@ -337,9 +337,9 @@ class OrchestrationService:
     # Agent Job Management — Facade Delegations (Handover 0769)
     # ============================================================================
 
-    async def spawn_agent_job(self, *a, **kw) -> SpawnResult:
+    async def spawn_job(self, *a, **kw) -> SpawnResult:
         """Facade: delegates to JobLifecycleService."""
-        return await self._job_lifecycle.spawn_agent_job(*a, **kw)
+        return await self._job_lifecycle.spawn_job(*a, **kw)
 
     async def _build_predecessor_context(self, *a, **kw):
         """Facade: delegates to JobLifecycleService."""

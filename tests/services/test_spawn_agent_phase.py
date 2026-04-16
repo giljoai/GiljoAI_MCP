@@ -7,8 +7,8 @@
 TDD Tests for Handover 0411a: Recommended Execution Order (Phase Labels).
 
 RED PHASE - These tests verify:
-1. spawn_agent_job() accepts and stores `phase` parameter
-2. spawn_agent_job() populates `template_id` when template found
+1. spawn_job() accepts and stores `phase` parameter
+2. spawn_job() populates `template_id` when template found
 3. list_jobs() includes `phase` in response
 4. get_orchestrator_instructions() includes phase instructions in multi-terminal mode
 5. get_orchestrator_instructions() excludes phase instructions in CLI mode
@@ -74,17 +74,15 @@ async def test_project(db_session, test_tenant_key, test_agent_templates) -> Pro
 
 
 # ============================================================================
-# Test Class: Phase Parameter on spawn_agent_job
+# Test Class: Phase Parameter on spawn_job
 # ============================================================================
 
 
 @pytest.mark.asyncio
 class TestSpawnAgentJobPhase:
-    """Tests that spawn_agent_job correctly handles the `phase` parameter."""
+    """Tests that spawn_job correctly handles the `phase` parameter."""
 
-    async def test_spawn_agent_job_stores_phase_when_provided(
-        self, db_session, db_manager, test_project, test_tenant_key
-    ):
+    async def test_spawn_job_stores_phase_when_provided(self, db_session, db_manager, test_project, test_tenant_key):
         """Phase value is stored on the AgentJob record when provided."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -92,7 +90,7 @@ class TestSpawnAgentJobPhase:
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Implement feature X",
@@ -107,7 +105,7 @@ class TestSpawnAgentJobPhase:
         job = job_result.scalar_one()
         assert job.phase == 2
 
-    async def test_spawn_agent_job_phase_defaults_to_none(self, db_session, db_manager, test_project, test_tenant_key):
+    async def test_spawn_job_phase_defaults_to_none(self, db_session, db_manager, test_project, test_tenant_key):
         """Phase defaults to None when not provided (backward compatible)."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -115,7 +113,7 @@ class TestSpawnAgentJobPhase:
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="analyzer",
             agent_name="analyzer",
             mission="Analyze codebase",
@@ -129,7 +127,7 @@ class TestSpawnAgentJobPhase:
         job = job_result.scalar_one()
         assert job.phase is None
 
-    async def test_spawn_agent_job_populates_template_id(self, db_session, db_manager, test_project, test_tenant_key):
+    async def test_spawn_job_populates_template_id(self, db_session, db_manager, test_project, test_tenant_key):
         """template_id FK is populated when a matching template is found."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -137,7 +135,7 @@ class TestSpawnAgentJobPhase:
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="tester",
             agent_name="tester",
             mission="Run test suite",
@@ -180,7 +178,7 @@ class TestListJobsPhase:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Spawn an agent with phase=1
-        await service.spawn_agent_job(
+        await service.spawn_job(
             agent_display_name="analyzer",
             agent_name="analyzer",
             mission="Analyze for phase test",
@@ -247,7 +245,7 @@ class TestOrchestratorPhaseInstructions:
         await db_session.commit()
 
         # Spawn orchestrator job
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate project",
@@ -306,7 +304,7 @@ class TestOrchestratorPhaseInstructions:
         await db_session.commit()
 
         # Spawn orchestrator job
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate project",

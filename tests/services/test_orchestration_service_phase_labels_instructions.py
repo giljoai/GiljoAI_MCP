@@ -36,7 +36,7 @@ class TestOrchestratorPhaseInstructions:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Spawn an orchestrator for the multi-terminal project
-        spawn_result = await service.spawn_agent_job(
+        spawn_result = await service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate multi-terminal project",
@@ -67,7 +67,7 @@ class TestOrchestratorPhaseInstructions:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Spawn an orchestrator for the CLI project
-        spawn_result = await service.spawn_agent_job(
+        spawn_result = await service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate CLI project",
@@ -93,7 +93,7 @@ class TestOrchestratorPhaseInstructions:
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        spawn_result = await service.spawn_agent_job(
+        spawn_result = await service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate multi-terminal project",
@@ -110,7 +110,7 @@ class TestOrchestratorPhaseInstructions:
         # Check key content elements
         assert "Execution Phase Assignment" in phase_text
         assert "Multi-Terminal Mode" in phase_text
-        assert "spawn_agent_job" in phase_text
+        assert "spawn_job" in phase_text
         assert "Phase 1" in phase_text
         assert "Phase 2" in phase_text
         assert "Phase 3" in phase_text
@@ -127,7 +127,7 @@ class TestOrchestratorPhaseInstructions:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Default project (no explicit execution_mode = defaults to multi_terminal)
-        spawn_result = await service.spawn_agent_job(
+        spawn_result = await service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate default project",

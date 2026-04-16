@@ -40,7 +40,7 @@ class TestPredecessorValidation:
         from src.giljo_mcp.exceptions import ResourceNotFoundError
 
         with pytest.raises(ResourceNotFoundError, match="Predecessor job"):
-            await service.spawn_agent_job(
+            await service.spawn_job(
                 agent_display_name="successor",
                 agent_name="specialist-1",
                 mission="Fix issues",
@@ -75,7 +75,7 @@ class TestPredecessorValidation:
 
         # Try to spawn successor in project1 referencing project2's predecessor
         with pytest.raises(ValidationError, match="different project"):
-            await service.spawn_agent_job(
+            await service.spawn_job(
                 agent_display_name="successor",
                 agent_name="specialist-1",
                 mission="Fix issues",
@@ -98,7 +98,7 @@ class TestPredecessorValidation:
 
         # Try to spawn successor referencing other tenant's predecessor
         with pytest.raises(ResourceNotFoundError, match="Predecessor job"):
-            await service.spawn_agent_job(
+            await service.spawn_job(
                 agent_display_name="successor",
                 agent_name="specialist-1",
                 mission="Fix issues",
@@ -139,7 +139,7 @@ class TestGetAgentResultTool:
 
     async def test_returns_none_for_incomplete_job(self, service, project, tenant_key):
         """get_agent_result should return None for jobs not yet completed."""
-        spawn = await service.spawn_agent_job(
+        spawn = await service.spawn_job(
             agent_display_name="specialist",
             agent_name="specialist-1",
             mission="Still working",

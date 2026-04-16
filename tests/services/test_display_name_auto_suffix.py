@@ -95,11 +95,11 @@ async def suffix_service(db_session, db_manager) -> OrchestrationService:
 
 @pytest.mark.asyncio
 class TestDisplayNameAutoSuffix:
-    """Tests that spawn_agent_job auto-suffixes duplicate display names."""
+    """Tests that spawn_job auto-suffixes duplicate display names."""
 
     async def test_no_collision_no_suffix(self, suffix_service, suffix_project, suffix_tenant_key):
         """No false suffix: spawn when no collision -> name unchanged (no -1)."""
-        result = await suffix_service.spawn_agent_job(
+        result = await suffix_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Implement feature",
@@ -111,14 +111,14 @@ class TestDisplayNameAutoSuffix:
 
     async def test_basic_dedup_second_gets_suffix_2(self, suffix_service, suffix_project, suffix_tenant_key):
         """Basic dedup: spawn two agents with same display_name, second gets -2."""
-        result1 = await suffix_service.spawn_agent_job(
+        result1 = await suffix_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Implement feature 1",
             project_id=suffix_project.id,
             tenant_key=suffix_tenant_key,
         )
-        result2 = await suffix_service.spawn_agent_job(
+        result2 = await suffix_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Implement feature 2",
@@ -131,21 +131,21 @@ class TestDisplayNameAutoSuffix:
 
     async def test_triple_spawn_sequential_suffixes(self, suffix_service, suffix_project, suffix_tenant_key):
         """Triple spawn: three with same name -> names are base, -2, -3."""
-        r1 = await suffix_service.spawn_agent_job(
+        r1 = await suffix_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Task 1",
             project_id=suffix_project.id,
             tenant_key=suffix_tenant_key,
         )
-        r2 = await suffix_service.spawn_agent_job(
+        r2 = await suffix_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Task 2",
             project_id=suffix_project.id,
             tenant_key=suffix_tenant_key,
         )
-        r3 = await suffix_service.spawn_agent_job(
+        r3 = await suffix_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Task 3",
@@ -159,14 +159,14 @@ class TestDisplayNameAutoSuffix:
 
     async def test_reuse_freed_name(self, suffix_service, suffix_project, suffix_tenant_key, db_session):
         """Reuse freed name: spawn base + -2, complete -2, spawn again -> gets -2."""
-        await suffix_service.spawn_agent_job(
+        await suffix_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Task 1",
             project_id=suffix_project.id,
             tenant_key=suffix_tenant_key,
         )
-        r2 = await suffix_service.spawn_agent_job(
+        r2 = await suffix_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Task 2",
@@ -184,7 +184,7 @@ class TestDisplayNameAutoSuffix:
         )
 
         # Spawn again -- should reuse implementer-2 since it's freed
-        r3 = await suffix_service.spawn_agent_job(
+        r3 = await suffix_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Task 3",
@@ -197,7 +197,7 @@ class TestDisplayNameAutoSuffix:
     async def test_pre_suffixed_name_used_as_is(self, suffix_service, suffix_project, suffix_tenant_key):
         """Pre-suffixed input: spawn implementer-2 when implementer active but implementer-2 free."""
         # Spawn base name first
-        await suffix_service.spawn_agent_job(
+        await suffix_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Task 1",
@@ -206,7 +206,7 @@ class TestDisplayNameAutoSuffix:
         )
 
         # Spawn with explicit pre-suffixed name
-        r2 = await suffix_service.spawn_agent_job(
+        r2 = await suffix_service.spawn_job(
             agent_display_name="implementer-2",
             agent_name="implementer",
             mission="Task 2",
@@ -219,7 +219,7 @@ class TestDisplayNameAutoSuffix:
 
     async def test_orchestrator_still_raises_on_duplicate(self, suffix_service, suffix_project, suffix_tenant_key):
         """Orchestrator singleton: second orchestrator spawn still raises AlreadyExistsError."""
-        await suffix_service.spawn_agent_job(
+        await suffix_service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate project",
@@ -228,7 +228,7 @@ class TestDisplayNameAutoSuffix:
         )
 
         with pytest.raises(AlreadyExistsError):
-            await suffix_service.spawn_agent_job(
+            await suffix_service.spawn_job(
                 agent_display_name="orchestrator",
                 agent_name="orchestrator",
                 mission="Second orchestrator",
@@ -238,7 +238,7 @@ class TestDisplayNameAutoSuffix:
 
     async def test_spawn_result_contains_resolved_name(self, suffix_service, suffix_project, suffix_tenant_key):
         """Spawn result contains resolved display name via agent_display_name field."""
-        await suffix_service.spawn_agent_job(
+        await suffix_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Task 1",
@@ -246,7 +246,7 @@ class TestDisplayNameAutoSuffix:
             tenant_key=suffix_tenant_key,
         )
 
-        result = await suffix_service.spawn_agent_job(
+        result = await suffix_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Task 2",
@@ -293,7 +293,7 @@ class TestDisplayNameAutoSuffix:
 
         # Now the 51st spawn should fail with ValidationError (cap at 50)
         with pytest.raises(ValidationError, match="suffix cap"):
-            await suffix_service.spawn_agent_job(
+            await suffix_service.spawn_job(
                 agent_display_name="implementer",
                 agent_name="implementer",
                 mission="Task 51",

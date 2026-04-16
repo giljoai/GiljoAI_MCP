@@ -245,7 +245,7 @@ class TestGetAgentMissionFullProtocol:
         # Verify message handling instructions present (Issue 0361-5)
         assert "MESSAGE HANDLING" in protocol
         assert "receive_messages()" in protocol
-        assert "list_messages()" in protocol
+        assert "inspect_messages()" in protocol
         assert "auto-acknowledges" in protocol or "auto-acknowledge" in protocol
 
 

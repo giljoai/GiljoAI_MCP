@@ -137,14 +137,18 @@ The backend monitors report_progress() calls. If todo_items is missing:
 - Dashboard cannot display your progress without todo_items
 
 **MESSAGE HANDLING (CRITICAL - Issue 0361-5):**
-- ALWAYS use `receive_messages()` to check messages (NOT `list_messages()`)
+- ALWAYS use `receive_messages()` to check messages (NOT `inspect_messages()`)
 - `receive_messages()` auto-acknowledges and removes messages from queue
-- `list_messages()` is read-only - messages stay pending (use for debugging only)
+- `inspect_messages()` is read-only - messages stay pending (use for debugging only)
 
 ### Phase 4: COMPLETION
 Before calling `complete_job()`, you MUST verify:
 1. All TODO items completed (your TodoWrite list is fully marked completed)
 2. All messages read (queue empty after `receive_messages()`)
+
+**Resolve action tags:** Before completing, check if any `action_required` tagged items from
+360 memory were addressed by your work (visible in fetch_context memory_360 under `action_required_items`).
+If so, include `resolved_action_items: ["<description>"]` in your result dict to clear them.
 
 Final steps:
 1. Call `receive_messages()` - Final message check

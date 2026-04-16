@@ -61,7 +61,7 @@ async def other_tenant_key() -> str:
 
 @pytest_asyncio.fixture
 async def agent_templates(db_session, tenant_key):
-    """Create agent templates needed by spawn_agent_job validation."""
+    """Create agent templates needed by spawn_job validation."""
     template_names = ["specialist-1", "orchestrator"]
     for name in template_names:
         template = AgentTemplate(
@@ -170,7 +170,7 @@ class TestCompleteJobAtomicCounterUpdate:
         for the orchestrator. The orchestrator's waiting count must reflect this.
         """
         # Arrange: spawn orchestrator, then specialist
-        orch_spawn = await orch_service.spawn_agent_job(
+        orch_spawn = await orch_service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate the project",
@@ -178,7 +178,7 @@ class TestCompleteJobAtomicCounterUpdate:
             tenant_key=tenant_key,
         )
 
-        spec_spawn = await orch_service.spawn_agent_job(
+        spec_spawn = await orch_service.spawn_job(
             agent_display_name="specialist",
             agent_name="specialist-1",
             mission="Do specialized work",
@@ -215,7 +215,7 @@ class TestCompleteJobAtomicCounterUpdate:
         for the specialist agent that completed.
         """
         # Arrange: spawn orchestrator, then specialist
-        await orch_service.spawn_agent_job(
+        await orch_service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate the project",
@@ -223,7 +223,7 @@ class TestCompleteJobAtomicCounterUpdate:
             tenant_key=tenant_key,
         )
 
-        spec_spawn = await orch_service.spawn_agent_job(
+        spec_spawn = await orch_service.spawn_job(
             agent_display_name="specialist",
             agent_name="specialist-1",
             mission="Do specialized work",
@@ -262,7 +262,7 @@ class TestCompleteJobAtomicCounterUpdate:
         an agent in tenant B that happens to share the same agent_id.
         """
         # Arrange: spawn orchestrator and specialist in tenant A
-        orch_spawn = await orch_service.spawn_agent_job(
+        orch_spawn = await orch_service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate",
@@ -270,7 +270,7 @@ class TestCompleteJobAtomicCounterUpdate:
             tenant_key=tenant_key,
         )
 
-        spec_spawn = await orch_service.spawn_agent_job(
+        spec_spawn = await orch_service.spawn_job(
             agent_display_name="specialist",
             agent_name="specialist-1",
             mission="Do work",

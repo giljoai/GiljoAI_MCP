@@ -101,7 +101,7 @@ class ClaudePromptBuilder:
                     ]
                 )
         else:
-            agent_spawn_lines.append("(No agents spawned yet - use spawn_agent_job() first)")
+            agent_spawn_lines.append("(No agents spawned yet - use spawn_job() first)")
 
         return [
             "## Agent Jobs to Execute",
@@ -219,7 +219,7 @@ class ClaudePromptBuilder:
             "- Agents report progress via mcp__giljo_mcp__report_progress() and mcp__giljo_mcp__send_message()",
             "- Monitor messages for questions or blockers",
             "- Respond promptly to keep workflow moving",
-            "- ALWAYS use agent_id UUIDs in to_agents (from spawn_agent_job responses), never display names",
+            "- ALWAYS use agent_id UUIDs in to_agents (from spawn_job responses), never display names",
             "",
         ]
 

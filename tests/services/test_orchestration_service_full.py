@@ -122,8 +122,8 @@ class TestSpawnAgentJob:
         test_agent_templates: dict,
         db_manager: DatabaseManager,
     ):
-        """Test that spawn_agent_job creates both AgentJob and AgentExecution records."""
-        result = await orchestration_service.spawn_agent_job(
+        """Test that spawn_job creates both AgentJob and AgentExecution records."""
+        result = await orchestration_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Implement user authentication module",
@@ -169,7 +169,7 @@ class TestSpawnAgentJob:
         db_manager: DatabaseManager,
     ):
         """Test that agent is routed correctly based on agent_display_name."""
-        result = await orchestration_service.spawn_agent_job(
+        result = await orchestration_service.spawn_job(
             agent_display_name="tester",
             agent_name="tester",
             mission="Test authentication module",
@@ -206,13 +206,13 @@ class TestMultiTenantIsolation:
         test_project: dict,
         db_manager: DatabaseManager,
     ):
-        """Test that spawn_agent_job respects tenant isolation."""
+        """Test that spawn_job respects tenant isolation."""
         wrong_tenant = "wrong_tenant_key"
 
         # Handover 0730b: Exception-based error handling
         # Attempt to spawn agent with wrong tenant_key - should raise ResourceNotFoundError
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await orchestration_service.spawn_agent_job(
+            await orchestration_service.spawn_job(
                 agent_display_name="implementer",
                 agent_name="Implementer-1",
                 mission="Implement feature",
@@ -233,7 +233,7 @@ class TestMultiTenantIsolation:
     ):
         """Test that get_agent_mission respects tenant isolation."""
         # Create job
-        result = await orchestration_service.spawn_agent_job(
+        result = await orchestration_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Implement feature",
@@ -271,7 +271,7 @@ class TestErrorHandling:
 
         # Handover 0730b: Exception-based error handling
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await orchestration_service.spawn_agent_job(
+            await orchestration_service.spawn_job(
                 agent_display_name="implementer",
                 agent_name="Implementer-1",
                 mission="Implement feature",
@@ -314,7 +314,7 @@ class TestAgentMission:
     ):
         """Test that get_agent_mission returns MissionResponse with full_protocol field."""
         # Create job
-        result = await orchestration_service.spawn_agent_job(
+        result = await orchestration_service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
             mission="Implement user authentication",

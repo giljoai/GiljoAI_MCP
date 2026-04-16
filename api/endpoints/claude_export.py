@@ -7,7 +7,7 @@
 Claude Code Agent Template Export API
 
 DEPRECATED (Handover 0836a): This endpoint writes files directly to disk on the
-server. The preferred export path is now the `get_agent_templates_for_export` MCP
+server. The preferred export path is now the `list_agent_templates` MCP
 tool (returns content for the calling agent to write locally) or the platform-aware
 ZIP download at GET /api/download/agent-templates.zip?platform=claude_code.
 

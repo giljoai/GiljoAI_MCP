@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 # Handover 0840c: Rewritten for normalized tables
 # CROSS-REFERENCE: Two independent code paths write to these product fields.
 # If you modify fields here, you MUST also check the vision analysis writer:
-#   gil_write_product() + FIELD_MAP in
+#   update_product_fields() + FIELD_MAP in
 #   src/giljo_mcp/tools/vision_analysis.py (FIELD_MAP, line ~57)
 # The vision path writes in bulk with merge semantics.
 # This path writes one field at a time (per-section accept).

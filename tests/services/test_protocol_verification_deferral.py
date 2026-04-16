@@ -71,7 +71,7 @@ class TestCH3VerificationDeferral:
         """CH3 must describe the implementation phase spawning sequence."""
         result = _build_ch3_spawning_rules()
         assert "get_agent_result" in result
-        assert "spawn_agent_job()" in result
+        assert "spawn_job()" in result
 
     def test_ch3_deferral_present_for_all_tools(self):
         """Deferral text must appear regardless of tool platform."""

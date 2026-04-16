@@ -96,7 +96,7 @@ class MissionOrchestrationService:
             # Platform-specific spawning syntax
             if execution_mode == "codex_cli":
                 task_tool_mapping = (
-                    "spawn_agent(agent='gil-{agent_name}') where agent_name comes from spawn_agent_job. "
+                    "spawn_agent(agent='gil-{agent_name}') where agent_name comes from spawn_job. "
                     "CRITICAL: prepend 'gil-' to every agent_name when using Codex CLI."
                 )
                 template_locations = [
@@ -110,7 +110,7 @@ class MissionOrchestrationService:
                     "{project}/.gemini/agents/",
                 ]
             else:
-                task_tool_mapping = "Task(subagent_type=X) where X = agent_name from spawn_agent_job."
+                task_tool_mapping = "Task(subagent_type=X) where X = agent_name from spawn_job."
                 template_locations = [
                     "{project}/.claude/agents/",
                     "~/.claude/agents/",
@@ -147,7 +147,7 @@ class MissionOrchestrationService:
             # Handover 0411a: Phase assignment instructions for multi-terminal mode
             fields["phase_assignment_instructions"] = (
                 "## Execution Phase Assignment (Multi-Terminal Mode)\n\n"
-                "When creating agent jobs with spawn_agent_job, assign a `phase` number to each agent:\n"
+                "When creating agent jobs with spawn_job, assign a `phase` number to each agent:\n"
                 "- Phase 1: Agents that should run first (no dependencies). Usually: analyzer, researcher.\n"
                 "- Phase 2: Agents that depend on Phase 1 completion. Usually: implementer, designer.\n"
                 "- Phase 3: Agents that depend on Phase 2 completion. Usually: tester, reviewer.\n"
@@ -456,11 +456,11 @@ class MissionOrchestrationService:
             "mcp_tools_available": [
                 "health_check",
                 "fetch_context",
-                "spawn_agent_job",
+                "spawn_job",
                 "get_agent_mission",
                 "send_message",
                 "receive_messages",
-                "list_messages",
+                "inspect_messages",
                 "report_progress",
                 "set_agent_status",
                 "get_workflow_status",

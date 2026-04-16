@@ -28,7 +28,7 @@ You are the GiljoAI agent template installer for Claude Code.
 
 ## Your Job
 
-1. Call `mcp__giljo_mcp__get_agent_templates_for_export` with `platform="claude_code"`
+1. Call `mcp__giljo_mcp__list_agent_templates` with `platform="claude_code"`
 2. Show a summary table of all agents (role, name, description)
 3. Use AskUserQuestion to ask for model preference with selectable options:
    Question: "Which model should agents use?"
@@ -70,14 +70,15 @@ description: "Add a task or project to the GiljoAI dashboard. Routes to task (te
 - `title` (required), `description` (optional), `priority` (low|medium|high|critical, default: medium), `category` (frontend|backend|database|infra|docs|general, default: general)
 
 ## Project parameters
-- `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — must match a pre-configured type), `series_number` (optional int 1-9999 — auto-assigned if omitted)
-- **Before creating a project**, call `discovery(category="project_types")` to see available types. Only use types returned — unknown types are silently ignored.
+- `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — must match a pre-configured type), `series_number` (optional int 1-9999 — auto-assigned if omitted), `suffix` (optional single letter a-z for sub-series)
+- **Before creating a project**, call `list_projects()` which returns available `project_types` in the response. Only use types returned — unknown types are rejected with a list of valid types.
+- **Suffix parsing**: If user says "FE-5004b", use `series_number=5004, suffix='b'`. If user says "FE-5004", use `series_number=5004` with no suffix.
 
 ## Modes
 
 ### Direct flags in `$ARGUMENTS`
 - `--task "Name"` or `--name "Name"` (+ optional `--priority`, `--category`, `--description`) -> create task immediately
-- `--project "Name"` (+ optional `--description`, `--type`, `--series`) -> create project immediately
+- `--project "Name"` (+ optional `--description`, `--type`, `--series`, `--suffix`) -> create project immediately
 - `--help` -> show usage summary and stop
 
 ### Interactive (no flags or bare text)
@@ -106,7 +107,7 @@ You are the GiljoAI agent template installer for Gemini CLI.
 
 ## Your Job
 
-1. Call the GiljoAI MCP tool `get_agent_templates_for_export` with `platform="gemini_cli"`
+1. Call the GiljoAI MCP tool `list_agent_templates` with `platform="gemini_cli"`
 2. The response includes structured agent data for each active agent template.
 3. Show a summary table of all agents (role, name, description).
 4. Ask the user how they want to assign models using `ask_user` with numbered options:
@@ -215,11 +216,10 @@ tools:
   - mcp_giljo_mcp_fetch_context
   - mcp_giljo_mcp_reactivate_job
   - mcp_giljo_mcp_dismiss_reactivation
-  - mcp_giljo_mcp_spawn_agent_job
+  - mcp_giljo_mcp_spawn_job
   - mcp_giljo_mcp_get_agent_result
   - mcp_giljo_mcp_write_360_memory
   - mcp_giljo_mcp_close_project_and_update_memory
-  - mcp_giljo_mcp_discovery
 ---
 ```
 
@@ -263,13 +263,14 @@ prompt = '''
 - title (required), description (optional), priority (low|medium|high|critical, default: medium), category (frontend|backend|database|infra|docs|general, default: general)
 
 ## Project parameters
-- name (required), description (optional — generate from context if missing), project_type (optional — label e.g. "Frontend" OR abbreviation e.g. "FE", "TST"), series_number (optional int 1-9999 — auto-assigned if omitted)
+- name (required), description (optional — generate from context if missing), project_type (optional — label e.g. "Frontend" OR abbreviation e.g. "FE", "TST"), series_number (optional int 1-9999 — auto-assigned if omitted), suffix (optional single letter a-z for sub-series)
+- Suffix parsing: If user says "FE-5004b", use series_number=5004, suffix='b'. If user says "FE-5004", use series_number=5004 with no suffix.
 
 ## Modes
 
 ### Direct flags in arguments
 - --task "Name" or --name "Name" (+ optional --priority, --category, --description) -> create task immediately
-- --project "Name" (+ optional --description, --type, --series) -> create project immediately
+- --project "Name" (+ optional --description, --type, --series, --suffix) -> create project immediately
 - --help -> show usage summary and stop
 
 ### Interactive (no flags or bare text)
@@ -301,7 +302,7 @@ You are the GiljoAI agent template installer for Codex CLI.
 
 ## Your Job
 
-1. Call the GiljoAI MCP tool `get_agent_templates_for_export` with platform="codex_cli"
+1. Call the GiljoAI MCP tool `list_agent_templates` with platform="codex_cli"
 2. The response includes structured agent data for each active agent template.
 3. Show a summary table of all agents (role, name, description).
 4. Use `request_user_input` to ask how models should be assigned:
@@ -525,14 +526,15 @@ description: "Add a task or project to the GiljoAI dashboard"
 - `title` (required), `description` (optional), `priority` (low|medium|high|critical, default: medium), `category` (frontend|backend|database|infra|docs|general, default: general)
 
 ## Project parameters
-- `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — must match a pre-configured type), `series_number` (optional int 1-9999 — auto-assigned if omitted)
-- **Before creating a project**, call `discovery(category="project_types")` to see available types. Only use types returned — unknown types are silently ignored.
+- `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — must match a pre-configured type), `series_number` (optional int 1-9999 — auto-assigned if omitted), `suffix` (optional single letter a-z for sub-series)
+- **Before creating a project**, call `list_projects()` which returns available `project_types` in the response. Only use types returned — unknown types are rejected with a list of valid types.
+- **Suffix parsing**: If user says "FE-5004b", use `series_number=5004, suffix='b'`. If user says "FE-5004", use `series_number=5004` with no suffix.
 
 ## Modes
 
 ### Direct flags in arguments
 - `--task "Name"` or `--name "Name"` (+ optional `--priority`, `--category`, `--description`) -> create task immediately
-- `--project "Name"` (+ optional `--description`, `--type`, `--series`) -> create project immediately
+- `--project "Name"` (+ optional `--description`, `--type`, `--series`, `--suffix`) -> create project immediately
 - `--help` -> show usage summary and stop
 
 ### Interactive (no flags or bare text)
