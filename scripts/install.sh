@@ -378,7 +378,18 @@ install_prereqs_linux() {
 
     case "$PKG_MANAGER" in
         apt)
-            print_step "Updating package lists..."
+            # Use Cloudflare's Ubuntu mirror for faster package downloads
+            # Save original sources, swap in Cloudflare mirror, restore after install
+            local sources_file="/etc/apt/sources.list"
+            local sources_dir="/etc/apt/sources.list.d"
+            local backup_sources=""
+            if [[ -f "$sources_file" ]] && grep -q "archive.ubuntu.com\|security.ubuntu.com" "$sources_file" 2>/dev/null; then
+                backup_sources="$(cat "$sources_file")"
+                sudo sed -i 's|http://archive.ubuntu.com/ubuntu|https://cloudflaremirrors.com/ubuntu|g; s|http://security.ubuntu.com/ubuntu|https://cloudflaremirrors.com/ubuntu|g' "$sources_file" </dev/null
+                print_step "Updating package lists (via Cloudflare mirror)..."
+            else
+                print_step "Updating package lists..."
+            fi
             sudo apt-get update -qq </dev/null
 
             for item in "${items[@]}"; do
@@ -421,6 +432,12 @@ install_prereqs_linux() {
                         ;;
                 esac
             done
+
+            # Restore original apt sources if we swapped to Cloudflare
+            if [[ -n "$backup_sources" ]]; then
+                echo "$backup_sources" | sudo tee "$sources_file" >/dev/null
+                print_step "Restored original apt sources"
+            fi
             ;;
         dnf|yum)
             for item in "${items[@]}"; do
