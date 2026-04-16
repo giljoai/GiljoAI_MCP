@@ -48,9 +48,47 @@ from src.giljo_mcp.tools._memory_helpers import (
 
 logger = logging.getLogger(__name__)
 
+# Tags validation limits
+MAX_TAGS = 10
+MAX_TAG_LENGTH = 200
+
 # Statuses to skip during verification (they don't block closeout)
 # Handover 0435b: 'closed' agents are already final-accepted
 SKIP_STATUSES = {"decommissioned", "closed"}
+
+
+def _validate_tags(tags: list[str] | None) -> list[str]:
+    """Validate tags input from untrusted agent sources.
+
+    Args:
+        tags: List of tag strings, or None.
+
+    Returns:
+        Validated list of tags (empty list if None).
+
+    Raises:
+        ValidationError: If tags fail validation constraints.
+    """
+    if tags is None:
+        return []
+
+    if not isinstance(tags, list):
+        raise ValidationError("tags must be a list")
+
+    if len(tags) > MAX_TAGS:
+        raise ValidationError(f"Too many tags: maximum {MAX_TAGS} tags allowed, got {len(tags)}")
+
+    for tag in tags:
+        if not isinstance(tag, str):
+            raise ValidationError("All tags must be strings")
+        if not tag.strip():
+            raise ValidationError("Tags must not be empty or whitespace-only")
+        if len(tag) > MAX_TAG_LENGTH:
+            raise ValidationError(
+                f"Tag too long: maximum {MAX_TAG_LENGTH} characters per tag, got {len(tag)} characters"
+            )
+
+    return tags
 
 
 async def _resolve_project_and_product(
@@ -395,6 +433,7 @@ async def write_360_memory(
     entry_type: str = "project_completion",
     author_job_id: str | None = None,
     git_commits: list[dict[str, Any]] | None = None,
+    tags: list[str] | None = None,
     db_manager: DatabaseManager | None = None,
     session: AsyncSession | None = None,
 ) -> dict[str, Any]:
@@ -428,6 +467,9 @@ async def write_360_memory(
 
     if db_manager is None:
         raise ValidationError("db_manager is required")
+
+    # Validate tags (untrusted agent input)
+    validated_tags = _validate_tags(tags)
 
     if len(summary) > MAX_SUMMARY_LENGTH:
         raise ValidationError(f"Summary too long (max {MAX_SUMMARY_LENGTH} characters)")
@@ -543,6 +585,7 @@ async def write_360_memory(
             sequence_number = await repo.get_next_sequence(
                 session=active_session,
                 product_id=UUID(product.id),
+                tenant_key=tenant_key,
             )
 
             author_info = await _resolve_author_info(
@@ -565,6 +608,7 @@ async def write_360_memory(
                 key_outcomes=key_outcomes,
                 decisions_made=decisions_made,
                 git_commits=git_commits,
+                tags=validated_tags,
                 author_job_id=UUID(author_job_id) if author_job_id else None,
                 author_name=author_info.get("author_name"),
                 author_type=author_info.get("author_type"),
