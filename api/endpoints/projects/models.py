@@ -313,6 +313,7 @@ class AgentJobDetail(BaseModel):
     status: str
     display_name: str
     agent_status: str
+    mission: str | None = None
     result: dict | None = None
     created_at: str | None = None
     completed_at: str | None = None

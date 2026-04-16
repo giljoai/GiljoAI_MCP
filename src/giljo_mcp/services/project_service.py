@@ -712,6 +712,7 @@ class ProjectService:
                         "status": job.status,
                         "display_name": execution.agent_display_name,
                         "agent_status": execution.status,
+                        "mission": job.mission,
                         "result": execution.result,
                         "created_at": job.created_at.isoformat() if job.created_at else None,
                         "completed_at": job.completed_at.isoformat() if job.completed_at else None,

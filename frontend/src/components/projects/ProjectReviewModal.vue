@@ -147,6 +147,10 @@
                         <span class="detail-label">Result Summary</span>
                         <p class="text-body-2 mt-1">{{ truncate(agentJobDetail(agent).result.summary, 300) }}</p>
                       </div>
+                      <div v-if="agentJobDetail(agent).mission" class="mt-2">
+                        <span class="detail-label">Assigned Mission</span>
+                        <p class="text-body-2 mt-1 mission-text">{{ truncate(agentJobDetail(agent).mission, 500) }}</p>
+                      </div>
                     </div>
                     <p v-else class="text-caption text-muted-a11y">No job details available.</p>
                   </div>
@@ -537,6 +541,14 @@ function truncate(text, maxLen) {
 }
 .text-mono {
   font-family: monospace;
+}
+.mission-text {
+  white-space: pre-line;
+  color: $color-text-muted;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  max-height: 200px;
+  overflow-y: auto;
 }
 .commit-row {
   padding: 4px 8px;
