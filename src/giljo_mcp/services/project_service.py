@@ -76,6 +76,10 @@ logger = logging.getLogger(__name__)
 # Statuses that indicate a project is closed and must not be modified.
 IMMUTABLE_PROJECT_STATUSES: frozenset[str] = frozenset({"completed", "cancelled"})
 
+# Fields that are always writable regardless of project status.
+# These are UI/display preferences (archive, visibility) — not project data.
+ALWAYS_MUTABLE_FIELDS: frozenset[str] = frozenset({"hidden"})
+
 
 def _build_ws_project_data(project) -> dict:
     """Build standardized project data dict for WebSocket broadcasts.
@@ -1075,8 +1079,10 @@ class ProjectService:
             if not project:
                 raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
 
-            # Guard: block writes to immutable projects
-            if project.status in IMMUTABLE_PROJECT_STATUSES:
+            # Guard: block data writes to immutable projects.
+            # ALWAYS_MUTABLE_FIELDS (e.g. hidden/archive) bypass this guard —
+            # they are UI display preferences, not project data mutations.
+            if project.status in IMMUTABLE_PROJECT_STATUSES and not updates.keys() <= ALWAYS_MUTABLE_FIELDS:
                 raise ProjectStateError(
                     message=f"Cannot modify project in '{project.status}' status. "
                     "Only inactive and active projects can be updated.",

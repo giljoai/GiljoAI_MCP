@@ -97,6 +97,11 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
     tenant_key = _resolve_tenant(ctx)
     _set_tenant_context(tenant_key)
 
+    # Per-tool MCP call counting (feeds dashboard statistics badge)
+    from api.app_state import state as app_state
+
+    app_state.mcp_call_count[tenant_key] = app_state.mcp_call_count.get(tenant_key, 0) + 1
+
     accessor = _get_tool_accessor()
     tool_func = getattr(accessor, method_name)
 

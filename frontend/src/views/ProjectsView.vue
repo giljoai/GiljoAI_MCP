@@ -107,6 +107,7 @@
           :page="currentPage"
           :sort-by="sortBy"
           :custom-key-sort="customKeySort"
+          must-sort
           class="elevation-0"
           item-key="id"
           fixed-header
@@ -489,16 +490,32 @@ const {
 // Default sort: serial number ascending
 const sortBy = ref([{ key: 'series_number', order: 'asc' }])
 
-// Custom sort for completed_at — uses completed_at or updated_at (matching display),
-// pushes nulls to the end regardless of sort direction
+// Custom sort functions per column.
+// Vuetify passes raw cell values (a, b) — return negative/0/positive.
+// Nulls pushed to bottom regardless of direction by returning ±Infinity trick:
+// Vuetify applies direction AFTER this function, so we use large sentinel values
+// to keep nulls at the bottom in both asc and desc.
 const customKeySort = {
+  // Serial: pure numeric comparison
+  series_number: (a, b) => {
+    const aNum = Number(a) || 0
+    const bNum = Number(b) || 0
+    return aNum - bNum
+  },
+  // Name: natural alphanumeric (SaaS0001 before SaaS0002)
+  name: (a, b) => {
+    const aStr = (a || '').toString()
+    const bStr = (b || '').toString()
+    return aStr.localeCompare(bStr, undefined, { numeric: true, sensitivity: 'base' })
+  },
+  // Completed: date comparison, nulls always last
   completed_at: (a, b) => {
-    const aVal = a || null
-    const bVal = b || null
-    if (!aVal && !bVal) return 0
-    if (!aVal) return 1
-    if (!bVal) return -1
-    return new Date(aVal) - new Date(bVal)
+    const aVal = a ? new Date(a).getTime() : null
+    const bVal = b ? new Date(b).getTime() : null
+    if (aVal === null && bVal === null) return 0
+    if (aVal === null) return 1
+    if (bVal === null) return -1
+    return aVal - bVal
   },
 }
 
