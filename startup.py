@@ -510,8 +510,8 @@ def seed_default_settings() -> bool:
                 if not table_check:
                     return True  # Table doesn't exist yet (fresh install, migrations not run)
 
-                # Get all tenant keys
-                tenants = conn.execute(text("SELECT DISTINCT tenant_key FROM tenants")).fetchall()
+                # Get all tenant keys (from users table — exists in both CE and SaaS)
+                tenants = conn.execute(text("SELECT DISTINCT tenant_key FROM users")).fetchall()
                 if not tenants:
                     return True  # No tenants yet
 
