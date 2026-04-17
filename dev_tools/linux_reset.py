@@ -93,9 +93,12 @@ def remove_postgresql():
     # Also include known package names in case dpkg missed them
     known_packages = [
         "postgresql",
+        "postgresql-16",
+        "postgresql-16-jit",
         "postgresql-18",
         "postgresql-18-jit",
         "postgresql-client",
+        "postgresql-client-16",
         "postgresql-client-18",
         "postgresql-client-common",
         "postgresql-common",
@@ -126,6 +129,33 @@ def remove_postgresql():
     crash_files = list(Path("/var/crash").glob("*postgres*")) if Path("/var/crash").exists() else []
     for f in crash_files:
         remove_path(f, sudo=True)
+
+
+def remove_nodejs():
+    section("Node.js (all install methods)")
+
+    # Method 1: Direct binary install (nodejs.org tarball to /usr/local)
+    node_bins = ["/usr/local/bin/node", "/usr/local/bin/npm", "/usr/local/bin/npx", "/usr/local/bin/corepack"]
+    for b in node_bins:
+        remove_path(b, sudo=True)
+    remove_path("/usr/local/lib/node_modules", sudo=True)
+
+    # Method 2: NodeSource apt install
+    nodesource_packages = ["nodejs"]
+    pkg_list = " ".join(nodesource_packages)
+    print(f"  Purging apt packages: {pkg_list}")
+    run(f"apt-get purge -y {pkg_list}", sudo=True)
+
+    # Remove NodeSource repo config
+    nodesource_paths = [
+        "/etc/apt/sources.list.d/nodesource.list",
+        "/etc/apt/keyrings/nodesource.gpg",
+    ]
+    for p in nodesource_paths:
+        remove_path(p, sudo=True)
+
+    # Method 3: Ubuntu bundled (same apt purge covers it)
+    print("  Node.js removal complete")
 
 
 def remove_mkcert():
@@ -319,6 +349,7 @@ def main():
     if args.force:
         ensure_sudo()
 
+    remove_nodejs()
     remove_mkcert()
     remove_postgresql()
     remove_giljoai_data()
