@@ -579,10 +579,16 @@ class OrchestrationService:
             # Git commit reminder for orchestrators (only when git integration is enabled)
             if job and getattr(job, "job_type", "") == "orchestrator":
                 try:
-                    from giljo_mcp._config_io import read_config
+                    from giljo_mcp.services.settings_service import SettingsService
 
-                    cfg = read_config()
-                    git_enabled = cfg.get("features", {}).get("git_integration", {}).get("enabled", False)
+                    async with self._get_session() as settings_session:
+                        settings_svc = SettingsService(settings_session, tenant_key)
+                        git_settings = await settings_svc.get_setting_value(
+                            "integrations",
+                            "git_integration",
+                            {},
+                        )
+                    git_enabled = git_settings.get("enabled", False)
                     if git_enabled and "commits" not in (result or {}):
                         warnings.append(
                             "Git integration is enabled but no commits were included in the result. "
@@ -590,7 +596,7 @@ class OrchestrationService:
                             "before writing 360 memory."
                         )
                 except Exception:  # noqa: BLE001, S110
-                    pass  # Config read failure is not a blocker
+                    pass  # Settings read failure is not a blocker
 
             # Handover 0731c: Typed return (CompleteJobResult)
             return CompleteJobResult(

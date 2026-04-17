@@ -168,16 +168,16 @@
 
           <!-- Created Date Column (0870h: accessible muted text) -->
           <template v-slot:item.created_at="{ item }">
-            <span class="date-full date-cell">{{ formatDate(item.created_at) }}</span>
-            <span class="date-compact date-cell">{{ formatDateCompact(item.created_at) }}</span>
+            <span class="date-full date-cell">{{ formatDateWithTime(item.created_at) }}</span>
+            <span class="date-compact date-cell">{{ formatDateCompactWithTime(item.created_at) }}</span>
           </template>
 
           <!-- Completed Date Column (0870h: accessible muted text) -->
           <template v-slot:item.completed_at="{ item }">
             <div class="text-center">
               <template v-if="item.status === 'completed' || item.status === 'cancelled' || item.status === 'terminated'">
-                <span class="date-full date-cell">{{ formatDate(item.completed_at || item.updated_at) }}</span>
-                <span class="date-compact date-cell">{{ formatDateCompact(item.completed_at || item.updated_at) }}</span>
+                <span class="date-full date-cell">{{ formatDateWithTime(item.completed_at || item.updated_at) }}</span>
+                <span class="date-compact date-cell">{{ formatDateCompactWithTime(item.completed_at || item.updated_at) }}</span>
               </template>
               <template v-else><span class="date-cell date-cell--empty">—</span></template>
             </div>
@@ -429,7 +429,7 @@ const projectStore = useProjectStore()
 const productStore = useProductStore()
 const notificationStore = useNotificationStore()
 const { showToast } = useToast()
-const { formatDate, formatDateCompact } = useFormatDate()
+const { formatDateWithTime, formatDateCompactWithTime } = useFormatDate()
 
 // Dialog ref for imperative calls (e.g., clearMissionData)
 const createEditDialogRef = ref(null)

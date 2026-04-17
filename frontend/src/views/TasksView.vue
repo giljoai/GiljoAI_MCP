@@ -181,6 +181,11 @@
             </div>
           </template>
 
+          <!-- Created Column -->
+          <template v-slot:item.created_at="{ item }">
+            <span class="date-cell">{{ formatDateWithTime(item.created_at) }}</span>
+          </template>
+
           <!-- Category Column - Inline Dropdown -->
           <template v-slot:item.category="{ item }">
             <div class="d-flex justify-center">
@@ -470,11 +475,13 @@ import { format, isAfter } from 'date-fns'
 import api from '@/services/api'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { useTaskFilters } from '@/composables/useTaskFilters'
+import { useFormatDate } from '@/composables/useFormatDate'
 import { useTaskCrud } from '@/composables/useTaskCrud'
 
 // Stores
 const taskStore = useTaskStore()
 const productStore = useProductStore()
+const { formatDateWithTime } = useFormatDate()
 // Template ref for form validation (must stay in view — template ref)
 const taskForm = ref(null)
 
@@ -496,6 +503,7 @@ const headers = [
   { title: 'Status', key: 'status', width: '120', align: 'center' },
   { title: 'Priority', key: 'priority', width: '95' },
   { title: 'Task', key: 'title', maxWidth: '400' },
+  { title: 'Created', key: 'created_at', width: '150' },
   { title: 'Category', key: 'category', width: '100', align: 'center' },
   { title: 'Due Date', key: 'due_date', width: '110' },
   { title: 'Convert', key: 'convert', width: '60', align: 'center', sortable: false },

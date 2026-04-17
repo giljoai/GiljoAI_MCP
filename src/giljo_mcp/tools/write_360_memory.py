@@ -546,12 +546,13 @@ async def write_360_memory(
             # Hard gate: if git integration is enabled, require commits
             git_integration_enabled = False
             try:
-                from giljo_mcp._config_io import read_config
+                from giljo_mcp.services.settings_service import SettingsService
 
-                cfg = read_config()
-                git_integration_enabled = cfg.get("features", {}).get("git_integration", {}).get("enabled", False)
+                settings_svc = SettingsService(active_session, tenant_key)
+                git_settings = await settings_svc.get_setting_value("integrations", "git_integration", {})
+                git_integration_enabled = git_settings.get("enabled", False)
             except Exception:  # noqa: BLE001, S110
-                pass  # Config read failure is not a blocker
+                pass  # Settings read failure is not a blocker
 
             if git_integration_enabled and not git_commits:
                 return {

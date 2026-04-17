@@ -24,7 +24,7 @@ from typing import Any
 from uuid import uuid4
 
 import bcrypt
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
@@ -610,6 +610,59 @@ class UserService:
 
         await session.commit()
         self._logger.info(f"Reset field priority config for user {user.username}")
+
+    async def bulk_disable_field_priority(self, category: str) -> int:
+        """Bulk-disable a field priority category for all users in the tenant.
+
+        Used for cascade logic: when a system-level integration (e.g., git) is
+        disabled, the corresponding user toggle must also be turned off.
+
+        Args:
+            category: The field priority category to disable (must be in TOGGLEABLE_CATEGORIES)
+
+        Returns:
+            Number of rows updated
+
+        Raises:
+            ValidationError: if category is not in TOGGLEABLE_CATEGORIES
+        """
+        if category not in TOGGLEABLE_CATEGORIES:
+            raise ValidationError(
+                message=f"Invalid category '{category}' for bulk disable",
+                context={"valid_categories": sorted(TOGGLEABLE_CATEGORIES)},
+            )
+
+        try:
+            async with self._get_session() as session:
+                stmt = (
+                    update(UserFieldPriority)
+                    .where(
+                        and_(
+                            UserFieldPriority.tenant_key == self.tenant_key,
+                            UserFieldPriority.category == category,
+                            UserFieldPriority.enabled.is_(True),
+                        )
+                    )
+                    .values(enabled=False, updated_at=datetime.now(timezone.utc))
+                )
+                result = await session.execute(stmt)
+                await session.commit()
+                count = result.rowcount
+                if count > 0:
+                    self._logger.info(
+                        "Bulk-disabled field priority '%s' for %d user(s) in tenant %s",
+                        category,
+                        count,
+                        self.tenant_key,
+                    )
+                return count
+        except (ValidationError, BaseGiljoError):
+            raise
+        except Exception as e:
+            self._logger.exception("Failed to bulk disable field priority")
+            raise BaseGiljoError(
+                message=str(e), context={"operation": "bulk_disable_field_priority", "category": category}
+            ) from e
 
     async def get_depth_config(self, user_id: str) -> dict[str, Any]:
         """Get user's depth configuration from columns on users table."""
