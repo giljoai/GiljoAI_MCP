@@ -512,6 +512,59 @@ class ProjectLifecycleService:
                 "new_orchestrator": new_fixture,
             }
 
+    async def unstage(self, project_id: str) -> dict:
+        """Revert a project from 'staged' back to ready state.
+
+        Only allowed when staging_status == 'staged' (prompt generated, agent
+        has not yet made first contact).
+
+        Actions:
+            1. Reset staging_status to None
+            2. Clear mission (prompt was generated but never used)
+
+        Raises:
+            ResourceNotFoundError: Project not found.
+            ProjectStateError: Not in 'staged' state.
+        """
+        tenant_key = self.tenant_manager.get_current_tenant()
+
+        async with self._get_session() as session:
+            result = await session.execute(
+                select(Project).where(
+                    and_(
+                        Project.id == project_id,
+                        Project.tenant_key == tenant_key,
+                    )
+                )
+            )
+            project = result.scalar_one_or_none()
+
+            if not project:
+                raise ResourceNotFoundError(
+                    message="Project not found",
+                    context={"project_id": project_id},
+                )
+
+            if project.staging_status != "staged":
+                raise ProjectStateError(
+                    message="Project is not in staged state. Cannot unstage.",
+                    context={
+                        "project_id": project_id,
+                        "staging_status": project.staging_status,
+                    },
+                )
+
+            project.staging_status = None
+            project.updated_at = datetime.now(timezone.utc)
+            await session.commit()
+
+            self._logger.info("[UNSTAGE] Project %s unstaged", project_id)
+
+            return {
+                "message": "Project unstaged successfully",
+                "project_id": project.id,
+            }
+
     async def cancel_staging(self, project_id: str, websocket_manager: Any | None = None) -> ProjectData:
         """
         Cancel a project in staging state.

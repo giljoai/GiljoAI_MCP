@@ -13,6 +13,7 @@ Handles project lifecycle operations:
 - POST /{project_id}/restore - Restore cancelled project
 - POST /{project_id}/cancel-staging - Cancel staging phase (Handover 0504)
 - POST /{project_id}/restage - Reset staging and create fresh orchestrator
+- POST /{project_id}/unstage - Revert from 'staged' to ready (before agent contact)
 - POST /{project_id}/launch - Launch orchestrator (Handover 0504)
 - POST /{project_id}/archive - Archive completed project (Handover 0412)
 - DELETE /{project_id} - Soft delete project
@@ -320,6 +321,33 @@ async def restage_project(
         ) from e
 
     logger.info("Restage completed", extra={"project_id": str(project_id)})
+
+    return {"message": result["message"], "project_id": result["project_id"]}
+
+
+@router.post("/{project_id}/unstage")
+async def unstage_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+) -> dict:
+    """
+    Unstage a project — revert from 'staged' back to ready state.
+
+    Only allowed when staging_status == 'staged' (prompt generated but agent
+    has not yet made first contact).  Once the agent contacts the server the
+    status moves to 'staging' which is irreversible via this endpoint.
+    """
+    logger.info("Unstage requested", extra={"user": str(current_user.username), "project_id": str(project_id)})
+
+    try:
+        result = await project_service.unstage(project_id=project_id)
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except ProjectStateError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+
+    logger.info("Unstage completed", extra={"project_id": str(project_id)})
 
     return {"message": result["message"], "project_id": result["project_id"]}
 

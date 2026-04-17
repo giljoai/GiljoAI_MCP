@@ -308,6 +308,8 @@ export const api = {
     cancelStaging: (id) => apiClient.post(`/api/v1/projects/${id}/cancel-staging`),
     // Restage: reset staging and create fresh orchestrator
     restage: (id) => apiClient.post(`/api/v1/projects/${id}/restage`),
+    // Unstage: revert from staged back to ready (before agent contact)
+    unstage: (id) => apiClient.post(`/api/v1/projects/${id}/unstage`),
     // Closeout endpoints (Handover 0371, 0412)
     completeWithData: (id, data) => apiClient.post(`/api/v1/projects/${id}/complete`, data),
     archive: (id) => apiClient.post(`/api/v1/projects/${id}/archive`),  // Handover 0412: Simple archive

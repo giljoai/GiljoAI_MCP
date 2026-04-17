@@ -377,15 +377,15 @@ async def generate_staging_prompt(
 
     from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
-    # Staging guard: prevent re-staging when already in progress
+    # Staging guard: prevent re-staging when already staged or in progress
     proj_result = await db.execute(
         select(Project).where(_and(Project.id == project_id, Project.tenant_key == current_user.tenant_key))
     )
     project = proj_result.scalar_one_or_none()
-    if project and project.staging_status == "staging":
+    if project and project.staging_status in ("staged", "staging"):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Staging already in progress. Use Re-Stage to reset first.",
+            detail="Staging already in progress. Use Unstage to reset first.",
         )
 
     try:
@@ -437,6 +437,12 @@ async def generate_staging_prompt(
             result["estimated_prompt_tokens"],
             sanitize(current_user.username),
         )
+
+        # Persist staged state so it survives navigation away
+        if project:
+            project.staging_status = "staged"
+            project.execution_mode = execution_mode
+            await db.commit()
 
         # Return response with 'prompt' key for frontend compatibility
         # Handover 0260: Use staging_prompt (mode-specific) instead of thin_prompt

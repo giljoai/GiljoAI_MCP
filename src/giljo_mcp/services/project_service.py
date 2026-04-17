@@ -943,6 +943,10 @@ class ProjectService:
         """Facade: delegates to ProjectLifecycleService."""
         return await self._lifecycle.restage(project_id)
 
+    async def unstage(self, project_id: str) -> dict:
+        """Facade: delegates to ProjectLifecycleService."""
+        return await self._lifecycle.unstage(project_id)
+
     async def get_project_summary(self, project_id: str) -> ProjectSummaryResult:
         """Facade: delegates to ProjectSummaryService."""
         return await self._summary.get_project_summary(project_id)
