@@ -10,7 +10,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from src.giljo_mcp.models import AgentTemplate
+from giljo_mcp.models import AgentTemplate
 
 
 def slugify_name(role: str, suffix: Optional[str] = None) -> str:

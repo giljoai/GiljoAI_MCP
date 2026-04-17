@@ -19,21 +19,21 @@ from typing import Any
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.projects import Project
+from giljo_mcp.schemas.service_responses import (
     CanCloseResult,
     CloseoutData,
     CloseoutPromptResult,
     ProjectCloseOutResult,
 )
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)

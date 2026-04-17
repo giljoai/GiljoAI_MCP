@@ -7,7 +7,7 @@
  *     <v-card-text>Content</v-card-text>
  *   </v-card>
  *
- * Drag handle:  .v-card-title element within the bound card.
+ * Drag handle:  .dlg-header element within the bound card (falls back to .v-card-title).
  * Position:     Applied via CSS transform: translate(x, y).
  * Bounds:       Prevents dragging entirely off-screen -- at least 50px of the
  *               card must remain visible on every edge.
@@ -44,7 +44,7 @@ function isInsideFullscreenDialog(el) {
 
 export const draggable = {
   mounted(el) {
-    const handle = el.querySelector('.v-card-title')
+    const handle = el.querySelector('.dlg-header') || el.querySelector('.v-card-title')
     if (!handle) return
 
     // If the dialog is fullscreen at mount time, skip entirely.

@@ -38,7 +38,7 @@ model config, and sandbox settings. The agent ALREADY KNOWS its role from
 the template — you do NOT need to re-explain it in the instructions= parameter.
 
 Example:
-  spawn_agent_job(agent_name='tdd-implementor',
+  spawn_job(agent_name='tdd-implementor',
                   agent_display_name='implementer', ...)
 
   Later in implementation:
@@ -78,7 +78,7 @@ instructions, and capabilities. The agent ALREADY KNOWS its role from
 the template — keep your instructions focused on the specific mission.
 
 Example:
-  spawn_agent_job(agent_name='tdd-implementor',
+  spawn_job(agent_name='tdd-implementor',
                   agent_display_name='implementer', ...)
 
   Later in implementation:
@@ -99,7 +99,7 @@ Task tool syntax (IMPLEMENTATION PHASE ONLY - not during staging):
 CRITICAL: Task() uses agent_name value, NOT agent_display_name
 
 Example:
-  spawn_agent_job(agent_name='tdd-implementor',
+  spawn_job(agent_name='tdd-implementor',
                   agent_display_name='implementer', ...)
 
   Later in implementation:
@@ -120,7 +120,7 @@ Any MCP-connected coding agent can consume these templates.
 Each spawned agent gets a thin prompt (~10 lines).
 Agent calls get_agent_mission() to fetch full instructions.
 Coordination happens via MCP messaging tools (send_message, receive_messages).
-MESSAGING: Always use agent_id UUIDs in to_agents (from spawn_agent_job response).
+MESSAGING: Always use agent_id UUIDs in to_agents (from spawn_job response).
 Orchestrator has NO active role after STAGING_COMPLETE broadcast.
 """
 
@@ -171,7 +171,7 @@ Spawn only deliverable agents: implementer, analyzer, documenter.
 During IMPLEMENTATION PHASE, after all deliverable agents complete:
 1. Call get_agent_result(job_id) for each completed deliverable agent
 2. Build a precise verification mission from REAL results (files, commits, APIs)
-3. Call spawn_agent_job() for tester/reviewer with the data-driven mission
+3. Call spawn_job() for tester/reviewer with the data-driven mission
 4. Launch the verification agent
 
 This ensures testers receive precise missions instead of speculative ones.
@@ -202,13 +202,13 @@ Notify: Call set_agent_status(job_id, status="blocked", reason="MCP connection l
 Do NOT: Attempt to continue spawning agents
 
 ── Invalid Agent Name ──────────────────────────────────────────────────────
-Symptom: spawn_agent_job() returns error "agent not found"
+Symptom: spawn_job() returns error "agent not found"
 Action: Check agent_name against agent_templates from get_orchestrator_instructions()
 Common cause: Typo, case mismatch, using display_name instead of name
-Fix: Use exact agent_name from discovery response
+Fix: Use exact agent_name from get_orchestrator_instructions() response
 
 ── Spawn Failure ───────────────────────────────────────────────────────────
-Symptom: spawn_agent_job() fails for any reason
+Symptom: spawn_job() fails for any reason
 Action: Log via set_agent_status(status="blocked"), do NOT continue spawning
 Why: Partial spawns create incomplete agent teams
 Recovery: User must fix issue and restart staging
@@ -263,17 +263,17 @@ ERROR SEVERITY LEVELS:
 _REACTIVATION_SPAWN_BLOCKS: dict[str, str] = {
     "codex": """Reactivation Spawn — Codex CLI:
   spawn_agent(agent='gil-{role}', instructions='You are resuming a reactivated Giljo job. Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}") immediately to load your mission and prior context.')
-  Do NOT call spawn_agent_job again — the job already exists.""",
+  Do NOT call spawn_job again — the job already exists.""",
     "gemini": """Reactivation Spawn — Gemini CLI:
   @{role} You are resuming a reactivated Giljo job. Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}") immediately to load your mission and prior context.
-  Do NOT call spawn_agent_job again — the job already exists.""",
+  Do NOT call spawn_job again — the job already exists.""",
     "multi_terminal": """Reactivation Spawn — Multi-Terminal:
   Tell the user: "Open a new terminal and paste this prompt for the {role} agent"
   Include in the prompt: "You are resuming job_id={job_id}. Call get_agent_mission(job_id='{job_id}') to load your full context."
-  Do NOT call spawn_agent_job again — the job already exists.""",
+  Do NOT call spawn_job again — the job already exists.""",
     "claude-code": """Reactivation Spawn — Claude Code:
   Task(subagent_type='{agent_name}', instructions='You are resuming a reactivated Giljo job. Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}") immediately to load your mission and prior context.')
-  Do NOT call spawn_agent_job again — the job already exists.""",
+  Do NOT call spawn_job again — the job already exists.""",
 }
 
 
@@ -334,7 +334,7 @@ Hybrid Pattern:
 
 MESSAGING RULE: UUID-ONLY ADDRESSING
 - ALWAYS use agent_id UUIDs in send_message(to_agents=[...])
-- Each spawn_agent_job() returns agent_id - save these for messaging
+- Each spawn_job() returns agent_id - save these for messaging
 - Use to_agents=['all'] for broadcast only
 - NEVER use display names (e.g., "implementer") in to_agents
 
@@ -351,12 +351,18 @@ COMPLETION PROTOCOL (After ALL agents finish their work):
         if not git_integration_enabled
         else '''
 ── STEP 0: Git Commit (Git Integration Enabled) ───────────────────────────
-Before closeout, ensure all work is committed to git:
-1. Review changes: run `git status` in the project directory
+Before calling close_project_and_update_memory: verify all changes are committed.
+If git integration is enabled, git_commits must contain at least one entry or the
+call will be rejected with GIT_COMMITS_REQUIRED.
+
+Steps:
+1. Run `git status` in the project directory to review pending changes
 2. Stage deliverables: `git add` relevant files (never `git add -A`)
-3. Commit with a descriptive message summarizing the project work
-4. Record the commit hash for inclusion in closeout and completion result
-This preserves a clean audit trail before the project is closed out.
+3. Commit with a descriptive message: `git commit -m "<summary of project work>"`
+4. Record the commit SHA (from git log --oneline -1) for the git_commits parameter
+
+Pass the commit SHA(s) in the git_commits list when calling close_project_and_update_memory.
+Skipping this step WILL cause closeout to fail — commit first, then close.
 ────────────────────────────────────────────────────────────────────────────
 '''
     }

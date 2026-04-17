@@ -13,6 +13,7 @@ Handles project lifecycle operations:
 - POST /{project_id}/restore - Restore cancelled project
 - POST /{project_id}/cancel-staging - Cancel staging phase (Handover 0504)
 - POST /{project_id}/restage - Reset staging and create fresh orchestrator
+- POST /{project_id}/unstage - Revert from 'staged' to ready (before agent contact)
 - POST /{project_id}/launch - Launch orchestrator (Handover 0504)
 - POST /{project_id}/archive - Archive completed project (Handover 0412)
 - DELETE /{project_id} - Soft delete project
@@ -28,12 +29,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError
-from src.giljo_mcp.models import User
-from src.giljo_mcp.models.schemas import ProjectLaunchResponse
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError
+from giljo_mcp.models import User
+from giljo_mcp.models.schemas import ProjectLaunchResponse
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_project_service
 from .models import (
@@ -324,6 +325,33 @@ async def restage_project(
     return {"message": result["message"], "project_id": result["project_id"]}
 
 
+@router.post("/{project_id}/unstage")
+async def unstage_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+) -> dict:
+    """
+    Unstage a project — revert from 'staged' back to ready state.
+
+    Only allowed when staging_status == 'staged' (prompt generated but agent
+    has not yet made first contact).  Once the agent contacts the server the
+    status moves to 'staging' which is irreversible via this endpoint.
+    """
+    logger.info("Unstage requested", extra={"user": str(current_user.username), "project_id": str(project_id)})
+
+    try:
+        result = await project_service.unstage(project_id=project_id)
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except ProjectStateError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+
+    logger.info("Unstage completed", extra={"project_id": str(project_id)})
+
+    return {"message": result["message"], "project_id": result["project_id"]}
+
+
 @router.delete("/deleted", response_model=ProjectPurgeResponse)
 async def purge_all_deleted_projects(
     current_user: User = Depends(get_current_active_user),
@@ -412,7 +440,7 @@ async def archive_project(
     current_status = proj.status
 
     # Only deactivate if not already inactive/completed
-    if current_status not in ("inactive", "completed", "archived", "terminated"):
+    if current_status not in ("inactive", "completed", "cancelled", "archived", "terminated"):
         await project_service.deactivate_project(project_id=project_id, reason="User archived project after completion")
 
     # Check early_termination flag to determine target status (Handover 0498)
@@ -425,7 +453,7 @@ async def archive_project(
 
     # Handover 0435b: transition 'complete' agents to 'closed' on user archive action
     try:
-        from src.giljo_mcp.tools.project_closeout import _close_completed_agents
+        from giljo_mcp.tools.project_closeout import _close_completed_agents
 
         async with project_service.db_manager.get_session_async() as session:
             closed_names = await _close_completed_agents(session, project_id, current_user.tenant_key)

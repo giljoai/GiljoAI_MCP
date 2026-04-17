@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+from giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
 class TestCreateProjectSignature:

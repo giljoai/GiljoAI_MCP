@@ -25,30 +25,29 @@ from typing import TYPE_CHECKING, Any, Optional
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     DatabaseError,
     OrchestrationError,
     ResourceNotFoundError,
 )
-from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.models import (
+from giljo_mcp.mission_planner import MissionPlanner
+from giljo_mcp.models import (
     AgentExecution,
     AgentJob,
     AgentTemplate,
     Project,
 )
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.schemas.service_responses import (
     MissionResponse,
     MissionUpdateResult,
 )
-from src.giljo_mcp.services.mission_orchestration_service import MissionOrchestrationService
-from src.giljo_mcp.services.protocol_builder import (
+from giljo_mcp.services.mission_orchestration_service import MissionOrchestrationService
+from giljo_mcp.services.protocol_builder import (
     _generate_agent_protocol,
     _generate_team_context_header,
 )
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.tenant import TenantManager
 
 
 if TYPE_CHECKING:
@@ -226,6 +225,16 @@ class MissionService:
                     context={"job_id": job_id, "tenant_key": tenant_key},
                 )
 
+            # BE-5008: Read integration settings from DB
+            integrations = {}
+            try:
+                from giljo_mcp.services.settings_service import SettingsService
+
+                settings_svc = SettingsService(session, tenant_key)
+                integrations = await settings_svc.get_settings("integrations")
+            except Exception:  # noqa: BLE001
+                self._logger.warning("[INTEGRATIONS] Failed to read settings from DB")
+
             return self._assemble_mission_context(
                 job=job,
                 execution=execution,
@@ -235,6 +244,7 @@ class MissionService:
                 mission_lookup=mission_lookup,
                 current_team_state=current_team_state,
                 tenant_key=tenant_key,
+                integrations=integrations,
             )
 
         except ResourceNotFoundError:
@@ -385,7 +395,7 @@ class MissionService:
         Returns:
             Tuple of (project, gate_response). gate_response is non-None if blocked.
         """
-        from src.giljo_mcp.models.projects import Project
+        from giljo_mcp.models.projects import Project
 
         project_res = await session.execute(
             select(Project).where(Project.id == job.project_id, Project.tenant_key == tenant_key)
@@ -545,7 +555,7 @@ class MissionService:
         # instead of hardcoded fallback, so the orchestrator retains full behavioral
         # guidance across the staging→implementation session boundary.
         if job.job_type == "orchestrator" and not agent_identity:
-            from src.giljo_mcp.template_seeder import get_orchestrator_identity_content
+            from giljo_mcp.template_seeder import get_orchestrator_identity_content
 
             agent_identity = get_orchestrator_identity_content()
             self._logger.info(
@@ -565,6 +575,7 @@ class MissionService:
         mission_lookup: dict[str, str],
         current_team_state: Optional[list[dict]],
         tenant_key: str,
+        integrations: dict | None = None,
     ) -> MissionResponse:
         """Build the full mission text, protocol, and MissionResponse.
 
@@ -585,12 +596,13 @@ class MissionService:
         )
         full_mission = mission_framing + team_context_header + raw_mission
 
-        # Inject Serena MCP notice if enabled (User Settings -> Integrations)
-        try:
-            include_serena = get_config().get_nested("features.serena_mcp.use_in_prompts", default=False)
+        # BE-5008: Read integration toggles from passed dict (loaded in async caller)
+        integrations = integrations or {}
+        include_serena = integrations.get("serena_mcp", {}).get("use_in_prompts", False)
 
-            if include_serena:
-                from src.giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+        if include_serena:
+            try:
+                from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
 
                 serena_instructions = generate_serena_instructions(enabled=True)
                 full_mission = serena_instructions + "\n\n---\n\n" + full_mission
@@ -598,12 +610,12 @@ class MissionService:
                     "[SERENA] Injected Serena notice into agent mission",
                     extra={"job_id": job_id, "agent_id": execution.agent_id},
                 )
-        except (ImportError, AttributeError, OSError) as e:
-            self._logger.warning(f"[SERENA] Failed to inject Serena notice into agent mission: {e}")
+            except (ImportError, AttributeError) as e:
+                self._logger.warning(f"[SERENA] Failed to inject Serena notice: {e}")
 
         # Generate 5-phase lifecycle protocol (Handover 0334, 0359, 0378 Bug 2, 0497d)
         project_exec_mode = getattr(project, "execution_mode", "multi_terminal") if project else "multi_terminal"
-        git_enabled = get_config().get_nested("features.git_integration.enabled", default=False)
+        git_enabled = integrations.get("git_integration", {}).get("enabled", False)
         # Handover 0841: Derive platform tool for platform-aware signoff
         _exec_mode_to_tool = {
             "claude_code_cli": "claude-code",
@@ -629,7 +641,7 @@ class MissionService:
             and project
             and getattr(project, "auto_checkin_enabled", False)
         ):
-            from src.giljo_mcp.services.protocol_sections.chapters_reference import _build_ch6_auto_checkin
+            from giljo_mcp.services.protocol_sections.chapters_reference import _build_ch6_auto_checkin
 
             auto_checkin_interval = getattr(project, "auto_checkin_interval", 10)
             full_protocol += "\n" + _build_ch6_auto_checkin(auto_checkin_interval)
@@ -686,7 +698,7 @@ class MissionService:
             async with self._get_session() as session:
                 from sqlalchemy import and_, select
 
-                from src.giljo_mcp.models.agent_identity import AgentJob
+                from giljo_mcp.models.agent_identity import AgentJob
 
                 result = await session.execute(
                     select(AgentJob).where(

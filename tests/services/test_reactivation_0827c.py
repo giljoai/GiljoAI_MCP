@@ -25,15 +25,15 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.tasks import Message, MessageRecipient
-from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.products import Product
+from giljo_mcp.models.projects import Project
+from giljo_mcp.models.tasks import Message, MessageRecipient
+from giljo_mcp.services.message_service import MessageService
+from giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.tenant import TenantManager
 
 
 # ============================================================================

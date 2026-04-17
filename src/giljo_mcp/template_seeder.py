@@ -17,7 +17,7 @@ Key Features:
 - Cross-platform: Uses proper path handling
 
 Usage:
-    from src.giljo_mcp.template_seeder import seed_tenant_templates
+    from giljo_mcp.template_seeder import seed_tenant_templates
 
     async with db_session() as session:
         count = await seed_tenant_templates(session, tenant_key)
@@ -32,9 +32,9 @@ from uuid import uuid4
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
-from src.giljo_mcp.template_manager import UnifiedTemplateManager
+from giljo_mcp.models import AgentTemplate
+from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
+from giljo_mcp.template_manager import UnifiedTemplateManager
 
 
 logger = logging.getLogger(__name__)

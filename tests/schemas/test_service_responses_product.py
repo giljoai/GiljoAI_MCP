@@ -15,7 +15,7 @@ Created: Handover 0731
 import pytest
 from pydantic import ValidationError
 
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.schemas.service_responses import (
     CascadeImpact,
     GitIntegrationSettings,
     PathValidationResult,

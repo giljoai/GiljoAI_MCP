@@ -18,7 +18,7 @@ from fastapi import HTTPException, WebSocket
 from api.auth_utils import check_subscription_permission
 from api.broker.base import WebSocketBrokerMessage, WebSocketEventBroker
 from api.events.schemas import EventFactory
-from src.giljo_mcp.logging import ErrorCode, get_logger
+from giljo_mcp.logging import ErrorCode, get_logger
 
 
 logger = get_logger(__name__)
@@ -468,7 +468,7 @@ class WebSocketManager:
         project list page receive real-time updates across all browsers.
         """
         if not tenant_key:
-            from src.giljo_mcp.tenant import TenantManager
+            from giljo_mcp.tenant import TenantManager
 
             tenant_key = TenantManager.get_current_tenant()
         if not tenant_key:

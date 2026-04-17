@@ -19,10 +19,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_tenant_key
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services import ProductService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import User
+from giljo_mcp.services import ProductService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .crud import _build_product_response
 from .dependencies import get_product_service
@@ -293,7 +293,7 @@ async def get_vision_document_stats(
     # Query for active vision documents
     from sqlalchemy import and_, select
 
-    from src.giljo_mcp.models import VisionDocument
+    from giljo_mcp.models import VisionDocument
 
     stmt = (
         select(VisionDocument)

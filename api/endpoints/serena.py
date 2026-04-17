@@ -7,17 +7,19 @@
 Simplified Serena MCP toggle endpoint (Handover 0277).
 
 Provides single toggle for Serena MCP integration.
-Removed advanced settings for 99% token reduction.
+Stores settings in the database via SettingsService (category='integrations')
+instead of config.yaml.
 """
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp._config_io import read_config, write_config
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.models import User
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import User
+from giljo_mcp.services.settings_service import SettingsService
 
 
 logger = logging.getLogger(__name__)
@@ -31,57 +33,60 @@ class SerenaToggleRequest(BaseModel):
 
 
 @router.get("/settings")
-async def get_serena_settings(current_user: User = Depends(get_current_active_user)):
+async def get_serena_settings(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
     """
     Get simplified Serena MCP settings.
 
     Returns only use_in_prompts toggle (advanced settings removed in Handover 0277).
     """
-    config = read_config()
-    serena = config.get("features", {}).get("serena_mcp", {})
+    service = SettingsService(db, current_user.tenant_key)
+    integrations = await service.get_settings("integrations")
+    serena = integrations.get("serena_mcp", {})
 
     return {"use_in_prompts": bool(serena.get("use_in_prompts", False))}
 
 
 @router.post("/toggle")
-async def toggle_serena(request: SerenaToggleRequest, current_user: User = Depends(get_current_active_user)):
+async def toggle_serena(
+    request: SerenaToggleRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
     """
     Toggle Serena MCP on/off.
 
     Accepts only use_in_prompts boolean (advanced settings removed in Handover 0277).
     """
-    config = read_config()
+    service = SettingsService(db, current_user.tenant_key)
+    integrations = await service.get_settings("integrations")
 
-    # Ensure features section exists
-    if "features" not in config:
-        config["features"] = {}
-    if "serena_mcp" not in config["features"]:
-        config["features"]["serena_mcp"] = {}
+    serena = integrations.get("serena_mcp", {})
+    serena["use_in_prompts"] = request.use_in_prompts
+    integrations["serena_mcp"] = serena
 
-    # Update flag
-    config["features"]["serena_mcp"]["use_in_prompts"] = request.use_in_prompts
-
-    try:
-        write_config(config)
-    except OSError as e:
-        logger.error("Failed to save Serena config: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to save configuration. Check server logs.") from e
+    await service.update_settings("integrations", integrations)
 
     logger.info("Serena prompts %s", "enabled" if request.use_in_prompts else "disabled")
 
-    # Return format expected by frontend (success, enabled, message)
     return {
         "success": True,
         "enabled": request.use_in_prompts,
-        "use_in_prompts": request.use_in_prompts,  # Keep for backwards compatibility
+        "use_in_prompts": request.use_in_prompts,
         "message": f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}",
     }
 
 
 @router.get("/status")
-async def get_serena_status(current_user: User = Depends(get_current_active_user)):
+async def get_serena_status(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
     """Get current Serena prompt toggle status (legacy endpoint)."""
-    config = read_config()
-    enabled = config.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+    service = SettingsService(db, current_user.tenant_key)
+    integrations = await service.get_settings("integrations")
+    enabled = integrations.get("serena_mcp", {}).get("use_in_prompts", False)
 
     return {"enabled": enabled, "message": f"Serena prompts {'enabled' if enabled else 'disabled'}"}

@@ -12,15 +12,15 @@ Tests render_gemini_agent(), render_codex_agent(), and AgentTemplateAssembler.
 import pytest
 import yaml
 
-from src.giljo_mcp.exceptions import ValidationError
-from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.template_renderer import (
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.models import AgentTemplate
+from giljo_mcp.template_renderer import (
     CODEX_TOML_FORMAT_REFERENCE,
     render_claude_agent,
     render_codex_agent,
     render_gemini_agent,
 )
-from src.giljo_mcp.tools.agent_template_assembler import AgentTemplateAssembler
+from giljo_mcp.tools.agent_template_assembler import AgentTemplateAssembler
 
 
 # ---------------------------------------------------------------------------

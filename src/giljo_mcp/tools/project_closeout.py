@@ -19,14 +19,14 @@ from typing import Any
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
-from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
-from src.giljo_mcp.schemas.jsonb_validators import validate_git_commits
-from src.giljo_mcp.tools._memory_helpers import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError, ValidationError
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
+from giljo_mcp.models.products import Product
+from giljo_mcp.models.projects import Project
+from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.schemas.jsonb_validators import validate_git_commits
+from giljo_mcp.tools._memory_helpers import (
     MAX_DECISIONS_MADE,
     MAX_KEY_OUTCOMES,
     MAX_SUMMARY_LENGTH,
@@ -263,16 +263,22 @@ async def close_project_and_update_memory(
             # Hard gate: if git integration is enabled, require commits
             git_integration_enabled = False
             try:
-                from giljo_mcp._config_io import read_config
+                from giljo_mcp.services.settings_service import SettingsService
 
-                cfg = read_config()
-                git_integration_enabled = cfg.get("features", {}).get("git_integration", {}).get("enabled", False)
+                settings_svc = SettingsService(active_session, tenant_key)
+                git_settings = await settings_svc.get_setting_value("integrations", "git_integration", {})
+                git_integration_enabled = git_settings.get("enabled", False)
             except Exception:  # noqa: BLE001, S110
-                pass  # Config read failure is not a blocker
+                pass  # Settings read failure is not a blocker
 
             if git_integration_enabled and not git_commits:
                 raise ValidationError(
-                    message="Git integration is enabled. Provide at least one commit before closing the project.",
+                    message=(
+                        "Git integration is enabled. Provide at least one commit before closing the project. "
+                        "Recovery: run 'git status' to check for uncommitted changes, then "
+                        "'git add <files> && git commit -m \"<message>\"' to create a commit. "
+                        "Use the resulting commit SHA in the git_commits parameter and retry."
+                    ),
                     context={"project_id": project_id, "error_code": "GIT_COMMITS_REQUIRED"},
                 )
 

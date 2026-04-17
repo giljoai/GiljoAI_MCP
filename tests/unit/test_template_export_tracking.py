@@ -16,7 +16,7 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models import AgentTemplate
+from giljo_mcp.models import AgentTemplate
 
 
 class TestAgentTemplateExportTracking:

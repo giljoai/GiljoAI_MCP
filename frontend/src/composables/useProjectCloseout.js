@@ -21,6 +21,10 @@ export function useProjectCloseout({ project, projectId, sortedJobs, onComplete 
   const showCloseoutModal = ref(false)
   const memoryWritten = ref(false)
   const showContinueGuidance = ref(false)
+  const memoryPollTimedOut = ref(false)
+  const memoryPollError = ref(false)
+
+  const MEMORY_POLL_TIMEOUT_MS = 30_000
 
   let memoryCheckTimeout = null
 
@@ -51,6 +55,7 @@ export function useProjectCloseout({ project, projectId, sortedJobs, onComplete 
   const showMemoryPending = computed(() => {
     if (!allJobsTerminal.value) return false
     if (!project.value?.product_id) return false
+    if (memoryPollTimedOut.value || memoryPollError.value) return false
     return !memoryWritten.value
   })
 
@@ -84,13 +89,15 @@ export function useProjectCloseout({ project, projectId, sortedJobs, onComplete 
     },
   )
 
-  watch(
-    allJobsTerminal,
-    async (terminal) => {
-      clearTimeout(memoryCheckTimeout)
-      if (!terminal || memoryWritten.value) return
-      const productId = project.value?.product_id
-      if (!productId) return
+  function startMemoryPoll() {
+    clearTimeout(memoryCheckTimeout)
+    memoryPollTimedOut.value = false
+    memoryPollError.value = false
+
+    const productId = project.value?.product_id
+    if (!productId) return
+
+    async function checkMemory() {
       try {
         const res = await api.products.getMemoryEntries(productId, {
           project_id: projectId.value,
@@ -98,32 +105,54 @@ export function useProjectCloseout({ project, projectId, sortedJobs, onComplete 
         })
         if (res.data?.entries?.length > 0) {
           memoryWritten.value = true
-          return
+          memoryPollTimedOut.value = false
+          memoryPollError.value = false
+          return true
         }
       } catch {
-        memoryWritten.value = true
-        return
+        memoryPollError.value = true
+        return true
       }
-      memoryCheckTimeout = setTimeout(async () => {
-        if (memoryWritten.value) return
-        try {
-          await api.products.getMemoryEntries(productId, {
-            project_id: projectId.value,
-            limit: 1,
-          })
-          memoryWritten.value = true
-        } catch {
-          memoryWritten.value = true
+      return false
+    }
+
+    // Check immediately
+    checkMemory().then((done) => {
+      if (done) return
+      // Start 30s timeout
+      memoryCheckTimeout = setTimeout(() => {
+        if (!memoryWritten.value) {
+          memoryPollTimedOut.value = true
         }
-      }, 60_000)
+      }, MEMORY_POLL_TIMEOUT_MS)
+    })
+  }
+
+  watch(
+    allJobsTerminal,
+    (terminal) => {
+      clearTimeout(memoryCheckTimeout)
+      if (!terminal || memoryWritten.value) return
+      startMemoryPoll()
     },
     { immediate: true },
   )
+
+  function retryMemoryPoll() {
+    startMemoryPoll()
+  }
+
+  function dismissMemoryPollError() {
+    memoryPollTimedOut.value = false
+    memoryPollError.value = false
+  }
 
   function reset(newProjectId, oldProjectId) {
     if (oldProjectId && oldProjectId !== newProjectId) {
       clearTimeout(memoryCheckTimeout)
       memoryWritten.value = false
+      memoryPollTimedOut.value = false
+      memoryPollError.value = false
     }
   }
 
@@ -135,6 +164,8 @@ export function useProjectCloseout({ project, projectId, sortedJobs, onComplete 
     showCloseoutModal,
     memoryWritten,
     showContinueGuidance,
+    memoryPollTimedOut,
+    memoryPollError,
     projectDoneStatus,
     allJobsTerminal,
     showCloseoutButton,
@@ -142,6 +173,8 @@ export function useProjectCloseout({ project, projectId, sortedJobs, onComplete 
     openCloseoutModal,
     handleCloseoutComplete,
     handleContinueWorking,
+    retryMemoryPoll,
+    dismissMemoryPollError,
     reset,
     cleanup,
   }

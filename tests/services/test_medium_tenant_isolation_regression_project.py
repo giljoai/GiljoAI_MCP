@@ -27,11 +27,11 @@ Follows patterns from: test_project_tenant_isolation_regression.py
 
 import pytest
 
-from src.giljo_mcp.exceptions import ResourceNotFoundError
-from src.giljo_mcp.models.agent_identity import AgentExecution
-from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.models.agent_identity import AgentExecution
+from giljo_mcp.services.product_service import ProductService
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.tenant import TenantManager
 
 
 # ============================================================================
@@ -46,7 +46,7 @@ async def test_consolidate_vision_blocks_cross_tenant(two_tenant_products):
     REGRESSION: consolidate_vision_documents() must filter by tenant_key
     in the initial Product query, not just as a post-fetch check.
     """
-    from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+    from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
     data = two_tenant_products
 

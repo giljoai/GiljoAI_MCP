@@ -15,7 +15,6 @@ from giljo_mcp.prompts.codex_prompt_builder import CodexPromptBuilder
 from giljo_mcp.prompts.gemini_prompt_builder import GeminiPromptBuilder
 from giljo_mcp.prompts.multi_terminal_prompt_builder import MultiTerminalPromptBuilder
 from giljo_mcp.prompts.staging_prompt_builder import StagingPromptBuilder
-from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
 __all__ = [
@@ -24,5 +23,4 @@ __all__ = [
     "GeminiPromptBuilder",
     "MultiTerminalPromptBuilder",
     "StagingPromptBuilder",
-    "ThinClientPromptGenerator",
 ]

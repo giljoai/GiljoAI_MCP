@@ -27,9 +27,9 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models.oauth import OAuthAuthorizationCode
-from src.giljo_mcp.services.oauth_service import OAuthService
+from giljo_mcp.models.auth import User
+from giljo_mcp.models.oauth import OAuthAuthorizationCode
+from giljo_mcp.services.oauth_service import OAuthService
 
 
 def _generate_pkce_pair() -> tuple[str, str]:

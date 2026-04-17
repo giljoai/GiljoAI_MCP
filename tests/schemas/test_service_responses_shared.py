@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.schemas.service_responses import (
     AuthResult,
     DeleteResult,
     OperationResult,

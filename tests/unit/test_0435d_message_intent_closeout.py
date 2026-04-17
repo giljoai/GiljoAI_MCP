@@ -39,7 +39,7 @@ class TestRequiresActionAutoBlock:
 
     @pytest.fixture
     def routing_service(self):
-        from src.giljo_mcp.services.message_routing_service import MessageRoutingService
+        from giljo_mcp.services.message_routing_service import MessageRoutingService
 
         mock_db = MagicMock()
         mock_tenant = MagicMock()
@@ -130,7 +130,7 @@ class TestMessageModelColumn:
     """Verify the requires_action column exists on the Message model."""
 
     def test_requires_action_column_exists(self):
-        from src.giljo_mcp.models.tasks import Message
+        from giljo_mcp.models.tasks import Message
 
         assert hasattr(Message, "requires_action")
         col = Message.__table__.columns["requires_action"]
@@ -169,7 +169,7 @@ class TestDefaultBehavior:
         """The default value should be False — informational by default."""
         import inspect
 
-        from src.giljo_mcp.services.message_routing_service import MessageRoutingService
+        from giljo_mcp.services.message_routing_service import MessageRoutingService
 
         sig = inspect.signature(MessageRoutingService.send_message)
         param = sig.parameters["requires_action"]

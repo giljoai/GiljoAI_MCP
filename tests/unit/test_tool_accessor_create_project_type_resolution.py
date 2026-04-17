@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+from giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
 def _make_tool_accessor():
@@ -65,7 +65,7 @@ class TestCreateProjectTypeResolution:
         mock_type.id = "pt-frontend-uuid"
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_ps_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_ps_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -105,7 +105,7 @@ class TestCreateProjectTypeResolution:
         mock_type.id = "pt-frontend-uuid"
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_ps_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_ps_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -142,7 +142,7 @@ class TestCreateProjectTypeResolution:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_ps_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_ps_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -179,7 +179,7 @@ class TestCreateProjectTypeResolution:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_ps_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_ps_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",

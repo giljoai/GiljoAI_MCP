@@ -12,7 +12,7 @@ across Claude Code, Gemini CLI, and Codex CLI platforms.
 
 import pytest
 
-from src.giljo_mcp.tools.slash_command_templates import (
+from giljo_mcp.tools.slash_command_templates import (
     BOOTSTRAP_CLAUDE_CODE,
     BOOTSTRAP_CODEX_CLI,
     BOOTSTRAP_GEMINI_CLI,

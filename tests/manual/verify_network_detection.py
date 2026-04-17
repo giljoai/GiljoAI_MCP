@@ -19,6 +19,7 @@ from pathlib import Path
 
 
 # Add parent directory to path to import startup module
+# TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from startup import get_network_ip, print_header, print_info, print_success

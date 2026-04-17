@@ -13,7 +13,7 @@ All operations enforce tenant isolation for security.
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPContextIndex
+from giljo_mcp.models import MCPContextIndex
 
 from .base import BaseRepository
 

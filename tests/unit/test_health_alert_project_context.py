@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.giljo_mcp.monitoring.health_config import AgentHealthStatus
+from giljo_mcp.monitoring.health_config import AgentHealthStatus
 
 
 class TestAgentHealthStatusProjectFields:

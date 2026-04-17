@@ -70,7 +70,7 @@ class TestVerifyTokenAllowExpired:
 
     def test_valid_non_expired_token_returns_payload(self, sample_user_id, secret_key):
         """A valid, non-expired access token should return its payload."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         token = _make_token(secret_key, sample_user_id, expire_delta=timedelta(hours=1))
         result = JWTManager.verify_token_allow_expired(token)
@@ -84,7 +84,7 @@ class TestVerifyTokenAllowExpired:
 
     def test_expired_within_grace_period_returns_payload(self, sample_user_id, secret_key):
         """A token expired 30 minutes ago (within 1-hour grace) returns payload."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         token = _make_token(secret_key, sample_user_id, expire_delta=timedelta(minutes=-30))
         result = JWTManager.verify_token_allow_expired(token)
@@ -95,7 +95,7 @@ class TestVerifyTokenAllowExpired:
 
     def test_expired_beyond_grace_period_returns_none(self, sample_user_id, secret_key):
         """A token expired 2 hours ago (beyond 1-hour grace) returns None."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         token = _make_token(secret_key, sample_user_id, expire_delta=timedelta(hours=-2))
         result = JWTManager.verify_token_allow_expired(token)
@@ -108,7 +108,7 @@ class TestVerifyTokenAllowExpired:
         The condition is (now - exp) <= timedelta(hours=grace), so exactly
         at the boundary should still pass.
         """
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         # Use slightly less than 1 hour to avoid timing flakiness
         token = _make_token(secret_key, sample_user_id, expire_delta=timedelta(minutes=-59, seconds=-50))
@@ -118,7 +118,7 @@ class TestVerifyTokenAllowExpired:
 
     def test_expired_just_beyond_grace_boundary_returns_none(self, sample_user_id, secret_key):
         """A token expired 61 minutes ago (just beyond grace) returns None."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         token = _make_token(secret_key, sample_user_id, expire_delta=timedelta(minutes=-61))
         result = JWTManager.verify_token_allow_expired(token)
@@ -127,7 +127,7 @@ class TestVerifyTokenAllowExpired:
 
     def test_non_access_token_type_returns_none(self, sample_user_id, secret_key):
         """A token with type != 'access' (e.g. 'refresh') returns None."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         token = _make_token(secret_key, sample_user_id, token_type="refresh")
         result = JWTManager.verify_token_allow_expired(token)
@@ -136,7 +136,7 @@ class TestVerifyTokenAllowExpired:
 
     def test_expired_non_access_token_type_returns_none(self, sample_user_id, secret_key):
         """An expired token with wrong type returns None (not payload)."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         token = _make_token(
             secret_key,
@@ -150,7 +150,7 @@ class TestVerifyTokenAllowExpired:
 
     def test_tampered_token_returns_none(self, sample_user_id, secret_key):
         """A token signed with wrong key returns None."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         token = _make_token("wrong-secret-key", sample_user_id, expire_delta=timedelta(hours=1))
         result = JWTManager.verify_token_allow_expired(token)
@@ -159,21 +159,21 @@ class TestVerifyTokenAllowExpired:
 
     def test_malformed_token_returns_none(self):
         """A completely invalid token string returns None."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         result = JWTManager.verify_token_allow_expired("not.a.valid.jwt")
         assert result is None
 
     def test_empty_token_returns_none(self):
         """An empty string returns None."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         result = JWTManager.verify_token_allow_expired("")
         assert result is None
 
     def test_missing_secret_key_returns_none(self, sample_user_id, monkeypatch):
         """When no secret key is configured, returns None (not an exception)."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         monkeypatch.delenv("JWT_SECRET", raising=False)
         monkeypatch.delenv("GILJO_MCP_SECRET_KEY", raising=False)
@@ -187,7 +187,7 @@ class TestVerifyTokenAllowExpired:
 
     def test_custom_grace_hours_override(self, sample_user_id, secret_key):
         """Custom grace_hours parameter overrides the class default."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         # Token expired 3 hours ago - beyond default 1-hour grace
         token = _make_token(secret_key, sample_user_id, expire_delta=timedelta(hours=-3))
@@ -202,7 +202,7 @@ class TestVerifyTokenAllowExpired:
 
     def test_zero_grace_hours_rejects_all_expired(self, sample_user_id, secret_key):
         """With grace_hours=0, any expired token returns None."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         # Token expired 1 second ago
         token = _make_token(secret_key, sample_user_id, expire_delta=timedelta(seconds=-1))
@@ -212,14 +212,14 @@ class TestVerifyTokenAllowExpired:
 
     def test_class_attribute_exists(self):
         """REFRESH_GRACE_PERIOD_HOURS class attribute should be 1."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         assert hasattr(JWTManager, "REFRESH_GRACE_PERIOD_HOURS")
         assert JWTManager.REFRESH_GRACE_PERIOD_HOURS == 1
 
     def test_returns_dict_type(self, sample_user_id, secret_key):
         """Return type should be dict when successful."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         token = _make_token(secret_key, sample_user_id, expire_delta=timedelta(hours=1))
         result = JWTManager.verify_token_allow_expired(token)
@@ -230,7 +230,7 @@ class TestVerifyTokenAllowExpired:
         """Unlike verify_token, this method should never raise HTTPException."""
         from fastapi import HTTPException
 
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         # Expired beyond grace
         token = _make_token(secret_key, sample_user_id, expire_delta=timedelta(hours=-5))
@@ -243,7 +243,7 @@ class TestVerifyTokenAllowExpired:
 
     def test_token_created_by_create_access_token(self, sample_user_id):
         """Tokens created by create_access_token should be accepted."""
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         token = JWTManager.create_access_token(
             user_id=sample_user_id,

@@ -18,11 +18,12 @@ from fastapi.testclient import TestClient
 
 
 # Add the src directory to the path
+# TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.app import create_app
-from src.giljo_mcp.auth import AuthManager
-from src.giljo_mcp.config_manager import ConfigManager
+from giljo_mcp.auth import AuthManager
+from giljo_mcp.config_manager import ConfigManager
 
 
 class Colors:

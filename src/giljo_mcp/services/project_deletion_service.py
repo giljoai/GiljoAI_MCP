@@ -21,22 +21,22 @@ from typing import Any
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.tasks import Message, Task
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.projects import Project
+from giljo_mcp.models.tasks import Message, Task
+from giljo_mcp.schemas.service_responses import (
     NuclearDeleteResult,
     OperationResult,
     ProjectPurgeResult,
     SoftDeleteResult,
 )
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -277,7 +277,7 @@ class ProjectDeletionService:
             # Handover 0390b: Use repository instead of JSONB mutation
             memory_entries_marked = 0
             if project.product_id:
-                from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+                from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
                 repo = ProductMemoryRepository()
                 memory_entries_marked = await repo.mark_entries_deleted(
@@ -340,7 +340,7 @@ class ProjectDeletionService:
         # Mark 360 memory entries as deleted by user (preserve historical reference)
         # Uses ProductMemoryRepository for table-based operations (Handover 0390c)
         if project.product_id:
-            from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+            from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
             repo = ProductMemoryRepository()
             deleted_count = await repo.mark_entries_deleted(

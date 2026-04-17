@@ -19,17 +19,20 @@ import logging
 
 from fastapi import APIRouter, Depends, Query, status
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.models import User
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_project_service
 from .models import (
+    AgentJobDetail,
     AvailableSeriesResponse,
+    MemoryEntryDetail,
     NextSeriesResponse,
     ProjectCreate,
     ProjectResponse,
+    ProjectReviewResponse,
     ProjectUpdate,
     SeriesCheckResponse,
     UsedSubseriesResponse,
@@ -130,7 +133,9 @@ async def list_projects(
     logger.debug("User %s listing projects (status=%s)", sanitize(current_user.username), sanitize(str(status_filter)))
 
     # List projects via ProjectService (raises exceptions on error)
-    projects = await project_service.list_projects(status=status_filter, tenant_key=current_user.tenant_key)
+    projects = await project_service.list_projects(
+        status=status_filter, tenant_key=current_user.tenant_key, include_cancelled=True
+    )
 
     logger.info(f"Found {len(projects)} projects for tenant {current_user.tenant_key}")
 
@@ -425,6 +430,73 @@ async def get_project(
         subseries=proj.subseries,
         taxonomy_alias=proj.taxonomy_alias,
         hidden=getattr(proj, "hidden", False),
+    )
+
+
+@router.get("/{project_id}/review", response_model=ProjectReviewResponse)
+async def get_project_review(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+) -> ProjectReviewResponse:
+    """
+    Get project details with agent jobs and 360 memory entries for review.
+
+    Returns the base project data plus associated agent jobs (from agent_jobs/agent_executions)
+    and 360 memory entries (from product_memory_entries WHERE project_id matches).
+
+    Args:
+        project_id: Project UUID or alias
+        current_user: Authenticated user (from dependency)
+        project_service: Project service (from dependency)
+
+    Returns:
+        ProjectReviewResponse with project, agent_jobs, and memory_entries
+    """
+    logger.debug("User %s getting project review %s", sanitize(current_user.username), sanitize(project_id))
+
+    # Get base project data
+    proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
+    agents_from_service = proj.agents
+
+    project_resp = ProjectResponse(
+        id=proj.id,
+        alias=proj.alias or "",
+        name=proj.name,
+        description=proj.description,
+        mission=proj.mission or "",
+        status=proj.status,
+        staging_status=proj.staging_status,
+        product_id=proj.product_id,
+        created_at=proj.created_at,
+        updated_at=proj.updated_at,
+        completed_at=proj.completed_at,
+        agent_count=proj.agent_count or len(agents_from_service),
+        message_count=proj.message_count,
+        execution_mode=proj.execution_mode or "multi_terminal",
+        auto_checkin_enabled=proj.auto_checkin_enabled,
+        auto_checkin_interval=proj.auto_checkin_interval,
+        agents=agents_from_service,
+        project_type_id=proj.project_type_id,
+        project_type=proj.project_type,
+        series_number=proj.series_number,
+        subseries=proj.subseries,
+        taxonomy_alias=proj.taxonomy_alias,
+        hidden=getattr(proj, "hidden", False),
+    )
+
+    # Fetch agent job details and memory entries
+    agent_details = await project_service.get_project_agent_details(
+        project_id=project_id, tenant_key=current_user.tenant_key
+    )
+    memory_entries = await project_service.get_project_memory_entries(
+        project_id=project_id, tenant_key=current_user.tenant_key
+    )
+
+    return ProjectReviewResponse(
+        project=project_resp,
+        agent_jobs=[AgentJobDetail(**aj) for aj in agent_details],
+        memory_entries=[MemoryEntryDetail(**me) for me in memory_entries],
     )
 
 

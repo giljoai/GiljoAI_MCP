@@ -25,7 +25,7 @@ from starlette.requests import Request as StarletteRequest
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from src.giljo_mcp.auth.jwt_manager import JWTManager
+from giljo_mcp.auth.jwt_manager import JWTManager
 
 
 logger = logging.getLogger(__name__)
@@ -97,6 +97,11 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
     tenant_key = _resolve_tenant(ctx)
     _set_tenant_context(tenant_key)
 
+    # Per-tool MCP call counting (feeds dashboard statistics badge)
+    from api.app_state import state as app_state
+
+    app_state.mcp_call_count[tenant_key] = app_state.mcp_call_count.get(tenant_key, 0) + 1
+
     accessor = _get_tool_accessor()
     tool_func = getattr(accessor, method_name)
 
@@ -114,7 +119,7 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
     if job_id:
         try:
             from api.app_state import state as app_state
-            from src.giljo_mcp.services.silence_detector import auto_clear_silent
+            from giljo_mcp.services.silence_detector import auto_clear_silent
 
             ws_manager = getattr(app_state, "websocket_manager", None)
             async with app_state.db_manager.get_session_async() as db:
@@ -125,7 +130,7 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
         # Server-side heartbeat: update last_activity_at with 30s debounce
         try:
             from api.app_state import state as app_state
-            from src.giljo_mcp.services.heartbeat import touch_heartbeat
+            from giljo_mcp.services.heartbeat import touch_heartbeat
 
             async with app_state.db_manager.get_session_async() as db:
                 await touch_heartbeat(db, job_id, tenant_key=tenant_key)
@@ -144,7 +149,7 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
     description=(
         "Create a new project bound to the active product. "
         "Projects are classified by taxonomy: project_type + series_number forming a serial like FE-0001. "
-        "Call discovery(category='project_types') first to see valid types. "
+        "Use list_projects() to see available project_types. "
         "Project is created as inactive. Use the web dashboard to activate and launch."
     ),
 )
@@ -153,7 +158,7 @@ async def create_project(
     description: str,
     project_type: str = "",
     series_number: int = 0,
-    subseries: str = "",
+    suffix: str = "",
     ctx: Context = None,
 ) -> dict:
     """Create a new project bound to the active product.
@@ -167,8 +172,8 @@ async def create_project(
             Combined with series_number to form the project serial (e.g. FE-0001).
         series_number: Sequential number within the type series (1-9999).
             Forms serial like TYPE-0001. Use 0 for auto-assign.
-        subseries: Single-letter suffix (a-z) for injecting projects into an existing
-            series. E.g. series_number=5 + subseries="b" creates FE-0005b.
+        suffix: Single-letter suffix (a-z) for injecting projects into an existing
+            series. E.g. series_number=5 + suffix="b" creates FE-0005b.
             Leave empty for no suffix.
     """
     params = {
@@ -178,31 +183,42 @@ async def create_project(
     }
     if series_number > 0:
         params["series_number"] = series_number
-    if subseries:
-        params["subseries"] = subseries
+    if suffix:
+        params["subseries"] = suffix
     return await _call_tool(ctx, "create_project", params)
 
 
 @mcp.tool(
     description=(
-        "List projects for the active product with optional status filter. "
-        "Returns full project details including complete descriptions. "
+        "List projects for the active product with optional status filter and depth control. "
+        "By default returns summary-only fields (name, status, taxonomy_alias, etc.) to minimize payload. "
+        "Use summary_only=False with depth 1-3 for progressively more detail. "
+        "Also returns available project_types for use with create_project. "
         "Requires an active product to be set."
     ),
 )
 async def list_projects(
     status_filter: str = "all",
+    summary_only: bool = True,
+    depth: int = 0,
     ctx: Context = None,
 ) -> dict:
     """List projects for the active product.
 
     Args:
-        status_filter: Filter by status — "inactive", "active", "completed", or "all" (default).
+        status_filter: Filter by status — "inactive", "active", "completed", "cancelled", or "all" (default).
+        summary_only: When True (default), return only summary fields to minimize payload.
+            When False, include full details controlled by depth parameter.
+        depth: Detail level 0-3 (only used when summary_only=False):
+            0 = summary fields only (same as summary_only=True).
+            1 = + description, mission, agent job summary (types spawned, counts).
+            2 = + 360 memory entries, agent job details (display names, status, result).
+            3 = + message history, git commits from 360 memory.
     """
     return await _call_tool(
         ctx,
         "list_projects",
-        {"status_filter": status_filter},
+        {"status_filter": status_filter, "summary_only": summary_only, "depth": depth},
     )
 
 
@@ -220,7 +236,7 @@ async def update_project(
     status: str = "",
     project_type: str = "",
     series_number: int = 0,
-    subseries: str = "",
+    suffix: str = "",
     ctx: Context = None,
 ) -> dict:
     """Update project metadata fields.
@@ -229,10 +245,10 @@ async def update_project(
         project_id: Project UUID (required).
         name: New project name (max 200 chars). Leave empty to keep current.
         description: New description (max 5000 chars). Leave empty to keep current.
-        status: New status — "inactive", "active", or "completed". Leave empty to keep current.
+        status: New status — "inactive", "active", "completed", or "cancelled". Leave empty to keep current.
         project_type: Taxonomy type abbreviation (e.g. FE, BE). Leave empty to keep current.
         series_number: Sequential number within the type series (1-9999). Use 0 to keep current.
-        subseries: Single-letter suffix (a-z). Leave empty to keep current.
+        suffix: Single-letter suffix (a-z). Leave empty to keep current.
     """
     params: dict = {"project_id": project_id}
     if name:
@@ -245,8 +261,8 @@ async def update_project(
         params["project_type"] = project_type
     if series_number > 0:
         params["series_number"] = series_number
-    if subseries:
-        params["subseries"] = subseries
+    if suffix:
+        params["subseries"] = suffix
     return await _call_tool(ctx, "update_project_metadata", params)
 
 
@@ -411,7 +427,7 @@ async def receive_messages(
         "This tool is for inspection only."
     ),
 )
-async def list_messages(
+async def inspect_messages(
     agent_id: Annotated[str, Field(description="Filter by recipient agent_id UUID. Optional.")] = "",
     status: Annotated[
         str, Field(description="Filter by status: 'pending', 'acknowledged', 'completed', 'failed'. Optional.")
@@ -419,7 +435,7 @@ async def list_messages(
     limit: Annotated[int, Field(description="Max messages to return. Default: 50.")] = 50,
     ctx: Context = None,
 ) -> dict:
-    """List messages with optional filters (read-only)."""
+    """Inspect messages with optional filters (read-only)."""
     kwargs: dict[str, Any] = {}
     if agent_id:
         kwargs["agent_id"] = agent_id
@@ -427,7 +443,7 @@ async def list_messages(
         kwargs["status"] = status
     if limit:
         kwargs["limit"] = limit
-    return await _call_tool(ctx, "list_messages", kwargs)
+    return await _call_tool(ctx, "inspect_messages", kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -462,25 +478,6 @@ async def health_check(ctx: Context = None) -> dict:
     """Check MCP server health status."""
     accessor = _get_tool_accessor()
     return await accessor.health_check()
-
-
-@mcp.tool(
-    description=(
-        "Discover available system categories and configuration for the current tenant. "
-        "Call this BEFORE creating projects to see valid project_type values. "
-        "Valid categories: 'project_types'. Returns items with abbreviation, label, color."
-    ),
-)
-async def discovery(
-    category: str,
-    ctx: Context = None,
-) -> dict:
-    """Query available system categories.
-
-    Args:
-        category: What to look up. Valid values: 'project_types'.
-    """
-    return await _call_tool(ctx, "discovery", {"category": category})
 
 
 @mcp.tool(
@@ -549,12 +546,12 @@ async def generate_download_token(
         "Returns pre-assembled files for Claude Code/Gemini or structured data for Codex CLI."
     ),
 )
-async def get_agent_templates_for_export(
+async def list_agent_templates(
     platform: str,
     ctx: Context = None,
 ) -> dict:
     """Export agent templates for target CLI platform."""
-    result = await _call_tool(ctx, "get_agent_templates_for_export", {"platform": platform})
+    result = await _call_tool(ctx, "list_agent_templates", {"platform": platform})
 
     # Handover 0855b: Emit setup:agents_downloaded when CLI fetches templates via MCP
     try:
@@ -764,7 +761,7 @@ _PLACEHOLDER_JOB_IDS = {"unknown", "none", "null", "", "undefined", "placeholder
 @mcp.tool(
     description=(
         "Fetch agent-specific mission and context. Called by: ANY AGENT immediately after "
-        "receiving thin prompt from spawn_agent_job. Agent's first action. Returns targeted "
+        "receiving thin prompt from spawn_job. Agent's first action. Returns targeted "
         "mission for this specific agent (not entire project vision). Part of thin-client "
         "architecture - mission stored in database, not embedded in prompt. Idempotent."
     ),
@@ -780,7 +777,7 @@ async def get_agent_mission(
             "message": (
                 "This agent was launched without orchestration context. "
                 "To use GiljoAI orchestration, the orchestrator must call "
-                "spawn_agent_job() first, then pass the returned thin prompt "
+                "spawn_job() first, then pass the returned thin prompt "
                 "(which contains the real job_id) to this agent. "
                 "Without a valid job_id, you can still operate using your "
                 "role instructions — just skip the GiljoAI protocol steps."
@@ -798,7 +795,7 @@ async def get_agent_mission(
         "mission. Creates database record linking agent to project."
     ),
 )
-async def spawn_agent_job(
+async def spawn_job(
     agent_display_name: Annotated[
         str, Field(description="Agent role label for UI display, e.g. 'implementer', 'tester', 'analyzer'.")
     ],
@@ -838,7 +835,7 @@ async def spawn_agent_job(
         kwargs["phase"] = phase
     if predecessor_job_id:
         kwargs["predecessor_job_id"] = predecessor_job_id
-    return await _call_tool(ctx, "spawn_agent_job", kwargs)
+    return await _call_tool(ctx, "spawn_job", kwargs)
 
 
 @mcp.tool(
@@ -883,7 +880,9 @@ async def get_workflow_status(
 @mcp.tool(
     description=(
         "Unified context fetcher. Retrieves product/project context by category with "
-        "depth control. Categories: product_core (~100 tokens), vision_documents (0-24K), "
+        "depth control. Pass one or more categories in a single call: "
+        "categories=['product_core', 'tech_stack', 'architecture']. "
+        "Categories: product_core (~100 tokens), vision_documents (0-24K), "
         "tech_stack (200-400), architecture (300-1.5K), testing (0-400), memory_360 "
         "(500-5K), git_history (500-5K), agent_templates (400-2.4K), project (~300), "
         "self_identity (agent template content). Single tool replaces 9 individual tools."
@@ -898,7 +897,7 @@ async def fetch_context(
     categories: Annotated[
         list[str] | None,
         Field(
-            description="List of categories to fetch: 'product_core', 'vision_documents', 'tech_stack', 'architecture', 'testing', 'memory_360', 'git_history', 'agent_templates', 'project', 'self_identity'. Must be a list, e.g. ['tech_stack', 'architecture']. Pass null/omit for all."
+            description="List of categories to fetch: 'product_core', 'vision_documents', 'tech_stack', 'architecture', 'testing', 'memory_360', 'git_history', 'agent_templates', 'project', 'self_identity'. Must be a list, e.g. ['tech_stack', 'architecture']. Multiple categories supported in one call. Required (do not pass null)."
         ),
     ] = None,
     depth_config: Annotated[
@@ -1049,12 +1048,12 @@ async def submit_tuning_review(
 
 
 @mcp.tool(
-    name="gil_get_vision_doc",
+    name="get_vision_doc",
     description=(
         "Retrieve a product's vision document with extraction instructions. "
         "Call WITHOUT chunk to get metadata (total_chunks, extraction_instructions). "
         "Then call WITH chunk=1, chunk=2, etc. to retrieve each chunk's content "
-        "one at a time. Read ALL chunks before calling gil_write_product."
+        "one at a time. Read ALL chunks before calling update_product_fields."
     ),
 )
 async def get_vision_doc(
@@ -1070,7 +1069,7 @@ async def get_vision_doc(
 
 
 @mcp.tool(
-    name="gil_write_product",
+    name="update_product_fields",
     description=(
         "Write structured product fields extracted from vision document analysis. "
         "Performs merge-write: only updates fields that are provided. Creates child "

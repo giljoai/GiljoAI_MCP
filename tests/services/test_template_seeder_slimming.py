@@ -21,7 +21,7 @@ TDD Approach:
 """
 
 # Import functions under test
-from src.giljo_mcp.template_seeder import (
+from giljo_mcp.template_seeder import (
     _get_agent_messaging_protocol_section,
     _get_check_in_protocol_section,
     _get_default_templates_v103,

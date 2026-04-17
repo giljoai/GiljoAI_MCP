@@ -4,7 +4,7 @@
 # [CE] Community Edition — source-available, single-user use only.
 
 """
-MCP Tools: gil_get_vision_doc and gil_write_product (Handover 0842c)
+MCP Tools: get_vision_doc and update_product_fields (Handover 0842c)
 
 Provides vision document retrieval with extraction prompt and structured
 product field writing from AI analysis results.
@@ -21,13 +21,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models.context import MCPContextIndex
-from src.giljo_mcp.models.products import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
+from giljo_mcp.models.context import MCPContextIndex
+from giljo_mcp.models.products import (
     Product,
 )
-from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ RULES:
 - For summaries: preserve technical specs, architecture decisions, and constraints
 - For summaries: remove marketing prose, user personas, and storytelling
 
-After reading ALL chunks, call the gil_write_product tool with all fields you were
+After reading ALL chunks, call the update_product_fields tool with all fields you were
 able to extract. Include summary_33 (concise ~33% executive summary focusing on what
 a developer needs to build this) and summary_66 (thorough ~66% technical summary
 preserving decisions, architecture, and feature descriptions).
@@ -101,7 +101,7 @@ async def _session_scope(
             yield session
 
 
-async def gil_get_vision_doc(
+async def get_vision_doc(
     product_id: str,
     tenant_key: str,
     chunk: int | None = None,
@@ -204,7 +204,7 @@ async def gil_get_vision_doc(
             "total_chunks": total_chunks,
             "total_tokens": total_tokens,
             "extraction_instructions": extraction_instructions,
-            "write_tool": "gil_write_product",
+            "write_tool": "update_product_fields",
             "product_id": product_id,
             "product_name": product.name,
         }
@@ -238,7 +238,7 @@ async def gil_get_vision_doc(
         return base
 
 
-async def gil_write_product(
+async def update_product_fields(
     product_id: str,
     tenant_key: str,
     db_manager: DatabaseManager | None = None,
@@ -372,7 +372,7 @@ async def gil_write_product(
 
         # -- Route writes through ProductService (the validated single write path) --
         if kwargs:
-            from src.giljo_mcp.services.product_service import ProductService
+            from giljo_mcp.services.product_service import ProductService
 
             product_service = ProductService(
                 db_manager=db_manager,

@@ -23,22 +23,21 @@ from typing import Any, Optional
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     OrchestrationError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models import (
+from giljo_mcp.models import (
     AgentExecution,
     AgentTemplate,
 )
-from src.giljo_mcp.services.protocol_builder import (
+from giljo_mcp.services.protocol_builder import (
     _build_orchestrator_protocol,
     _get_user_config,
 )
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -96,7 +95,7 @@ class MissionOrchestrationService:
             # Platform-specific spawning syntax
             if execution_mode == "codex_cli":
                 task_tool_mapping = (
-                    "spawn_agent(agent='gil-{agent_name}') where agent_name comes from spawn_agent_job. "
+                    "spawn_agent(agent='gil-{agent_name}') where agent_name comes from spawn_job. "
                     "CRITICAL: prepend 'gil-' to every agent_name when using Codex CLI."
                 )
                 template_locations = [
@@ -110,7 +109,7 @@ class MissionOrchestrationService:
                     "{project}/.gemini/agents/",
                 ]
             else:
-                task_tool_mapping = "Task(subagent_type=X) where X = agent_name from spawn_agent_job."
+                task_tool_mapping = "Task(subagent_type=X) where X = agent_name from spawn_job."
                 template_locations = [
                     "{project}/.claude/agents/",
                     "~/.claude/agents/",
@@ -147,7 +146,7 @@ class MissionOrchestrationService:
             # Handover 0411a: Phase assignment instructions for multi-terminal mode
             fields["phase_assignment_instructions"] = (
                 "## Execution Phase Assignment (Multi-Terminal Mode)\n\n"
-                "When creating agent jobs with spawn_agent_job, assign a `phase` number to each agent:\n"
+                "When creating agent jobs with spawn_job, assign a `phase` number to each agent:\n"
                 "- Phase 1: Agents that should run first (no dependencies). Usually: analyzer, researcher.\n"
                 "- Phase 2: Agents that depend on Phase 1 completion. Usually: implementer, designer.\n"
                 "- Phase 3: Agents that depend on Phase 2 completion. Usually: tester, reviewer.\n"
@@ -198,7 +197,7 @@ class MissionOrchestrationService:
         """
         from sqlalchemy.orm import joinedload, selectinload
 
-        from src.giljo_mcp.models import Product, Project
+        from giljo_mcp.models import Product, Project
 
         if not job_id or not job_id.strip():
             raise ValidationError(
@@ -308,6 +307,16 @@ class MissionOrchestrationService:
             tenant_key=tenant_key,
         )
 
+        # BE-5008: Read integration toggles from DB Settings
+        integrations = {}
+        try:
+            from giljo_mcp.services.settings_service import SettingsService
+
+            settings_svc = SettingsService(session, tenant_key)
+            integrations = await settings_svc.get_settings("integrations")
+        except Exception:  # noqa: BLE001
+            logger.warning("[INTEGRATIONS] Failed to read settings from DB")
+
         return {
             "execution": execution,
             "agent_job": agent_job,
@@ -318,6 +327,7 @@ class MissionOrchestrationService:
             "depth_config": depth_config,
             "templates": templates,
             "category_metadata": category_metadata,
+            "integrations": integrations,
         }
 
     @staticmethod
@@ -333,7 +343,7 @@ class MissionOrchestrationService:
         Returns:
             Dict mapping category name -> {modified: str, entries?: int}
         """
-        from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+        from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 
         metadata: dict[str, dict] = {}
         if not product:
@@ -375,7 +385,7 @@ class MissionOrchestrationService:
     @staticmethod
     def _check_staging_redirect(project: Any, job_id: str) -> dict[str, Any] | None:
         """Return a staging redirect response if applicable, else None."""
-        if project.staging_status in ("staged", "staging_complete"):
+        if project.staging_status == "staging_complete":
             identity = {
                 "job_id": job_id,
                 "project_id": str(project.id),
@@ -424,15 +434,10 @@ class MissionOrchestrationService:
         if product is not None:
             project_path = getattr(product, "project_path", None)
 
-        # Handover 0408: Read integration toggles from config
-        include_serena = False
-        git_integration_enabled = False
-        try:
-            cfg = get_config()
-            include_serena = cfg.get_nested("features.serena_mcp.use_in_prompts", default=False)
-            git_integration_enabled = cfg.get_nested("features.git_integration.enabled", default=False)
-        except (OSError, KeyError, ValueError, TypeError) as e:
-            logger.warning(f"[INTEGRATIONS] Failed to read config: {e}")
+        # Handover 0408 / BE-5008: Read integration toggles from ctx (loaded in _build_orchestrator_context)
+        integrations = ctx.get("integrations", {})
+        include_serena = integrations.get("serena_mcp", {}).get("use_in_prompts", False)
+        git_integration_enabled = integrations.get("git_integration", {}).get("enabled", False)
 
         response: dict[str, Any] = {
             "identity": {
@@ -456,11 +461,11 @@ class MissionOrchestrationService:
             "mcp_tools_available": [
                 "health_check",
                 "fetch_context",
-                "spawn_agent_job",
+                "spawn_job",
                 "get_agent_mission",
                 "send_message",
                 "receive_messages",
-                "list_messages",
+                "inspect_messages",
                 "report_progress",
                 "set_agent_status",
                 "get_workflow_status",
@@ -524,7 +529,7 @@ class MissionOrchestrationService:
         response["orchestrator_protocol"] = orchestrator_protocol
 
         # Handover 0431: Inject orchestrator identity/behavioral guidance
-        from src.giljo_mcp.template_seeder import get_orchestrator_identity_content
+        from giljo_mcp.template_seeder import get_orchestrator_identity_content
 
         response["orchestrator_identity"] = get_orchestrator_identity_content()
 

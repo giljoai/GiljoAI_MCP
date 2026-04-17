@@ -21,7 +21,7 @@ from api.endpoints.agent_jobs.models import (
     JobErrorRequest,
     SpawnAgentRequest,
 )
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.schemas.service_responses import (
     CompleteJobResult,
     ErrorReportResult,
     SpawnResult,
@@ -29,7 +29,7 @@ from src.giljo_mcp.schemas.service_responses import (
 
 
 class TestSpawnAgentJob:
-    """Tests for spawn_agent_job endpoint."""
+    """Tests for spawn_job endpoint."""
 
     @pytest.mark.asyncio
     async def test_spawn_agent_success(self):
@@ -41,7 +41,7 @@ class TestSpawnAgentJob:
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.spawn_agent_job.return_value = SpawnResult(
+        mock_service.spawn_job.return_value = SpawnResult(
             job_id="job-123",
             agent_id="agent-456",
             agent_prompt="Test prompt",
@@ -54,14 +54,14 @@ class TestSpawnAgentJob:
         request = SpawnAgentRequest(agent_display_name="implementer", mission="Test mission", project_id="proj-123")
 
         # Call endpoint
-        response = await lifecycle.spawn_agent_job(
+        response = await lifecycle.spawn_job(
             request=request, current_user=mock_user, orchestration_service=mock_service, ws_dep=mock_ws_dep
         )
 
         # Assertions
         assert response.success is True
         assert response.job_id == "job-123"
-        mock_service.spawn_agent_job.assert_called_once()
+        mock_service.spawn_job.assert_called_once()
         mock_ws_dep.broadcast_to_tenant.assert_called_once()
 
     @pytest.mark.asyncio
@@ -76,7 +76,7 @@ class TestSpawnAgentJob:
 
         # Should raise 403
         with pytest.raises(HTTPException) as exc_info:
-            await lifecycle.spawn_agent_job(
+            await lifecycle.spawn_job(
                 request=request, current_user=mock_user, orchestration_service=AsyncMock(), ws_dep=AsyncMock()
             )
 
@@ -85,7 +85,7 @@ class TestSpawnAgentJob:
     @pytest.mark.asyncio
     async def test_spawn_agent_service_error(self):
         """Test spawn agent with service error (exception-based, Handover 0731d)."""
-        from src.giljo_mcp.exceptions import OrchestrationError
+        from giljo_mcp.exceptions import OrchestrationError
 
         mock_user = MagicMock()
         mock_user.username = "test_user"
@@ -93,13 +93,13 @@ class TestSpawnAgentJob:
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.spawn_agent_job.side_effect = OrchestrationError("Failed to spawn")
+        mock_service.spawn_job.side_effect = OrchestrationError("Failed to spawn")
 
         request = SpawnAgentRequest(agent_display_name="implementer", mission="Test mission", project_id="proj-123")
 
         # Service raises OrchestrationError, propagates to global exception handler
         with pytest.raises(OrchestrationError):
-            await lifecycle.spawn_agent_job(
+            await lifecycle.spawn_job(
                 request=request, current_user=mock_user, orchestration_service=mock_service, ws_dep=AsyncMock()
             )
 

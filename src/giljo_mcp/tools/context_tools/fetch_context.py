@@ -10,39 +10,34 @@ Handover 0350a: Single entry point for all context fetching.
 Dispatches to internal get_* tools based on categories parameter.
 
 Handover 0351: Removed depth params for tech_stack, architecture, testing.
-Handover 0351: ENFORCED single-category calls to prevent token budget overflow.
 Handover 0823b: Reads user depth_config from DB at runtime when not provided.
+IMP-2: Batch category support -- multiple categories per call allowed.
 
 Token Budget Savings:
 - Before: 9 tool schemas x ~100 tokens = ~900 tokens consumed at agent startup
 - After: 1 tool schema x ~180 tokens = ~180 tokens consumed at agent startup
 - Savings: ~720 tokens available for actual work
-
-Security (SaaS):
-- Single category per call enforced in code (not prompt instructions)
-- Prevents token budget overflow from aggregated multi-category calls
-- LLM cannot bypass - code-level enforcement
 """
 
 from typing import Any
 
 import structlog
 
-from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _RAW_DEPTH_CONFIG
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ValidationError
-from src.giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
-from src.giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
-from src.giljo_mcp.tools.context_tools.get_architecture import get_architecture
-from src.giljo_mcp.tools.context_tools.get_git_history import get_git_history
+from giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _RAW_DEPTH_CONFIG
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
+from giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
+from giljo_mcp.tools.context_tools.get_architecture import get_architecture
+from giljo_mcp.tools.context_tools.get_git_history import get_git_history
 
 # Internal tools (NOT exposed via MCP)
-from src.giljo_mcp.tools.context_tools.get_product_context import get_product_context
-from src.giljo_mcp.tools.context_tools.get_project import get_project
-from src.giljo_mcp.tools.context_tools.get_self_identity import get_self_identity
-from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
-from src.giljo_mcp.tools.context_tools.get_testing import get_testing
-from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
+from giljo_mcp.tools.context_tools.get_product_context import get_product_context
+from giljo_mcp.tools.context_tools.get_project import get_project
+from giljo_mcp.tools.context_tools.get_self_identity import get_self_identity
+from giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
+from giljo_mcp.tools.context_tools.get_testing import get_testing
+from giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
 
 
 logger = structlog.get_logger(__name__)
@@ -111,7 +106,7 @@ async def _is_category_enabled(
 
     from sqlalchemy import and_, select
 
-    from src.giljo_mcp.models.auth import User, UserFieldPriority
+    from giljo_mcp.models.auth import User, UserFieldPriority
 
     try:
         async with db_manager.get_session_async() as session:
@@ -160,7 +155,7 @@ async def _load_user_depth_config(
     """
     from sqlalchemy import and_, select
 
-    from src.giljo_mcp.models.auth import User
+    from giljo_mcp.models.auth import User
 
     try:
         async with db_manager.get_session_async() as session:
@@ -315,56 +310,36 @@ async def fetch_context(
         agent_name=agent_name,
     )
 
-    # Handover 0351: ENFORCE single-category calls (SaaS security)
-    # Code-level enforcement - LLM cannot bypass via prompt injection
+    # IMP-2: Categories parameter is required -- agents must be explicit
     if categories is None:
         logger.warning("fetch_context_missing_category", tenant_key=tenant_key)
         return {
-            "error": "SINGLE_CATEGORY_REQUIRED",
-            "message": "fetch_context requires exactly ONE category per call. Call multiple times for multiple categories.",
+            "error": "CATEGORIES_REQUIRED",
+            "message": "categories parameter is required. Pass one or more category names.",
             "valid_categories": ALL_CATEGORIES,
-            "example": "fetch_context(categories=['tech_stack'], ...)",
+            "example": "fetch_context(categories=['product_core', 'tech_stack'], ...)",
             "metadata": {},
         }
 
-    # Reject "all" - forces sequential calls
+    # Reject "all" -- forces agents to be explicit about what they need
     if "all" in categories:
         logger.warning("fetch_context_all_rejected", tenant_key=tenant_key)
         return {
             "error": "ALL_NOT_ALLOWED",
-            "message": "categories=['all'] is not allowed. Call fetch_context once per category to stay within token budget.",
+            "message": (
+                "categories=['all'] is not allowed. List the specific categories you need, "
+                "e.g. categories=['product_core', 'tech_stack', 'architecture']."
+            ),
             "valid_categories": ALL_CATEGORIES,
-            "example": "fetch_context(categories=['vision_documents'], ...)",
+            "example": "fetch_context(categories=['product_core', 'tech_stack'], ...)",
             "metadata": {},
         }
 
-    # Reject multi-category calls
-    if len(categories) > 1:
-        logger.warning("fetch_context_multi_category_rejected", tenant_key=tenant_key, categories_requested=categories)
-        return {
-            "error": "SINGLE_CATEGORY_REQUIRED",
-            "message": f"Only ONE category per call allowed. You requested {len(categories)}: {categories}",
-            "valid_categories": ALL_CATEGORIES,
-            "example": "Call fetch_context separately for each category",
-            "metadata": {},
-        }
-
-    # Validate the single category
-    category = categories[0]
-    if category not in CATEGORY_TOOLS:
-        logger.warning("invalid_category", invalid_category=category, valid_categories=ALL_CATEGORIES)
-        raise ValidationError(f"Invalid category: {category}. Valid categories: {ALL_CATEGORIES}")
-
-    # Enforce user field priority toggles — block disabled categories
-    if db_manager:
-        enabled = await _is_category_enabled(category, tenant_key, db_manager)
-        if not enabled:
-            logger.info("fetch_context_category_disabled", category=category, tenant_key=tenant_key)
-            return {
-                "category": category,
-                "data": [],
-                "metadata": {"toggled_off": True, "message": f"Category '{category}' is disabled in user settings."},
-            }
+    # Validate all requested categories upfront
+    invalid = [c for c in categories if c not in CATEGORY_TOOLS]
+    if invalid:
+        logger.warning("invalid_categories", invalid_categories=invalid, valid_categories=ALL_CATEGORIES)
+        raise ValidationError(f"Invalid categories: {invalid}. Valid categories: {ALL_CATEGORIES}")
 
     # Resolve effective depth settings (Handover 0823b)
     effective_depths = DEFAULT_DEPTHS.copy()
@@ -378,46 +353,79 @@ async def fetch_context(
         if user_depths:
             effective_depths.update(user_depths)
 
-    # Fetch the single category (enforced above)
-    try:
-        result = await _fetch_category(
-            category=category,
-            product_id=product_id,
-            tenant_key=tenant_key,
-            project_id=project_id,
-            depth=effective_depths.get(category),
-            agent_name=agent_name,
-            db_manager=db_manager,
-        )
-        data = result.get("data", {})
-        directive = result.get("directive")
-        error = None
-    except Exception as e:  # Broad catch: tool boundary, logs and re-raises
-        logger.error("category_fetch_error", category=category, error=str(e), exc_info=True)
-        data = {}
-        directive = None
-        error = {"category": category, "error": str(e)}
+    # IMP-2: Batch fetch -- iterate over all requested categories
+    all_data: dict[str, Any] = {}
+    all_directives: dict[str, Any] = {}
+    all_errors: list[dict[str, str]] = []
+    categories_returned: list[str] = []
+
+    for category in categories:
+        # Enforce user field priority toggles -- skip disabled categories silently
+        if db_manager:
+            enabled = await _is_category_enabled(category, tenant_key, db_manager)
+            if not enabled:
+                logger.info("fetch_context_category_disabled", category=category, tenant_key=tenant_key)
+                continue
+
+        try:
+            result = await _fetch_category(
+                category=category,
+                product_id=product_id,
+                tenant_key=tenant_key,
+                project_id=project_id,
+                depth=effective_depths.get(category),
+                agent_name=agent_name,
+                db_manager=db_manager,
+            )
+            cat_data = result.get("data", {})
+            directive = result.get("directive")
+
+            if cat_data:
+                all_data[category] = cat_data
+                categories_returned.append(category)
+            if directive:
+                all_directives[category] = directive
+        except Exception as e:  # Broad catch: tool boundary, logs per-category errors
+            logger.error("category_fetch_error", category=category, error=str(e), exc_info=True)
+            all_errors.append({"category": category, "error": str(e)})
 
     # Build response
-    response = {
+    depth_applied = {c: effective_depths.get(c) for c in categories}
+
+    if output_format == "structured":
+        response_data = all_data
+    else:
+        # Flat format: merge all category data into a single dict
+        response_data = {}
+        for cat_data in all_data.values():
+            if isinstance(cat_data, dict):
+                response_data.update(cat_data)
+            else:
+                response_data[str(type(cat_data))] = cat_data
+
+    response: dict[str, Any] = {
         "source": "fetch_context",
-        "categories_requested": [category],
-        "categories_returned": [category] if data else [],
-        "data": {category: data} if output_format == "structured" else data,
+        "categories_requested": list(categories),
+        "categories_returned": categories_returned,
+        "data": response_data,
         "metadata": {
             "format": output_format,
-            "depth_config_applied": {category: effective_depths.get(category)},
+            "depth_config_applied": depth_applied,
         },
     }
 
-    # Propagate directive from inner tool (e.g., git_history local repo fallback)
-    if directive:
-        response["directive"] = {category: directive}
+    if all_directives:
+        response["directive"] = all_directives
 
-    if error:
-        response["errors"] = [error]
+    if all_errors:
+        response["errors"] = all_errors
 
-    logger.info("fetch_context_completed", category=category, had_error=error is not None)
+    logger.info(
+        "fetch_context_completed",
+        categories_requested=list(categories),
+        categories_returned=categories_returned,
+        error_count=len(all_errors),
+    )
 
     return response
 

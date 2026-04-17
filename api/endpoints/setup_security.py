@@ -19,8 +19,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_db_session
-from src.giljo_mcp.models import User
+from giljo_mcp.auth.dependencies import get_db_session
+from giljo_mcp.models import User
 
 
 logger = logging.getLogger(__name__)

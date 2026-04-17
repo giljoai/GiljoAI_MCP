@@ -18,9 +18,9 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models import Project
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
-from src.giljo_mcp.schemas.service_responses import NuclearDeleteResult
+from giljo_mcp.models import Project
+from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+from giljo_mcp.schemas.service_responses import NuclearDeleteResult
 
 
 @pytest.mark.asyncio

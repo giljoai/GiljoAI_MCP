@@ -12,8 +12,8 @@ Builds staging-phase prompts and mission regeneration logic.
 import logging
 from typing import Any
 
-from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import Product, Project
+from giljo_mcp.config_manager import get_config
+from giljo_mcp.models import Product, Project
 
 
 logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ WORKFLOW:
    → Note: tenant_key auto-injected by server from your API key session
 3. Create condensed mission plan from fetched context
 4. Persist mission: mcp__giljo_mcp__update_project_mission('{project_id}', mission)
-5. Spawn specialist agents: mcp__giljo_mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}')
+5. Spawn specialist agents: mcp__giljo_mcp__spawn_job(agent_display_name, agent_name, mission, '{project_id}')
    → SAVE each response's agent_id UUID - needed for UUID-based messaging
 6. Monitor: mcp__giljo_mcp__get_workflow_status('{project_id}')
 7. Signal complete: mcp__giljo_mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
@@ -103,7 +103,7 @@ WORKFLOW:
 Claude Code: Use TodoWrite tool to track workflow progress.
 
 MESSAGING RULE: Always use agent_id UUIDs in send_message(to_agents=[...]).
-Each spawn_agent_job() returns an agent_id UUID. Never use display names in to_agents.
+Each spawn_job() returns an agent_id UUID. Never use display names in to_agents.
 
 CRITICAL DISTINCTIONS:
 - Project.description = User-written requirements (already provided above)
@@ -114,7 +114,7 @@ MCP CORE TOOLS (Always Available - tenant_key auto-injected by server):
 ✓ mcp__giljo_mcp__health_check() - Verify MCP connection
 ✓ mcp__giljo_mcp__get_orchestrator_instructions('{orchestrator_id}') - Fetch complete prioritized context
 ✓ mcp__giljo_mcp__update_project_mission('{project_id}', mission) - Save mission plan
-✓ mcp__giljo_mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}') - Create agents (returns agent_id UUID)
+✓ mcp__giljo_mcp__spawn_job(agent_display_name, agent_name, mission, '{project_id}') - Create agents (returns agent_id UUID)
 ✓ mcp__giljo_mcp__get_workflow_status('{project_id}') - Check spawned agents
 ✓ mcp__giljo_mcp__send_message(to_agents, content, project_id, message_type, priority) - Send message (use agent_id UUIDs in to_agents)
 

@@ -10,6 +10,7 @@ vi.mock('@/services/api', () => ({
   default: {
     projects: {
       get: vi.fn(),
+      review: vi.fn(),
     },
     agentJobs: {
       list: vi.fn(),
@@ -61,9 +62,13 @@ describe('ProjectReviewModal.vue', () => {
 
     vi.clearAllMocks()
 
-    api.projects.get.mockResolvedValue({ data: mockProject })
-    api.agentJobs.list.mockResolvedValue({ data: { jobs: mockAgents, total: 2, limit: 100, offset: 0 } })
-    api.products.getMemoryEntries.mockResolvedValue({ data: { entries: mockMemoryEntries, success: true } })
+    api.projects.review.mockResolvedValue({
+      data: {
+        project: { ...mockProject, agents: mockAgents },
+        agent_jobs: mockAgents,
+        memory_entries: mockMemoryEntries,
+      },
+    })
     api.agentJobs.messages.mockResolvedValue({ data: { messages: mockMessages, job_id: 'job-1', agent_id: 'agent-1' } })
   })
 
@@ -116,12 +121,10 @@ describe('ProjectReviewModal.vue', () => {
   })
 
   describe('Data Loading', () => {
-    it('fetches project, jobs, and memory data in parallel on open', async () => {
+    it('fetches project review data on open', async () => {
       wrapper = await mountAndWaitForData()
 
-      expect(api.projects.get).toHaveBeenCalledWith('proj-1')
-      expect(api.agentJobs.list).toHaveBeenCalledWith('proj-1')
-      expect(api.products.getMemoryEntries).toHaveBeenCalledWith('prod-1', { project_id: 'proj-1', limit: 20 })
+      expect(api.projects.review).toHaveBeenCalledWith('proj-1')
     })
 
     it('skips memory fetch when no productId is provided', async () => {
@@ -131,7 +134,7 @@ describe('ProjectReviewModal.vue', () => {
     })
 
     it('shows error state on API failure', async () => {
-      api.projects.get.mockRejectedValue(new Error('Network error'))
+      api.projects.review.mockRejectedValue(new Error('Network error'))
 
       wrapper = await mountAndWaitForData()
 
@@ -158,8 +161,12 @@ describe('ProjectReviewModal.vue', () => {
     })
 
     it('handles mission as object with mission_statement', async () => {
-      api.projects.get.mockResolvedValue({
-        data: { ...mockProject, mission: { mission_statement: 'Statement from object' } },
+      api.projects.review.mockResolvedValue({
+        data: {
+          project: { ...mockProject, mission: { mission_statement: 'Statement from object' }, agents: [] },
+          agent_jobs: [],
+          memory_entries: [],
+        },
       })
 
       wrapper = await mountAndWaitForData()
@@ -179,7 +186,13 @@ describe('ProjectReviewModal.vue', () => {
     })
 
     it('handles empty agents list', async () => {
-      api.agentJobs.list.mockResolvedValue({ data: { jobs: [], total: 0, limit: 100, offset: 0 } })
+      api.projects.review.mockResolvedValue({
+        data: {
+          project: { ...mockProject, agents: [] },
+          agent_jobs: [],
+          memory_entries: [],
+        },
+      })
 
       wrapper = await mountAndWaitForData()
 

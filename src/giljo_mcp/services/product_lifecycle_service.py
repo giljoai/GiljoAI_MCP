@@ -23,15 +23,15 @@ from typing import Any
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     BaseGiljoError,
     DatabaseError,
     ResourceNotFoundError,
 )
-from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob
-from src.giljo_mcp.schemas.service_responses import DeleteResult, PurgeResult
+from giljo_mcp.models import Product, Project
+from giljo_mcp.models.agent_identity import AgentJob
+from giljo_mcp.schemas.service_responses import DeleteResult, PurgeResult
 
 
 logger = logging.getLogger(__name__)

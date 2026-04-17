@@ -29,11 +29,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Product
-from src.giljo_mcp.models.context import MCPContextIndex
-from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
-from src.giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET, EnhancedChunker
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Product
+from giljo_mcp.models.context import MCPContextIndex
+from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET, EnhancedChunker
 
 
 DEPTH_RATIO_MAP: dict[str, Decimal] = {

@@ -17,20 +17,20 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.exceptions import (
     BaseGiljoError,
     ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.schemas.service_responses import (
     OperationResult,
     ProjectData,
     ProjectDetail,
     ProjectMissionUpdateResult,
     SoftDeleteResult,
 )
-from src.giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.services.project_service import ProjectService
 
 
 class TestProjectServiceExceptions:
@@ -181,7 +181,7 @@ class TestProjectServiceTypedReturns:
         self, project_service: ProjectService, test_tenant_key: str, db_session
     ):
         """Test cancel_staging returns ProjectData typed model"""
-        from src.giljo_mcp.models.projects import Project as ProjectModel
+        from giljo_mcp.models.projects import Project as ProjectModel
 
         # Create a project in staging status for cancel_staging to work
         project = ProjectModel(
@@ -217,7 +217,7 @@ class TestProjectServiceTypedReturns:
         self, project_service: ProjectService, test_tenant_key: str, db_session
     ):
         """Test restore_project returns OperationResult typed model"""
-        from src.giljo_mcp.models.projects import Project
+        from giljo_mcp.models.projects import Project
 
         # Create a completed project to restore
         project = Project(
@@ -257,7 +257,7 @@ async def project_service(project_service_with_session):
 @pytest.fixture
 async def active_project(db_session, test_tenant_key):
     """Create an active project for testing"""
-    from src.giljo_mcp.models.projects import Project
+    from giljo_mcp.models.projects import Project
 
     project = Project(
         id=str(uuid4()),
@@ -277,7 +277,7 @@ async def active_project(db_session, test_tenant_key):
 @pytest.fixture
 async def inactive_project(db_session, test_tenant_key):
     """Create an inactive project for testing"""
-    from src.giljo_mcp.models.projects import Project
+    from giljo_mcp.models.projects import Project
 
     project = Project(
         id=str(uuid4()),
@@ -297,7 +297,7 @@ async def inactive_project(db_session, test_tenant_key):
 @pytest.fixture
 async def staged_project(db_session, test_tenant_key):
     """Create a staged project for testing"""
-    from src.giljo_mcp.models.projects import Project
+    from giljo_mcp.models.projects import Project
 
     project = Project(
         id=str(uuid4()),

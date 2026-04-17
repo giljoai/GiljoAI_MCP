@@ -35,26 +35,26 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy import delete as sql_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     BaseGiljoError,
     TemplateNotFoundError,
     ValidationError,
 )
 
 # Model imports: Use domain-specific imports (Post-0128a)
-from src.giljo_mcp.models.agent_identity import AgentJob
-from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
-from src.giljo_mcp.schemas.jsonb_validators import validate_behavioral_rules, validate_success_criteria
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models.agent_identity import AgentJob
+from giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
+from giljo_mcp.schemas.jsonb_validators import validate_behavioral_rules, validate_success_criteria
+from giljo_mcp.schemas.service_responses import (
     TemplateCreateResult,
     TemplateDetail,
     TemplateGetResult,
     TemplateListResult,
     TemplateUpdateResult,
 )
-from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -942,7 +942,7 @@ class TemplateService:
             session: Database session
             template: AgentTemplate ORM object to reset
         """
-        from src.giljo_mcp.template_seeder import _get_mcp_bootstrap_section
+        from giljo_mcp.template_seeder import _get_mcp_bootstrap_section
 
         template.system_instructions = _get_mcp_bootstrap_section()
 

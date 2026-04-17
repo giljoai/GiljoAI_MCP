@@ -21,7 +21,7 @@ Components:
 
 # Import from the auth/ subdirectory modules
 # Import AuthManager from the auth manager module
-from src.giljo_mcp.auth_manager import AuthManager
+from giljo_mcp.auth_manager import AuthManager
 
 from .dependencies import (
     get_current_active_user,

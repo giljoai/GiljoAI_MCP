@@ -33,16 +33,16 @@ from typing import Any, Optional
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     AuthorizationError,
     BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models import Project, Task
-from src.giljo_mcp.schemas.service_responses import ConversionResult
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.models import Project, Task
+from giljo_mcp.schemas.service_responses import ConversionResult
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -199,7 +199,7 @@ class TaskConversionService:
             )
 
         # Get user for permission check
-        from src.giljo_mcp.models.auth import User
+        from giljo_mcp.models.auth import User
 
         user_stmt = select(User).where(User.id == user_id)
         user_result = await session.execute(user_stmt)
@@ -216,7 +216,7 @@ class TaskConversionService:
             )
 
         # Get active product (required for project creation per Handover 0050)
-        from src.giljo_mcp.models.products import Product
+        from giljo_mcp.models.products import Product
 
         product_stmt = select(Product).where(and_(Product.tenant_key == tenant_key, Product.is_active))
         product_result = await session.execute(product_stmt)

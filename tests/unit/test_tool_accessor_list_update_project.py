@@ -17,10 +17,10 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+from giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
-_PRODUCT_SERVICE_PATH = "src.giljo_mcp.tools.tool_accessor.ProductService"
+_PRODUCT_SERVICE_PATH = "giljo_mcp.tools.tool_accessor.ProductService"
 
 
 # ---------------------------------------------------------------------------
@@ -30,13 +30,21 @@ _PRODUCT_SERVICE_PATH = "src.giljo_mcp.tools.tool_accessor.ProductService"
 
 def _make_accessor(tenant_key: str = "tenant-test") -> ToolAccessor:
     db_manager = Mock()
+    mock_session = AsyncMock()
+    db_manager.get_session_async = Mock(return_value=mock_session)
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+    # execute() returns a result with scalars().all() for project type queries
+    mock_result = Mock()
+    mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[])))
+    mock_session.execute = AsyncMock(return_value=mock_result)
     tenant_manager = Mock()
     tenant_manager.get_current_tenant = Mock(return_value=tenant_key)
     return ToolAccessor(
         db_manager=db_manager,
         tenant_manager=tenant_manager,
         websocket_manager=None,
-        test_session=None,
+        test_session=mock_session,
     )
 
 
@@ -140,6 +148,8 @@ class TestListProjectsBehavior:
         mock_list_item.taxonomy_alias = None
         mock_list_item.created_at = "2026-04-13T00:00:00"
 
+        built_project = {"project_id": "proj-001", "name": "Test Project", "status": "active"}
+
         with (
             patch.object(
                 accessor._project_service,
@@ -148,6 +158,8 @@ class TestListProjectsBehavior:
                 return_value=[mock_list_item],
             ),
             patch(_PRODUCT_SERVICE_PATH) as mock_product_svc,
+            patch.object(accessor, "_build_project_list", new_callable=AsyncMock, return_value=[built_project]),
+            patch.object(accessor, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]),
         ):
             mock_product_svc.return_value.get_active_product = AsyncMock(
                 return_value=mock_product,
@@ -175,6 +187,8 @@ class TestListProjectsBehavior:
                 return_value=[],
             ) as mock_list,
             patch(_PRODUCT_SERVICE_PATH) as mock_product_svc,
+            patch.object(accessor, "_build_project_list", new_callable=AsyncMock, return_value=[]),
+            patch.object(accessor, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]),
         ):
             mock_product_svc.return_value.get_active_product = AsyncMock(
                 return_value=mock_product,
@@ -204,6 +218,8 @@ class TestListProjectsBehavior:
                 return_value=[],
             ) as mock_list,
             patch(_PRODUCT_SERVICE_PATH) as mock_product_svc,
+            patch.object(accessor, "_build_project_list", new_callable=AsyncMock, return_value=[]),
+            patch.object(accessor, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]),
         ):
             mock_product_svc.return_value.get_active_product = AsyncMock(
                 return_value=mock_product,
@@ -247,6 +263,8 @@ class TestListProjectsBehavior:
         mock_list_item.taxonomy_alias = None
         mock_list_item.created_at = "2026-04-13T00:00:00"
 
+        long_project = {"project_id": "proj-001", "name": "Long Desc", "description": long_desc}
+
         with (
             patch.object(
                 accessor._project_service,
@@ -255,6 +273,8 @@ class TestListProjectsBehavior:
                 return_value=[mock_list_item],
             ),
             patch(_PRODUCT_SERVICE_PATH) as mock_product_svc,
+            patch.object(accessor, "_build_project_list", new_callable=AsyncMock, return_value=[long_project]),
+            patch.object(accessor, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]),
         ):
             mock_product_svc.return_value.get_active_product = AsyncMock(
                 return_value=mock_product,

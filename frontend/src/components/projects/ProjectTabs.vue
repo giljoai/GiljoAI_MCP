@@ -103,7 +103,7 @@
         class="stage-button"
         variant="outlined"
         :color="stageButtonColor"
-        :loading="loadingStageProject && !canRestage"
+        :loading="loadingStageProject"
         :disabled="stageButtonDisabled"
         :title="stageButtonTitle"
         data-testid="stage-project-btn"
@@ -163,6 +163,46 @@
         </template>
         Saving project memory...
       </v-chip>
+    </div>
+
+    <!-- State B3: Memory poll timed out or errored -->
+    <div
+      v-else-if="activeTab === 'jobs' && allJobsTerminal && (memoryPollTimedOut || memoryPollError)"
+      class="action-buttons-row"
+    >
+      <v-chip
+        color="warning"
+        variant="tonal"
+        size="large"
+        data-testid="memory-poll-error-chip"
+      >
+        <template #prepend>
+          <v-icon icon="mdi-alert" size="18" />
+        </template>
+        <span>Closeout may have failed &mdash; check agent terminal for errors</span>
+      </v-chip>
+      <v-btn
+        variant="tonal"
+        color="warning"
+        size="small"
+        prepend-icon="mdi-refresh"
+        class="ml-2"
+        data-testid="memory-poll-retry-btn"
+        :aria-label="'Retry memory poll'"
+        @click="retryMemoryPoll"
+      >
+        Retry
+      </v-btn>
+      <v-btn
+        variant="text"
+        size="small"
+        class="ml-1 text-muted-a11y"
+        data-testid="memory-poll-dismiss-btn"
+        :aria-label="'Dismiss error'"
+        @click="dismissMemoryPollError"
+      >
+        Dismiss
+      </v-btn>
     </div>
 
     <!-- State C: Continue-working guidance -->
@@ -359,7 +399,7 @@ const missionText = computed(
  * Execution mode is locked when orchestrator has generated a mission
  */
 const isExecutionModeLocked = computed(() => {
-  return Boolean(missionText.value) || isProjectStaging.value
+  return Boolean(missionText.value) || isProjectStaged.value || isProjectStaging.value
 })
 
 /**
@@ -418,12 +458,16 @@ const {
   showCloseoutModal,
   memoryWritten,
   showContinueGuidance,
+  memoryPollTimedOut,
+  memoryPollError,
   projectDoneStatus,
   showCloseoutButton,
   showMemoryPending,
   openCloseoutModal,
   handleCloseoutComplete,
   handleContinueWorking,
+  retryMemoryPoll,
+  dismissMemoryPollError,
   reset: resetCloseout,
   cleanup: cleanupCloseout,
 } = useProjectCloseout({
@@ -454,7 +498,15 @@ const hasActiveOrchestrator = computed(() => {
 })
 
 /**
- * Computed: Current project isStaging state from store
+ * Computed: Project is in 'staged' state (prompt generated, awaiting agent contact)
+ */
+const isProjectStaged = computed(() => {
+  const state = projectStateStore.getProjectState(projectId.value)
+  return Boolean(state?.isStaged)
+})
+
+/**
+ * Computed: Project is in 'staging' state (agent has made first contact, irreversible)
  */
 const isProjectStaging = computed(() => {
   const state = projectStateStore.getProjectState(projectId.value)
@@ -462,35 +514,12 @@ const isProjectStaging = computed(() => {
 })
 
 /**
- * Computed: Orchestrator job status from loaded jobs data
- */
-const orchestratorStatus = computed(() => {
-  const orchJob = sortedJobs.value.find(
-    (j) => j.agent_display_name === 'orchestrator' || j.agent_name === 'orchestrator',
-  )
-  return orchJob?.status || null
-})
-
-/**
- * Computed: Can restage (isStaging + orchestrator waiting)
- */
-const canRestage = computed(() => {
-  return isProjectStaging.value && orchestratorStatus.value === 'waiting'
-})
-
-/**
- * Computed: Staging is actively running (isStaging + orchestrator working)
- */
-const isStagingLive = computed(() => {
-  return isProjectStaging.value && orchestratorStatus.value === 'working'
-})
-
-/**
  * Computed: Stage button text lifecycle
+ * Stage Project → Unstage (reversible) → Staging... (irreversible)
  */
 const stageButtonText = computed(() => {
-  if (isStagingLive.value) return 'Staging...'
-  if (canRestage.value) return 'Re-Stage'
+  if (isProjectStaging.value) return 'Staging...'
+  if (isProjectStaged.value) return 'Unstage'
   return 'Stage Project'
 })
 
@@ -498,8 +527,8 @@ const stageButtonText = computed(() => {
  * Computed: Stage button disabled state
  */
 const stageButtonDisabled = computed(() => {
-  if (isStagingLive.value) return true
-  if (canRestage.value) return false
+  if (isProjectStaging.value) return true
+  if (isProjectStaged.value) return false
   return !executionModeSelected.value || hasActiveOrchestrator.value
 })
 
@@ -507,7 +536,7 @@ const stageButtonDisabled = computed(() => {
  * Computed: Stage button color
  */
 const stageButtonColor = computed(() => {
-  if (canRestage.value) return 'yellow-darken-2'
+  if (isProjectStaged.value) return undefined
   if (executionModeSelected.value && !hasActiveOrchestrator.value) return 'yellow-darken-2'
   return undefined
 })
@@ -516,8 +545,8 @@ const stageButtonColor = computed(() => {
  * Computed: Stage button title/tooltip
  */
 const stageButtonTitle = computed(() => {
-  if (isStagingLive.value) return 'Staging is in progress'
-  if (canRestage.value) return 'Reset staging and start fresh'
+  if (isProjectStaging.value) return 'Staging is in progress — agent is working'
+  if (isProjectStaged.value) return 'Revert to ready state (before agent makes contact)'
   if (!executionModeSelected.value) return 'Select an execution mode first'
   if (hasActiveOrchestrator.value) return 'An orchestrator is already active for this project'
   return 'Generate orchestrator prompt'
@@ -557,21 +586,20 @@ watch(
   () => props.project?.execution_mode,
   (newMode) => {
     executionMode.value = newMode || 'multi_terminal'
-    // Handover 0428: Sync UI toggle state
-    // Only sync if project has been staged (has mission) - fresh projects should have no selection
-    // Backend defaults execution_mode to 'multi_terminal', so we can't rely on newMode alone
-    if (newMode && missionText.value) {
+    // Sync UI toggle state when project has been staged or has mission
+    // Backend defaults execution_mode to 'multi_terminal', so only sync when state confirms staging
+    if (newMode && (missionText.value || isProjectStaged.value || isProjectStaging.value)) {
       executionPlatform.value = newMode
     }
   },
   { immediate: true },
 )
 
-// Sync radio selection once mission is loaded (for previously staged projects)
+// Sync radio selection once mission is loaded or staged state hydrated
 watch(
-  missionText,
-  (newMission) => {
-    if (newMission && executionPlatform.value === null) {
+  [missionText, isProjectStaged],
+  ([newMission, staged]) => {
+    if ((newMission || staged) && executionPlatform.value === null) {
       // Project was previously staged, restore execution mode selection
       const mode = props.project?.execution_mode
       if (mode) {
@@ -697,33 +725,27 @@ async function handleExecutionModeChange(newValue) {
  * Handle stage or restage based on current state
  */
 async function handleStageOrRestage() {
-  if (canRestage.value) {
-    await handleRestageProject()
+  if (isProjectStaged.value) {
+    await handleUnstageProject()
   } else {
     await handleStageProject()
   }
 }
 
 /**
- * Handle restage: reset staging and clear UI state
+ * Handle unstage: revert from staged back to ready state
  */
-async function handleRestageProject() {
+async function handleUnstageProject() {
   try {
-    await projectStateStore.restageProject(projectId.value)
-
-    // Clear execution mode selection so user must pick again
-    executionPlatform.value = null
-
-    // Clear mission text in state (staging is reset)
-    projectStateStore.setMission(projectId.value, '')
+    await projectStateStore.unstageProject(projectId.value)
 
     showToast({
-      message: 'Project restaged successfully. Select an execution mode and stage again.',
+      message: 'Project unstaged. You can change execution mode and stage again.',
       type: 'success',
     })
   } catch (error) {
-    console.error('Restage failed:', error)
-    const msg = error.response?.data?.detail || error.message || 'Failed to restage project'
+    console.error('Unstage failed:', error)
+    const msg = error.response?.data?.detail || error.message || 'Failed to unstage project'
     showError(msg)
   }
 }
@@ -733,13 +755,8 @@ async function handleRestageProject() {
  */
 async function handleStageProject() {
   loadingStageProject.value = true
-  if (projectId.value) {
-    projectStateStore.setIsStaging(projectId.value, true)
-  }
 
   try {
-    // Generate thin client staging prompt
-    // Pass execution_mode from project configuration (Handover 0333 Phase 2)
     const pid = projectId.value
     if (!pid) {
       throw new Error('Project missing ID')
@@ -763,6 +780,9 @@ async function handleStageProject() {
 
     const { prompt } = response.data
 
+    // Backend has set staging_status='staged' — hydrate frontend to match
+    projectStateStore.setIsStaged(pid, true)
+
     // Copy to clipboard immediately
     const copied = await copyPromptToClipboard(prompt)
 
@@ -780,20 +800,15 @@ async function handleStageProject() {
   } catch (error) {
     console.error('Stage project failed:', error)
 
-    // Check if error is about existing orchestrator
     const errorMsg = error.response?.data?.detail || error.message || 'Failed to stage project'
 
     if (errorMsg.toLowerCase().includes('orchestrator already exists')) {
       showToast({ message: 'An orchestrator is already active for this project. The existing orchestrator will be reused.', type: 'info' })
     } else {
-      // Show error for other failures
       showError(errorMsg)
     }
   } finally {
     loadingStageProject.value = false
-    if (projectId.value) {
-      projectStateStore.setIsStaging(projectId.value, false)
-    }
   }
 }
 

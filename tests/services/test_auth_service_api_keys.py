@@ -22,9 +22,9 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.exceptions import ResourceNotFoundError
-from src.giljo_mcp.models.auth import APIKey
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.models.auth import APIKey
+from giljo_mcp.schemas.service_responses import (
     ApiKeyCreateResult,
     ApiKeyInfo,
 )

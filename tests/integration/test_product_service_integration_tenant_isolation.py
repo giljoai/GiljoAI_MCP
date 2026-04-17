@@ -17,8 +17,8 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.services.product_service import ProductService
+from giljo_mcp.models.products import Product
+from giljo_mcp.services.product_service import ProductService
 
 
 @pytest.mark.asyncio
@@ -57,7 +57,7 @@ class TestMultiTenantIsolation:
 
     async def test_get_product_cross_tenant_forbidden(self, db_manager):
         """Test that tenant cannot access another tenant's product"""
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
+        from giljo_mcp.exceptions import ResourceNotFoundError
 
         tenant1_key = str(uuid4())
         tenant2_key = str(uuid4())
@@ -76,7 +76,7 @@ class TestMultiTenantIsolation:
 
     async def test_update_product_cross_tenant_forbidden(self, db_manager):
         """Test that tenant cannot update another tenant's product"""
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
+        from giljo_mcp.exceptions import ResourceNotFoundError
 
         tenant1_key = str(uuid4())
         tenant2_key = str(uuid4())
@@ -98,7 +98,7 @@ class TestMultiTenantIsolation:
 
     async def test_delete_product_cross_tenant_forbidden(self, db_manager):
         """Test that tenant cannot delete another tenant's product"""
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
+        from giljo_mcp.exceptions import ResourceNotFoundError
 
         tenant1_key = str(uuid4())
         tenant2_key = str(uuid4())

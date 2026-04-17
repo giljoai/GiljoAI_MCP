@@ -21,11 +21,11 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.schemas.service_responses import (
     TemplateCreateResult,
     TemplateListResult,
 )
-from src.giljo_mcp.services.template_service import TemplateService
+from giljo_mcp.services.template_service import TemplateService
 from tests.unit.conftest import make_mock_db_manager, make_mock_session
 
 
@@ -84,7 +84,7 @@ class TestTemplateServiceErrorHandling:
     @pytest.mark.asyncio
     async def test_create_template_database_exception(self):
         """Test database exception handling in create"""
-        from src.giljo_mcp.exceptions import BaseGiljoError
+        from giljo_mcp.exceptions import BaseGiljoError
 
         # Arrange
         session = make_mock_session()
@@ -105,7 +105,7 @@ class TestTemplateServiceErrorHandling:
     @pytest.mark.asyncio
     async def test_get_template_database_exception(self):
         """Test database exception handling in get"""
-        from src.giljo_mcp.exceptions import BaseGiljoError
+        from giljo_mcp.exceptions import BaseGiljoError
 
         # Arrange
         session = make_mock_session()
@@ -126,7 +126,7 @@ class TestTemplateServiceErrorHandling:
     @pytest.mark.asyncio
     async def test_update_template_database_exception(self):
         """Test database exception handling in update"""
-        from src.giljo_mcp.exceptions import BaseGiljoError
+        from giljo_mcp.exceptions import BaseGiljoError
 
         # Arrange
         session = make_mock_session()

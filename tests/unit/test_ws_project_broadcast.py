@@ -18,7 +18,7 @@ import pytest
 
 def test_build_ws_project_data_includes_description():
     """_build_ws_project_data should include description field."""
-    from src.giljo_mcp.services.project_service import _build_ws_project_data
+    from giljo_mcp.services.project_service import _build_ws_project_data
 
     project = MagicMock()
     project.name = "Test Project"
@@ -64,9 +64,9 @@ async def test_broadcast_project_update_includes_description():
 @pytest.mark.asyncio
 async def test_update_project_uses_constructor_websocket(db_session, test_tenant_key):
     """update_project should use self._websocket_manager, not the method parameter."""
-    from src.giljo_mcp.database import DatabaseManager
-    from src.giljo_mcp.services.project_service import ProjectService
-    from src.giljo_mcp.tenant import TenantManager
+    from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.services.project_service import ProjectService
+    from giljo_mcp.tenant import TenantManager
 
     ws_mock = AsyncMock()
     ws_mock.broadcast_project_update = AsyncMock()
@@ -85,7 +85,7 @@ async def test_update_project_uses_constructor_websocket(db_session, test_tenant
     # Create a test project
     from uuid import uuid4
 
-    from src.giljo_mcp.models.projects import Project
+    from giljo_mcp.models.projects import Project
 
     project = Project(
         id=str(uuid4()),
