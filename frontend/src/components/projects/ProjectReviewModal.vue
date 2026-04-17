@@ -145,11 +145,11 @@
                       </div>
                       <div v-if="agentJobDetail(agent).result?.summary" class="mt-2">
                         <span class="detail-label">Result Summary</span>
-                        <p class="text-body-2 mt-1">{{ truncate(agentJobDetail(agent).result.summary, 300) }}</p>
+                        <p class="text-body-2 mt-1">{{ agentJobDetail(agent).result.summary }}</p>
                       </div>
                       <div v-if="agentJobDetail(agent).mission" class="mt-2">
                         <span class="detail-label">Assigned Mission</span>
-                        <p class="text-body-2 mt-1 mission-text">{{ truncate(agentJobDetail(agent).mission, 500) }}</p>
+                        <p class="text-body-2 mt-1 mission-text">{{ agentJobDetail(agent).mission }}</p>
                       </div>
                     </div>
                     <p v-else class="text-caption text-muted-a11y">No job details available.</p>
@@ -196,7 +196,7 @@
                         </div>
                         <span class="text-caption text-muted-a11y">{{ formatDateTime(msg.created_at) }}</span>
                       </div>
-                      <p class="text-body-2 mt-1">{{ truncate(msg.content, 300) }}</p>
+                      <p class="text-body-2 mt-1">{{ msg.content }}</p>
                     </div>
                   </div>
                   <p v-else class="text-caption text-muted-a11y">No messages recorded.</p>
@@ -547,8 +547,6 @@ function truncate(text, maxLen) {
   color: $color-text-muted;
   font-size: 0.8rem;
   line-height: 1.4;
-  max-height: 200px;
-  overflow-y: auto;
 }
 .commit-row {
   padding: 4px 8px;

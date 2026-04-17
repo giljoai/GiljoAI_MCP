@@ -205,7 +205,7 @@ Do NOT: Attempt to continue spawning agents
 Symptom: spawn_job() returns error "agent not found"
 Action: Check agent_name against agent_templates from get_orchestrator_instructions()
 Common cause: Typo, case mismatch, using display_name instead of name
-Fix: Use exact agent_name from discovery response
+Fix: Use exact agent_name from get_orchestrator_instructions() response
 
 ── Spawn Failure ───────────────────────────────────────────────────────────
 Symptom: spawn_job() fails for any reason

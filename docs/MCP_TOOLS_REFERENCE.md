@@ -1,10 +1,10 @@
 # GiljoAI MCP: Tools Reference
 
-*Last updated: 2026-04-06*
+*Last updated: 2026-04-16*
 
 ## Overview
 
-GiljoAI MCP exposes 29 tools to connected AI coding tools. Every tool requires a
+GiljoAI MCP exposes 28 tools to connected AI coding tools. Every tool requires a
 valid API key passed as a Bearer token. Tenant isolation is enforced server-side;
 agents cannot cross tenant boundaries.
 
@@ -24,28 +24,14 @@ Tools are organized by category below. Tool names match the exact MCP registrati
 
 ---
 
-### discovery
-
-**Description:** Discover available system categories and configuration for the
-current tenant. Call this before creating projects to see valid `project_type` values.
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| category | str | Yes | What to look up. Valid value: `project_types`. |
-
-**Returns:** List of items with `abbreviation`, `label`, and `color` fields.
-
----
-
 ## Project Management
 
 ### create_project
 
 **Description:** Create a new project bound to the active product. Projects are
 classified by taxonomy: `project_type` plus `series_number` form a serial such as
-`FE-0001`. Call `discovery(category='project_types')` first to see valid types.
+`FE-0001`. Use `list_projects()` to see valid `project_type` values from the
+`project_types` metadata in the response.
 The project is created as inactive; activate it from the web dashboard.
 
 **Parameters:**
@@ -377,10 +363,10 @@ filtering.
 
 ---
 
-### list_messages
+### inspect_messages
 
-**Description:** List messages with optional filters. Broader than `receive_messages`;
-returns all matching messages regardless of read state.
+**Description:** Inspect messages with optional filters. Broader than `receive_messages`;
+returns all matching messages regardless of read state. Read-only — use for debugging.
 
 **Parameters:**
 
@@ -464,12 +450,12 @@ completion or by agents when passing work to another agent.
 
 ## Vision Documents
 
-### gil_get_vision_doc
+### get_vision_doc
 
 **Description:** Retrieve a product's vision document with extraction instructions.
 Call without `chunk` first to get metadata (`total_chunks`, `extraction_instructions`).
 Then call with `chunk=1`, `chunk=2`, and so on to retrieve each chunk's content one
-at a time. Read all chunks before calling `gil_write_product`.
+at a time. Read all chunks before calling `update_product_fields`.
 
 **Parameters:**
 
@@ -483,7 +469,7 @@ On subsequent calls: the text content of the requested chunk.
 
 ---
 
-### gil_write_product
+### update_product_fields
 
 **Description:** Write structured product fields extracted from vision document
 analysis. Performs a merge-write: only fields that are provided are updated. Creates
@@ -577,7 +563,7 @@ commands. The URL is valid for 15 minutes.
 
 ---
 
-### get_agent_templates_for_export
+### list_agent_templates
 
 **Description:** Export agent templates formatted for the target CLI platform.
 Returns pre-assembled files for Claude Code and Gemini CLI, or structured data
@@ -636,13 +622,13 @@ plan. Token estimate: approximately 4,500 with context exclusions applied.
 
 | Category | Tools |
 |----------|-------|
-| Discovery | health_check, discovery |
-| Project Management | create_project, update_project_mission, close_project_and_update_memory |
+| Discovery | health_check |
+| Project Management | create_project, list_projects, update_project_mission, close_project_and_update_memory |
 | Agent Lifecycle | spawn_job, get_pending_jobs, get_agent_mission, update_agent_mission, set_agent_status, report_progress, complete_job, get_agent_result, get_workflow_status, reactivate_job, dismiss_reactivation |
-| Messaging | send_message, receive_messages, list_messages |
-| Context and Memory | fetch_context, write_360_memory |
-| Vision Documents | gil_get_vision_doc, gil_write_product |
+| Messaging | send_message, receive_messages, inspect_messages |
+| Context and Memory | fetch_context (batch: multiple categories per call), write_360_memory |
+| Vision Documents | get_vision_doc, update_product_fields |
 | Tasks | create_task |
-| Setup and Export | giljo_setup, generate_download_token, get_agent_templates_for_export, submit_tuning_review |
+| Setup and Export | giljo_setup, generate_download_token, list_agent_templates, submit_tuning_review |
 | Orchestrator Context | get_orchestrator_instructions |
-| **Total** | **29** |
+| **Total** | **28** |
