@@ -165,6 +165,46 @@
       </v-chip>
     </div>
 
+    <!-- State B3: Memory poll timed out or errored -->
+    <div
+      v-else-if="activeTab === 'jobs' && allJobsTerminal && (memoryPollTimedOut || memoryPollError)"
+      class="action-buttons-row"
+    >
+      <v-chip
+        color="warning"
+        variant="tonal"
+        size="large"
+        data-testid="memory-poll-error-chip"
+      >
+        <template #prepend>
+          <v-icon icon="mdi-alert" size="18" />
+        </template>
+        <span>Closeout may have failed &mdash; check agent terminal for errors</span>
+      </v-chip>
+      <v-btn
+        variant="tonal"
+        color="warning"
+        size="small"
+        prepend-icon="mdi-refresh"
+        class="ml-2"
+        data-testid="memory-poll-retry-btn"
+        :aria-label="'Retry memory poll'"
+        @click="retryMemoryPoll"
+      >
+        Retry
+      </v-btn>
+      <v-btn
+        variant="text"
+        size="small"
+        class="ml-1 text-muted-a11y"
+        data-testid="memory-poll-dismiss-btn"
+        :aria-label="'Dismiss error'"
+        @click="dismissMemoryPollError"
+      >
+        Dismiss
+      </v-btn>
+    </div>
+
     <!-- State C: Continue-working guidance -->
     <div v-else-if="activeTab === 'jobs' && showContinueGuidance" class="action-buttons-row">
       <v-chip
@@ -418,12 +458,16 @@ const {
   showCloseoutModal,
   memoryWritten,
   showContinueGuidance,
+  memoryPollTimedOut,
+  memoryPollError,
   projectDoneStatus,
   showCloseoutButton,
   showMemoryPending,
   openCloseoutModal,
   handleCloseoutComplete,
   handleContinueWorking,
+  retryMemoryPoll,
+  dismissMemoryPollError,
   reset: resetCloseout,
   cleanup: cleanupCloseout,
 } = useProjectCloseout({

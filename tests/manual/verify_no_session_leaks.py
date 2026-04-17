@@ -25,6 +25,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 
 # Add src to path
+# TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from fastapi import HTTPException, Request
@@ -40,8 +41,8 @@ async def simulate_endpoint_with_http_exception():
     """Simulate an endpoint that raises HTTPException after opening DB session"""
     from contextlib import asynccontextmanager
 
-    from src.giljo_mcp.auth.dependencies import get_db_session
-    from src.giljo_mcp.database import DatabaseManager
+    from giljo_mcp.auth.dependencies import get_db_session
+    from giljo_mcp.database import DatabaseManager
 
     # Create mock components
     mock_request = MagicMock(spec=Request)

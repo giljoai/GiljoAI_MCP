@@ -13,8 +13,8 @@ and setup.py to follow the repository pattern with CRITICAL tenant isolation.
 from sqlalchemy import delete, distinct, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Configuration
-from src.giljo_mcp.models.auth import User
+from giljo_mcp.models import Configuration
+from giljo_mcp.models.auth import User
 
 
 class ConfigurationRepository:

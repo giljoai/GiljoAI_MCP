@@ -15,7 +15,7 @@ Split from test_orchestration_service_phase_labels.py during test reorganization
 import pytest
 from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentJob, AgentTemplate
+from giljo_mcp.models import AgentJob, AgentTemplate
 
 
 # ============================================================================
@@ -31,8 +31,8 @@ class TestSpawnPopulatesTemplateId:
         self, db_session, db_manager, test_project_multi_terminal, test_tenant_key
     ):
         """Verify template_id is set on AgentJob when template found in multi-terminal mode."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -63,8 +63,8 @@ class TestSpawnPopulatesTemplateId:
 
     async def test_template_id_none_when_no_template_found(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify template_id remains None for orchestrator (no template lookup)."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -95,8 +95,8 @@ class TestListJobsIncludesPhase:
 
     async def test_list_jobs_returns_phase_value(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify list_jobs response includes phase for jobs with phase set."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -126,8 +126,8 @@ class TestListJobsIncludesPhase:
         self, db_session, db_manager, test_project, test_tenant_key
     ):
         """Verify list_jobs response includes phase=None for jobs without phase."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -155,8 +155,8 @@ class TestListJobsIncludesPhase:
 
     async def test_list_jobs_returns_multiple_phases(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify list_jobs correctly returns different phases for different jobs."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)

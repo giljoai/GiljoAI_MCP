@@ -22,8 +22,8 @@ import time
 
 import pytest
 
-from src.giljo_mcp.schemas.service_responses import SummarizeSingleResult
-from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
+from giljo_mcp.schemas.service_responses import SummarizeSingleResult
+from giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
 
 # ============================================================================

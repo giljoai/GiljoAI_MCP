@@ -24,8 +24,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.services.product_service import ProductService
+from giljo_mcp.models import Product, Project
+from giljo_mcp.services.product_service import ProductService
 from tests.fixtures.base_fixtures import TestData
 
 

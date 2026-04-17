@@ -29,12 +29,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError
-from src.giljo_mcp.models import User
-from src.giljo_mcp.models.schemas import ProjectLaunchResponse
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError
+from giljo_mcp.models import User
+from giljo_mcp.models.schemas import ProjectLaunchResponse
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_project_service
 from .models import (
@@ -453,7 +453,7 @@ async def archive_project(
 
     # Handover 0435b: transition 'complete' agents to 'closed' on user archive action
     try:
-        from src.giljo_mcp.tools.project_closeout import _close_completed_agents
+        from giljo_mcp.tools.project_closeout import _close_completed_agents
 
         async with project_service.db_manager.get_session_async() as session:
             closed_names = await _close_completed_agents(session, project_id, current_user.tenant_key)

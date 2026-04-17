@@ -21,7 +21,7 @@ from api.endpoints.agent_jobs.models import (
     JobErrorRequest,
     SpawnAgentRequest,
 )
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.schemas.service_responses import (
     CompleteJobResult,
     ErrorReportResult,
     SpawnResult,
@@ -85,7 +85,7 @@ class TestSpawnAgentJob:
     @pytest.mark.asyncio
     async def test_spawn_agent_service_error(self):
         """Test spawn agent with service error (exception-based, Handover 0731d)."""
-        from src.giljo_mcp.exceptions import OrchestrationError
+        from giljo_mcp.exceptions import OrchestrationError
 
         mock_user = MagicMock()
         mock_user.username = "test_user"

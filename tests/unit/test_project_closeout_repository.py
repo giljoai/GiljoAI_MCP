@@ -20,9 +20,9 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
-from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.models.projects import Project
+from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+from giljo_mcp.models.products import Product
+from giljo_mcp.models.projects import Project
 
 
 def create_mock_db_session(project_mock, product_mock):
@@ -136,11 +136,11 @@ class TestRepositoryIntegration:
         WHEN: close_project_and_update_memory() is called
         THEN: Calls repository.get_next_sequence() for sequence number
         """
-        from src.giljo_mcp.tools.project_closeout import close_project_and_update_memory
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
         mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
-        with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
             mock_repo = MagicMock()
             mock_repo_class.return_value = mock_repo
             mock_repo.get_next_sequence = AsyncMock(return_value=5)
@@ -172,11 +172,11 @@ class TestRepositoryIntegration:
         WHEN: close_project_and_update_memory() is called
         THEN: Calls repository.create_entry() with all required fields
         """
-        from src.giljo_mcp.tools.project_closeout import close_project_and_update_memory
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
         mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
-        with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
             mock_repo = MagicMock()
             mock_repo_class.return_value = mock_repo
             mock_repo.get_next_sequence = AsyncMock(return_value=3)
@@ -225,13 +225,13 @@ class TestRepositoryIntegration:
         WHEN: close_project_and_update_memory() is called
         THEN: sequential_history array is NOT modified
         """
-        from src.giljo_mcp.tools.project_closeout import close_project_and_update_memory
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
         mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
         initial_history = mock_product.product_memory["sequential_history"].copy()
 
-        with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
             mock_repo = MagicMock()
             mock_repo_class.return_value = mock_repo
             mock_repo.get_next_sequence = AsyncMock(return_value=1)
@@ -259,7 +259,7 @@ class TestRepositoryIntegration:
         WHEN: close_project_and_update_memory() is called
         THEN: Result includes entry_id field
         """
-        from src.giljo_mcp.tools.project_closeout import close_project_and_update_memory
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
         mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
@@ -268,7 +268,7 @@ class TestRepositoryIntegration:
         mock_entry.id = entry_id
         mock_entry.sequence = 1
 
-        with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
             mock_repo = MagicMock()
             mock_repo_class.return_value = mock_repo
             mock_repo.get_next_sequence = AsyncMock(return_value=1)
@@ -296,7 +296,7 @@ class TestRepositoryIntegration:
         WHEN: close_project_and_update_memory() is called
         THEN: All fields are passed to repository.create_entry()
         """
-        from src.giljo_mcp.tools.project_closeout import close_project_and_update_memory
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
         mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
@@ -307,7 +307,7 @@ class TestRepositoryIntegration:
             "repo_owner": "test-owner",
         }
 
-        with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
             mock_repo = MagicMock()
             mock_repo_class.return_value = mock_repo
             mock_repo.get_next_sequence = AsyncMock(return_value=1)
@@ -360,11 +360,11 @@ class TestRepositoryIntegration:
         WHEN: close_project_and_update_memory() is called
         THEN: git_commits field is empty array
         """
-        from src.giljo_mcp.tools.project_closeout import close_project_and_update_memory
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
         mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
-        with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
             mock_repo = MagicMock()
             mock_repo_class.return_value = mock_repo
             mock_repo.get_next_sequence = AsyncMock(return_value=1)

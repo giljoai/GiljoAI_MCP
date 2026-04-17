@@ -14,12 +14,12 @@ import random
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.exceptions import ResourceNotFoundError
-from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.schemas.service_responses import CloseoutData
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.models import Product, Project
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.schemas.service_responses import CloseoutData
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.tenant import TenantManager
 
 
 @pytest.mark.asyncio

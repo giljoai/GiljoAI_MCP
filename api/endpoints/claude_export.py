@@ -33,10 +33,10 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import AgentTemplate, User
-from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
-from src.giljo_mcp.template_renderer import render_claude_agent
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import AgentTemplate, User
+from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
+from giljo_mcp.template_renderer import render_claude_agent
 
 
 logger = logging.getLogger(__name__)

@@ -17,10 +17,10 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.exceptions import ProjectStateError
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.services.job_lifecycle_service import JobLifecycleService
-from src.giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.exceptions import ProjectStateError
+from giljo_mcp.models.projects import Project
+from giljo_mcp.services.job_lifecycle_service import JobLifecycleService
+from giljo_mcp.services.project_service import ProjectService
 
 
 # ---------------------------------------------------------------------------

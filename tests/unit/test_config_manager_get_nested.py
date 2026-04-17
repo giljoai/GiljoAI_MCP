@@ -17,7 +17,7 @@ Covers dot-notation traversal of the raw config dict:
 import pytest
 import yaml
 
-from src.giljo_mcp.config_manager import ConfigManager
+from giljo_mcp.config_manager import ConfigManager
 
 
 @pytest.fixture

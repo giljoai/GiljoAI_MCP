@@ -13,19 +13,19 @@ Database models package for GiljoAI MCP.
 ✅ PREFERRED (New Code):
 Use specific module imports for clarity and maintainability:
 
-    from src.giljo_mcp.models.auth import User, APIKey, ApiKeyIpLog, MCPSession
-    from src.giljo_mcp.models.projects import Project, ProjectType
-    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-    from src.giljo_mcp.models.products import Product, VisionDocument
-    from src.giljo_mcp.models.tasks import Task, Message
-    from src.giljo_mcp.models.templates import AgentTemplate
-    from src.giljo_mcp.models.context import MCPContextIndex
-    from src.giljo_mcp.models.config import Configuration, GitConfig
+    from giljo_mcp.models.auth import User, APIKey, ApiKeyIpLog, MCPSession
+    from giljo_mcp.models.projects import Project, ProjectType
+    from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+    from giljo_mcp.models.products import Product, VisionDocument
+    from giljo_mcp.models.tasks import Task, Message
+    from giljo_mcp.models.templates import AgentTemplate
+    from giljo_mcp.models.context import MCPContextIndex
+    from giljo_mcp.models.config import Configuration, GitConfig
 
 ⚠️  LEGACY (Existing Code Only):
 Backward compatibility maintained for 427 existing imports:
 
-    from src.giljo_mcp.models import User, Project, AgentJob
+    from giljo_mcp.models import User, Project, AgentJob
 
 This works but obscures which domain the model belongs to.
 Use modular imports in new code to benefit from domain organization.

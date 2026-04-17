@@ -20,22 +20,22 @@ from uuid import uuid4
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     BaseGiljoError,
     ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.projects import Project
+from giljo_mcp.schemas.service_responses import (
     ProjectCompleteResult,
     ProjectData,
     ProjectResumeResult,
 )
-from src.giljo_mcp.services.project_service import _build_ws_project_data
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.services.project_service import _build_ws_project_data
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)

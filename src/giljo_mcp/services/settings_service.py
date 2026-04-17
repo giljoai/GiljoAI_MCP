@@ -21,9 +21,9 @@ from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.exceptions import ValidationError
-from src.giljo_mcp.models.settings import Settings
-from src.giljo_mcp.schemas.jsonb_validators import validate_settings_by_category
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.models.settings import Settings
+from giljo_mcp.schemas.jsonb_validators import validate_settings_by_category
 
 
 logger = logging.getLogger(__name__)

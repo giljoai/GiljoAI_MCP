@@ -288,23 +288,188 @@ describe('useProjectCloseout', () => {
       expect(memoryWritten.value).toBe(true)
     })
 
-    it('fails open after 60s timeout when API returns no entries', async () => {
+    it('sets memoryPollTimedOut after 30s when API returns no entries', async () => {
       const api = (await import('@/services/api')).default
       api.products.getMemoryEntries.mockResolvedValue({ data: { entries: [] } })
 
       const project = makeProject({ product_id: 'prod-1' })
       const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
-      const { memoryWritten } = useProjectCloseout({ project, projectId: computed(() => 'proj-1'), sortedJobs: makeJobs(jobs) })
+      const { memoryWritten, memoryPollTimedOut } = useProjectCloseout({ project, projectId: computed(() => 'proj-1'), sortedJobs: makeJobs(jobs) })
 
       await nextTick()
       await nextTick()
       expect(memoryWritten.value).toBe(false)
+      expect(memoryPollTimedOut.value).toBe(false)
 
-      vi.advanceTimersByTime(60_000)
+      vi.advanceTimersByTime(30_000)
+      await nextTick()
+      await nextTick()
+
+      expect(memoryPollTimedOut.value).toBe(true)
+      expect(memoryWritten.value).toBe(false)
+    })
+
+    it('does NOT set memoryWritten on timeout (no fail-open)', async () => {
+      const api = (await import('@/services/api')).default
+      api.products.getMemoryEntries.mockResolvedValue({ data: { entries: [] } })
+
+      const project = makeProject({ product_id: 'prod-1' })
+      const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
+      const { memoryWritten, memoryPollTimedOut } = useProjectCloseout({ project, projectId: computed(() => 'proj-1'), sortedJobs: makeJobs(jobs) })
+
+      await nextTick()
+      await nextTick()
+
+      vi.advanceTimersByTime(30_000)
+      await nextTick()
+      await nextTick()
+
+      expect(memoryPollTimedOut.value).toBe(true)
+      expect(memoryWritten.value).toBe(false)
+    })
+  })
+
+  describe('memoryPollTimedOut state', () => {
+    it('exposes memoryPollTimedOut as false initially', () => {
+      const project = makeProject()
+      const sortedJobs = makeJobs([])
+      const { memoryPollTimedOut } = useProjectCloseout({ project, projectId: computed(() => 'proj-1'), sortedJobs })
+      expect(memoryPollTimedOut.value).toBe(false)
+    })
+
+    it('exposes memoryPollError as false initially', () => {
+      const project = makeProject()
+      const sortedJobs = makeJobs([])
+      const { memoryPollError } = useProjectCloseout({ project, projectId: computed(() => 'proj-1'), sortedJobs })
+      expect(memoryPollError.value).toBe(false)
+    })
+
+    it('sets memoryPollError when initial API call throws', async () => {
+      const api = (await import('@/services/api')).default
+      api.products.getMemoryEntries.mockRejectedValue(new Error('Network error'))
+
+      const project = makeProject({ product_id: 'prod-1' })
+      const jobsRef = ref([{ agent_display_name: 'orchestrator', status: 'working' }])
+      const sortedJobs = computed(() => jobsRef.value)
+      const { memoryPollError } = useProjectCloseout({ project, projectId: computed(() => 'proj-1'), sortedJobs })
+
+      jobsRef.value = [{ agent_display_name: 'orchestrator', status: 'complete' }]
+      await nextTick()
+      await nextTick()
+
+      expect(memoryPollError.value).toBe(true)
+    })
+  })
+
+  describe('retryMemoryPoll', () => {
+    it('resets timeout and error state and restarts polling', async () => {
+      const api = (await import('@/services/api')).default
+      api.products.getMemoryEntries.mockResolvedValue({ data: { entries: [] } })
+
+      const project = makeProject({ product_id: 'prod-1' })
+      const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
+      const { memoryPollTimedOut, memoryPollError, retryMemoryPoll } = useProjectCloseout({
+        project,
+        projectId: computed(() => 'proj-1'),
+        sortedJobs: makeJobs(jobs),
+      })
+
+      await nextTick()
+      await nextTick()
+
+      // Trigger timeout
+      vi.advanceTimersByTime(30_000)
+      await nextTick()
+      expect(memoryPollTimedOut.value).toBe(true)
+
+      // Clear mock and set up to return entries on retry
+      api.products.getMemoryEntries.mockResolvedValue({ data: { entries: [{ id: 1 }] } })
+
+      retryMemoryPoll()
+      expect(memoryPollTimedOut.value).toBe(false)
+      expect(memoryPollError.value).toBe(false)
+    })
+
+    it('auto-transitions to success if entry appears after timeout was dismissed', async () => {
+      const api = (await import('@/services/api')).default
+      api.products.getMemoryEntries.mockResolvedValue({ data: { entries: [] } })
+
+      const project = makeProject({ product_id: 'prod-1' })
+      const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
+      const { memoryWritten, memoryPollTimedOut, retryMemoryPoll } = useProjectCloseout({
+        project,
+        projectId: computed(() => 'proj-1'),
+        sortedJobs: makeJobs(jobs),
+      })
+
+      await nextTick()
+      await nextTick()
+
+      // Trigger timeout
+      vi.advanceTimersByTime(30_000)
+      await nextTick()
+      expect(memoryPollTimedOut.value).toBe(true)
+
+      // Retry with entries now available
+      api.products.getMemoryEntries.mockResolvedValue({ data: { entries: [{ id: 1 }] } })
+      retryMemoryPoll()
       await nextTick()
       await nextTick()
 
       expect(memoryWritten.value).toBe(true)
+      expect(memoryPollTimedOut.value).toBe(false)
+    })
+  })
+
+  describe('dismissMemoryPollError', () => {
+    it('clears timed-out state when dismissed', async () => {
+      const api = (await import('@/services/api')).default
+      api.products.getMemoryEntries.mockResolvedValue({ data: { entries: [] } })
+
+      const project = makeProject({ product_id: 'prod-1' })
+      const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
+      const { memoryPollTimedOut, dismissMemoryPollError } = useProjectCloseout({
+        project,
+        projectId: computed(() => 'proj-1'),
+        sortedJobs: makeJobs(jobs),
+      })
+
+      await nextTick()
+      await nextTick()
+
+      vi.advanceTimersByTime(30_000)
+      await nextTick()
+      expect(memoryPollTimedOut.value).toBe(true)
+
+      dismissMemoryPollError()
+      expect(memoryPollTimedOut.value).toBe(false)
+    })
+  })
+
+  describe('showMemoryPending with error states', () => {
+    it('returns false when memoryPollTimedOut is true (error state shown instead)', () => {
+      const project = makeProject({ product_id: 'prod-1' })
+      const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
+      const { showMemoryPending, memoryPollTimedOut } = useProjectCloseout({
+        project,
+        projectId: computed(() => 'proj-1'),
+        sortedJobs: makeJobs(jobs),
+      })
+      // Manually set timed out to simulate
+      memoryPollTimedOut.value = true
+      expect(showMemoryPending.value).toBe(false)
+    })
+
+    it('returns false when memoryPollError is true', () => {
+      const project = makeProject({ product_id: 'prod-1' })
+      const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
+      const { showMemoryPending, memoryPollError } = useProjectCloseout({
+        project,
+        projectId: computed(() => 'proj-1'),
+        sortedJobs: makeJobs(jobs),
+      })
+      memoryPollError.value = true
+      expect(showMemoryPending.value).toBe(false)
     })
   })
 })

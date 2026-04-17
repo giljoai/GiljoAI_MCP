@@ -20,7 +20,7 @@ class TestApplyUserConfigRemoved:
 
     def test_fetch_context_signature_no_apply_user_config(self):
         """fetch_context() must NOT accept apply_user_config parameter."""
-        from src.giljo_mcp.tools.context_tools.fetch_context import fetch_context
+        from giljo_mcp.tools.context_tools.fetch_context import fetch_context
 
         sig = inspect.signature(fetch_context)
         params = list(sig.parameters.keys())
@@ -30,7 +30,7 @@ class TestApplyUserConfigRemoved:
 
     def test_tool_accessor_fetch_context_no_apply_user_config(self):
         """ToolAccessor.fetch_context() must NOT accept apply_user_config parameter."""
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         sig = inspect.signature(ToolAccessor.fetch_context)
         params = list(sig.parameters.keys())
@@ -45,7 +45,7 @@ class TestToolAccessorCategoriesDefault:
     def test_tool_accessor_no_all_fallback(self):
         """ToolAccessor.fetch_context should not replace None categories with ['all']."""
         # Read the source code of ToolAccessor.fetch_context to verify
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         source = inspect.getsource(ToolAccessor.fetch_context)
         assert '["all"]' not in source, (

@@ -18,7 +18,7 @@ Validates:
 import pytest
 from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentJob
+from giljo_mcp.models import AgentJob
 
 
 # Fixtures `tenant_key`, `agent_templates`, `project`, `service`,

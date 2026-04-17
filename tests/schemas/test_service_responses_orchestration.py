@@ -16,7 +16,7 @@ Created: Handover 0731
 import pytest
 from pydantic import ValidationError
 
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.schemas.service_responses import (
     AuthResult,
     ConsolidationResult,
     InstructionsResponse,
@@ -207,7 +207,7 @@ class TestInstructionsResponse:
     """
 
     def test_is_alias_for_succession_context_result(self):
-        from src.giljo_mcp.schemas.service_responses import SuccessionContextResult
+        from giljo_mcp.schemas.service_responses import SuccessionContextResult
 
         assert InstructionsResponse is SuccessionContextResult
 
@@ -283,7 +283,7 @@ class TestConsolidationResult:
         assert result.medium is not None
 
     def test_creation_with_all_fields(self):
-        from src.giljo_mcp.schemas.service_responses import SummaryLevel
+        from giljo_mcp.schemas.service_responses import SummaryLevel
 
         result = ConsolidationResult(
             light=SummaryLevel(summary="Brief summary", tokens=100),

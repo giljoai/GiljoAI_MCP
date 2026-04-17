@@ -22,16 +22,16 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.giljo_mcp.config.defaults import (
+from giljo_mcp.config.defaults import (
     DEFAULT_FIELD_PRIORITY,
     TUNING_SECTION_TOGGLE_MAP,
 )
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models import Product
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
-from src.giljo_mcp.schemas.jsonb_validators import validate_tuning_state
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
+from giljo_mcp.models import Product
+from giljo_mcp.models.auth import User
+from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.schemas.jsonb_validators import validate_tuning_state
 
 
 logger = logging.getLogger(__name__)
@@ -254,8 +254,8 @@ class ProductTuningService:
 
     async def _get_user_configs(self, session: AsyncSession, user_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
         """Get user's toggle and depth configurations from normalized tables/columns."""
-        from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
-        from src.giljo_mcp.models.auth import UserFieldPriority
+        from giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
+        from giljo_mcp.models.auth import UserFieldPriority
 
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
@@ -480,7 +480,7 @@ class ProductTuningService:
         Raises:
             ResourceNotFoundError: If product not found
         """
-        from src.giljo_mcp.services.product_service import ProductService
+        from giljo_mcp.services.product_service import ProductService
 
         update_kwargs, sections_applied = self._build_update_kwargs(proposals)
 

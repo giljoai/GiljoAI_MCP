@@ -14,9 +14,9 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.models import User
-from src.giljo_mcp.slash_commands import get_slash_command
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.models import User
+from giljo_mcp.slash_commands import get_slash_command
 
 
 logger = logging.getLogger(__name__)

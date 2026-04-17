@@ -26,7 +26,7 @@ class TestGitHistoryDirective:
     @pytest.mark.asyncio
     async def test_empty_db_returns_directive(self):
         """When git is enabled but no commits in DB, return directive."""
-        from src.giljo_mcp.tools.context_tools.get_git_history import get_git_history
+        from giljo_mcp.tools.context_tools.get_git_history import get_git_history
 
         # Create mock product with git enabled but empty commit data
         mock_product = MagicMock()
@@ -55,7 +55,7 @@ class TestGitHistoryDirective:
         mock_session.execute = mock_execute
 
         # Mock repository returning empty
-        with patch("src.giljo_mcp.tools.context_tools.get_git_history.ProductMemoryRepository") as mock_repo_cls:
+        with patch("giljo_mcp.tools.context_tools.get_git_history.ProductMemoryRepository") as mock_repo_cls:
             mock_repo = MagicMock()
             mock_repo.get_git_history = AsyncMock(return_value=[])
             mock_repo_cls.return_value = mock_repo
@@ -75,7 +75,7 @@ class TestGitHistoryDirective:
     @pytest.mark.asyncio
     async def test_directive_commit_count_matches_depth(self):
         """Directive command should use the commits parameter value."""
-        from src.giljo_mcp.tools.context_tools.get_git_history import get_git_history
+        from giljo_mcp.tools.context_tools.get_git_history import get_git_history
 
         mock_product = MagicMock()
         mock_product.id = "prod-123"
@@ -98,7 +98,7 @@ class TestGitHistoryDirective:
 
         mock_session.execute = mock_execute
 
-        with patch("src.giljo_mcp.tools.context_tools.get_git_history.ProductMemoryRepository") as mock_repo_cls:
+        with patch("giljo_mcp.tools.context_tools.get_git_history.ProductMemoryRepository") as mock_repo_cls:
             mock_repo = MagicMock()
             mock_repo.get_git_history = AsyncMock(return_value=[])
             mock_repo_cls.return_value = mock_repo
@@ -115,7 +115,7 @@ class TestGitHistoryDirective:
     @pytest.mark.asyncio
     async def test_git_disabled_returns_directive(self):
         """When git integration is disabled, return directive."""
-        from src.giljo_mcp.tools.context_tools.get_git_history import get_git_history
+        from giljo_mcp.tools.context_tools.get_git_history import get_git_history
 
         mock_product = MagicMock()
         mock_product.id = "prod-123"
@@ -141,7 +141,7 @@ class TestGitHistoryDirective:
     @pytest.mark.asyncio
     async def test_populated_db_returns_data_no_directive(self):
         """When commits exist in DB, return data without directive."""
-        from src.giljo_mcp.tools.context_tools.get_git_history import get_git_history
+        from giljo_mcp.tools.context_tools.get_git_history import get_git_history
 
         mock_product = MagicMock()
         mock_product.id = "prod-123"
@@ -168,7 +168,7 @@ class TestGitHistoryDirective:
             {"hash": "def456", "message": "fix: bug", "author": "dev", "timestamp": "2026-01-02"},
         ]
 
-        with patch("src.giljo_mcp.tools.context_tools.get_git_history.ProductMemoryRepository") as mock_repo_cls:
+        with patch("giljo_mcp.tools.context_tools.get_git_history.ProductMemoryRepository") as mock_repo_cls:
             mock_repo = MagicMock()
             mock_repo.get_git_history = AsyncMock(return_value=fake_commits)
             mock_repo_cls.return_value = mock_repo
@@ -190,7 +190,7 @@ class TestFetchContextDirectivePropagation:
     @pytest.mark.asyncio
     async def test_fetch_context_propagates_git_directive(self):
         """fetch_context() must include directive when get_git_history returns one."""
-        from src.giljo_mcp.tools.context_tools.fetch_context import fetch_context
+        from giljo_mcp.tools.context_tools.fetch_context import fetch_context
 
         mock_git_result = {
             "source": "git_history",
@@ -204,9 +204,7 @@ class TestFetchContextDirectivePropagation:
             "metadata": {},
         }
 
-        with patch(
-            "src.giljo_mcp.tools.context_tools.fetch_context._fetch_category", new_callable=AsyncMock
-        ) as mock_fetch:
+        with patch("giljo_mcp.tools.context_tools.fetch_context._fetch_category", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = mock_git_result
 
             result = await fetch_context(
@@ -223,7 +221,7 @@ class TestFetchContextDirectivePropagation:
     @pytest.mark.asyncio
     async def test_fetch_context_omits_directive_when_data_present(self):
         """fetch_context() must NOT include directive when inner tool returns data."""
-        from src.giljo_mcp.tools.context_tools.fetch_context import fetch_context
+        from giljo_mcp.tools.context_tools.fetch_context import fetch_context
 
         mock_git_result = {
             "source": "git_history",
@@ -232,9 +230,7 @@ class TestFetchContextDirectivePropagation:
             "metadata": {},
         }
 
-        with patch(
-            "src.giljo_mcp.tools.context_tools.fetch_context._fetch_category", new_callable=AsyncMock
-        ) as mock_fetch:
+        with patch("giljo_mcp.tools.context_tools.fetch_context._fetch_category", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = mock_git_result
 
             result = await fetch_context(

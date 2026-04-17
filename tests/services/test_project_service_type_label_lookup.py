@@ -13,8 +13,8 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models.projects import ProjectType
-from src.giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.models.projects import ProjectType
+from giljo_mcp.services.project_service import ProjectService
 
 
 @pytest.fixture

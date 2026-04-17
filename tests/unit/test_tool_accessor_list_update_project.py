@@ -17,10 +17,10 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+from giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
-_PRODUCT_SERVICE_PATH = "src.giljo_mcp.tools.tool_accessor.ProductService"
+_PRODUCT_SERVICE_PATH = "giljo_mcp.tools.tool_accessor.ProductService"
 
 
 # ---------------------------------------------------------------------------

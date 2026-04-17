@@ -1062,9 +1062,9 @@ After installation, return here and run the installer again
 
         try:
             # Import DatabaseManager to create tables
-            from src.giljo_mcp.database_manager import DatabaseManager
+            from giljo_mcp.database_manager import DatabaseManager
 
-            from src.giljo_mcp.models import Base
+            from giljo_mcp.models import Base
 
             # Create database manager
             db_url = f"postgresql://giljo_owner:{self.owner_password}@{self.host}:{self.port}/{self.db_name}"

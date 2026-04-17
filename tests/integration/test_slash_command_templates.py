@@ -11,7 +11,7 @@ and the get_all_templates() registry function behavior.
 
 import pytest
 
-from src.giljo_mcp.tools.slash_command_templates import (
+from giljo_mcp.tools.slash_command_templates import (
     BOOTSTRAP_CLAUDE_CODE,
     BOOTSTRAP_CODEX_CLI,
     BOOTSTRAP_GEMINI_CLI,

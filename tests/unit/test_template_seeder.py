@@ -18,8 +18,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.template_seeder import (
+from giljo_mcp.models import AgentTemplate
+from giljo_mcp.template_seeder import (
     _get_default_templates_v103,
     _get_mcp_coordination_section,
     seed_tenant_templates,

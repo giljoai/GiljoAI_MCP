@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from src.giljo_mcp.services.protocol_sections.agent_lifecycle import _generate_orchestrator_protocol
+from giljo_mcp.services.protocol_sections.agent_lifecycle import _generate_orchestrator_protocol
 
 
 def _build_conditional_blocks(

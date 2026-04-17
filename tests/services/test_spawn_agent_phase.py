@@ -21,7 +21,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentJob, AgentTemplate, Project
+from giljo_mcp.models import AgentJob, AgentTemplate, Project
 
 
 # ============================================================================
@@ -84,8 +84,8 @@ class TestSpawnAgentJobPhase:
 
     async def test_spawn_job_stores_phase_when_provided(self, db_session, db_manager, test_project, test_tenant_key):
         """Phase value is stored on the AgentJob record when provided."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -107,8 +107,8 @@ class TestSpawnAgentJobPhase:
 
     async def test_spawn_job_phase_defaults_to_none(self, db_session, db_manager, test_project, test_tenant_key):
         """Phase defaults to None when not provided (backward compatible)."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -129,8 +129,8 @@ class TestSpawnAgentJobPhase:
 
     async def test_spawn_job_populates_template_id(self, db_session, db_manager, test_project, test_tenant_key):
         """template_id FK is populated when a matching template is found."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -171,8 +171,8 @@ class TestListJobsPhase:
 
     async def test_list_jobs_includes_phase_in_response(self, db_session, db_manager, test_project, test_tenant_key):
         """Phase field appears in job dict from list_jobs()."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -212,8 +212,8 @@ class TestOrchestratorPhaseInstructions:
         """Phase assignment instructions appear in multi-terminal (default) mode."""
         from datetime import datetime, timezone
 
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -270,8 +270,8 @@ class TestOrchestratorPhaseInstructions:
         """Phase assignment instructions do NOT appear in CLI mode."""
         from datetime import datetime, timezone
 
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)

@@ -34,8 +34,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     AlreadyExistsError,
     BaseGiljoError,
     ProjectStateError,
@@ -45,11 +45,11 @@ from src.giljo_mcp.exceptions import (
 
 # Import Pattern: Use modular imports from models package (Post-0128a)
 # See models/__init__.py for migration guidance
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
-from src.giljo_mcp.models.projects import Project, ProjectType
-from src.giljo_mcp.models.tasks import Message
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+from giljo_mcp.models.projects import Project, ProjectType
+from giljo_mcp.models.tasks import Message
+from giljo_mcp.schemas.service_responses import (
     ActiveProjectDetail,
     CanCloseResult,
     CloseoutData,
@@ -68,7 +68,7 @@ from src.giljo_mcp.schemas.service_responses import (
     ProjectSummaryResult,
     SoftDeleteResult,
 )
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -143,11 +143,11 @@ class ProjectService:
 
         # Facade sub-services (Handover 0769: ProjectService split, 0950i: launch extraction,
         #                      0950n: summary extraction)
-        from src.giljo_mcp.services.project_closeout_service import ProjectCloseoutService
-        from src.giljo_mcp.services.project_deletion_service import ProjectDeletionService
-        from src.giljo_mcp.services.project_launch_service import ProjectLaunchService
-        from src.giljo_mcp.services.project_lifecycle_service import ProjectLifecycleService
-        from src.giljo_mcp.services.project_summary_service import ProjectSummaryService
+        from giljo_mcp.services.project_closeout_service import ProjectCloseoutService
+        from giljo_mcp.services.project_deletion_service import ProjectDeletionService
+        from giljo_mcp.services.project_launch_service import ProjectLaunchService
+        from giljo_mcp.services.project_lifecycle_service import ProjectLifecycleService
+        from giljo_mcp.services.project_summary_service import ProjectSummaryService
 
         self._lifecycle = ProjectLifecycleService(db_manager, tenant_manager, test_session, websocket_manager)
         self._closeout = ProjectCloseoutService(db_manager, tenant_manager, test_session, websocket_manager)

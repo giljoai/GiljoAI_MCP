@@ -12,8 +12,8 @@ Builds staging-phase prompts and mission regeneration logic.
 import logging
 from typing import Any
 
-from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import Product, Project
+from giljo_mcp.config_manager import get_config
+from giljo_mcp.models import Product, Project
 
 
 logger = logging.getLogger(__name__)

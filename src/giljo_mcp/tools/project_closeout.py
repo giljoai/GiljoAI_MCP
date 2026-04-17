@@ -19,14 +19,14 @@ from typing import Any
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
-from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
-from src.giljo_mcp.schemas.jsonb_validators import validate_git_commits
-from src.giljo_mcp.tools._memory_helpers import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError, ValidationError
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
+from giljo_mcp.models.products import Product
+from giljo_mcp.models.projects import Project
+from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.schemas.jsonb_validators import validate_git_commits
+from giljo_mcp.tools._memory_helpers import (
     MAX_DECISIONS_MADE,
     MAX_KEY_OUTCOMES,
     MAX_SUMMARY_LENGTH,
@@ -273,7 +273,12 @@ async def close_project_and_update_memory(
 
             if git_integration_enabled and not git_commits:
                 raise ValidationError(
-                    message="Git integration is enabled. Provide at least one commit before closing the project.",
+                    message=(
+                        "Git integration is enabled. Provide at least one commit before closing the project. "
+                        "Recovery: run 'git status' to check for uncommitted changes, then "
+                        "'git add <files> && git commit -m \"<message>\"' to create a commit. "
+                        "Use the resulting commit SHA in the git_commits parameter and retry."
+                    ),
                     context={"project_id": project_id, "error_code": "GIT_COMMITS_REQUIRED"},
                 )
 

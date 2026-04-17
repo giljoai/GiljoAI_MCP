@@ -29,14 +29,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
-from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
-from src.giljo_mcp.schemas.jsonb_validators import validate_git_commits
-from src.giljo_mcp.tools._memory_helpers import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
+from giljo_mcp.models.products import Product
+from giljo_mcp.models.projects import Project
+from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.schemas.jsonb_validators import validate_git_commits
+from giljo_mcp.tools._memory_helpers import (
     MAX_DECISIONS_MADE,
     MAX_KEY_OUTCOMES,
     MAX_SUMMARY_LENGTH,

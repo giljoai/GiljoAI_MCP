@@ -19,8 +19,8 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import AgentTemplate
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import AgentTemplate
 
 
 logger = structlog.get_logger(__name__)

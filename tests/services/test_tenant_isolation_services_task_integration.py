@@ -23,7 +23,7 @@ Coverage:
 
 import pytest
 
-from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
+from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 
 
 # ============================================================================

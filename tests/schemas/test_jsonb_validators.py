@@ -15,7 +15,7 @@ Created: Handover 0962c
 import pytest
 from pydantic import ValidationError
 
-from src.giljo_mcp.schemas.jsonb_validators import (
+from giljo_mcp.schemas.jsonb_validators import (
     SETTINGS_CATEGORY_VALIDATORS,
     AgentExecutionResult,
     AgentJobMetadata,

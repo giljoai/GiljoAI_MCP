@@ -13,14 +13,14 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import User
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.models import User
+from giljo_mcp.tenant import TenantManager
 
 
 @pytest_asyncio.fixture
 async def test_user(db_session: AsyncSession):
     """Create test user with tenant"""
-    from src.giljo_mcp.models.organizations import Organization
+    from giljo_mcp.models.organizations import Organization
 
     unique_suffix = uuid4().hex[:8]
     tenant_key = TenantManager.generate_tenant_key()  # 0424m: Generate before org creation

@@ -20,8 +20,8 @@ Production-grade features:
 import logging
 from typing import Any, Optional
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ValidationError
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ValidationError
 
 
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ def init_for_testing(db_manager: DatabaseManager, db_session) -> None:
     Usage (in conftest.py):
         @pytest_asyncio.fixture(scope="function", autouse=True)
         async def setup_agent_coordination(db_manager, db_session):
-            from src.giljo_mcp.tools import agent_coordination
+            from giljo_mcp.tools import agent_coordination
             agent_coordination.init_for_testing(db_manager, db_session)
             yield
     """
@@ -75,8 +75,8 @@ def init_for_testing(db_manager: DatabaseManager, db_session) -> None:
 
 def _create_job_manager():
     """Create AgentJobManager with current state."""
-    from src.giljo_mcp.services.agent_job_manager import AgentJobManager
-    from src.giljo_mcp.tenant import TenantManager
+    from giljo_mcp.services.agent_job_manager import AgentJobManager
+    from giljo_mcp.tenant import TenantManager
 
     db_manager = _get_db_manager()
     tenant_manager = TenantManager()

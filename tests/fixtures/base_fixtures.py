@@ -19,8 +19,8 @@ from typing import Any, Optional
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Project
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Project
 from tests.helpers.test_db_helper import PostgreSQLTestHelper, TransactionalTestContext
 
 
@@ -30,7 +30,7 @@ class TestData:
     @staticmethod
     def generate_tenant_key() -> str:
         """Generate a test tenant key"""
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tenant import TenantManager
 
         return TenantManager.generate_tenant_key()
 

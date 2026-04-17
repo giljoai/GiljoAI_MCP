@@ -32,7 +32,7 @@ from sumy.parsers.plaintext import PlaintextParser
 from sumy.summarizers.lsa import LsaSummarizer
 from sumy.utils import get_stop_words
 
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.schemas.service_responses import (
     MultiLevelSummaryLevel,
     SummarizeMultiLevelResult,
     SummarizeSingleResult,

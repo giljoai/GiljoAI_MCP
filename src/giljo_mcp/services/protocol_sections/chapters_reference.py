@@ -351,12 +351,18 @@ COMPLETION PROTOCOL (After ALL agents finish their work):
         if not git_integration_enabled
         else '''
 ── STEP 0: Git Commit (Git Integration Enabled) ───────────────────────────
-Before closeout, ensure all work is committed to git:
-1. Review changes: run `git status` in the project directory
+Before calling close_project_and_update_memory: verify all changes are committed.
+If git integration is enabled, git_commits must contain at least one entry or the
+call will be rejected with GIT_COMMITS_REQUIRED.
+
+Steps:
+1. Run `git status` in the project directory to review pending changes
 2. Stage deliverables: `git add` relevant files (never `git add -A`)
-3. Commit with a descriptive message summarizing the project work
-4. Record the commit hash for inclusion in closeout and completion result
-This preserves a clean audit trail before the project is closed out.
+3. Commit with a descriptive message: `git commit -m "<summary of project work>"`
+4. Record the commit SHA (from git log --oneline -1) for the git_commits parameter
+
+Pass the commit SHA(s) in the git_commits list when calling close_project_and_update_memory.
+Skipping this step WILL cause closeout to fail — commit first, then close.
 ────────────────────────────────────────────────────────────────────────────
 '''
     }

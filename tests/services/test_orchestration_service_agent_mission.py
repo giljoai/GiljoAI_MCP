@@ -19,9 +19,9 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.schemas.service_responses import MissionResponse
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.schemas.service_responses import MissionResponse
+from giljo_mcp.services.orchestration_service import OrchestrationService
 
 
 @pytest.fixture

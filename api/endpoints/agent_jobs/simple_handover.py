@@ -25,11 +25,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import Project, User
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.thin_prompt_generator import build_continuation_prompt, build_retirement_prompt
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import Project, User
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.thin_prompt_generator import build_continuation_prompt, build_retirement_prompt
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -143,7 +143,7 @@ async def simple_handover(
         # Handover 0840d: Check git_history toggle from user_field_priorities table
         from sqlalchemy import select as sa_select
 
-        from src.giljo_mcp.models.auth import UserFieldPriority
+        from giljo_mcp.models.auth import UserFieldPriority
 
         prio_result = await db.execute(
             sa_select(UserFieldPriority).where(

@@ -47,7 +47,7 @@ def mock_tenant_manager():
 @pytest.fixture
 def tool_accessor(mock_db_manager, mock_tenant_manager):
     """Create ToolAccessor with mocked OrchestrationService."""
-    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+    from giljo_mcp.tools.tool_accessor import ToolAccessor
 
     accessor = ToolAccessor(
         db_manager=mock_db_manager,

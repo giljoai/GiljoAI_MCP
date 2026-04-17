@@ -29,8 +29,8 @@ class TestOrchestratorPhaseInstructions:
         self, db_session, db_manager, test_project_multi_terminal, test_tenant_key
     ):
         """Verify phase_assignment_instructions present when execution_mode is multi_terminal."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -60,8 +60,8 @@ class TestOrchestratorPhaseInstructions:
         self, db_session, db_manager, test_project_cli_mode, test_tenant_key
     ):
         """Verify phase_assignment_instructions NOT present when execution_mode is claude_code_cli."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -87,8 +87,8 @@ class TestOrchestratorPhaseInstructions:
         self, db_session, db_manager, test_project_multi_terminal, test_tenant_key
     ):
         """Verify phase_assignment_instructions content includes all expected guidance."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -120,8 +120,8 @@ class TestOrchestratorPhaseInstructions:
         self, db_session, db_manager, test_project, test_tenant_key
     ):
         """Verify phase_assignment_instructions present when execution_mode is default (None/multi_terminal)."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)

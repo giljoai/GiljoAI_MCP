@@ -13,9 +13,9 @@ Verifies:
 4. Backward compatibility: existing protocol structure is preserved
 """
 
-from src.giljo_mcp.services.protocol_sections.agent_lifecycle import _generate_orchestrator_protocol
-from src.giljo_mcp.services.protocol_sections.chapters_reference import _build_ch3_spawning_rules
-from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch1_mission
+from giljo_mcp.services.protocol_sections.agent_lifecycle import _generate_orchestrator_protocol
+from giljo_mcp.services.protocol_sections.chapters_reference import _build_ch3_spawning_rules
+from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch1_mission
 
 
 class TestCH1VerificationDeferral:

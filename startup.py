@@ -1244,6 +1244,20 @@ def run_startup(
         print_info("Please install manually: pip install -r requirements.txt")
         return 1
 
+    # Register giljo_mcp as importable package (editable install, idempotent)
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-e", ".", "--quiet"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=60,
+        )
+    except subprocess.CalledProcessError as e:
+        print_warning(f"Editable install failed (non-fatal): {e.stderr[:200] if e.stderr else e}")
+    except Exception as e:
+        print_warning(f"Editable install skipped: {e}")
+
     # Step 2.5: Download NLTK data for vision document summarization
     print_header("Downloading NLTK Data")
     try:

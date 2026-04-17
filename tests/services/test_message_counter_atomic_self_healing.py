@@ -27,7 +27,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models import (
+from giljo_mcp.models import (
     AgentExecution,
     AgentJob,
     AgentTemplate,
@@ -35,11 +35,11 @@ from src.giljo_mcp.models import (
     Product,
     Project,
 )
-from src.giljo_mcp.models.tasks import MessageRecipient
-from src.giljo_mcp.schemas.service_responses import MessageListResult
-from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.schemas.service_responses import MessageListResult
+from giljo_mcp.services.message_service import MessageService
+from giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.tenant import TenantManager
 
 
 # ============================================================================

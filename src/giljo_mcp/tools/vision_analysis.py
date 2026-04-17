@@ -21,13 +21,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models.context import MCPContextIndex
-from src.giljo_mcp.models.products import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
+from giljo_mcp.models.context import MCPContextIndex
+from giljo_mcp.models.products import (
     Product,
 )
-from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 
 
 logger = logging.getLogger(__name__)
@@ -372,7 +372,7 @@ async def update_product_fields(
 
         # -- Route writes through ProductService (the validated single write path) --
         if kwargs:
-            from src.giljo_mcp.services.product_service import ProductService
+            from giljo_mcp.services.product_service import ProductService
 
             product_service = ProductService(
                 db_manager=db_manager,

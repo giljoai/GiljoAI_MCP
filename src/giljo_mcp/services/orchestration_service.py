@@ -18,15 +18,15 @@ from typing import TYPE_CHECKING, Any, Optional
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     DatabaseError,
     OrchestrationError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.models import (
+from giljo_mcp.mission_planner import MissionPlanner
+from giljo_mcp.models import (
     AgentExecution,
     AgentJob,
     AgentTodoItem,
@@ -34,8 +34,8 @@ from src.giljo_mcp.models import (
     ProductMemoryEntry,
     Project,
 )
-from src.giljo_mcp.models.tasks import MessageRecipient
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.schemas.service_responses import (
     AgentTodoCounts,
     AgentWorkflowDetail,
     CompleteJobResult,
@@ -49,12 +49,12 @@ from src.giljo_mcp.schemas.service_responses import (
     SpawnResult,
     WorkflowStatus,
 )
-from src.giljo_mcp.services.dto import BroadcastAgentCreatedContext
-from src.giljo_mcp.services.job_lifecycle_service import JobLifecycleService
-from src.giljo_mcp.services.mission_service import MissionService
-from src.giljo_mcp.services.orchestration_agent_state_service import OrchestrationAgentStateService
-from src.giljo_mcp.services.progress_service import ProgressService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.services.dto import BroadcastAgentCreatedContext
+from giljo_mcp.services.job_lifecycle_service import JobLifecycleService
+from giljo_mcp.services.mission_service import MissionService
+from giljo_mcp.services.orchestration_agent_state_service import OrchestrationAgentStateService
+from giljo_mcp.services.progress_service import ProgressService
+from giljo_mcp.tenant import TenantManager
 
 
 if TYPE_CHECKING:

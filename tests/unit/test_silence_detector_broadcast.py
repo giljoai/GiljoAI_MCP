@@ -35,7 +35,7 @@ if "api" not in sys.modules:
     _api_stub.__package__ = "api"
     sys.modules["api"] = _api_stub
 
-from src.giljo_mcp.services.silence_detector import auto_clear_silent, clear_silent_status
+from giljo_mcp.services.silence_detector import auto_clear_silent, clear_silent_status
 
 
 def _make_mock_agent(
@@ -201,7 +201,7 @@ class TestAutoClearSilent:
         agent = _make_mock_agent(status="silent")
         session = _make_session_returning_row(agent, project_id)
 
-        with patch("src.giljo_mcp.services.silence_detector.logger") as mock_logger:
+        with patch("giljo_mcp.services.silence_detector.logger") as mock_logger:
             await auto_clear_silent(session=session, job_id=str(agent.job_id), ws_manager=None)
 
         mock_logger.warning.assert_called_once()

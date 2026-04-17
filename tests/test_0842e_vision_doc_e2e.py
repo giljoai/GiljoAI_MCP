@@ -20,14 +20,14 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Product, VisionDocument, VisionDocumentSummary
-from src.giljo_mcp.models.products import (
+from giljo_mcp.models import Product, VisionDocument, VisionDocumentSummary
+from giljo_mcp.models.products import (
     ProductArchitecture,
     ProductTechStack,
     ProductTestConfig,
 )
-from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from giljo_mcp.tenant import TenantManager
 
 
 # ---------------------------------------------------------------------------
@@ -107,7 +107,7 @@ async def test_e2e_full_analysis_flow(
     vision_doc: VisionDocument,
 ):
     """Full round-trip: get vision doc, write all 4 tables + summaries, verify persistence and WebSocket."""
-    from src.giljo_mcp.tools.vision_analysis import get_vision_doc, update_product_fields
+    from giljo_mcp.tools.vision_analysis import get_vision_doc, update_product_fields
 
     # Step 1: Retrieve vision document content + extraction prompt
     get_result = await get_vision_doc(
@@ -261,8 +261,8 @@ async def test_e2e_context_manager_prefers_ai(
     vision_doc: VisionDocument,
 ):
     """Context manager returns AI summary over Sumy when both exist."""
-    from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     # Step 1: Write Sumy summaries via repository
     await vision_repo.create_summary(
@@ -339,7 +339,7 @@ async def test_e2e_sumy_only_fallback(
     vision_doc: VisionDocument,
 ):
     """Context manager returns Sumy summary when no AI summary exists."""
-    from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
+    from giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
 
     # Write ONLY Sumy summaries (no AI summaries)
     await vision_repo.create_summary(
@@ -404,7 +404,7 @@ async def test_e2e_partial_field_write_no_overwrite(
     vision_doc: VisionDocument,
 ):
     """Partial writes only update provided fields; subsequent writes do not null earlier fields."""
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     # First write: 3 fields across products, tech_stack, and summaries
     result1 = await update_product_fields(
@@ -500,7 +500,7 @@ async def test_e2e_custom_instructions(
     vision_doc: VisionDocument,
 ):
     """Custom instructions appear in extraction prompt; clearing them removes the section."""
-    from src.giljo_mcp.tools.vision_analysis import get_vision_doc
+    from giljo_mcp.tools.vision_analysis import get_vision_doc
 
     # Step 1: Product has custom instructions ("Focus on mobile architecture")
     result_with = await get_vision_doc(

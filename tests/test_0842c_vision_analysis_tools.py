@@ -19,14 +19,14 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Product, VisionDocument, VisionDocumentSummary
-from src.giljo_mcp.models.products import (
+from giljo_mcp.models import Product, VisionDocument, VisionDocumentSummary
+from giljo_mcp.models.products import (
     ProductArchitecture,
     ProductTechStack,
     ProductTestConfig,
 )
-from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from giljo_mcp.tenant import TenantManager
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -179,7 +179,7 @@ async def test_get_vision_doc_happy_path(
     doc_a: VisionDocument,
 ):
     """Product with vision doc returns content, prompt, and metadata."""
-    from src.giljo_mcp.tools.vision_analysis import get_vision_doc
+    from giljo_mcp.tools.vision_analysis import get_vision_doc
 
     result = await get_vision_doc(
         product_id=product_a.id,
@@ -215,8 +215,8 @@ async def test_get_vision_doc_not_found(
     tenant_a: str,
 ):
     """Nonexistent product raises ResourceNotFoundError."""
-    from src.giljo_mcp.exceptions import ResourceNotFoundError
-    from src.giljo_mcp.tools.vision_analysis import get_vision_doc
+    from giljo_mcp.exceptions import ResourceNotFoundError
+    from giljo_mcp.tools.vision_analysis import get_vision_doc
 
     with pytest.raises(ResourceNotFoundError):
         await get_vision_doc(
@@ -236,8 +236,8 @@ async def test_get_vision_doc_tenant_isolation(
     doc_b: VisionDocument,
 ):
     """Cannot read another tenant's product vision documents."""
-    from src.giljo_mcp.exceptions import ResourceNotFoundError
-    from src.giljo_mcp.tools.vision_analysis import get_vision_doc
+    from giljo_mcp.exceptions import ResourceNotFoundError
+    from giljo_mcp.tools.vision_analysis import get_vision_doc
 
     with pytest.raises(ResourceNotFoundError):
         await get_vision_doc(
@@ -256,7 +256,7 @@ async def test_get_vision_doc_custom_instructions(
     doc_a: VisionDocument,
 ):
     """Custom extraction instructions are injected into the prompt."""
-    from src.giljo_mcp.tools.vision_analysis import get_vision_doc
+    from giljo_mcp.tools.vision_analysis import get_vision_doc
 
     result = await get_vision_doc(
         product_id=product_a.id,
@@ -275,8 +275,8 @@ async def test_get_vision_doc_no_vision_docs(
     product_a_no_instructions: Product,
 ):
     """Product without vision documents raises ResourceNotFoundError."""
-    from src.giljo_mcp.exceptions import ResourceNotFoundError
-    from src.giljo_mcp.tools.vision_analysis import get_vision_doc
+    from giljo_mcp.exceptions import ResourceNotFoundError
+    from giljo_mcp.tools.vision_analysis import get_vision_doc
 
     with pytest.raises(ResourceNotFoundError, match="No vision documents found"):
         await get_vision_doc(
@@ -299,7 +299,7 @@ async def test_write_product_core_fields(
     product_a: Product,
 ):
     """Writes product_name, description, and core_features to product."""
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     result = await update_product_fields(
         product_id=product_a.id,
@@ -334,7 +334,7 @@ async def test_write_product_tech_stack(
     product_a: Product,
 ):
     """Writes tech stack fields to product_tech_stacks table."""
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     result = await update_product_fields(
         product_id=product_a.id,
@@ -370,7 +370,7 @@ async def test_write_product_architecture(
     product_a: Product,
 ):
     """Writes architecture fields to product_architectures table."""
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     result = await update_product_fields(
         product_id=product_a.id,
@@ -406,7 +406,7 @@ async def test_write_product_test_config(
     product_a: Product,
 ):
     """Writes test config fields to product_test_configs table."""
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     result = await update_product_fields(
         product_id=product_a.id,
@@ -442,7 +442,7 @@ async def test_write_product_summaries(
     doc_a: VisionDocument,
 ):
     """Writes summary_33 and summary_66 to vision_document_summaries with source=ai."""
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     result = await update_product_fields(
         product_id=product_a.id,
@@ -481,7 +481,7 @@ async def test_write_product_partial_fields(
     product_a: Product,
 ):
     """Only provided fields are written; missing fields remain untouched (merge-write)."""
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     # First write: set programming_languages and frontend_frameworks
     await update_product_fields(
@@ -522,8 +522,8 @@ async def test_write_product_tenant_isolation(
     product_b: Product,
 ):
     """Cannot write to another tenant's product."""
-    from src.giljo_mcp.exceptions import ResourceNotFoundError
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.exceptions import ResourceNotFoundError
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     with pytest.raises(ResourceNotFoundError):
         await update_product_fields(
@@ -542,7 +542,7 @@ async def test_write_product_websocket_event(
     product_a: Product,
 ):
     """WebSocket notification is emitted after successful write."""
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     mock_ws = AsyncMock()
 
@@ -571,7 +571,7 @@ async def test_write_product_target_platforms(
     product_a: Product,
 ):
     """target_platforms writes to the ARRAY column on the products table."""
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     result = await update_product_fields(
         product_id=product_a.id,
@@ -595,8 +595,8 @@ async def test_write_product_invalid_testing_strategy(
     product_a: Product,
 ):
     """Invalid testing_strategy raises ValidationError before any DB access."""
-    from src.giljo_mcp.exceptions import ValidationError
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.exceptions import ValidationError
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     with pytest.raises(ValidationError, match="testing_strategy"):
         await update_product_fields(
@@ -615,8 +615,8 @@ async def test_write_product_invalid_coverage_target(
     product_a: Product,
 ):
     """test_coverage_target outside 0-100 raises ValidationError before any DB access."""
-    from src.giljo_mcp.exceptions import ValidationError
-    from src.giljo_mcp.tools.vision_analysis import update_product_fields
+    from giljo_mcp.exceptions import ValidationError
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     with pytest.raises(ValidationError, match="test_coverage_target"):
         await update_product_fields(

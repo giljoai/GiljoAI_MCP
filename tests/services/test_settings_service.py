@@ -24,13 +24,13 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.exceptions import ValidationError
-from src.giljo_mcp.models.auth import User, UserFieldPriority
-from src.giljo_mcp.models.organizations import Organization
-from src.giljo_mcp.models.settings import Settings
-from src.giljo_mcp.services.settings_service import SettingsService
-from src.giljo_mcp.services.user_service import UserService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.models.auth import User, UserFieldPriority
+from giljo_mcp.models.organizations import Organization
+from giljo_mcp.models.settings import Settings
+from giljo_mcp.services.settings_service import SettingsService
+from giljo_mcp.services.user_service import UserService
+from giljo_mcp.tenant import TenantManager
 
 
 # ============================================================================
@@ -584,7 +584,7 @@ class TestSeedDefaultSettingsDataConstruction:
 
     def test_seed_integrations_data_accepted_by_jsonb_validator(self):
         """Seed data must pass JSONB validator — what gets written to the DB."""
-        from src.giljo_mcp.schemas.jsonb_validators import validate_settings_by_category
+        from giljo_mcp.schemas.jsonb_validators import validate_settings_by_category
 
         seed = self._build_seed_data_from_config({})
         # Should not raise
@@ -593,7 +593,7 @@ class TestSeedDefaultSettingsDataConstruction:
 
     def test_seed_security_data_accepted_by_jsonb_validator(self):
         """Seed security data must pass JSONB validator."""
-        from src.giljo_mcp.schemas.jsonb_validators import validate_settings_by_category
+        from giljo_mcp.schemas.jsonb_validators import validate_settings_by_category
 
         seed = self._build_seed_data_from_config({})
         result = validate_settings_by_category("security", seed["security"])
@@ -601,7 +601,7 @@ class TestSeedDefaultSettingsDataConstruction:
 
     def test_seed_runtime_data_accepted_by_jsonb_validator(self):
         """Seed runtime data must pass JSONB validator."""
-        from src.giljo_mcp.schemas.jsonb_validators import validate_settings_by_category
+        from giljo_mcp.schemas.jsonb_validators import validate_settings_by_category
 
         seed = self._build_seed_data_from_config({})
         result = validate_settings_by_category("runtime", seed["runtime"])

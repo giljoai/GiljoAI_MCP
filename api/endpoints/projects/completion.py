@@ -28,10 +28,10 @@ from api.schemas.prompt import (
     ProjectCompleteRequest,
     ProjectCompleteResponse,
 )
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.models import User
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_project_service
 from .models import ContinueWorkingResponse, ProjectCloseOutResponse

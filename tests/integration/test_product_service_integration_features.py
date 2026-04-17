@@ -19,13 +19,13 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models.products import Product, VisionDocument
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models.products import Product, VisionDocument
+from giljo_mcp.schemas.service_responses import (
     ProductStatistics,
     VisionUploadResult,
 )
-from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.services.product_vision_service import ProductVisionService
+from giljo_mcp.services.product_service import ProductService
+from giljo_mcp.services.product_vision_service import ProductVisionService
 
 
 @pytest.mark.asyncio
@@ -198,7 +198,7 @@ class TestVisionDocumentIntegration:
 
         Handover 0950i: upload_vision_document moved to ProductVisionService.
         """
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
+        from giljo_mcp.exceptions import ResourceNotFoundError
 
         tenant_key = str(uuid4())
         service = ProductVisionService(db_manager, tenant_key)

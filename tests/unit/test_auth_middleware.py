@@ -236,7 +236,7 @@ class TestTokenExpInAuthResult:
     @pytest.mark.asyncio
     async def test_jwt_auth_result_includes_exp(self):
         """When JWT is validated, the exp claim from payload should be in auth result."""
-        from src.giljo_mcp.auth_manager import AuthManager
+        from giljo_mcp.auth_manager import AuthManager
 
         auth_mgr = AuthManager()
 

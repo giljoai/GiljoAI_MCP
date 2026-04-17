@@ -18,8 +18,8 @@ from datetime import datetime, timezone
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Configuration
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Configuration
 
 
 DEFAULT_ORCHESTRATOR_CONFIG_KEY = "system.orchestrator_prompt"

@@ -31,15 +31,15 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.endpoints.dependencies import get_db_manager, get_user_service
-from src.giljo_mcp.auth.dependencies import (
+from giljo_mcp.auth.dependencies import (
     get_current_active_user,
     get_db_session,
     require_admin,
 )
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services import UserService
-from src.giljo_mcp.services.settings_service import SettingsService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.models import User
+from giljo_mcp.services import UserService
+from giljo_mcp.services.settings_service import SettingsService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -475,7 +475,7 @@ async def update_user(
         async with db_manager.get_session_async() as db:
             from sqlalchemy import select
 
-            from src.giljo_mcp.models.auth import User as UserModel
+            from giljo_mcp.models.auth import User as UserModel
 
             stmt = select(UserModel).where(UserModel.id == str(user_id))
             result = await db.execute(stmt)
@@ -946,7 +946,7 @@ async def get_notification_preferences(
 
     Returns default preferences if not yet customized.
     """
-    from src.giljo_mcp.config.defaults import DEFAULT_NOTIFICATION_PREFERENCES
+    from giljo_mcp.config.defaults import DEFAULT_NOTIFICATION_PREFERENCES
 
     prefs = current_user.notification_preferences or DEFAULT_NOTIFICATION_PREFERENCES
     return {"notification_preferences": prefs}
@@ -967,8 +967,8 @@ async def update_notification_preferences(
     """
     from sqlalchemy import update as sql_update
 
-    from src.giljo_mcp.config.defaults import DEFAULT_NOTIFICATION_PREFERENCES
-    from src.giljo_mcp.models.auth import User as UserModel
+    from giljo_mcp.config.defaults import DEFAULT_NOTIFICATION_PREFERENCES
+    from giljo_mcp.models.auth import User as UserModel
 
     prefs = dict(current_user.notification_preferences or DEFAULT_NOTIFICATION_PREFERENCES)
 

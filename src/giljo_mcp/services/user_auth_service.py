@@ -23,15 +23,15 @@ import bcrypt
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     AuthenticationError,
     AuthorizationError,
     BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models.auth import User
+from giljo_mcp.models.auth import User
 
 
 logger = logging.getLogger(__name__)

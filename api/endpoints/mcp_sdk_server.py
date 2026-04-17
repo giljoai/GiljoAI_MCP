@@ -25,7 +25,7 @@ from starlette.requests import Request as StarletteRequest
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from src.giljo_mcp.auth.jwt_manager import JWTManager
+from giljo_mcp.auth.jwt_manager import JWTManager
 
 
 logger = logging.getLogger(__name__)
@@ -119,7 +119,7 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
     if job_id:
         try:
             from api.app_state import state as app_state
-            from src.giljo_mcp.services.silence_detector import auto_clear_silent
+            from giljo_mcp.services.silence_detector import auto_clear_silent
 
             ws_manager = getattr(app_state, "websocket_manager", None)
             async with app_state.db_manager.get_session_async() as db:
@@ -130,7 +130,7 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
         # Server-side heartbeat: update last_activity_at with 30s debounce
         try:
             from api.app_state import state as app_state
-            from src.giljo_mcp.services.heartbeat import touch_heartbeat
+            from giljo_mcp.services.heartbeat import touch_heartbeat
 
             async with app_state.db_manager.get_session_async() as db:
                 await touch_heartbeat(db, job_id, tenant_key=tenant_key)

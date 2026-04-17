@@ -27,16 +27,16 @@ import bcrypt
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     AuthenticationError,
     AuthorizationError,
     BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models.auth import TOGGLEABLE_CATEGORIES, User, UserFieldPriority
-from src.giljo_mcp.services.user_auth_service import UserAuthService
+from giljo_mcp.models.auth import TOGGLEABLE_CATEGORIES, User, UserFieldPriority
+from giljo_mcp.services.user_auth_service import UserAuthService
 
 
 logger = logging.getLogger(__name__)
@@ -467,7 +467,7 @@ class UserService:
 
     async def _get_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
         """Query user_field_priorities table and build backward-compatible response."""
-        from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES, DEFAULT_FIELD_PRIORITY
+        from giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES, DEFAULT_FIELD_PRIORITY
 
         # Verify user exists
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))

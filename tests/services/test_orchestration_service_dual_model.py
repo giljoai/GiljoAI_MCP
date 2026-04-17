@@ -36,7 +36,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Project
+from giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Project
 
 
 # ============================================================================
@@ -109,8 +109,8 @@ class TestSpawnAgentJobDualModel:
 
     async def test_spawn_creates_both_job_and_execution(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify spawn_job creates BOTH AgentJob and AgentExecution."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -124,7 +124,7 @@ class TestSpawnAgentJobDualModel:
         )
 
         # Handover 0731c: Returns SpawnResult typed model
-        from src.giljo_mcp.schemas.service_responses import SpawnResult
+        from giljo_mcp.schemas.service_responses import SpawnResult
 
         assert isinstance(result, SpawnResult)
         assert result.job_id
@@ -159,8 +159,8 @@ class TestSpawnAgentJobDualModel:
         self, db_session, db_manager, test_project, test_tenant_key
     ):
         """Verify mission is stored in AgentJob, NOT duplicated in AgentExecution."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -189,8 +189,8 @@ class TestSpawnAgentJobDualModel:
 
     async def test_spawn_returns_both_ids(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify spawn_job returns dict with both job_id and agent_id."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -204,7 +204,7 @@ class TestSpawnAgentJobDualModel:
         )
 
         # Handover 0731c: Returns SpawnResult typed model
-        from src.giljo_mcp.schemas.service_responses import SpawnResult
+        from giljo_mcp.schemas.service_responses import SpawnResult
 
         assert isinstance(result, SpawnResult)
         assert result.job_id
@@ -241,8 +241,8 @@ class TestQueryMethodsDualModel:
 
     async def test_list_jobs_returns_both_ids(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify list_jobs returns both job_id and agent_id."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -272,8 +272,8 @@ class TestQueryMethodsDualModel:
         self, db_session, db_manager, test_project, test_tenant_key
     ):
         """Verify get_pending_jobs filters by AgentExecution.status."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -316,8 +316,8 @@ class TestQueryMethodsDualModel:
         self, db_session, db_manager, test_project, test_tenant_key
     ):
         """Verify get_agent_mission returns mission from AgentJob (joined)."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -342,8 +342,8 @@ class TestQueryMethodsDualModel:
         self, db_session, db_manager, test_project, test_tenant_key
     ):
         """Verify get_workflow_status aggregates across all executions correctly."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -368,7 +368,7 @@ class TestQueryMethodsDualModel:
         status = await service.get_workflow_status(project_id=test_project.id, tenant_key=test_tenant_key)
 
         # Handover 0731c: get_workflow_status returns WorkflowStatus typed model
-        from src.giljo_mcp.schemas.service_responses import WorkflowStatus
+        from giljo_mcp.schemas.service_responses import WorkflowStatus
 
         assert isinstance(status, WorkflowStatus)
         assert status.total_agents >= 2
@@ -394,8 +394,8 @@ class TestUpdateMethodsDualModel:
 
     async def test_complete_job_updates_execution_status(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify complete_job updates AgentExecution.status, not AgentJob.status."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -434,8 +434,8 @@ class TestUpdateMethodsDualModel:
         self, db_session, db_manager, test_project, test_tenant_key
     ):
         """Verify report_progress updates AgentExecution fields."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)

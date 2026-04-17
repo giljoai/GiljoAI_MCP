@@ -15,9 +15,9 @@ from datetime import datetime, timezone
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models import Configuration
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.repositories.configuration_repository import ConfigurationRepository
+from giljo_mcp.models import Configuration
+from giljo_mcp.models.auth import User
+from giljo_mcp.repositories.configuration_repository import ConfigurationRepository
 
 
 @pytest.fixture
@@ -223,7 +223,7 @@ class TestSetupDomain:
             # First verify no admin exists by not creating one
             from sqlalchemy import delete
 
-            from src.giljo_mcp.models.auth import User
+            from giljo_mcp.models.auth import User
 
             # Delete any admin users that might exist from other tests
             await fresh_session.execute(delete(User).where(User.role == "admin"))

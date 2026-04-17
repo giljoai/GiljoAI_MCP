@@ -20,10 +20,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 from api.endpoints.dependencies import get_user_service
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.services.settings_service import SettingsService
-from src.giljo_mcp.services.user_service import UserService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.services.settings_service import SettingsService
+from giljo_mcp.services.user_service import UserService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)

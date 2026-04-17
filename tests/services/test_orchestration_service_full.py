@@ -20,15 +20,15 @@ import uuid
 
 import pytest
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ResourceNotFoundError
-from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Product, Project
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Product, Project
+from giljo_mcp.schemas.service_responses import (
     MissionResponse,
     SpawnResult,
 )
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.tenant import TenantManager
 
 
 @pytest.fixture

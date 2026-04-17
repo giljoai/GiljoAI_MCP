@@ -22,12 +22,12 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.schemas.service_responses import MissionResponse
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.projects import Project
+from giljo_mcp.schemas.service_responses import MissionResponse
+from giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.services.protocol_builder import _generate_agent_protocol
+from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
 # ---------------------------------------------------------------------------

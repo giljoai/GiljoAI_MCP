@@ -18,27 +18,27 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     OrchestrationError,
     ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models import (
+from giljo_mcp.models import (
     AgentExecution,
     AgentJob,
     Message,
     ProductMemoryEntry,
     Project,
 )
-from src.giljo_mcp.models.tasks import MessageRecipient
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.schemas.service_responses import (
     DismissResult,
     ErrorReportResult,
     ReactivationResult,
 )
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.tenant import TenantManager
 
 
 if TYPE_CHECKING:
@@ -177,7 +177,7 @@ class OrchestrationAgentStateService:
                 if proj and proj.product_id:
                     from uuid import UUID
 
-                    from src.giljo_mcp.repositories.product_memory_repository import (
+                    from giljo_mcp.repositories.product_memory_repository import (
                         ProductMemoryRepository,
                     )
 
@@ -225,7 +225,7 @@ class OrchestrationAgentStateService:
                 )
                 # Handover 0821: Single batch UPDATE for completion report counters
                 # prevents cross-statement deadlock with concurrent broadcasts
-                from src.giljo_mcp.repositories.message_repository import MessageRepository
+                from giljo_mcp.repositories.message_repository import MessageRepository
 
                 _msg_repo = MessageRepository()
                 await _msg_repo.batch_update_counters(
@@ -239,7 +239,7 @@ class OrchestrationAgentStateService:
         """Find the active orchestrator execution for a project."""
         from sqlalchemy import select
 
-        from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+        from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
         stmt = (
             select(AgentExecution)

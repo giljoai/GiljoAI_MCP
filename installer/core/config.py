@@ -693,8 +693,8 @@ def seed_default_orchestrator_template(db_manager, tenant_key: str) -> Dict[str,
     """
     from datetime import datetime, timezone
 
-    from src.giljo_mcp.models import AgentTemplate
-    from src.giljo_mcp.template_manager import UnifiedTemplateManager
+    from giljo_mcp.models import AgentTemplate
+    from giljo_mcp.template_manager import UnifiedTemplateManager
 
     logger = logging.getLogger(__name__)
     result = {"success": False, "errors": []}

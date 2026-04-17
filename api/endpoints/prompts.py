@@ -33,11 +33,11 @@ from api.schemas.prompt import (
     TerminationPromptResponse,
     ThinOrchestratorPromptResponse,
 )
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import Project, User
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import Project, User
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -375,7 +375,7 @@ async def generate_staging_prompt(
     """
     from sqlalchemy import and_ as _and
 
-    from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+    from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
     # Staging guard: prevent re-staging when already staged or in progress
     proj_result = await db.execute(
@@ -514,7 +514,7 @@ async def get_implementation_prompt(
         HTTPException 403: Tenant isolation violation
         HTTPException 500: Prompt generation error
     """
-    from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+    from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
     # 1. Fetch project with multi-tenant filtering (eager-load product + project_type for git closeout)
     project_stmt = (
@@ -615,7 +615,7 @@ async def get_implementation_prompt(
     if project.product and getattr(project.product, "product_memory", None):
         git_config = project.product.product_memory.get("git_integration", {})
         # Handover 0840d: Check git_history toggle from user_field_priorities table
-        from src.giljo_mcp.models.auth import UserFieldPriority
+        from giljo_mcp.models.auth import UserFieldPriority
 
         prio_result = await db.execute(
             select(UserFieldPriority).where(

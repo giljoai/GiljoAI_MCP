@@ -24,8 +24,8 @@ on data visibility across sessions.
 
 import pytest
 
-from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
+from giljo_mcp.tenant import TenantManager
 
 
 # ============================================================================

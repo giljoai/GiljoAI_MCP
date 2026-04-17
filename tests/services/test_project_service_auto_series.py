@@ -14,8 +14,8 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.models.projects import Project
+from giljo_mcp.services.project_service import ProjectService
 
 
 @pytest.fixture
@@ -88,7 +88,7 @@ class TestAutoAssignSeriesNumber:
         self, project_service: ProjectService, test_tenant_key: str, db_session
     ):
         """Auto-series counts independently per project_type_id."""
-        from src.giljo_mcp.models.projects import ProjectType
+        from giljo_mcp.models.projects import ProjectType
 
         # Create two project types
         pt1 = ProjectType(
@@ -156,7 +156,7 @@ class TestAutoAssignSeriesNumber:
         self, project_service_with_session, test_tenant_key: str, db_manager, tenant_manager
     ):
         """Different tenants have independent series numbering."""
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tenant import TenantManager
 
         # Create project for first tenant
         p1 = await project_service_with_session.create_project(

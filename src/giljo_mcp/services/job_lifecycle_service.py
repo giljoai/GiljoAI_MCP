@@ -26,23 +26,23 @@ from uuid import uuid4
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     AlreadyExistsError,
     DatabaseError,
     ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models import (
+from giljo_mcp.models import (
     AgentExecution,
     AgentJob,
     AgentTemplate,
     Project,
 )
-from src.giljo_mcp.schemas.service_responses import SpawnResult
-from src.giljo_mcp.services.dto import BroadcastAgentCreatedContext
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.schemas.service_responses import SpawnResult
+from giljo_mcp.services.dto import BroadcastAgentCreatedContext
+from giljo_mcp.tenant import TenantManager
 
 
 if TYPE_CHECKING:

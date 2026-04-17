@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.agent_identity import AgentExecution
+from giljo_mcp.models.agent_identity import AgentExecution
 
 
 logger = logging.getLogger(__name__)

@@ -23,21 +23,21 @@ from typing import Any
 
 import structlog
 
-from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _RAW_DEPTH_CONFIG
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ValidationError
-from src.giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
-from src.giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
-from src.giljo_mcp.tools.context_tools.get_architecture import get_architecture
-from src.giljo_mcp.tools.context_tools.get_git_history import get_git_history
+from giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _RAW_DEPTH_CONFIG
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
+from giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
+from giljo_mcp.tools.context_tools.get_architecture import get_architecture
+from giljo_mcp.tools.context_tools.get_git_history import get_git_history
 
 # Internal tools (NOT exposed via MCP)
-from src.giljo_mcp.tools.context_tools.get_product_context import get_product_context
-from src.giljo_mcp.tools.context_tools.get_project import get_project
-from src.giljo_mcp.tools.context_tools.get_self_identity import get_self_identity
-from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
-from src.giljo_mcp.tools.context_tools.get_testing import get_testing
-from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
+from giljo_mcp.tools.context_tools.get_product_context import get_product_context
+from giljo_mcp.tools.context_tools.get_project import get_project
+from giljo_mcp.tools.context_tools.get_self_identity import get_self_identity
+from giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
+from giljo_mcp.tools.context_tools.get_testing import get_testing
+from giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
 
 
 logger = structlog.get_logger(__name__)
@@ -106,7 +106,7 @@ async def _is_category_enabled(
 
     from sqlalchemy import and_, select
 
-    from src.giljo_mcp.models.auth import User, UserFieldPriority
+    from giljo_mcp.models.auth import User, UserFieldPriority
 
     try:
         async with db_manager.get_session_async() as session:
@@ -155,7 +155,7 @@ async def _load_user_depth_config(
     """
     from sqlalchemy import and_, select
 
-    from src.giljo_mcp.models.auth import User
+    from giljo_mcp.models.auth import User
 
     try:
         async with db_manager.get_session_async() as session:

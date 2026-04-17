@@ -16,8 +16,8 @@ from pathlib import Path
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.file_staging import FileStaging
-from src.giljo_mcp.models.templates import AgentTemplate
+from giljo_mcp.file_staging import FileStaging
+from giljo_mcp.models.templates import AgentTemplate
 
 
 @pytest.mark.asyncio

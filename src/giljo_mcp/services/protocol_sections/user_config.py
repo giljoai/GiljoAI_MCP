@@ -12,9 +12,9 @@ from typing import Any
 
 from sqlalchemy import and_, select
 
-from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
-from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
-from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
+from giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
+from giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
+from giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
 
 
 logger = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ async def _get_user_config(
     Returns:
         dict with 'field_toggles' and 'depth_config' keys
     """
-    from src.giljo_mcp.models.auth import User, UserFieldPriority
+    from giljo_mcp.models.auth import User, UserFieldPriority
 
     try:
         result = await session.execute(

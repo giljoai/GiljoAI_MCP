@@ -11,7 +11,7 @@ TDD RED phase: These tests should FAIL until the model is updated.
 
 from sqlalchemy import Text
 
-from src.giljo_mcp.models.products import Product
+from giljo_mcp.models.products import Product
 
 
 def test_quality_standards_field_exists():

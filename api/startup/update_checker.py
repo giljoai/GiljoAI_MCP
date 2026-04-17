@@ -190,7 +190,7 @@ async def _update_check_loop(state) -> None:
 def _get_local_version() -> str:
     """Return the local application version string."""
     try:
-        from src.giljo_mcp import __version__
+        from giljo_mcp import __version__
 
         return __version__
     except ImportError:

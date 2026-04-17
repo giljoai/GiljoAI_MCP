@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.exceptions import ResourceNotFoundError
 
 
 # ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ class TestCloseJobTransition:
 
     @pytest.fixture
     def state_service(self):
-        from src.giljo_mcp.services.orchestration_agent_state_service import (
+        from giljo_mcp.services.orchestration_agent_state_service import (
             OrchestrationAgentStateService,
         )
 
@@ -63,7 +63,7 @@ class TestCloseJobTransition:
     @pytest.mark.asyncio
     async def test_close_job_empty_job_id_rejected(self, state_service):
         """close_job should raise ValidationError for empty job_id."""
-        from src.giljo_mcp.exceptions import ValidationError
+        from giljo_mcp.exceptions import ValidationError
 
         with pytest.raises(ValidationError, match="job_id cannot be empty"):
             await state_service.close_job(job_id="", tenant_key="test_tenant")
@@ -127,13 +127,13 @@ class TestSkipStatuses:
     """Verify that skip statuses include 'closed' for closeout readiness checks."""
 
     def test_project_closeout_skip_statuses(self):
-        from src.giljo_mcp.tools.project_closeout import _SKIP_STATUSES
+        from giljo_mcp.tools.project_closeout import _SKIP_STATUSES
 
         assert "closed" in _SKIP_STATUSES
         assert "decommissioned" in _SKIP_STATUSES
 
     def test_write_360_memory_skip_statuses(self):
-        from src.giljo_mcp.tools.write_360_memory import SKIP_STATUSES
+        from giljo_mcp.tools.write_360_memory import SKIP_STATUSES
 
         assert "closed" in SKIP_STATUSES
         assert "decommissioned" in SKIP_STATUSES
@@ -148,7 +148,7 @@ class TestModelConstraint:
     """Verify the CHECK constraint in the model includes 'closed'."""
 
     def test_agent_execution_check_constraint_includes_closed(self):
-        from src.giljo_mcp.models.agent_identity import AgentExecution
+        from giljo_mcp.models.agent_identity import AgentExecution
 
         constraints = [
             c

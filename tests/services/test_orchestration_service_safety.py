@@ -25,8 +25,8 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.exceptions import AlreadyExistsError, ValidationError
-from src.giljo_mcp.models import AgentTemplate, Project
+from giljo_mcp.exceptions import AlreadyExistsError, ValidationError
+from giljo_mcp.models import AgentTemplate, Project
 
 
 # ============================================================================
@@ -80,8 +80,8 @@ async def test_agent_template(db_session, test_tenant_key) -> AgentTemplate:
 @pytest_asyncio.fixture
 async def orchestration_service(db_manager, db_session):
     """Create OrchestrationService with test session."""
-    from src.giljo_mcp.services.orchestration_service import OrchestrationService
-    from src.giljo_mcp.tenant import TenantManager
+    from giljo_mcp.services.orchestration_service import OrchestrationService
+    from giljo_mcp.tenant import TenantManager
 
     tenant_manager = TenantManager()
     return OrchestrationService(
@@ -209,6 +209,6 @@ class TestAgentNameValidation:
         assert result.job_id
         assert result.agent_id
         # Verify the agent was actually created
-        from src.giljo_mcp.schemas.service_responses import SpawnResult
+        from giljo_mcp.schemas.service_responses import SpawnResult
 
         assert isinstance(result, SpawnResult)

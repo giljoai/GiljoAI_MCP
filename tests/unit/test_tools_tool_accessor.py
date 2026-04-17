@@ -11,7 +11,7 @@ This suite intentionally tests behavior that should remain stable:
 - Legacy download flow tools are not present anymore
 """
 
-from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+from giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
 def test_tool_accessor_initialization(mock_db_manager, mock_tenant_manager):

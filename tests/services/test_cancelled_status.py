@@ -20,9 +20,9 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.exceptions import ProjectStateError
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.services.project_service import IMMUTABLE_PROJECT_STATUSES, ProjectService
+from giljo_mcp.exceptions import ProjectStateError
+from giljo_mcp.models.projects import Project
+from giljo_mcp.services.project_service import IMMUTABLE_PROJECT_STATUSES, ProjectService
 
 
 # ---------------------------------------------------------------------------
@@ -244,13 +244,13 @@ class TestToolAccessorCancelledConstants:
 
     def test_cancelled_in_valid_status_filters(self):
         """'cancelled' should be in _VALID_PROJECT_STATUS_FILTERS."""
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         assert "cancelled" in ToolAccessor._VALID_PROJECT_STATUS_FILTERS
 
     def test_cancelled_in_valid_update_statuses(self):
         """'cancelled' should be in _VALID_PROJECT_UPDATE_STATUSES."""
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         assert "cancelled" in ToolAccessor._VALID_PROJECT_UPDATE_STATUSES
 

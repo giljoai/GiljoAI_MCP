@@ -32,13 +32,13 @@ from uuid import uuid4
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ResourceNotFoundError
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.schemas.service_responses import ProjectLaunchResult
-from src.giljo_mcp.services.project_service import _build_ws_project_data
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.projects import Project
+from giljo_mcp.schemas.service_responses import ProjectLaunchResult
+from giljo_mcp.services.project_service import _build_ws_project_data
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -205,7 +205,7 @@ class ProjectLaunchService:
         depth_config: dict | None = None
 
         if user_id:
-            from src.giljo_mcp.models.auth import User, UserFieldPriority
+            from giljo_mcp.models.auth import User, UserFieldPriority
 
             user_stmt = select(User).where(and_(User.id == user_id, User.tenant_key == tenant_key))
             user_result = await session.execute(user_stmt)
@@ -222,7 +222,7 @@ class ProjectLaunchService:
                 )
                 rows = prio_result.scalars().all()
                 if rows:
-                    from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
+                    from giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
 
                     field_toggles = dict(DEFAULT_CATEGORY_TOGGLES)
                     for row in rows:

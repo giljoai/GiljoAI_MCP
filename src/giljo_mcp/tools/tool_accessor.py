@@ -18,20 +18,20 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ValidationError
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.schemas.service_responses import (
     MessageListResult,
     SendMessageResult,
     WorkflowStatus,
 )
-from src.giljo_mcp.services.message_routing_service import MessageRoutingService
-from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.services.task_service import TaskService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.services.message_routing_service import MessageRoutingService
+from giljo_mcp.services.message_service import MessageService
+from giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.services.product_service import ProductService
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.services.task_service import TaskService
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)

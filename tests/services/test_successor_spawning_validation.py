@@ -18,7 +18,7 @@ import uuid
 
 import pytest
 
-from src.giljo_mcp.models import Project
+from giljo_mcp.models import Project
 
 
 # Fixtures `tenant_key`, `agent_templates`, `project`, `service`,
@@ -37,7 +37,7 @@ class TestPredecessorValidation:
 
     async def test_nonexistent_predecessor_raises_error(self, service, project, tenant_key):
         """Spawning with a non-existent predecessor_job_id should raise ResourceNotFoundError."""
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
+        from giljo_mcp.exceptions import ResourceNotFoundError
 
         with pytest.raises(ResourceNotFoundError, match="Predecessor job"):
             await service.spawn_job(
@@ -53,7 +53,7 @@ class TestPredecessorValidation:
         """Predecessor from a different project should raise ValidationError."""
         from datetime import datetime, timezone
 
-        from src.giljo_mcp.exceptions import ValidationError
+        from giljo_mcp.exceptions import ValidationError
         from tests.services.conftest import _spawn_and_complete
 
         # Create a second project in the same tenant (unique series_number to avoid uq_project_taxonomy)
@@ -88,7 +88,7 @@ class TestPredecessorValidation:
         self, service, project, other_project, tenant_key, other_tenant_key
     ):
         """Predecessor from a different tenant should raise ResourceNotFoundError (not found in tenant scope)."""
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
+        from giljo_mcp.exceptions import ResourceNotFoundError
         from tests.services.conftest import _spawn_and_complete
 
         # Spawn and complete in OTHER tenant
