@@ -155,6 +155,11 @@ def remove_nodejs():
         remove_path(p, sudo=True)
 
     # Method 3: Ubuntu bundled (same apt purge covers it)
+
+    # Method 4: NVM (Node Version Manager) — installs to ~/.nvm
+    nvm_dir = HOME / ".nvm"
+    remove_path(str(nvm_dir))
+
     print("  Node.js removal complete")
 
 
