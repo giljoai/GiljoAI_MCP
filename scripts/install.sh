@@ -393,8 +393,8 @@ install_prereqs_linux() {
             local backup_sources=""
             if [[ -f "$sources_file" ]] && grep -q "archive.ubuntu.com\|security.ubuntu.com" "$sources_file" 2>/dev/null; then
                 backup_sources="$(cat "$sources_file")"
-                sudo sed -i 's|http://archive.ubuntu.com/ubuntu|https://cloudflaremirrors.com/ubuntu|g; s|http://security.ubuntu.com/ubuntu|https://cloudflaremirrors.com/ubuntu|g' "$sources_file" </dev/null
-                print_step "Updating package lists (via Cloudflare mirror)..."
+                sudo sed -i 's|http://archive.ubuntu.com/ubuntu|http://us.archive.ubuntu.com/ubuntu|g; s|http://security.ubuntu.com/ubuntu|http://us.archive.ubuntu.com/ubuntu|g' "$sources_file" </dev/null
+                print_step "Updating package lists (via US mirror)..."
             else
                 print_step "Updating package lists..."
             fi
@@ -427,12 +427,8 @@ install_prereqs_linux() {
                         ;;
                     postgresql)
                         print_step "Installing PostgreSQL..."
-                        # Remove any stale pgdg repo config to avoid duplicates
-                        sudo rm -f /etc/apt/sources.list.d/pgdg.list /etc/apt/sources.list.d/pgdg.sources </dev/null
-                        sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-                        # Refresh GPG key (overwrite if stale)
-                        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/pgdg.gpg
-                        sudo apt-get update -qq </dev/null
+                        # Use Ubuntu's bundled PostgreSQL (v16 on 24.04) — fast, no external repo needed
+                        # Our minimum is PostgreSQL 14, so the bundled version is always sufficient
                         sudo apt-get install -y -qq postgresql postgresql-client </dev/null
                         sudo systemctl start postgresql </dev/null
                         sudo systemctl enable postgresql </dev/null
