@@ -28,7 +28,7 @@ You are welcome to fork the repository and use it under the terms of the
 
 ## Development Setup
 
-**Requirements**: Python 3.12+, PostgreSQL 18, Node.js 20+
+**Requirements**: Python 3.12+, PostgreSQL 18, Node.js 22+
 
 ```bash
 # Clone and install

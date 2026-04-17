@@ -20,7 +20,7 @@ Manual Install
   Prerequisites:
     - Python 3.10+ (3.12+ recommended)
     - PostgreSQL 14+ (18 recommended)
-    - Node.js 20 LTS
+    - Node.js 22 LTS
 
   Steps:
     git clone https://github.com/giljoai/GiljoAI_MCP.git
