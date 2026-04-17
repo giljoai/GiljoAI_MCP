@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.6] - 2026-04-17
+
+### Added
+- Staging persistence and Re-Stage flow — staging state survives navigation, Re-Stage resets cleanly
+- Cancel project with confirmation dialog and visual distinction for cancelled rows
+- Auto-suffix agent display names on collision (no more duplicate name errors)
+- 360 memory action tags for sticky NB items across depth window
+- Project review modal with expandable agent jobs, commits section, and assigned missions
+- HH:MM military time on project and task list dates
+- Full local preflight (pytest + vitest) in merge pipeline — catches test failures before GitHub CI
+
+### Fixed
+- Execution mode constellation mismatch — CLI projects no longer get MULTI-TERMINAL protocol
+- SaaS table/migration/test leak into CE export (belt-and-suspenders auto-exclude)
+- Migration chain: `org_setup_complete` moved from SaaS to CE chain (fixes startup crash)
+- SQLAlchemy bind param conflict with `::jsonb` cast syntax
+- Circular import in `prompts/__init__.py`
+- Installer: Cloudflare Ubuntu mirror for faster apt installs, stdin `/dev/null` fix for curl|bash
+- 15+ pre-existing test failures resolved (ProjectReviewModal, date format, cancel dialog, memory gate)
+- Notification expand, project table sorting, task column widths
+- Settings seed queries `users` table instead of SaaS-only `tenants`
+
+### Changed
+- Project serial badges sized to match table text
+- Hidden/cancelled project filtering independent of active status filters
+- MCP tool renames harmonized (spawn_job, list_agent_templates, etc.)
+- Runtime settings migrated from config.yaml to database Settings table
+- Editable install (`pip install -e .`) added to all deployment paths
+
+### Security
+- CodeQL alerts resolved to zero (19 dismissed/fixed)
+- SaaS table reference check added to merge pipeline preflight
+- Table Existence Rule added to CLAUDE.md, reviewer template, and NAS master instructions
+
 ## [1.1.5] - 2026-04-15
 
 ### Fixed
