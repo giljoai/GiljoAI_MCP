@@ -375,7 +375,7 @@ class MissionOrchestrationService:
     @staticmethod
     def _check_staging_redirect(project: Any, job_id: str) -> dict[str, Any] | None:
         """Return a staging redirect response if applicable, else None."""
-        if project.staging_status in ("staged", "staging_complete"):
+        if project.staging_status == "staging_complete":
             identity = {
                 "job_id": job_id,
                 "project_id": str(project.id),
