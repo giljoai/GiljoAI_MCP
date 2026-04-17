@@ -983,11 +983,11 @@ class UnifiedInstaller:
                     self._print_warning("Frontend will not be available. Backend-only installation will continue.")
                     return result
 
-            self._print_info("Installing Node.js 20 LTS via NodeSource...")
+            self._print_info("Installing Node.js 22 LTS via NodeSource...")
             try:
-                # NodeSource provides Node 20 LTS; Ubuntu apt only has v18
+                # NodeSource provides Node 22 LTS; Ubuntu apt only has v18
                 subprocess.run(
-                    ["bash", "-c", "curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -"],
+                    ["bash", "-c", "curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -"],
                     check=True,
                     timeout=120,
                 )
@@ -996,7 +996,7 @@ class UnifiedInstaller:
                     check=True,
                     timeout=120,
                 )
-                self._print_success("Node.js 20 LTS installed via NodeSource")
+                self._print_success("Node.js 22 LTS installed via NodeSource")
             except subprocess.CalledProcessError as e:
                 self._print_error(f"apt install failed: {e}")
             except subprocess.TimeoutExpired:

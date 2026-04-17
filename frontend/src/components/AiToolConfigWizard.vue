@@ -111,7 +111,7 @@
               <v-radio label="Linux / macOS / Git Bash" value="unix" density="compact" />
             </v-radio-group>
             <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-              <strong>HTTPS with self-signed certificates:</strong> Node.js-based AI coding agents need to trust the system CA store (one-time setup, requires Node.js 20.12+).
+              <strong>HTTPS with self-signed certificates:</strong> Node.js-based AI coding agents need to trust the system CA store (one-time setup, requires Node.js 22+).
             </v-alert>
             <v-textarea
               v-if="certPlatform === 'windows'"

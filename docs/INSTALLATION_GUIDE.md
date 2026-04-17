@@ -42,7 +42,7 @@ Use this if you prefer to clone the repository and run the installer yourself.
 |-------------|---------|-------|
 | Python | 3.10 or higher | 3.12+ recommended |
 | PostgreSQL | 14 minimum, 18 recommended | Must be accessible via PATH or common location |
-| Node.js | 20 LTS | Required for the frontend dashboard; optional for backend-only use |
+| Node.js | 22 LTS | Required for the frontend dashboard; optional for backend-only use |
 | npm | Bundled with Node.js | Used to build the frontend |
 | Disk space | 500 MB minimum | For dependencies and database |
 
@@ -106,7 +106,7 @@ Download PostgreSQL 18 from https://www.postgresql.org/download/ and re-run the 
 ### 7. Node.js discovery
 
 The installer checks for `node` and `npm` in PATH. On Linux, it offers to install
-Node.js 20 LTS automatically via NodeSource if neither is found. On Windows, it prints
+Node.js 22 LTS automatically via NodeSource if neither is found. On Windows, it prints
 a link to https://nodejs.org/ and continues without the frontend. Node.js is a soft
 requirement; the backend API runs without it.
 
@@ -346,5 +346,5 @@ Claude Code does not require this step because it has its own certificate handli
 ### Frontend not available
 
 If Node.js was not found during installation, the frontend build was skipped. Install
-Node.js 20 LTS from https://nodejs.org/, then run `npm install && npm run build`
+Node.js 22 LTS from https://nodejs.org/, then run `npm install && npm run build`
 inside the `frontend/` directory and restart the API server.
