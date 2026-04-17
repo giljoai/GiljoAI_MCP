@@ -21,7 +21,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml
 
-from src.giljo_mcp.config_manager import ConfigManager
+from giljo_mcp.config_manager import ConfigManager
 
 
 # ---------------------------------------------------------------------------
@@ -196,8 +196,8 @@ class TestThinPromptGeneratorProtocol:
     """Test that thin_prompt_generator reads ssl_enabled correctly."""
 
     def test_returns_https_when_ssl_enabled(self, ssl_config):
-        with patch("src.giljo_mcp.thin_prompt_generator.get_config", return_value=ssl_config):
-            from src.giljo_mcp.thin_prompt_generator import _get_ssl_protocol
+        with patch("giljo_mcp.thin_prompt_generator.get_config", return_value=ssl_config):
+            from giljo_mcp.thin_prompt_generator import _get_ssl_protocol
 
             result = _get_ssl_protocol()
         assert result == "https"

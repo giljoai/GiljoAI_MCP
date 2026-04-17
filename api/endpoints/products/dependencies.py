@@ -12,9 +12,9 @@ Provides dependency injection for ProductService.
 from fastapi import Depends
 
 from api.dependencies import get_tenant_key
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.services import ProductService
-from src.giljo_mcp.services.product_vision_service import ProductVisionService
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.services import ProductService
+from giljo_mcp.services.product_vision_service import ProductVisionService
 
 
 async def get_db_manager() -> DatabaseManager:

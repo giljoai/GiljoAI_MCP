@@ -23,7 +23,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.services.product_service import ProductService
+from giljo_mcp.services.product_service import ProductService
 
 
 @pytest.mark.asyncio

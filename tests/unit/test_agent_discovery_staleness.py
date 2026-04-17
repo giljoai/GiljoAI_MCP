@@ -22,7 +22,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models import AgentTemplate
+from giljo_mcp.models import AgentTemplate
 
 
 class TestAgentStalenessDetection:
@@ -31,7 +31,7 @@ class TestAgentStalenessDetection:
     @pytest_asyncio.fixture(autouse=True)
     async def setup_method(self, db_session):
         """Setup for each test method"""
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tenant import TenantManager
 
         self.db_session = db_session
         self.tenant_key = TenantManager.generate_tenant_key()
@@ -39,7 +39,7 @@ class TestAgentStalenessDetection:
     @pytest.mark.asyncio
     async def test_format_agent_info_includes_staleness_fields(self, db_session):
         """Test that _format_agent_info() includes staleness detection fields."""
-        from src.giljo_mcp.tools.agent_discovery import _format_agent_info
+        from giljo_mcp.tools.agent_discovery import _format_agent_info
 
         # Create template with staleness
         now = datetime.now(timezone.utc)
@@ -69,7 +69,7 @@ class TestAgentStalenessDetection:
     @pytest.mark.asyncio
     async def test_format_agent_info_staleness_fields_with_basic_depth(self, db_session):
         """Test that staleness fields are included even with basic depth."""
-        from src.giljo_mcp.tools.agent_discovery import _format_agent_info
+        from giljo_mcp.tools.agent_discovery import _format_agent_info
 
         now = datetime.now(timezone.utc)
         template = AgentTemplate(
@@ -95,7 +95,7 @@ class TestAgentStalenessDetection:
     @pytest.mark.asyncio
     async def test_get_available_agents_includes_staleness_warning(self, db_session):
         """Test that get_available_agents() includes staleness warning when stale agents detected."""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         # Create stale template
         now = datetime.now(timezone.utc)
@@ -149,7 +149,7 @@ class TestAgentStalenessDetection:
     @pytest.mark.asyncio
     async def test_get_available_agents_no_staleness_warning_when_all_fresh(self, db_session):
         """Test that staleness_warning is omitted when all agents are fresh."""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         # Create fresh template
         now = datetime.now(timezone.utc)
@@ -178,7 +178,7 @@ class TestAgentStalenessDetection:
     @pytest.mark.asyncio
     async def test_staleness_warning_includes_actionable_guidance(self, db_session):
         """Test that staleness warning provides actionable guidance."""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         now = datetime.now(timezone.utc)
         stale_template = AgentTemplate(
@@ -212,7 +212,7 @@ class TestAgentStalenessDetection:
     @pytest.mark.asyncio
     async def test_staleness_detection_handles_null_timestamps(self, db_session):
         """Test staleness detection handles null last_exported_at gracefully."""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         # Create template that was never exported
         template = AgentTemplate(

@@ -18,11 +18,11 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.app_state import APIState
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import ApiMetrics, Product, Project
-from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import ApiMetrics, Product, Project
+from giljo_mcp.services.product_service import ProductService
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 async def cleanup_expired_download_tokens(state: APIState):
     """Background task to cleanup expired download tokens every 15 minutes"""
-    from src.giljo_mcp.download_tokens import TokenManager
+    from giljo_mcp.download_tokens import TokenManager
 
     while True:
         try:

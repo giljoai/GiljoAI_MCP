@@ -30,8 +30,8 @@ from typing import Any
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.api_key_utils import verify_api_key
-from src.giljo_mcp.models import APIKey, MCPSession, User
+from giljo_mcp.api_key_utils import verify_api_key
+from giljo_mcp.models import APIKey, MCPSession, User
 
 
 logger = logging.getLogger(__name__)
@@ -108,7 +108,7 @@ class MCPSessionManager:
 
             from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-            from src.giljo_mcp.models.auth import ApiKeyIpLog
+            from giljo_mcp.models.auth import ApiKeyIpLog
 
             stmt = (
                 pg_insert(ApiKeyIpLog)

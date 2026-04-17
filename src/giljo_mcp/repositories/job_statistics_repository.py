@@ -10,10 +10,10 @@ from datetime import datetime
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Message, Project
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.config import ApiMetrics
-from src.giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.models import Message, Project
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.config import ApiMetrics
+from giljo_mcp.models.tasks import MessageRecipient
 
 
 class JobStatisticsRepository:
@@ -337,7 +337,7 @@ class JobStatisticsRepository:
         Returns:
             List of AgentRoleDistItem-shaped dicts, sorted by count descending.
         """
-        from src.giljo_mcp.models.templates import AgentTemplate
+        from giljo_mcp.models.templates import AgentTemplate
 
         # 1. Get all configured templates (scoped by product when filtered)
         tmpl_stmt = select(

@@ -15,8 +15,8 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models.products import Product
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models.products import Product
 
 
 logger = structlog.get_logger(__name__)

@@ -20,11 +20,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.exceptions import ResourceNotFoundError
-from src.giljo_mcp.models import User
-from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.models import User
+from giljo_mcp.repositories.agent_job_repository import AgentJobRepository
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .models import (
     JobHealthResponse,

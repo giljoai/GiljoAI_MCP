@@ -60,15 +60,13 @@ export function useProjectFilters({ projects, projectTypes, activeProduct }) {
   const filteredProjects = computed(() => {
     let results = filteredBySearch.value
 
-    // CE-OPT-4: Show hidden projects only when explicitly filtered or searching
-    const hasActiveFilters = searchQuery.value || filterType.value || filterStatus.value
-    if (!hasActiveFilters) {
-      results = results.filter((p) => !p.hidden)
-    }
-
+    // CE-OPT-4: Hidden exclusion is independent of other filters.
+    // Only show hidden projects when filterStatus is explicitly 'hidden'.
     if (filterStatus.value === 'hidden') {
       return results.filter((p) => p.hidden)
     }
+    results = results.filter((p) => !p.hidden)
+
     if (filterStatus.value && filterStatus.value !== 'all') {
       return results.filter((p) => p.status === filterStatus.value)
     }

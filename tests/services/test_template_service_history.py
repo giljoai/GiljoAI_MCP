@@ -14,7 +14,7 @@ Uses real PostgreSQL database for proper integration testing.
 
 import pytest
 
-from src.giljo_mcp.models.templates import TemplateArchive
+from giljo_mcp.models.templates import TemplateArchive
 
 
 # ============================================================================

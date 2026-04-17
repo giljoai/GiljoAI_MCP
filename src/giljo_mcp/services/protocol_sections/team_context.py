@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from src.giljo_mcp.models import AgentExecution
+    from giljo_mcp.models import AgentExecution
 
 
 def _generate_team_context_header(

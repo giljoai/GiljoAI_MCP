@@ -16,8 +16,8 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.orm import Session
 
-from src.giljo_mcp.models import AgentTemplate, Product
-from src.giljo_mcp.models.products import ProductArchitecture, ProductTechStack, ProductTestConfig
+from giljo_mcp.models import AgentTemplate, Product
+from giljo_mcp.models.products import ProductArchitecture, ProductTechStack, ProductTestConfig
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ def mock_tenant_manager():
 @pytest.fixture(scope="function")
 def sync_db_manager():
     """Create synchronous database manager for validation tests."""
-    from src.giljo_mcp.database import DatabaseManager
+    from giljo_mcp.database import DatabaseManager
     from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
     # Create sync database manager with test database URL

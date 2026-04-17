@@ -703,6 +703,13 @@ setup_environment() {
         print_warn "requirements.txt not found -- skipping pip install"
     fi
 
+    # Register giljo_mcp as importable package (editable install, idempotent)
+    if [[ -f "${target_dir}/pyproject.toml" ]]; then
+        "$venv_pip" install -e "$target_dir" --quiet 2>/dev/null && \
+            print_ok "Package registered (editable install)" || \
+            print_warn "Editable install skipped (non-fatal)"
+    fi
+
     # Build frontend
     local frontend_dir="${target_dir}/frontend"
     if [[ -f "${frontend_dir}/package.json" ]]; then

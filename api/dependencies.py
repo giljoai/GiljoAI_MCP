@@ -11,7 +11,7 @@ import os
 
 from fastapi import Request
 
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.tenant import TenantManager
 
 
 def _get_default_tenant_key() -> str:
@@ -48,7 +48,7 @@ async def get_tenant_key(request: Request) -> str:
     from fastapi import HTTPException
 
     from api.app_state import state
-    from src.giljo_mcp.config_manager import get_config
+    from giljo_mcp.config_manager import get_config
 
     # Check if we're in setup mode first
     if hasattr(state, "api_state") and hasattr(state.api_state, "config"):
@@ -116,7 +116,7 @@ async def get_db():
 
     Note:
         This is the async version for FastAPI endpoints. For auth-specific endpoints,
-        use get_db_session() from src.giljo_mcp.auth.dependencies which includes
+        use get_db_session() from giljo_mcp.auth.dependencies which includes
         additional HTTP exception handling.
     """
     from api.app_state import state

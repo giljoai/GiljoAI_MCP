@@ -17,11 +17,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.colored_logger import get_colored_logger
-from src.giljo_mcp.models import User
-from src.giljo_mcp.repositories.job_statistics_repository import JobStatisticsRepository
-from src.giljo_mcp.repositories.product_statistics_repository import ProductStatisticsRepository
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.colored_logger import get_colored_logger
+from giljo_mcp.models import User
+from giljo_mcp.repositories.job_statistics_repository import JobStatisticsRepository
+from giljo_mcp.repositories.product_statistics_repository import ProductStatisticsRepository
 
 
 logger = get_colored_logger(__name__)

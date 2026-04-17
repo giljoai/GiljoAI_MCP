@@ -12,8 +12,8 @@ defaults, edge cases, and structural validation.
 
 import yaml
 
-from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.template_renderer import render_claude_agent
+from giljo_mcp.models import AgentTemplate
+from giljo_mcp.template_renderer import render_claude_agent
 
 
 class TestRenderClaudeAgent:

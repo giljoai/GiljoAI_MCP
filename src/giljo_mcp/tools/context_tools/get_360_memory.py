@@ -22,9 +22,9 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Product
-from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Product
+from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
 
 logger = structlog.get_logger(__name__)

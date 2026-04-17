@@ -19,10 +19,10 @@ import random
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.exceptions import ProjectStateError
-from src.giljo_mcp.models import Project
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.exceptions import ProjectStateError
+from giljo_mcp.models import Project
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.tenant import TenantManager
 
 
 @pytest.mark.asyncio

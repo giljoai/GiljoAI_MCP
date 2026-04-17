@@ -29,12 +29,12 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.exceptions import AuthorizationError
-from src.giljo_mcp.models import Task  # noqa: F401 - For FK cleanup
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models.organizations import Organization, OrgMembership
-from src.giljo_mcp.schemas.service_responses import UserInfo
-from src.giljo_mcp.services.auth_service import AuthService
+from giljo_mcp.exceptions import AuthorizationError
+from giljo_mcp.models import Task  # noqa: F401 - For FK cleanup
+from giljo_mcp.models.auth import User
+from giljo_mcp.models.organizations import Organization, OrgMembership
+from giljo_mcp.schemas.service_responses import UserInfo
+from giljo_mcp.services.auth_service import AuthService
 
 
 # Fixtures

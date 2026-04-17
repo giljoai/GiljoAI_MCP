@@ -14,7 +14,7 @@ from datetime import datetime
 
 import pytest
 
-from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
 
 @pytest.mark.asyncio

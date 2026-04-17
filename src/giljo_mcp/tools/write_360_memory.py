@@ -29,14 +29,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
-from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
-from src.giljo_mcp.schemas.jsonb_validators import validate_git_commits
-from src.giljo_mcp.tools._memory_helpers import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
+from giljo_mcp.models.products import Product
+from giljo_mcp.models.projects import Project
+from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.schemas.jsonb_validators import validate_git_commits
+from giljo_mcp.tools._memory_helpers import (
     MAX_DECISIONS_MADE,
     MAX_KEY_OUTCOMES,
     MAX_SUMMARY_LENGTH,
@@ -546,12 +546,13 @@ async def write_360_memory(
             # Hard gate: if git integration is enabled, require commits
             git_integration_enabled = False
             try:
-                from giljo_mcp._config_io import read_config
+                from giljo_mcp.services.settings_service import SettingsService
 
-                cfg = read_config()
-                git_integration_enabled = cfg.get("features", {}).get("git_integration", {}).get("enabled", False)
+                settings_svc = SettingsService(active_session, tenant_key)
+                git_settings = await settings_svc.get_setting_value("integrations", "git_integration", {})
+                git_integration_enabled = git_settings.get("enabled", False)
             except Exception:  # noqa: BLE001, S110
-                pass  # Config read failure is not a blocker
+                pass  # Settings read failure is not a blocker
 
             if git_integration_enabled and not git_commits:
                 return {

@@ -28,11 +28,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import Project, User
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import Project, User
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_orchestration_service
 from .models import WorkflowStatusResponse

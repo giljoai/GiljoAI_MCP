@@ -19,9 +19,9 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.schemas.service_responses import MissionResponse
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.schemas.service_responses import MissionResponse
+from giljo_mcp.services.orchestration_service import OrchestrationService
 
 
 @pytest.fixture
@@ -245,7 +245,7 @@ class TestGetAgentMissionFullProtocol:
         # Verify message handling instructions present (Issue 0361-5)
         assert "MESSAGE HANDLING" in protocol
         assert "receive_messages()" in protocol
-        assert "list_messages()" in protocol
+        assert "inspect_messages()" in protocol
         assert "auto-acknowledges" in protocol or "auto-acknowledge" in protocol
 
 

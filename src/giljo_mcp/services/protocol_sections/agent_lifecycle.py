@@ -166,7 +166,7 @@ completing, an unblock event, or any other trigger — execute this loop:
   → Update the relevant TODO item
 
 **Spawn a replacement agent:**
-  → `mcp__giljo_mcp__spawn_agent_job(...)`
+  → `mcp__giljo_mcp__spawn_job(...)`
   → Tell user to paste the new prompt in a NEW terminal
   → New agent reads predecessor context via `get_agent_mission`
   → Update the relevant TODO item
@@ -178,7 +178,7 @@ completing, an unblock event, or any other trigger — execute this loop:
 **Spawn verification agent (after all deliverable agents complete):**
   → For each completed deliverable agent: `mcp__giljo_mcp__get_agent_result(job_id="<their_job_id>")`
   → Build a precise tester/reviewer mission from the REAL results (files_changed, commits, summary)
-  → `mcp__giljo_mcp__spawn_agent_job(agent_name="tester", agent_display_name="tester", mission="...", project_id="...")`
+  → `mcp__giljo_mcp__spawn_job(agent_name="tester", agent_display_name="tester", mission="...", project_id="...")`
   → In subagent mode: launch directly. In multi-terminal: tell user "Verification agent spawned, start it from dashboard"
   → Update the relevant TODO item
 
@@ -214,6 +214,12 @@ After completing a coordination loop with no actionable work remaining:
 2. `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — drain final messages
 3. Review your TODO list — ALL items must be `completed`
    If any are not, either complete them or explain why they were dropped
+
+**Action tags for unresolved findings:**
+If the reviewer reported non-blocking findings that were NOT fixed during this project,
+include `tags=["action_required:<file> — <description>"]` in `close_project_and_update_memory()`
+or write a separate `write_360_memory()` entry with those tags so they persist for future agents.
+For trivial items (~10 lines), prefer fixing immediately rather than deferring.
 
 **Closeout steps (order matters):**
 1. Mark any remaining TODO items as `completed` via `report_progress()`

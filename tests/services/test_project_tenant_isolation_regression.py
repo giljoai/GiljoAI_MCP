@@ -27,10 +27,10 @@ from datetime import datetime, timezone
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
+from giljo_mcp.models import Product, Project
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.tenant import TenantManager
 
 
 @pytest_asyncio.fixture(scope="function")

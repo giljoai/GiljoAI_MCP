@@ -69,9 +69,9 @@ async def api_client(db_manager):
     """
     from api.app import app
     from api.app_state import state
-    from src.giljo_mcp.auth import AuthManager
-    from src.giljo_mcp.auth.dependencies import get_db_session
-    from src.giljo_mcp.tenant import TenantManager
+    from giljo_mcp.auth import AuthManager
+    from giljo_mcp.auth.dependencies import get_db_session
+    from giljo_mcp.tenant import TenantManager
 
     async def mock_get_db_session():
         """Provide test database session."""
@@ -88,7 +88,7 @@ async def api_client(db_manager):
         state.tenant_manager = TenantManager()
 
     # Set up tool_accessor for message endpoints
-    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+    from giljo_mcp.tools.tool_accessor import ToolAccessor
 
     state.tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=state.tenant_manager)
     app.state.tool_accessor = state.tool_accessor
@@ -162,10 +162,10 @@ async def auth_headers(db_manager, api_client) -> dict:
     # Create a unique test user for each test run (prevents fixture collisions)
     from uuid import uuid4
 
-    from src.giljo_mcp.auth.jwt_manager import JWTManager
-    from src.giljo_mcp.models import User
-    from src.giljo_mcp.models.organizations import Organization
-    from src.giljo_mcp.tenant import TenantManager
+    from giljo_mcp.auth.jwt_manager import JWTManager
+    from giljo_mcp.models import User
+    from giljo_mcp.models.organizations import Organization
+    from giljo_mcp.tenant import TenantManager
 
     async with db_manager.get_session_async() as session:
         # Create test user with unique username to avoid conflicts

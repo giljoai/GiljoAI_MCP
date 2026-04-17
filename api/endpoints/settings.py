@@ -24,10 +24,10 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services.settings_service import SettingsService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
+from giljo_mcp.models import User
+from giljo_mcp.services.settings_service import SettingsService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)

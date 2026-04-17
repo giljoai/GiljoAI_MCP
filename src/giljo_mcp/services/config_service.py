@@ -7,9 +7,11 @@
 
 Updated Handover 0731: Reviewed for typed returns - dict[str, Any] retained because
 config values are read from YAML files with dynamic, deployment-specific schemas.
-Both get_serena_config() and _read_config() return raw YAML data whose structure
-varies based on installation and feature flags. No fixed Pydantic model can represent
-the full range of possible configurations.
+
+Runtime settings (git, serena, SSL, cookie domains) now live in the database
+(Settings table) and should be read via SettingsService. The sync
+get_serena_config() method remains as a fallback for synchronous callers
+(e.g., template_manager) that cannot use async DB access.
 """
 
 import logging
@@ -30,6 +32,10 @@ class ConfigService:
 
     Provides thread-safe access to config.yaml with caching
     and automatic template cache invalidation.
+
+    For runtime settings (integrations, security), prefer SettingsService
+    which reads from the database. This class remains for sync callers
+    and infrastructure config that stays in config.yaml.
     """
 
     def __init__(self, config_path: Optional[Path] = None):
@@ -47,7 +53,12 @@ class ConfigService:
 
     def get_serena_config(self, use_cache: bool = True) -> dict[str, Any]:
         """
-        Get Serena configuration.
+        Get Serena configuration from config.yaml (sync fallback).
+
+        For async callers with DB access, use SettingsService instead:
+            service = SettingsService(session, tenant_key)
+            integrations = await service.get_settings("integrations")
+            serena = integrations.get("serena_mcp", {})
 
         Args:
             use_cache: Whether to use cached config

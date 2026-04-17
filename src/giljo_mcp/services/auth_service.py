@@ -37,26 +37,26 @@ import bcrypt
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
-from src.giljo_mcp.auth.jwt_manager import JWTManager
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
+from giljo_mcp.auth.jwt_manager import JWTManager
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     AuthenticationError,
     AuthorizationError,
     BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models.auth import APIKey, User
-from src.giljo_mcp.models.config import SetupState
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models.auth import APIKey, User
+from giljo_mcp.models.config import SetupState
+from giljo_mcp.schemas.service_responses import (
     ApiKeyCreateResult,
     ApiKeyInfo,
     AuthResult,
     SetupStateInfo,
     UserInfo,
 )
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -577,7 +577,7 @@ class AuthService:
 
         # Create organization membership if org_id provided (Handover 0424g)
         if org_id:
-            from src.giljo_mcp.models.organizations import OrgMembership
+            from giljo_mcp.models.organizations import OrgMembership
 
             membership = OrgMembership(
                 org_id=org_id, user_id=str(new_user.id), tenant_key=tenant_key, role=org_role, is_active=True
@@ -590,7 +590,7 @@ class AuthService:
             )
             new_user.org_id = created_org_id
             # Create owner membership for their own org
-            from src.giljo_mcp.models.organizations import OrgMembership
+            from giljo_mcp.models.organizations import OrgMembership
 
             membership = OrgMembership(
                 org_id=created_org_id, user_id=str(new_user.id), tenant_key=tenant_key, role="owner", is_active=True
@@ -644,7 +644,7 @@ class AuthService:
         """
         from sqlalchemy.orm import selectinload
 
-        from src.giljo_mcp.models.organizations import OrgMembership
+        from giljo_mcp.models.organizations import OrgMembership
 
         # Verify admin has owner/admin role in their organization
         admin_stmt = select(User).where(User.id == admin_user_id).options(selectinload(User.organization))
@@ -804,7 +804,7 @@ class AuthService:
         await session.flush()  # Get user.id for membership
 
         # Create owner membership (Handover 0424g)
-        from src.giljo_mcp.models.organizations import OrgMembership
+        from giljo_mcp.models.organizations import OrgMembership
 
         owner_membership = OrgMembership(
             org_id=org_id, user_id=str(admin_user.id), tenant_key=tenant_key, role="owner", is_active=True
@@ -882,7 +882,7 @@ class AuthService:
         import re
         from uuid import uuid4
 
-        from src.giljo_mcp.models.organizations import Organization
+        from giljo_mcp.models.organizations import Organization
 
         # Generate slug from org_name (sanitize and make URL-friendly)
         slug_base = re.sub(r"[^a-z0-9]+", "-", org_name.lower()).strip("-")

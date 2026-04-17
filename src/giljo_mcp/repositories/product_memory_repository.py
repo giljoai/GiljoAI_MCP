@@ -17,7 +17,7 @@ from uuid import UUID
 from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 
 
 logger = logging.getLogger(__name__)

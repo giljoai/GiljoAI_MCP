@@ -22,11 +22,11 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import AgentExecution, AgentJob, Product, Project, User
-from src.giljo_mcp.models.organizations import Organization
-from src.giljo_mcp.schemas.service_responses import ProjectLaunchResult
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.models import AgentExecution, AgentJob, Product, Project, User
+from giljo_mcp.models.organizations import Organization
+from giljo_mcp.schemas.service_responses import ProjectLaunchResult
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.tenant import TenantManager
 
 
 @pytest_asyncio.fixture

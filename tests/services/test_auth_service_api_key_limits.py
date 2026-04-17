@@ -22,11 +22,11 @@ import bcrypt
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.exceptions import BaseGiljoError
-from src.giljo_mcp.models.auth import APIKey, User
-from src.giljo_mcp.models.organizations import Organization
-from src.giljo_mcp.schemas.service_responses import ApiKeyCreateResult, ApiKeyInfo
-from src.giljo_mcp.services.auth_service import AuthService
+from giljo_mcp.exceptions import BaseGiljoError
+from giljo_mcp.models.auth import APIKey, User
+from giljo_mcp.models.organizations import Organization
+from giljo_mcp.schemas.service_responses import ApiKeyCreateResult, ApiKeyInfo
+from giljo_mcp.services.auth_service import AuthService
 
 
 # ---------------------------------------------------------------------------

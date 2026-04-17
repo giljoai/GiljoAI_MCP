@@ -18,15 +18,15 @@ from typing import TYPE_CHECKING, Any, Optional
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     DatabaseError,
     OrchestrationError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.models import (
+from giljo_mcp.mission_planner import MissionPlanner
+from giljo_mcp.models import (
     AgentExecution,
     AgentJob,
     AgentTodoItem,
@@ -34,8 +34,8 @@ from src.giljo_mcp.models import (
     ProductMemoryEntry,
     Project,
 )
-from src.giljo_mcp.models.tasks import MessageRecipient
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.schemas.service_responses import (
     AgentTodoCounts,
     AgentWorkflowDetail,
     CompleteJobResult,
@@ -49,12 +49,12 @@ from src.giljo_mcp.schemas.service_responses import (
     SpawnResult,
     WorkflowStatus,
 )
-from src.giljo_mcp.services.dto import BroadcastAgentCreatedContext
-from src.giljo_mcp.services.job_lifecycle_service import JobLifecycleService
-from src.giljo_mcp.services.mission_service import MissionService
-from src.giljo_mcp.services.orchestration_agent_state_service import OrchestrationAgentStateService
-from src.giljo_mcp.services.progress_service import ProgressService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.services.dto import BroadcastAgentCreatedContext
+from giljo_mcp.services.job_lifecycle_service import JobLifecycleService
+from giljo_mcp.services.mission_service import MissionService
+from giljo_mcp.services.orchestration_agent_state_service import OrchestrationAgentStateService
+from giljo_mcp.services.progress_service import ProgressService
+from giljo_mcp.tenant import TenantManager
 
 
 if TYPE_CHECKING:
@@ -337,9 +337,9 @@ class OrchestrationService:
     # Agent Job Management — Facade Delegations (Handover 0769)
     # ============================================================================
 
-    async def spawn_agent_job(self, *a, **kw) -> SpawnResult:
+    async def spawn_job(self, *a, **kw) -> SpawnResult:
         """Facade: delegates to JobLifecycleService."""
-        return await self._job_lifecycle.spawn_agent_job(*a, **kw)
+        return await self._job_lifecycle.spawn_job(*a, **kw)
 
     async def _build_predecessor_context(self, *a, **kw):
         """Facade: delegates to JobLifecycleService."""
@@ -579,10 +579,16 @@ class OrchestrationService:
             # Git commit reminder for orchestrators (only when git integration is enabled)
             if job and getattr(job, "job_type", "") == "orchestrator":
                 try:
-                    from giljo_mcp._config_io import read_config
+                    from giljo_mcp.services.settings_service import SettingsService
 
-                    cfg = read_config()
-                    git_enabled = cfg.get("features", {}).get("git_integration", {}).get("enabled", False)
+                    async with self._get_session() as settings_session:
+                        settings_svc = SettingsService(settings_session, tenant_key)
+                        git_settings = await settings_svc.get_setting_value(
+                            "integrations",
+                            "git_integration",
+                            {},
+                        )
+                    git_enabled = git_settings.get("enabled", False)
                     if git_enabled and "commits" not in (result or {}):
                         warnings.append(
                             "Git integration is enabled but no commits were included in the result. "
@@ -590,7 +596,7 @@ class OrchestrationService:
                             "before writing 360 memory."
                         )
                 except Exception:  # noqa: BLE001, S110
-                    pass  # Config read failure is not a blocker
+                    pass  # Settings read failure is not a blocker
 
             # Handover 0731c: Typed return (CompleteJobResult)
             return CompleteJobResult(

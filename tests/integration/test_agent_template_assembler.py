@@ -13,10 +13,10 @@ beyond the unit tests in test_template_assembler_0836a.py.
 import pytest
 import yaml
 
-from src.giljo_mcp.exceptions import ValidationError
-from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.template_renderer import render_claude_agent
-from src.giljo_mcp.tools.agent_template_assembler import AgentTemplateAssembler
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.models import AgentTemplate
+from giljo_mcp.template_renderer import render_claude_agent
+from giljo_mcp.tools.agent_template_assembler import AgentTemplateAssembler
 
 
 def _make_template(**overrides) -> AgentTemplate:

@@ -14,13 +14,15 @@ function normalizeProjectState(project) {
   const projectId = resolveProjectId(project)
   if (!projectId) return null
 
+  const ss = project?.staging_status
   return {
     project_id: projectId,
     mission: project?.mission || '',
     status: project?.status || null,
     execution_mode: project?.execution_mode || null,
-    stagingComplete: Boolean(project?.stagingComplete) || project?.staging_status === 'staging_complete' || false,
-    isStaging: Boolean(project?.isStaging) || (project?.staging_status === 'staging' && project?.staging_status !== 'staging_complete') || false,
+    stagingComplete: Boolean(project?.stagingComplete) || ss === 'staging_complete' || false,
+    isStaged: Boolean(project?.isStaged) || ss === 'staged' || false,
+    isStaging: Boolean(project?.isStaging) || ss === 'staging' || false,
     isLaunched: Boolean(project?.isLaunched) || false,
   }
 }
@@ -52,6 +54,7 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
         status: null,
         execution_mode: null,
         stagingComplete: false,
+        isStaged: false,
         isStaging: false,
         isLaunched: false,
       }
@@ -83,6 +86,10 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
     upsertProjectState(projectId, { mission: mission || '' })
   }
 
+  function setIsStaged(projectId, isStaged) {
+    upsertProjectState(projectId, { isStaged: Boolean(isStaged) })
+  }
+
   function setIsStaging(projectId, isStaging) {
     upsertProjectState(projectId, { isStaging: Boolean(isStaging) })
   }
@@ -97,8 +104,20 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
 
     await api.projects.restage(resolved)
     upsertProjectState(resolved, {
+      isStaged: false,
       isStaging: false,
       stagingComplete: false,
+    })
+  }
+
+  async function unstageProject(projectId) {
+    const resolved = resolveProjectId(projectId)
+    if (!resolved) return
+
+    await api.projects.unstage(resolved)
+    upsertProjectState(resolved, {
+      isStaged: false,
+      isStaging: false,
     })
   }
 
@@ -110,6 +129,10 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
     const projectId = payload?.project_id || payload?.id
     if (!projectId) return
     setMission(projectId, payload?.mission || '')
+    // Mission written = agent made first contact → move from staged to staging (irreversible)
+    if (payload?.mission) {
+      upsertProjectState(projectId, { isStaged: false, isStaging: true })
+    }
   }
 
   function handleMessageSent(payload) {
@@ -157,9 +180,11 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
     setProject,
     setStagingComplete,
     setMission,
+    setIsStaged,
     setIsStaging,
     setLaunched,
     restageProject,
+    unstageProject,
 
     // ws handlers
     handleMissionUpdated,

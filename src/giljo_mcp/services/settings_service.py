@@ -14,18 +14,26 @@ vary by category and deployment. No fixed Pydantic model can represent the full 
 of settings configurations.
 """
 
+import logging
 from typing import Any, ClassVar
 
+from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.exceptions import ValidationError
-from src.giljo_mcp.models.settings import Settings
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.models.settings import Settings
+from giljo_mcp.schemas.jsonb_validators import validate_settings_by_category
+
+
+logger = logging.getLogger(__name__)
 
 
 class SettingsService:
     """
-    SettingsService - Manages tenant-scoped system settings (general, network, database).
+    SettingsService - Manages tenant-scoped system settings.
+
+    Supports categories: general, network, database, integrations, security, runtime.
 
     Args:
         session: AsyncSession - Database session
@@ -33,13 +41,21 @@ class SettingsService:
 
     Methods:
         get_settings(category) - Get settings for category (returns {} if not found)
+        get_setting_value(category, key, default) - Get single nested key from category
         update_settings(category, settings_data) - Upsert settings for category
 
     Raises:
-        ValueError if category is invalid
+        ValidationError if category is invalid or data fails schema validation
     """
 
-    VALID_CATEGORIES: ClassVar[set[str]] = {"general", "network", "database"}
+    VALID_CATEGORIES: ClassVar[set[str]] = {
+        "general",
+        "network",
+        "database",
+        "integrations",
+        "security",
+        "runtime",
+    }
 
     def __init__(self, session: AsyncSession, tenant_key: str):
         self.session = session
@@ -50,7 +66,7 @@ class SettingsService:
         Get settings for category.
 
         Args:
-            category: str - Settings category ('general', 'network', 'database')
+            category: Settings category (general, network, database, integrations, security, runtime)
 
         Returns:
             dict[str, Any] - Settings data (empty dict if not found).
@@ -72,35 +88,60 @@ class SettingsService:
 
         return settings.settings_data or {}
 
+    async def get_setting_value(self, category: str, key: str, default: Any = None) -> Any:
+        """
+        Get a single top-level key from a settings category.
+
+        Convenience method for callers that only need one value (e.g., tools
+        checking git_integration.enabled).
+
+        Args:
+            category: Settings category
+            key: Top-level key within the settings_data dict
+            default: Default value if key or category not found
+
+        Returns:
+            The value for the key, or default if not found.
+        """
+        data = await self.get_settings(category)
+        return data.get(key, default)
+
     async def update_settings(self, category: str, settings_data: dict[str, Any]) -> dict[str, Any]:
         """
         Update settings for category (upsert).
 
+        Validates settings_data against category-specific JSONB schema
+        before persisting. For categories with known schemas (integrations,
+        security, runtime), strict validation is applied. For others
+        (general, network, database), the generic SettingsData validator is used.
+
         Args:
-            category: str - Settings category ('general', 'network', 'database')
+            category: Settings category
             settings_data: dict[str, Any] - Settings to save
 
         Returns:
-            dict[str, Any] - Updated settings data.
-            Intentionally returns dict because settings are dynamic key-value
-            pairs with user-configurable schemas that vary by category.
+            dict[str, Any] - Validated and updated settings data.
 
         Raises:
-            ValidationError: if category is invalid
+            ValidationError: if category is invalid or data fails schema validation
         """
         if category not in self.VALID_CATEGORIES:
             raise ValidationError(f"Invalid category: {category}. Must be one of {self.VALID_CATEGORIES}")
+
+        # JSONB validation at write boundary (post-0962 discipline)
+        try:
+            validated_data = validate_settings_by_category(category, settings_data)
+        except PydanticValidationError as e:
+            raise ValidationError(f"Settings validation failed for category '{category}': {e}") from e
 
         stmt = select(Settings).where(and_(Settings.tenant_key == self.tenant_key, Settings.category == category))
         result = await self.session.execute(stmt)
         settings = result.scalar_one_or_none()
 
         if settings:
-            # Update existing
-            settings.settings_data = settings_data
+            settings.settings_data = validated_data
         else:
-            # Create new
-            settings = Settings(tenant_key=self.tenant_key, category=category, settings_data=settings_data)
+            settings = Settings(tenant_key=self.tenant_key, category=category, settings_data=validated_data)
             self.session.add(settings)
 
         await self.session.commit()

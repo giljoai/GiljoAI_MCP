@@ -20,10 +20,10 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.models import User
+from giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_orchestration_service
 from .models import JobListResponse, JobMissionResponse, JobResponse, PendingJobsResponse, TodoItemResponse

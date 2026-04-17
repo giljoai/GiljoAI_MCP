@@ -36,7 +36,7 @@ async def get_setup_state(db: AsyncSession = None) -> dict[str, Any]:
     try:
         from sqlalchemy import select
 
-        from src.giljo_mcp.models import SetupState
+        from giljo_mcp.models import SetupState
 
         # Prefer explicit 'default' tenant row when present
         stmt_default = select(SetupState).where(SetupState.tenant_key == "default")
@@ -180,7 +180,7 @@ async def validate_jwt_token(token: str, db: AsyncSession = None) -> Optional[di
         User info dict if valid, None otherwise
     """
     try:
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from giljo_mcp.auth.jwt_manager import JWTManager
 
         # Decode and validate token (correct method name: verify_token)
         payload = JWTManager.verify_token(token)
@@ -223,7 +223,7 @@ async def validate_api_key(api_key: str, db: AsyncSession = None) -> Optional[di
         import bcrypt
         from sqlalchemy import select
 
-        from src.giljo_mcp.models import APIKey
+        from giljo_mcp.models import APIKey
 
         # Hash the provided API key to match stored hash
         stmt = select(APIKey).where(APIKey.is_active)

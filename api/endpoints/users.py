@@ -28,15 +28,18 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.endpoints.dependencies import get_db_manager, get_user_service
-from src.giljo_mcp.auth.dependencies import (
+from giljo_mcp.auth.dependencies import (
     get_current_active_user,
+    get_db_session,
     require_admin,
 )
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services import UserService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.models import User
+from giljo_mcp.services import UserService
+from giljo_mcp.services.settings_service import SettingsService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -472,7 +475,7 @@ async def update_user(
         async with db_manager.get_session_async() as db:
             from sqlalchemy import select
 
-            from src.giljo_mcp.models.auth import User as UserModel
+            from giljo_mcp.models.auth import User as UserModel
 
             stmt = select(UserModel).where(UserModel.id == str(user_id))
             result = await db.execute(stmt)
@@ -670,6 +673,7 @@ async def update_field_priority_config(
     config: FieldPriorityConfig,
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
+    db: AsyncSession = Depends(get_db_session),
 ) -> FieldPriorityConfig:
     """
     Update user's field toggle configuration (v3.0).
@@ -677,30 +681,24 @@ async def update_field_priority_config(
     Validates category names and toggle values before saving. Emits WebSocket
     event for real-time UI synchronization across clients.
 
+    Rejects git_history=true when system-level git_integration is disabled (422).
+
     Handover 0820: Toggle-only system (removed priority integers).
 
     Args:
         config: New field toggle configuration (v3.0)
         current_user: Current authenticated user
         user_service: User service for database operations
+        db: Database session for settings lookup
 
     Returns:
         FieldPriorityConfig: Updated configuration
 
     Raises:
+        HTTPException 422: git_history=true but git_integration is disabled
         ValidationError: Invalid toggle or category (400/422)
         ResourceNotFoundError: User not found (404)
         BaseGiljoError: Database operation failed (500)
-
-    Example Request (v3.0):
-        {
-            "version": "3.0",
-            "priorities": {
-                "product_core": {"toggle": true},
-                "vision_documents": {"toggle": true},
-                "git_history": {"toggle": false}
-            }
-        }
     """
     logger.debug(
         f"User {current_user.username} updating field toggle config to v{config.version}",
@@ -710,6 +708,22 @@ async def update_field_priority_config(
             "config_version": config.version,
         },
     )
+
+    # Validate: git_history cannot be enabled when git_integration is disabled
+    git_history_entry = config.priorities.get("git_history")
+    if git_history_entry:
+        wants_git_history = (
+            git_history_entry.get("toggle", False) if isinstance(git_history_entry, dict) else bool(git_history_entry)
+        )
+        if wants_git_history:
+            settings_service = SettingsService(db, current_user.tenant_key)
+            git_settings = await settings_service.get_setting_value("integrations", "git_integration", {})
+            if not git_settings.get("enabled", False):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Cannot enable git_history when system-level git integration is disabled. "
+                    "Enable git integration first via Settings > Integrations.",
+                )
 
     # Pydantic validation already enforced (toggle booleans, valid categories, at least one enabled)
     await user_service.update_field_priority_config(str(current_user.id), config.model_dump())
@@ -932,7 +946,7 @@ async def get_notification_preferences(
 
     Returns default preferences if not yet customized.
     """
-    from src.giljo_mcp.config.defaults import DEFAULT_NOTIFICATION_PREFERENCES
+    from giljo_mcp.config.defaults import DEFAULT_NOTIFICATION_PREFERENCES
 
     prefs = current_user.notification_preferences or DEFAULT_NOTIFICATION_PREFERENCES
     return {"notification_preferences": prefs}
@@ -953,8 +967,8 @@ async def update_notification_preferences(
     """
     from sqlalchemy import update as sql_update
 
-    from src.giljo_mcp.config.defaults import DEFAULT_NOTIFICATION_PREFERENCES
-    from src.giljo_mcp.models.auth import User as UserModel
+    from giljo_mcp.config.defaults import DEFAULT_NOTIFICATION_PREFERENCES
+    from giljo_mcp.models.auth import User as UserModel
 
     prefs = dict(current_user.notification_preferences or DEFAULT_NOTIFICATION_PREFERENCES)
 

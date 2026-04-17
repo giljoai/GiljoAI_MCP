@@ -19,9 +19,9 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Product, VisionDocument
-from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.models import Product, VisionDocument
+from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from giljo_mcp.tenant import TenantManager
 
 
 @pytest_asyncio.fixture(scope="function")

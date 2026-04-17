@@ -32,7 +32,7 @@ async def init_validation(state: APIState) -> None:
             logger.info("Checking setup state...")
 
             # Get current version from config
-            from src.giljo_mcp.setup.state_manager import SetupStateManager
+            from giljo_mcp.setup.state_manager import SetupStateManager
 
             current_version = state.config.get_nested("installation.version", "2.0.0")
             db_version = "18"  # PostgreSQL 18

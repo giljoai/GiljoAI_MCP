@@ -43,17 +43,17 @@ from typing import Any, Optional
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     AuthorizationError,
     BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models import Project, Task
-from src.giljo_mcp.schemas.service_responses import ConversionResult, TaskUpdateResult
-from src.giljo_mcp.services.task_conversion_service import TaskConversionService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.models import Project, Task
+from giljo_mcp.schemas.service_responses import ConversionResult, TaskUpdateResult
+from giljo_mcp.services.task_conversion_service import TaskConversionService
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -438,7 +438,7 @@ class TaskService:
                 query = query.where(Task.product_id == product_id)
             else:
                 # Get active product for tenant
-                from src.giljo_mcp.models.products import Product
+                from giljo_mcp.models.products import Product
 
                 product_query = select(Product).where(and_(Product.tenant_key == tenant_key, Product.is_active))
                 product_result = await session.execute(product_query)
@@ -702,7 +702,7 @@ class TaskService:
             )
 
         # Get user for permission check
-        from src.giljo_mcp.models.auth import User
+        from giljo_mcp.models.auth import User
 
         user_stmt = select(User).where(User.id == user_id)
         user_result = await session.execute(user_stmt)

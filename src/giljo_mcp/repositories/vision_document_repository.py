@@ -20,9 +20,9 @@ from typing import Any
 from sqlalchemy import case, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ResourceNotFoundError
-from src.giljo_mcp.models import MCPContextIndex, Product, VisionDocument, VisionDocumentSummary
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.models import MCPContextIndex, Product, VisionDocument, VisionDocumentSummary
 
 from .base import BaseRepository
 

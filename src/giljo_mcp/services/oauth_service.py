@@ -31,9 +31,9 @@ from uuid import UUID
 from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.jwt_manager import JWTManager
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models.oauth import OAuthAuthorizationCode
+from giljo_mcp.auth.jwt_manager import JWTManager
+from giljo_mcp.models.auth import User
+from giljo_mcp.models.oauth import OAuthAuthorizationCode
 
 
 logger = logging.getLogger(__name__)

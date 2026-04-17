@@ -145,7 +145,7 @@ class SetupStateManager:
 
     def _get_state_from_database(self) -> dict[str, Any | None]:
         """Get state from database."""
-        from src.giljo_mcp.models import SetupState
+        from giljo_mcp.models import SetupState
 
         state = SetupState.get_by_tenant(self.db_session, self.tenant_key)
         if state:
@@ -217,7 +217,7 @@ class SetupStateManager:
 
     def _update_state_in_database(self, **kwargs) -> None:
         """Update state in database."""
-        from src.giljo_mcp.models import SetupState
+        from giljo_mcp.models import SetupState
 
         SetupState.create_or_update(self.db_session, tenant_key=self.tenant_key, **kwargs)
 

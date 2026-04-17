@@ -32,7 +32,7 @@ if "api" not in sys.modules:
     _api_stub.__package__ = "api"
     sys.modules["api"] = _api_stub
 
-from src.giljo_mcp.services.progress_service import ProgressService
+from giljo_mcp.services.progress_service import ProgressService
 
 
 def _make_mock_execution(

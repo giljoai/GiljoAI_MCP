@@ -6,7 +6,7 @@
 """
 TDD Tests for Handover 0411a: Phase Labels on AgentJob - Spawn Tests.
 
-Change A: spawn_agent_job accepts and stores `phase` parameter on AgentJob,
+Change A: spawn_job accepts and stores `phase` parameter on AgentJob,
 and WebSocket broadcast includes `phase` in data dict.
 
 Split from test_orchestration_service_phase_labels.py during test reorganization.
@@ -18,27 +18,27 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentJob
+from giljo_mcp.models import AgentJob
 
 
 # ============================================================================
-# Change A: spawn_agent_job accepts and stores phase parameter
+# Change A: spawn_job accepts and stores phase parameter
 # ============================================================================
 
 
 @pytest.mark.asyncio
 class TestSpawnAgentJobPhaseParameter:
-    """Tests that spawn_agent_job correctly handles the `phase` parameter."""
+    """Tests that spawn_job correctly handles the `phase` parameter."""
 
     async def test_spawn_stores_phase_on_agent_job(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify spawn_agent_job stores phase value on AgentJob record."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        """Verify spawn_job stores phase value on AgentJob record."""
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="analyzer",
             agent_name="analyzer-1",
             mission="Analyze the codebase",
@@ -54,14 +54,14 @@ class TestSpawnAgentJobPhaseParameter:
         assert job.phase == 1
 
     async def test_spawn_stores_none_phase_when_omitted(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify spawn_agent_job defaults phase to None when not provided."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        """Verify spawn_job defaults phase to None when not provided."""
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="analyzer",
             agent_name="analyzer-1",
             mission="Analyze the codebase",
@@ -76,14 +76,14 @@ class TestSpawnAgentJobPhaseParameter:
         assert job.phase is None
 
     async def test_spawn_stores_higher_phase_numbers(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify spawn_agent_job correctly stores phase values > 1."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        """Verify spawn_job correctly stores phase values > 1."""
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="tester",
             agent_name="tester-1",
             mission="Write integration tests",
@@ -109,7 +109,7 @@ class TestSpawnWebSocketBroadcastPhase:
 
     async def test_websocket_broadcast_includes_phase(self):
         """Verify agent:created WebSocket broadcast includes phase in data dict."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.services.orchestration_service import OrchestrationService
 
         db_manager = MagicMock()
         session = AsyncMock()
@@ -176,7 +176,7 @@ class TestSpawnWebSocketBroadcastPhase:
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
-        await service.spawn_agent_job(
+        await service.spawn_job(
             agent_display_name="analyzer",
             agent_name="analyzer-1",
             mission="Analyze codebase",
@@ -194,7 +194,7 @@ class TestSpawnWebSocketBroadcastPhase:
 
     async def test_websocket_broadcast_includes_none_phase_when_omitted(self):
         """Verify agent:created WebSocket broadcast includes phase=None when not specified."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.services.orchestration_service import OrchestrationService
 
         db_manager = MagicMock()
         session = AsyncMock()
@@ -259,7 +259,7 @@ class TestSpawnWebSocketBroadcastPhase:
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
-        await service.spawn_agent_job(
+        await service.spawn_job(
             agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement feature",

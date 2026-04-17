@@ -18,11 +18,12 @@ from pathlib import Path
 import yaml
 
 
+# TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.discovery import DiscoveryManager, PathResolver, SerenaHooks
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.discovery import DiscoveryManager, PathResolver, SerenaHooks
+from giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 

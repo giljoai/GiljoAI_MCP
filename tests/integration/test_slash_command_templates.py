@@ -11,7 +11,7 @@ and the get_all_templates() registry function behavior.
 
 import pytest
 
-from src.giljo_mcp.tools.slash_command_templates import (
+from giljo_mcp.tools.slash_command_templates import (
     BOOTSTRAP_CLAUDE_CODE,
     BOOTSTRAP_CODEX_CLI,
     BOOTSTRAP_GEMINI_CLI,
@@ -62,15 +62,15 @@ class TestCrossPlatformGilGetAgents:
 
     def test_claude_references_mcp_tool(self):
         """Claude get_agents references the MCP export tool."""
-        assert "get_agent_templates_for_export" in GIL_GET_AGENTS_MD
+        assert "list_agent_templates" in GIL_GET_AGENTS_MD
 
     def test_gemini_references_mcp_tool(self):
         """Gemini get_agents references the MCP export tool."""
-        assert "get_agent_templates_for_export" in GIL_GET_AGENTS_GEMINI_TOML
+        assert "list_agent_templates" in GIL_GET_AGENTS_GEMINI_TOML
 
     def test_codex_references_mcp_tool(self):
         """Codex get_agents references the MCP export tool."""
-        assert "get_agent_templates_for_export" in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert "list_agent_templates" in GIL_GET_AGENTS_CODEX_SKILL_MD
 
     def test_all_reference_correct_platform(self):
         """Each get_agents template references its own platform string."""

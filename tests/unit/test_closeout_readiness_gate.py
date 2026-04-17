@@ -19,11 +19,11 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.exceptions import ProjectStateError
-from src.giljo_mcp.models.agent_identity import AgentExecution
-from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.tools.project_closeout import (
+from giljo_mcp.exceptions import ProjectStateError
+from giljo_mcp.models.agent_identity import AgentExecution
+from giljo_mcp.models.products import Product
+from giljo_mcp.models.projects import Project
+from giljo_mcp.tools.project_closeout import (
     _check_agent_readiness,
     _force_decommission_agents,
     close_project_and_update_memory,
@@ -336,13 +336,13 @@ class TestCloseoutGateIntegration:
         mock_entry.id = str(uuid4())
         mock_entry.to_dict.return_value = {"id": str(mock_entry.id)}
 
-        with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as MockRepo:
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as MockRepo:
             repo_instance = MockRepo.return_value
             repo_instance.get_next_sequence = AsyncMock(return_value=1)
             repo_instance.create_entry = AsyncMock(return_value=mock_entry)
 
             with patch(
-                "src.giljo_mcp.tools.project_closeout.emit_websocket_event",
+                "giljo_mcp.tools.project_closeout.emit_websocket_event",
                 new_callable=AsyncMock,
             ):
                 result = await close_project_and_update_memory(
@@ -514,13 +514,13 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_entry.id = str(uuid4())
         mock_entry.to_dict.return_value = {"id": str(mock_entry.id)}
 
-        with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_cls:
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_cls:
             repo_instance = mock_repo_cls.return_value
             repo_instance.get_next_sequence = AsyncMock(return_value=1)
             repo_instance.create_entry = AsyncMock(return_value=mock_entry)
 
             with patch(
-                "src.giljo_mcp.tools.project_closeout.emit_websocket_event",
+                "giljo_mcp.tools.project_closeout.emit_websocket_event",
                 new_callable=AsyncMock,
             ):
                 result = await close_project_and_update_memory(
@@ -614,13 +614,13 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_entry.id = str(uuid4())
         mock_entry.to_dict.return_value = {"id": str(mock_entry.id)}
 
-        with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_cls:
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_cls:
             repo_instance = mock_repo_cls.return_value
             repo_instance.get_next_sequence = AsyncMock(return_value=1)
             repo_instance.create_entry = AsyncMock(return_value=mock_entry)
 
             with patch(
-                "src.giljo_mcp.tools.project_closeout.emit_websocket_event",
+                "giljo_mcp.tools.project_closeout.emit_websocket_event",
                 new_callable=AsyncMock,
             ):
                 result = await close_project_and_update_memory(

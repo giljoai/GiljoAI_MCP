@@ -24,10 +24,10 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentExecution, AgentTemplate, Message, Project
-from src.giljo_mcp.models.tasks import MessageRecipient
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.models import AgentExecution, AgentTemplate, Message, Project
+from giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.tenant import TenantManager
 
 
 # ============================================================================
@@ -43,7 +43,7 @@ async def tenant_key() -> str:
 
 @pytest_asyncio.fixture
 async def agent_templates(db_session, tenant_key):
-    """Create agent templates needed by spawn_agent_job validation."""
+    """Create agent templates needed by spawn_job validation."""
     template_names = ["specialist-1", "orchestrator"]
     for name in template_names:
         template = AgentTemplate(
@@ -102,7 +102,7 @@ class TestCompleteJobStoresResult:
     async def test_result_dict_stored_on_execution(self, db_session, service, project, tenant_key):
         """complete_job should store the result dict in AgentExecution.result column."""
         # Arrange: spawn a specialist agent
-        spawn = await service.spawn_agent_job(
+        spawn = await service.spawn_job(
             agent_display_name="specialist",
             agent_name="specialist-1",
             mission="Do specialized work",
@@ -151,7 +151,7 @@ class TestCompleteJobAutoMessage:
     async def test_completion_report_message_created(self, db_session, service, project, tenant_key):
         """When a specialist completes, a completion_report message should be sent to the orchestrator."""
         # Arrange: spawn orchestrator first, then specialist
-        orch_spawn = await service.spawn_agent_job(
+        orch_spawn = await service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate the project",
@@ -159,7 +159,7 @@ class TestCompleteJobAutoMessage:
             tenant_key=tenant_key,
         )
 
-        spec_spawn = await service.spawn_agent_job(
+        spec_spawn = await service.spawn_job(
             agent_display_name="specialist",
             agent_name="specialist-1",
             mission="Do specialized work",
@@ -218,7 +218,7 @@ class TestOrchestratorCompletionNoMessage:
     async def test_no_completion_report_for_orchestrator(self, db_session, service, project, tenant_key):
         """Orchestrator completing should NOT create a completion_report message to itself."""
         # Arrange: spawn orchestrator only
-        orch_spawn = await service.spawn_agent_job(
+        orch_spawn = await service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Orchestrate everything",
@@ -263,7 +263,7 @@ class TestGetAgentResult:
     async def test_returns_stored_result_dict(self, db_session, service, project, tenant_key):
         """get_agent_result should return the result dict after a job is completed."""
         # Arrange: spawn and complete an agent
-        spawn = await service.spawn_agent_job(
+        spawn = await service.spawn_job(
             agent_display_name="specialist",
             agent_name="specialist-1",
             mission="Do work",
@@ -308,7 +308,7 @@ class TestGetAgentResultIncomplete:
     async def test_returns_none_for_working_agent(self, db_session, service, project, tenant_key):
         """get_agent_result should return None when the agent has not completed."""
         # Arrange: spawn an agent but do NOT complete it
-        spawn = await service.spawn_agent_job(
+        spawn = await service.spawn_job(
             agent_display_name="specialist",
             agent_name="specialist-1",
             mission="Still working on it",

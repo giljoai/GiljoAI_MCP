@@ -17,10 +17,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.schemas.service_responses import ConsolidationResult, SummaryLevel
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
+from giljo_mcp.models.products import Product
+from giljo_mcp.schemas.service_responses import ConsolidationResult, SummaryLevel
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class ConsolidatedVisionService:
     """Generate consolidated summaries from multiple vision documents."""
 
     def __init__(self):
-        from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
+        from giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
         self.summarizer = VisionDocumentSummarizer()
 

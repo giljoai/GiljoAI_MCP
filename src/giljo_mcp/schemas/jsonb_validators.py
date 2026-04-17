@@ -88,6 +88,72 @@ class SettingsData(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+# --- Settings category-specific validators (config.yaml -> DB migration) ---
+
+
+class GitIntegrationSettings(BaseModel):
+    """Validates git_integration block within integrations settings."""
+
+    enabled: bool = False
+    use_in_prompts: bool = False
+    include_commit_history: bool = True
+    max_commits: int = Field(default=50, ge=1, le=1000)
+    branch_strategy: str = Field(default="main", max_length=100)
+
+
+class SerenaMcpSettings(BaseModel):
+    """Validates serena_mcp block within integrations settings."""
+
+    use_in_prompts: bool = False
+
+
+class IntegrationsSettingsData(BaseModel):
+    """Validates settings.settings_data for category='integrations'."""
+
+    git_integration: GitIntegrationSettings = Field(default_factory=GitIntegrationSettings)
+    serena_mcp: SerenaMcpSettings = Field(default_factory=SerenaMcpSettings)
+
+
+class RateLimitingSettings(BaseModel):
+    """Validates rate_limiting block within security settings."""
+
+    enabled: bool = False
+    requests_per_minute: int = Field(default=60, ge=1, le=10000)
+
+
+class SecuritySettingsData(BaseModel):
+    """Validates settings.settings_data for category='security'."""
+
+    ssl_enabled: bool = False
+    ssl_cert_path: str | None = None
+    ssl_key_path: str | None = None
+    cookie_domain_whitelist: list[str] = Field(default_factory=list)
+    rate_limiting: RateLimitingSettings = Field(default_factory=RateLimitingSettings)
+
+
+class AgentRuntimeSettings(BaseModel):
+    """Validates agent block within runtime settings."""
+
+    max_agents: int = Field(default=10, ge=1, le=100)
+    default_context_budget: int = Field(default=200000, ge=1000)
+    context_warning_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
+
+
+class SessionRuntimeSettings(BaseModel):
+    """Validates session block within runtime settings."""
+
+    timeout_seconds: int = Field(default=3600, ge=60)
+    max_concurrent: int = Field(default=5, ge=1, le=100)
+    cleanup_interval: int = Field(default=300, ge=60)
+
+
+class RuntimeSettingsData(BaseModel):
+    """Validates settings.settings_data for category='runtime'."""
+
+    agent: AgentRuntimeSettings = Field(default_factory=AgentRuntimeSettings)
+    session: SessionRuntimeSettings = Field(default_factory=SessionRuntimeSettings)
+
+
 # --- Organization.settings ---
 
 
@@ -271,3 +337,35 @@ def validate_template_variables(data: list | None) -> list | None:
             raise TypeError(f"template variables items must be strings, got {type(item).__name__}")
         validated.append(item)
     return validated
+
+
+# --- Category-specific settings validators ---
+
+# Map of category name -> validator model for SettingsService to use at write boundary
+SETTINGS_CATEGORY_VALIDATORS: dict[str, type[BaseModel]] = {
+    "integrations": IntegrationsSettingsData,
+    "security": SecuritySettingsData,
+    "runtime": RuntimeSettingsData,
+}
+
+
+def validate_settings_by_category(category: str, data: dict) -> dict:
+    """Validate settings_data dict against category-specific Pydantic model.
+
+    For categories without a specific validator (general, network, database),
+    returns data as-is (validated by the generic SettingsData model).
+
+    Args:
+        category: Settings category name
+        data: Raw settings data dict
+
+    Returns:
+        Validated and normalized dict
+
+    Raises:
+        pydantic.ValidationError: if data fails schema validation
+    """
+    validator_cls = SETTINGS_CATEGORY_VALIDATORS.get(category)
+    if validator_cls is None:
+        return SettingsData(**data).model_dump(exclude_none=False)
+    return validator_cls(**data).model_dump(exclude_none=False)

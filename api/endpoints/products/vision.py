@@ -22,15 +22,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_tenant_key
 from api.schemas.vision_document import VisionDocumentResponse
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.exceptions import (
     AuthorizationError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services.product_vision_service import ProductVisionService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.models import User
+from giljo_mcp.services.product_vision_service import ProductVisionService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_product_vision_service
 from .models import VisionChunk
@@ -161,7 +161,7 @@ async def list_vision_documents(
     """
     from sqlalchemy import and_, select
 
-    from src.giljo_mcp.models import VisionDocument
+    from giljo_mcp.models import VisionDocument
 
     logger.debug(
         "User %s listing vision documents for product %s", sanitize(current_user.username), sanitize(product_id)
@@ -241,7 +241,7 @@ async def delete_vision_document(
     """
     from sqlalchemy import and_, delete, select
 
-    from src.giljo_mcp.models import MCPContextIndex, VisionDocument
+    from giljo_mcp.models import MCPContextIndex, VisionDocument
 
     logger.info(
         "User %s deleting vision document %s for product %s",
@@ -300,7 +300,7 @@ async def get_vision_chunks(
     """
     from sqlalchemy import and_, select
 
-    from src.giljo_mcp.models import MCPContextIndex
+    from giljo_mcp.models import MCPContextIndex
 
     logger.debug(
         "User %s retrieving vision chunks for product %s", sanitize(current_user.username), sanitize(product_id)

@@ -10,9 +10,9 @@ slash command templates, agent template assembler, and
 backward compatibility with existing Claude-only flows.
 """
 
-from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.tools.agent_template_assembler import AgentTemplateAssembler
-from src.giljo_mcp.tools.slash_command_templates import (
+from giljo_mcp.models import AgentTemplate
+from giljo_mcp.tools.agent_template_assembler import AgentTemplateAssembler
+from giljo_mcp.tools.slash_command_templates import (
     BOOTSTRAP_CLAUDE_CODE,
     BOOTSTRAP_CODEX_CLI,
     BOOTSTRAP_GEMINI_CLI,

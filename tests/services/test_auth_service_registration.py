@@ -17,9 +17,9 @@ import bcrypt
 import pytest
 from sqlalchemy import select
 
-from src.giljo_mcp.exceptions import ValidationError
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.schemas.service_responses import UserInfo
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.models.auth import User
+from giljo_mcp.schemas.service_responses import UserInfo
 
 
 # Test Cases

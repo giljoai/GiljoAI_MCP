@@ -24,7 +24,7 @@ from datetime import datetime
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models import AgentTemplate
+from giljo_mcp.models import AgentTemplate
 
 
 class TestGetAvailableAgents:
@@ -33,7 +33,7 @@ class TestGetAvailableAgents:
     @pytest_asyncio.fixture(autouse=True)
     async def setup_method(self, db_session):
         """Setup for each test method"""
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tenant import TenantManager
 
         self.db_session = db_session
         # Generate valid tenant key
@@ -42,7 +42,7 @@ class TestGetAvailableAgents:
     @pytest.mark.asyncio
     async def test_function_exists(self):
         """Verify get_available_agents function exists and is callable"""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         # Will FAIL initially - function doesn't exist yet
         assert callable(get_available_agents)
@@ -50,7 +50,7 @@ class TestGetAvailableAgents:
     @pytest.mark.asyncio
     async def test_returns_active_templates(self, db_session):
         """Test returns active templates with metadata"""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         # Create test templates
         template1 = AgentTemplate(
@@ -88,7 +88,7 @@ class TestGetAvailableAgents:
     @pytest.mark.asyncio
     async def test_agent_metadata_includes_version(self, db_session):
         """Test agent metadata includes version information"""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         template = AgentTemplate(
             name="implementer",
@@ -113,7 +113,7 @@ class TestGetAvailableAgents:
     @pytest.mark.asyncio
     async def test_excludes_inactive_templates(self, db_session):
         """Test that inactive templates are excluded"""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         active = AgentTemplate(
             name="implementer",
@@ -147,8 +147,8 @@ class TestGetAvailableAgents:
     @pytest.mark.asyncio
     async def test_tenant_isolation(self, db_session):
         """Test tenant isolation in agent discovery"""
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         # Create templates for different tenants
         other_tenant = TenantManager.generate_tenant_key()
@@ -185,7 +185,7 @@ class TestGetAvailableAgents:
     @pytest.mark.asyncio
     async def test_no_active_templates_returns_empty_list(self, db_session):
         """Test returns empty list when no active templates"""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         # No templates created
         result = await get_available_agents(db_session, self.tenant_key)
@@ -197,7 +197,7 @@ class TestGetAvailableAgents:
     @pytest.mark.asyncio
     async def test_response_includes_timestamp(self, db_session):
         """Test response includes fetched_at timestamp"""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         result = await get_available_agents(db_session, self.tenant_key)
 
@@ -208,7 +208,7 @@ class TestGetAvailableAgents:
     @pytest.mark.asyncio
     async def test_expected_filename_format(self, db_session):
         """Test expected_filename follows pattern name_version.md"""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         template = AgentTemplate(
             name="reviewer",
@@ -230,7 +230,7 @@ class TestGetAvailableAgents:
     @pytest.mark.asyncio
     async def test_response_includes_note(self, db_session):
         """Test response includes explanatory note about dynamic fetching"""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         result = await get_available_agents(db_session, self.tenant_key)
 
@@ -240,7 +240,7 @@ class TestGetAvailableAgents:
     @pytest.mark.asyncio
     async def test_handles_missing_version_gracefully(self, db_session):
         """Test handles templates with missing version field"""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         template = AgentTemplate(
             name="legacy_agent",
@@ -269,7 +269,7 @@ class TestGetAvailableAgentsMCPTool:
     @pytest_asyncio.fixture(autouse=True)
     async def setup_method(self, db_session):
         """Setup for each test method"""
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tenant import TenantManager
 
         self.db_session = db_session
         # Generate valid tenant key
@@ -279,7 +279,7 @@ class TestGetAvailableAgentsMCPTool:
     async def test_get_available_agents_mcp_tool_callable(self, db_session):
         """Test that get_available_agents is callable from orchestration module"""
         # This is a simplified test - we just verify the function can be called
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents
 
         result = await get_available_agents(db_session, self.tenant_key)
 

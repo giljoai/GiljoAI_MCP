@@ -107,10 +107,11 @@
           :page="currentPage"
           :sort-by="sortBy"
           :custom-key-sort="customKeySort"
+          must-sort
           class="elevation-0"
           item-key="id"
           fixed-header
-          :item-props="() => ({ 'data-testid': 'project-card' })"
+          :item-props="getRowProps"
           @update:page="currentPage = $event"
           @update:sort-by="sortBy = $event"
           @click:row="handleRowClick"
@@ -167,16 +168,16 @@
 
           <!-- Created Date Column (0870h: accessible muted text) -->
           <template v-slot:item.created_at="{ item }">
-            <span class="date-full date-cell">{{ formatDate(item.created_at) }}</span>
-            <span class="date-compact date-cell">{{ formatDateCompact(item.created_at) }}</span>
+            <span class="date-full date-cell">{{ formatDateWithTime(item.created_at) }}</span>
+            <span class="date-compact date-cell">{{ formatDateCompactWithTime(item.created_at) }}</span>
           </template>
 
           <!-- Completed Date Column (0870h: accessible muted text) -->
           <template v-slot:item.completed_at="{ item }">
             <div class="text-center">
               <template v-if="item.status === 'completed' || item.status === 'cancelled' || item.status === 'terminated'">
-                <span class="date-full date-cell">{{ formatDate(item.completed_at || item.updated_at) }}</span>
-                <span class="date-compact date-cell">{{ formatDateCompact(item.completed_at || item.updated_at) }}</span>
+                <span class="date-full date-cell">{{ formatDateWithTime(item.completed_at || item.updated_at) }}</span>
+                <span class="date-compact date-cell">{{ formatDateCompactWithTime(item.completed_at || item.updated_at) }}</span>
               </template>
               <template v-else><span class="date-cell date-cell--empty">—</span></template>
             </div>
@@ -305,6 +306,25 @@
       </v-alert>
     </BaseDialog>
 
+    <!-- Cancel Project Confirmation Dialog -->
+    <BaseDialog
+      v-model="showCancelDialog"
+      type="warning"
+      title="Cancel Project?"
+      confirm-label="Cancel Project"
+      size="sm"
+      @confirm="executeCancelProject"
+      @cancel="showCancelDialog = false"
+    >
+      <p class="mb-3">
+        Are you sure you want to cancel project <strong>"{{ projectToCancel?.name }}"</strong>?
+      </p>
+      <v-alert type="warning" variant="tonal" density="compact">
+        Cancelled projects will be hidden from the default view but can be
+        reopened later if needed.
+      </v-alert>
+    </BaseDialog>
+
     <!-- Clear Mission Confirmation Dialog -->
     <BaseDialog
       v-model="showClearMissionDialog"
@@ -409,7 +429,7 @@ const projectStore = useProjectStore()
 const productStore = useProductStore()
 const notificationStore = useNotificationStore()
 const { showToast } = useToast()
-const { formatDate, formatDateCompact } = useFormatDate()
+const { formatDateWithTime, formatDateCompactWithTime } = useFormatDate()
 
 // Dialog ref for imperative calls (e.g., clearMissionData)
 const createEditDialogRef = ref(null)
@@ -428,6 +448,8 @@ const showReviewModal = ref(false)
 const editingProject = ref(null)
 const projectToDelete = ref(null)
 const projectToPurge = ref(null)
+const projectToCancel = ref(null)
+const showCancelDialog = ref(false)
 
 // Closeout / review state
 const closeoutProjectId = ref(null)
@@ -468,27 +490,49 @@ const {
 // Default sort: serial number ascending
 const sortBy = ref([{ key: 'series_number', order: 'asc' }])
 
-// Custom sort for completed_at — uses completed_at or updated_at (matching display),
-// pushes nulls to the end regardless of sort direction
+// Custom sort functions per column.
+// Vuetify passes raw cell values (a, b) — return negative/0/positive.
+// Nulls pushed to bottom regardless of direction by returning ±Infinity trick:
+// Vuetify applies direction AFTER this function, so we use large sentinel values
+// to keep nulls at the bottom in both asc and desc.
 const customKeySort = {
+  // Serial: pure numeric comparison
+  series_number: (a, b) => {
+    const aNum = Number(a) || 0
+    const bNum = Number(b) || 0
+    return aNum - bNum
+  },
+  // Name: natural alphanumeric (SaaS0001 before SaaS0002)
+  name: (a, b) => {
+    const aStr = (a || '').toString()
+    const bStr = (b || '').toString()
+    return aStr.localeCompare(bStr, undefined, { numeric: true, sensitivity: 'base' })
+  },
+  // Completed: date comparison, nulls always at bottom regardless of direction.
+  // Vuetify multiplies the comparator result by direction (1 asc, -1 desc),
+  // so we counter-multiply nulls to keep them pinned at bottom.
   completed_at: (a, b) => {
-    const aVal = a || null
-    const bVal = b || null
-    if (!aVal && !bVal) return 0
-    if (!aVal) return 1
-    if (!bVal) return -1
-    return new Date(aVal) - new Date(bVal)
+    const aVal = a ? new Date(a).getTime() : null
+    const bVal = b ? new Date(b).getTime() : null
+    if (aVal === null && bVal === null) return 0
+    // Determine current direction to counter Vuetify's flip
+    const dir = sortBy.value[0]?.order === 'desc' ? -1 : 1
+    if (aVal === null) return 1 * dir
+    if (bVal === null) return -1 * dir
+    return aVal - bVal
   },
 }
 
 // Items for the table — filteredProjects already has series_number as integer.
-// Normalize completed_at: for completed/cancelled/terminated projects without a
-// completed_at timestamp, fall back to updated_at so sorting matches what's displayed.
+// Normalize completed_at for sorting: terminal projects without completed_at
+// fall back to updated_at. Non-terminal projects (active/inactive) get a null
+// so the sort comparator can push them to the bottom in both directions.
+const TERMINAL_STATUSES = new Set(['completed', 'cancelled', 'terminated'])
 const tableItems = computed(() =>
   filteredProjects.value.map((p) => {
-    const isTerminal = ['completed', 'cancelled', 'terminated'].includes(p.status)
-    if (isTerminal && !p.completed_at && p.updated_at) {
-      return { ...p, completed_at: p.updated_at }
+    if (TERMINAL_STATUSES.has(p.status)) {
+      const effective = p.completed_at || p.updated_at || null
+      return effective !== p.completed_at ? { ...p, completed_at: effective } : p
     }
     return p
   }),
@@ -508,6 +552,15 @@ const headers = [
   { title: 'Actions', key: 'quick_action', sortable: false, width: '5%', align: 'center' },
   { title: '', key: 'menu', sortable: false, width: '3%', align: 'center' },
 ]
+
+/* Row props: adds cancelled-row class for visual distinction */
+function getRowProps({ item }) {
+  const props = { 'data-testid': 'project-card' }
+  if (normalizeStatus(item.status) === 'cancelled') {
+    props.class = 'cancelled-row'
+  }
+  return props
+}
 
 /* 0870h: tinted square badge style for project taxonomy IDs */
 function projectIdBadgeStyle(color) {
@@ -664,6 +717,21 @@ async function deleteProject() {
   }
 }
 
+async function executeCancelProject() {
+  if (projectToCancel.value) {
+    try {
+      await projectStore.cancelProject(projectToCancel.value.id)
+      notificationStore.clearForProject(projectToCancel.value.id)
+      showCancelDialog.value = false
+      projectToCancel.value = null
+      await projectStore.fetchProjects()
+    } catch (error) {
+      console.error('Failed to cancel project:', error)
+      showToast({ message: 'Failed to cancel project. Please try again.', type: 'error' })
+    }
+  }
+}
+
 async function restoreFromDelete(project) {
   try {
     await projectStore.restoreProject(project.id)
@@ -745,10 +813,14 @@ async function handleStatusAction({ action, projectId }) {
       case 'reopen':
         await api.projects.restore(projectId)
         break
-      case 'cancel':
-        await projectStore.cancelProject(projectId)
-        notificationStore.clearForProject(projectId)
-        break
+      case 'cancel': {
+        const projectToCancelById = projectStore.projectById(projectId)
+        if (projectToCancelById) {
+          projectToCancel.value = projectToCancelById
+          showCancelDialog.value = true
+        }
+        return // Early return — dialog handles the action
+      }
       case 'delete': {
         const projectToDeleteById = projectStore.projectById(projectId)
         if (projectToDeleteById) {
@@ -884,6 +956,11 @@ onMounted(async () => {
   letter-spacing: 0;
 }
 
+/* Cancelled project rows: greyed out for visual distinction */
+:deep(.cancelled-row) {
+  opacity: 0.5;
+}
+
 /* Clickable rows — entire row opens edit/review */
 :deep(.v-data-table__tr) {
   cursor: pointer;
@@ -926,7 +1003,7 @@ onMounted(async () => {
   padding: 2px 8px;
   border-radius: $border-radius-sharp;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.62rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 

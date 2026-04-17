@@ -1,16 +1,16 @@
 /**
- * ProjectTabs Re-Stage Button Lifecycle Tests
+ * ProjectTabs Stage/Unstage Button Lifecycle Tests
  *
- * Tests the Stage/Re-Stage/Staging... button lifecycle,
- * isStaging hydration from backend, and restage UX flow.
+ * Tests the Stage/Unstage/Staging... button lifecycle,
+ * isStaged hydration from backend, and unstage UX flow.
  *
  * Covers:
  * - Button shows "Stage Project" when no staging_status
- * - Button shows "Re-Stage" when staging + orchestrator waiting
- * - Button shows "Staging..." (disabled) when orchestrator active
- * - Re-Stage click calls restage endpoint and resets UI
+ * - Button shows "Unstage" when staging_status = 'staged' (reversible)
+ * - Button shows "Staging..." (disabled) when staging_status = 'staging' (irreversible)
+ * - Unstage click calls unstage endpoint and resets UI
  * - Navigate away and back: button state persists from store
- * - Execution mode locked when isStaging, unlocked after restage
+ * - Execution mode locked when staged/staging, unlocked after unstage
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -98,6 +98,7 @@ vi.mock('@/services/api', () => ({
       get: vi.fn().mockResolvedValue({ data: {} }),
       update: vi.fn().mockResolvedValue({}),
       restage: vi.fn().mockResolvedValue({ data: { message: 'Restage successful' } }),
+      unstage: vi.fn().mockResolvedValue({ data: { message: 'Unstage successful' } }),
     },
     prompts: {
       staging: vi.fn().mockResolvedValue({
@@ -120,7 +121,7 @@ import api from '@/services/api'
 
 // -- Helper --
 
-function createWrapper(projectOverrides = {}, extraProps = {}) {
+function createWrapper(projectOverrides = {}) {
   const vuetify = createVuetify()
   const project = {
     id: 'project-123',
@@ -133,7 +134,7 @@ function createWrapper(projectOverrides = {}, extraProps = {}) {
   }
 
   return mount(ProjectTabs, {
-    props: { project, orchestrator: null, ...extraProps },
+    props: { project, orchestrator: null },
     global: {
       plugins: [vuetify],
       stubs: {
@@ -165,23 +166,7 @@ function createWrapper(projectOverrides = {}, extraProps = {}) {
   })
 }
 
-/**
- * Helper: set up orchestrator job in the mock jobs list
- */
-function setOrchestratorJob(status) {
-  mockJobsRef.value = [
-    {
-      job_id: 'orch-job-1',
-      agent_id: 'orch-agent-1',
-      unique_key: 'orch-agent-1',
-      agent_display_name: 'orchestrator',
-      agent_name: 'orchestrator',
-      status,
-    },
-  ]
-}
-
-describe('ProjectTabs - Re-Stage Button Lifecycle', () => {
+describe('ProjectTabs - Stage/Unstage Button Lifecycle', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     mockRoute.query = {}
@@ -199,6 +184,8 @@ describe('ProjectTabs - Re-Stage Button Lifecycle', () => {
     api.projects.update.mockClear()
     api.projects.restage.mockClear()
     api.projects.restage.mockResolvedValue({ data: { message: 'Restage successful' } })
+    api.projects.unstage.mockClear()
+    api.projects.unstage.mockResolvedValue({ data: { message: 'Unstage successful' } })
     api.products.getMemoryEntries.mockClear()
     api.products.getMemoryEntries.mockResolvedValue({ data: { entries: [] } })
   })
@@ -214,135 +201,79 @@ describe('ProjectTabs - Re-Stage Button Lifecycle', () => {
       expect(stageButton.text()).toContain('Stage Project')
     })
 
-    it('shows "Re-Stage" when isStaging is true and orchestrator is waiting', async () => {
-      const wrapper = createWrapper({ staging_status: 'staging' })
-      await flushPromises()
-
-      // Set isStaging in state store (hydrated from backend)
-      const stateStore = useProjectStateStore()
-      stateStore.setIsStaging('project-123', true)
-
-      // Set orchestrator to waiting status
-      setOrchestratorJob('waiting')
+    it('shows "Unstage" when staging_status is staged', async () => {
+      const wrapper = createWrapper({ staging_status: 'staged' })
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
-      expect(stageButton.text()).toContain('Re-Stage')
+      expect(stageButton.text()).toContain('Unstage')
     })
 
-    it('shows "Staging..." when isStaging is true and orchestrator is active/working', async () => {
+    it('shows "Staging..." when staging_status is staging (agent contacted)', async () => {
       const wrapper = createWrapper({ staging_status: 'staging' })
-      await flushPromises()
-
-      const stateStore = useProjectStateStore()
-      stateStore.setIsStaging('project-123', true)
-
-      // Set orchestrator to working status
-      setOrchestratorJob('working')
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
       expect(stageButton.text()).toContain('Staging...')
     })
 
-    it('"Staging..." button is disabled', async () => {
+    it('"Staging..." button is disabled (irreversible)', async () => {
       const wrapper = createWrapper({ staging_status: 'staging' })
-      await flushPromises()
-
-      const stateStore = useProjectStateStore()
-      stateStore.setIsStaging('project-123', true)
-
-      setOrchestratorJob('working')
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
       expect(stageButton.attributes('disabled')).toBeDefined()
+    })
+
+    it('"Unstage" button is NOT disabled (reversible)', async () => {
+      const wrapper = createWrapper({ staging_status: 'staged' })
+      await flushPromises()
+
+      const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
+      expect(stageButton.attributes('disabled')).toBeUndefined()
     })
   })
 
-  // ==================== RE-STAGE CLICK TESTS ====================
+  // ==================== UNSTAGE CLICK TESTS ====================
 
-  describe('Re-Stage Click Behavior', () => {
-    it('calls restage API endpoint when Re-Stage is clicked', async () => {
-      const wrapper = createWrapper({ staging_status: 'staging' })
-      await flushPromises()
-
-      const stateStore = useProjectStateStore()
-      stateStore.setIsStaging('project-123', true)
-      setOrchestratorJob('waiting')
+  describe('Unstage Click Behavior', () => {
+    it('calls unstage API endpoint when Unstage is clicked', async () => {
+      const wrapper = createWrapper({ staging_status: 'staged' })
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
       await stageButton.trigger('click')
       await flushPromises()
 
-      expect(api.projects.restage).toHaveBeenCalledWith('project-123')
+      expect(api.projects.unstage).toHaveBeenCalledWith('project-123')
     })
 
-    it('resets isStaging to false after successful restage', async () => {
-      const wrapper = createWrapper({ staging_status: 'staging' })
-      await flushPromises()
-
-      const stateStore = useProjectStateStore()
-      stateStore.setIsStaging('project-123', true)
-      setOrchestratorJob('waiting')
+    it('resets isStaged to false after successful unstage', async () => {
+      const wrapper = createWrapper({ staging_status: 'staged' })
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
       await stageButton.trigger('click')
       await flushPromises()
 
+      const stateStore = useProjectStateStore()
       const state = stateStore.getProjectState('project-123')
-      expect(state.isStaging).toBe(false)
+      expect(state.isStaged).toBe(false)
     })
 
-    it('clears execution mode selection after successful restage', async () => {
-      const wrapper = createWrapper({ staging_status: 'staging' })
-      await flushPromises()
-
-      const stateStore = useProjectStateStore()
-      stateStore.setIsStaging('project-123', true)
-      setOrchestratorJob('waiting')
-
-      // Select a mode before restage
-      wrapper.vm.executionPlatform = 'claude_code_cli'
+    it('button returns to "Stage Project" after unstage', async () => {
+      const wrapper = createWrapper({ staging_status: 'staged' })
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
       await stageButton.trigger('click')
       await flushPromises()
 
-      expect(wrapper.vm.executionPlatform).toBeNull()
-    })
-
-    it('button returns to "Stage Project" (disabled) after restage', async () => {
-      const wrapper = createWrapper({ staging_status: 'staging' })
-      await flushPromises()
-
-      const stateStore = useProjectStateStore()
-      stateStore.setIsStaging('project-123', true)
-      setOrchestratorJob('waiting')
-
-      wrapper.vm.executionPlatform = 'multi_terminal'
-      await flushPromises()
-
-      const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
-      await stageButton.trigger('click')
-      await flushPromises()
-
-      // After restage: isStaging is false, executionPlatform is null
-      // Button text should be "Stage Project" and disabled (no mode selected)
       expect(stageButton.text()).toContain('Stage Project')
-      expect(stageButton.attributes('disabled')).toBeDefined()
     })
 
-    it('shows success toast after restage', async () => {
-      const wrapper = createWrapper({ staging_status: 'staging' })
-      await flushPromises()
-
-      const stateStore = useProjectStateStore()
-      stateStore.setIsStaging('project-123', true)
-      setOrchestratorJob('waiting')
+    it('shows success toast after unstage', async () => {
+      const wrapper = createWrapper({ staging_status: 'staged' })
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
@@ -354,15 +285,10 @@ describe('ProjectTabs - Re-Stage Button Lifecycle', () => {
       }))
     })
 
-    it('shows error toast when restage fails', async () => {
-      api.projects.restage.mockRejectedValueOnce(new Error('Restage failed'))
+    it('shows error toast when unstage fails', async () => {
+      api.projects.unstage.mockRejectedValueOnce(new Error('Unstage failed'))
 
-      const wrapper = createWrapper({ staging_status: 'staging' })
-      await flushPromises()
-
-      const stateStore = useProjectStateStore()
-      stateStore.setIsStaging('project-123', true)
-      setOrchestratorJob('waiting')
+      const wrapper = createWrapper({ staging_status: 'staged' })
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
@@ -378,32 +304,31 @@ describe('ProjectTabs - Re-Stage Button Lifecycle', () => {
   // ==================== EXECUTION MODE LOCK TESTS ====================
 
   describe('Execution Mode Lock', () => {
-    it('execution mode is locked when isStaging is true', async () => {
-      const wrapper = createWrapper({ staging_status: 'staging' })
-      await flushPromises()
-
-      const stateStore = useProjectStateStore()
-      stateStore.setIsStaging('project-123', true)
+    it('execution mode is locked when staged', async () => {
+      const wrapper = createWrapper({ staging_status: 'staged' })
       await flushPromises()
 
       const modeRow = wrapper.find('.execution-mode-pills')
       expect(modeRow.classes()).toContain('mode-locked')
     })
 
-    it('execution mode is unlocked after restage completes', async () => {
+    it('execution mode is locked when staging', async () => {
       const wrapper = createWrapper({ staging_status: 'staging' })
       await flushPromises()
 
-      const stateStore = useProjectStateStore()
-      stateStore.setIsStaging('project-123', true)
-      setOrchestratorJob('waiting')
+      const modeRow = wrapper.find('.execution-mode-pills')
+      expect(modeRow.classes()).toContain('mode-locked')
+    })
+
+    it('execution mode is unlocked after unstage completes', async () => {
+      const wrapper = createWrapper({ staging_status: 'staged' })
       await flushPromises()
 
       // Confirm locked
       let modeRow = wrapper.find('.execution-mode-pills')
       expect(modeRow.classes()).toContain('mode-locked')
 
-      // Trigger restage
+      // Trigger unstage
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
       await stageButton.trigger('click')
       await flushPromises()
@@ -417,84 +342,82 @@ describe('ProjectTabs - Re-Stage Button Lifecycle', () => {
   // ==================== STATE PERSISTENCE TESTS ====================
 
   describe('State Persistence', () => {
-    it('isStaging hydrates from staging_status on project load', async () => {
-      // Project has staging_status = 'staging' from backend
+    it('isStaged hydrates from staging_status=staged on project load', async () => {
+      createWrapper({ staging_status: 'staged' })
+      await flushPromises()
+
+      const stateStore = useProjectStateStore()
+      const state = stateStore.getProjectState('project-123')
+      expect(state.isStaged).toBe(true)
+      expect(state.isStaging).toBe(false)
+    })
+
+    it('isStaging hydrates from staging_status=staging on project load', async () => {
       createWrapper({ staging_status: 'staging' })
       await flushPromises()
 
       const stateStore = useProjectStateStore()
       const state = stateStore.getProjectState('project-123')
-      // isStaging should be hydrated from backend data
+      expect(state.isStaged).toBe(false)
       expect(state.isStaging).toBe(true)
     })
 
-    it('isStaging is false when staging_status is null', async () => {
+    it('both false when staging_status is null', async () => {
       createWrapper({ staging_status: null })
       await flushPromises()
 
       const stateStore = useProjectStateStore()
       const state = stateStore.getProjectState('project-123')
+      expect(state.isStaged).toBe(false)
       expect(state.isStaging).toBe(false)
     })
 
-    it('isStaging is false when staging_status is staging_complete', async () => {
+    it('both false when staging_status is staging_complete', async () => {
       createWrapper({ staging_status: 'staging_complete' })
       await flushPromises()
 
       const stateStore = useProjectStateStore()
       const state = stateStore.getProjectState('project-123')
-      // staging_complete means staging is done, isStaging should be false
+      expect(state.isStaged).toBe(false)
       expect(state.isStaging).toBe(false)
     })
   })
 
-  // ==================== RESTAGE STORE ACTION TESTS ====================
+  // ==================== UNSTAGE STORE ACTION TESTS ====================
 
-  describe('projectStateStore.restageProject', () => {
-    it('calls POST restage endpoint', async () => {
+  describe('projectStateStore.unstageProject', () => {
+    it('calls POST unstage endpoint', async () => {
       createWrapper()
       await flushPromises()
 
       const stateStore = useProjectStateStore()
-      await stateStore.restageProject('project-123')
+      stateStore.setIsStaged('project-123', true)
+      await stateStore.unstageProject('project-123')
 
-      expect(api.projects.restage).toHaveBeenCalledWith('project-123')
+      expect(api.projects.unstage).toHaveBeenCalledWith('project-123')
     })
 
-    it('sets isStaging to false on success', async () => {
+    it('sets isStaged to false on success', async () => {
       createWrapper()
       await flushPromises()
 
       const stateStore = useProjectStateStore()
-      stateStore.setIsStaging('project-123', true)
+      stateStore.setIsStaged('project-123', true)
 
-      await stateStore.restageProject('project-123')
-
-      const state = stateStore.getProjectState('project-123')
-      expect(state.isStaging).toBe(false)
-    })
-
-    it('clears stagingComplete on success', async () => {
-      createWrapper()
-      await flushPromises()
-
-      const stateStore = useProjectStateStore()
-      stateStore.setStagingComplete('project-123', true)
-
-      await stateStore.restageProject('project-123')
+      await stateStore.unstageProject('project-123')
 
       const state = stateStore.getProjectState('project-123')
-      expect(state.stagingComplete).toBe(false)
+      expect(state.isStaged).toBe(false)
     })
 
     it('throws on API error', async () => {
-      api.projects.restage.mockRejectedValueOnce(new Error('Network error'))
+      api.projects.unstage.mockRejectedValueOnce(new Error('Network error'))
 
       createWrapper()
       await flushPromises()
 
       const stateStore = useProjectStateStore()
-      await expect(stateStore.restageProject('project-123')).rejects.toThrow('Network error')
+      await expect(stateStore.unstageProject('project-123')).rejects.toThrow('Network error')
     })
   })
 })

@@ -19,7 +19,7 @@ from uuid import uuid4
 import bcrypt
 import pytest
 
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.exceptions import (
     AuthenticationError,
     ValidationError,
 )
@@ -148,7 +148,7 @@ async def test_verify_password_incorrect(user_service, test_user):
 @pytest.mark.asyncio
 async def test_get_field_priority_config_custom(user_service, test_user, db_session):
     """Test that get_field_priority_config returns custom toggles from user_field_priorities table"""
-    from src.giljo_mcp.models.auth import UserFieldPriority
+    from giljo_mcp.models.auth import UserFieldPriority
 
     # Insert custom toggle rows
     for cat, enabled in [("tech_stack", True), ("git_history", True), ("testing", False)]:

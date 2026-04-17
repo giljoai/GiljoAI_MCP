@@ -23,11 +23,11 @@ from fastapi import APIRouter, Body, Cookie, Depends, Header, HTTPException, Que
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import AgentTemplate, User
-from src.giljo_mcp.tools.slash_command_templates import get_all_templates
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.config_manager import get_config
+from giljo_mcp.models import AgentTemplate, User
+from giljo_mcp.tools.slash_command_templates import get_all_templates
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -218,7 +218,7 @@ async def download_agent_templates(
     # NOTE: Use get_current_user_optional to avoid raising on unauthenticated access.
     current_user = None
     try:
-        from src.giljo_mcp.auth.dependencies import get_current_user_optional
+        from giljo_mcp.auth.dependencies import get_current_user_optional
 
         authorization = request.headers.get("authorization")
         current_user = await get_current_user_optional(
@@ -293,8 +293,8 @@ async def download_agent_templates(
         )
 
     # Build file dictionary using assembler for platform-aware rendering (Handover 0836a)
-    from src.giljo_mcp.template_renderer import select_templates_for_packaging
-    from src.giljo_mcp.tools.agent_template_assembler import AgentTemplateAssembler
+    from giljo_mcp.template_renderer import select_templates_for_packaging
+    from giljo_mcp.tools.agent_template_assembler import AgentTemplateAssembler
 
     selected = select_templates_for_packaging(templates, max_count=8)
 
@@ -506,7 +506,7 @@ async def get_bootstrap_prompt(
         curl http://localhost:7272/api/download/bootstrap-prompt?platform=claude_code \\
              -H "X-API-Key: $GILJO_API_KEY"
     """
-    from src.giljo_mcp.tools.slash_command_templates import (
+    from giljo_mcp.tools.slash_command_templates import (
         BOOTSTRAP_CLAUDE_CODE,
         BOOTSTRAP_CODEX_CLI,
         BOOTSTRAP_GEMINI_CLI,
@@ -528,8 +528,8 @@ async def get_bootstrap_prompt(
     )
 
     # Generate token and stage slash_commands ZIP (reuse generate-token logic)
-    from src.giljo_mcp.downloads.token_manager import TokenManager
-    from src.giljo_mcp.file_staging import FileStaging
+    from giljo_mcp.downloads.token_manager import TokenManager
+    from giljo_mcp.file_staging import FileStaging
 
     tenant_key = current_user.tenant_key
     token_manager = TokenManager(db_session=db)
@@ -650,8 +650,8 @@ async def generate_download_token(
         sanitize(str(content_type)),
     )
 
-    from src.giljo_mcp.downloads.token_manager import TokenManager
-    from src.giljo_mcp.file_staging import FileStaging
+    from giljo_mcp.downloads.token_manager import TokenManager
+    from giljo_mcp.file_staging import FileStaging
 
     tenant_key = current_user.tenant_key
     token_manager = TokenManager(db_session=db)
@@ -748,8 +748,8 @@ async def download_temp_file(
     logger.info(f"Download request: token={token}, filename={filename}")
 
     try:
-        from src.giljo_mcp.downloads.token_manager import TokenManager
-        from src.giljo_mcp.file_staging import FileStaging
+        from giljo_mcp.downloads.token_manager import TokenManager
+        from giljo_mcp.file_staging import FileStaging
 
         # Validate filename for security
         if not FileStaging.validate_filename(filename):

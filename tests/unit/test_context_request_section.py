@@ -18,8 +18,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.template_seeder import (
+from giljo_mcp.models import AgentTemplate
+from giljo_mcp.template_seeder import (
     _get_context_request_section,
     seed_tenant_templates,
 )
@@ -35,7 +35,7 @@ class TestContextRequestSection:
         Handover 0813: Context request content moved from system_instructions to
         full_protocol delivered by _generate_agent_protocol().
         """
-        from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
+        from giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
         protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="implementer")
         # full_protocol should contain context request guidance
@@ -64,7 +64,7 @@ class TestContextRequestSection:
 
     async def test_full_protocol_has_messaging_prefixes(self, db_session: AsyncSession):
         """Verify full_protocol contains all messaging prefixes including REQUEST_CONTEXT."""
-        from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
+        from giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
         protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="tester")
         assert "BLOCKER:" in protocol
@@ -75,7 +75,7 @@ class TestContextRequestSection:
 
     async def test_full_protocol_has_context_request_specificity_guidance(self, db_session: AsyncSession):
         """Verify full_protocol tells agents to be specific about context needs."""
-        from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
+        from giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
         protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="analyzer")
         # Should instruct agents to be specific
@@ -83,7 +83,7 @@ class TestContextRequestSection:
 
     async def test_full_protocol_instructs_wait_for_response(self, db_session: AsyncSession):
         """Verify full_protocol tells agents to wait for orchestrator response."""
-        from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
+        from giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
         protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="implementer")
         assert "receive_messages" in protocol
@@ -91,14 +91,14 @@ class TestContextRequestSection:
 
     async def test_full_protocol_has_send_message_for_context(self, db_session: AsyncSession):
         """Verify full_protocol references send_message for context requests."""
-        from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
+        from giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
         protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="documenter")
         assert "send_message" in protocol
 
     async def test_full_protocol_warns_against_guessing(self, db_session: AsyncSession):
         """Verify full_protocol tells agents not to guess at ambiguities."""
-        from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
+        from giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
         protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="reviewer")
         assert "guess" in protocol.lower() or "Do NOT guess" in protocol
@@ -109,7 +109,7 @@ class TestContextRequestSection:
         Note: Orchestrator is a SYSTEM_MANAGED_ROLE and not seeded via seed_tenant_templates.
         Instead, we test the helper function directly that generates the content.
         """
-        from src.giljo_mcp.template_seeder import _get_orchestrator_context_response_section
+        from giljo_mcp.template_seeder import _get_orchestrator_context_response_section
 
         # Get the orchestrator context response section
         response_section = _get_orchestrator_context_response_section()

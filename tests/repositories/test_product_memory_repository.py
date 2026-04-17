@@ -15,8 +15,8 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
-from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
 
 class TestProductMemoryRepository:

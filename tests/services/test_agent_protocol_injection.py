@@ -22,7 +22,7 @@ def _gen_protocol(
     job_type: str = "agent",
 ) -> str:
     """Helper to call _generate_agent_protocol with test defaults."""
-    from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
+    from giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
     return _generate_agent_protocol(
         job_id="test-job-id",

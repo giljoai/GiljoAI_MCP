@@ -85,35 +85,84 @@
               </v-chip>
             </h3>
             <p v-if="!agents.length" class="text-caption text-muted-a11y">No data</p>
-            <v-table v-else density="compact">
-              <thead>
-                <tr>
-                  <th>Agent</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="agent in agents" :key="agent.id">
-                  <td>{{ agent.agent_display_name }}</td>
-                  <td>
-                    <span
-                      v-if="agent.agent_name"
-                      class="agent-tinted-badge"
-                      :style="{ backgroundColor: hexToRgba(agentTypeColor(agent.agent_name), 0.15), color: agentTypeColor(agent.agent_name) }"
-                    >{{ agent.agent_name }}</span>
-                    <span v-else class="text-muted-a11y">-</span>
-                  </td>
-                  <td><v-chip :color="agentStatusColor(agent.status)" size="x-small" variant="flat">{{ agent.status }}</v-chip></td>
-                </tr>
-              </tbody>
-            </v-table>
+            <div v-else>
+              <div
+                v-for="agent in agents"
+                :key="agent.id"
+                class="agent-roster-row smooth-border mb-2 pa-3 rounded"
+              >
+                <div
+                  class="d-flex align-center cursor-pointer"
+                  role="button"
+                  tabindex="0"
+                  :aria-expanded="isAgentExpanded(agent.id)"
+                  :aria-label="`Toggle job details for ${agent.agent_display_name}`"
+                  @click="toggleAgentExpand(agent.id)"
+                  @keydown.enter="toggleAgentExpand(agent.id)"
+                >
+                  <div
+                    class="agent-badge-sq agent-badge-sq--sm mr-2"
+                    :style="{ background: hexToRgba(agentTypeColor(agent.agent_name), 0.15), color: agentTypeColor(agent.agent_name) }"
+                  >
+                    {{ agentTypeBadge(agent.agent_name) }}
+                  </div>
+                  <span class="font-weight-medium">{{ agent.agent_display_name }}</span>
+                  <v-spacer />
+                  <span
+                    v-if="agent.agent_name"
+                    class="agent-tinted-badge mr-2"
+                    :style="{ backgroundColor: hexToRgba(agentTypeColor(agent.agent_name), 0.15), color: agentTypeColor(agent.agent_name) }"
+                  >{{ agent.agent_name }}</span>
+                  <v-chip :color="agentStatusColor(agent.status)" size="x-small" variant="flat" class="mr-2">{{ agent.status }}</v-chip>
+                  <v-icon size="small" class="expand-chevron" :class="{ 'expand-chevron--open': isAgentExpanded(agent.id) }">
+                    mdi-chevron-down
+                  </v-icon>
+                </div>
+                <v-expand-transition>
+                  <div v-if="isAgentExpanded(agent.id)" class="mt-3 pt-3 agent-details-section">
+                    <div v-if="agentJobDetail(agent)" class="agent-job-details">
+                      <div class="d-flex flex-wrap ga-3 mb-2">
+                        <div class="detail-field">
+                          <span class="detail-label">Job ID</span>
+                          <span class="detail-value text-mono">{{ truncate(agentJobDetail(agent).job_id, 12) }}</span>
+                        </div>
+                        <div class="detail-field">
+                          <span class="detail-label">Status</span>
+                          <v-chip :color="agentStatusColor(agentJobDetail(agent).status)" size="x-small" variant="flat">{{ agentJobDetail(agent).status }}</v-chip>
+                        </div>
+                        <div class="detail-field">
+                          <span class="detail-label">Type</span>
+                          <span class="detail-value">{{ agentJobDetail(agent).job_type || '-' }}</span>
+                        </div>
+                        <div v-if="agentJobDetail(agent).created_at" class="detail-field">
+                          <span class="detail-label">Created</span>
+                          <span class="detail-value">{{ formatDateTime(agentJobDetail(agent).created_at) }}</span>
+                        </div>
+                        <div v-if="agentJobDetail(agent).completed_at" class="detail-field">
+                          <span class="detail-label">Completed</span>
+                          <span class="detail-value">{{ formatDateTime(agentJobDetail(agent).completed_at) }}</span>
+                        </div>
+                      </div>
+                      <div v-if="agentJobDetail(agent).result?.summary" class="mt-2">
+                        <span class="detail-label">Result Summary</span>
+                        <p class="text-body-2 mt-1">{{ agentJobDetail(agent).result.summary }}</p>
+                      </div>
+                      <div v-if="agentJobDetail(agent).mission" class="mt-2">
+                        <span class="detail-label">Assigned Mission</span>
+                        <p class="text-body-2 mt-1 mission-text">{{ agentJobDetail(agent).mission }}</p>
+                      </div>
+                    </div>
+                    <p v-else class="text-caption text-muted-a11y">No job details available.</p>
+                  </div>
+                </v-expand-transition>
+              </div>
+            </div>
           </div>
 
-          <!-- Section 4: Agent Details (expandable, lazy-loaded messages) -->
+          <!-- Section 4: Agent Messages (expandable, lazy-loaded messages) -->
           <div v-if="agents.length" class="mb-6">
 
-            <h3 class="text-h6 mb-2">Agent Details</h3>
+            <h3 class="text-h6 mb-2">Agent Messages</h3>
             <v-expansion-panels v-model="expandedAgentPanels" variant="accordion">
               <v-expansion-panel
                 v-for="(agent, idx) in agents"
@@ -147,7 +196,7 @@
                         </div>
                         <span class="text-caption text-muted-a11y">{{ formatDateTime(msg.created_at) }}</span>
                       </div>
-                      <p class="text-body-2 mt-1">{{ truncate(msg.content, 300) }}</p>
+                      <p class="text-body-2 mt-1">{{ msg.content }}</p>
                     </div>
                   </div>
                   <p v-else class="text-caption text-muted-a11y">No messages recorded.</p>
@@ -212,6 +261,18 @@
               </v-expansion-panel>
             </v-expansion-panels>
           </div>
+
+          <!-- Section 6: Git Commits -->
+          <div class="mb-6">
+            <h3 class="text-h6 mb-2">Commits</h3>
+            <div v-if="gitCommits.length">
+              <div v-for="commit in gitCommits" :key="commit.sha" class="d-flex align-center mb-1 commit-row">
+                <span class="text-mono commit-sha mr-3">{{ commit.sha?.slice(0, 8) }}</span>
+                <span class="text-body-2">{{ commit.message }}</span>
+              </div>
+            </div>
+            <p v-else class="text-caption text-muted-a11y">No commits recorded</p>
+          </div>
         </template>
       </v-card-text>
 
@@ -254,9 +315,11 @@ const loading = ref(false)
 const error = ref(null)
 const projectData = ref(null)
 const agents = ref([])
+const agentJobs = ref([])
 const memoryEntries = ref([])
 const agentMessages = reactive({})
 const expandedAgentPanels = ref([])
+const expandedAgentIds = ref(new Set())
 
 function copyProjectId() {
   if (props.projectId) clipboardCopy(props.projectId)
@@ -287,6 +350,40 @@ function agentTypeBadge(agentName) {
   return getAgentColor(agentName).badge
 }
 
+function isAgentExpanded(agentId) {
+  return expandedAgentIds.value.has(agentId)
+}
+
+function toggleAgentExpand(agentId) {
+  const ids = expandedAgentIds.value
+  if (ids.has(agentId)) {
+    ids.delete(agentId)
+  } else {
+    ids.add(agentId)
+  }
+}
+
+function agentJobDetail(agent) {
+  const jobId = agent.job_id || agent.id
+  return agentJobs.value.find((j) => j.job_id === jobId) || null
+}
+
+const gitCommits = computed(() => {
+  const commits = []
+  const seen = new Set()
+  for (const entry of memoryEntries.value) {
+    if (entry.git_commits && Array.isArray(entry.git_commits)) {
+      for (const commit of entry.git_commits) {
+        if (commit.sha && !seen.has(commit.sha)) {
+          seen.add(commit.sha)
+          commits.push(commit)
+        }
+      }
+    }
+  }
+  return commits
+})
+
 watch(() => props.show, (open) => {
   if (open && props.projectId) {
     loadReviewData()
@@ -309,17 +406,12 @@ async function loadReviewData() {
   loading.value = true
   error.value = null
   try {
-    // Fetch project, jobs, and memory in parallel
-    const [projectRes, jobsRes, memoryRes] = await Promise.all([
-      api.projects.get(props.projectId),
-      api.agentJobs.list(props.projectId),
-      props.productId
-        ? api.products.getMemoryEntries(props.productId, { project_id: props.projectId, limit: 20 })
-        : Promise.resolve({ data: { entries: [] } }),
-    ])
-    projectData.value = projectRes.data
-    agents.value = jobsRes.data?.jobs || []
-    memoryEntries.value = memoryRes.data?.entries || []
+    const res = await api.projects.review(props.projectId)
+    const data = res.data
+    projectData.value = data.project
+    agents.value = data.project?.agents || []
+    agentJobs.value = data.agent_jobs || []
+    memoryEntries.value = data.memory_entries || []
   } catch (err) {
     console.error('[ProjectReviewModal] Failed to load:', err)
     error.value = err.response?.data?.message || err.message || 'Failed to load project data'
@@ -348,9 +440,11 @@ async function loadAgentMessages(agent) {
 function resetState() {
   projectData.value = null
   agents.value = []
+  agentJobs.value = []
   memoryEntries.value = []
   Object.keys(agentMessages).forEach((k) => delete agentMessages[k])
   expandedAgentPanels.value = []
+  expandedAgentIds.value = new Set()
   error.value = null
 }
 
@@ -414,6 +508,57 @@ function truncate(text, maxLen) {
 }
 .entry-divider {
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+.cursor-pointer {
+  cursor: pointer;
+}
+.agent-roster-row {
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+.expand-chevron {
+  transition: transform 0.2s ease;
+}
+.expand-chevron--open {
+  transform: rotate(180deg);
+}
+.agent-details-section {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 100px;
+}
+.detail-label {
+  font-size: 0.7rem;
+  color: $color-text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+.detail-value {
+  font-size: 0.875rem;
+}
+.text-mono {
+  font-family: monospace;
+}
+.mission-text {
+  white-space: pre-line;
+  color: $color-text-muted;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.commit-row {
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.commit-row:hover {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+.commit-sha {
+  font-size: 0.8rem;
+  color: $color-brand-yellow;
+  min-width: 80px;
 }
 
 </style>

@@ -28,7 +28,7 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.services.oauth_service import BUILTIN_CLIENT_ID
+from giljo_mcp.services.oauth_service import BUILTIN_CLIENT_ID
 
 
 def _generate_pkce_pair() -> tuple[str, str]:
@@ -85,10 +85,10 @@ class TestOAuthTokenEndpoint:
     @pytest.mark.asyncio
     async def test_token_endpoint_rejects_bad_pkce(self, api_client, db_manager):
         """Token endpoint must reject requests where PKCE verification fails."""
-        from src.giljo_mcp.models.auth import User
-        from src.giljo_mcp.models.oauth import OAuthAuthorizationCode
-        from src.giljo_mcp.models.organizations import Organization
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.models.auth import User
+        from giljo_mcp.models.oauth import OAuthAuthorizationCode
+        from giljo_mcp.models.organizations import Organization
+        from giljo_mcp.tenant import TenantManager
 
         _verifier, challenge = _generate_pkce_pair()
         wrong_verifier = secrets.token_urlsafe(64)
@@ -153,10 +153,10 @@ class TestOAuthTokenEndpoint:
     @pytest.mark.asyncio
     async def test_token_endpoint_returns_jwt(self, api_client, db_manager):
         """Token endpoint must return a valid JWT on successful code exchange."""
-        from src.giljo_mcp.models.auth import User
-        from src.giljo_mcp.models.oauth import OAuthAuthorizationCode
-        from src.giljo_mcp.models.organizations import Organization
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.models.auth import User
+        from giljo_mcp.models.oauth import OAuthAuthorizationCode
+        from giljo_mcp.models.organizations import Organization
+        from giljo_mcp.tenant import TenantManager
 
         verifier, challenge = _generate_pkce_pair()
         tenant_key = TenantManager.generate_tenant_key()

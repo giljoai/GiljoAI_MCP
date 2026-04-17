@@ -18,7 +18,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from src.giljo_mcp.database import DatabaseManager
+from giljo_mcp.database import DatabaseManager
 
 
 T = TypeVar("T")

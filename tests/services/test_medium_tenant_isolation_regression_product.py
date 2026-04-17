@@ -24,8 +24,8 @@ Follows patterns from: test_project_tenant_isolation_regression.py
 
 import pytest
 
-from src.giljo_mcp.exceptions import ResourceNotFoundError
-from src.giljo_mcp.services.product_service import ProductService
+from giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.services.product_service import ProductService
 
 
 # ============================================================================

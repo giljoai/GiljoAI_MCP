@@ -10,10 +10,10 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Message, Project, Task
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
-from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.models.projects import ProjectType
+from giljo_mcp.models import Message, Project, Task
+from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+from giljo_mcp.models.products import Product
+from giljo_mcp.models.projects import ProjectType
 
 
 class ProductStatisticsRepository:

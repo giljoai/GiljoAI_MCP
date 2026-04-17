@@ -33,15 +33,15 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import Project
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.prompts.claude_prompt_builder import ClaudePromptBuilder
-from src.giljo_mcp.prompts.codex_prompt_builder import CodexPromptBuilder
-from src.giljo_mcp.prompts.gemini_prompt_builder import GeminiPromptBuilder
-from src.giljo_mcp.prompts.multi_terminal_prompt_builder import MultiTerminalPromptBuilder
-from src.giljo_mcp.prompts.staging_prompt_builder import StagingPromptBuilder
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.config_manager import get_config
+from giljo_mcp.models import Project
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.prompts.claude_prompt_builder import ClaudePromptBuilder
+from giljo_mcp.prompts.codex_prompt_builder import CodexPromptBuilder
+from giljo_mcp.prompts.gemini_prompt_builder import GeminiPromptBuilder
+from giljo_mcp.prompts.multi_terminal_prompt_builder import MultiTerminalPromptBuilder
+from giljo_mcp.prompts.staging_prompt_builder import StagingPromptBuilder
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -399,7 +399,7 @@ class ThinClientPromptGenerator:
     ) -> tuple[dict | None, dict]:
         """Resolve field toggles and depth config from user preferences if not provided."""
         if user_id and (not field_toggles or not depth_config):
-            from src.giljo_mcp.models.auth import User, UserFieldPriority
+            from giljo_mcp.models.auth import User, UserFieldPriority
 
             user_stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
             user_result = await self.db.execute(user_stmt)
@@ -414,7 +414,7 @@ class ThinClientPromptGenerator:
                     )
                     rows = prio_result.scalars().all()
                     if rows:
-                        from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
+                        from giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
 
                         field_toggles = dict(DEFAULT_CATEGORY_TOGGLES)
                         for row in rows:
@@ -558,8 +558,8 @@ class ThinClientPromptGenerator:
         Returns:
             Product model or None if not found
         """
-        from src.giljo_mcp.models.products import Product
-        from src.giljo_mcp.models.projects import Project as ProjectModel
+        from giljo_mcp.models.products import Product
+        from giljo_mcp.models.projects import Project as ProjectModel
 
         project_stmt = select(ProjectModel).where(
             and_(ProjectModel.id == project_id, ProjectModel.tenant_key == self.tenant_key)
@@ -588,7 +588,7 @@ class ThinClientPromptGenerator:
 
     async def _fetch_project(self, project_id: str) -> Any | None:
         """Fetch project by ID."""
-        from src.giljo_mcp.models.projects import Project as ProjectModel
+        from giljo_mcp.models.projects import Project as ProjectModel
 
         project_stmt = select(ProjectModel).where(
             and_(ProjectModel.id == project_id, ProjectModel.tenant_key == self.tenant_key)

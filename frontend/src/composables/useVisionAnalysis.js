@@ -32,7 +32,7 @@ export function useVisionAnalysis(patchProductForm) {
     }
 
     const productName = productForm.name || 'this product'
-    const prompt = `Analyze the vision document for product "${productName}" and populate its configuration.\nUse the gil_get_vision_doc tool with product_id "${productId}" to read the document and extraction instructions, then call gil_write_product with the extracted fields.`
+    const prompt = `Analyze the vision document for product "${productName}" and populate its configuration.\nUse the get_vision_doc tool with product_id "${productId}" to read the document and extraction instructions, then call update_product_fields with the extracted fields.`
 
     promptFallbackText.value = null
     const didCopy = await copyToClipboard(prompt)

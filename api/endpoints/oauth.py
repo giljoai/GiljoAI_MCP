@@ -23,9 +23,9 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services.oauth_service import OAuthService
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import User
+from giljo_mcp.services.oauth_service import OAuthService
 
 
 logger = logging.getLogger(__name__)

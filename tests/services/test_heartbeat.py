@@ -18,8 +18,8 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.services.heartbeat import DEBOUNCE_SECONDS, touch_heartbeat
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.services.heartbeat import DEBOUNCE_SECONDS, touch_heartbeat
 
 
 @pytest_asyncio.fixture

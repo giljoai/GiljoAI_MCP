@@ -18,11 +18,11 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import Message, User
-from src.giljo_mcp.models.agent_identity import AgentExecution
-from src.giljo_mcp.models.tasks import MessageRecipient
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import Message, User
+from giljo_mcp.models.agent_identity import AgentExecution
+from giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)

@@ -8,7 +8,7 @@ TDD Tests for OrchestrationService Safety Features (Backported from tools layer)
 
 RED PHASE - These tests WILL FAIL initially until the service layer is updated.
 
-Purpose: Verify OrchestrationService.spawn_agent_job() enforces:
+Purpose: Verify OrchestrationService.spawn_job() enforces:
 1. Duplicate orchestrator prevention (only one active orchestrator per project)
 2. Agent name validation (agent_name must match an active AgentTemplate)
 
@@ -25,8 +25,8 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.exceptions import AlreadyExistsError, ValidationError
-from src.giljo_mcp.models import AgentTemplate, Project
+from giljo_mcp.exceptions import AlreadyExistsError, ValidationError
+from giljo_mcp.models import AgentTemplate, Project
 
 
 # ============================================================================
@@ -80,8 +80,8 @@ async def test_agent_template(db_session, test_tenant_key) -> AgentTemplate:
 @pytest_asyncio.fixture
 async def orchestration_service(db_manager, db_session):
     """Create OrchestrationService with test session."""
-    from src.giljo_mcp.services.orchestration_service import OrchestrationService
-    from src.giljo_mcp.tenant import TenantManager
+    from giljo_mcp.services.orchestration_service import OrchestrationService
+    from giljo_mcp.tenant import TenantManager
 
     tenant_manager = TenantManager()
     return OrchestrationService(
@@ -99,7 +99,7 @@ async def orchestration_service(db_manager, db_session):
 @pytest.mark.asyncio
 class TestDuplicateOrchestratorPrevention:
     """
-    Tests that spawn_agent_job prevents duplicate orchestrators for the same project.
+    Tests that spawn_job prevents duplicate orchestrators for the same project.
 
     Expected Behavior:
     - Only one active orchestrator (status "waiting" or "working") per project
@@ -112,7 +112,7 @@ class TestDuplicateOrchestratorPrevention:
     ):
         """Spawning a second orchestrator for the same project raises AlreadyExistsError."""
         # First orchestrator - should succeed
-        result1 = await orchestration_service.spawn_agent_job(
+        result1 = await orchestration_service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="First orchestrator mission",
@@ -124,7 +124,7 @@ class TestDuplicateOrchestratorPrevention:
 
         # Second orchestrator - should raise AlreadyExistsError
         with pytest.raises(AlreadyExistsError) as exc_info:
-            await orchestration_service.spawn_agent_job(
+            await orchestration_service.spawn_job(
                 agent_display_name="orchestrator",
                 agent_name="orchestrator",
                 mission="Second orchestrator mission",
@@ -137,7 +137,7 @@ class TestDuplicateOrchestratorPrevention:
     async def test_spawn_orchestrator_succession_allowed(self, orchestration_service, test_project, test_tenant_key):
         """Spawning with parent_job_id matching existing orchestrator's agent_id succeeds (handover succession)."""
         # First orchestrator
-        result1 = await orchestration_service.spawn_agent_job(
+        result1 = await orchestration_service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Original orchestrator mission",
@@ -147,7 +147,7 @@ class TestDuplicateOrchestratorPrevention:
         existing_agent_id = result1.agent_id
 
         # Successor orchestrator with parent_job_id = existing orchestrator's agent_id
-        result2 = await orchestration_service.spawn_agent_job(
+        result2 = await orchestration_service.spawn_job(
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             mission="Successor orchestrator mission",
@@ -170,7 +170,7 @@ class TestDuplicateOrchestratorPrevention:
 @pytest.mark.asyncio
 class TestAgentNameValidation:
     """
-    Tests that spawn_agent_job validates agent_name against active AgentTemplate records.
+    Tests that spawn_job validates agent_name against active AgentTemplate records.
 
     Expected Behavior:
     - agent_name must match an active template's name for the tenant
@@ -183,7 +183,7 @@ class TestAgentNameValidation:
     ):
         """Spawning with agent_name not matching any active template raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
-            await orchestration_service.spawn_agent_job(
+            await orchestration_service.spawn_job(
                 agent_display_name="implementer",
                 agent_name="nonexistent-agent-xyz",
                 mission="Some mission",
@@ -198,7 +198,7 @@ class TestAgentNameValidation:
         self, orchestration_service, test_project, test_tenant_key, test_agent_template
     ):
         """Spawning with agent_name matching an active template succeeds."""
-        result = await orchestration_service.spawn_agent_job(
+        result = await orchestration_service.spawn_job(
             agent_display_name="implementer",
             agent_name="tdd-implementor",
             mission="Implement feature with TDD",
@@ -209,6 +209,6 @@ class TestAgentNameValidation:
         assert result.job_id
         assert result.agent_id
         # Verify the agent was actually created
-        from src.giljo_mcp.schemas.service_responses import SpawnResult
+        from giljo_mcp.schemas.service_responses import SpawnResult
 
         assert isinstance(result, SpawnResult)

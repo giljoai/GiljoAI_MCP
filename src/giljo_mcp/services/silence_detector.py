@@ -25,9 +25,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.settings import Settings
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.settings import Settings
 
 
 logger = logging.getLogger(__name__)

@@ -33,11 +33,11 @@ from uuid import uuid4
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import BaseGiljoError, ResourceNotFoundError
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.schemas.jsonb_validators import validate_job_metadata
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import BaseGiljoError, ResourceNotFoundError
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.schemas.jsonb_validators import validate_job_metadata
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)

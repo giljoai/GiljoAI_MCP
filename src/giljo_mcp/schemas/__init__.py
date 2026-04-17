@@ -12,7 +12,7 @@ replacing dict[str, Any] returns with validated, documented models.
 Created: Handover 0731
 """
 
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.schemas.service_responses import (
     ApiKeyCreateResult,
     ApiKeyInfo,
     AuthResult,

@@ -18,13 +18,13 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models.products import Product
+from giljo_mcp.models.projects import Project
+from giljo_mcp.schemas.service_responses import (
     CascadeImpact,
     DeleteResult,
 )
-from src.giljo_mcp.services.product_service import ProductService
+from giljo_mcp.services.product_service import ProductService
 
 
 @pytest.mark.asyncio
@@ -110,7 +110,7 @@ class TestProductCRUDWorkflows:
 
     async def test_duplicate_name_prevention(self, db_manager):
         """Test that duplicate product names are prevented"""
-        from src.giljo_mcp.exceptions import ValidationError
+        from giljo_mcp.exceptions import ValidationError
 
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
@@ -212,7 +212,7 @@ class TestProductProjectCascade:
         assert delete_result.deleted_at is not None
 
         # Verify product is soft-deleted (should raise ResourceNotFoundError)
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
+        from giljo_mcp.exceptions import ResourceNotFoundError
 
         with pytest.raises(ResourceNotFoundError):
             await service.get_product(product_id)

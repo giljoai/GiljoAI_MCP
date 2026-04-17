@@ -22,15 +22,15 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.exceptions import (
     AuthenticationError,
     AuthorizationError,
     ResourceNotFoundError,
 )
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models.config import SetupState
-from src.giljo_mcp.models.organizations import Organization
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models.auth import User
+from giljo_mcp.models.config import SetupState
+from giljo_mcp.models.organizations import Organization
+from giljo_mcp.schemas.service_responses import (
     AuthResult,
     SetupStateInfo,
 )

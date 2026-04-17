@@ -16,8 +16,8 @@ Approved proposals are applied directly to product fields — no dashboard revie
 import logging
 from typing import Any
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.services.product_tuning_service import ProductTuningService
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.services.product_tuning_service import ProductTuningService
 
 
 logger = logging.getLogger(__name__)

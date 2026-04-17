@@ -28,8 +28,8 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.projects import Project
 
 
 # ============================================================================
@@ -122,9 +122,9 @@ class TestOrchestrationServiceNoFallback:
 
         It should NOT fallback to MCPAgentJob table.
         """
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.exceptions import ResourceNotFoundError
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
@@ -149,8 +149,8 @@ class TestOrchestrationServiceNoFallback:
 
         It should NOT touch MCPAgentJob table.
         """
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
+        from giljo_mcp.services.orchestration_service import OrchestrationService
+        from giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)

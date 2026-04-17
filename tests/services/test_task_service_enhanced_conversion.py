@@ -21,11 +21,11 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.exceptions import AuthorizationError
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.tasks import Task
-from src.giljo_mcp.schemas.service_responses import ConversionResult
+from giljo_mcp.exceptions import AuthorizationError
+from giljo_mcp.models.auth import User
+from giljo_mcp.models.projects import Project
+from giljo_mcp.models.tasks import Task
+from giljo_mcp.schemas.service_responses import ConversionResult
 
 
 # ============================================================================

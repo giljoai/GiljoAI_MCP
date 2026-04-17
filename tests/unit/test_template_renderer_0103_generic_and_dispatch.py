@@ -12,8 +12,8 @@ routes to the correct renderer based on cli_tool.
 
 import yaml
 
-from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.template_renderer import (
+from giljo_mcp.models import AgentTemplate
+from giljo_mcp.template_renderer import (
     render_generic_agent,
     render_template,
 )

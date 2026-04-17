@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.giljo_mcp.services.version_service import VersionInfo, clear_cache
+from giljo_mcp.services.version_service import VersionInfo, clear_cache
 
 
 @pytest.fixture(autouse=True)

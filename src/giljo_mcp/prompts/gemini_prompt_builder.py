@@ -73,7 +73,7 @@ class GeminiPromptBuilder:
                     ]
                 )
         else:
-            agent_spawn_lines.append("(No agents spawned yet - use spawn_agent_job() first)")
+            agent_spawn_lines.append("(No agents spawned yet - use spawn_job() first)")
 
         agent_list_section = [
             "## Agent Jobs to Execute",

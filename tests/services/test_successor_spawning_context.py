@@ -9,7 +9,7 @@ Successor Spawning Tests - Context Injection and Regression
 Split from test_successor_spawning.py (Handover 0497e).
 
 Validates:
-1. spawn_agent_job with predecessor_job_id injects predecessor context into mission
+1. spawn_job with predecessor_job_id injects predecessor context into mission
 2. Predecessor context includes completion summary and commits (with truncation)
 4. Invalid predecessor_job_id for incomplete predecessors handled gracefully
 6. Spawn without predecessor_job_id preserves existing behavior (regression)
@@ -18,7 +18,7 @@ Validates:
 import pytest
 from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentJob
+from giljo_mcp.models import AgentJob
 
 
 # Fixtures `tenant_key`, `agent_templates`, `project`, `service`,
@@ -47,7 +47,7 @@ class TestSpawnWithPredecessor:
         pred_spawn = await _spawn_and_complete(service, project.id, tenant_key, predecessor_result)
 
         # Spawn successor with predecessor reference
-        successor = await service.spawn_agent_job(
+        successor = await service.spawn_job(
             agent_display_name="successor",
             agent_name="tdd-implementor",
             mission="Fix the JWT validation bug found by tester",
@@ -74,7 +74,7 @@ class TestSpawnWithPredecessor:
 
         pred_spawn = await _spawn_and_complete(service, project.id, tenant_key, {"summary": "Done"})
 
-        successor = await service.spawn_agent_job(
+        successor = await service.spawn_job(
             agent_display_name="successor",
             agent_name="tdd-implementor",
             mission="Fix issues",
@@ -102,7 +102,7 @@ class TestPredecessorContextTruncation:
         long_summary = "A" * 3000
         pred_spawn = await _spawn_and_complete(service, project.id, tenant_key, {"summary": long_summary})
 
-        successor = await service.spawn_agent_job(
+        successor = await service.spawn_job(
             agent_display_name="successor",
             agent_name="tdd-implementor",
             mission="Fix it",
@@ -128,7 +128,7 @@ class TestPredecessorContextTruncation:
             service, project.id, tenant_key, {"summary": "Done", "commits": many_commits}
         )
 
-        successor = await service.spawn_agent_job(
+        successor = await service.spawn_job(
             agent_display_name="successor",
             agent_name="tdd-implementor",
             mission="Fix it",
@@ -159,7 +159,7 @@ class TestPredecessorNoResult:
     async def test_predecessor_not_completed_still_injects_context(self, db_session, service, project, tenant_key):
         """If predecessor exists but isn't complete, context still injected with defaults."""
         # Spawn predecessor but do NOT complete it
-        pred_spawn = await service.spawn_agent_job(
+        pred_spawn = await service.spawn_job(
             agent_display_name="predecessor",
             agent_name="specialist-1",
             mission="Still working",
@@ -167,7 +167,7 @@ class TestPredecessorNoResult:
             tenant_key=tenant_key,
         )
 
-        successor = await service.spawn_agent_job(
+        successor = await service.spawn_job(
             agent_display_name="successor",
             agent_name="tdd-implementor",
             mission="Fix the issues",
@@ -196,7 +196,7 @@ class TestSpawnWithoutPredecessorRegression:
 
     async def test_spawn_without_predecessor_works(self, db_session, service, project, tenant_key):
         """Normal spawn (no predecessor) should work exactly as before."""
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="implementer",
             agent_name="specialist-1",
             mission="Implement the feature",
@@ -219,7 +219,7 @@ class TestSpawnWithoutPredecessorRegression:
 
     async def test_spawn_with_none_predecessor_works(self, service, project, tenant_key):
         """Explicitly passing predecessor_job_id=None should work as normal."""
-        result = await service.spawn_agent_job(
+        result = await service.spawn_job(
             agent_display_name="implementer-2",
             agent_name="specialist-1",
             mission="Normal mission",

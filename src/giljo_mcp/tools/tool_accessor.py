@@ -18,20 +18,20 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ValidationError
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.schemas.service_responses import (
     MessageListResult,
     SendMessageResult,
     WorkflowStatus,
 )
-from src.giljo_mcp.services.message_routing_service import MessageRoutingService
-from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.services.task_service import TaskService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.services.message_routing_service import MessageRoutingService
+from giljo_mcp.services.message_service import MessageService
+from giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.services.product_service import ProductService
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.services.task_service import TaskService
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -210,6 +210,17 @@ class ToolAccessor:
             return _test_session_wrapper()
         return self.db_manager.get_session_async()
 
+    # Internal helpers
+
+    async def _get_valid_project_types(self, tenant_key: str) -> list[dict[str, Any]]:
+        """Return available project types for a tenant (used in error messages and list_projects)."""
+        from api.endpoints.project_types.crud_ops import ensure_default_types_seeded, list_project_types
+
+        async with self.db_manager.get_session_async() as session:
+            await ensure_default_types_seeded(session, tenant_key)
+            types = await list_project_types(session, tenant_key)
+            return [{"abbreviation": t.abbreviation, "label": t.label, "color": t.color} for t in types]
+
     # Project Tools
 
     async def create_project(
@@ -340,31 +351,50 @@ class ToolAccessor:
     # list_projects / update_project_metadata — MCP tool layer
     # ------------------------------------------------------------------
 
-    _VALID_PROJECT_STATUS_FILTERS = frozenset({"inactive", "active", "completed", "all"})
-    _VALID_PROJECT_UPDATE_STATUSES = frozenset({"inactive", "active", "completed"})
+    _VALID_PROJECT_STATUS_FILTERS = frozenset({"inactive", "active", "completed", "cancelled", "all"})
+    _VALID_PROJECT_UPDATE_STATUSES = frozenset({"inactive", "active", "completed", "cancelled"})
+
+    _VALID_DEPTH_LEVELS = frozenset({0, 1, 2, 3})
 
     async def list_projects(
         self,
         status_filter: str = "all",
+        summary_only: bool = True,
+        depth: int = 0,
         tenant_key: str | None = None,
     ) -> dict[str, Any]:
-        """List projects for the active product with optional status filter.
+        """List projects for the active product with optional status filter and depth control.
 
         Args:
-            status_filter: One of "inactive", "active", "completed", "all" (default "all").
+            status_filter: One of "inactive", "active", "completed", "cancelled", "all" (default "all").
+                Cancelled projects are excluded from default results; use "cancelled" or "all" to include them.
+            summary_only: When True (default for MCP), return only summary fields.
+                When False, return full project data including description and mission.
+            depth: Detail level 0-3 (only used when summary_only=False):
+                0 = summary fields only (same as summary_only=True)
+                1 = + description, mission, agent job summary (types spawned, counts)
+                2 = + 360 memory entries for this project, agent job details (display names, status, result)
+                3 = + message history, git commits from 360 memory
             tenant_key: Tenant isolation key (injected by MCP security layer).
 
         Returns:
             Dict with success flag and list of project summaries.
 
         Raises:
-            ValidationError: Invalid status_filter or no active product.
+            ValidationError: Invalid status_filter, depth, or no active product.
         """
         # Validate status_filter (untrusted agent input)
         if status_filter not in self._VALID_PROJECT_STATUS_FILTERS:
             raise ValidationError(
                 f"Invalid status_filter '{status_filter}'. "
                 f"Must be one of: {', '.join(sorted(self._VALID_PROJECT_STATUS_FILTERS))}",
+                context={"operation": "list_projects"},
+            )
+
+        # Validate depth (untrusted agent input)
+        if not isinstance(depth, int) or depth not in self._VALID_DEPTH_LEVELS:
+            raise ValidationError(
+                f"Invalid depth '{depth}'. Must be an integer 0-3.",
                 context={"operation": "list_projects"},
             )
 
@@ -386,35 +416,113 @@ class ToolAccessor:
 
         # Delegate to service — pass status=None when filter is "all"
         svc_status = None if status_filter == "all" else status_filter
+        # "all" includes cancelled; "cancelled" is handled by explicit filter;
+        # default (no filter) excludes cancelled via service layer
+        include_cancelled = status_filter == "all"
         all_projects = await self._project_service.list_projects(
             status=svc_status,
             tenant_key=effective_tenant_key,
+            include_cancelled=include_cancelled,
         )
 
         # Filter to active product only
         product_projects = [p for p in all_projects if p.product_id == active_product.id]
 
-        # Build response with full descriptions
-        projects_out = [
-            {
-                "project_id": p.id,
-                "name": p.name,
-                "description": p.description or "",
-                "status": p.status,
-                "project_type": getattr(p.project_type, "abbreviation", None) if p.project_type else None,
-                "series_number": p.series_number,
-                "taxonomy_alias": p.taxonomy_alias,
-                "created_at": p.created_at,
-            }
-            for p in product_projects
-        ]
+        # Determine effective depth: summary_only=True forces depth=0
+        effective_depth = 0 if summary_only else depth
+
+        # Build response — depth controls field inclusion
+        projects_out = await self._build_project_list(product_projects, effective_depth, effective_tenant_key)
+
+        # Include available project types so agents don't need a separate discovery call
+        project_types = await self._get_valid_project_types(effective_tenant_key)
 
         return {
             "success": True,
             "product_id": active_product.id,
             "count": len(projects_out),
+            "depth": effective_depth,
             "projects": projects_out,
+            "project_types": project_types,
         }
+
+    async def _build_project_list(
+        self,
+        projects: list,
+        depth: int,
+        tenant_key: str,
+    ) -> list[dict[str, Any]]:
+        """Build project list dicts with graduated detail based on depth level.
+
+        Args:
+            projects: List of ProjectListItem objects from service layer.
+            depth: 0=summary, 1=+desc/mission/agent_summary, 2=+memory/agent_detail, 3=+messages/commits.
+            tenant_key: Tenant isolation key.
+
+        Returns:
+            List of project dicts with depth-appropriate fields.
+        """
+        results = []
+        for p in projects:
+            # depth 0: summary fields only
+            item: dict[str, Any] = {
+                "project_id": p.id,
+                "name": p.name,
+                "status": p.status,
+                "project_type": getattr(p.project_type, "abbreviation", None) if p.project_type else None,
+                "series_number": p.series_number,
+                "taxonomy_alias": p.taxonomy_alias,
+                "created_at": p.created_at,
+                "completed_at": p.completed_at,
+            }
+
+            if depth >= 1:
+                # depth 1: add description, mission, agent job summary
+                item["description"] = p.description or ""
+                item["mission"] = getattr(p, "mission", None) or ""
+                agent_summary = await self._project_service.get_project_agent_summary(
+                    project_id=p.id, tenant_key=tenant_key
+                )
+                item["agent_summary"] = agent_summary
+
+            if depth >= 2:
+                # depth 2: add 360 memory entries, agent job details
+                memory_entries = await self._project_service.get_project_memory_entries(
+                    project_id=p.id, tenant_key=tenant_key
+                )
+                item["memory_entries"] = memory_entries
+                agent_details = await self._project_service.get_project_agent_details(
+                    project_id=p.id, tenant_key=tenant_key
+                )
+                item["agent_details"] = agent_details
+
+            if depth >= 3:
+                # depth 3: add git commits from memory, message history
+                item["git_commits"] = self._extract_git_commits(memory_entries if depth >= 2 else [])
+                message_history = await self._project_service.get_project_messages(
+                    project_id=p.id, tenant_key=tenant_key
+                )
+                item["message_history"] = message_history
+
+            results.append(item)
+        return results
+
+    @staticmethod
+    def _extract_git_commits(memory_entries: list[dict]) -> list[dict]:
+        """Extract git commits from 360 memory entries.
+
+        Args:
+            memory_entries: List of memory entry dicts (from get_project_memory_entries).
+
+        Returns:
+            Flat list of git commit dicts across all memory entries.
+        """
+        commits = []
+        for entry in memory_entries:
+            entry_commits = entry.get("git_commits", [])
+            if isinstance(entry_commits, list):
+                commits.extend(entry_commits)
+        return commits
 
     async def update_project_metadata(
         self,
@@ -433,7 +541,7 @@ class ToolAccessor:
             project_id: Project UUID (required).
             name: New name (max 200 chars, optional).
             description: New description (max 5000 chars, optional).
-            status: New status — "inactive", "active", or "completed" (optional).
+            status: New status — "inactive", "active", "completed", or "cancelled" (optional).
             tenant_key: Tenant isolation key (injected by MCP security layer).
             project_type: Taxonomy type label (resolved to ID internally, optional).
             series_number: Sequential number within type series (1-9999, optional).
@@ -524,9 +632,14 @@ class ToolAccessor:
             if resolved_type:
                 project_type = resolved_type.id
             else:
+                # Include valid types in error so agents don't need a separate lookup
+                valid_types = await self._get_valid_project_types(effective_tenant_key)
+                valid_labels = [t["abbreviation"] for t in valid_types]
                 raise ValidationError(
-                    f"Unknown project type '{project_type}'. Use discovery(category='project_types') to see valid types.",
-                    context={"operation": "update_project_metadata"},
+                    f"Unknown project type '{project_type}'. "
+                    f"Valid types: {', '.join(valid_labels)}. "
+                    "Use list_projects() to see all valid project_types.",
+                    context={"operation": "update_project_metadata", "valid_types": valid_types},
                 )
 
         # Validate taxonomy fields
@@ -643,7 +756,7 @@ class ToolAccessor:
             message_types=message_types,
         )
 
-    async def list_messages(
+    async def inspect_messages(
         self,
         project_id: str | None = None,
         status: str | None = None,
@@ -652,9 +765,9 @@ class ToolAccessor:
         limit: int | None = None,
     ) -> MessageListResult:
         """
-        List messages in a project or for a specific agent (delegates to MessageService).
+        Inspect messages in a project or for a specific agent (read-only, delegates to MessageService).
 
-        Handover 0378 Bug 1: Added tenant_key parameter to match MCP tool schema.
+        Renamed from list_messages to differentiate from receive_messages (which auto-acknowledges).
         """
         return await self._message_service.list_messages(
             project_id=project_id, status=status, agent_id=agent_id, tenant_key=tenant_key, limit=limit
@@ -770,46 +883,6 @@ class ToolAccessor:
         from giljo_mcp.services.orchestration_service import OrchestrationService
 
         return await OrchestrationService.health_check()
-
-    async def discovery(self, category: str, tenant_key: str) -> dict[str, Any]:
-        """Query available system categories for the current tenant.
-
-        Args:
-            category: What to look up. Valid: 'project_types'.
-            tenant_key: Tenant isolation key.
-
-        Returns:
-            Dict with category, items, count, and a usage hint.
-
-        Raises:
-            ValidationError: If category is unknown.
-        """
-        valid_categories = ["project_types"]
-
-        if category not in valid_categories:
-            raise ValidationError(
-                f"Unknown category '{category}'. Valid categories: {', '.join(valid_categories)}",
-                context={"valid_categories": valid_categories},
-            )
-
-        from api.endpoints.project_types.crud_ops import ensure_default_types_seeded, list_project_types
-
-        async with self.db_manager.get_session_async() as session:
-            await ensure_default_types_seeded(session, tenant_key)
-            types = await list_project_types(session, tenant_key)
-            return {
-                "category": "project_types",
-                "items": [
-                    {
-                        "abbreviation": t.abbreviation,
-                        "label": t.label,
-                        "color": t.color,
-                    }
-                    for t in types
-                ],
-                "count": len(types),
-                "hint": "Use the abbreviation value as project_type when calling create_project",
-            }
 
     async def generate_download_token(
         self, content_type: str, tenant_key: str, platform: str = "claude_code"
@@ -939,7 +1012,7 @@ class ToolAccessor:
             logger.exception("Failed to stage bootstrap setup")
             raise
 
-    async def get_agent_templates_for_export(self, tenant_key: str, platform: str) -> dict[str, Any]:
+    async def list_agent_templates(self, tenant_key: str, platform: str) -> dict[str, Any]:
         """
         Export agent templates formatted for the target CLI platform.
 
@@ -992,7 +1065,7 @@ class ToolAccessor:
         """Delegate to OrchestrationService (Handover 0451)"""
         return await self._orchestration_service.get_orchestrator_instructions(job_id, tenant_key)
 
-    async def spawn_agent_job(
+    async def spawn_job(
         self,
         agent_display_name: str,
         agent_name: str,
@@ -1004,7 +1077,7 @@ class ToolAccessor:
         predecessor_job_id: str | None = None,
     ) -> dict[str, Any]:
         """Create an agent job (delegates to OrchestrationService)"""
-        return await self._orchestration_service.spawn_agent_job(
+        return await self._orchestration_service.spawn_job(
             agent_display_name=agent_display_name,
             agent_name=agent_name,
             mission=mission,
@@ -1273,7 +1346,7 @@ class ToolAccessor:
         chunk: int | None = None,
     ) -> dict[str, Any]:
         """Retrieve vision document with extraction instructions (Handover 0842c)."""
-        from giljo_mcp.tools.vision_analysis import gil_get_vision_doc as tool_func
+        from giljo_mcp.tools.vision_analysis import get_vision_doc as tool_func
 
         return await tool_func(
             product_id=product_id,
@@ -1290,7 +1363,7 @@ class ToolAccessor:
         **fields: Any,
     ) -> dict[str, Any]:
         """Write product fields from vision document analysis (Handover 0842c)."""
-        from giljo_mcp.tools.vision_analysis import gil_write_product as tool_func
+        from giljo_mcp.tools.vision_analysis import update_product_fields as tool_func
 
         return await tool_func(
             product_id=product_id,

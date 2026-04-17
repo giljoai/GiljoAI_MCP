@@ -15,9 +15,11 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, require_admin
-from src.giljo_mcp.models import User
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
+from giljo_mcp.models import User
+from giljo_mcp.services.settings_service import SettingsService
 
 
 logger = logging.getLogger(__name__)
@@ -76,7 +78,7 @@ async def get_system_configuration(current_user: User = Depends(get_current_acti
 
     Sensitive data (passwords, API keys) are masked for security.
     """
-    from src.giljo_mcp._config_io import read_config
+    from giljo_mcp._config_io import read_config
 
     config = read_config()
 
@@ -207,7 +209,7 @@ async def get_tenant_configuration(request: Request, current_user: User = Depend
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with state.db_manager.get_session_async() as session:
-        from src.giljo_mcp.repositories import ConfigurationRepository
+        from giljo_mcp.repositories import ConfigurationRepository
 
         repo = ConfigurationRepository(state.db_manager)
         configs = await repo.get_tenant_configurations(session, tenant_key)
@@ -239,8 +241,8 @@ async def set_tenant_configuration(
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with state.db_manager.get_session_async() as session:
-        from src.giljo_mcp.models import Configuration
-        from src.giljo_mcp.repositories import ConfigurationRepository
+        from giljo_mcp.models import Configuration
+        from giljo_mcp.repositories import ConfigurationRepository
 
         repo = ConfigurationRepository(state.db_manager)
 
@@ -278,7 +280,7 @@ async def delete_tenant_configuration(request: Request, current_user: User = Dep
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with state.db_manager.get_session_async() as session:
-        from src.giljo_mcp.repositories import ConfigurationRepository
+        from giljo_mcp.repositories import ConfigurationRepository
 
         repo = ConfigurationRepository(state.db_manager)
         deleted_count = await repo.delete_tenant_configurations(session, tenant_key)
@@ -484,14 +486,17 @@ class SSLStatusResponse(BaseModel):
 
 
 @router.get("/ssl", response_model=SSLStatusResponse)
-async def get_ssl_status(current_user: User = Depends(require_admin)):
-    """Get current SSL/HTTPS configuration status."""
-    from src.giljo_mcp._config_io import read_config
+async def get_ssl_status(
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get current SSL/HTTPS configuration status from database."""
+    service = SettingsService(db, current_user.tenant_key)
+    security = await service.get_settings("security")
 
-    config = read_config()
-    ssl_enabled = config.get("features", {}).get("ssl_enabled", False)
-    cert_path = config.get("paths", {}).get("ssl_cert")
-    key_path = config.get("paths", {}).get("ssl_key")
+    ssl_enabled = security.get("ssl_enabled", False)
+    cert_path = security.get("ssl_cert_path")
+    key_path = security.get("ssl_key_path")
 
     has_cert = bool(cert_path and key_path and Path(cert_path).exists() and Path(key_path).exists())
 
@@ -506,17 +511,27 @@ async def get_ssl_status(current_user: User = Depends(require_admin)):
 
 
 @router.post("/ssl", response_model=SSLStatusResponse)
-async def toggle_ssl(request_body: SSLToggleRequest, current_user: User = Depends(require_admin)):
+async def toggle_ssl(
+    request_body: SSLToggleRequest,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+):
     """Enable or disable SSL/HTTPS. Generates self-signed certificates if none exist."""
-    from src.giljo_mcp._config_io import read_config, write_config
+    from giljo_mcp._config_io import read_config, write_config
 
-    config = read_config()
-    if not config:
-        raise HTTPException(status_code=500, detail="config.yaml is empty or not found")
+    service = SettingsService(db, current_user.tenant_key)
+    security = await service.get_settings("security")
 
-    cert_path = config.get("paths", {}).get("ssl_cert")
-    key_path = config.get("paths", {}).get("ssl_key")
+    cert_path = security.get("ssl_cert_path")
+    key_path = security.get("ssl_key_path")
     has_cert = bool(cert_path and key_path and Path(cert_path).exists() and Path(key_path).exists())
+
+    # Fallback: check config.yaml paths if DB doesn't have them yet
+    if not has_cert:
+        config = read_config()
+        cert_path = config.get("paths", {}).get("ssl_cert")
+        key_path = config.get("paths", {}).get("ssl_key")
+        has_cert = bool(cert_path and key_path and Path(cert_path).exists() and Path(key_path).exists())
 
     if request_body.enabled and not has_cert:
         # Generate self-signed certificates
@@ -568,30 +583,38 @@ async def toggle_ssl(request_body: SSLToggleRequest, current_user: User = Depend
                 detail="Certificate generation failed. Check server logs for details.",
             ) from e
 
-        # Update paths in config
-        if "paths" not in config:
-            config["paths"] = {}
-        config["paths"]["ssl_cert"] = str(generated_cert.absolute())
-        config["paths"]["ssl_key"] = str(generated_key.absolute())
         cert_path = str(generated_cert.absolute())
         key_path = str(generated_key.absolute())
         has_cert = True
 
-    # Update ssl_enabled flag
+    # Write to database (source of truth for runtime)
+    security["ssl_enabled"] = request_body.enabled
+    if cert_path:
+        security["ssl_cert_path"] = cert_path
+    if key_path:
+        security["ssl_key_path"] = key_path
+    await service.update_settings("security", security)
+
+    # Also write to config.yaml for startup bootstrap (needed before DB is available)
+    config = read_config()
     if "features" not in config:
         config["features"] = {}
     config["features"]["ssl_enabled"] = request_body.enabled
-
+    if cert_path and key_path:
+        if "paths" not in config:
+            config["paths"] = {}
+        config["paths"]["ssl_cert"] = cert_path
+        config["paths"]["ssl_key"] = key_path
     write_config(config)
 
-    status = "enabled" if request_body.enabled else "disabled"
+    ssl_status = "enabled" if request_body.enabled else "disabled"
     return SSLStatusResponse(
         ssl_enabled=request_body.enabled,
         has_certificate=has_cert,
         cert_path=cert_path if has_cert else None,
         key_path=key_path if has_cert else None,
         restart_required=True,
-        message=f"HTTPS {status}. Server restart required for changes to take effect.",
+        message=f"HTTPS {ssl_status}. Server restart required for changes to take effect.",
     )
 
 
@@ -740,7 +763,7 @@ async def check_database_health(current_user: User = Depends(get_current_active_
 
     try:
         async with state.db_manager.get_session_async() as session:
-            from src.giljo_mcp.repositories import ConfigurationRepository
+            from giljo_mcp.repositories import ConfigurationRepository
 
             repo = ConfigurationRepository(state.db_manager)
             is_healthy = await repo.execute_health_check(session)

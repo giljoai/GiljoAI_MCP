@@ -1,10 +1,10 @@
 # GiljoAI MCP: Tools Reference
 
-*Last updated: 2026-04-06*
+*Last updated: 2026-04-16*
 
 ## Overview
 
-GiljoAI MCP exposes 29 tools to connected AI coding tools. Every tool requires a
+GiljoAI MCP exposes 28 tools to connected AI coding tools. Every tool requires a
 valid API key passed as a Bearer token. Tenant isolation is enforced server-side;
 agents cannot cross tenant boundaries.
 
@@ -24,28 +24,14 @@ Tools are organized by category below. Tool names match the exact MCP registrati
 
 ---
 
-### discovery
-
-**Description:** Discover available system categories and configuration for the
-current tenant. Call this before creating projects to see valid `project_type` values.
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| category | str | Yes | What to look up. Valid value: `project_types`. |
-
-**Returns:** List of items with `abbreviation`, `label`, and `color` fields.
-
----
-
 ## Project Management
 
 ### create_project
 
 **Description:** Create a new project bound to the active product. Projects are
 classified by taxonomy: `project_type` plus `series_number` form a serial such as
-`FE-0001`. Call `discovery(category='project_types')` first to see valid types.
+`FE-0001`. Use `list_projects()` to see valid `project_type` values from the
+`project_types` metadata in the response.
 The project is created as inactive; activate it from the web dashboard.
 
 **Parameters:**
@@ -58,6 +44,50 @@ The project is created as inactive; activate it from the web dashboard.
 | series_number | int | No | Sequential number within the type series (1-9999). Use 0 for auto-assign. |
 
 **Returns:** Created project record including `project_id` and serial.
+
+---
+
+### list_projects
+
+**Description:** List projects for the active product with optional status filter
+and depth control. By default returns summary-only fields to minimize payload
+(~2KB for 49 projects vs ~146KB with full descriptions). Use `summary_only=False`
+with `depth` 1-3 for progressively more detail.
+
+**Parameters:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| status_filter | str | No | `"all"` | Filter by status: `"inactive"`, `"active"`, `"completed"`, `"cancelled"`, or `"all"`. |
+| summary_only | bool | No | `true` | When `true`, return only summary fields. When `false`, include detail controlled by `depth`. |
+| depth | int | No | `0` | Detail level 0-3 (only used when `summary_only=false`). |
+
+**Depth levels:**
+
+| Level | Fields included |
+|-------|----------------|
+| 0 | `project_id`, `name`, `status`, `project_type`, `series_number`, `taxonomy_alias`, `created_at`, `completed_at` |
+| 1 | Depth 0 + `description`, `mission`, `agent_summary` (types spawned, counts) |
+| 2 | Depth 1 + `memory_entries` (360 memory for this project), `agent_details` (display names, status, result) |
+| 3 | Depth 2 + `message_history`, `git_commits` (extracted from 360 memory) |
+
+**Returns:** Dict with `projects` list, `count`, `depth`, and `project_types`.
+
+**Examples:**
+
+```python
+# Quick overview (default) — slim payload
+list_projects()
+
+# Full data for all projects
+list_projects(summary_only=False, depth=1)
+
+# Deep dive with memory and agent results
+list_projects(summary_only=False, depth=2)
+
+# Only active projects, summary only
+list_projects(status_filter="active")
+```
 
 ---
 
@@ -101,7 +131,7 @@ history entry. Called by the orchestrator at project completion. Triggers a
 
 ## Agent Lifecycle
 
-### spawn_agent_job
+### spawn_job
 
 **Description:** Create a specialist agent job for execution. Called by the
 orchestrator during staging to delegate work. Returns a `job_id` and a thin prompt
@@ -141,7 +171,7 @@ Used by agents checking for new work.
 ### get_agent_mission
 
 **Description:** Fetch agent-specific mission and context. Called by any agent
-immediately after receiving a thin prompt from `spawn_agent_job`. This is the
+immediately after receiving a thin prompt from `spawn_job`. This is the
 agent's first action. Returns the targeted mission for this specific agent, not
 the full project vision. Idempotent.
 
@@ -333,10 +363,10 @@ filtering.
 
 ---
 
-### list_messages
+### inspect_messages
 
-**Description:** List messages with optional filters. Broader than `receive_messages`;
-returns all matching messages regardless of read state.
+**Description:** Inspect messages with optional filters. Broader than `receive_messages`;
+returns all matching messages regardless of read state. Read-only — use for debugging.
 
 **Parameters:**
 
@@ -355,8 +385,10 @@ returns all matching messages regardless of read state.
 ### fetch_context
 
 **Description:** Unified context fetcher. Retrieves product and project context by
-category with depth control. A single call to this tool replaces nine individual
-context tools. Categories and their approximate token costs:
+category with depth control. Supports fetching multiple categories in a single call
+(e.g. `categories=["product_core", "tech_stack", "architecture"]`). A single call to
+this tool replaces nine individual context tools. Categories and their approximate
+token costs:
 
 - `product_core`: ~100 tokens
 - `vision_documents`: 0-24K tokens
@@ -376,11 +408,22 @@ context tools. Categories and their approximate token costs:
 | product_id | str | Yes | ID of the product to fetch context for. |
 | project_id | str | No | ID of a specific project for project-scoped context. |
 | agent_name | str | No | Agent name for `self_identity` category. |
-| categories | list[str] | No | List of category strings. Defaults to all categories. |
+| categories | list[str] | Yes | One or more category strings. Multiple categories can be fetched in a single call. `"all"` is not accepted; list categories explicitly. |
 | depth_config | dict | No | Per-category depth overrides. |
 | output_format | str | No | Response format. Default: `structured`. |
 
-**Returns:** Structured context object keyed by category.
+**Returns:** Structured context object keyed by category, including
+`categories_requested` and `categories_returned` metadata.
+
+**Example (batch):**
+```python
+fetch_context(
+    product_id="uuid-123",
+    categories=["product_core", "tech_stack", "architecture"],
+    depth_config={"architecture": "detailed"}
+)
+# Returns data for all three categories in one response
+```
 
 ---
 
@@ -407,12 +450,12 @@ completion or by agents when passing work to another agent.
 
 ## Vision Documents
 
-### gil_get_vision_doc
+### get_vision_doc
 
 **Description:** Retrieve a product's vision document with extraction instructions.
 Call without `chunk` first to get metadata (`total_chunks`, `extraction_instructions`).
 Then call with `chunk=1`, `chunk=2`, and so on to retrieve each chunk's content one
-at a time. Read all chunks before calling `gil_write_product`.
+at a time. Read all chunks before calling `update_product_fields`.
 
 **Parameters:**
 
@@ -426,7 +469,7 @@ On subsequent calls: the text content of the requested chunk.
 
 ---
 
-### gil_write_product
+### update_product_fields
 
 **Description:** Write structured product fields extracted from vision document
 analysis. Performs a merge-write: only fields that are provided are updated. Creates
@@ -520,7 +563,7 @@ commands. The URL is valid for 15 minutes.
 
 ---
 
-### get_agent_templates_for_export
+### list_agent_templates
 
 **Description:** Export agent templates formatted for the target CLI platform.
 Returns pre-assembled files for Claude Code and Gemini CLI, or structured data
@@ -579,13 +622,13 @@ plan. Token estimate: approximately 4,500 with context exclusions applied.
 
 | Category | Tools |
 |----------|-------|
-| Discovery | health_check, discovery |
-| Project Management | create_project, update_project_mission, close_project_and_update_memory |
-| Agent Lifecycle | spawn_agent_job, get_pending_jobs, get_agent_mission, update_agent_mission, set_agent_status, report_progress, complete_job, get_agent_result, get_workflow_status, reactivate_job, dismiss_reactivation |
-| Messaging | send_message, receive_messages, list_messages |
-| Context and Memory | fetch_context, write_360_memory |
-| Vision Documents | gil_get_vision_doc, gil_write_product |
+| Discovery | health_check |
+| Project Management | create_project, list_projects, update_project_mission, close_project_and_update_memory |
+| Agent Lifecycle | spawn_job, get_pending_jobs, get_agent_mission, update_agent_mission, set_agent_status, report_progress, complete_job, get_agent_result, get_workflow_status, reactivate_job, dismiss_reactivation |
+| Messaging | send_message, receive_messages, inspect_messages |
+| Context and Memory | fetch_context (batch: multiple categories per call), write_360_memory |
+| Vision Documents | get_vision_doc, update_product_fields |
 | Tasks | create_task |
-| Setup and Export | giljo_setup, generate_download_token, get_agent_templates_for_export, submit_tuning_review |
+| Setup and Export | giljo_setup, generate_download_token, list_agent_templates, submit_tuning_review |
 | Orchestrator Context | get_orchestrator_instructions |
-| **Total** | **29** |
+| **Total** | **28** |

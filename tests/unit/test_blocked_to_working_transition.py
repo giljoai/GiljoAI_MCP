@@ -23,7 +23,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.services.orchestration_service import OrchestrationService
 
 
 def _make_mock_execution(

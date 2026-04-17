@@ -20,8 +20,8 @@ import uuid
 
 import pytest
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Product, Project
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Product, Project
 
 
 @pytest.mark.asyncio
@@ -193,8 +193,8 @@ class TestCLIModeRules:
         Verifies that when execution_mode == 'claude_code_cli', the response
         contains a cli_mode_rules dict with agent_display_name/agent_name usage instructions.
         """
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -228,8 +228,8 @@ class TestCLIModeRules:
         - validation: "soft" (warn but don't block)
         - template_locations: Where to find templates
         """
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -274,8 +274,8 @@ class TestCLIModeRules:
         NOTE: This feature was redesigned. Spawning examples are now in
         cli_mode_rules.multi_agent_example instead of a top-level spawning_examples field.
         """
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -305,8 +305,8 @@ class TestCLIModeRules:
 
         cli_mode_rules is CLI-specific and should not appear in multi-terminal mode.
         """
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -331,8 +331,8 @@ class TestCLIModeRules:
         agent_display_name_usage explains that agent_display_name is a dashboard label
         and must be unique per agent instance when spawning multiple agents of same template.
         """
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -359,8 +359,8 @@ class TestCLIModeRules:
         """
         task_tool_mapping explains the Task(subagent_type=X) pattern.
         """
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)

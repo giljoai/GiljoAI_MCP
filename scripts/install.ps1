@@ -557,6 +557,17 @@ function Initialize-Environment {
         Write-Warn "requirements.txt not found -- skipping pip install"
     }
 
+    # Register giljo_mcp as importable package (editable install, idempotent)
+    $pyprojectPath = Join-Path $TargetDir "pyproject.toml"
+    if (Test-Path $pyprojectPath) {
+        try {
+            & $venvPip install -e $TargetDir --quiet 2>&1 | Out-Null
+            Write-Ok "Package registered (editable install)"
+        } catch {
+            Write-Warn "Editable install skipped (non-fatal): $_"
+        }
+    }
+
     # Build frontend — use Start-Process to avoid irm|iex pipeline mangling npm
     $frontendDir = Join-Path $TargetDir "frontend"
     if (Test-Path (Join-Path $frontendDir "package.json")) {

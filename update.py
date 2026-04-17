@@ -74,11 +74,12 @@ def _build_db_url() -> str | None:
         return None
 
     # Import here so we don't fail if src package isn't on the path yet
+    # TODO: Remove after editable install confirmed on all platforms
     sys.path.insert(0, str(ROOT))
     try:
-        from src.giljo_mcp._config_io import read_config
+        from giljo_mcp._config_io import read_config
     except ImportError:
-        err("Could not import src.giljo_mcp._config_io. Is the virtual environment active?")
+        err("Could not import giljo_mcp._config_io. Is the virtual environment active?")
         return None
 
     config = read_config(config_path)

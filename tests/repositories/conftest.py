@@ -13,11 +13,11 @@ from datetime import datetime, timedelta, timezone
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models import Message, Project
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.config import ApiMetrics
-from src.giljo_mcp.models.tasks import MessageRecipient
-from src.giljo_mcp.repositories.statistics_repository import StatisticsRepository
+from giljo_mcp.models import Message, Project
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.config import ApiMetrics
+from giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.repositories.statistics_repository import StatisticsRepository
 
 
 @pytest.fixture

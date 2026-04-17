@@ -21,6 +21,7 @@ import pytest
 
 
 # Add project root to path
+# TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 

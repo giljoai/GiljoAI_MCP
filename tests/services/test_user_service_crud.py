@@ -18,12 +18,12 @@ from uuid import uuid4
 import bcrypt
 import pytest
 
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.exceptions import (
     AuthorizationError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models.auth import User
+from giljo_mcp.models.auth import User
 
 
 # ============================================================================

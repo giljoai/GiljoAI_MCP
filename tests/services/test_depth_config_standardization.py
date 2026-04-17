@@ -48,7 +48,7 @@ class TestDepthConfigFieldStandardization:
 
     def test_user_model_has_depth_vision_documents_column(self):
         """Verify User model has depth_vision_documents column with correct default."""
-        from src.giljo_mcp.models.auth import User
+        from giljo_mcp.models.auth import User
 
         # Handover 0840d: depth_config JSONB replaced by individual columns
         col = User.__table__.columns["depth_vision_documents"]
@@ -59,7 +59,7 @@ class TestDepthConfigFieldStandardization:
         """Verify UserService get_depth_config uses 'vision_documents' key in default."""
         import inspect
 
-        from src.giljo_mcp.services.user_service import UserService
+        from giljo_mcp.services.user_service import UserService
 
         # Check the implementation method (get_depth_config delegates to this)
         source = inspect.getsource(UserService._get_depth_config_impl)
@@ -74,7 +74,7 @@ class TestDepthConfigFieldStandardization:
         """Verify UserService update methods validate 'vision_documents' field."""
         import inspect
 
-        from src.giljo_mcp.services.user_service import UserService
+        from giljo_mcp.services.user_service import UserService
 
         # Check that validation code references vision_documents
         source = inspect.getsource(UserService._update_depth_config_impl)
@@ -89,7 +89,7 @@ class TestDepthConfigFieldStandardization:
         """Verify ProjectLaunchService uses 'vision_documents' in default depth config."""
         import inspect
 
-        from src.giljo_mcp.services.project_launch_service import ProjectLaunchService
+        from giljo_mcp.services.project_launch_service import ProjectLaunchService
 
         source = inspect.getsource(ProjectLaunchService)
 
@@ -108,7 +108,7 @@ class TestDepthConfigFieldStandardization:
         # Check docstring and default dict
         import inspect
 
-        from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+        from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
         source = inspect.getsource(ThinClientPromptGenerator)
 

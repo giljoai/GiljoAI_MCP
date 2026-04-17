@@ -24,14 +24,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.exceptions import (
     AlreadyExistsError,
     AuthorizationError,
     DatabaseError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models.organizations import Organization, OrgMembership
+from giljo_mcp.models.organizations import Organization, OrgMembership
 
 
 logger = logging.getLogger(__name__)

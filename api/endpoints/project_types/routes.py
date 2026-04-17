@@ -22,8 +22,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_db
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.models import Project, User
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.models import Project, User
 
 from .crud_ops import (
     create_project_type,

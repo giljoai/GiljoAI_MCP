@@ -411,11 +411,12 @@ describe('ProjectsView.vue', () => {
       expect(projectStore.deactivateProject).toHaveBeenCalledWith('proj-1')
     })
 
-    it('handles cancel action', async () => {
+    it('handles cancel action by opening confirmation dialog', async () => {
       const wrapper = await createWrapper()
       await wrapper.vm.handleStatusAction({ action: 'cancel', projectId: 'proj-1' })
 
-      expect(projectStore.cancelProject).toHaveBeenCalledWith('proj-1')
+      expect(wrapper.vm.showCancelDialog).toBe(true)
+      expect(wrapper.vm.projectToCancel?.id).toBe('proj-1')
     })
 
     it('handles delete action by opening confirmation dialog', async () => {
@@ -465,18 +466,18 @@ describe('ProjectsView.vue', () => {
   })
 
   describe('Date Formatting', () => {
-    it('formats dates as Mon DD, YYYY', async () => {
+    it('formats dates with time (Mon DD, YYYY HH:MM)', async () => {
       const wrapper = await createWrapper()
       const dateStr = '2024-10-28T12:00:00Z'
-      const formatted = wrapper.vm.formatDate(dateStr)
+      const formatted = wrapper.vm.formatDateWithTime(dateStr)
 
       expect(formatted).toMatch(/Oct 28, 2024/)
     })
 
     it('returns N/A for empty dates', async () => {
       const wrapper = await createWrapper()
-      expect(wrapper.vm.formatDate(null)).toBe('N/A')
-      expect(wrapper.vm.formatDate('')).toBe('N/A')
+      expect(wrapper.vm.formatDateWithTime(null)).toBe('N/A')
+      expect(wrapper.vm.formatDateWithTime('')).toBe('N/A')
     })
   })
 

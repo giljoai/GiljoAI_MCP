@@ -24,25 +24,25 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     BaseGiljoError,
     MessageDeliveryError,
     ResourceNotFoundError,
     RetryExhaustedError,
     ValidationError,
 )
-from src.giljo_mcp.models import Message, Project
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.tasks import MessageAcknowledgment, MessageCompletion, MessageRecipient
-from src.giljo_mcp.repositories.message_repository import MessageRepository
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models import Message, Project
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.tasks import MessageAcknowledgment, MessageCompletion, MessageRecipient
+from giljo_mcp.repositories.message_repository import MessageRepository
+from giljo_mcp.schemas.service_responses import (
     CompleteMessageResult,
     MessageListResult,
     MessageStatusResult,
 )
-from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.utils.db_retry import with_deadlock_retry
+from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.db_retry import with_deadlock_retry
 
 
 logger = logging.getLogger(__name__)

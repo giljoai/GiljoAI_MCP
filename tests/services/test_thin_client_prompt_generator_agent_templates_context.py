@@ -21,8 +21,8 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import AgentTemplate, Product, Project, User
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+from giljo_mcp.models import AgentTemplate, Product, Project, User
+from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 from tests.services.conftest import create_test_org
 
 

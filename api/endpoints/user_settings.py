@@ -7,7 +7,7 @@
 User Settings endpoints for authenticated, per-user operations.
 
 This module provides admin-only endpoints for managing cookie domain whitelist
-configuration stored in config.yaml.
+configuration stored in the database via SettingsService (category='security').
 
 Project 0031: AI tool configuration is now handled entirely on the
 frontend via a mini-wizard. No backend endpoint is provided for
@@ -23,12 +23,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp._config_io import get_config_path
-from src.giljo_mcp._config_io import read_config as _read_config_raw
-from src.giljo_mcp._config_io import write_config as _write_config_raw
-from src.giljo_mcp.auth.dependencies import get_db_session, require_admin
-from src.giljo_mcp.models import User
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_db_session, require_admin
+from giljo_mcp.models import User
+from giljo_mcp.services.settings_service import SettingsService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -113,64 +111,6 @@ class RemoveCookieDomainRequest(BaseModel):
     domain: str = Field(min_length=3, max_length=255, description="Domain name to remove from whitelist")
 
 
-# Helper Functions
-
-
-def _read_config() -> dict:
-    """Read config.yaml, raising HTTPException if missing or unreadable."""
-    config_path = get_config_path()
-    if not config_path.exists():
-        logger.error("config.yaml not found at %s", config_path)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Configuration file not found. System may not be properly installed.",
-        )
-    return _read_config_raw()
-
-
-def _write_config(config: dict) -> None:
-    """Write config.yaml, raising HTTPException on failure."""
-    try:
-        _write_config_raw(config)
-    except OSError as e:
-        logger.error("Failed to update configuration file: %s", e, exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update configuration file. Check server logs.",
-        ) from e
-
-
-def _get_cookie_domains(config: dict) -> list[str]:
-    """
-    Extract cookie domain whitelist from config.
-
-    Args:
-        config: Configuration dictionary
-
-    Returns:
-        List of whitelisted domains (empty list if not configured)
-    """
-    return config.get("security", {}).get("cookie_domain_whitelist", [])
-
-
-def _set_cookie_domains(config: dict, domains: list[str]) -> None:
-    """
-    Update cookie domain whitelist in config.
-
-    Ensures security section exists and updates cookie_domain_whitelist.
-
-    Args:
-        config: Configuration dictionary (modified in place)
-        domains: List of domains to set
-    """
-    # Ensure security section exists
-    if "security" not in config:
-        config["security"] = {}
-
-    # Update whitelist
-    config["security"]["cookie_domain_whitelist"] = domains
-
-
 # API Endpoints
 
 
@@ -186,24 +126,21 @@ async def get_cookie_domains(
 
     Args:
         current_user: Current authenticated admin user
-        db: Database session (required by auth dependency)
+        db: Database session
 
     Returns:
         CookieDomainsResponse with list of whitelisted domains
 
     Raises:
         HTTPException: 403 if user is not admin
-        HTTPException: 500 if config file cannot be read
     """
     logger.info("Admin %s retrieving cookie domain whitelist", sanitize(current_user.username))
 
-    # Read config
-    config = _read_config()
+    service = SettingsService(db, current_user.tenant_key)
+    security = await service.get_settings("security")
+    domains = security.get("cookie_domain_whitelist", [])
 
-    # Extract domains
-    domains = _get_cookie_domains(config)
-
-    logger.debug(f"Cookie domain whitelist: {domains}")
+    logger.debug("Cookie domain whitelist: %s", domains)
     return CookieDomainsResponse(domains=domains)
 
 
@@ -223,7 +160,7 @@ async def add_cookie_domain(
     Args:
         request: Domain to add
         current_user: Current authenticated admin user
-        db: Database session (required by auth dependency)
+        db: Database session
 
     Returns:
         Updated CookieDomainsResponse with all whitelisted domains
@@ -231,29 +168,26 @@ async def add_cookie_domain(
     Raises:
         HTTPException: 400 if domain validation fails
         HTTPException: 403 if user is not admin
-        HTTPException: 500 if config file cannot be updated
     """
     domain = request.domain.lower().strip()
     logger.info("Admin %s adding cookie domain: %s", sanitize(current_user.username), sanitize(domain))
 
-    # Read config
-    config = _read_config()
-
-    # Get current domains
-    domains = _get_cookie_domains(config)
+    service = SettingsService(db, current_user.tenant_key)
+    security = await service.get_settings("security")
+    domains: list[str] = security.get("cookie_domain_whitelist", [])
 
     # Add domain if not already present (idempotent)
     if domain not in domains:
         domains.append(domain)
         logger.info("Added domain to whitelist: %s", sanitize(domain))
     else:
-        logger.debug(f"Domain already in whitelist: {domain}")
+        logger.debug("Domain already in whitelist: %s", sanitize(domain))
 
-    # Update config
-    _set_cookie_domains(config, domains)
-    _write_config(config)
+    # Update via SettingsService (single validated write path)
+    security["cookie_domain_whitelist"] = domains
+    await service.update_settings("security", security)
 
-    logger.info(f"Cookie domain whitelist updated. Total domains: {len(domains)}")
+    logger.info("Cookie domain whitelist updated. Total domains: %d", len(domains))
     return CookieDomainsResponse(domains=domains)
 
 
@@ -272,7 +206,7 @@ async def remove_cookie_domain(
     Args:
         request: Domain to remove
         current_user: Current authenticated admin user
-        db: Database session (required by auth dependency)
+        db: Database session
 
     Returns:
         Updated CookieDomainsResponse with remaining whitelisted domains
@@ -280,16 +214,13 @@ async def remove_cookie_domain(
     Raises:
         HTTPException: 403 if user is not admin
         HTTPException: 404 if domain not found in whitelist
-        HTTPException: 500 if config file cannot be updated
     """
     domain = request.domain.lower().strip()
     logger.info("Admin %s removing cookie domain: %s", sanitize(current_user.username), sanitize(domain))
 
-    # Read config
-    config = _read_config()
-
-    # Get current domains
-    domains = _get_cookie_domains(config)
+    service = SettingsService(db, current_user.tenant_key)
+    security = await service.get_settings("security")
+    domains: list[str] = security.get("cookie_domain_whitelist", [])
 
     # Remove domain
     if domain not in domains:
@@ -299,9 +230,9 @@ async def remove_cookie_domain(
     domains.remove(domain)
     logger.info("Removed domain from whitelist: %s", sanitize(domain))
 
-    # Update config
-    _set_cookie_domains(config, domains)
-    _write_config(config)
+    # Update via SettingsService (single validated write path)
+    security["cookie_domain_whitelist"] = domains
+    await service.update_settings("security", security)
 
-    logger.info(f"Cookie domain whitelist updated. Remaining domains: {len(domains)}")
+    logger.info("Cookie domain whitelist updated. Remaining domains: %d", len(domains))
     return CookieDomainsResponse(domains=domains)

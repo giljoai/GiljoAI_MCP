@@ -10,7 +10,7 @@ Extracted from OrchestrationService (Handover 0769) as part of the facade patter
 refactoring to keep individual modules under 1000 lines.
 
 Responsibilities:
-- Agent job spawning (spawn_agent_job)
+- Agent job spawning (spawn_job)
 - Spawn validation (template names, duplicate prevention)
 - Template resolution for job creation
 - Predecessor context injection for recovery spawning
@@ -26,22 +26,23 @@ from uuid import uuid4
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     AlreadyExistsError,
     DatabaseError,
+    ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models import (
+from giljo_mcp.models import (
     AgentExecution,
     AgentJob,
     AgentTemplate,
     Project,
 )
-from src.giljo_mcp.schemas.service_responses import SpawnResult
-from src.giljo_mcp.services.dto import BroadcastAgentCreatedContext
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.schemas.service_responses import SpawnResult
+from giljo_mcp.services.dto import BroadcastAgentCreatedContext
+from giljo_mcp.tenant import TenantManager
 
 
 if TYPE_CHECKING:
@@ -49,6 +50,9 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+# Statuses that indicate a project is closed and must not be modified.
+IMMUTABLE_PROJECT_STATUSES: frozenset[str] = frozenset({"completed", "cancelled"})
 
 
 class JobLifecycleService:
@@ -88,7 +92,7 @@ class JobLifecycleService:
 
         return self.db_manager.get_session_async()
 
-    async def spawn_agent_job(
+    async def spawn_job(
         self,
         agent_display_name: str,
         agent_name: str,
@@ -130,7 +134,7 @@ class JobLifecycleService:
             DatabaseError: Failed to spawn agent
 
         Example:
-            >>> result = await service.spawn_agent_job(
+            >>> result = await service.spawn_job(
             ...     agent_display_name="Code Implementer",
             ...     agent_name="impl-1",
             ...     mission="Implement feature X",
@@ -155,14 +159,22 @@ class JobLifecycleService:
                         message="Project not found", context={"project_id": project_id, "tenant_key": tenant_key}
                     )
 
+                # Guard: block spawning into immutable projects
+                if project.status in IMMUTABLE_PROJECT_STATUSES:
+                    raise ProjectStateError(
+                        message=f"Cannot modify project in '{project.status}' status. "
+                        "Only inactive and active projects can be updated.",
+                        context={"project_id": project_id, "status": project.status},
+                    )
+
                 # Handover 0497e: Predecessor context injection for recovery spawning
                 if predecessor_job_id:
                     mission = await self._build_predecessor_context(
                         session, predecessor_job_id, tenant_key, project_id, mission, agent_display_name
                     )
 
-                # Agent name validation + duplicate prevention
-                await self._validate_spawn_agent(
+                # Agent name validation + display name collision resolution
+                agent_display_name = await self._validate_spawn_agent(
                     session, agent_display_name, agent_name, tenant_key, project_id, parent_job_id
                 )
 
@@ -235,6 +247,7 @@ class JobLifecycleService:
                     job_id=job_id,  # Work order UUID (persists across succession)
                     agent_id=agent_id,  # Executor UUID (changes on succession)
                     execution_id=agent_execution.id,  # Handover 0457: Unique row ID for frontend Map key
+                    agent_display_name=agent_display_name,  # v1.1.6: Resolved name (after auto-suffix)
                     agent_prompt=thin_agent_prompt,  # ~10 lines
                     mission_stored=True,
                     thin_client=True,
@@ -246,7 +259,7 @@ class JobLifecycleService:
                     predecessor_job_id=predecessor_job_id,  # Handover 0497e
                 )
 
-        except (ResourceNotFoundError, AlreadyExistsError, ValidationError):
+        except (ResourceNotFoundError, AlreadyExistsError, ValidationError, ProjectStateError):
             raise
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)
@@ -363,6 +376,79 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
         )
         return mission
 
+    async def _resolve_display_name(
+        self,
+        session: AsyncSession,
+        agent_display_name: str,
+        tenant_key: str,
+        project_id: str,
+    ) -> str:
+        """
+        Resolve a unique display name by auto-suffixing on collision.
+
+        Queries all active agent_display_name values in the project (status in
+        waiting/working/blocked). If the requested name is free, returns it as-is.
+        If taken, finds the lowest available suffix starting at 2 (name-2, name-3, ...).
+        Caps at suffix 50 to prevent runaway.
+
+        v1.1.6: Replaces the AlreadyExistsError for non-orchestrator duplicates.
+
+        Args:
+            session: Active database session
+            agent_display_name: Requested display name
+            tenant_key: Tenant key for isolation
+            project_id: Project UUID
+
+        Returns:
+            Resolved unique display name (original or suffixed)
+
+        Raises:
+            ValidationError: If all suffixes 2-50 are exhausted
+        """
+        # Query all active display names in this project
+        active_names_result = await session.execute(
+            select(AgentExecution.agent_display_name)
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .where(
+                and_(
+                    AgentJob.project_id == project_id,
+                    AgentJob.tenant_key == tenant_key,
+                    AgentExecution.status.in_(["waiting", "working", "blocked"]),
+                )
+            )
+        )
+        active_names = {row[0] for row in active_names_result.fetchall()}
+
+        # If the requested name is free, return as-is
+        if agent_display_name not in active_names:
+            return agent_display_name
+
+        # Find the lowest available suffix starting at 2
+        for suffix in range(2, 51):
+            candidate = f"{agent_display_name}-{suffix}"
+            if candidate not in active_names:
+                self._logger.info(
+                    "Auto-suffixed display name '%s' -> '%s' (collision in project %s)",
+                    agent_display_name,
+                    candidate,
+                    project_id,
+                )
+                return candidate
+
+        # Cap exceeded
+        raise ValidationError(
+            message=(
+                f"Display name suffix cap exceeded for '{agent_display_name}' "
+                f"in project {project_id}. All suffixes 2-50 are taken."
+            ),
+            context={
+                "agent_display_name": agent_display_name,
+                "project_id": project_id,
+                "tenant_key": tenant_key,
+                "max_suffix": 50,
+            },
+        )
+
     async def _validate_spawn_agent(
         self,
         session: AsyncSession,
@@ -371,13 +457,13 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
         tenant_key: str,
         project_id: str,
         parent_job_id: Optional[str],
-    ) -> None:
+    ) -> str:
         """
-        Validate agent spawn: check template names and prevent duplicates.
+        Validate agent spawn: check template names and resolve display name collisions.
 
         For non-orchestrator agents:
         - Validates agent_name against active templates
-        - Prevents duplicate agent_display_name within the same project
+        - Auto-suffixes display name on collision (v1.1.6)
 
         For orchestrator agents:
         - Prevents duplicate orchestrators unless succession is happening
@@ -390,9 +476,12 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
             project_id: Project UUID
             parent_job_id: Optional parent agent_id for succession check
 
+        Returns:
+            Resolved display name (original or auto-suffixed for non-orchestrators)
+
         Raises:
-            ValidationError: Invalid agent_name
-            AlreadyExistsError: Duplicate agent display name or orchestrator
+            ValidationError: Invalid agent_name or suffix cap exceeded
+            AlreadyExistsError: Duplicate orchestrator
         """
         if agent_display_name != "orchestrator":
             # Agent name validation against active templates (backported from tools layer)
@@ -417,40 +506,9 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
                     },
                 )
 
-            # Duplicate agent_display_name prevention for non-orchestrator agents
-            duplicate_result = await session.execute(
-                select(AgentExecution)
-                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                .where(
-                    and_(
-                        AgentJob.project_id == project_id,
-                        AgentJob.tenant_key == tenant_key,
-                        AgentExecution.agent_display_name == agent_display_name,
-                        AgentExecution.status.in_(["waiting", "working", "blocked"]),
-                    )
-                )
-            )
-            existing_agents = duplicate_result.scalars().all()
-
-            if existing_agents:
-                count = len(existing_agents)
-                suggestion = f"{agent_display_name} {count + 1}"
-                raise AlreadyExistsError(
-                    message=(
-                        f"DUPLICATE_DISPLAY_NAME: '{agent_display_name}' already has "
-                        f"{count} active instance(s) in this project. "
-                        f"Use a unique name (e.g., '{suggestion}')"
-                    ),
-                    context={
-                        "error": "DUPLICATE_DISPLAY_NAME",
-                        "project_id": project_id,
-                        "tenant_key": tenant_key,
-                        "agent_display_name": agent_display_name,
-                        "existing_count": count,
-                        "suggestion": suggestion,
-                        "existing_agent_ids": [a.agent_id for a in existing_agents],
-                    },
-                )
+            # v1.1.6: Auto-suffix display name on collision (replaces AlreadyExistsError)
+            resolved_name = await self._resolve_display_name(session, agent_display_name, tenant_key, project_id)
+            return resolved_name
 
         # Duplicate orchestrator prevention (backported from tools layer)
         if agent_display_name == "orchestrator":
@@ -487,6 +545,8 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
                             "existing_status": existing_orchestrator.status,
                         },
                     )
+
+        return agent_display_name
 
     async def _resolve_spawn_template(
         self,

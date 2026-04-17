@@ -16,6 +16,7 @@ from pathlib import Path
 
 
 # Add src to path
+# TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import os
@@ -27,8 +28,8 @@ load_dotenv()
 
 from sqlalchemy import select  # noqa: E402
 
-from src.giljo_mcp.database import DatabaseManager  # noqa: E402
-from src.giljo_mcp.models import AgentTemplate, User  # noqa: E402
+from giljo_mcp.database import DatabaseManager  # noqa: E402
+from giljo_mcp.models import AgentTemplate, User  # noqa: E402
 
 
 class DownloadsTester:

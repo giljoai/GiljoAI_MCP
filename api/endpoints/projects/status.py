@@ -18,11 +18,11 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import User
-from src.giljo_mcp.models.schemas import ProjectSummaryResponse
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import User
+from giljo_mcp.models.schemas import ProjectSummaryResponse
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_project_service
 from .models import OrchestratorResponse
@@ -120,8 +120,8 @@ async def get_project_orchestrator(
     from sqlalchemy import select
     from sqlalchemy.orm import joinedload
 
-    from src.giljo_mcp.models import Project
-    from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+    from giljo_mcp.models import Project
+    from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
     logger.debug("User %s getting orchestrator for project %s", sanitize(current_user.username), sanitize(project_id))
 

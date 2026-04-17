@@ -36,12 +36,12 @@ from api.schemas.vision_document import (
     RechunkResponse,
     VisionDocumentResponse,
 )
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models import Product, User
-from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
-from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
+from giljo_mcp.models import Product, User
+from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -312,7 +312,7 @@ async def create_vision_document(
         total_tokens = len(document_content) // 4  # Rough estimate: 1 token ≈ 4 chars
         if total_tokens > 100:  # Summarize all non-trivial documents
             try:
-                from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
+                from giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
                 logger.info("Generating multi-level summaries for doc %s: %d tokens", doc.id, total_tokens)
 
@@ -349,7 +349,7 @@ async def create_vision_document(
         # Handover 0347: Restore chunking removed in 0246b (Claude Code 25K limit)
         if total_tokens > 25000:
             try:
-                from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
+                from giljo_mcp.context_management.chunker import VisionDocumentChunker
 
                 logger.info("Chunking document %s: %d tokens exceeds 25K threshold", doc.id, total_tokens)
 
@@ -418,7 +418,7 @@ async def get_vision_document(
     Raises:
         404: Document not found or belongs to different tenant
     """
-    from src.giljo_mcp.models import VisionDocument
+    from giljo_mcp.models import VisionDocument
 
     result = await db.execute(
         select(VisionDocument).where(
@@ -524,7 +524,7 @@ async def update_vision_document(
         total_tokens = len(content) // 4  # Rough estimate: 1 token ≈ 4 chars
         if total_tokens > 100:  # Summarize all non-trivial documents
             try:
-                from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
+                from giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
                 logger.info("Regenerating summaries for updated doc %s: %d tokens", sanitize(document_id), total_tokens)
 
@@ -604,7 +604,7 @@ async def delete_vision_document(
     """
     try:
         # Get document before deletion to retrieve product_id for consolidation
-        from src.giljo_mcp.models import VisionDocument
+        from giljo_mcp.models import VisionDocument
 
         result = await db.execute(
             select(VisionDocument).where(
@@ -736,7 +736,7 @@ async def regenerate_summaries(
         HTTPException 500: If summarization fails
     """
     try:
-        from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
+        from giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
         # Verify document exists and belongs to tenant
         doc = await vision_repo.get_by_id(db, tenant_key, document_id)

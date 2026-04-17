@@ -24,13 +24,13 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.exceptions import ResourceNotFoundError
 
 # Model imports: Use modular pattern (Post-0128a refactoring)
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.services import ProductService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.models.auth import User
+from giljo_mcp.services import ProductService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_product_service
 from .models import DeletedProductResponse, ProductCreate, ProductResponse, ProductUpdate

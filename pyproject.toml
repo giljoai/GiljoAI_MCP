@@ -161,7 +161,9 @@ preview = false
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["giljo_mcp"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
 giljo_mcp = ["py.typed"]

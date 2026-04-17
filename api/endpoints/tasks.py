@@ -33,10 +33,10 @@ from api.schemas.task import (
     TaskResponse,
     TaskUpdate,
 )
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import Product, Task, User
-from src.giljo_mcp.services.task_service import TaskService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import Product, Task, User
+from giljo_mcp.services.task_service import TaskService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)

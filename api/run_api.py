@@ -19,11 +19,12 @@ import uvicorn
 
 
 # Add parent directory to path
+# TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import colored logger and filter utilities
 try:
-    from src.giljo_mcp.colored_logger import (
+    from giljo_mcp.colored_logger import (
         LogFilter,
         print_error,
         print_highlight,
@@ -41,7 +42,7 @@ except ImportError:
 
 # Import PortManager for centralized port management
 try:
-    from src.giljo_mcp.port_manager import get_port_manager
+    from giljo_mcp.port_manager import get_port_manager
 
     PORT_MANAGER_AVAILABLE = True
 except ImportError:
@@ -145,7 +146,7 @@ def get_default_host() -> str:
         Host to bind to
     """
     try:
-        from src.giljo_mcp._config_io import read_config
+        from giljo_mcp._config_io import read_config
 
         config = read_config()
         configured_host = config.get("services", {}).get("api", {}).get("host")

@@ -19,8 +19,8 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock
 
 import pytest
 
-from src.giljo_mcp.exceptions import BaseGiljoError
-from src.giljo_mcp.models.products import Product, VisionDocument
+from giljo_mcp.exceptions import BaseGiljoError
+from giljo_mcp.models.products import Product, VisionDocument
 
 
 @pytest.fixture
@@ -51,7 +51,7 @@ async def test_get_active_product_returns_vision_path_without_lazy_load_error(mo
 
     The fix requires adding selectinload(Product.vision_documents) to the query.
     """
-    from src.giljo_mcp.services.product_service import ProductService
+    from giljo_mcp.services.product_service import ProductService
 
     db_manager, session = mock_db_manager
 
@@ -105,7 +105,7 @@ async def test_get_active_product_no_active_product(mock_db_manager):
     """
     Test get_active_product returns None product when no active product.
     """
-    from src.giljo_mcp.services.product_service import ProductService
+    from giljo_mcp.services.product_service import ProductService
 
     db_manager, session = mock_db_manager
 
@@ -129,7 +129,7 @@ async def test_get_active_product_multi_tenant_isolation(mock_db_manager):
 
     The query must include tenant_key filter.
     """
-    from src.giljo_mcp.services.product_service import ProductService
+    from giljo_mcp.services.product_service import ProductService
 
     db_manager, session = mock_db_manager
 
@@ -159,7 +159,7 @@ async def test_get_active_product_handles_exception(mock_db_manager):
 
     0730d: Exception-based error handling - raises instead of returning error dict.
     """
-    from src.giljo_mcp.services.product_service import ProductService
+    from giljo_mcp.services.product_service import ProductService
 
     db_manager, session = mock_db_manager
 
@@ -180,7 +180,7 @@ async def test_get_active_product_with_empty_vision_documents(mock_db_manager):
     """
     Test get_active_product works when product has no vision documents.
     """
-    from src.giljo_mcp.services.product_service import ProductService
+    from giljo_mcp.services.product_service import ProductService
 
     db_manager, session = mock_db_manager
 

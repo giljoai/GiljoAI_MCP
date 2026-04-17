@@ -35,8 +35,8 @@ async def init_health_monitor(state: APIState) -> None:
 
         # Only start if enabled in config
         if health_config_dict.get("enabled", True):
-            from src.giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
-            from src.giljo_mcp.monitoring.health_config import HealthCheckConfig
+            from giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
+            from giljo_mcp.monitoring.health_config import HealthCheckConfig
 
             # Build configuration from config.yaml
             timeout_config = health_config_dict.get("timeouts", {})

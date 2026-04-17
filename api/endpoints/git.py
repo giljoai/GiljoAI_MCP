@@ -5,23 +5,38 @@
 
 """
 Git integration endpoints for system-level configuration.
-Similar to Serena integration, operates at config.yaml level.
+
+Stores settings in the database via SettingsService (category='integrations')
+instead of config.yaml. Cascade: disabling git also bulk-disables git_history
+in user_field_priorities for the tenant.
 """
 
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
-from src.giljo_mcp._config_io import read_config, write_config
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from api.endpoints.dependencies import get_user_service
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.services.settings_service import SettingsService
+from giljo_mcp.services.user_service import UserService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Default git integration settings (used when no DB row exists yet)
+_GIT_DEFAULTS: dict[str, Any] = {
+    "enabled": False,
+    "use_in_prompts": False,
+    "include_commit_history": True,
+    "max_commits": 50,
+    "branch_strategy": "main",
+}
 
 
 class GitToggleRequest(BaseModel):
@@ -52,48 +67,48 @@ class GitToggleResponse(BaseModel):
 async def toggle_git_integration(
     request: GitToggleRequest,
     current_user=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
     ws_dep: WebSocketDependency = Depends(get_websocket_dependency),
+    user_service: UserService = Depends(get_user_service),
 ) -> GitToggleResponse:
     """
     Toggle Git integration at the system level.
-    Stores in config.yaml like Serena integration.
+
+    Stores in database Settings table (category='integrations').
+    When disabling, cascades to bulk-disable git_history in user_field_priorities.
     """
-    config = read_config()
+    tenant_key = current_user.tenant_key
+    service = SettingsService(db, tenant_key)
 
-    # Ensure features section exists
-    if "features" not in config:
-        config["features"] = {}
+    # Read current integrations settings
+    integrations = await service.get_settings("integrations")
+    git_settings = integrations.get("git_integration", dict(_GIT_DEFAULTS))
 
-    # Ensure git_integration section exists with defaults
-    if "git_integration" not in config["features"]:
-        config["features"]["git_integration"] = {
-            "enabled": False,
-            "use_in_prompts": False,
-            "include_commit_history": True,
-            "max_commits": 50,
-            "branch_strategy": "main",
-        }
+    # Update enabled + use_in_prompts
+    git_settings["enabled"] = request.enabled
+    git_settings["use_in_prompts"] = request.enabled
 
-    # Update enabled status
-    config["features"]["git_integration"]["enabled"] = request.enabled
-    config["features"]["git_integration"]["use_in_prompts"] = request.enabled
+    integrations["git_integration"] = git_settings
+    await service.update_settings("integrations", integrations)
 
-    # Save config
-    try:
-        write_config(config)
-    except OSError as e:
-        logger.error("Failed to save git integration config: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to save configuration. Check server logs.") from e
+    # Cascade: when disabling git, bulk-disable git_history for all tenant users
+    if not request.enabled:
+        disabled_count = await user_service.bulk_disable_field_priority("git_history")
+        if disabled_count > 0:
+            logger.info(
+                "Cascade: disabled git_history for %d user(s) in tenant %s",
+                disabled_count,
+                sanitize(tenant_key),
+            )
 
     logger.info("Git integration toggled to %s by user %s", request.enabled, sanitize(current_user.username))
 
     # Emit WebSocket event for real-time UI updates
     try:
-        tenant_key = current_user.tenant_key
         await ws_dep.broadcast_to_tenant(
             tenant_key=tenant_key,
             event_type="product:git:settings:changed",
-            data={"enabled": request.enabled, "settings": config["features"]["git_integration"]},
+            data={"enabled": request.enabled, "settings": git_settings},
         )
         logger.info("[WEBSOCKET] Broadcasted git integration change to tenant %s", sanitize(tenant_key))
     except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
@@ -103,38 +118,34 @@ async def toggle_git_integration(
         success=True,
         enabled=request.enabled,
         message=f"Git integration {'enabled' if request.enabled else 'disabled'} successfully",
-        settings=config["features"]["git_integration"],
+        settings=git_settings,
     )
 
 
 @router.post("/settings", response_model=GitToggleResponse)
 async def update_git_settings(
-    request: GitSettingsRequest, current_user=Depends(get_current_active_user)
+    request: GitSettingsRequest,
+    current_user=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
 ) -> GitToggleResponse:
     """
     Update Git advanced settings at the system level.
     """
-    config = read_config()
+    tenant_key = current_user.tenant_key
+    service = SettingsService(db, tenant_key)
 
-    # Ensure structure exists
-    if "features" not in config:
-        config["features"] = {}
-    if "git_integration" not in config["features"]:
-        config["features"]["git_integration"] = {}
+    # Read current integrations settings
+    integrations = await service.get_settings("integrations")
+    git_settings = integrations.get("git_integration", dict(_GIT_DEFAULTS))
 
-    # Update settings
-    git_settings = config["features"]["git_integration"]
+    # Update settings fields
     git_settings["use_in_prompts"] = request.use_in_prompts
     git_settings["include_commit_history"] = request.include_commit_history
     git_settings["max_commits"] = request.max_commits
     git_settings["branch_strategy"] = request.branch_strategy
 
-    # Save config
-    try:
-        write_config(config)
-    except OSError as e:
-        logger.error("Failed to save git settings config: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to save configuration. Check server logs.") from e
+    integrations["git_integration"] = git_settings
+    await service.update_settings("integrations", integrations)
 
     logger.info("Git settings updated by user %s", sanitize(current_user.username))
 
@@ -147,19 +158,15 @@ async def update_git_settings(
 
 
 @router.get("/settings")
-async def get_git_settings(current_user=Depends(get_current_active_user)) -> dict[str, Any]:
+async def get_git_settings(
+    current_user=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any]:
     """
-    Get current Git integration settings from config.
+    Get current Git integration settings from database.
     """
-    config = read_config()
+    tenant_key = current_user.tenant_key
+    service = SettingsService(db, tenant_key)
 
-    # Return settings or defaults
-    if "features" in config and "git_integration" in config["features"]:
-        return config["features"]["git_integration"]
-    return {
-        "enabled": False,
-        "use_in_prompts": False,
-        "include_commit_history": True,
-        "max_commits": 50,
-        "branch_strategy": "main",
-    }
+    integrations = await service.get_settings("integrations")
+    return integrations.get("git_integration", dict(_GIT_DEFAULTS))

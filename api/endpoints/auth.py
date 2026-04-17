@@ -29,13 +29,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.endpoints.dependencies import get_auth_service
 from api.middleware.auth_rate_limiter import get_rate_limiter
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
-from src.giljo_mcp.auth.jwt_manager import JWTManager
-from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services import AuthService
-from src.giljo_mcp.template_seeder import seed_tenant_templates
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
+from giljo_mcp.auth.jwt_manager import JWTManager
+from giljo_mcp.config_manager import get_config
+from giljo_mcp.models import User
+from giljo_mcp.services import AuthService
+from giljo_mcp.template_seeder import seed_tenant_templates
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -461,8 +461,8 @@ async def get_me(
     """
     # Try to get current user (optional - doesn't raise exceptions)
 
-    from src.giljo_mcp.auth.dependencies import get_current_user_optional
-    from src.giljo_mcp.models.organizations import Organization, OrgMembership
+    from giljo_mcp.auth.dependencies import get_current_user_optional
+    from giljo_mcp.models.organizations import Organization, OrgMembership
 
     current_user = await get_current_user_optional(
         request=request,
@@ -563,7 +563,7 @@ async def get_active_api_keys(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Return active API keys for current user (no plaintext). Used by setup wizard (Handover 0855a)."""
-    from src.giljo_mcp.models.auth import APIKey
+    from giljo_mcp.models.auth import APIKey
 
     stmt = select(APIKey).where(
         APIKey.user_id == str(current_user.id),
@@ -863,7 +863,7 @@ async def create_first_admin_user(
             import bcrypt
 
             from api.endpoints.dependencies import get_db_manager
-            from src.giljo_mcp.models.auth import User
+            from giljo_mcp.models.auth import User
 
             db_manager = await get_db_manager()
             async with db_manager.get_session_async() as db:

@@ -33,7 +33,7 @@ YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
 You are STAGING the project. Your job:
 1. Analyze requirements from project_description
 2. Create condensed mission plan
-3. Assign work to specialist agents via spawn_agent_job()
+3. Assign work to specialist agents via spawn_job()
 
 WHAT YOU ARE NOT:
 - You do NOT execute implementation work
@@ -73,7 +73,11 @@ def _build_ch2_fetch_calls(
     category_metadata: dict[str, dict] | None = None,
 ) -> str:
     """
-    Generate numbered, inline fetch_context() calls for CH2 Step 2 (Handover 0823).
+    Generate batched fetch_context() calls for CH2 Step 2 (Handover 0823).
+
+    IMP-4: Categories are batched into two calls instead of one-per-category:
+      - Call 1 (product-definition): product_core, tech_stack, architecture, testing
+      - Call 2 (historical/evolving): memory_360, git_history, vision_documents
 
     Handover 0823b: depth_config is no longer snapshotted into fetch calls.
     fetch_context reads the user's current depth settings from the DB at runtime,
@@ -83,7 +87,7 @@ def _build_ch2_fetch_calls(
     (skip_on_depth logic).
 
     CE-OPT-001: category_metadata adds Modified timestamps and entry counts to
-    framing lines, enabling warm orchestrators to skip unchanged categories.
+    per-category framing lines, enabling warm orchestrators to skip unchanged categories.
 
     Args:
         field_toggles: Dict mapping category name -> bool (enabled/disabled)
@@ -93,7 +97,7 @@ def _build_ch2_fetch_calls(
         category_metadata: Optional dict mapping category -> {modified, entries} metadata
 
     Returns:
-        Formatted string with numbered fetch calls, or empty string if none enabled.
+        Formatted string with numbered batch fetch calls, or empty string if none enabled.
     """
     # Category configs: maps field name to framing text and depth-awareness.
     # Handover 0823b: Framing text is now generic (no depth placeholders).
@@ -132,42 +136,38 @@ def _build_ch2_fetch_calls(
         },
     }
 
+    # Batch grouping: product-definition vs historical/evolving context
+    batch_groups = [
+        {
+            "label": "Product-definition context",
+            "categories": ["product_core", "tech_stack", "architecture", "testing"],
+        },
+        {
+            "label": "Historical and evolving context",
+            "categories": ["memory_360", "git_history", "vision_documents"],
+        },
+    ]
+
     inlined_fields = {"project_description"}
-    calls = []
 
-    for field, enabled in field_toggles.items():
-        if not enabled:
-            continue
+    def _is_enabled(field: str) -> bool:
+        """Check if a category is enabled and not skipped by depth logic."""
+        if not field_toggles.get(field, False):
+            return False
         if field in inlined_fields:
-            continue
-
+            return False
         config = category_configs.get(field)
         if not config:
-            continue
-
-        # Handle agent_templates skip for basic depth
+            return False
         if config.get("depth_aware"):
             field_depth = depth_config.get(field, config.get("default_depth"))
             skip_value = config.get("skip_on_depth")
             if skip_value and field_depth == skip_value:
-                continue
+                return False
+        return True
 
-        # Build the call string (no depth_config -- resolved at runtime per 0823b)
-        call_str = f'fetch_context(categories=["{field}"], product_id="{product_id}", tenant_key="{tenant_key}")'
-
-        # Framing text is now static/generic (no depth placeholders per 0823b)
-        framing = config["framing"]
-
-        calls.append((call_str, framing, field))
-
-    if not calls:
-        return ""
-
-    lines = []
-    for i, (call_str, framing, field) in enumerate(calls, 1):
-        lines.append(f"{i}. {call_str}")
-
-        # CE-OPT-001: Append metadata suffix (Modified date, entry count)
+    def _format_metadata_suffix(field: str) -> str:
+        """Build CE-OPT-001 metadata suffix for a category."""
         meta = (category_metadata or {}).get(field, {})
         modified = meta.get("modified")
         suffix_parts = []
@@ -176,12 +176,33 @@ def _build_ch2_fetch_calls(
         entry_count = meta.get("entries")
         if entry_count is not None:
             suffix_parts.append(f"entries: {entry_count}")
-        suffix = f" \u2014 {', '.join(suffix_parts)}" if suffix_parts else ""
+        return f" \u2014 {', '.join(suffix_parts)}" if suffix_parts else ""
 
-        lines.append(f"   -> {framing}{suffix}")
+    # Build batched calls
+    lines: list[str] = []
+    call_num = 0
+
+    for group in batch_groups:
+        enabled_cats = [c for c in group["categories"] if _is_enabled(c)]
+        if not enabled_cats:
+            continue
+
+        call_num += 1
+        cats_str = ", ".join(f'"{c}"' for c in enabled_cats)
+        call_str = f'fetch_context(categories=[{cats_str}], product_id="{product_id}", tenant_key="{tenant_key}")'
+
+        lines.append(f"{call_num}. {call_str}")
+        lines.append(f"   -- {group['label']}")
+
+        # Per-category framing with metadata
+        for cat in enabled_cats:
+            config = category_configs[cat]
+            suffix = _format_metadata_suffix(cat)
+            lines.append(f"   -> {cat}: {config['framing']}{suffix}")
+
         lines.append("")
 
-    return "\n".join(lines)
+    return "\n".join(lines) if lines else ""
 
 
 def _build_ch2_startup(
@@ -226,9 +247,9 @@ Returns: project_description, mission, field_toggles, orchestrator_protocol
 
 Read this protocol via orchestrator_protocol field.
 
-Then call fetch_context() for each category below.
+Then call the batched fetch_context() calls below (multiple categories per call).
 If you have already fetched a category in the current session and its Modified date has not changed, you may skip it.
-Otherwise, fetch it — these are configured by the user and provide essential context.
+Otherwise, fetch all — these are configured by the user and provide essential context.
 
 {fetch_calls}"""
     else:
@@ -328,7 +349,7 @@ This stores your plan in Project.mission for UI display
 
 ── STEP 6: Spawn Agents ────────────────────────────────────────────────────
 For each agent in your plan:
-  spawn_agent_job(
+  spawn_job(
       agent_name='exact-template-name',  # From Step 3
       agent_display_name='implementer',   # Display category
       mission='Agent-specific instructions',

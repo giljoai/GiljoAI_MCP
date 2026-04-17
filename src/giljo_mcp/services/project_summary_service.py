@@ -26,12 +26,12 @@ from typing import Any
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ResourceNotFoundError
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.schemas.service_responses import ProjectSummaryResult
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.projects import Project
+from giljo_mcp.schemas.service_responses import ProjectSummaryResult
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -159,7 +159,7 @@ class ProjectSummaryService:
 
             product_name = ""
             if project.product_id:
-                from src.giljo_mcp.models.products import Product
+                from giljo_mcp.models.products import Product
 
                 product_result = await session.execute(
                     select(Product).where(

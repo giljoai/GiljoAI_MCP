@@ -13,6 +13,7 @@ from pathlib import Path
 
 
 # Add src to path
+# TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 import uuid
@@ -21,9 +22,9 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key
-from src.giljo_mcp.config_manager import ConfigManager
-from src.giljo_mcp.models.auth import APIKey, User
+from giljo_mcp.api_key_utils import generate_api_key, hash_api_key
+from giljo_mcp.config_manager import ConfigManager
+from giljo_mcp.models.auth import APIKey, User
 
 
 async def create_test_key():

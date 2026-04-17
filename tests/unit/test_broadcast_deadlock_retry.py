@@ -22,17 +22,17 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.exc import OperationalError
 
-from src.giljo_mcp.exceptions import RetryExhaustedError
-from src.giljo_mcp.models import Message, Project
-from src.giljo_mcp.models.agent_identity import AgentExecution
-from src.giljo_mcp.models.tasks import MessageRecipient
-from src.giljo_mcp.repositories.message_repository import MessageRepository
-from src.giljo_mcp.services.message_routing_service import MessageRoutingService
-from src.giljo_mcp.utils.db_retry import with_deadlock_retry
+from giljo_mcp.exceptions import RetryExhaustedError
+from giljo_mcp.models import Message, Project
+from giljo_mcp.models.agent_identity import AgentExecution
+from giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.repositories.message_repository import MessageRepository
+from giljo_mcp.services.message_routing_service import MessageRoutingService
+from giljo_mcp.utils.db_retry import with_deadlock_retry
 
 
 # Patch target for asyncio.sleep inside the shared retry utility
-_SLEEP_PATCH_TARGET = "src.giljo_mcp.utils.db_retry.asyncio.sleep"
+_SLEEP_PATCH_TARGET = "giljo_mcp.utils.db_retry.asyncio.sleep"
 
 
 def _make_execution(agent_id: str, display_name: str, status: str = "working") -> Mock:

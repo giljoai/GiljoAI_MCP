@@ -16,26 +16,26 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from src.giljo_mcp.services.protocol_sections.agent_lifecycle import (
+from giljo_mcp.services.protocol_sections.agent_lifecycle import (
     _generate_orchestrator_protocol,
 )
-from src.giljo_mcp.services.protocol_sections.agent_protocol import (
+from giljo_mcp.services.protocol_sections.agent_protocol import (
     _generate_agent_protocol,
 )
-from src.giljo_mcp.services.protocol_sections.chapters_reference import (
+from giljo_mcp.services.protocol_sections.chapters_reference import (
     _build_ch3_spawning_rules,
     _build_ch4_error_handling,
     _build_ch5_reference,
     _build_ch6_auto_checkin,
 )
-from src.giljo_mcp.services.protocol_sections.chapters_startup import (
+from giljo_mcp.services.protocol_sections.chapters_startup import (
     _build_ch1_mission,
     _build_ch2_startup,
 )
-from src.giljo_mcp.services.protocol_sections.team_context import (
+from giljo_mcp.services.protocol_sections.team_context import (
     _generate_team_context_header,
 )
-from src.giljo_mcp.services.protocol_sections.user_config import (
+from giljo_mcp.services.protocol_sections.user_config import (
     DEFAULT_DEPTH_CONFIG,
     DEFAULT_FIELD_PRIORITIES,
     _get_user_config,

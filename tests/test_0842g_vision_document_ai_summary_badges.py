@@ -8,8 +8,8 @@ from decimal import Decimal
 import pytest
 
 from api.endpoints import vision_documents as vision_document_endpoints
-from src.giljo_mcp.models import Product
-from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from giljo_mcp.models import Product
+from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 
 
 @pytest.mark.asyncio

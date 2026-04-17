@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from src.giljo_mcp.services.version_service import (
+from giljo_mcp.services.version_service import (
     CACHE_TTL_SECONDS,
     clear_cache,
     compare_versions,

@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock, patch
 import jwt
 import pytest
 
-from src.giljo_mcp.auth.jwt_manager import JWTManager
+from giljo_mcp.auth.jwt_manager import JWTManager
 
 
 # ---------------------------------------------------------------------------

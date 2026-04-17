@@ -24,6 +24,7 @@ import pytest
 
 
 # install.py lives at repo root -- add to sys.path before importing
+# TODO: Remove after editable install confirmed on all platforms
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))

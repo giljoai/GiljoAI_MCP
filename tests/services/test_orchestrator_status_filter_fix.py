@@ -18,7 +18,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentExecution, AgentJob
+from giljo_mcp.models import AgentExecution, AgentJob
 
 
 class TestOrchestratorStatusFilterFix:

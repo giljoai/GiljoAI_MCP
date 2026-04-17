@@ -22,8 +22,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.giljo_mcp.exceptions import ValidationError
-from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
 def _make_mock_product(product_id="prod-123", name="Test Product"):
@@ -87,7 +87,7 @@ class TestToolAccessorCreateTaskValidation:
         """Test that create_task raises ValidationError when no active product exists."""
         tool_accessor = _make_tool_accessor()
 
-        with patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls:
+        with patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls:
             mock_product_service_instance = AsyncMock()
             mock_product_service_instance.get_active_product = AsyncMock(return_value=None)
             mock_product_service_cls.return_value = mock_product_service_instance
@@ -109,7 +109,7 @@ class TestToolAccessorCreateTaskValidation:
         tool_accessor = _make_tool_accessor(tenant_key="tenant-from-manager")
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
         ):
             mock_product_service_instance = AsyncMock()
@@ -134,7 +134,7 @@ class TestToolAccessorCreateTaskReturnValue:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
         ):
             mock_product_service_instance = AsyncMock()
@@ -167,7 +167,7 @@ class TestToolAccessorCreateTaskReturnValue:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
         ):
             mock_product_service_instance = AsyncMock()
@@ -194,7 +194,7 @@ class TestToolAccessorCreateTaskTitlePreservation:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
         ):
             mock_product_service_instance = AsyncMock()
@@ -224,7 +224,7 @@ class TestToolAccessorCreateTaskTitlePreservation:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
         ):
             mock_product_service_instance = AsyncMock()
@@ -252,7 +252,7 @@ class TestToolAccessorCreateTaskCategoryFallback:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
         ):
             mock_product_service_instance = AsyncMock()
@@ -277,7 +277,7 @@ class TestToolAccessorCreateTaskCategoryFallback:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
         ):
             mock_product_service_instance = AsyncMock()
@@ -302,7 +302,7 @@ class TestToolAccessorCreateTaskCategoryFallback:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
         ):
             mock_product_service_instance = AsyncMock()
@@ -327,7 +327,7 @@ class TestToolAccessorCreateTaskCategoryFallback:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
         ):
             mock_product_service_instance = AsyncMock()
@@ -355,7 +355,7 @@ class TestToolAccessorCreateTaskLogging:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("src.giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
             patch.object(tool_accessor._task_service, "log_task", new_callable=AsyncMock) as mock_log_task,
         ):
             mock_product_service_instance = AsyncMock()
@@ -364,7 +364,7 @@ class TestToolAccessorCreateTaskLogging:
 
             mock_log_task.return_value = "task-789"
 
-            with caplog.at_level(logging.INFO, logger="src.giljo_mcp.tools.tool_accessor"):
+            with caplog.at_level(logging.INFO, logger="giljo_mcp.tools.tool_accessor"):
                 await tool_accessor.create_task(
                     title="Logged Task",
                     description="This should produce a log message",

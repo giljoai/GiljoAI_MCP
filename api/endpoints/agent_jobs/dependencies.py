@@ -13,10 +13,10 @@ import logging
 
 from fastapi import Depends
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import User
+from giljo_mcp.services.orchestration_service import OrchestrationService
 
 
 logger = logging.getLogger(__name__)

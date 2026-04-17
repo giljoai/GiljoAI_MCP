@@ -304,11 +304,10 @@ def render_gemini_agent(template: AgentTemplate) -> str:
             "mcp_giljo_mcp_fetch_context",
             "mcp_giljo_mcp_reactivate_job",
             "mcp_giljo_mcp_dismiss_reactivation",
-            "mcp_giljo_mcp_spawn_agent_job",
+            "mcp_giljo_mcp_spawn_job",
             "mcp_giljo_mcp_get_agent_result",
             "mcp_giljo_mcp_write_360_memory",
             "mcp_giljo_mcp_close_project_and_update_memory",
-            "mcp_giljo_mcp_discovery",
         ],
     }
 

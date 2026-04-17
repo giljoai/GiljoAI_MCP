@@ -22,7 +22,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from src.giljo_mcp._config_io import get_config_path, read_config, write_config
+from giljo_mcp._config_io import get_config_path, read_config, write_config
 
 
 router = APIRouter()
