@@ -353,6 +353,7 @@ class TestCloseoutGateIntegration:
                     tenant_key=tenant_key,
                     db_manager=mock_db_manager,
                     force=True,
+                    git_commits=[{"sha": "abc123", "message": "test", "author": "test"}],
                 )
 
         # Success path: no "success" key, just check returned dict has expected fields
@@ -531,6 +532,7 @@ class TestOrchestratorSelfDecommissionGuard:
                     tenant_key=tenant_key,
                     db_manager=mock_db_manager,
                     force=True,
+                    git_commits=[{"sha": "abc123", "message": "test", "author": "test"}],
                 )
 
         assert "entry_id" in result
@@ -631,6 +633,7 @@ class TestOrchestratorSelfDecommissionGuard:
                     tenant_key=tenant_key,
                     db_manager=mock_db_manager,
                     force=True,
+                    git_commits=[{"sha": "abc123", "message": "test", "author": "test"}],
                 )
 
         assert "entry_id" in result
