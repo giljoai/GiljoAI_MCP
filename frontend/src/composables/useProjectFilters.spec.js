@@ -269,7 +269,7 @@ describe('useProjectFilters', () => {
       expect(ids).not.toContain('p6')
     })
 
-    it('excludes hidden projects when only search is active', () => {
+    it('includes hidden projects when search is active', () => {
       const { filteredProjects, searchQuery } = useProjectFilters({
         projectTypes,
         projects,
@@ -277,7 +277,7 @@ describe('useProjectFilters', () => {
       })
       searchQuery.value = 'Hidden'
       const ids = filteredProjects.value.map((p) => p.id)
-      expect(ids).toHaveLength(0)
+      expect(ids.length).toBeGreaterThan(0)
     })
 
     it('shows hidden projects only when status filter is hidden', () => {
