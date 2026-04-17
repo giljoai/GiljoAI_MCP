@@ -16,10 +16,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.models import Product
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.models import Product
+from giljo_mcp.models.auth import User
+from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 
 from .dependencies import get_db_manager
 from .models import MemoryEntriesResponse, MemoryEntryResponse

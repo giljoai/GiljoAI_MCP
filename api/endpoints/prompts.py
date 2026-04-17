@@ -33,11 +33,11 @@ from api.schemas.prompt import (
     TerminationPromptResponse,
     ThinOrchestratorPromptResponse,
 )
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import Project, User
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import Project, User
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -231,7 +231,7 @@ async def generate_agent_prompt(
 
     Returns a lightweight prompt (~50 tokens) that instructs the agent to call
     get_agent_mission() via MCP to retrieve its full mission and protocol.
-    Matches the same thin prompt pattern used at spawn time by spawn_agent_job().
+    Matches the same thin prompt pattern used at spawn time by spawn_job().
 
     Args:
         agent_id: Agent execution ID
@@ -280,7 +280,7 @@ async def generate_agent_prompt(
     mission = agent.job.mission if agent.job else ""
     mission_preview = mission[:200] + "..." if len(mission) > 200 else mission
 
-    # Build thin prompt (matches spawn_agent_job pattern)
+    # Build thin prompt (matches spawn_job pattern)
     prompt = f"""I am {agent_name} (Agent {agent_display_name}) for Project "{project_name}".
 
 ## MCP TOOL USAGE
@@ -375,17 +375,17 @@ async def generate_staging_prompt(
     """
     from sqlalchemy import and_ as _and
 
-    from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+    from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
-    # Staging guard: prevent re-staging when already in progress
+    # Staging guard: prevent re-staging when already staged or in progress
     proj_result = await db.execute(
         select(Project).where(_and(Project.id == project_id, Project.tenant_key == current_user.tenant_key))
     )
     project = proj_result.scalar_one_or_none()
-    if project and project.staging_status == "staging":
+    if project and project.staging_status in ("staged", "staging"):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Staging already in progress. Use Re-Stage to reset first.",
+            detail="Staging already in progress. Use Unstage to reset first.",
         )
 
     try:
@@ -437,6 +437,12 @@ async def generate_staging_prompt(
             result["estimated_prompt_tokens"],
             sanitize(current_user.username),
         )
+
+        # Persist staged state so it survives navigation away
+        if project:
+            project.staging_status = "staged"
+            project.execution_mode = execution_mode
+            await db.commit()
 
         # Return response with 'prompt' key for frontend compatibility
         # Handover 0260: Use staging_prompt (mode-specific) instead of thin_prompt
@@ -508,7 +514,7 @@ async def get_implementation_prompt(
         HTTPException 403: Tenant isolation violation
         HTTPException 500: Prompt generation error
     """
-    from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+    from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
     # 1. Fetch project with multi-tenant filtering (eager-load product + project_type for git closeout)
     project_stmt = (
@@ -609,7 +615,7 @@ async def get_implementation_prompt(
     if project.product and getattr(project.product, "product_memory", None):
         git_config = project.product.product_memory.get("git_integration", {})
         # Handover 0840d: Check git_history toggle from user_field_priorities table
-        from src.giljo_mcp.models.auth import UserFieldPriority
+        from giljo_mcp.models.auth import UserFieldPriority
 
         prio_result = await db.execute(
             select(UserFieldPriority).where(

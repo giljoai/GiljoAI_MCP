@@ -15,7 +15,7 @@ Verifies:
 6. fetch_context reads user depth_config from DB when not provided (Handover 0823b)
 """
 
-from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as RAW_DEPTH_CONFIG
+from giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as RAW_DEPTH_CONFIG
 
 
 class TestDepthDefaultsConsolidation:
@@ -23,7 +23,7 @@ class TestDepthDefaultsConsolidation:
 
     def test_fetch_context_defaults_match_canonical_defaults(self):
         """DEFAULT_DEPTHS in fetch_context.py must derive from DEFAULT_DEPTH_CONFIG in defaults.py."""
-        from src.giljo_mcp.tools.context_tools.fetch_context import DEFAULT_DEPTHS
+        from giljo_mcp.tools.context_tools.fetch_context import DEFAULT_DEPTHS
 
         # Handover 0840d: DEFAULT_DEPTH_CONFIG is now a flat dict with column-style keys
         canonical = RAW_DEPTH_CONFIG
@@ -56,7 +56,7 @@ class TestCH2InlineFetchCalls:
 
     def _build_ch2(self, field_toggles=None, depth_config=None, product_id="prod-123", tenant_key="tk_test"):
         """Helper to build CH2 with test parameters."""
-        from src.giljo_mcp.services.protocol_builder import _build_ch2_startup
+        from giljo_mcp.services.protocol_builder import _build_ch2_startup
 
         if field_toggles is None:
             field_toggles = {
@@ -149,7 +149,7 @@ class TestCH2InlineFetchCalls:
 
     def test_ch2_depth_config_not_in_memory_360_call(self):
         """memory_360 fetch call must NOT include depth_config (Handover 0823b)."""
-        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
+        from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
 
         result = _build_ch2_fetch_calls(
             field_toggles={"memory_360": True},
@@ -162,7 +162,7 @@ class TestCH2InlineFetchCalls:
 
     def test_ch2_depth_config_not_in_git_history_call(self):
         """git_history fetch call must NOT include depth_config (Handover 0823b)."""
-        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
+        from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
 
         result = _build_ch2_fetch_calls(
             field_toggles={"git_history": True},
@@ -174,7 +174,7 @@ class TestCH2InlineFetchCalls:
 
     def test_ch2_depth_config_not_in_vision_call(self):
         """vision_documents fetch call must NOT include depth_config (Handover 0823b)."""
-        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
+        from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
 
         result = _build_ch2_fetch_calls(
             field_toggles={"vision_documents": True},
@@ -262,7 +262,7 @@ class TestResponseStructure:
 
     def test_orchestrator_protocol_receives_toggles(self):
         """_build_orchestrator_protocol must accept and pass through toggle params."""
-        from src.giljo_mcp.services.protocol_builder import _build_orchestrator_protocol
+        from giljo_mcp.services.protocol_builder import _build_orchestrator_protocol
 
         field_toggles = {"product_core": True, "tech_stack": False}
         depth_config = {"memory_360": 3}
@@ -308,7 +308,7 @@ class TestFetchContextDepthFromDB:
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
 
-        from src.giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
+        from giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
 
         mock_user = self._make_mock_user(
             memory_last_n_projects=5,
@@ -342,7 +342,7 @@ class TestFetchContextDepthFromDB:
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
 
-        from src.giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
+        from giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -364,7 +364,7 @@ class TestFetchContextDepthFromDB:
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
 
-        from src.giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
+        from giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
 
         mock_user = self._make_mock_user()  # Uses column defaults
 
@@ -391,7 +391,7 @@ class TestFetchContextDepthFromDB:
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
 
-        from src.giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
+        from giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
 
         mock_user = self._make_mock_user(vision_documents="optional")
 
@@ -417,7 +417,7 @@ class TestCH2CategoryMetadata:
 
     def test_fetch_calls_with_metadata_shows_modified(self):
         """_build_ch2_fetch_calls with category_metadata produces lines containing 'Modified:'."""
-        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
+        from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
 
         result = _build_ch2_fetch_calls(
             field_toggles={"product_core": True, "tech_stack": True},
@@ -434,7 +434,7 @@ class TestCH2CategoryMetadata:
 
     def test_fetch_calls_without_metadata_no_modified(self):
         """_build_ch2_fetch_calls without category_metadata produces lines WITHOUT 'Modified:'."""
-        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
+        from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
 
         result = _build_ch2_fetch_calls(
             field_toggles={"product_core": True, "tech_stack": True},
@@ -446,7 +446,7 @@ class TestCH2CategoryMetadata:
 
     def test_fetch_calls_memory_360_shows_entries_count(self):
         """memory_360 metadata with entries count appears as 'entries: N'."""
-        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
+        from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
 
         result = _build_ch2_fetch_calls(
             field_toggles={"memory_360": True},
@@ -462,7 +462,7 @@ class TestCH2CategoryMetadata:
 
     def test_fetch_calls_metadata_partial_categories(self):
         """When metadata exists for only some categories, others show no suffix."""
-        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
+        from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_fetch_calls
 
         result = _build_ch2_fetch_calls(
             field_toggles={"product_core": True, "tech_stack": True},
@@ -485,7 +485,7 @@ class TestCH2CategoryMetadata:
 
     def test_protocol_text_allows_skipping_unchanged(self):
         """Protocol text contains the new 'may skip' wording when field_toggles provided."""
-        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_startup
+        from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_startup
 
         ch2 = _build_ch2_startup(
             orchestrator_id="orch-001",
@@ -501,7 +501,7 @@ class TestCH2CategoryMetadata:
 
     def test_protocol_text_backward_compat_without_metadata(self):
         """Without category_metadata, protocol text still uses the new skip wording."""
-        from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_startup
+        from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_startup
 
         ch2 = _build_ch2_startup(
             orchestrator_id="orch-001",

@@ -13,9 +13,9 @@ Verifies:
 4. Backward compatibility: existing protocol structure is preserved
 """
 
-from src.giljo_mcp.services.protocol_sections.agent_lifecycle import _generate_orchestrator_protocol
-from src.giljo_mcp.services.protocol_sections.chapters_reference import _build_ch3_spawning_rules
-from src.giljo_mcp.services.protocol_sections.chapters_startup import _build_ch1_mission
+from giljo_mcp.services.protocol_sections.agent_lifecycle import _generate_orchestrator_protocol
+from giljo_mcp.services.protocol_sections.chapters_reference import _build_ch3_spawning_rules
+from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch1_mission
 
 
 class TestCH1VerificationDeferral:
@@ -71,7 +71,7 @@ class TestCH3VerificationDeferral:
         """CH3 must describe the implementation phase spawning sequence."""
         result = _build_ch3_spawning_rules()
         assert "get_agent_result" in result
-        assert "spawn_agent_job()" in result
+        assert "spawn_job()" in result
 
     def test_ch3_deferral_present_for_all_tools(self):
         """Deferral text must appear regardless of tool platform."""

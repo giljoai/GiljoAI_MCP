@@ -18,6 +18,7 @@ import pytest_asyncio
 
 
 # Add src to path
+# TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Ensure config validation passes without real secrets
@@ -26,9 +27,9 @@ os.environ.setdefault("JWT_SECRET", "test_secret_key")
 
 
 # Import Product model for test_product fixture
-from src.giljo_mcp.models import Product
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.models import Product
+from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.tenant import TenantManager
 
 # Import PostgreSQL test fixtures from base_fixtures
 from tests.fixtures.base_fixtures import (
@@ -81,7 +82,7 @@ async def setup_agent_coordination(db_manager, db_session):
     This allows spawn_agent() to work in tests with proper
     session isolation (Handover 0366c).
     """
-    from src.giljo_mcp.tools import agent_coordination
+    from giljo_mcp.tools import agent_coordination
 
     agent_coordination.init_for_testing(db_manager, db_session)
     yield
@@ -95,7 +96,7 @@ async def setup_project_tools(db_manager, db_session):
     This allows project tools to use the same database session as test fixtures,
     preventing session isolation issues (Handover 0366c GREEN phase).
     """
-    from src.giljo_mcp.tools import project
+    from giljo_mcp.tools import project
 
     project.init_for_testing(db_manager, db_session)
     yield
@@ -110,7 +111,7 @@ async def setup_context_module(db_manager):
     by setting the global _db_manager (Handover 0366c).
     Note: update_context_usage() was removed in Handover 0422 (dead token budget cleanup).
     """
-    import src.giljo_mcp.database as db_module
+    import giljo_mcp.database as db_module
 
     db_module.set_db_manager(db_manager)
     yield
@@ -144,7 +145,7 @@ async def project_service_with_session(db_session, db_manager, tenant_manager, t
 @pytest_asyncio.fixture(scope="function")
 async def test_tenant_key():
     """Generate a test tenant key"""
-    from src.giljo_mcp.tenant import TenantManager
+    from giljo_mcp.tenant import TenantManager
 
     return TenantManager.generate_tenant_key()
 
@@ -155,7 +156,7 @@ async def test_project_id(db_session, test_tenant_key):
     import random
     import uuid
 
-    from src.giljo_mcp.models import Project
+    from giljo_mcp.models import Project
 
     project = Project(
         id=str(uuid.uuid4()),

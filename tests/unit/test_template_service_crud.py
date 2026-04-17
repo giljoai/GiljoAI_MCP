@@ -23,14 +23,14 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.models import AgentTemplate
+from giljo_mcp.schemas.service_responses import (
     TemplateCreateResult,
     TemplateGetResult,
     TemplateListResult,
     TemplateUpdateResult,
 )
-from src.giljo_mcp.services.template_service import TemplateService
+from giljo_mcp.services.template_service import TemplateService
 from tests.unit.conftest import make_mock_db_manager, make_mock_session
 
 
@@ -61,7 +61,7 @@ class TestTemplateServiceCRUD:
     @pytest.mark.asyncio
     async def test_create_template_no_tenant_context(self):
         """Test template creation fails without tenant context"""
-        from src.giljo_mcp.exceptions import ValidationError
+        from giljo_mcp.exceptions import ValidationError
 
         # Arrange
         db_manager = Mock()
@@ -80,7 +80,7 @@ class TestTemplateServiceCRUD:
     @pytest.mark.asyncio
     async def test_create_template_error_handling(self):
         """Test error handling in create_template"""
-        from src.giljo_mcp.exceptions import BaseGiljoError
+        from giljo_mcp.exceptions import BaseGiljoError
 
         # Arrange
         session = make_mock_session()
@@ -167,7 +167,7 @@ class TestTemplateServiceCRUD:
     @pytest.mark.asyncio
     async def test_get_template_not_found(self):
         """Test template not found error"""
-        from src.giljo_mcp.exceptions import TemplateNotFoundError
+        from giljo_mcp.exceptions import TemplateNotFoundError
 
         # Arrange
         mock_result = Mock()
@@ -189,7 +189,7 @@ class TestTemplateServiceCRUD:
     @pytest.mark.asyncio
     async def test_get_template_missing_identifier(self):
         """Test get_template fails without ID or name"""
-        from src.giljo_mcp.exceptions import ValidationError
+        from giljo_mcp.exceptions import ValidationError
 
         # Arrange
         db_manager = Mock()
@@ -276,7 +276,7 @@ class TestTemplateServiceCRUD:
     @pytest.mark.asyncio
     async def test_list_templates_no_tenant_context(self):
         """Test listing templates fails without tenant context"""
-        from src.giljo_mcp.exceptions import ValidationError
+        from giljo_mcp.exceptions import ValidationError
 
         # Arrange
         db_manager = Mock()
@@ -329,7 +329,7 @@ class TestTemplateServiceCRUD:
     @pytest.mark.asyncio
     async def test_update_template_not_found(self):
         """Test update fails when template doesn't exist"""
-        from src.giljo_mcp.exceptions import TemplateNotFoundError
+        from giljo_mcp.exceptions import TemplateNotFoundError
 
         # Arrange
         mock_result = Mock()

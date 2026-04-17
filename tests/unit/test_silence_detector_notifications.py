@@ -111,7 +111,7 @@ class TestBroadcastStatusChangeProjectId:
     @pytest.mark.asyncio
     async def test_status_changed_event_includes_project_id(self):
         """Verify agent:status_changed event includes project_id when provided."""
-        from src.giljo_mcp.services.silence_detector import _broadcast_status_change
+        from giljo_mcp.services.silence_detector import _broadcast_status_change
 
         ws_manager = AsyncMock()
         ws_manager.broadcast_event_to_tenant = AsyncMock()
@@ -141,7 +141,7 @@ class TestBroadcastStatusChangeProjectId:
     @pytest.mark.asyncio
     async def test_status_changed_event_project_id_defaults_none(self):
         """Verify agent:status_changed event has project_id=None when not provided."""
-        from src.giljo_mcp.services.silence_detector import _broadcast_status_change
+        from giljo_mcp.services.silence_detector import _broadcast_status_change
 
         ws_manager = AsyncMock()
         ws_manager.broadcast_event_to_tenant = AsyncMock()
@@ -176,8 +176,8 @@ class TestDetectSilentAgentsEmitsAgentSilent:
     @pytest.mark.asyncio
     async def test_detect_silent_agents_emits_agent_silent_event(self):
         """Verify that when an agent is marked silent, an agent:silent event is broadcast."""
-        from src.giljo_mcp.database import DatabaseManager
-        from src.giljo_mcp.services.silence_detector import SilenceDetector
+        from giljo_mcp.database import DatabaseManager
+        from giljo_mcp.services.silence_detector import SilenceDetector
 
         # Set up mocks
         db_manager = Mock(spec=DatabaseManager)
@@ -239,8 +239,8 @@ class TestDetectSilentAgentsEmitsAgentSilent:
     @pytest.mark.asyncio
     async def test_detect_silent_agents_handles_no_job_gracefully(self):
         """Verify agent:silent event handles agent with no job relationship."""
-        from src.giljo_mcp.database import DatabaseManager
-        from src.giljo_mcp.services.silence_detector import SilenceDetector
+        from giljo_mcp.database import DatabaseManager
+        from giljo_mcp.services.silence_detector import SilenceDetector
 
         db_manager = Mock(spec=DatabaseManager)
         ws_manager = AsyncMock()

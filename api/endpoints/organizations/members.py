@@ -21,9 +21,9 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.services.org_service import OrgService
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models.auth import User
+from giljo_mcp.services.org_service import OrgService
 
 from .models import MemberInvite, MemberResponse, MemberRoleUpdate, OwnershipTransfer
 

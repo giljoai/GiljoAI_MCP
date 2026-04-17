@@ -59,13 +59,14 @@ else:
     logger.error("JWT secret key NOT found in environment - authentication will fail")
 
 # Add src to path
+# TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 logger.debug(f"Added to Python path: {Path(__file__).parent.parent / 'src'}")
 
 try:
-    from src.giljo_mcp.models import Project
-    from src.giljo_mcp.models.agent_identity import AgentJob
-    from src.giljo_mcp.models.tasks import Message
+    from giljo_mcp.models import Project
+    from giljo_mcp.models.agent_identity import AgentJob
+    from giljo_mcp.models.tasks import Message
 
     logger.info("GiljoAI MCP core modules loaded successfully")
 except ImportError as e:
@@ -111,7 +112,7 @@ try:
     from .endpoints.organizations import members as org_members
 
     logger.info("Loading middleware and websocket...")
-    from src.giljo_mcp.utils.log_sanitizer import sanitize
+    from giljo_mcp.utils.log_sanitizer import sanitize
 
     from .exception_handlers import register_exception_handlers
     from .middleware import (
@@ -151,7 +152,7 @@ async def lifespan(app: FastAPI):
 
     # Phase 0: License validation
     # [CE] License validation — CE always passes. Commercial builds enforce here.
-    from src.giljo_mcp.licensing import LicenseValidator
+    from giljo_mcp.licensing import LicenseValidator
 
     license_result = LicenseValidator().validate()
     if not license_result.valid:
@@ -256,7 +257,7 @@ def _configure_middleware(app: FastAPI) -> None:
     Middleware is added in reverse order of execution (last added = first executed).
     """
     # Configure CORS - use explicit origins from config.yaml security section
-    from src.giljo_mcp._config_io import read_config as _read_app_config
+    from giljo_mcp._config_io import read_config as _read_app_config
 
     cors_origins = []
     config = {}  # Default to empty dict so config.get() is safe if read fails
@@ -312,7 +313,7 @@ def _configure_middleware(app: FastAPI) -> None:
 
     if network_mode in ("auto", "static"):
         try:
-            from src.giljo_mcp.network_detector import AdapterIPDetector
+            from giljo_mcp.network_detector import AdapterIPDetector
 
             detector = AdapterIPDetector()
             ip_changed, current_ip, adapter_name = detector.detect_ip_change(config)
@@ -761,8 +762,8 @@ def _register_event_handlers(app: FastAPI) -> None:
 
         return {"status": status, "checks": checks}
 
-    from src.giljo_mcp.auth.dependencies import get_current_active_user
-    from src.giljo_mcp.models.auth import User
+    from giljo_mcp.auth.dependencies import get_current_active_user
+    from giljo_mcp.models.auth import User
 
     @app.get("/api/system/status")
     async def system_status(current_user: User = Depends(get_current_active_user)):
@@ -835,7 +836,7 @@ def _register_event_handlers(app: FastAPI) -> None:
 def _build_openapi_servers() -> list[dict[str, str]]:
     """Build OpenAPI servers list respecting ssl_enabled config."""
     try:
-        from src.giljo_mcp.config_manager import get_config
+        from giljo_mcp.config_manager import get_config
 
         ssl_enabled = get_config().get_nested("features.ssl_enabled", default=False)
     except (OSError, ImportError, ValueError):

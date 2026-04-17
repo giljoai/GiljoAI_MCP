@@ -11,7 +11,7 @@ Handles project lifecycle: create, list, switch, close
 import logging
 from typing import Any, Optional
 
-from src.giljo_mcp.database import DatabaseManager
+from giljo_mcp.database import DatabaseManager
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ def init_for_testing(db_manager: DatabaseManager, db_session) -> None:
     Usage:
         @pytest_asyncio.fixture(scope="function", autouse=True)
         async def setup_project_tools(db_manager, db_session):
-            from src.giljo_mcp.tools import project
+            from giljo_mcp.tools import project
             project.init_for_testing(db_manager, db_session)
             yield
     """

@@ -16,9 +16,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import User
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import User
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 from .models import AgentExecutionResponse, ClearSilentResponse
 
@@ -96,7 +96,7 @@ async def clear_silent(
     Raises:
         HTTPException 404: Agent not found or not in silent status
     """
-    from src.giljo_mcp.services.silence_detector import clear_silent_status
+    from giljo_mcp.services.silence_detector import clear_silent_status
 
     # Get WebSocket manager from app state
     ws_manager = getattr(request.app.state, "websocket_manager", None)

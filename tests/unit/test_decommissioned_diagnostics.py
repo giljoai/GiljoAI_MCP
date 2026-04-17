@@ -21,10 +21,10 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.exceptions import ResourceNotFoundError
-from src.giljo_mcp.models.agent_identity import AgentExecution
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.models.agent_identity import AgentExecution
+from giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.tenant import TenantManager
 
 
 def _make_mock_execution(

@@ -3,8 +3,8 @@
 # See LICENSE in the project root for terms.
 # [CE] Community Edition — source-available, single-user use only.
 
-from src.giljo_mcp.licensing import LicenseResult, LicenseValidator
-from src.giljo_mcp.licensing.validator import LicenseEdition
+from giljo_mcp.licensing import LicenseResult, LicenseValidator
+from giljo_mcp.licensing.validator import LicenseEdition
 
 
 def test_ce_validator_returns_valid_result():

@@ -22,13 +22,13 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import AgentTemplate, User
-from src.giljo_mcp.services.template_service import TemplateService
-from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
-from src.giljo_mcp.template_seeder import _get_mcp_bootstrap_section
-from src.giljo_mcp.template_validation import get_role_color, slugify_name
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.models import AgentTemplate, User
+from giljo_mcp.services.template_service import TemplateService
+from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
+from giljo_mcp.template_seeder import _get_mcp_bootstrap_section
+from giljo_mcp.template_validation import get_role_color, slugify_name
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_template_service
 from .models import TemplateCreate, TemplateResponse, TemplateUpdate

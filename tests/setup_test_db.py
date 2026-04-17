@@ -15,6 +15,7 @@ from pathlib import Path
 
 
 # Add src to path
+# TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from tests.helpers.test_db_helper import PostgreSQLTestHelper, wait_for_database_ready
@@ -49,7 +50,7 @@ async def main():
     # Create test database manager and tables
     print("\n3. Creating database tables...")
     try:
-        from src.giljo_mcp.database import DatabaseManager
+        from giljo_mcp.database import DatabaseManager
 
         test_url = PostgreSQLTestHelper.get_test_db_url()
         db_manager = DatabaseManager(test_url, is_async=True)

@@ -24,6 +24,7 @@ import pytest
 
 
 # Add project root to path for imports
+# TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
@@ -80,7 +81,7 @@ class TestDatabaseConnectivity:
     def test_database_connection_success(self, mock_env):
         """Test successful database connection."""
         # This test verifies the DatabaseManager can be instantiated with valid URL
-        from src.giljo_mcp.database import DatabaseManager
+        from giljo_mcp.database import DatabaseManager
 
         db_url = "postgresql://postgres:***@localhost:5432/giljo_mcp"
 
@@ -95,12 +96,12 @@ class TestDatabaseConnectivity:
             # Real connection testing should be in integration tests
             pass
 
-    @patch("src.giljo_mcp.database.DatabaseManager")
+    @patch("giljo_mcp.database.DatabaseManager")
     def test_database_connection_failure(self, mock_db_manager):
         """Test database connection failure handling."""
         mock_db_manager.side_effect = Exception("Connection refused")
 
-        from src.giljo_mcp.database import DatabaseManager
+        from giljo_mcp.database import DatabaseManager
 
         with pytest.raises(Exception, match="Connection refused"):
             DatabaseManager(database_url="postgresql://invalid", is_async=False)
@@ -109,28 +110,28 @@ class TestDatabaseConnectivity:
 class TestFirstRunDetection:
     """Test first-run detection logic."""
 
-    @patch("src.giljo_mcp.setup.state_manager.SetupStateManager.get_instance")
+    @patch("giljo_mcp.setup.state_manager.SetupStateManager.get_instance")
     def test_first_run_not_completed(self, mock_state_manager):
         """Test detection when setup is not completed."""
         mock_manager = MagicMock()
         mock_manager.get_state.return_value = {"database_initialized": False}
         mock_state_manager.return_value = mock_manager
 
-        from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from giljo_mcp.setup.state_manager import SetupStateManager
 
         manager = SetupStateManager.get_instance(tenant_key="default")
         state = manager.get_state()
 
         assert state["database_initialized"] is False
 
-    @patch("src.giljo_mcp.setup.state_manager.SetupStateManager.get_instance")
+    @patch("giljo_mcp.setup.state_manager.SetupStateManager.get_instance")
     def test_first_run_completed(self, mock_state_manager):
         """Test detection when setup is completed."""
         mock_manager = MagicMock()
         mock_manager.get_state.return_value = {"database_initialized": True}
         mock_state_manager.return_value = mock_manager
 
-        from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from giljo_mcp.setup.state_manager import SetupStateManager
 
         manager = SetupStateManager.get_instance(tenant_key="default")
         state = manager.get_state()
@@ -216,7 +217,7 @@ class TestErrorHandling:
 
     def test_missing_database_url(self):
         """Test handling of missing DATABASE_URL."""
-        from src.giljo_mcp.database import DatabaseManager
+        from giljo_mcp.database import DatabaseManager
 
         with pytest.raises(ValueError, match="Database URL is required"):
             DatabaseManager(database_url=None, is_async=False)

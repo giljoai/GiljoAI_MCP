@@ -10,7 +10,7 @@ This module exists for import path compatibility with the new package structure.
 The actual implementation is in giljo_mcp.download_tokens.
 """
 
-from src.giljo_mcp.download_tokens import TokenManager
+from giljo_mcp.download_tokens import TokenManager
 
 
 __all__ = ["TokenManager"]

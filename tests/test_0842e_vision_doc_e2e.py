@@ -20,14 +20,14 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Product, VisionDocument, VisionDocumentSummary
-from src.giljo_mcp.models.products import (
+from giljo_mcp.models import Product, VisionDocument, VisionDocumentSummary
+from giljo_mcp.models.products import (
     ProductArchitecture,
     ProductTechStack,
     ProductTestConfig,
 )
-from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from giljo_mcp.tenant import TenantManager
 
 
 # ---------------------------------------------------------------------------
@@ -107,10 +107,10 @@ async def test_e2e_full_analysis_flow(
     vision_doc: VisionDocument,
 ):
     """Full round-trip: get vision doc, write all 4 tables + summaries, verify persistence and WebSocket."""
-    from src.giljo_mcp.tools.vision_analysis import gil_get_vision_doc, gil_write_product
+    from giljo_mcp.tools.vision_analysis import get_vision_doc, update_product_fields
 
     # Step 1: Retrieve vision document content + extraction prompt
-    get_result = await gil_get_vision_doc(
+    get_result = await get_vision_doc(
         product_id=product.id,
         tenant_key=tenant_key,
         _test_session=db_session,
@@ -120,11 +120,11 @@ async def test_e2e_full_analysis_flow(
     assert get_result["product_name"] == "E2E Test Product"
     assert get_result["total_chunks"] >= 1
     assert get_result["total_tokens"] > 0
-    assert get_result["write_tool"] == "gil_write_product"
+    assert get_result["write_tool"] == "update_product_fields"
     assert "extraction_instructions" in get_result
 
     # Request chunk 1 for content verification
-    chunk1 = await gil_get_vision_doc(
+    chunk1 = await get_vision_doc(
         product_id=product.id,
         tenant_key=tenant_key,
         chunk=1,
@@ -135,7 +135,7 @@ async def test_e2e_full_analysis_flow(
     # Step 2: Write fields spanning all 4 tables plus summaries
     mock_ws = AsyncMock()
 
-    write_result = await gil_write_product(
+    write_result = await update_product_fields(
         product_id=product.id,
         tenant_key=tenant_key,
         _test_session=db_session,
@@ -261,8 +261,8 @@ async def test_e2e_context_manager_prefers_ai(
     vision_doc: VisionDocument,
 ):
     """Context manager returns AI summary over Sumy when both exist."""
-    from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
-    from src.giljo_mcp.tools.vision_analysis import gil_write_product
+    from giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     # Step 1: Write Sumy summaries via repository
     await vision_repo.create_summary(
@@ -288,8 +288,8 @@ async def test_e2e_context_manager_prefers_ai(
         tokens_summary=66,
     )
 
-    # Step 2: Write AI summaries via gil_write_product
-    await gil_write_product(
+    # Step 2: Write AI summaries via update_product_fields
+    await update_product_fields(
         product_id=product.id,
         tenant_key=tenant_key,
         _test_session=db_session,
@@ -339,7 +339,7 @@ async def test_e2e_sumy_only_fallback(
     vision_doc: VisionDocument,
 ):
     """Context manager returns Sumy summary when no AI summary exists."""
-    from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
+    from giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
 
     # Write ONLY Sumy summaries (no AI summaries)
     await vision_repo.create_summary(
@@ -404,10 +404,10 @@ async def test_e2e_partial_field_write_no_overwrite(
     vision_doc: VisionDocument,
 ):
     """Partial writes only update provided fields; subsequent writes do not null earlier fields."""
-    from src.giljo_mcp.tools.vision_analysis import gil_write_product
+    from giljo_mcp.tools.vision_analysis import update_product_fields
 
     # First write: 3 fields across products, tech_stack, and summaries
-    result1 = await gil_write_product(
+    result1 = await update_product_fields(
         product_id=product.id,
         tenant_key=tenant_key,
         _test_session=db_session,
@@ -433,7 +433,7 @@ async def test_e2e_partial_field_write_no_overwrite(
     assert ts.programming_languages == "Python, TypeScript"
 
     # Second write: 2 different fields (architecture + test_config)
-    result2 = await gil_write_product(
+    result2 = await update_product_fields(
         product_id=product.id,
         tenant_key=tenant_key,
         _test_session=db_session,
@@ -500,10 +500,10 @@ async def test_e2e_custom_instructions(
     vision_doc: VisionDocument,
 ):
     """Custom instructions appear in extraction prompt; clearing them removes the section."""
-    from src.giljo_mcp.tools.vision_analysis import gil_get_vision_doc
+    from giljo_mcp.tools.vision_analysis import get_vision_doc
 
     # Step 1: Product has custom instructions ("Focus on mobile architecture")
-    result_with = await gil_get_vision_doc(
+    result_with = await get_vision_doc(
         product_id=product.id,
         tenant_key=tenant_key,
         _test_session=db_session,
@@ -516,7 +516,7 @@ async def test_e2e_custom_instructions(
     await db_session.flush()
 
     # Need to re-query to pick up cleared instructions
-    result_without = await gil_get_vision_doc(
+    result_without = await get_vision_doc(
         product_id=product.id,
         tenant_key=tenant_key,
         _test_session=db_session,
@@ -527,13 +527,13 @@ async def test_e2e_custom_instructions(
     assert "{custom_instructions}" not in result_without["extraction_instructions"]
 
     # Step 3: Verify document content is still present in both cases (via chunk=1)
-    chunk_with = await gil_get_vision_doc(
+    chunk_with = await get_vision_doc(
         product_id=product.id,
         tenant_key=tenant_key,
         chunk=1,
         _test_session=db_session,
     )
-    chunk_without = await gil_get_vision_doc(
+    chunk_without = await get_vision_doc(
         product_id=product.id,
         tenant_key=tenant_key,
         chunk=1,

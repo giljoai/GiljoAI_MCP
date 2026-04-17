@@ -16,9 +16,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.giljo_mcp.exceptions import ProjectStateError
-from src.giljo_mcp.schemas.service_responses import ProjectData
-from src.giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.exceptions import ProjectStateError
+from giljo_mcp.schemas.service_responses import ProjectData
+from giljo_mcp.services.project_service import ProjectService
 
 
 @pytest.fixture

@@ -20,9 +20,9 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.projects import Project
+from giljo_mcp.services.orchestration_service import OrchestrationService
 
 
 @pytest.fixture

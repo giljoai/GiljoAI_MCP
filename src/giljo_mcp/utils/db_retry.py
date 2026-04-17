@@ -21,7 +21,7 @@ from typing import Any, Callable
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.exceptions import RetryExhaustedError
+from giljo_mcp.exceptions import RetryExhaustedError
 
 
 logger = logging.getLogger(__name__)

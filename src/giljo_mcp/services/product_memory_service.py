@@ -23,10 +23,10 @@ from typing import Any
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import BaseGiljoError, ResourceNotFoundError
-from src.giljo_mcp.models import Product, Project, Task, VisionDocument
-from src.giljo_mcp.schemas.service_responses import CascadeImpact, ProductStatistics
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import BaseGiljoError, ResourceNotFoundError
+from giljo_mcp.models import Product, Project, Task, VisionDocument
+from giljo_mcp.schemas.service_responses import CascadeImpact, ProductStatistics
 
 
 logger = logging.getLogger(__name__)
@@ -218,7 +218,7 @@ class ProductMemoryService:
         Returns:
             Dict with keys: git_integration, sequential_history, context
         """
-        from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+        from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
         base_memory = product.product_memory or {}
         git_integration = base_memory.get("git_integration", {})

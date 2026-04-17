@@ -65,7 +65,7 @@ async def test_create_first_admin_accepts_workspace_name(api_client, db_manager)
     """
     from sqlalchemy import func, select
 
-    from src.giljo_mcp.models.auth import User
+    from giljo_mcp.models.auth import User
 
     # Check if any users already exist (endpoint rejects if total_users > 0, not just admins)
     async with db_manager.get_session_async() as session:
@@ -101,8 +101,8 @@ async def test_create_first_admin_accepts_workspace_name(api_client, db_manager)
         # Verify organization was created with correct name
         from sqlalchemy import select
 
-        from src.giljo_mcp.models.auth import User
-        from src.giljo_mcp.models.organizations import Organization
+        from giljo_mcp.models.auth import User
+        from giljo_mcp.models.organizations import Organization
 
         async with db_manager.get_session_async() as session:
             # Get user
@@ -136,7 +136,7 @@ async def test_create_first_admin_defaults_workspace_name(api_client, db_manager
     """
     from sqlalchemy import func, select
 
-    from src.giljo_mcp.models.auth import User
+    from giljo_mcp.models.auth import User
 
     # Check if any users already exist (endpoint rejects if total_users > 0, not just admins)
     async with db_manager.get_session_async() as session:
@@ -169,8 +169,8 @@ async def test_create_first_admin_defaults_workspace_name(api_client, db_manager
         # Verify organization was created with default name
         from sqlalchemy import select
 
-        from src.giljo_mcp.models.auth import User
-        from src.giljo_mcp.models.organizations import Organization
+        from giljo_mcp.models.auth import User
+        from giljo_mcp.models.organizations import Organization
 
         async with db_manager.get_session_async() as session:
             # Get user

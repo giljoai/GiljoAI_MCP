@@ -14,7 +14,7 @@ Verifies that:
 
 import inspect
 
-from src.giljo_mcp.config_manager import DatabaseConfig, get_config
+from giljo_mcp.config_manager import DatabaseConfig, get_config
 
 
 class TestDatabaseConfigCleanup:
@@ -93,7 +93,7 @@ class TestDatabaseConfigCleanup:
         monkeypatch.setenv("DB_USER", "envuser")
         monkeypatch.setenv("DB_PASSWORD", "envpass")
 
-        from src.giljo_mcp.config_manager import ConfigManager
+        from giljo_mcp.config_manager import ConfigManager
 
         config = ConfigManager()
 

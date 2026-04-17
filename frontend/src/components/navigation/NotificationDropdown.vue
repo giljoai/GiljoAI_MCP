@@ -4,7 +4,7 @@
     :close-on-content-click="false"
     :location="compact ? 'right' : 'bottom end'"
     offset="8"
-    max-width="350"
+    max-width="400"
   >
     <template v-slot:activator="{ props: menuProps }">
       <!-- Compact: orb style for navbar -->
@@ -95,12 +95,20 @@
             <v-list-item-title class="text-body-1 font-weight-medium mb-1">
               {{ notification.title }}
             </v-list-item-title>
-            <v-list-item-subtitle
-              :class="['text-body-2', { 'message-truncated': !notification._expanded, 'text-wrap': notification._expanded }]"
-              @click.stop="toggleExpand(notification)"
+            <div
+              :class="['notification-message', 'text-body-2', { 'message-truncated': !isExpanded(notification.id) }]"
+              @click.stop="toggleExpand(notification.id)"
             >
               {{ notification.message }}
-            </v-list-item-subtitle>
+            </div>
+            <v-icon
+              size="14"
+              class="expand-chevron mt-1"
+              :aria-label="isExpanded(notification.id) ? 'Collapse message' : 'Expand message'"
+              @click.stop="toggleExpand(notification.id)"
+            >
+              {{ isExpanded(notification.id) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+            </v-icon>
 
             <!-- Handover 0259: Project context link -->
             <div
@@ -169,6 +177,7 @@ const notificationStore = useNotificationStore()
 const wsStore = useWebSocketStore()
 
 const menuOpen = ref(false)
+const expandedIds = ref(new Set())
 let unsubscribeNotification = null
 
 // Computed properties
@@ -246,9 +255,16 @@ const getNotificationAriaLabel = (notification) => {
   return base
 }
 
-// Toggle message expand/collapse
-const toggleExpand = (notification) => {
-  notification._expanded = !notification._expanded
+// Toggle message expand/collapse using local reactive Set (not object mutation)
+const isExpanded = (id) => expandedIds.value.has(id)
+const toggleExpand = (id) => {
+  const next = new Set(expandedIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  expandedIds.value = next
 }
 
 // Handover 0259: Navigate to the project associated with a notification
@@ -372,10 +388,22 @@ onUnmounted(() => {
 }
 
 .notification-dropdown {
-  width: 420px;
+  width: 440px;
   max-height: 500px;
   display: flex;
   flex-direction: column;
+}
+
+/* Notification message text */
+.notification-message {
+  color: $color-text-muted;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.notification-message:hover {
+  text-decoration: underline;
+  text-decoration-style: dotted;
 }
 
 /* Message truncation - click to expand */
@@ -385,12 +413,17 @@ onUnmounted(() => {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
 }
 
-.message-truncated:hover {
-  text-decoration: underline;
-  text-decoration-style: dotted;
+.expand-chevron {
+  color: $color-brand-yellow;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.expand-chevron:hover {
+  opacity: 1;
 }
 
 .notification-header {

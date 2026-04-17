@@ -34,28 +34,28 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models import Product
-from src.giljo_mcp.models.products import (
+from giljo_mcp.models import Product
+from giljo_mcp.models.products import (
     VALID_TARGET_PLATFORMS,
     ProductArchitecture,
     ProductTechStack,
     ProductTestConfig,
 )
-from src.giljo_mcp.schemas.jsonb_validators import validate_product_memory
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.schemas.jsonb_validators import validate_product_memory
+from giljo_mcp.schemas.service_responses import (
     CascadeImpact,
     DeleteResult,
     ProductStatistics,
     PurgeResult,
 )
-from src.giljo_mcp.services.product_lifecycle_service import ProductLifecycleService
-from src.giljo_mcp.services.product_memory_service import ProductMemoryService
+from giljo_mcp.services.product_lifecycle_service import ProductLifecycleService
+from giljo_mcp.services.product_memory_service import ProductMemoryService
 
 
 logger = logging.getLogger(__name__)

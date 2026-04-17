@@ -15,8 +15,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from src.giljo_mcp.exceptions import ValidationError
-from src.giljo_mcp.template_renderer import (
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.template_renderer import (
     CODEX_TOML_FORMAT_REFERENCE,
     _slugify_filename,
     hex_to_claude_color,
@@ -28,7 +28,7 @@ from src.giljo_mcp.template_renderer import (
 
 
 if TYPE_CHECKING:
-    from src.giljo_mcp.models import AgentTemplate
+    from giljo_mcp.models import AgentTemplate
 
 logger = logging.getLogger(__name__)
 

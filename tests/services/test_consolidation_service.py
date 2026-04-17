@@ -19,9 +19,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models.products import Product, VisionDocument
-from src.giljo_mcp.schemas.service_responses import (
+from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
+from giljo_mcp.models.products import Product, VisionDocument
+from giljo_mcp.schemas.service_responses import (
     ConsolidationResult,
     MultiLevelSummaryLevel,
     SummarizeMultiLevelResult,
@@ -47,7 +47,7 @@ def mock_db_manager():
 @pytest.mark.asyncio
 async def test_consolidate_single_document_returns_unified_summary(mock_db_manager):
     """Single doc → summarization produces light and medium summaries"""
-    from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+    from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
     db_manager, session = mock_db_manager
 
@@ -110,7 +110,7 @@ async def test_consolidate_single_document_returns_unified_summary(mock_db_manag
 @pytest.mark.asyncio
 async def test_consolidate_five_documents_returns_unified_summary(mock_db_manager):
     """Five chapters → unified 33%/66% summaries from aggregate"""
-    from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+    from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
     db_manager, session = mock_db_manager
 
@@ -163,7 +163,7 @@ async def test_consolidate_five_documents_returns_unified_summary(mock_db_manage
 @pytest.mark.asyncio
 async def test_consolidate_respects_display_order(mock_db_manager):
     """Documents ordered by display_order in aggregate text"""
-    from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+    from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
     db_manager, session = mock_db_manager
 
@@ -217,7 +217,7 @@ async def test_consolidate_respects_display_order(mock_db_manager):
 @pytest.mark.asyncio
 async def test_consolidate_skips_inactive_docs(mock_db_manager):
     """Only active documents included in aggregate"""
-    from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+    from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
     db_manager, session = mock_db_manager
 
@@ -265,7 +265,7 @@ async def test_consolidate_skips_inactive_docs(mock_db_manager):
 @pytest.mark.asyncio
 async def test_consolidate_detects_no_changes(mock_db_manager):
     """Hash unchanged → raises ValidationError with no_changes, skips re-summarization"""
-    from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+    from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
     db_manager, session = mock_db_manager
 
@@ -310,7 +310,7 @@ async def test_consolidate_detects_no_changes(mock_db_manager):
 @pytest.mark.asyncio
 async def test_consolidate_force_regenerates(mock_db_manager):
     """force=True → always regenerates regardless of hash"""
-    from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+    from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
     db_manager, session = mock_db_manager
 
@@ -363,7 +363,7 @@ async def test_consolidate_force_regenerates(mock_db_manager):
 @pytest.mark.asyncio
 async def test_consolidate_handles_product_not_found(mock_db_manager):
     """Non-existent product_id → raises ResourceNotFoundError"""
-    from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+    from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
     db_manager, session = mock_db_manager
 
@@ -389,7 +389,7 @@ async def test_consolidate_handles_product_not_found(mock_db_manager):
 @pytest.mark.asyncio
 async def test_consolidate_enforces_tenant_isolation(mock_db_manager):
     """Product exists but belongs to different tenant → raises ResourceNotFoundError (no tenant leak)"""
-    from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+    from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
     db_manager, session = mock_db_manager
 

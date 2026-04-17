@@ -261,7 +261,7 @@ class BroadcastResult(BaseModel):
 class MessageListResult(BaseModel):
     """Message list result.
 
-    Returned by get_messages(), receive_messages(), and list_messages().
+    Returned by get_messages(), receive_messages(), and inspect_messages().
     The optional agent field is populated by get_messages() only.
     """
 
@@ -354,7 +354,7 @@ class WorkflowStatus(BaseModel):
 class SpawnResult(BaseModel):
     """Agent spawn result.
 
-    Fields match OrchestrationService.spawn_agent_job() output.
+    Fields match OrchestrationService.spawn_job() output.
     Contains both work order (job_id) and executor (agent_id) UUIDs
     plus the thin client prompt for agent startup.
     """
@@ -362,6 +362,7 @@ class SpawnResult(BaseModel):
     job_id: str
     agent_id: str
     execution_id: Optional[str] = None
+    agent_display_name: Optional[str] = None  # v1.1.6: Resolved display name (after auto-suffix)
     agent_prompt: str
     mission_stored: bool = True
     thin_client: bool = True
@@ -749,6 +750,7 @@ class ProjectListItem(BaseModel):
     product_id: Optional[str] = None
     created_at: str
     updated_at: str
+    completed_at: Optional[str] = None
     # Handover 0440a: Project taxonomy fields
     project_type_id: Optional[str] = None
     project_type: Optional[ProjectTypeInfo] = None  # Handover 0440c: Nested type info

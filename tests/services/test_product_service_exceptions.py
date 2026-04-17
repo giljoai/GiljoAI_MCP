@@ -32,13 +32,13 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.exceptions import (
     BaseGiljoError,
     DatabaseError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.services.product_service import ProductService
+from giljo_mcp.services.product_service import ProductService
 
 
 # ============================================================================
@@ -393,7 +393,7 @@ class TestIntegrationMethodExceptions:
 
         Handover 0950i: upload_vision_document moved to ProductVisionService.
         """
-        from src.giljo_mcp.services.product_vision_service import ProductVisionService
+        from giljo_mcp.services.product_vision_service import ProductVisionService
 
         db_manager, session = mock_db_manager
 

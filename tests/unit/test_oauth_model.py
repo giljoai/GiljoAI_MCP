@@ -12,8 +12,8 @@ without requiring a database connection.
 
 from datetime import datetime, timedelta, timezone
 
-from src.giljo_mcp.models.base import generate_uuid
-from src.giljo_mcp.models.oauth import OAuthAuthorizationCode
+from giljo_mcp.models.base import generate_uuid
+from giljo_mcp.models.oauth import OAuthAuthorizationCode
 
 
 class TestGenerateUuid:

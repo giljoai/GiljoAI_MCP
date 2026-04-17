@@ -34,9 +34,7 @@ class APIMetricsMiddleware(BaseHTTPMiddleware):
             request.app.state.api_state.api_call_count[tenant_key] = (
                 request.app.state.api_state.api_call_count.get(tenant_key, 0) + 1
             )
-            if request.url.path.startswith("/mcp"):
-                request.app.state.api_state.mcp_call_count[tenant_key] = (
-                    request.app.state.api_state.mcp_call_count.get(tenant_key, 0) + 1
-                )
+            # MCP tool calls are counted per-invocation in _call_tool()
+            # (mcp_sdk_server.py), not per HTTP request here.
         response = await call_next(request)
         return response

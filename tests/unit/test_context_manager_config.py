@@ -15,12 +15,12 @@ Handover 0840c: Rewritten for normalized product config tables
 (ProductTechStack, ProductArchitecture, ProductTestConfig).
 """
 
-from src.giljo_mcp.context_manager import (
+from giljo_mcp.context_manager import (
     get_config_summary,
     get_filtered_config,
     get_full_config,
 )
-from src.giljo_mcp.models import Product
+from giljo_mcp.models import Product
 
 
 class TestGetFullConfig:

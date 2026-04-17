@@ -11,9 +11,9 @@ Provides dependency injection for TemplateService.
 
 from fastapi import Depends
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services.template_service import TemplateService
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.models import User
+from giljo_mcp.services.template_service import TemplateService
 
 
 def get_template_service(

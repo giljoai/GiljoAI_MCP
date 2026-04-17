@@ -19,23 +19,23 @@ import bcrypt
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import AgentTemplate, Message
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models.organizations import Organization
-from src.giljo_mcp.models.products import Product, VisionDocument
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.tasks import MessageRecipient, Task
-from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.services.task_service import TaskService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import AgentTemplate, Message
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.auth import User
+from giljo_mcp.models.organizations import Organization
+from giljo_mcp.models.products import Product, VisionDocument
+from giljo_mcp.models.projects import Project
+from giljo_mcp.models.tasks import MessageRecipient, Task
+from giljo_mcp.services.message_service import MessageService
+from giljo_mcp.services.task_service import TaskService
+from giljo_mcp.tenant import TenantManager
 
 
 @pytest_asyncio.fixture
 async def user_service(db_manager, db_session, test_tenant_key):
     """Create UserService instance for testing with shared session (Handover 0324)"""
-    from src.giljo_mcp.services.user_service import UserService
+    from giljo_mcp.services.user_service import UserService
 
     return UserService(
         db_manager=db_manager,
@@ -752,7 +752,7 @@ async def two_tenant_products(db_session, db_manager):
 @pytest_asyncio.fixture
 async def template_service(db_manager, tenant_manager):
     """Fixture for TemplateService instance using real database manager"""
-    from src.giljo_mcp.services.template_service import TemplateService
+    from giljo_mcp.services.template_service import TemplateService
 
     return TemplateService(db_manager, tenant_manager)
 
@@ -760,7 +760,7 @@ async def template_service(db_manager, tenant_manager):
 @pytest_asyncio.fixture
 async def sample_template(db_session, test_tenant_key, test_product):
     """Fixture for creating a sample template in the database"""
-    from src.giljo_mcp.models.templates import AgentTemplate
+    from giljo_mcp.models.templates import AgentTemplate
 
     template = AgentTemplate(
         id=str(uuid4()),
@@ -796,7 +796,7 @@ async def two_tenant_service_setup(db_session, db_manager):
 
     Returns a dict with entities for both tenants plus service instances.
     """
-    from src.giljo_mcp.services.project_service import ProjectService
+    from giljo_mcp.services.project_service import ProjectService
 
     tenant_a = TenantManager.generate_tenant_key()
     tenant_b = TenantManager.generate_tenant_key()
@@ -969,7 +969,7 @@ async def tenant_key() -> str:
 
 @pytest_asyncio.fixture
 async def agent_templates(db_session, tenant_key):
-    """Create agent templates needed by spawn_agent_job validation."""
+    """Create agent templates needed by spawn_job validation."""
     for name in ["specialist-1", "tdd-implementor", "orchestrator"]:
         template = AgentTemplate(
             tenant_key=tenant_key,
@@ -1040,7 +1040,7 @@ async def other_project(db_session, other_tenant_key, other_tenant_templates) ->
 @pytest_asyncio.fixture
 async def service(db_session, db_manager) -> "OrchestrationService":  # noqa: F821 — forward ref, imported inside body
     """Create OrchestrationService with shared test session."""
-    from src.giljo_mcp.services.orchestration_service import OrchestrationService
+    from giljo_mcp.services.orchestration_service import OrchestrationService
 
     tm = TenantManager()
     return OrchestrationService(
@@ -1052,7 +1052,7 @@ async def service(db_session, db_manager) -> "OrchestrationService":  # noqa: F8
 
 async def _spawn_and_complete(service, project_id, tenant_key, result_payload, agent_name="specialist-1"):
     """Helper: spawn an agent, complete it with a result, return spawn result."""
-    spawn = await service.spawn_agent_job(
+    spawn = await service.spawn_job(
         agent_display_name="predecessor",
         agent_name=agent_name,
         mission="Do predecessor work",
@@ -1118,7 +1118,7 @@ def generate_realistic_document(tokens: int) -> str:
 @pytest_asyncio.fixture
 async def auth_service(db_manager, db_session):
     """Create AuthService instance for testing with shared session (Handover 0324)"""
-    from src.giljo_mcp.services.auth_service import AuthService
+    from giljo_mcp.services.auth_service import AuthService
 
     return AuthService(
         db_manager=db_manager,

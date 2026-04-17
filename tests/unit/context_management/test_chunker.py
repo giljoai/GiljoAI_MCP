@@ -14,7 +14,7 @@ TDD Approach: Tests written first, then implementation.
 
 import pytest
 
-from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
+from giljo_mcp.context_management.chunker import VisionDocumentChunker
 
 
 class TestVisionDocumentChunker:
@@ -293,7 +293,7 @@ Third paragraph with additional content for proper chunking behavior.
 
     def test_integration_with_enhanced_chunker(self, chunker):
         """Test that VisionDocumentChunker integrates with EnhancedChunker."""
-        from src.giljo_mcp.tools.chunking import EnhancedChunker
+        from giljo_mcp.tools.chunking import EnhancedChunker
 
         # Verify EnhancedChunker is available
         assert hasattr(chunker, "enhanced_chunker")

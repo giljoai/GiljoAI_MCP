@@ -17,7 +17,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from src.giljo_mcp.template_validation import (
+from giljo_mcp.template_validation import (
     can_activate_role,
     validate_agent_name,
 )

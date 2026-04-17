@@ -32,7 +32,7 @@ async def init_silence_detector(state: APIState) -> None:
     try:
         logger.info("Initializing silence detector...")
 
-        from src.giljo_mcp.services.silence_detector import SilenceDetector
+        from giljo_mcp.services.silence_detector import SilenceDetector
 
         state.silence_detector = SilenceDetector(
             db_manager=state.db_manager,

@@ -28,17 +28,17 @@ from contextlib import asynccontextmanager
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     BaseGiljoError,
     ContextError,
     GiljoFileNotFoundError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models import Product
-from src.giljo_mcp.schemas.service_responses import VisionUploadResult
-from src.giljo_mcp.tools.chunking import VISION_MAX_INGEST_TOKENS
+from giljo_mcp.models import Product
+from giljo_mcp.schemas.service_responses import VisionUploadResult
+from giljo_mcp.tools.chunking import VISION_MAX_INGEST_TOKENS
 
 
 logger = logging.getLogger(__name__)
@@ -124,7 +124,7 @@ class ProductVisionService:
             >>> print(f"Created {result.chunks_created} chunks")
         """
         try:
-            from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+            from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 
             async with self._get_session() as session:
                 # Verify product exists and belongs to tenant
@@ -213,7 +213,7 @@ class ProductVisionService:
             total_tokens: Estimated token count
         """
         try:
-            from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
+            from giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
             self._logger.info(f"Generating multi-level summaries for doc {doc.id}: {total_tokens} tokens")
 
@@ -271,7 +271,7 @@ class ProductVisionService:
         if not auto_chunk:
             return chunks_created, total_tokens
 
-        from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
+        from giljo_mcp.context_management.chunker import VisionDocumentChunker
 
         chunker = VisionDocumentChunker(target_chunk_size=max_tokens)
 
@@ -301,7 +301,7 @@ class ProductVisionService:
             product_id: Product UUID
         """
         try:
-            from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+            from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
             consolidation_service = ConsolidatedVisionService()
             await consolidation_service.consolidate_vision_documents(

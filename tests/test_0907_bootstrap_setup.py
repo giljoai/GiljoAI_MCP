@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.giljo_mcp.file_staging import FileStaging
+from giljo_mcp.file_staging import FileStaging
 
 
 def _make_template(name: str, role: str, description: str = "") -> MagicMock:

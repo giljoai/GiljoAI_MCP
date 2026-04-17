@@ -19,10 +19,10 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.models import User
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.models import User
+from giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_orchestration_service
 from .models import (
@@ -40,7 +40,7 @@ router = APIRouter()
 
 
 @router.post("/spawn", response_model=SpawnAgentResponse, status_code=status.HTTP_201_CREATED)
-async def spawn_agent_job(
+async def spawn_job(
     request: SpawnAgentRequest,
     current_user: User = Depends(get_current_active_user),
     orchestration_service: OrchestrationService = Depends(get_orchestration_service),
@@ -76,7 +76,7 @@ async def spawn_agent_job(
         )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required to spawn agents")
 
-    result = await orchestration_service.spawn_agent_job(
+    result = await orchestration_service.spawn_job(
         agent_display_name=request.agent_display_name,
         agent_name=request.agent_name or request.agent_display_name,
         mission=request.mission,

@@ -17,9 +17,9 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Project
-from src.giljo_mcp.models.projects import ProjectType
-from src.giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.models import Project
+from giljo_mcp.models.projects import ProjectType
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .schemas import ProjectTypeCreate, ProjectTypeUpdate
 

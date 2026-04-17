@@ -15,10 +15,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from api.endpoints.dependencies import get_message_routing_service, get_message_service
-from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.services.message_routing_service import MessageRoutingService
-from src.giljo_mcp.services.message_service import MessageService
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.models.auth import User
+from giljo_mcp.services.message_routing_service import MessageRoutingService
+from giljo_mcp.services.message_service import MessageService
 
 
 router = APIRouter()

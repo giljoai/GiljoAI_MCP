@@ -12,13 +12,13 @@ Provides dependency injection for UserService and AuthService.
 from fastapi import Depends
 
 from api.dependencies import get_tenant_key
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.services import AuthService, UserService
-from src.giljo_mcp.services.message_routing_service import MessageRoutingService
-from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.services.task_service import TaskService
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.services import AuthService, UserService
+from giljo_mcp.services.message_routing_service import MessageRoutingService
+from giljo_mcp.services.message_service import MessageService
+from giljo_mcp.services.product_service import ProductService
+from giljo_mcp.services.task_service import TaskService
+from giljo_mcp.tenant import TenantManager
 
 
 async def get_db_manager() -> DatabaseManager:

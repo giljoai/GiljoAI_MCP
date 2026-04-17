@@ -23,11 +23,11 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.exceptions import AuthorizationError, ResourceNotFoundError
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.tasks import Task
-from src.giljo_mcp.schemas.service_responses import TaskUpdateResult
+from giljo_mcp.exceptions import AuthorizationError, ResourceNotFoundError
+from giljo_mcp.models.auth import User
+from giljo_mcp.models.projects import Project
+from giljo_mcp.models.tasks import Task
+from giljo_mcp.schemas.service_responses import TaskUpdateResult
 
 
 # ============================================================================

@@ -20,9 +20,9 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 import yaml
 
-from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.template_renderer import render_claude_agent
-from src.giljo_mcp.template_seeder import _get_mcp_bootstrap_section
+from giljo_mcp.models import AgentTemplate
+from giljo_mcp.template_renderer import render_claude_agent
+from giljo_mcp.template_seeder import _get_mcp_bootstrap_section
 
 
 # ---------------------------------------------------------------------------
@@ -498,7 +498,7 @@ class TestResetSystemInstructionsCanonical:
     @pytest.mark.asyncio
     async def test_reset_produces_canonical_bootstrap(self):
         """After reset, system_instructions must match _get_mcp_bootstrap_section()."""
-        from src.giljo_mcp.services.template_service import TemplateService
+        from giljo_mcp.services.template_service import TemplateService
 
         canonical = _get_mcp_bootstrap_section()
 
@@ -520,7 +520,7 @@ class TestResetSystemInstructionsCanonical:
     @pytest.mark.asyncio
     async def test_reset_canonical_contains_startup_sequence(self):
         """The canonical bootstrap must include the three-step startup sequence."""
-        from src.giljo_mcp.services.template_service import TemplateService
+        from giljo_mcp.services.template_service import TemplateService
 
         template = _make_template(
             system_instructions="Old content",
@@ -543,7 +543,7 @@ class TestResetSystemInstructionsCanonical:
     @pytest.mark.asyncio
     async def test_reset_canonical_does_not_contain_protocol_sections(self):
         """The canonical bootstrap must NOT include full protocol sections."""
-        from src.giljo_mcp.services.template_service import TemplateService
+        from giljo_mcp.services.template_service import TemplateService
 
         template = _make_template(
             system_instructions="Old content with ## CHECK-IN PROTOCOL",

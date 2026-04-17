@@ -298,3 +298,47 @@ class AvailableSeriesResponse(BaseModel):
     """Response for GET /available-series."""
 
     available_series_numbers: list[int]
+
+
+# ============================================================================
+# Project Review Models (IMP-3: Project detail with agents + memory)
+# ============================================================================
+
+
+class AgentJobDetail(BaseModel):
+    """Agent job detail for project review."""
+
+    job_id: str
+    job_type: str
+    status: str
+    display_name: str
+    agent_status: str
+    mission: str | None = None
+    result: dict | None = None
+    created_at: str | None = None
+    completed_at: str | None = None
+
+
+class MemoryEntryDetail(BaseModel):
+    """360 memory entry detail for project review."""
+
+    id: str
+    entry_type: str
+    sequence: int
+    project_name: str | None = None
+    summary: str | None = None
+    key_outcomes: list = Field(default_factory=list)
+    decisions_made: list = Field(default_factory=list)
+    git_commits: list = Field(default_factory=list)
+    timestamp: str | None = None
+
+
+class ProjectReviewResponse(BaseModel):
+    """Extended project detail with agent jobs and 360 memory entries.
+
+    Used by the frontend project review modal (Phase 2).
+    """
+
+    project: ProjectResponse
+    agent_jobs: list[AgentJobDetail] = Field(default_factory=list)
+    memory_entries: list[MemoryEntryDetail] = Field(default_factory=list)

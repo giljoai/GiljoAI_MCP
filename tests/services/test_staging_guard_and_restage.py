@@ -20,9 +20,9 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models.agent_identity import AgentExecution
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.services.project_lifecycle_service import ProjectLifecycleService
+from giljo_mcp.models.agent_identity import AgentExecution
+from giljo_mcp.models.projects import Project
+from giljo_mcp.services.project_lifecycle_service import ProjectLifecycleService
 
 
 # ---------------------------------------------------------------------------
@@ -111,7 +111,7 @@ class TestStagingGuard:
         # We test the service-level check_staging_allowed method.
         project = _make_project(staging_status="staging")
 
-        from src.giljo_mcp.exceptions import ProjectStateError
+        from giljo_mcp.exceptions import ProjectStateError
 
         with pytest.raises(ProjectStateError, match="Staging already in progress"):
             lifecycle_service.check_staging_allowed(project)
@@ -185,7 +185,7 @@ class TestRestage:
         mock_result.scalar_one_or_none = MagicMock(return_value=project)
         session.execute = AsyncMock(return_value=mock_result)
 
-        from src.giljo_mcp.exceptions import ProjectStateError
+        from giljo_mcp.exceptions import ProjectStateError
 
         with pytest.raises(ProjectStateError, match="not currently staged"):
             await lifecycle_service.restage(project.id)
@@ -200,7 +200,7 @@ class TestRestage:
         mock_result.scalar_one_or_none = MagicMock(return_value=project)
         session.execute = AsyncMock(return_value=mock_result)
 
-        from src.giljo_mcp.exceptions import ProjectStateError
+        from giljo_mcp.exceptions import ProjectStateError
 
         with pytest.raises(ProjectStateError, match="not currently staged"):
             await lifecycle_service.restage(project.id)
@@ -218,7 +218,7 @@ class TestRestage:
         mock_orch_result.scalar_one_or_none = MagicMock(return_value=orchestrator)
         session.execute = AsyncMock(side_effect=[mock_project_result, mock_orch_result])
 
-        from src.giljo_mcp.exceptions import ProjectStateError
+        from giljo_mcp.exceptions import ProjectStateError
 
         with pytest.raises(ProjectStateError, match="orchestrator agent is already active"):
             await lifecycle_service.restage(project.id)
@@ -232,7 +232,7 @@ class TestRestage:
         mock_result.scalar_one_or_none = MagicMock(return_value=None)
         session.execute = AsyncMock(return_value=mock_result)
 
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
+        from giljo_mcp.exceptions import ResourceNotFoundError
 
         with pytest.raises(ResourceNotFoundError, match="Project not found"):
             await lifecycle_service.restage(str(uuid4()))

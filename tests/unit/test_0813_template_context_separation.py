@@ -17,8 +17,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.template_renderer import render_claude_agent
+from giljo_mcp.models import AgentTemplate
+from giljo_mcp.template_renderer import render_claude_agent
 
 
 # ---------------------------------------------------------------------------
@@ -181,7 +181,7 @@ class TestSeederProducesSlimBootstrap:
 
     def test_default_templates_have_slim_system_instructions(self):
         """All default templates should have slim bootstrap, not protocol boilerplate."""
-        from src.giljo_mcp.template_seeder import _get_default_templates_v103
+        from giljo_mcp.template_seeder import _get_default_templates_v103
 
         templates = _get_default_templates_v103()
         for tmpl in templates:
@@ -194,7 +194,7 @@ class TestSeederProducesSlimBootstrap:
 
     def test_bootstrap_content_is_slim(self):
         """The bootstrap text used for system_instructions should be ~5-10 lines."""
-        from src.giljo_mcp.template_seeder import _get_mcp_bootstrap_section
+        from giljo_mcp.template_seeder import _get_mcp_bootstrap_section
 
         bootstrap = _get_mcp_bootstrap_section()
         lines = [line for line in bootstrap.strip().split("\n") if line.strip()]
@@ -206,7 +206,7 @@ class TestSeederProducesSlimBootstrap:
 
     def test_bootstrap_does_not_contain_protocol(self):
         """The bootstrap should NOT contain full protocol sections."""
-        from src.giljo_mcp.template_seeder import _get_mcp_bootstrap_section
+        from giljo_mcp.template_seeder import _get_mcp_bootstrap_section
 
         bootstrap = _get_mcp_bootstrap_section()
         assert "CHECK-IN PROTOCOL" not in bootstrap
@@ -226,7 +226,7 @@ class TestRefreshProducesSlimFormat:
     @pytest.mark.asyncio
     async def test_refresh_uses_slim_bootstrap(self):
         """After refresh, system_instructions should be slim bootstrap."""
-        from src.giljo_mcp.template_seeder import _get_mcp_bootstrap_section
+        from giljo_mcp.template_seeder import _get_mcp_bootstrap_section
 
         # The bootstrap function should exist and return slim content
         bootstrap = _get_mcp_bootstrap_section()
@@ -276,7 +276,7 @@ class TestGetAgentTemplatesIncludesUserInstructions:
     @pytest.mark.asyncio
     async def test_full_detail_includes_user_instructions(self):
         """Full detail response should include user_instructions field."""
-        from src.giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
+        from giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
 
         # Create mock template with user_instructions
         mock_template = MagicMock()

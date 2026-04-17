@@ -24,19 +24,19 @@ from typing import TYPE_CHECKING, Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
     OrchestrationError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models import (
+from giljo_mcp.models import (
     AgentExecution,
     AgentJob,
     AgentTodoItem,
 )
-from src.giljo_mcp.schemas.service_responses import ProgressResult
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.schemas.service_responses import ProgressResult
+from giljo_mcp.tenant import TenantManager
 
 
 if TYPE_CHECKING:

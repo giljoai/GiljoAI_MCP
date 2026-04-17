@@ -414,6 +414,145 @@ def check_first_run() -> Tuple[bool, Optional[dict]]:
         return True, None
 
 
+def seed_default_settings() -> bool:
+    """
+    Seed default Settings rows for new categories (integrations, security, runtime).
+
+    Reads current values from config.yaml for upgrade path, or uses defaults
+    for fresh installs. Idempotent: skips categories that already have rows.
+
+    Returns:
+        True if seed completed (or no-op), False on error
+    """
+    import os
+
+    try:
+        db_url = os.environ.get("DATABASE_URL", "")
+        if not db_url:
+            from src.giljo_mcp._config_io import read_config
+
+            config = read_config()
+            db_cfg = config.get("database", {})
+            host = db_cfg.get("host", "127.0.0.1")
+            port = db_cfg.get("port", 5432)
+            user = db_cfg.get("user") or db_cfg.get("username", "")
+            password = db_cfg.get("password", "")
+            name = db_cfg.get("name") or db_cfg.get("database", "")
+            if user and name:
+                db_url = f"postgresql://{user}:{password}@{host}:{port}/{name}"
+
+        if not db_url:
+            return True  # No DB yet, skip silently
+
+        from sqlalchemy import create_engine, text
+
+        # Read config.yaml values for migration (defaults if missing)
+        try:
+            from src.giljo_mcp._config_io import read_config
+
+            config = read_config()
+        except Exception:
+            config = {}
+
+        features = config.get("features", {})
+        security_cfg = config.get("security", {})
+
+        # Build seed data from config.yaml or defaults
+        integrations_data = {
+            "git_integration": {
+                "enabled": features.get("git_integration", {}).get("enabled", False),
+                "use_in_prompts": features.get("git_integration", {}).get("use_in_prompts", False),
+                "include_commit_history": features.get("git_integration", {}).get("include_commit_history", True),
+                "max_commits": features.get("git_integration", {}).get("max_commits", 50),
+                "branch_strategy": features.get("git_integration", {}).get("branch_strategy", "main"),
+            },
+            "serena_mcp": {
+                "use_in_prompts": features.get("serena_mcp", {}).get("use_in_prompts", False),
+            },
+        }
+
+        security_data = {
+            "ssl_enabled": features.get("ssl_enabled", False),
+            "ssl_cert_path": config.get("paths", {}).get("ssl_cert"),
+            "ssl_key_path": config.get("paths", {}).get("ssl_key"),
+            "cookie_domain_whitelist": security_cfg.get("cookie_domain_whitelist", []),
+            "rate_limiting": {"enabled": False, "requests_per_minute": 60},
+        }
+
+        runtime_data = {
+            "agent": {
+                "max_agents": config.get("agent", {}).get("max_agents", 10),
+                "default_context_budget": config.get("agent", {}).get("default_context_budget", 200000),
+                "context_warning_threshold": config.get("agent", {}).get("context_warning_threshold", 0.8),
+            },
+            "session": {
+                "timeout_seconds": config.get("session", {}).get("timeout_seconds", 3600),
+                "max_concurrent": config.get("session", {}).get("max_concurrent", 5),
+                "cleanup_interval": config.get("session", {}).get("cleanup_interval", 300),
+            },
+        }
+
+        import json
+
+        categories_to_seed = {
+            "integrations": json.dumps(integrations_data),
+            "security": json.dumps(security_data),
+            "runtime": json.dumps(runtime_data),
+        }
+
+        engine = create_engine(db_url, connect_args={"connect_timeout": 5})
+        try:
+            with engine.connect() as conn:
+                # Check if settings table exists
+                table_check = conn.execute(
+                    text("SELECT EXISTS (  SELECT FROM information_schema.tables   WHERE table_name = 'settings')")
+                ).scalar()
+                if not table_check:
+                    return True  # Table doesn't exist yet (fresh install, migrations not run)
+
+                # Get all tenant keys (from users table — exists in both CE and SaaS)
+                tenants = conn.execute(text("SELECT DISTINCT tenant_key FROM users")).fetchall()
+                if not tenants:
+                    return True  # No tenants yet
+
+                seeded = 0
+                for (tenant_key,) in tenants:
+                    for category, data_json in categories_to_seed.items():
+                        # Idempotency: only insert if row doesn't exist
+                        exists = conn.execute(
+                            text("SELECT 1 FROM settings WHERE tenant_key = :tk AND category = :cat LIMIT 1"),
+                            {"tk": tenant_key, "cat": category},
+                        ).scalar()
+
+                        if not exists:
+                            import uuid
+
+                            conn.execute(
+                                text(
+                                    "INSERT INTO settings (id, tenant_key, category, settings_data) "
+                                    "VALUES (:id, :tk, :cat, CAST(:data AS jsonb))"
+                                ),
+                                {
+                                    "id": str(uuid.uuid4()),
+                                    "tk": tenant_key,
+                                    "cat": category,
+                                    "data": data_json,
+                                },
+                            )
+                            seeded += 1
+
+                conn.commit()
+                if seeded > 0:
+                    print_success(f"Seeded {seeded} default settings row(s)")
+                return True
+        finally:
+            engine.dispose()
+
+    except Exception as e:
+        print_warning(f"Settings seed failed (non-fatal): {e}")
+        return True  # Non-fatal, startup continues
+
+
 def is_port_available(port: int, host: str = "127.0.0.1") -> bool:
     """
     Check if a port is available.
@@ -1105,6 +1244,20 @@ def run_startup(
         print_info("Please install manually: pip install -r requirements.txt")
         return 1
 
+    # Register giljo_mcp as importable package (editable install, idempotent)
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-e", ".", "--quiet"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=60,
+        )
+    except subprocess.CalledProcessError as e:
+        print_warning(f"Editable install failed (non-fatal): {e.stderr[:200] if e.stderr else e}")
+    except Exception as e:
+        print_warning(f"Editable install skipped: {e}")
+
     # Step 2.5: Download NLTK data for vision document summarization
     print_header("Downloading NLTK Data")
     try:
@@ -1140,6 +1293,9 @@ def run_startup(
         print_error("Database connectivity check failed")
         print_info("Please ensure PostgreSQL is running and configured correctly")
         return 1
+
+    # Step 4b: Seed default settings (idempotent, non-fatal)
+    seed_default_settings()
 
     # Step 5: Check first-run status
     print_header("Setup Status")

@@ -18,14 +18,14 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.exceptions import (
+from giljo_mcp.exceptions import (
     BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.tasks import Task
-from src.giljo_mcp.services.task_service import TaskService
+from giljo_mcp.models.projects import Project
+from giljo_mcp.models.tasks import Task
+from giljo_mcp.services.task_service import TaskService
 
 
 # ============================================================================

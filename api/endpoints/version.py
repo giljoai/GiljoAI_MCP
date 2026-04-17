@@ -16,7 +16,7 @@ from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from src.giljo_mcp.services.version_service import get_version_info
+from giljo_mcp.services.version_service import get_version_info
 
 
 logger = logging.getLogger(__name__)

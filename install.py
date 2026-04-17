@@ -1522,6 +1522,19 @@ class UnifiedInstaller:
 
             self._print_success("Dependencies installed successfully")
 
+            # Register giljo_mcp as importable package (editable install, idempotent)
+            try:
+                subprocess.run(
+                    [str(python_executable), "-m", "pip", "install", "-e", ".", "--quiet"],
+                    check=True,
+                    capture_output=True,
+                    timeout=60,
+                    cwd=str(self.install_dir),
+                )
+                self._print_success("Package registered (editable install)")
+            except Exception as e:
+                self._print_warning(f"Editable install skipped (non-fatal): {e}")
+
             # Dev-only steps: pre-commit hooks and NLTK data (use --dev flag)
             if self.settings.get("dev"):
                 # Install pre-commit hooks (ensures git commits work without manual venv activation)
