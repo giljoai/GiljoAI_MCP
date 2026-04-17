@@ -416,8 +416,11 @@ install_prereqs_linux() {
                         ;;
                     node)
                         print_step "Installing Node.js 20..."
-                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - </dev/null
-                        sudo apt-get install -y -qq nodejs </dev/null
+                        # Direct binary from nodejs.org CDN — fast, no repo setup needed
+                        local node_ver="v20.19.0"
+                        local node_arch="x64"
+                        [[ "$(uname -m)" == "aarch64" ]] && node_arch="arm64"
+                        curl -fsSL "https://nodejs.org/dist/${node_ver}/node-${node_ver}-linux-${node_arch}.tar.xz" | sudo tar -xJ -C /usr/local --strip-components=1
                         print_ok "Node.js installed"
                         ;;
                     git)
