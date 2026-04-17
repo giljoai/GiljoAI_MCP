@@ -62,10 +62,13 @@ export function useProjectFilters({ projects, projectTypes, activeProduct }) {
 
     // CE-OPT-4: Hidden exclusion is independent of other filters.
     // Only show hidden projects when filterStatus is explicitly 'hidden'.
+    // Exception: active search query is "nuclear" — searches ALL projects including hidden.
     if (filterStatus.value === 'hidden') {
       return results.filter((p) => p.hidden)
     }
-    results = results.filter((p) => !p.hidden)
+    if (!searchQuery.value) {
+      results = results.filter((p) => !p.hidden)
+    }
 
     if (filterStatus.value && filterStatus.value !== 'all') {
       return results.filter((p) => p.status === filterStatus.value)
