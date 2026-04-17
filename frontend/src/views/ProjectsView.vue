@@ -508,25 +508,31 @@ const customKeySort = {
     const bStr = (b || '').toString()
     return aStr.localeCompare(bStr, undefined, { numeric: true, sensitivity: 'base' })
   },
-  // Completed: date comparison, nulls always last
+  // Completed: date comparison, nulls always at bottom regardless of direction.
+  // Vuetify multiplies the comparator result by direction (1 asc, -1 desc),
+  // so we counter-multiply nulls to keep them pinned at bottom.
   completed_at: (a, b) => {
     const aVal = a ? new Date(a).getTime() : null
     const bVal = b ? new Date(b).getTime() : null
     if (aVal === null && bVal === null) return 0
-    if (aVal === null) return 1
-    if (bVal === null) return -1
+    // Determine current direction to counter Vuetify's flip
+    const dir = sortBy.value[0]?.order === 'desc' ? -1 : 1
+    if (aVal === null) return 1 * dir
+    if (bVal === null) return -1 * dir
     return aVal - bVal
   },
 }
 
 // Items for the table — filteredProjects already has series_number as integer.
-// Normalize completed_at: for completed/cancelled/terminated projects without a
-// completed_at timestamp, fall back to updated_at so sorting matches what's displayed.
+// Normalize completed_at for sorting: terminal projects without completed_at
+// fall back to updated_at. Non-terminal projects (active/inactive) get a null
+// so the sort comparator can push them to the bottom in both directions.
+const TERMINAL_STATUSES = new Set(['completed', 'cancelled', 'terminated'])
 const tableItems = computed(() =>
   filteredProjects.value.map((p) => {
-    const isTerminal = ['completed', 'cancelled', 'terminated'].includes(p.status)
-    if (isTerminal && !p.completed_at && p.updated_at) {
-      return { ...p, completed_at: p.updated_at }
+    if (TERMINAL_STATUSES.has(p.status)) {
+      const effective = p.completed_at || p.updated_at || null
+      return effective !== p.completed_at ? { ...p, completed_at: effective } : p
     }
     return p
   }),
