@@ -530,7 +530,7 @@ def seed_default_settings() -> bool:
                             conn.execute(
                                 text(
                                     "INSERT INTO settings (id, tenant_key, category, settings_data) "
-                                    "VALUES (:id, :tk, :cat, :data::jsonb)"
+                                    "VALUES (:id, :tk, :cat, CAST(:data AS jsonb))"
                                 ),
                                 {
                                     "id": str(uuid.uuid4()),
