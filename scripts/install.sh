@@ -429,10 +429,12 @@ install_prereqs_linux() {
                         print_ok "Git installed"
                         ;;
                     postgresql)
-                        print_step "Installing PostgreSQL..."
-                        # Use Ubuntu's bundled PostgreSQL (v16 on 24.04) — fast, no external repo needed
-                        # Our minimum is PostgreSQL 14, so the bundled version is always sufficient
-                        sudo apt-get install -y -qq postgresql postgresql-client </dev/null
+                        print_step "Installing PostgreSQL 18..."
+                        sudo rm -f /etc/apt/sources.list.d/pgdg.list /etc/apt/sources.list.d/pgdg.sources </dev/null
+                        sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+                        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/pgdg.gpg
+                        sudo apt-get update -qq </dev/null
+                        sudo apt-get install -y -qq postgresql-18 postgresql-client-18 </dev/null
                         sudo systemctl start postgresql </dev/null
                         sudo systemctl enable postgresql </dev/null
                         print_ok "PostgreSQL installed and started"
