@@ -13,6 +13,7 @@ Define your product once. Every agent that connects gets the full picture.
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Vue 3](https://img.shields.io/badge/Vue%203-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white)](https://vuejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL%2018-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/GiljoAI%20Community%20v1.1-ffc300?style=flat-square&labelColor=0e1c2d)](LICENSE)
 [![Setup](https://img.shields.io/badge/Setup-6--10%20min-6bcf7f?style=flat-square&labelColor=0e1c2d)](docs/INSTALLATION_GUIDE.md)
@@ -79,7 +80,7 @@ cd GiljoAI_MCP
 python install.py
 python startup.py
 ```
-Requires Python 3.10+, PostgreSQL 14+ (18 recommended), Node.js 20+.
+Requires Python 3.10+, PostgreSQL 14+ (18 recommended), Node.js 22+.
 </details>
 
 <br>
