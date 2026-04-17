@@ -415,7 +415,7 @@ install_prereqs_linux() {
                         print_ok "Python installed"
                         ;;
                     node)
-                        print_step "Installing Node.js 20..."
+                        print_step "Installing Node.js 22..."
                         # Direct binary from nodejs.org CDN — fast, no repo setup needed
                         local node_ver="v22.22.0"
                         local node_arch="x64"
@@ -458,8 +458,8 @@ install_prereqs_linux() {
                         print_ok "Python installed"
                         ;;
                     node)
-                        print_step "Installing Node.js 20..."
-                        curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash - </dev/null
+                        print_step "Installing Node.js 22..."
+                        curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash - </dev/null
                         sudo "$PKG_MANAGER" install -y nodejs </dev/null
                         print_ok "Node.js installed"
                         ;;

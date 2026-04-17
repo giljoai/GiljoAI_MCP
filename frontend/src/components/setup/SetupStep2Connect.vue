@@ -135,7 +135,7 @@
                   <v-icon size="16">mdi-help-circle-outline</v-icon>
                 </v-btn>
               </template>
-              HTTPS with self-signed certificates: Node.js-based AI coding agents need to trust the system CA store (one-time setup, requires Node.js 20.12+).
+              HTTPS with self-signed certificates: Node.js-based AI coding agents need to trust the system CA store (one-time setup, requires Node.js 22+).
             </v-tooltip>
           </div>
           <div class="config-block smooth-border">
