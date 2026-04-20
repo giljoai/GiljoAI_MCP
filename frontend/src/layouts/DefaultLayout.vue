@@ -15,7 +15,7 @@
       <!-- SaaS Trial Expiry Banner (loaded dynamically, absent in CE) -->
       <component :is="TrialBannerComponent" v-if="TrialBannerComponent" />
       <SystemStatusBanner />
-      <router-view :current-user="currentUser" />
+      <router-view :key="$route.fullPath" :current-user="currentUser" />
     </v-main>
 
     <!-- Global Toast Notifications -->
