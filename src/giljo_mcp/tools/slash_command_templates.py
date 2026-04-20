@@ -21,37 +21,38 @@ Also provides bootstrap prompt templates for one-time CLI onboarding.
 GIL_GET_AGENTS_MD = """---
 name: gil_get_agents
 description: Download and install GiljoAI agent templates from the MCP server
-allowed-tools: mcp__giljo_mcp__*, Bash, Read, Write, AskUserQuestion
+allowed-tools: mcp__giljo_mcp__*, Bash, AskUserQuestion
 ---
 
-You are the GiljoAI agent template installer for Claude Code.
+You are the GiljoAI agent template installer for Claude Code. Be fast and efficient.
 
-## Your Job
+## Procedure
 
 1. Call `mcp__giljo_mcp__list_agent_templates` with `platform="claude_code"`
-2. Show a summary table of all agents (role, name, description)
-3. Use AskUserQuestion to ask for model preference with selectable options:
-   Question: "Which model should agents use?"
-   Options: ["sonnet (balanced — recommended)", "haiku (fast, cost-effective)", "opus (maximum capability)", "Let me pick per agent"]
-   If user picks "Let me pick per agent", ask for each agent individually using AskUserQuestion with the same model options (minus the per-agent option).
-4. Use AskUserQuestion to ask install location:
-   Question: "Where should agents be installed?"
-   Options: ["User agents (~/.claude/agents/) — available everywhere (recommended)", "Project agents (.claude/agents/) — this project only"]
-5. If the target directory has existing `.md` files, back them up:
-   rename `*.md` to `*.md.bak.YYYYMMDD_HHMMSS`
-6. Write each agent file with the user's model selection applied to the `model` frontmatter field
-7. Report what was installed and instruct the user to restart Claude Code
+2. Show a compact summary table (role, name, one-line description)
+3. Ask BOTH questions in a single AskUserQuestion call (2 questions):
+   - Question 1 — "Which model should agents use?"
+     Options: ["sonnet (recommended)", "opus (maximum capability)", "haiku (fast, cost-effective)", "Let me pick per agent"]
+   - Question 2 — "Where should agents be installed?"
+     Options: ["Project agents (.claude/agents/) — this project only", "User agents (~/.claude/agents/) — available everywhere"]
+4. If user picked "Let me pick per agent": ask for ALL agents in batched AskUserQuestion calls (up to 4 questions per call, one per agent). Use header field for agent name.
+5. Install using a SINGLE Bash call that:
+   a. Creates the target directory if needed
+   b. Backs up existing .md files (rename to .md.bak.YYYYMMDD_HHMMSS)
+   c. Writes ALL agent files using a heredoc loop or sequential cat commands
+   The Bash call MUST write all files in one invocation — do NOT use separate tool calls per file.
+6. Report what was installed in a table and remind user to restart Claude Code.
 
-## Rules
+## Critical Rules
 
-- ALWAYS use AskUserQuestion with options for user choices — never ask open-ended questions
-- Do NOT modify the agent name, description, or body content
-- Do NOT modify protocol sections
-- The ONLY user-configurable field is model selection
+- ALWAYS use Bash (cat > file << 'EOF') for writing files — NEVER use the Write tool (it requires pre-reading files and fails on overwrites)
+- All file operations in ONE Bash call — backup + write all agents together
+- AskUserQuestion for all user choices — never open-ended questions
+- Do NOT modify agent name, description, body content, or protocol sections
+- The ONLY user-configurable field is the `model` frontmatter value
 - Colors are pre-assigned by the server — do not change them
-- Use the Bash tool for file operations (cross-platform via Git Bash)
-- Unix paths (/tmp, ~/.claude/) work on ALL platforms
-- Do NOT use PowerShell or Windows-style paths
+- Unix paths work on ALL platforms (Git Bash on Windows)
+- Target: complete the entire install in under 60 seconds and under 5 tool calls total
 """
 
 

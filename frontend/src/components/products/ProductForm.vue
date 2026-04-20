@@ -658,11 +658,11 @@
         <v-btn
           color="primary"
           variant="flat"
-          :disabled="isEdit ? !formValid || saving : isLastTab ? !formValid || saving : saving || analysisInProgress"
+          :disabled="isEdit ? !formValid || saving || analysisInProgress : isLastTab ? !formValid || saving : saving || analysisInProgress"
           :loading="isEdit ? saving : isLastTab ? saving : false"
           @click="isEdit ? saveProduct() : isLastTab ? saveProduct() : goNextTab()"
         >
-          <template v-if="!isEdit && !isLastTab && analysisAgentConnected">
+          <template v-if="analysisAgentConnected && ((isEdit) || (!isEdit && !isLastTab))">
             Waiting<span class="dot dot-1">.</span><span class="dot dot-2">.</span><span class="dot dot-3">.</span>
           </template>
           <template v-else>
