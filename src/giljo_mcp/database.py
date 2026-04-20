@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engin
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
-from .logging import ErrorCode
+from .logging.error_codes import ErrorCode
 from .models import Base
 from .tenant import TenantManager
 

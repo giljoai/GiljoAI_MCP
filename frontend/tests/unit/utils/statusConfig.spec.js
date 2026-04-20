@@ -6,8 +6,7 @@ import {
   formatLastActivity,
   isCloseoutBlocked,
   getStatusLabel,
-  getStatusColor,
-  STALENESS_THRESHOLD
+  getStatusColor
 } from '@/utils/statusConfig';
 
 describe('statusConfig.js', () => {

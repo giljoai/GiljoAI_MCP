@@ -53,9 +53,17 @@
       </v-btn>
     </AppAlert>
 
-    <!-- Header -->
+    <!-- Header + Product Filter -->
     <div class="dash-header main-window-reveal main-window-reveal--hero main-window-delay-1">
       <h1 class="text-h4">Dashboard</h1>
+      <div v-if="products.length > 1" class="product-filter">
+        <v-btn-toggle v-model="selectedProductId" mandatory density="compact" class="product-toggle">
+          <v-btn :value="null" size="small" variant="text">All</v-btn>
+          <v-btn v-for="p in products" :key="p.id" :value="p.id" size="small" variant="text">
+            {{ p.name }}
+          </v-btn>
+        </v-btn-toggle>
+      </div>
     </div>
 
     <!-- Stat Pills Row (3 cards: status, taxonomy, agent roles) -->
@@ -200,19 +208,25 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import RecentProjectsList from '@/components/dashboard/RecentProjectsList.vue'
 import RecentMemoriesList from '@/components/dashboard/RecentMemoriesList.vue'
 import ProjectReviewModal from '@/components/projects/ProjectReviewModal.vue'
 import { useRouter } from 'vue-router'
+import { useProductStore } from '@/stores/products'
 
 import api from '@/services/api'
 import setupService from '@/services/setupService'
 import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
+const productStore = useProductStore()
 const { showToast } = useToast()
+
+// Product filter
+const selectedProductId = ref(null)
+const products = computed(() => productStore.products)
 
 // Reactive data
 const setupStatus = ref({
@@ -351,7 +365,7 @@ const miniStats = computed(() => {
 // Data fetching
 const fetchDashboardData = async () => {
   try {
-    const response = await api.stats.getDashboard()
+    const response = await api.stats.getDashboard(selectedProductId.value)
     if (response.data) {
       dashboardData.value = {
         project_status_dist: response.data.project_status_dist || {},
@@ -406,6 +420,9 @@ const fetchSystemStats = async () => {
     showToast({ message: 'Unable to load system statistics.', type: 'error' })
   }
 }
+
+// Re-fetch dashboard when product filter changes
+watch(selectedProductId, () => fetchDashboardData())
 
 let fetchInterval = null
 
@@ -566,6 +583,28 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
+}
+
+.product-filter {
+  display: flex;
+  align-items: center;
+}
+
+.product-toggle {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.product-toggle :deep(.v-btn) {
+  text-transform: none;
+  font-size: 0.8rem;
+  letter-spacing: 0;
+  color: var(--text-muted);
+}
+
+.product-toggle :deep(.v-btn--active) {
+  color: var(--color-brand-yellow, #ffc300);
+  background: rgba(255, 195, 0, 0.12);
 }
 
 .dash-time {

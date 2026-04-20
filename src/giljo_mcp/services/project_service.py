@@ -1009,7 +1009,7 @@ class ProjectService:
                 item["agent_details"] = agent_details
 
             if depth >= 3:
-                item["git_commits"] = self._extract_git_commits(memory_entries if depth >= 2 else [])
+                item["git_commits"] = self._extract_git_commits(memory_entries)
                 message_history = await self.query.get_project_messages(
                     project_id=p.id,
                     tenant_key=tenant_key,

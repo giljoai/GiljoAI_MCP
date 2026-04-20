@@ -106,9 +106,13 @@ export const useUserStore = defineStore('user', () => {
       // Clear remember me data
       localStorage.removeItem('remembered_username')
 
-      // Clear notifications on logout (tenant isolation defense-in-depth)
+      // Clear dependent stores on logout (tenant isolation defense-in-depth)
       const { useNotificationStore } = await import('@/stores/notifications')
       useNotificationStore().clearAll()
+      const { useProductStore } = await import('@/stores/products')
+      useProductStore().clearProductData()
+      const { useTaskStore } = await import('@/stores/tasks')
+      useTaskStore().tasks = []
     }
   }
 

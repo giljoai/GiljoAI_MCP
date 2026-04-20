@@ -93,6 +93,9 @@ export const useProductStore = defineStore('products', () => {
           localStorage.setItem('currentProductId', productId)
           await fetchProductMetrics(productId)
           await projectStore.fetchProjects()
+          // Refresh tasks for new product (lazy import to avoid circular dep with tasks→products)
+          const { useTaskStore } = await import('./tasks')
+          await useTaskStore().fetchTasks({ product_id: productId })
           window.dispatchEvent(
             new CustomEvent('product-changed', {
               detail: { productId, product: fallbackProduct },
@@ -115,9 +118,11 @@ export const useProductStore = defineStore('products', () => {
 
     await fetchProductMetrics(productId)
 
-    // Product/Project State Fix: Refresh projects when product changes
-    // This ensures project list reflects the new product and deactivates old projects
+    // Product/Project State Fix: Refresh dependent stores when product changes
     await projectStore.fetchProjects()
+    // Refresh tasks for new product (lazy import to avoid circular dep with tasks→products)
+    const { useTaskStore } = await import('./tasks')
+    await useTaskStore().fetchTasks({ product_id: productId })
 
     window.dispatchEvent(
       new CustomEvent('product-changed', {
