@@ -53,17 +53,47 @@
       </v-btn>
     </AppAlert>
 
-    <!-- Header + Product Filter -->
+    <!-- Header -->
     <div class="dash-header main-window-reveal main-window-reveal--hero main-window-delay-1">
       <h1 class="text-h4">Dashboard</h1>
-      <div v-if="products.length > 1" class="product-filter">
-        <v-btn-toggle v-model="selectedProductId" mandatory density="compact" class="product-toggle">
-          <v-btn :value="null" size="small" variant="text">All</v-btn>
-          <v-btn v-for="p in products" :key="p.id" :value="p.id" size="small" variant="text">
-            {{ p.name }}
-          </v-btn>
-        </v-btn-toggle>
+    </div>
+
+    <!-- Product Filter Pills (centered, scrollable) -->
+    <div v-if="products.length > 1" class="product-filter-row main-window-reveal main-window-delay-2">
+      <button
+        class="product-filter-chevron"
+        :class="{ 'product-filter-chevron--hidden': !canScrollLeft }"
+        @click="scrollFilterLeft"
+        aria-label="Scroll filters left"
+      >
+        <v-icon size="18">mdi-chevron-left</v-icon>
+      </button>
+      <div ref="filterScrollContainer" class="product-filter-scroll" @scroll="updateScrollState">
+        <button
+          class="pill-toggle smooth-border"
+          :class="{ 'pill-toggle--active': selectedProductId === null }"
+          @click="selectedProductId = null"
+        >
+          All
+        </button>
+        <button
+          v-for="p in products"
+          :key="p.id"
+          class="pill-toggle smooth-border"
+          :class="{ 'pill-toggle--active': selectedProductId === p.id }"
+          @click="selectedProductId = p.id"
+        >
+          {{ p.name }}
+        </button>
       </div>
+      <button
+        class="product-filter-chevron"
+        :class="{ 'product-filter-chevron--hidden': !canScrollRight }"
+        @click="scrollFilterRight"
+        aria-label="Scroll filters right"
+      >
+        <v-icon size="18">mdi-chevron-right</v-icon>
+      </button>
     </div>
 
     <!-- Stat Pills Row (3 cards: status, taxonomy, agent roles) -->
@@ -227,6 +257,24 @@ const { showToast } = useToast()
 // Product filter
 const selectedProductId = ref(null)
 const products = computed(() => productStore.products)
+const filterScrollContainer = ref(null)
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
+
+function updateScrollState() {
+  const el = filterScrollContainer.value
+  if (!el) return
+  canScrollLeft.value = el.scrollLeft > 0
+  canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+}
+
+function scrollFilterLeft() {
+  filterScrollContainer.value?.scrollBy({ left: -200, behavior: 'smooth' })
+}
+
+function scrollFilterRight() {
+  filterScrollContainer.value?.scrollBy({ left: 200, behavior: 'smooth' })
+}
 
 // Reactive data
 const setupStatus = ref({
@@ -524,6 +572,8 @@ For complete troubleshooting guide, see: docs/LAN_SETUP_GUIDE.md
 onMounted(async () => {
   updateClock()
   clockInterval = setInterval(updateClock, 60000)
+  // Initialize scroll chevron state after DOM renders
+  setTimeout(updateScrollState, 100)
 
   // Check for LAN setup completion flag
   const lanSetupComplete = localStorage.getItem('giljo_lan_setup_complete')
@@ -585,26 +635,81 @@ onUnmounted(() => {
   margin-bottom: 20px;
 }
 
-.product-filter {
+/* ═══ PRODUCT FILTER PILLS ═══ */
+.product-filter-row {
   display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 20px;
 }
 
-.product-toggle {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+.product-filter-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 4px 0;
 }
 
-.product-toggle :deep(.v-btn) {
-  text-transform: none;
-  font-size: 0.8rem;
-  letter-spacing: 0;
+.product-filter-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.product-filter-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
   color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.2s, background 0.2s;
 }
 
-.product-toggle :deep(.v-btn--active) {
-  color: var(--color-brand-yellow, #ffc300);
-  background: rgba(255, 195, 0, 0.12);
+.product-filter-chevron:hover {
+  color: $color-brand-yellow;
+  background: rgba($color-brand-yellow, 0.08);
+}
+
+.product-filter-chevron--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.product-filter-row .pill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: $border-radius-pill;
+  padding: 6px 16px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  white-space: nowrap;
+  --smooth-border-color: #{$color-pill-border};
+}
+
+.product-filter-row .pill-toggle:hover {
+  color: $color-text-hover;
+}
+
+.product-filter-row .pill-toggle--active,
+.product-filter-row .pill-toggle--active:hover {
+  background: rgba($color-brand-yellow, 0.12);
+  color: $color-brand-yellow;
+  box-shadow: none;
 }
 
 .dash-time {
