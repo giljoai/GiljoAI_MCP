@@ -467,7 +467,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useTaskStore } from '@/stores/tasks'
 import { useProductStore } from '@/stores/products'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -479,6 +480,7 @@ import { useFormatDate } from '@/composables/useFormatDate'
 import { useTaskCrud } from '@/composables/useTaskCrud'
 
 // Stores
+const route = useRoute()
 const taskStore = useTaskStore()
 const productStore = useProductStore()
 const { formatDateWithTime } = useFormatDate()
@@ -689,6 +691,18 @@ onMounted(async () => {
     console.error('Failed to initialize TasksView:', error)
   }
 })
+
+// Re-fetch when active product changes while already on this page
+watch(
+  () => productStore.currentProductId,
+  async () => {
+    try {
+      await fetchTasks()
+    } catch (error) {
+      console.error('Failed to refresh tasks on product change:', error)
+    }
+  },
+)
 </script>
 
 <style lang="scss" scoped>
