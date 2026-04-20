@@ -406,6 +406,10 @@ export const api = {
     getDatabase: () => apiClient.get('/api/v1/settings/database'),
     testDatabase: () => apiClient.get('/api/v1/config/health/database'),
 
+    // General settings (Settings table, not legacy config)
+    getGeneral: () => apiClient.get('/api/v1/settings/general'),
+    updateGeneral: (data) => apiClient.put('/api/v1/settings/general', { settings: data }),
+
     // User settings - cookie domain management
     getCookieDomains: () => apiClient.get('/api/v1/user/settings/cookie-domains'),
     addCookieDomain: (domain) => apiClient.post('/api/v1/user/settings/cookie-domains', { domain }),

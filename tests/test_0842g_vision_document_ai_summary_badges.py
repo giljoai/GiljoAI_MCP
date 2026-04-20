@@ -10,6 +10,7 @@ import pytest
 from api.endpoints import vision_documents as vision_document_endpoints
 from giljo_mcp.models import Product
 from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from giljo_mcp.services.product_vision_service import ProductVisionService
 
 
 @pytest.mark.asyncio
@@ -58,13 +59,15 @@ async def test_list_vision_documents_includes_ai_summary_badge_metadata(db_sessi
     )
     await db_session.commit()
 
+    # BE-5022b: endpoint now takes vision_service (ProductVisionService), not vision_repo
+    vision_service = ProductVisionService(db_manager=db_manager, tenant_key=test_tenant_key)
     response = await vision_document_endpoints.list_vision_documents(
         product_id=product.id,
         active_only=True,
         current_user=None,
         db=db_session,
         tenant_key=test_tenant_key,
-        vision_repo=repo,
+        vision_service=vision_service,
     )
 
     assert len(response) == 1
@@ -119,12 +122,14 @@ async def test_get_vision_document_includes_ai_summary_badge_metadata(db_session
     )
     await db_session.commit()
 
+    # BE-5022b: endpoint now takes vision_service (ProductVisionService), not vision_repo
+    vision_service = ProductVisionService(db_manager=db_manager, tenant_key=test_tenant_key)
     response = await vision_document_endpoints.get_vision_document(
         document_id=document.id,
         current_user=None,
         db=db_session,
         tenant_key=test_tenant_key,
-        vision_repo=repo,
+        vision_service=vision_service,
     )
 
     assert response.has_ai_summaries is True

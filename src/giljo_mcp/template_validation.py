@@ -8,10 +8,6 @@
 import re
 from typing import Optional
 
-from sqlalchemy.orm import Session
-
-from giljo_mcp.models import AgentTemplate
-
 
 def slugify_name(role: str, suffix: Optional[str] = None) -> str:
     """Generate agent name from role and optional suffix.
@@ -28,91 +24,6 @@ def slugify_name(role: str, suffix: Optional[str] = None) -> str:
         suffix_clean = re.sub(r"[^a-z0-9-]", "", suffix.lower().replace("_", "-").replace(" ", "-"))
         return f"{role}-{suffix_clean}"
     return role
-
-
-def validate_agent_name(name: str, tenant_key: str, db: Session, exclude_id: Optional[str] = None) -> tuple[bool, str]:
-    """Validate agent name format and uniqueness.
-
-    Args:
-        name: Proposed agent name
-        tenant_key: Tenant isolation key
-        db: Database session
-        exclude_id: Template ID to exclude from uniqueness check (for updates)
-
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
-    # Check format: lowercase letters, numbers, hyphens only
-    if not re.match(r"^[a-z0-9]+(-[a-z0-9]+)*$", name):
-        return False, "Name must use lowercase letters, numbers, and hyphens only"
-
-    # Check length
-    if len(name) > 100:
-        return False, "Name must be 100 characters or less"
-
-    # Check uniqueness within tenant
-    query = db.query(AgentTemplate).filter_by(tenant_key=tenant_key, name=name)
-
-    if exclude_id:
-        query = query.filter(AgentTemplate.id != exclude_id)
-
-    existing = query.first()
-    if existing:
-        return False, f"Agent name '{name}' already exists"
-
-    return True, ""
-
-
-def validate_system_prompt(content: str) -> tuple[bool, str]:
-    """Validate system prompt content.
-
-    Args:
-        content: System prompt text
-
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
-    if not content or not content.strip():
-        return False, "System prompt is required"
-
-    if len(content.strip()) < 20:
-        return False, "System prompt is too short (minimum 20 characters)"
-
-    return True, ""
-
-
-def can_activate_role(role: str, tenant_key: str, db: Session, exclude_id: Optional[str] = None) -> tuple[bool, str]:
-    """Check if activating this role would exceed 8-role limit.
-
-    Args:
-        role: Role to activate
-        tenant_key: Tenant isolation key
-        db: Database session
-        exclude_id: Template ID to exclude from count (for updates)
-
-    Returns:
-        Tuple of (can_activate, error_message)
-    """
-    # Count currently active distinct roles
-    query = db.query(AgentTemplate.role).filter_by(tenant_key=tenant_key, is_active=True).distinct()
-
-    if exclude_id:
-        query = query.filter(AgentTemplate.id != exclude_id)
-
-    active_roles = {row[0] for row in query.all()}
-
-    # If this role is already active elsewhere, allow toggle
-    if role in active_roles:
-        return True, ""
-
-    # If we have 8 distinct active roles, block new role activation
-    if len(active_roles) >= 8:
-        return (
-            False,
-            f"Maximum 8 active agent roles allowed (currently {len(active_roles)}). Deactivate another role first.",
-        )
-
-    return True, ""
 
 
 def get_role_color(role: str) -> str:

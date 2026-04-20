@@ -1,4 +1,3 @@
-import { useAgentStore } from '../agents'
 import { useAgentJobsStore } from '../agentJobsStore'
 import { useNotificationStore } from '../notifications'
 
@@ -13,54 +12,50 @@ export const AGENT_EVENT_ROUTES = {
   'agent:update': {
     handler: async (payload, { storeRegistry } = {}) => {
       const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
-      const agentsStore = storeRegistry?.agents?.() ?? useAgentStore()
 
       agentJobsStore.handleUpdated?.(payload)
-      agentsStore.handleRealtimeUpdate?.(payload)
+      agentJobsStore.handleRealtimeUpdate?.(payload)
     },
   },
   'agent:status_changed': { store: 'agentJobs', action: 'handleStatusChanged' },
   'agent:spawn': {
     handler: async (payload, { storeRegistry } = {}) => {
       const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
-      const agentsStore = storeRegistry?.agents?.() ?? useAgentStore()
 
       const normalized = payload?.agent && typeof payload.agent === 'object'
         ? { ...payload.agent, project_id: payload.project_id, tenant_key: payload.tenant_key }
         : payload
 
       agentJobsStore.handleCreated?.(normalized)
-      agentsStore.handleAgentSpawn?.(normalized)
+      agentJobsStore.handleAgentSpawn?.(normalized)
     },
   },
   'agent:created': {
     handler: async (payload, { storeRegistry } = {}) => {
       const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
-      const agentsStore = storeRegistry?.agents?.() ?? useAgentStore()
 
       const normalized = payload?.agent && typeof payload.agent === 'object'
         ? { ...payload.agent, project_id: payload.project_id, tenant_key: payload.tenant_key }
         : payload
 
       agentJobsStore.handleCreated?.(normalized)
-      agentsStore.handleAgentSpawn?.(normalized)
+      agentJobsStore.handleAgentSpawn?.(normalized)
     },
   },
   'agent:complete': {
     handler: async (payload, { storeRegistry } = {}) => {
       const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
-      const agentsStore = storeRegistry?.agents?.() ?? useAgentStore()
 
       agentJobsStore.handleUpdated?.({ ...payload, status: 'complete' })
-      agentsStore.handleAgentComplete?.(payload)
+      agentJobsStore.handleAgentComplete?.(payload)
     },
   },
   'agent:mission_updated': { store: 'agentJobs', action: 'handleUpdated' },
-  'agent:health_recovered': { store: 'agents', action: 'handleHealthRecovered' },
+  'agent:health_recovered': { store: 'agentJobs', action: 'handleHealthRecovered' },
   'agent:health_alert': {
     handler: async (payload) => {
-      const agentsStore = useAgentStore()
-      agentsStore.handleHealthAlert?.(payload)
+      const agentJobsStore = useAgentJobsStore()
+      agentJobsStore.handleHealthAlert?.(payload)
 
       const {
         health_state,

@@ -19,10 +19,10 @@ Usage:
     from giljo_mcp.logging import logger, ErrorCode
 
     logger.error(
-        "authentication_failed",
-        error_code=ErrorCode.AUTH_INVALID_CREDENTIALS.value,
-        user_id=user_id,
-        ip_address=request.client.host
+        "authentication_failed error_code=%s user_id=%s ip_address=%s",
+        ErrorCode.AUTH_INVALID_CREDENTIALS.value,
+        user_id,
+        request.client.host,
     )
 """
 

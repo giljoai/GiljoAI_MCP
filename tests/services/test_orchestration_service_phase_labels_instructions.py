@@ -45,7 +45,7 @@ class TestOrchestratorPhaseInstructions:
         )
 
         # Get orchestrator instructions
-        instructions = await service.get_orchestrator_instructions(
+        instructions = await service._mission.get_orchestrator_instructions(
             job_id=spawn_result.job_id,
             tenant_key=test_tenant_key,
         )
@@ -76,7 +76,7 @@ class TestOrchestratorPhaseInstructions:
         )
 
         # Get orchestrator instructions
-        instructions = await service.get_orchestrator_instructions(
+        instructions = await service._mission.get_orchestrator_instructions(
             job_id=spawn_result.job_id,
             tenant_key=test_tenant_key,
         )
@@ -101,7 +101,7 @@ class TestOrchestratorPhaseInstructions:
             tenant_key=test_tenant_key,
         )
 
-        instructions = await service.get_orchestrator_instructions(
+        instructions = await service._mission.get_orchestrator_instructions(
             job_id=spawn_result.job_id,
             tenant_key=test_tenant_key,
         )
@@ -135,7 +135,7 @@ class TestOrchestratorPhaseInstructions:
             tenant_key=test_tenant_key,
         )
 
-        instructions = await service.get_orchestrator_instructions(
+        instructions = await service._mission.get_orchestrator_instructions(
             job_id=spawn_result.job_id,
             tenant_key=test_tenant_key,
         )

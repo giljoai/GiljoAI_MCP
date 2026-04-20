@@ -342,6 +342,18 @@ class SetupService {
 
   // Network adapters detection removed for v3.0 unified architecture
 
+  // =========================================================================
+  // API wrapper methods (Serena, Git)
+  //
+  // These methods use dynamic import('@/services/api') to avoid a circular
+  // dependency: api.js imports setupService for fresh-install detection,
+  // so setupService cannot statically import api. The wrappers also add
+  // [SETUP_SERVICE] log prefixes for filtered debugging and re-throw so
+  // callers retain normal error handling. Do NOT collapse these into
+  // direct api calls at the call sites -- the circular dependency will
+  // break the build.
+  // =========================================================================
+
   /**
    * Toggle Serena MCP prompt injection on/off
    * @param {boolean} enabled - Whether to enable Serena prompts

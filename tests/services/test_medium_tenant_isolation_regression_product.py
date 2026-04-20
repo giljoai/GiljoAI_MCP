@@ -50,7 +50,7 @@ async def test_cascade_impact_blocks_cross_tenant(two_tenant_products):
     )
 
     with pytest.raises(ResourceNotFoundError):
-        await service.get_cascade_impact(product_id=data["product_b"].id)
+        await service.memory.get_cascade_impact(product_id=data["product_b"].id)
 
 
 @pytest.mark.tenant_isolation
@@ -64,7 +64,7 @@ async def test_cascade_impact_same_tenant_counts_correctly(two_tenant_products):
         test_session=data["db_session"],
     )
 
-    result = await service.get_cascade_impact(product_id=data["product_a"].id)
+    result = await service.memory.get_cascade_impact(product_id=data["product_a"].id)
 
     assert result.total_projects >= 1
     assert result.total_tasks >= 1
@@ -94,7 +94,7 @@ async def test_product_statistics_blocks_cross_tenant(two_tenant_products):
     )
 
     with pytest.raises(ResourceNotFoundError):
-        await service.get_product_statistics(product_id=data["product_b"].id)
+        await service.memory.get_product_statistics(product_id=data["product_b"].id)
 
 
 @pytest.mark.tenant_isolation
@@ -108,7 +108,7 @@ async def test_product_statistics_same_tenant_counts_correctly(two_tenant_produc
         test_session=data["db_session"],
     )
 
-    result = await service.get_product_statistics(product_id=data["product_a"].id)
+    result = await service.memory.get_product_statistics(product_id=data["product_a"].id)
 
     assert result.project_count >= 1
     assert result.task_count >= 1

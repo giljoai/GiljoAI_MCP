@@ -20,7 +20,6 @@ import logging
 from contextlib import asynccontextmanager
 
 import bcrypt
-from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -32,6 +31,7 @@ from giljo_mcp.exceptions import (
     ValidationError,
 )
 from giljo_mcp.models.auth import User
+from giljo_mcp.repositories.user_repository import UserRepository
 
 
 logger = logging.getLogger(__name__)
@@ -67,6 +67,7 @@ class UserAuthService:
         self.tenant_key = tenant_key
         self._websocket_manager = websocket_manager
         self._session = session
+        self._repo = UserRepository()
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def _get_session(self):
@@ -129,9 +130,7 @@ class UserAuthService:
             ValidationError: Current password not provided
             AuthenticationError: Current password incorrect
         """
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
 
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
@@ -148,7 +147,7 @@ class UserAuthService:
         user.password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         user.must_change_password = False  # Clear flag after successful change
 
-        await session.commit()
+        await self._repo.commit(session)
 
         self._logger.info(f"Password changed for user: {user.username}")
 
@@ -186,9 +185,7 @@ class UserAuthService:
         Raises:
             ResourceNotFoundError: User not found
         """
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
 
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
@@ -232,11 +229,7 @@ class UserAuthService:
         Returns:
             True if username exists, False otherwise
         """
-        stmt = select(User).where(User.username == username)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
-
-        return user is not None
+        return await self._repo.check_username_exists(session, username)
 
     async def check_email_exists(self, email: str) -> bool:
         """
@@ -267,11 +260,7 @@ class UserAuthService:
         Returns:
             True if email exists, False otherwise
         """
-        stmt = select(User).where(User.email == email)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
-
-        return user is not None
+        return await self._repo.check_email_exists(session, email)
 
     # ============================================================================
     # Role Management
@@ -325,20 +314,14 @@ class UserAuthService:
                 context={"new_role": new_role, "valid_roles": valid_roles},
             )
 
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
 
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Check if this is the last admin (prevent lockout)
         if user.role == "admin" and new_role != "admin":
-            stmt = select(func.count(User.id)).where(
-                and_(User.tenant_key == self.tenant_key, User.role == "admin", User.is_active, User.id != user_id)
-            )
-            admin_count_result = await session.execute(stmt)
-            admin_count = admin_count_result.scalar() or 0
+            admin_count = await self._repo.count_admins_excluding(session, self.tenant_key, user_id)
 
             if admin_count == 0:
                 raise AuthorizationError(
@@ -349,8 +332,7 @@ class UserAuthService:
         # Update role
         old_role = user.role
         user.role = new_role
-        await session.commit()
-        await session.refresh(user)
+        await self._repo.commit_and_refresh(session, user)
 
         self._logger.info(f"Changed role for user {user.username}: {old_role} -> {new_role}")
 

@@ -8,10 +8,11 @@
 Handover 0840c: Reads from ProductArchitecture table (normalized from config_data JSONB).
 Always returns FULL architecture data (no truncation).
 """
+# Read-only tool -- uses direct session.execute() for SELECT queries (no writes)
 
+import logging
 from typing import Any
 
-import structlog
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
@@ -19,7 +20,7 @@ from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models.products import Product
 
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def estimate_tokens(data: Any) -> int:
@@ -49,10 +50,10 @@ async def get_architecture(
     Multi-Tenant Isolation:
         All queries filter by tenant_key and product_id.
     """
-    logger.info("fetching_architecture_context", product_id=product_id, tenant_key=tenant_key)
+    logger.info("fetching_architecture_context product_id=%s tenant_key=%s", product_id, tenant_key)
 
     if db_manager is None:
-        logger.error("db_manager is required", operation="get_architecture")
+        logger.error("db_manager is required operation=get_architecture")
         raise ValueError("db_manager parameter is required")
 
     async with db_manager.get_session_async() as session:
@@ -99,11 +100,10 @@ async def get_architecture(
         total_tokens = estimate_tokens(data)
 
         logger.info(
-            "architecture_fetched",
-            product_id=product_id,
-            tenant_key=tenant_key,
-            has_architecture=True,
-            estimated_tokens=total_tokens,
+            "architecture_fetched product_id=%s tenant_key=%s has_architecture=True estimated_tokens=%s",
+            product_id,
+            tenant_key,
+            total_tokens,
         )
 
         return {

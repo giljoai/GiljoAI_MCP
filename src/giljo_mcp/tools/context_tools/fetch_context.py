@@ -18,10 +18,10 @@ Token Budget Savings:
 - After: 1 tool schema x ~180 tokens = ~180 tokens consumed at agent startup
 - Savings: ~720 tokens available for actual work
 """
+# Read-only tool -- uses direct session.execute() for SELECT queries (no writes)
 
+import logging
 from typing import Any
-
-import structlog
 
 from giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _RAW_DEPTH_CONFIG
 from giljo_mcp.database import DatabaseManager
@@ -40,7 +40,7 @@ from giljo_mcp.tools.context_tools.get_testing import get_testing
 from giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
 
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # Category to internal tool mapping
 CATEGORY_TOOLS = {
@@ -132,7 +132,7 @@ async def _is_category_enabled(
             # No row means default enabled
             return enabled if enabled is not None else True
     except Exception:  # Broad catch: fail-open for category toggle, non-critical path
-        logger.error("category_toggle_check_failed", category=category, tenant_key=tenant_key, exc_info=True)
+        logger.error("category_toggle_check_failed category=%s tenant_key=%s", category, tenant_key, exc_info=True)
         return True  # Fail open — don't block context on toggle errors
 
 
@@ -172,11 +172,7 @@ async def _load_user_depth_config(
             user = result.scalar_one_or_none()
 
             if not user:
-                logger.debug(
-                    "depth_config_not_found",
-                    tenant_key=tenant_key,
-                    user_found=False,
-                )
+                logger.debug("depth_config_not_found tenant_key=%s user_found=False", tenant_key)
                 return None
 
             # Handover 0840d: Read depth from columns, normalize keys to internal format
@@ -197,24 +193,13 @@ async def _load_user_depth_config(
             # Normalize vision_documents "optional" -> "light" (same as protocol_builder)
             if normalized.get("vision_documents") == "optional":
                 normalized["vision_documents"] = "light"
-                logger.debug(
-                    "depth_config_vision_normalized",
-                    tenant_key=tenant_key,
-                )
+                logger.debug("depth_config_vision_normalized tenant_key=%s", tenant_key)
 
-            logger.info(
-                "depth_config_loaded_from_db",
-                tenant_key=tenant_key,
-                depth_keys=list(normalized.keys()),
-            )
+            logger.info("depth_config_loaded_from_db tenant_key=%s depth_keys=%s", tenant_key, list(normalized.keys()))
             return normalized
 
     except Exception:  # Broad catch: fail-open for depth config, returns None fallback
-        logger.error(
-            "depth_config_load_failed",
-            tenant_key=tenant_key,
-            exc_info=True,
-        )
+        logger.error("depth_config_load_failed tenant_key=%s", tenant_key, exc_info=True)
         return None
 
 
@@ -301,18 +286,18 @@ async def fetch_context(
         )
     """
     logger.info(
-        "fetch_context_started",
-        product_id=product_id,
-        tenant_key=tenant_key,
-        project_id=project_id,
-        categories=categories,
-        format=output_format,
-        agent_name=agent_name,
+        "fetch_context_started product_id=%s tenant_key=%s project_id=%s categories=%s format=%s agent_name=%s",
+        product_id,
+        tenant_key,
+        project_id,
+        categories,
+        output_format,
+        agent_name,
     )
 
     # IMP-2: Categories parameter is required -- agents must be explicit
     if categories is None:
-        logger.warning("fetch_context_missing_category", tenant_key=tenant_key)
+        logger.warning("fetch_context_missing_category tenant_key=%s", tenant_key)
         return {
             "error": "CATEGORIES_REQUIRED",
             "message": "categories parameter is required. Pass one or more category names.",
@@ -323,7 +308,7 @@ async def fetch_context(
 
     # Reject "all" -- forces agents to be explicit about what they need
     if "all" in categories:
-        logger.warning("fetch_context_all_rejected", tenant_key=tenant_key)
+        logger.warning("fetch_context_all_rejected tenant_key=%s", tenant_key)
         return {
             "error": "ALL_NOT_ALLOWED",
             "message": (
@@ -338,7 +323,7 @@ async def fetch_context(
     # Validate all requested categories upfront
     invalid = [c for c in categories if c not in CATEGORY_TOOLS]
     if invalid:
-        logger.warning("invalid_categories", invalid_categories=invalid, valid_categories=ALL_CATEGORIES)
+        logger.warning("invalid_categories invalid=%s valid=%s", invalid, ALL_CATEGORIES)
         raise ValidationError(f"Invalid categories: {invalid}. Valid categories: {ALL_CATEGORIES}")
 
     # Resolve effective depth settings (Handover 0823b)
@@ -364,7 +349,7 @@ async def fetch_context(
         if db_manager:
             enabled = await _is_category_enabled(category, tenant_key, db_manager)
             if not enabled:
-                logger.info("fetch_context_category_disabled", category=category, tenant_key=tenant_key)
+                logger.info("fetch_context_category_disabled category=%s tenant_key=%s", category, tenant_key)
                 continue
 
         try:
@@ -386,7 +371,7 @@ async def fetch_context(
             if directive:
                 all_directives[category] = directive
         except Exception as e:  # Broad catch: tool boundary, logs per-category errors
-            logger.error("category_fetch_error", category=category, error=str(e), exc_info=True)
+            logger.error("category_fetch_error category=%s error=%s", category, e, exc_info=True)
             all_errors.append({"category": category, "error": str(e)})
 
     # Build response
@@ -421,10 +406,10 @@ async def fetch_context(
         response["errors"] = all_errors
 
     logger.info(
-        "fetch_context_completed",
-        categories_requested=list(categories),
-        categories_returned=categories_returned,
-        error_count=len(all_errors),
+        "fetch_context_completed requested=%s returned=%s error_count=%d",
+        list(categories),
+        categories_returned,
+        len(all_errors),
     )
 
     return response

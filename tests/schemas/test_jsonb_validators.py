@@ -19,7 +19,6 @@ from giljo_mcp.schemas.jsonb_validators import (
     SETTINGS_CATEGORY_VALIDATORS,
     AgentExecutionResult,
     AgentJobMetadata,
-    CloseoutChecklistItem,
     GitIntegrationSettings,
     IntegrationsSettingsData,
     ProductMemoryConfig,
@@ -28,12 +27,9 @@ from giljo_mcp.schemas.jsonb_validators import (
     SecuritySettingsData,
     SerenaMcpSettings,
     validate_behavioral_rules,
-    validate_closeout_checklist,
-    validate_execution_result,
     validate_git_commits,
     validate_settings_by_category,
     validate_success_criteria,
-    validate_template_variables,
 )
 
 
@@ -95,6 +91,11 @@ class TestProductMemoryConfig:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# AgentExecutionResult — model tests (validator function removed, model kept)
+# ---------------------------------------------------------------------------
+
+
 class TestAgentExecutionResult:
     def test_valid_full(self):
         result = AgentExecutionResult(
@@ -115,57 +116,6 @@ class TestAgentExecutionResult:
     def test_extra_fields_allowed(self):
         result = AgentExecutionResult(summary="Done", extra_field="extra_value")
         assert result.model_dump()["extra_field"] == "extra_value"
-
-    def test_validate_execution_result_none(self):
-        assert validate_execution_result(None) is None
-
-    def test_validate_execution_result_valid(self):
-        data = {"summary": "Implemented feature", "artifacts": ["src/foo.py"], "commits": ["deadbeef"]}
-        out = validate_execution_result(data)
-        assert out["summary"] == "Implemented feature"
-        assert out["artifacts"] == ["src/foo.py"]
-
-    def test_validate_execution_result_rejects_bad_artifacts_type(self):
-        with pytest.raises((ValidationError, TypeError, ValueError)):
-            validate_execution_result({"artifacts": "not-a-list"})
-
-
-# ---------------------------------------------------------------------------
-# CloseoutChecklistItem — new validator
-# ---------------------------------------------------------------------------
-
-
-class TestCloseoutChecklistItem:
-    def test_valid_item(self):
-        item = CloseoutChecklistItem(task="Close all open PRs", completed=True)
-        assert item.task == "Close all open PRs"
-        assert item.completed is True
-
-    def test_completed_defaults_to_false(self):
-        item = CloseoutChecklistItem(task="Review documentation")
-        assert item.completed is False
-
-    def test_task_required(self):
-        with pytest.raises(ValidationError):
-            CloseoutChecklistItem()
-
-    def test_validate_closeout_checklist_none(self):
-        assert validate_closeout_checklist(None) is None
-
-    def test_validate_closeout_checklist_valid_list(self):
-        data = [
-            {"task": "Deploy to staging", "completed": True},
-            {"task": "Send release notes", "completed": False},
-        ]
-        out = validate_closeout_checklist(data)
-        assert len(out) == 2
-        assert out[0]["task"] == "Deploy to staging"
-        assert out[0]["completed"] is True
-        assert out[1]["completed"] is False
-
-    def test_validate_closeout_checklist_rejects_missing_task(self):
-        with pytest.raises(ValidationError):
-            validate_closeout_checklist([{"completed": False}])
 
 
 # ---------------------------------------------------------------------------
@@ -216,27 +166,6 @@ class TestValidateSuccessCriteria:
     def test_rejects_int_item(self):
         with pytest.raises(TypeError, match="success_criteria items must be strings"):
             validate_success_criteria([100])
-
-
-# ---------------------------------------------------------------------------
-# validate_template_variables
-# ---------------------------------------------------------------------------
-
-
-class TestValidateTemplateVariables:
-    def test_none_returns_none(self):
-        assert validate_template_variables(None) is None
-
-    def test_empty_list(self):
-        assert validate_template_variables([]) == []
-
-    def test_valid_string_list(self):
-        variables = ["project_name", "tenant_key"]
-        assert validate_template_variables(variables) == variables
-
-    def test_rejects_non_string_item(self):
-        with pytest.raises(TypeError, match="template variables items must be strings"):
-            validate_template_variables([{"name": "project_name"}])
 
 
 # ---------------------------------------------------------------------------

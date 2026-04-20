@@ -24,11 +24,11 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from api.websocket import WebSocketManager
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import Project
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.monitoring.health_config import AgentHealthStatus, HealthCheckConfig
+from giljo_mcp.protocols.websocket import WebSocketBroadcaster
 
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ class AgentHealthMonitor:
     """
 
     def __init__(
-        self, db_manager: DatabaseManager, ws_manager: WebSocketManager, config: HealthCheckConfig | None = None
+        self, db_manager: DatabaseManager, ws_manager: WebSocketBroadcaster, config: HealthCheckConfig | None = None
     ):
         """
         Initialize health monitor.

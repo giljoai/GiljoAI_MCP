@@ -20,11 +20,12 @@ Backward Compatibility:
 - "moderate" maps to "medium"
 - "heavy" maps to "medium"
 """
+# Read-only tool -- uses direct session.execute() for SELECT queries (no writes)
 
+import logging
 from decimal import Decimal
 from typing import Any, Optional
 
-import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -32,7 +33,7 @@ from sqlalchemy.orm import selectinload
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import Product
 from giljo_mcp.models.context import MCPContextIndex
-from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from giljo_mcp.services.product_vision_service import ProductVisionService
 from giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET, EnhancedChunker
 
 
@@ -42,7 +43,7 @@ DEPTH_RATIO_MAP: dict[str, Decimal] = {
 }
 
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def estimate_tokens(data: Any) -> int:
@@ -142,10 +143,10 @@ async def _get_summary_response(
     """
     if depth not in DEPTH_RATIO_MAP:
         logger.warning(
-            "invalid_depth_for_summary",
-            product_id=product_id,
-            depth=depth,
-            operation="get_vision_document",
+            "invalid_depth_for_summary product_id=%s depth=%s operation=%s",
+            product_id,
+            depth,
+            "get_vision_document",
         )
         return {
             "source": "vision_documents",
@@ -162,22 +163,24 @@ async def _get_summary_response(
     summary_tokens: Optional[int] = None
 
     if session is not None and db_manager is not None:
-        repo = VisionDocumentRepository(db_manager)
-        product_summaries = await repo.get_product_summaries(
-            session=session,
+        vision_service = ProductVisionService(
+            db_manager=db_manager,
             tenant_key=tenant_key,
+        )
+        product_summaries = await vision_service.get_product_summaries(
             product_id=product_id,
             ratio=ratio,
+            session=session,
         )
         if product_summaries:
             summary_text, summary_tokens = await _build_aggregated_summary(product, product_summaries)
             logger.info(
-                "per_document_summaries_fetched",
-                product_id=product_id,
-                depth=depth,
-                num_summaries=len(product_summaries),
-                tokens=summary_tokens,
-                compression=compression,
+                "per_document_summaries_fetched product_id=%s depth=%s num_summaries=%s tokens=%s compression=%s",
+                product_id,
+                depth,
+                len(product_summaries),
+                summary_tokens,
+                compression,
             )
 
     # ---- Fallback: Product consolidated columns (Handover 0377) ----
@@ -191,11 +194,11 @@ async def _get_summary_response(
 
     if not summary_text:
         logger.warning(
-            "consolidated_summary_not_available",
-            product_id=product_id,
-            depth=depth,
-            consolidated_at=product.consolidated_at,
-            operation="get_vision_document",
+            "consolidated_summary_not_available product_id=%s depth=%s consolidated_at=%s operation=%s",
+            product_id,
+            depth,
+            product.consolidated_at,
+            "get_vision_document",
         )
         return {
             "source": "vision_documents",
@@ -212,13 +215,13 @@ async def _get_summary_response(
 
     if token_count <= VISION_DELIVERY_BUDGET:
         logger.info(
-            "consolidated_vision_summary_fetched",
-            product_id=product_id,
-            depth=depth,
-            tokens=token_count,
-            compression=compression,
-            consolidated_at=str(product.consolidated_at) if product.consolidated_at else None,
-            consolidated_hash=product.consolidated_vision_hash[:8] if product.consolidated_vision_hash else None,
+            "consolidated_vision_summary_fetched product_id=%s depth=%s tokens=%s compression=%s consolidated_at=%s consolidated_hash=%s",
+            product_id,
+            depth,
+            token_count,
+            compression,
+            str(product.consolidated_at) if product.consolidated_at else None,
+            product.consolidated_vision_hash[:8] if product.consolidated_vision_hash else None,
         )
         return {
             "source": "vision_documents",
@@ -259,15 +262,15 @@ async def _get_summary_response(
     next_offset = offset + 1 if has_more else None
 
     logger.info(
-        "consolidated_vision_summary_paginated",
-        product_id=product_id,
-        depth=depth,
-        total_tokens=token_count,
-        chunk_tokens=chunk_tokens,
-        chunk_index=offset,
-        total_chunks=total_chunks,
-        has_more=has_more,
-        compression=compression,
+        "consolidated_vision_summary_paginated product_id=%s depth=%s total_tokens=%s chunk_tokens=%s chunk_index=%s total_chunks=%s has_more=%s compression=%s",
+        product_id,
+        depth,
+        token_count,
+        chunk_tokens,
+        offset,
+        total_chunks,
+        has_more,
+        compression,
     )
 
     return {
@@ -368,12 +371,12 @@ async def get_vision_document(
         )
     """
     logger.info(
-        "fetching_vision_document_context",
-        product_id=product_id,
-        tenant_key=tenant_key,
-        depth=chunking,
-        offset=offset,
-        limit=limit,
+        "fetching_vision_document_context product_id=%s tenant_key=%s depth=%s offset=%s limit=%s",
+        product_id,
+        tenant_key,
+        chunking,
+        offset,
+        limit,
     )
 
     # Handle "none" depth early
@@ -395,7 +398,7 @@ async def get_vision_document(
         }
 
     if db_manager is None and _test_session is None:
-        logger.error("db_manager is required", operation="get_vision_document")
+        logger.error("db_manager is required operation=get_vision_document")
         raise ValueError("db_manager parameter is required")
 
     return await _get_vision_document_with_session(
@@ -502,7 +505,7 @@ async def _fetch_active_vision_docs(
         }
 
     if not product.vision_documents:
-        logger.debug("no_vision_documents", product_id=product_id, operation="get_vision_document")
+        logger.debug("no_vision_documents product_id=%s operation=get_vision_document", product_id)
         return None, {
             "source": "vision_documents",
             "depth": chunking,
@@ -521,7 +524,7 @@ async def _fetch_active_vision_docs(
 
     active_docs = [doc for doc in product.vision_documents if doc.is_active]
     if not active_docs:
-        logger.debug("no_active_vision_documents", product_id=product_id, operation="get_vision_document")
+        logger.debug("no_active_vision_documents product_id=%s operation=get_vision_document", product_id)
         return None, {
             "source": "vision_documents",
             "depth": chunking,
@@ -588,11 +591,11 @@ def _select_chunks_by_token_budget(
 
         if total_tokens + chunk_tokens > max_tokens:
             logger.debug(
-                "token_budget_reached",
-                total_tokens=total_tokens,
-                max_tokens=max_tokens,
-                chunks_selected=len(selected_chunks),
-                operation="get_vision_document",
+                "token_budget_reached total_tokens=%s max_tokens=%s chunks_selected=%s operation=%s",
+                total_tokens,
+                max_tokens,
+                len(selected_chunks),
+                "get_vision_document",
             )
             break
 
@@ -635,10 +638,10 @@ async def _execute_vision_query(
 
         if not raw_docs:
             logger.warning(
-                "no_vision_content_available",
-                product_id=product_id,
-                total_docs=len(active_docs),
-                operation="get_vision_document",
+                "no_vision_content_available product_id=%s total_docs=%s operation=%s",
+                product_id,
+                len(active_docs),
+                "get_vision_document",
             )
             return {
                 "source": "vision_documents",
@@ -674,13 +677,13 @@ async def _execute_vision_query(
         next_offset = (text_offset + len(page_text)) // chars_per_token if has_more else None
 
         logger.info(
-            "vision_raw_content_fetched",
-            product_id=product_id,
-            depth=chunking,
-            total_docs=len(raw_docs),
-            total_tokens=total_tokens,
-            page_tokens=page_tokens,
-            has_more=has_more,
+            "vision_raw_content_fetched product_id=%s depth=%s total_docs=%s total_tokens=%s page_tokens=%s has_more=%s",
+            product_id,
+            chunking,
+            len(raw_docs),
+            total_tokens,
+            page_tokens,
+            has_more,
         )
 
         return {
@@ -712,10 +715,10 @@ async def _execute_vision_query(
 
     if not all_chunks:
         logger.warning(
-            "chunks_marked_but_not_found",
-            product_id=product_id,
-            vision_doc_ids=[str(vid) for vid in vision_doc_ids],
-            operation="get_vision_document",
+            "chunks_marked_but_not_found product_id=%s vision_doc_ids=%s operation=%s",
+            product_id,
+            [str(vid) for vid in vision_doc_ids],
+            "get_vision_document",
         )
         return {
             "source": "vision_documents",
@@ -749,17 +752,17 @@ async def _execute_vision_query(
     next_offset = offset + len(selected_chunks) if has_more else None
 
     logger.info(
-        "vision_chunks_fetched",
-        product_id=product_id,
-        tenant_key=tenant_key,
-        depth=chunking,
-        offset=offset,
-        limit=max_chunks,
-        returned_chunks=len(selected_chunks),
-        total_chunks=total_chunks,
-        has_more=has_more,
-        total_tokens=sum(c["tokens"] for c in selected_chunks),
-        max_tokens=max_tokens,
+        "vision_chunks_fetched product_id=%s tenant_key=%s depth=%s offset=%s limit=%s returned_chunks=%s total_chunks=%s has_more=%s total_tokens=%s max_tokens=%s",
+        product_id,
+        tenant_key,
+        chunking,
+        offset,
+        max_chunks,
+        len(selected_chunks),
+        total_chunks,
+        has_more,
+        sum(c["tokens"] for c in selected_chunks),
+        max_tokens,
     )
 
     # Build response data (Handover 0352: consistent format)

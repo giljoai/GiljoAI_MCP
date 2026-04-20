@@ -20,7 +20,7 @@ Use specific module imports for clarity and maintainability:
     from giljo_mcp.models.tasks import Task, Message
     from giljo_mcp.models.templates import AgentTemplate
     from giljo_mcp.models.context import MCPContextIndex
-    from giljo_mcp.models.config import Configuration, GitConfig
+    from giljo_mcp.models.config import Configuration, SetupState
 
 ⚠️  LEGACY (Existing Code Only):
 Backward compatibility maintained for 427 existing imports:
@@ -43,8 +43,7 @@ src/giljo_mcp/models/
 ├── templates.py       → AgentTemplate, TemplateArchive, TemplateUsageStats
 ├── tasks.py           → Task, Message
 ├── context.py         → MCPContextIndex
-└── config.py          → Configuration, DiscoveryConfig, GitConfig, GitCommit, SetupState,
-                          OptimizationRule, OptimizationMetric, DownloadToken, ApiMetrics
+└── config.py          → Configuration, GitCommit, SetupState, DownloadToken, ApiMetrics
 
 Migration Strategy:
 -------------------
@@ -89,12 +88,8 @@ from .base import (
 from .config import (
     ApiMetrics,
     Configuration,
-    DiscoveryConfig,
     DownloadToken,
     GitCommit,
-    GitConfig,
-    OptimizationMetric,
-    OptimizationRule,
     SetupState,
 )
 
@@ -168,11 +163,8 @@ __all__ = [
     "Base",
     # Config
     "Configuration",
-    # Config
-    "DiscoveryConfig",
     "DownloadToken",
     "GitCommit",
-    "GitConfig",
     # Context
     "MCPContextIndex",
     "MCPSession",
@@ -182,8 +174,6 @@ __all__ = [
     "MessageRecipient",
     # OAuth
     "OAuthAuthorizationCode",
-    "OptimizationMetric",
-    "OptimizationRule",
     "OrgMembership",
     # Organizations (Handover 0424a)
     "Organization",

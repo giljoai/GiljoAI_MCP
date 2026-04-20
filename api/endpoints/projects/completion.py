@@ -58,7 +58,7 @@ async def can_close_project(
     logger.info("User %s checking can-close for project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Service raises exceptions on error, returns CanCloseResult typed model
-    result = await project_service.can_close_project(project_id=project_id, tenant_key=current_user.tenant_key)
+    result = await project_service.closeout.can_close_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectCanCloseResponse(
         can_close=result.can_close,
@@ -87,7 +87,9 @@ async def generate_closeout_prompt(
     )
 
     # Service raises exceptions on error, returns CloseoutPromptResult typed model
-    result = await project_service.generate_closeout_prompt(project_id=project_id, tenant_key=current_user.tenant_key)
+    result = await project_service.closeout.generate_closeout_prompt(
+        project_id=project_id, tenant_key=current_user.tenant_key
+    )
 
     return ProjectCloseoutPromptResponse(
         prompt=result.prompt,
@@ -156,7 +158,7 @@ async def get_project_closeout_data(
     logger.info("User %s fetching closeout data for project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Service raises exceptions on error, returns CloseoutData typed model
-    result = await project_service.get_closeout_data(project_id=project_id)
+    result = await project_service.closeout.get_closeout_data(project_id=project_id)
 
     return ProjectCloseoutDataResponse(
         project_id=result.project_id,
@@ -194,7 +196,7 @@ async def close_out_project(
     logger.info("User %s closing out project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Close out project via ProjectService (raises exceptions on error)
-    result = await project_service.close_out_project(project_id=project_id, tenant_key=current_user.tenant_key)
+    result = await project_service.closeout.close_out_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     logger.info("Closed out project %s", sanitize(project_id))
 
@@ -231,7 +233,7 @@ async def continue_working(
     logger.info("User %s resuming work on project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Resume work via ProjectService (raises exceptions on error)
-    result = await project_service.continue_working(project_id=project_id, tenant_key=current_user.tenant_key)
+    result = await project_service.lifecycle.continue_working(project_id=project_id, tenant_key=current_user.tenant_key)
 
     logger.info("Resumed work on project %s", sanitize(project_id))
 

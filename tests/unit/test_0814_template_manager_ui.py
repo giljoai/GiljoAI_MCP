@@ -117,17 +117,19 @@ class TestCreateTemplateInjectsCanonicalBootstrap:
         mock_template_service.check_template_name_exists = AsyncMock(return_value=False)
         mock_template_service.get_default_templates_by_role = AsyncMock(return_value=[])
 
-        # Capture the template that gets added to the session
+        # Capture the template that gets persisted via the service
         captured_template = None
-        original_add = session.add
 
-        def capture_add(obj):
+        async def _capture_add_and_commit(sess, template):
             nonlocal captured_template
-            if isinstance(obj, AgentTemplate):
-                captured_template = obj
-            original_add(obj)
+            if isinstance(template, AgentTemplate):
+                captured_template = template
+            sess.add(template)
+            await sess.commit()
+            await sess.refresh(template)
+            return template
 
-        session.add = capture_add
+        mock_template_service.add_and_commit_template = AsyncMock(side_effect=_capture_add_and_commit)
 
         with patch(
             "api.endpoints.templates.crud.get_tenant_and_product_from_user",
@@ -140,7 +142,7 @@ class TestCreateTemplateInjectsCanonicalBootstrap:
                 template_service=mock_template_service,
             )
 
-        assert captured_template is not None, "Template should have been added to session"
+        assert captured_template is not None, "Template should have been persisted via service"
         assert captured_template.system_instructions == canonical, (
             "system_instructions must be the canonical MCP bootstrap, not the value sent by the frontend"
         )
@@ -166,15 +168,17 @@ class TestCreateTemplateInjectsCanonicalBootstrap:
         mock_template_service.get_default_templates_by_role = AsyncMock(return_value=[])
 
         captured_template = None
-        original_add = session.add
 
-        def capture_add(obj):
+        async def _capture_add_and_commit(sess, template):
             nonlocal captured_template
-            if isinstance(obj, AgentTemplate):
-                captured_template = obj
-            original_add(obj)
+            if isinstance(template, AgentTemplate):
+                captured_template = template
+            sess.add(template)
+            await sess.commit()
+            await sess.refresh(template)
+            return template
 
-        session.add = capture_add
+        mock_template_service.add_and_commit_template = AsyncMock(side_effect=_capture_add_and_commit)
 
         with patch(
             "api.endpoints.templates.crud.get_tenant_and_product_from_user",
@@ -225,15 +229,17 @@ class TestCreateTemplateStoresUserInstructions:
         mock_template_service.get_default_templates_by_role = AsyncMock(return_value=[])
 
         captured_template = None
-        original_add = session.add
 
-        def capture_add(obj):
+        async def _capture_add_and_commit(sess, template):
             nonlocal captured_template
-            if isinstance(obj, AgentTemplate):
-                captured_template = obj
-            original_add(obj)
+            if isinstance(template, AgentTemplate):
+                captured_template = template
+            sess.add(template)
+            await sess.commit()
+            await sess.refresh(template)
+            return template
 
-        session.add = capture_add
+        mock_template_service.add_and_commit_template = AsyncMock(side_effect=_capture_add_and_commit)
 
         with patch(
             "api.endpoints.templates.crud.get_tenant_and_product_from_user",
@@ -268,15 +274,17 @@ class TestCreateTemplateStoresUserInstructions:
         mock_template_service.get_default_templates_by_role = AsyncMock(return_value=[])
 
         captured_template = None
-        original_add = session.add
 
-        def capture_add(obj):
+        async def _capture_add_and_commit(sess, template):
             nonlocal captured_template
-            if isinstance(obj, AgentTemplate):
-                captured_template = obj
-            original_add(obj)
+            if isinstance(template, AgentTemplate):
+                captured_template = template
+            sess.add(template)
+            await sess.commit()
+            await sess.refresh(template)
+            return template
 
-        session.add = capture_add
+        mock_template_service.add_and_commit_template = AsyncMock(side_effect=_capture_add_and_commit)
 
         with patch(
             "api.endpoints.templates.crud.get_tenant_and_product_from_user",
@@ -324,18 +332,20 @@ class TestUpdateTemplateRejectsSystemInstructions:
             system_instructions="Attempt to override bootstrap",
         )
 
-        with patch(
-            "api.endpoints.templates.crud.get_tenant_and_product_from_user",
-            return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
+        with (
+            patch(
+                "api.endpoints.templates.crud.get_tenant_and_product_from_user",
+                return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
+            ),
+            pytest.raises(HTTPException) as exc_info,
         ):
-            with pytest.raises(HTTPException) as exc_info:
-                await update_template(
-                    template_id="tmpl-001",
-                    updates=payload,
-                    current_user=user,
-                    session=session,
-                    template_service=mock_template_service,
-                )
+            await update_template(
+                template_id="tmpl-001",
+                updates=payload,
+                current_user=user,
+                session=session,
+                template_service=mock_template_service,
+            )
 
         assert exc_info.value.status_code == 403
         assert "system_instructions" in str(exc_info.value.detail).lower()
@@ -365,18 +375,20 @@ class TestUpdateTemplateRejectsSystemInstructions:
             system_instructions=canonical,
         )
 
-        with patch(
-            "api.endpoints.templates.crud.get_tenant_and_product_from_user",
-            return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
+        with (
+            patch(
+                "api.endpoints.templates.crud.get_tenant_and_product_from_user",
+                return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
+            ),
+            pytest.raises(HTTPException) as exc_info,
         ):
-            with pytest.raises(HTTPException) as exc_info:
-                await update_template(
-                    template_id="tmpl-002",
-                    updates=payload,
-                    current_user=user,
-                    session=session,
-                    template_service=mock_template_service,
-                )
+            await update_template(
+                template_id="tmpl-002",
+                updates=payload,
+                current_user=user,
+                session=session,
+                template_service=mock_template_service,
+            )
 
         assert exc_info.value.status_code == 403
 
@@ -436,7 +448,7 @@ class TestUpdateTemplateAcceptsUserInstructions:
             )
 
         assert existing_template.user_instructions == new_instructions
-        session.commit.assert_awaited_once()
+        mock_template_service.commit_and_refresh_template.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_update_template_creates_archive_for_user_instructions_change(self):

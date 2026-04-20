@@ -140,14 +140,16 @@
 
           <!-- Quick Action Column — play button to activate + launch -->
           <template v-slot:item.quick_action="{ item }">
-            <v-tooltip v-if="normalizeStatus(item.status) === 'inactive'" :text="isProjectStaged(item) ? 'Activate & resume' : 'Activate & launch'">
+            <v-tooltip v-if="normalizeStatus(item.status) === 'inactive'" :text="hasActiveProject ? 'Another project is active — complete or deactivate it first' : (isProjectStaged(item) ? 'Activate & resume' : 'Activate & launch')">
               <template #activator="{ props: ttProps }">
                 <button
                   v-bind="ttProps"
                   type="button"
                   class="play-circle-btn icon-interactive-play"
+                  :class="{ 'play-btn-disabled': hasActiveProject }"
+                  :disabled="hasActiveProject"
                   aria-label="Activate project"
-                  @click.stop="activateAndLaunch(item.id)"
+                  @click.stop="!hasActiveProject && activateAndLaunch(item.id)"
                 >
                   <v-icon size="18">mdi-play</v-icon>
                 </button>
@@ -470,6 +472,7 @@ const projects = computed(() => projectStore.projects)
 const loading = computed(() => projectStore.loading)
 const deletedProjects = computed(() => projectStore.deletedProjects)
 const deletedCount = computed(() => deletedProjects.value.length)
+const hasActiveProject = computed(() => projects.value.some((p) => normalizeStatus(p.status) === 'active'))
 
 // Filters composable
 const {
@@ -1056,6 +1059,12 @@ onMounted(async () => {
 
 .play-circle-btn :deep(.v-icon) {
   color: $color-brand-yellow;
+}
+
+.play-btn-disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* ── Responsive compact elements (hidden by default, shown via media queries) ── */

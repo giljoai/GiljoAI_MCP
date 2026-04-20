@@ -560,7 +560,7 @@ async def change_user_role(
         )
 
     # 0731d: UserService returns User ORM object - use attribute access
-    user = await user_service.change_role(str(user_id), role_data.role)
+    user = await user_service.auth.change_role(str(user_id), role_data.role)
 
     logger.info(f"Changed role for user {user.username} to {user.role}")
 
@@ -611,7 +611,7 @@ async def change_password(
     # Determine if admin is bypassing old password check
     is_admin = current_user.role == "admin" and str(user_id) != str(current_user.id)
 
-    await user_service.change_password(
+    await user_service.auth.change_password(
         str(user_id),
         old_password=password_data.old_password,
         new_password=password_data.new_password,
@@ -956,32 +956,20 @@ async def get_notification_preferences(
 async def update_notification_preferences(
     payload: dict[str, Any],
     current_user: User = Depends(get_current_active_user),
-    db_manager=Depends(get_db_manager),
+    user_service: UserService = Depends(get_user_service),
 ) -> dict[str, Any]:
     """
     Update the current user's notification preferences.
+
+    Sprint 003c: Write routed through UserService (no direct session.commit).
 
     Supported fields:
     - context_tuning_reminder: bool (default: true)
     - tuning_reminder_threshold: int (minimum 3, default: 10)
     """
-    from sqlalchemy import update as sql_update
-
-    from giljo_mcp.config.defaults import DEFAULT_NOTIFICATION_PREFERENCES
-    from giljo_mcp.models.auth import User as UserModel
-
-    prefs = dict(current_user.notification_preferences or DEFAULT_NOTIFICATION_PREFERENCES)
-
-    if "context_tuning_reminder" in payload:
-        prefs["context_tuning_reminder"] = bool(payload["context_tuning_reminder"])
-
-    if "tuning_reminder_threshold" in payload:
-        threshold = int(payload["tuning_reminder_threshold"])
-        prefs["tuning_reminder_threshold"] = max(threshold, 3)
-
-    async with db_manager.get_session_async() as session:
-        stmt = sql_update(UserModel).where(UserModel.id == current_user.id).values(notification_preferences=prefs)
-        await session.execute(stmt)
-        await session.commit()
+    prefs = await user_service.update_notification_preferences(
+        user_id=current_user.id,
+        payload=payload,
+    )
 
     return {"notification_preferences": prefs}

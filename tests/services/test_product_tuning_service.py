@@ -363,13 +363,15 @@ class TestAssembleTuningPromptToggles:
             {"memory_last_n_projects": 3},
         )
 
-        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=all_off):
-            with pytest.raises(ValidationError):
-                await service.assemble_tuning_prompt(
-                    product_id=PRODUCT_ID,
-                    user_id=USER_ID,
-                    sections=["description", "tech_stack", "architecture"],
-                )
+        with (
+            patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=all_off),
+            pytest.raises(ValidationError),
+        ):
+            await service.assemble_tuning_prompt(
+                product_id=PRODUCT_ID,
+                user_id=USER_ID,
+                sections=["description", "tech_stack", "architecture"],
+            )
 
 
 # ============================================================================
@@ -673,7 +675,7 @@ class TestBuildUpdateKwargs:
         from giljo_mcp.services.product_tuning_service import ProductTuningService
 
         service = ProductTuningService.__new__(ProductTuningService)
-        kwargs, sections = service._build_update_kwargs(DRIFT_PROPOSALS)
+        _kwargs, sections = service._build_update_kwargs(DRIFT_PROPOSALS)
 
         assert len(sections) == 4
         assert set(sections) == {"description", "core_features", "quality_standards", "target_platforms"}
@@ -693,9 +695,9 @@ class TestApplyTuningUpdates:
         session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
-        with patch("giljo_mcp.services.product_service.ProductService") as MockPS:
+        with patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls:
             mock_ps_instance = AsyncMock()
-            MockPS.return_value = mock_ps_instance
+            mock_ps_cls.return_value = mock_ps_instance
 
             result = await service.apply_tuning_updates(
                 product_id=PRODUCT_ID,
@@ -723,13 +725,13 @@ class TestApplyTuningUpdates:
 
         no_drift = [{"section": "description", "drift_detected": False, "proposed_value": "x"}]
 
-        with patch("giljo_mcp.services.product_service.ProductService") as MockPS:
+        with patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls:
             result = await service.apply_tuning_updates(
                 product_id=PRODUCT_ID,
                 proposals=no_drift,
             )
 
-        MockPS.return_value.update_product.assert_not_called()
+        mock_ps_cls.return_value.update_product.assert_not_called()
         assert result["applied_count"] == 0
 
     @pytest.mark.asyncio
@@ -744,8 +746,8 @@ class TestApplyTuningUpdates:
         session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
-        with patch("giljo_mcp.services.product_service.ProductService") as MockPS:
-            MockPS.return_value = AsyncMock()
+        with patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls:
+            mock_ps_cls.return_value = AsyncMock()
             await service.apply_tuning_updates(
                 product_id=PRODUCT_ID,
                 proposals=DRIFT_PROPOSALS,
@@ -765,8 +767,8 @@ class TestApplyTuningUpdates:
         session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
-        with patch("giljo_mcp.services.product_service.ProductService") as MockPS:
-            MockPS.return_value = AsyncMock()
+        with patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls:
+            mock_ps_cls.return_value = AsyncMock()
             await service.apply_tuning_updates(
                 product_id=PRODUCT_ID,
                 proposals=DRIFT_PROPOSALS,
@@ -782,15 +784,15 @@ class TestApplyTuningUpdates:
         """Should raise ResourceNotFoundError when product does not exist."""
         from giljo_mcp.services.product_tuning_service import ProductTuningService
 
-        db_manager, session = mock_db_manager
+        db_manager, _session = mock_db_manager
         service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
 
-        with patch("giljo_mcp.services.product_service.ProductService") as MockPS:
+        with patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls:
             mock_ps_instance = AsyncMock()
             mock_ps_instance.update_product.side_effect = ResourceNotFoundError(
                 message="Product not found", context={"product_id": "nonexistent-id"}
             )
-            MockPS.return_value = mock_ps_instance
+            mock_ps_cls.return_value = mock_ps_instance
 
             with pytest.raises(ResourceNotFoundError):
                 await service.apply_tuning_updates(
@@ -842,16 +844,16 @@ class TestTenantIsolation:
         session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
-        with patch("giljo_mcp.services.product_service.ProductService") as MockPS:
+        with patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls:
             mock_ps_instance = AsyncMock()
-            MockPS.return_value = mock_ps_instance
+            mock_ps_cls.return_value = mock_ps_instance
 
             await service.apply_tuning_updates(
                 product_id=PRODUCT_ID,
                 proposals=DRIFT_PROPOSALS,
             )
 
-        MockPS.assert_called_once_with(db_manager, TENANT_KEY)
+        mock_ps_cls.assert_called_once_with(db_manager, TENANT_KEY)
 
 
 # ============================================================================
@@ -913,7 +915,7 @@ class TestProductServiceAllowlist:
             "extraction_custom_instructions",
             "target_platforms",
         }
-        assert _ALLOWED_PRODUCT_FIELDS == expected
+        assert expected == _ALLOWED_PRODUCT_FIELDS
 
 
 class TestValidateProposals:
@@ -1088,3 +1090,134 @@ class TestRelationSectionStringRejection:
         assert "tech_stack" in kwargs
         assert kwargs["tech_stack"] == {"programming_languages": "Python 3.12"}
         assert "tech_stack" in sections
+
+
+# ============================================================================
+# DOTTED-KEY SUB-FIELD SUPPORT (tech_stack.*, architecture.*)
+# ============================================================================
+
+
+class TestBuildUpdateKwargsDottedKeys:
+    """Tests for dotted-key sub-field proposals in _build_update_kwargs."""
+
+    def test_submit_tech_stack_backend_frameworks_only(self, mock_db_manager, mock_websocket_manager):
+        """Dotted key tech_stack.backend_frameworks maps to relation_field and preserves other sub-fields."""
+        from giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, _ = mock_db_manager
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        proposals = [
+            {
+                "section": "tech_stack.backend_frameworks",
+                "drift_detected": True,
+                "proposed_value": "FastAPI, Starlette",
+            }
+        ]
+        kwargs, sections = service._build_update_kwargs(proposals)
+
+        assert kwargs == {"tech_stack": {"backend_frameworks": "FastAPI, Starlette"}}
+        assert "tech_stack.backend_frameworks" in sections
+
+    def test_submit_tech_stack_multiple_subfields(self, mock_db_manager, mock_websocket_manager):
+        """Multiple dotted-key proposals targeting same relation accumulate in one dict."""
+        from giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, _ = mock_db_manager
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        proposals = [
+            {
+                "section": "tech_stack.backend_frameworks",
+                "drift_detected": True,
+                "proposed_value": "FastAPI",
+            },
+            {
+                "section": "tech_stack.databases_storage",
+                "drift_detected": True,
+                "proposed_value": "PostgreSQL 18",
+            },
+        ]
+        kwargs, sections = service._build_update_kwargs(proposals)
+
+        assert kwargs == {"tech_stack": {"backend_frameworks": "FastAPI", "databases_storage": "PostgreSQL 18"}}
+        assert "tech_stack.backend_frameworks" in sections
+        assert "tech_stack.databases_storage" in sections
+
+    def test_submit_architecture_subfield(self, mock_db_manager, mock_websocket_manager):
+        """Dotted key architecture.api_style maps correctly."""
+        from giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, _ = mock_db_manager
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        proposals = [
+            {
+                "section": "architecture.api_style",
+                "drift_detected": True,
+                "proposed_value": "GraphQL",
+            }
+        ]
+        kwargs, sections = service._build_update_kwargs(proposals)
+
+        assert kwargs == {"architecture": {"api_style": "GraphQL"}}
+        assert "architecture.api_style" in sections
+
+    def test_tech_stack_full_dict_still_works(self, mock_db_manager, mock_websocket_manager):
+        """Existing behavior: section 'tech_stack' with full dict proposed_value still works."""
+        from giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, _ = mock_db_manager
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        full_dict = {
+            "programming_languages": "Python 3.12",
+            "backend_frameworks": "FastAPI",
+            "frontend_frameworks": "Vue 3",
+            "databases_storage": "PostgreSQL",
+            "infrastructure": "Docker",
+            "dev_tools": "ruff",
+        }
+        proposals = [
+            {
+                "section": "tech_stack",
+                "drift_detected": True,
+                "proposed_value": full_dict,
+            }
+        ]
+        kwargs, sections = service._build_update_kwargs(proposals)
+
+        assert kwargs == {"tech_stack": full_dict}
+        assert "tech_stack" in sections
+
+
+class TestValidSectionsDottedKeys:
+    """Tests that dotted-key sections pass validation in submit_tuning_review."""
+
+    def test_valid_dotted_tech_stack_key(self):
+        """tech_stack.backend_frameworks is in VALID_SECTIONS."""
+        from giljo_mcp.tools.submit_tuning_review import VALID_SECTIONS
+
+        assert "tech_stack.backend_frameworks" in VALID_SECTIONS
+        assert "tech_stack.frontend_frameworks" in VALID_SECTIONS
+        assert "tech_stack.programming_languages" in VALID_SECTIONS
+        assert "tech_stack.databases_storage" in VALID_SECTIONS
+        assert "tech_stack.infrastructure" in VALID_SECTIONS
+        assert "tech_stack.dev_tools" in VALID_SECTIONS
+
+    def test_valid_dotted_architecture_key(self):
+        """architecture.* keys are in VALID_SECTIONS."""
+        from giljo_mcp.tools.submit_tuning_review import VALID_SECTIONS
+
+        assert "architecture.primary_pattern" in VALID_SECTIONS
+        assert "architecture.design_patterns" in VALID_SECTIONS
+        assert "architecture.api_style" in VALID_SECTIONS
+        assert "architecture.architecture_notes" in VALID_SECTIONS
+        assert "architecture.coding_conventions" in VALID_SECTIONS
+
+    def test_invalid_dotted_key_rejected(self):
+        """tech_stack.nonexistent is NOT in VALID_SECTIONS."""
+        from giljo_mcp.tools.submit_tuning_review import VALID_SECTIONS
+
+        assert "tech_stack.nonexistent" not in VALID_SECTIONS
+        assert "architecture.nonexistent" not in VALID_SECTIONS

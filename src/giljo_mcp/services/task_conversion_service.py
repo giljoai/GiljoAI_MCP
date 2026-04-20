@@ -30,7 +30,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -41,6 +41,7 @@ from giljo_mcp.exceptions import (
     ValidationError,
 )
 from giljo_mcp.models import Project, Task
+from giljo_mcp.repositories.task_repository import TaskRepository
 from giljo_mcp.schemas.service_responses import ConversionResult
 from giljo_mcp.tenant import TenantManager
 
@@ -77,6 +78,7 @@ class TaskConversionService:
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self._session = session  # Store for test transaction isolation
+        self._repo = TaskRepository()
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def _get_session(self):
@@ -182,9 +184,7 @@ class TaskConversionService:
             )
 
         # Get task
-        task_stmt = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
-        task_result = await session.execute(task_stmt)
-        task = task_result.scalar_one_or_none()
+        task = await self._repo.get_task_by_id(session, task_id, tenant_key)
 
         if not task:
             raise ResourceNotFoundError(
@@ -199,11 +199,7 @@ class TaskConversionService:
             )
 
         # Get user for permission check
-        from giljo_mcp.models.auth import User
-
-        user_stmt = select(User).where(User.id == user_id)
-        user_result = await session.execute(user_stmt)
-        user = user_result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id)
 
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
@@ -216,11 +212,7 @@ class TaskConversionService:
             )
 
         # Get active product (required for project creation per Handover 0050)
-        from giljo_mcp.models.products import Product
-
-        product_stmt = select(Product).where(and_(Product.tenant_key == tenant_key, Product.is_active))
-        product_result = await session.execute(product_stmt)
-        active_product = product_result.scalar_one_or_none()
+        active_product = await self._repo.get_active_product(session, tenant_key)
 
         if not active_product:
             raise ValidationError(
@@ -230,11 +222,7 @@ class TaskConversionService:
 
         # Check for existing active project and deactivate it
         # (only ONE project can be active per product - Handover 0050b)
-        existing_active_stmt = select(Project).where(
-            and_(Project.product_id == active_product.id, Project.status == "active")
-        )
-        existing_active_result = await session.execute(existing_active_stmt)
-        existing_active_project = existing_active_result.scalar_one_or_none()
+        existing_active_project = await self._repo.get_active_project_for_product(session, active_product.id)
 
         if existing_active_project:
             self._logger.info(
@@ -255,8 +243,8 @@ class TaskConversionService:
             status="inactive",  # Projects start inactive, user activates when ready
         )
 
-        session.add(new_project)
-        await session.flush()  # Get project ID without committing
+        await self._repo.add_project(session, new_project)
+        await self._repo.flush(session)  # Get project ID without committing
 
         # Mark task as converted and completed
         task.converted_to_project_id = new_project.id
@@ -265,19 +253,17 @@ class TaskConversionService:
         # Handle subtasks if requested
         if include_subtasks:
             # TENANT ISOLATION: Filter subtasks by tenant_key
-            subtask_stmt = select(Task).where(and_(Task.parent_task_id == task_id, Task.tenant_key == tenant_key))
-            subtask_result = await session.execute(subtask_stmt)
-            subtasks = subtask_result.scalars().all()
+            subtasks = await self._repo.get_subtasks(session, task_id, tenant_key)
 
             for subtask in subtasks:
                 subtask.project_id = new_project.id
 
         # Delete the task after successful conversion
-        await session.delete(task)
+        await self._repo.delete_task(session, task)
         self._logger.info(f"Deleted task {task_id} after successful conversion to project {new_project.id}")
 
-        await session.commit()
-        await session.refresh(new_project)
+        await self._repo.commit(session)
+        await self._repo.refresh(session, new_project)
 
         self._logger.info(f"Converted task {task_id} to project {new_project.id} (strategy: {strategy})")
 
@@ -343,8 +329,7 @@ class TaskConversionService:
         if product_id:
             base_query = base_query.where(Task.product_id == product_id)
 
-        result = await session.execute(base_query)
-        tasks = result.scalars().all()
+        tasks = await self._repo.list_tasks(session, base_query)
 
         # Aggregate by product
         summary = {}

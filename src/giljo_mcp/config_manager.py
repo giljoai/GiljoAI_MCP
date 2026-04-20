@@ -835,8 +835,3 @@ class _ConfigManagerHolder:
 def get_config() -> ConfigManager:
     """Get the global configuration manager instance."""
     return _ConfigManagerHolder.get_instance()
-
-
-def set_config(config: ConfigManager):
-    """Set the global configuration manager instance."""
-    _ConfigManagerHolder.set_instance(config)

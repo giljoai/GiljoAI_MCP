@@ -336,8 +336,9 @@ class TestCloseoutGateIntegration:
         mock_entry.id = str(uuid4())
         mock_entry.to_dict.return_value = {"id": str(mock_entry.id)}
 
-        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as MockRepo:
-            repo_instance = MockRepo.return_value
+        # BE-5022b: project_closeout now routes through ProductMemoryService
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryService") as mock_svc_cls:
+            repo_instance = mock_svc_cls.return_value
             repo_instance.get_next_sequence = AsyncMock(return_value=1)
             repo_instance.create_entry = AsyncMock(return_value=mock_entry)
 
@@ -515,7 +516,8 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_entry.id = str(uuid4())
         mock_entry.to_dict.return_value = {"id": str(mock_entry.id)}
 
-        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_cls:
+        # BE-5022b: project_closeout now routes through ProductMemoryService
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryService") as mock_repo_cls:
             repo_instance = mock_repo_cls.return_value
             repo_instance.get_next_sequence = AsyncMock(return_value=1)
             repo_instance.create_entry = AsyncMock(return_value=mock_entry)
@@ -616,7 +618,8 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_entry.id = str(uuid4())
         mock_entry.to_dict.return_value = {"id": str(mock_entry.id)}
 
-        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_cls:
+        # BE-5022b: project_closeout now routes through ProductMemoryService
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryService") as mock_repo_cls:
             repo_instance = mock_repo_cls.return_value
             repo_instance.get_next_sequence = AsyncMock(return_value=1)
             repo_instance.create_entry = AsyncMock(return_value=mock_entry)

@@ -154,7 +154,7 @@ async def test_delete_task_permission_denied(task_service, test_task, db_session
         id=str(uuid4()),
         username=f"otherdev_{uuid4().hex[:6]}",
         email=f"otherdev_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hashpw("Password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        password_hash=bcrypt.hashpw(b"Password123", bcrypt.gensalt()).decode("utf-8"),
         role="developer",
         tenant_key=test_tenant_key,
         is_active=True,

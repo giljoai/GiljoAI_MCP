@@ -18,11 +18,11 @@ import logging
 from typing import Any, ClassVar
 
 from pydantic import ValidationError as PydanticValidationError
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.exceptions import ValidationError
 from giljo_mcp.models.settings import Settings
+from giljo_mcp.repositories.settings_repository import SettingsRepository
 from giljo_mcp.schemas.jsonb_validators import validate_settings_by_category
 
 
@@ -60,6 +60,7 @@ class SettingsService:
     def __init__(self, session: AsyncSession, tenant_key: str):
         self.session = session
         self.tenant_key = tenant_key
+        self._repo = SettingsRepository()
 
     async def get_settings(self, category: str) -> dict[str, Any]:
         """
@@ -79,9 +80,7 @@ class SettingsService:
         if category not in self.VALID_CATEGORIES:
             raise ValidationError(f"Invalid category: {category}. Must be one of {self.VALID_CATEGORIES}")
 
-        stmt = select(Settings).where(and_(Settings.tenant_key == self.tenant_key, Settings.category == category))
-        result = await self.session.execute(stmt)
-        settings = result.scalar_one_or_none()
+        settings = await self._repo.get_by_category(self.session, self.tenant_key, category)
 
         if not settings:
             return {}
@@ -134,17 +133,15 @@ class SettingsService:
         except PydanticValidationError as e:
             raise ValidationError(f"Settings validation failed for category '{category}': {e}") from e
 
-        stmt = select(Settings).where(and_(Settings.tenant_key == self.tenant_key, Settings.category == category))
-        result = await self.session.execute(stmt)
-        settings = result.scalar_one_or_none()
+        settings = await self._repo.get_by_category(self.session, self.tenant_key, category)
 
         if settings:
             settings.settings_data = validated_data
         else:
             settings = Settings(tenant_key=self.tenant_key, category=category, settings_data=validated_data)
-            self.session.add(settings)
+            await self._repo.add(self.session, settings)
 
-        await self.session.commit()
-        await self.session.refresh(settings)
+        await self._repo.commit(self.session)
+        await self._repo.refresh(self.session, settings)
 
         return settings.settings_data

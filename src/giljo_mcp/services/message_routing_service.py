@@ -25,7 +25,6 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -36,9 +35,7 @@ from giljo_mcp.exceptions import (
     RetryExhaustedError,
     ValidationError,
 )
-from giljo_mcp.models import Message, Project
-from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.models import Message
 from giljo_mcp.repositories.message_repository import MessageRepository
 from giljo_mcp.schemas.service_responses import (
     BroadcastResult,
@@ -244,10 +241,7 @@ class MessageRoutingService:
                 context={"operation": "send_message", "project_id": project_id},
             )
 
-        result = await session.execute(
-            select(Project).where(and_(Project.tenant_key == tenant_key, Project.id == project_id))
-        )
-        project = result.scalar_one_or_none()
+        project = await self._repo.get_project(session, tenant_key, project_id)
 
         if not project:
             raise ResourceNotFoundError(
@@ -272,18 +266,7 @@ class MessageRoutingService:
         resolved_to_agents: list[str] = []
         for agent_ref in to_agents:
             if agent_ref == "all":
-                exec_result = await session.execute(
-                    select(AgentExecution)
-                    .join(AgentJob)
-                    .where(
-                        and_(
-                            AgentJob.project_id == project_id,
-                            AgentExecution.status.in_(["waiting", "working", "blocked"]),
-                            AgentExecution.tenant_key == tenant_key,
-                        )
-                    )
-                )
-                executions = exec_result.scalars().all()
+                executions = await self._repo.resolve_broadcast_recipients(session, tenant_key, project_id)
 
                 sender_ref = from_agent or "orchestrator"
                 for execution in executions:
@@ -294,21 +277,7 @@ class MessageRoutingService:
             elif len(agent_ref) == 36 and "-" in agent_ref:
                 resolved_to_agents.append(agent_ref)
             else:
-                exec_result = await session.execute(
-                    select(AgentExecution)
-                    .join(AgentJob)
-                    .where(
-                        and_(
-                            AgentJob.project_id == project_id,
-                            AgentExecution.agent_display_name == agent_ref,
-                            AgentExecution.status.in_(["waiting", "working", "blocked", "complete"]),
-                            AgentExecution.tenant_key == tenant_key,
-                        )
-                    )
-                    .order_by(AgentExecution.started_at.desc())
-                    .limit(1)
-                )
-                execution = exec_result.scalar_one_or_none()
+                execution = await self._repo.resolve_agent_by_display_name(session, tenant_key, project_id, agent_ref)
                 if execution:
                     resolved_to_agents.append(execution.agent_id)
                     self._logger.info(
@@ -331,22 +300,11 @@ class MessageRoutingService:
         """Resolve sender agent reference to display name (Handover 0827a)."""
         sender_display_name = from_agent or "orchestrator"
         if from_agent:
-            sender_lookup = await session.execute(
-                select(AgentExecution.agent_display_name)
-                .join(AgentJob)
-                .where(
-                    and_(
-                        AgentJob.project_id == project.id,
-                        AgentExecution.tenant_key == project.tenant_key,
-                        (AgentExecution.agent_display_name == from_agent) | (AgentExecution.agent_id == from_agent),
-                    )
-                )
-                .order_by(AgentExecution.started_at.desc())
-                .limit(1)
+            resolved_name = await self._repo.resolve_sender_display_name(
+                session, project.tenant_key, str(project.id), from_agent
             )
-            sender_display_row = sender_lookup.scalar_one_or_none()
-            if sender_display_row:
-                sender_display_name = sender_display_row
+            if resolved_name:
+                sender_display_name = resolved_name
         return sender_display_name
 
     async def _persist_messages(
@@ -377,22 +335,14 @@ class MessageRoutingService:
                     from_display_name=sender_display_name,
                     requires_action=requires_action,
                 )
-                session.add(message)
-                await session.flush()
-                session.add(
-                    MessageRecipient(
-                        message_id=message.id,
-                        agent_id=recipient_id,
-                        tenant_key=project.tenant_key,
-                    )
-                )
+                await self._repo.persist_message_with_recipient(session, message, recipient_id)
                 messages.append(message)
-            await session.flush()
+            await self._repo.flush(session)
             message_ids = [str(msg.id) for msg in messages]
-            await session.commit()
+            await self._repo.commit(session)
             message_id = message_ids[0] if message_ids else None
         else:
-            await session.commit()
+            await self._repo.commit(session)
             message_id = None
         return messages, message_id
 
@@ -415,21 +365,12 @@ class MessageRoutingService:
         if not (is_broadcast and from_agent):
             return
 
-        sender_result = await session.execute(
-            select(AgentExecution)
-            .where(and_(AgentExecution.agent_id == from_agent, AgentExecution.tenant_key == tenant_key))
-            .order_by(AgentExecution.started_at.desc())
-            .limit(1)
-        )
-        sender_execution = sender_result.scalar_one_or_none()
+        sender_execution = await self._repo.get_execution_by_agent_id(session, tenant_key, from_agent)
         if not sender_execution:
             return
 
         # TENANT ISOLATION: Filter by tenant_key
-        sender_job_result = await session.execute(
-            select(AgentJob).where(AgentJob.job_id == sender_execution.job_id, AgentJob.tenant_key == tenant_key)
-        )
-        sender_job = sender_job_result.scalar_one_or_none()
+        sender_job = await self._repo.get_agent_job_by_job_id(session, tenant_key, sender_execution.job_id)
         if not sender_job:
             return
 
@@ -487,20 +428,9 @@ class MessageRoutingService:
 
         async def _counter_update():
             nonlocal sender_execution
-            sender_result = await session.execute(
-                select(AgentExecution)
-                .join(AgentJob)
-                .where(
-                    and_(
-                        AgentJob.project_id == project.id,
-                        AgentExecution.tenant_key == project.tenant_key,
-                        (AgentExecution.agent_display_name == sender_ref) | (AgentExecution.agent_id == sender_ref),
-                    )
-                )
-                .order_by(AgentExecution.started_at.desc())
-                .limit(1)
+            sender_execution = await self._repo.find_sender_execution(
+                session, project.tenant_key, str(project.id), sender_ref
             )
-            sender_execution = sender_result.scalar_one_or_none()
 
             sent_increments: dict[str, int] = {}
             waiting_increments: dict[str, int] = {}
@@ -522,7 +452,7 @@ class MessageRoutingService:
                     waiting_increments=waiting_increments,
                 )
 
-            await session.commit()
+            await self._repo.commit(session)
             self._logger.info(f"[COUNTER] Updated counters: sender +1 sent, {len(messages)} recipients +1 waiting each")
 
         try:
@@ -565,35 +495,22 @@ class MessageRoutingService:
 
         auto_blocked_ids = []
         for recipient_id in resolved_to_agents:
-            exec_result = await session.execute(
-                select(AgentExecution)
-                .where(
-                    AgentExecution.agent_id == recipient_id,
-                    AgentExecution.tenant_key == project.tenant_key,
-                )
-                .order_by(AgentExecution.started_at.desc())
-                .limit(1)
-            )
-            recipient_execution = exec_result.scalar_one_or_none()
+            recipient_execution = await self._repo.get_execution_by_agent_id(session, project.tenant_key, recipient_id)
 
             # Handover 0435b: skip 'closed' agents — they are terminal, no auto-block
             if recipient_execution and recipient_execution.status == "complete":
                 old_status = recipient_execution.status
                 recipient_execution.status = "blocked"
                 recipient_execution.block_reason = f"Received message from {sender_display_name} while completed"
-                await session.flush()
+                await self._repo.flush(session)
 
                 auto_blocked_ids.append(recipient_id)
 
                 if self._websocket_manager:
                     try:
-                        job_result = await session.execute(
-                            select(AgentJob.job_id, AgentJob.project_id).where(
-                                AgentJob.job_id == recipient_execution.job_id,
-                                AgentJob.tenant_key == project.tenant_key,
-                            )
+                        job_row = await self._repo.get_job_id_and_project_for_execution(
+                            session, project.tenant_key, recipient_execution.job_id
                         )
-                        job_row = job_result.first()
                         await self._websocket_manager.broadcast_job_status_update(
                             job_id=recipient_execution.job_id,
                             agent_display_name=recipient_execution.agent_display_name,
@@ -611,7 +528,7 @@ class MessageRoutingService:
                 )
 
         if auto_blocked_ids:
-            await session.commit()
+            await self._repo.commit(session)
 
         return auto_blocked_ids
 
@@ -642,18 +559,7 @@ class MessageRoutingService:
                 recipient_agent_ids = []
                 if to_agents and to_agents[0] == "all":
                     # TENANT ISOLATION: Filter by tenant_key
-                    result = await session.execute(
-                        select(AgentExecution)
-                        .join(AgentJob)
-                        .where(
-                            and_(
-                                AgentJob.project_id == project.id,
-                                AgentExecution.status.in_(["waiting", "working", "blocked"]),
-                                AgentExecution.tenant_key == tenant_key,
-                            )
-                        )
-                    )
-                    all_executions = result.scalars().all()
+                    all_executions = await self._repo.resolve_broadcast_recipients(session, tenant_key, str(project.id))
                     sender_ref = from_agent or "orchestrator"
                     recipient_agent_ids = [
                         execution.agent_id
@@ -671,26 +577,17 @@ class MessageRoutingService:
                 # Handover 0387g: Fetch updated counter values after commit
                 sender_sent_count = None
                 if sender_execution:
-                    await session.refresh(sender_execution)
+                    await self._repo.refresh_execution(session, sender_execution)
                     sender_sent_count = sender_execution.messages_sent_count
 
                 # TENANT ISOLATION: Filter by tenant_key
                 recipient_waiting_count = None
                 if recipient_agent_ids:
-                    recipient_result = await session.execute(
-                        select(AgentExecution)
-                        .where(
-                            and_(
-                                AgentExecution.agent_id == recipient_agent_ids[0],
-                                AgentExecution.tenant_key == tenant_key,
-                            )
-                        )
-                        .order_by(AgentExecution.started_at.desc())
-                        .limit(1)
+                    first_recipient = await self._repo.get_execution_by_agent_id(
+                        session, tenant_key, recipient_agent_ids[0]
                     )
-                    first_recipient = recipient_result.scalar_one_or_none()
                     if first_recipient:
-                        await session.refresh(first_recipient)
+                        await self._repo.refresh_execution(session, first_recipient)
                         recipient_waiting_count = first_recipient.messages_waiting_count
 
                 await self._websocket_manager.broadcast_message_sent(
@@ -770,10 +667,7 @@ class MessageRoutingService:
 
             async with self._get_session() as session:
                 # TENANT ISOLATION: Filter agent jobs by tenant_key
-                result = await session.execute(
-                    select(AgentJob).where(and_(AgentJob.project_id == project_id, AgentJob.tenant_key == tenant_key))
-                )
-                agent_jobs = result.scalars().all()
+                agent_jobs = await self._repo.get_agent_job_ids_for_project(session, tenant_key, project_id)
 
                 if not agent_jobs:
                     raise ResourceNotFoundError(
@@ -839,18 +733,7 @@ class MessageRoutingService:
         """
         try:
             async with self._get_session() as session:
-                result = await session.execute(
-                    select(AgentExecution)
-                    .join(AgentJob)
-                    .where(
-                        and_(
-                            AgentJob.project_id == project_id,
-                            AgentExecution.status.in_(["waiting", "working", "blocked"]),
-                            AgentExecution.tenant_key == tenant_key,
-                        )
-                    )
-                )
-                executions = result.scalars().all()
+                executions = await self._repo.resolve_broadcast_recipients(session, tenant_key, project_id)
 
                 if not executions:
                     raise ResourceNotFoundError(

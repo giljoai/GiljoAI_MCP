@@ -35,6 +35,32 @@ from .models import TemplateCreate, TemplateResponse, TemplateUpdate
 
 
 logger = logging.getLogger(__name__)
+
+# Field allowlist for template updates — only these fields may be set via the
+# update endpoint.  Replaces the previous hasattr() gate which allowed setting
+# any model attribute including id, tenant_key, created_at, etc.
+_ALLOWED_TEMPLATE_UPDATE_FIELDS: frozenset[str] = frozenset(
+    {
+        "name",
+        "category",
+        "role",
+        "user_instructions",
+        "variables",
+        "behavioral_rules",
+        "success_criteria",
+        "tool",
+        "cli_tool",
+        "background_color",
+        "model",
+        "tools",
+        "description",
+        "version",
+        "is_active",
+        "is_default",
+        "tags",
+        "meta_data",
+    }
+)
 router = APIRouter()
 
 # Constants
@@ -223,9 +249,7 @@ async def create_template(
         created_by=current_user.username,
     )
 
-    session.add(new_template)
-    await session.commit()
-    await session.refresh(new_template)
+    await template_service.add_and_commit_template(session, new_template)
 
     logger.info("Created template %s for tenant %s", new_template.id, sanitize(context["tenant_key"]))
 
@@ -294,15 +318,14 @@ async def update_template(
     for field, value in update_data.items():
         if field == "user_instructions" and value:
             template.user_instructions = value
-        elif hasattr(template, field):
+        elif field in _ALLOWED_TEMPLATE_UPDATE_FIELDS:
             setattr(template, field, value)
 
     # If role changed, auto-update background color to match new role
     if "role" in update_data:
         template.background_color = get_role_color(template.role)
 
-    await session.commit()
-    await session.refresh(template)
+    await template_service.commit_and_refresh_template(session, template)
 
     logger.info("Updated template %s", sanitize(template_id))
 
@@ -345,8 +368,6 @@ async def delete_template(
 
         if not deleted:
             raise HTTPException(status_code=500, detail="Failed to delete template")
-
-        await session.commit()
 
         logger.info("Hard deleted template %s (%s)", sanitize(template_id), sanitize(template_name))
 
