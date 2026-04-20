@@ -173,8 +173,14 @@ class JobCompletionService:
                     if closeout_mode not in ("hitl", "autonomous"):
                         closeout_mode = "hitl"
 
+                    # Smart HITL: only require approval when there are actual
+                    # deferred findings to review. Clean closeouts proceed
+                    # automatically even in HITL mode.
+                    has_deferred = bool(
+                        (result or {}).get("deferred_findings") or (result or {}).get("action_required_tags")
+                    )
                     closeout_checklist = self._build_closeout_checklist(
-                        user_approval_required=(closeout_mode == "hitl"),
+                        user_approval_required=(closeout_mode == "hitl") and has_deferred,
                     )
                 except Exception:  # noqa: BLE001
                     logger.warning(
