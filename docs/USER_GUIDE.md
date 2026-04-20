@@ -1,6 +1,6 @@
 # GiljoAI MCP: User Guide
 
-*Last updated: 2026-04-07*
+*Last updated: 2026-04-19*
 
 This guide covers every page and UI element in GiljoAI MCP. Read from top to bottom on first use, or jump to the section you need.
 
@@ -155,11 +155,20 @@ Click "New Project" to open the project form. Each project belongs to the active
 - **Name (required):** Free text description of the work.
 - **Description:** What this project delivers.
 - **Project Type:** Taxonomy category (e.g. BE for Backend, FE for Frontend, API). Determines the taxonomy alias badge (e.g. BE-0001).
-- **Series Number:** Sequential number within the type.
+- **Series Number:** Sequential number within the type. This counter is scoped per product — each product has its own incrementing series for each project type. A BE project in Product A and a BE project in Product B each have their own independent numbering (e.g. both can have BE-0001).
 - **Subseries:** Single-letter suffix for sub-tasks (e.g. BE-0001a).
 - **Status:** Defaults to `inactive`.
 
 Projects can also be created from your CLI tool using `/gil_add add project ...`.
+
+### Project Status and Protection
+
+Projects move through several statuses as work progresses. Two statuses lock a project from further changes:
+
+- **Completed:** Set automatically when the orchestrator closes out the project. A completed project cannot be edited or restarted. To re-do the work, duplicate the project from the project list.
+- **Cancelled:** Set manually via the Cancel action on a project. Once cancelled, the project is locked and cannot be modified. Use this when you want to abandon a project while keeping its history.
+
+Completed and cancelled projects are protected. Any attempt to change their fields (name, description, status, etc.) will be blocked with an error.
 
 ### Staging and Activation
 
@@ -176,7 +185,9 @@ The bootstrap prompt includes: your product context, 360 Memory entries, project
 
 **Implementation Phase:** Agents execute the plan. The orchestrator assigns work to agents by phase. In multi-terminal mode, phases run sequentially; within a phase, agents run in parallel. In CLI subagent modes (Claude Code CLI, Codex CLI, Gemini CLI), the orchestrator spawns all agents simultaneously.
 
-**Closeout Phase:** When implementation is complete, the orchestrator writes the 360 Memory entry and marks the project complete. The memory entry includes what was built, key decisions, patterns discovered, and what worked. This data flows into the next project automatically.
+**Closeout Phase:** When implementation is complete, the orchestrator requests your approval before closing the project. A banner appears at the top of the dashboard asking you to approve or reject the closeout. The orchestrator will wait up to 30 seconds for your response. If you do not respond in time, the closeout attempt times out with a clear error message — the orchestrator can try again. This checkpoint ensures you review what was done before the project is marked complete.
+
+Once you approve, the orchestrator writes the 360 Memory entry and marks the project complete. The memory entry includes what was built, key decisions, patterns discovered, and what worked. This data flows into the next project automatically.
 
 ---
 
@@ -218,9 +229,26 @@ Each agent displays one of the following statuses:
 
 An agent with `working` status shows a breathing glow animation on its badge and an expanding pulse ring.
 
+### Agent Display Names
+
+When you spawn more than one agent of the same type in a project (for example, two implementer agents), GiljoAI MCP automatically assigns a numeric suffix to each one: the first is "implementer", the second is "implementer-2", the third is "implementer-3", and so on. You do not need to name them manually.
+
 ### Auto Check-In
 
 In multi-terminal execution mode, an Auto Check-In slider appears after staging. Drag the slider to set an interval (Off, 5, 10, 15, 20, 30, 40, or 60 minutes). When set to any interval other than Off, the orchestrator automatically checks in on sleeping agents at that cadence. Set it to Off to disable. Auto check-in does not appear in CLI subagent modes (Claude Code CLI, Codex CLI, Gemini CLI), where the orchestrator manages agent communication directly.
+
+---
+
+## Project Review
+
+Clicking a project row (from the Dashboard or Projects page) opens the Project Review modal. This modal gives a full breakdown of how the project was executed.
+
+The modal is organized into expandable sections:
+
+- **Agent Jobs:** Each agent job is shown as a collapsible card. Expand an agent job to see its assigned mission, todo list, and step progress.
+- **Agent Messages:** The message traffic between agents during the project — useful for understanding why decisions were made.
+- **Git Commits:** Commits recorded during the project (requires git integration to be enabled in My Settings > Integrations).
+- **360 Memory:** The memory entry written at closeout.
 
 ---
 
@@ -274,7 +302,11 @@ Navigate to User Settings via the top navigation. The page title is "My Settings
 
 ## Admin Settings
 
-Navigate to Admin Settings via the top navigation (admin users only). The page title is "Admin Settings." Five tabs are available:
+Navigate to Admin Settings via the top navigation (admin users only). The page title is "Admin Settings."
+
+Runtime settings (git integration, Serena MCP, SSL mode) are stored in the database. Changes you make here take effect immediately without restarting the server.
+
+Five tabs are available:
 
 | Tab | Contents |
 |---|---|
@@ -283,6 +315,24 @@ Navigate to Admin Settings via the top navigation (admin users only). The page t
 | **Database** | Read-only view of PostgreSQL connection settings; includes a "Test Connection" button |
 | **Security** | Cookie domain whitelist for multi-domain deployments |
 | **Prompts** | Orchestrator system prompt editor |
+
+---
+
+## 360 Memory and Action Tags
+
+360 Memory entries are written by agents at project closeout. They capture what was built, decisions made, patterns found, and outcomes. Each subsequent project starts with this accumulated history available to the agent team.
+
+### Action Tags
+
+When an agent writes a 360 Memory entry, it can mark specific findings with an `action_required:` tag. This flags an item that needs follow-up — a technical debt item, a known issue, or a decision deferred to a future project.
+
+Action tags are visible on the Dashboard under the 360 Memories panel. They persist across projects until resolved.
+
+### Auto-Tasks from Action Tags
+
+When an agent writes a 360 Memory entry with an `action_required:` tag, a task is automatically created on your Task Board. The task title and description come from the tagged finding. When the project that originated the tag completes, the task is automatically resolved.
+
+This means important follow-up items are never lost between projects — they surface on your Task Board without any manual effort.
 
 ---
 
