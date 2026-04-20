@@ -125,10 +125,37 @@ async def test_complete_job_orchestrator_includes_closeout_checklist(
 async def test_complete_job_orchestrator_checklist_defaults_to_hitl(
     completion_service, orchestrator_job, test_tenant_key
 ):
-    """When closeout_mode is 'hitl' (default), user_approval_required is True."""
+    """HITL mode with no deferred findings skips approval (smart HITL)."""
     result = await completion_service.complete_job(
         job_id=orchestrator_job.job_id,
         result={"summary": "Done"},
+        tenant_key=test_tenant_key,
+    )
+    # No deferred_findings or action_required_tags → approval not required
+    assert result.closeout_checklist["user_approval_required"] is False
+
+
+@pytest.mark.asyncio
+async def test_complete_job_orchestrator_hitl_with_deferred_findings(
+    completion_service, orchestrator_job, test_tenant_key
+):
+    """HITL mode WITH deferred findings requires approval."""
+    result = await completion_service.complete_job(
+        job_id=orchestrator_job.job_id,
+        result={"summary": "Done", "deferred_findings": ["Reviewer found unused import"]},
+        tenant_key=test_tenant_key,
+    )
+    assert result.closeout_checklist["user_approval_required"] is True
+
+
+@pytest.mark.asyncio
+async def test_complete_job_orchestrator_hitl_with_action_required_tags(
+    completion_service, orchestrator_job, test_tenant_key
+):
+    """HITL mode WITH action_required_tags requires approval."""
+    result = await completion_service.complete_job(
+        job_id=orchestrator_job.job_id,
+        result={"summary": "Done", "action_required_tags": ["action_required:fix auth"]},
         tenant_key=test_tenant_key,
     )
     assert result.closeout_checklist["user_approval_required"] is True
