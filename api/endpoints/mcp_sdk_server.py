@@ -244,7 +244,7 @@ async def update_project(
     Args:
         project_id: Project UUID (required).
         name: New project name (max 200 chars). Leave empty to keep current.
-        description: New description (max 5000 chars). Leave empty to keep current.
+        description: New description (max 10000 chars). Leave empty to keep current.
         status: New status — "inactive", "active", "completed", or "cancelled". Leave empty to keep current.
         project_type: Taxonomy type abbreviation (e.g. FE, BE). Leave empty to keep current.
         series_number: Sequential number within the type series (1-9999). Use 0 to keep current.
