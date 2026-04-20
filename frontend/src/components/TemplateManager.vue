@@ -26,6 +26,26 @@
       </v-chip>
     </div>
 
+    <!-- HITL Closeout Toggle -->
+    <div class="hitl-toggle-bar">
+      <v-switch
+        v-model="closeoutModeHitl"
+        color="primary"
+        density="compact"
+        hide-details
+        aria-label="Require user approval before project closeout"
+        data-testid="closeout-mode-toggle"
+        @update:model-value="toggleCloseoutMode"
+      />
+      <span class="hitl-toggle-label">Require approval before closeout</span>
+      <v-tooltip location="bottom" max-width="340">
+        <template #activator="{ props }">
+          <v-icon v-bind="props" size="16" class="hitl-toggle-info">mdi-information-outline</v-icon>
+        </template>
+        When enabled, the orchestrator pauses for your review before closing a project — but only if there are deferred findings to review. Clean closeouts proceed automatically.
+      </v-tooltip>
+    </div>
+
     <!-- Filter bar with New Template button right-aligned -->
     <div class="filter-bar">
       <v-text-field
@@ -476,6 +496,9 @@ const {
   resetEditingTemplate,
 } = useTemplateData(search, filterCategory, filterStatus)
 
+// HITL closeout mode
+const closeoutModeHitl = ref(true)
+
 // Dialog loading states
 const templateSaved = ref(false)
 const saving = ref(false)
@@ -728,10 +751,42 @@ const handleAgentsDownloaded = () => {
   })
 }
 
+// HITL closeout mode toggle
+async function toggleCloseoutMode(enabled) {
+  const newMode = enabled ? 'hitl' : 'autonomous'
+  const previousValue = closeoutModeHitl.value
+  closeoutModeHitl.value = enabled
+  try {
+    await api.settings.updateGeneral({ closeout_mode: newMode })
+    showToast({
+      message: enabled
+        ? 'User approval required before project closeout'
+        : 'Orchestrator will close projects autonomously',
+      type: 'success',
+    })
+  } catch {
+    closeoutModeHitl.value = previousValue
+    showToast({ message: 'Failed to save closeout setting.', type: 'error' })
+  }
+}
+
+async function loadCloseoutMode() {
+  try {
+    const generalRes = await api.settings.getGeneral()
+    const generalSettings = generalRes.data?.settings || {}
+    if (generalSettings.closeout_mode) {
+      closeoutModeHitl.value = generalSettings.closeout_mode === 'hitl'
+    }
+  } catch {
+    // Default stays true (hitl)
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   loadTemplates()
   loadActiveCount()
+  loadCloseoutMode()
   on('template:exported', handleTemplateExported)
   on('setup:agents_downloaded', handleAgentsDownloaded)
 })
@@ -755,6 +810,28 @@ watch(
 
 <style scoped lang="scss">
 @use '../styles/design-tokens' as *;
+
+/* HITL closeout toggle */
+.hitl-toggle-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.hitl-toggle-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.hitl-toggle-info {
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.hitl-toggle-bar :deep(.v-switch .v-selection-control) {
+  min-height: auto;
+}
 
 /* 0873: filter bar layout (matches TasksView pattern) */
 .filter-bar {

@@ -36,6 +36,7 @@ export function useProductActivation(loadProducts) {
 
         await api.products.activate(product.id)
         await productStore.fetchActiveProduct()
+        await productStore.setCurrentProduct(product.id)
 
         showToast({
           message: `${product.name} activated`,
@@ -59,6 +60,7 @@ export function useProductActivation(loadProducts) {
     try {
       await api.products.activate(pendingActivation.value.id)
       await productStore.fetchActiveProduct()
+      await productStore.setCurrentProduct(pendingActivation.value.id)
 
       showToast({
         message: `${pendingActivation.value?.name} activated`,

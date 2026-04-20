@@ -36,26 +36,6 @@
       No active product selected. Please activate a product to view and manage its projects.
     </v-alert>
 
-    <!-- HITL Closeout Toggle -->
-    <div v-if="activeProduct" class="hitl-toggle-bar main-window-reveal main-window-delay-2">
-      <v-switch
-        v-model="closeoutModeHitl"
-        color="primary"
-        density="compact"
-        hide-details
-        :aria-label="'Require user approval before project closeout'"
-        data-testid="closeout-mode-toggle"
-        @update:model-value="toggleCloseoutMode"
-      />
-      <span class="hitl-toggle-label">Require approval before closeout</span>
-      <v-tooltip location="bottom" max-width="340">
-        <template #activator="{ props }">
-          <v-icon v-bind="props" size="16" class="hitl-toggle-info">mdi-information-outline</v-icon>
-        </template>
-        When enabled, the orchestrator pauses for your review before closing a project — but only if there are deferred findings to review. Clean closeouts proceed automatically.
-      </v-tooltip>
-    </div>
-
     <!-- Filter Bar (0873: restyled to match TasksView pattern) -->
     <div v-if="activeProduct" class="filter-bar main-window-reveal main-window-delay-2">
       <v-text-field
@@ -479,8 +459,6 @@ const closeoutProjectName = ref('')
 const reviewProjectId = ref(null)
 const reviewProductId = ref(null)
 
-// HITL closeout mode toggle
-const closeoutModeHitl = ref(true)
 
 // Purge state
 const purgingProjectId = ref(null)
@@ -891,25 +869,6 @@ function onTypeCreated() {
   // No-op: useProjectTaxonomy.handleTypeCreated already pushes to projectTypes
 }
 
-// HITL closeout mode toggle
-async function toggleCloseoutMode(enabled) {
-  const newMode = enabled ? 'hitl' : 'autonomous'
-  const previousValue = closeoutModeHitl.value
-  closeoutModeHitl.value = enabled
-  try {
-    await api.settings.updateGeneral({ closeout_mode: newMode })
-    showToast({
-      message: enabled
-        ? 'User approval required before project closeout'
-        : 'Orchestrator will close projects autonomously',
-      type: 'success',
-    })
-  } catch {
-    closeoutModeHitl.value = previousValue
-    showToast({ message: 'Failed to save closeout setting.', type: 'error' })
-  }
-}
-
 // Lifecycle
 onMounted(async () => {
   try {
@@ -924,16 +883,6 @@ onMounted(async () => {
       projectTypes.value = typesResponse.data || []
     } catch {
       console.error('Failed to load project types')
-    }
-    // Load HITL closeout mode from backend
-    try {
-      const generalRes = await api.settings.getGeneral()
-      const generalSettings = generalRes.data?.settings || {}
-      if (generalSettings.closeout_mode) {
-        closeoutModeHitl.value = generalSettings.closeout_mode === 'hitl'
-      }
-    } catch {
-      // Default stays true (hitl)
     }
   } catch (error) {
     console.error('Failed to load data:', error)
@@ -964,29 +913,6 @@ onMounted(async () => {
   :deep(.v-data-table__th) {
     background: transparent !important;
   }
-}
-
-/* HITL closeout toggle bar */
-.hitl-toggle-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.hitl-toggle-label {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-}
-
-.hitl-toggle-info {
-  color: var(--text-muted);
-  cursor: help;
-}
-
-/* Compact v-switch in toggle bar */
-.hitl-toggle-bar :deep(.v-switch .v-selection-control) {
-  min-height: auto;
 }
 
 /* 0873: filter bar layout (matches TasksView pattern) */
