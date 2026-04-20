@@ -22,7 +22,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent))
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.discovery import DiscoveryManager, PathResolver, SerenaHooks
+from giljo_mcp.discovery import DiscoveryManager, PathResolver
 from giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
@@ -89,20 +89,12 @@ async def test_integration():
         context_path.read_text()
 
 
-async def test_serena_hooks():
-    """Test SerenaHooks initialization"""
-
-    hooks = SerenaHooks(None, None)  # Placeholder for test
-    assert hooks._symbol_cache == {}
-
-
 async def main():
     """Run all tests"""
 
     try:
         await test_path_resolver()
         await test_discovery_manager()
-        await test_serena_hooks()
         await test_integration()
 
     except Exception:

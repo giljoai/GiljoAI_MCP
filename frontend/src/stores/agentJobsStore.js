@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import isEqual from 'lodash-es/isEqual'
 import debounce from 'lodash-es/debounce'
 import { AGENT_STATUS_PRIORITY } from '@/utils/constants'
+import api from '@/services/api'
 
 function ensureArray(value) {
   return Array.isArray(value) ? value : []
@@ -518,6 +519,222 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
 
   function $reset() {
     jobsById.value = new Map()
+    // Reset legacy agent state
+    legacyAgents.value = []
+    currentAgent.value = null
+    legacyLoading.value = false
+    legacyError.value = null
+    healthData.value = {}
+  }
+
+  // =========================
+  // Legacy agent store state (merged from agents.js)
+  // Provides backward-compatible API surface for event routes
+  // and WebSocket handlers that relied on the old useAgentStore.
+  // =========================
+  const legacyAgents = ref([])
+  const currentAgent = ref(null)
+  const legacyLoading = ref(false)
+  const legacyError = ref(null)
+  const healthData = ref({})
+
+  // Legacy actions (merged from agents.js)
+  async function fetchAgents(projectId = null) {
+    legacyLoading.value = true
+    legacyError.value = null
+    try {
+      const response = await api.agentJobs.list(projectId)
+      legacyAgents.value = Array.isArray(response.data) ? response.data : []
+    } catch (err) {
+      legacyError.value = err.message
+      console.error('Failed to fetch agents:', err)
+    } finally {
+      legacyLoading.value = false
+    }
+  }
+
+  async function fetchAgent(id) {
+    legacyLoading.value = true
+    legacyError.value = null
+    try {
+      const response = await api.agentJobs.get(id)
+      currentAgent.value = response.data
+      const index = legacyAgents.value.findIndex((a) => a.id === id)
+      if (index !== -1) {
+        legacyAgents.value[index] = response.data
+      }
+    } catch (err) {
+      legacyError.value = err.message
+      console.error('Failed to fetch agent:', err)
+    } finally {
+      legacyLoading.value = false
+    }
+  }
+
+  async function createAgent(agentData) {
+    legacyLoading.value = true
+    legacyError.value = null
+    try {
+      const response = await api.agentJobs.spawn(agentData)
+      legacyAgents.value.push(response.data)
+      return response.data
+    } catch (err) {
+      legacyError.value = err.message
+      console.error('Failed to create agent:', err)
+      throw err
+    } finally {
+      legacyLoading.value = false
+    }
+  }
+
+  async function fetchAgentHealth(id) {
+    try {
+      const response = await api.agentJobs.status(id)
+      healthData.value[id] = response.data
+      return response.data
+    } catch (err) {
+      console.error('Failed to fetch agent health:', err)
+      return null
+    }
+  }
+
+  async function assignJob(agentName, jobData) {
+    legacyLoading.value = true
+    legacyError.value = null
+    try {
+      const response = await api.agentJobs.spawn({ agent_name: agentName, ...jobData })
+      await fetchAgents()
+      return response.data
+    } catch (err) {
+      legacyError.value = err.message
+      console.error('Failed to assign job:', err)
+      throw err
+    } finally {
+      legacyLoading.value = false
+    }
+  }
+
+  function updateAgentStatus(agentId, status) {
+    const agent = legacyAgents.value.find((a) => a.id === agentId)
+    if (agent) {
+      agent.status = status
+      agent.updated_at = new Date().toISOString()
+    }
+  }
+
+  function clearError() {
+    legacyError.value = null
+  }
+
+  function handleRealtimeUpdate(data) {
+    const {
+      agent_name,
+      project_id,
+      status,
+      health,
+      active_jobs,
+      progress_percentage,
+    } = data
+
+    const agent = legacyAgents.value.find((a) => a.name === agent_name && a.project_id === project_id)
+
+    if (agent) {
+      if (status) {
+        agent.status = status
+      }
+      if (health !== undefined) {
+        healthData.value[agent.id] = {
+          ...healthData.value[agent.id],
+          health,
+          active_jobs,
+          last_updated: new Date().toISOString(),
+        }
+      }
+      if (progress_percentage !== undefined || status === 'working') {
+        agent.health_state = 'healthy'
+        agent.minutes_since_update = 0
+        agent.health_issue_description = null
+        agent.recommended_action = null
+      }
+      agent.updated_at = new Date().toISOString()
+      if (currentAgent.value?.id === agent.id) {
+        currentAgent.value = { ...agent }
+      }
+    } else if (agent_name && project_id) {
+      fetchAgents(project_id)
+    }
+  }
+
+  function handleAgentSpawn(data) {
+    handleRealtimeUpdate(data)
+  }
+
+  function handleAgentComplete(data) {
+    handleRealtimeUpdate({ ...data, status: 'completed' })
+  }
+
+  function handleHealthAlert(data) {
+    const { job_id, health_state, minutes_since_update, issue_description, recommended_action } =
+      data
+
+    const agent = legacyAgents.value.find((a) => a.job_id === job_id)
+
+    if (agent) {
+      agent.health_state = health_state
+      agent.minutes_since_update = minutes_since_update
+      agent.health_issue_description = issue_description
+      agent.recommended_action = recommended_action
+      agent.updated_at = new Date().toISOString()
+
+      healthData.value[agent.id] = {
+        ...healthData.value[agent.id],
+        health_state,
+        minutes_since_update,
+        issue_description,
+        recommended_action,
+        last_updated: new Date().toISOString(),
+      }
+
+      if (currentAgent.value?.id === agent.id) {
+        currentAgent.value = { ...agent }
+      }
+    }
+  }
+
+  function handleHealthRecovered(data) {
+    const { job_id } = data
+
+    const agent = legacyAgents.value.find((a) => a.job_id === job_id)
+
+    if (agent) {
+      agent.health_state = 'healthy'
+      agent.minutes_since_update = 0
+      agent.health_issue_description = null
+      agent.recommended_action = null
+      agent.updated_at = new Date().toISOString()
+
+      if (healthData.value[agent.id]) {
+        healthData.value[agent.id].health_state = 'healthy'
+        healthData.value[agent.id].minutes_since_update = 0
+      }
+
+      if (currentAgent.value?.id === agent.id) {
+        currentAgent.value = { ...agent }
+      }
+    }
+  }
+
+  function updateAgentField(jobId, fieldName, value) {
+    const agent = legacyAgents.value.find((a) => a.job_id === jobId)
+
+    if (agent) {
+      agent[fieldName] = value
+      agent.updated_at = new Date().toISOString()
+
+      if (currentAgent.value?.job_id === jobId) {
+        currentAgent.value = { ...agent }
+      }
+    }
   }
 
   // Create a proxy object that maintains .value structure
@@ -562,6 +779,28 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
 
     // debounce (exposed for testability)
     flushPendingUpdates,
+
+    // legacy agent state (merged from agents.js)
+    agents: legacyAgents,
+    currentAgent,
+    loading: legacyLoading,
+    error: legacyError,
+    healthData,
+
+    // legacy agent actions (merged from agents.js)
+    fetchAgents,
+    fetchAgent,
+    createAgent,
+    fetchAgentHealth,
+    assignJob,
+    updateAgentStatus,
+    clearError,
+    handleRealtimeUpdate,
+    handleAgentSpawn,
+    handleAgentComplete,
+    handleHealthAlert,
+    handleHealthRecovered,
+    updateAgentField,
 
     // lifecycle
     $reset,

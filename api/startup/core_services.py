@@ -45,6 +45,10 @@ async def init_core_services(state: APIState) -> None:
     try:
         logger.info("Initializing WebSocket manager...")
         state.websocket_manager = WebSocketManager()
+        # Register in service registry so src/giljo_mcp/ code can access it
+        from giljo_mcp.app_registry.service_registry import set_websocket_manager
+
+        set_websocket_manager(state.websocket_manager)
         logger.info("WebSocket manager initialized successfully")
     except Exception as e:  # Broad catch: startup resilience, non-fatal initialization
         logger.error(f"Failed to initialize WebSocket manager: {e}", exc_info=True)

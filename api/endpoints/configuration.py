@@ -208,20 +208,22 @@ async def get_tenant_configuration(request: Request, current_user: User = Depend
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    async with state.db_manager.get_session_async() as session:
-        from giljo_mcp.repositories import ConfigurationRepository
+    from giljo_mcp.services.tenant_configuration_service import TenantConfigurationService
 
-        repo = ConfigurationRepository(state.db_manager)
-        configs = await repo.get_tenant_configurations(session, tenant_key)
+    config_service = TenantConfigurationService(
+        db_manager=state.db_manager,
+        tenant_key=tenant_key,
+    )
+    configs = await config_service.get_tenant_configurations()
 
-        if not configs:
-            raise HTTPException(status_code=404, detail="No configuration found for your tenant")
+    if not configs:
+        raise HTTPException(status_code=404, detail="No configuration found for your tenant")
 
-        tenant_config = {}
-        for config in configs:
-            tenant_config[config.key] = json.loads(config.value) if config.value else None
+    tenant_config = {}
+    for config in configs:
+        tenant_config[config.key] = json.loads(config.value) if config.value else None
 
-        return tenant_config
+    return tenant_config
 
 
 @router.put("/tenant")
@@ -230,7 +232,10 @@ async def set_tenant_configuration(
     configurations: dict[str, Any] = Body(..., description="Tenant-specific configurations"),
     current_user: User = Depends(require_admin),
 ):
-    """Set configuration for the authenticated user's tenant"""
+    """Set configuration for the authenticated user's tenant.
+
+    Sprint 003c: Write routed through TenantConfigurationService.
+    """
     from api.app_state import state
 
     tenant_key = getattr(request.state, "tenant_key", None)
@@ -240,36 +245,24 @@ async def set_tenant_configuration(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    async with state.db_manager.get_session_async() as session:
-        from giljo_mcp.models import Configuration
-        from giljo_mcp.repositories import ConfigurationRepository
+    from giljo_mcp.services.tenant_configuration_service import TenantConfigurationService
 
-        repo = ConfigurationRepository(state.db_manager)
+    service = TenantConfigurationService(db_manager=state.db_manager, tenant_key=tenant_key)
+    count = await service.set_configurations(configurations)
 
-        for key, value in configurations.items():
-            config = await repo.get_configuration_by_key(session, tenant_key, key)
-
-            if config:
-                config.value = json.dumps(value) if value is not None else None
-                config.updated_at = datetime.now(timezone.utc)
-            else:
-                config = Configuration(
-                    tenant_key=tenant_key, key=key, value=json.dumps(value) if value is not None else None
-                )
-                session.add(config)
-
-        await session.commit()
-
-        return {
-            "success": True,
-            "configurations_updated": len(configurations),
-            "message": "Tenant configuration updated",
-        }
+    return {
+        "success": True,
+        "configurations_updated": count,
+        "message": "Tenant configuration updated",
+    }
 
 
 @router.delete("/tenant")
 async def delete_tenant_configuration(request: Request, current_user: User = Depends(require_admin)):
-    """Delete all configurations for the authenticated user's tenant"""
+    """Delete all configurations for the authenticated user's tenant.
+
+    Sprint 003c: Write routed through TenantConfigurationService.
+    """
     from api.app_state import state
 
     tenant_key = getattr(request.state, "tenant_key", None)
@@ -279,22 +272,19 @@ async def delete_tenant_configuration(request: Request, current_user: User = Dep
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    async with state.db_manager.get_session_async() as session:
-        from giljo_mcp.repositories import ConfigurationRepository
+    from giljo_mcp.services.tenant_configuration_service import TenantConfigurationService
 
-        repo = ConfigurationRepository(state.db_manager)
-        deleted_count = await repo.delete_tenant_configurations(session, tenant_key)
+    service = TenantConfigurationService(db_manager=state.db_manager, tenant_key=tenant_key)
+    deleted_count = await service.delete_all_configurations()
 
-        await session.commit()
+    if deleted_count == 0:
+        raise HTTPException(status_code=404, detail="No configuration found for your tenant")
 
-        if deleted_count == 0:
-            raise HTTPException(status_code=404, detail="No configuration found for your tenant")
-
-        return {
-            "success": True,
-            "configurations_deleted": deleted_count,
-            "message": f"Deleted {deleted_count} configurations",
-        }
+    return {
+        "success": True,
+        "configurations_deleted": deleted_count,
+        "message": f"Deleted {deleted_count} configurations",
+    }
 
 
 # Database-specific endpoints
@@ -762,15 +752,17 @@ async def check_database_health(current_user: User = Depends(get_current_active_
         raise HTTPException(status_code=503, detail="Database manager not initialized")
 
     try:
-        async with state.db_manager.get_session_async() as session:
-            from giljo_mcp.repositories import ConfigurationRepository
+        from giljo_mcp.services.tenant_configuration_service import TenantConfigurationService
 
-            repo = ConfigurationRepository(state.db_manager)
-            is_healthy = await repo.execute_health_check(session)
+        config_service = TenantConfigurationService(
+            db_manager=state.db_manager,
+            tenant_key=current_user.tenant_key,
+        )
+        is_healthy = await config_service.execute_health_check()
 
-            if is_healthy:
-                return SuccessResponse(message="Database connection successful")
-            raise HTTPException(status_code=503, detail="Database health check failed")
+        if is_healthy:
+            return SuccessResponse(message="Database connection successful")
+        raise HTTPException(status_code=503, detail="Database health check failed")
 
     except (RuntimeError, OSError, ValueError) as e:
         logger.error("Database connection failed: %s", e, exc_info=True)

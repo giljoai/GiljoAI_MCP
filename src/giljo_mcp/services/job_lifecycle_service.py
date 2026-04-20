@@ -23,7 +23,6 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -37,9 +36,9 @@ from giljo_mcp.exceptions import (
 from giljo_mcp.models import (
     AgentExecution,
     AgentJob,
-    AgentTemplate,
-    Project,
 )
+from giljo_mcp.repositories.agent_completion_repository import AgentCompletionRepository
+from giljo_mcp.repositories.agent_job_repository import AgentJobRepository
 from giljo_mcp.schemas.service_responses import SpawnResult
 from giljo_mcp.services.dto import BroadcastAgentCreatedContext
 from giljo_mcp.tenant import TenantManager
@@ -147,12 +146,10 @@ class JobLifecycleService:
             >>> result["agent_id"]  # Executor UUID (changes on succession)
         """
         try:
+            repo = AgentJobRepository(None)
             async with self._get_session() as session:
                 # Get project for context
-                result = await session.execute(
-                    select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
-                )
-                project = result.scalar_one_or_none()
+                project = await repo.get_project_by_id(session, tenant_key, project_id)
 
                 if not project:
                     raise ResourceNotFoundError(
@@ -299,15 +296,8 @@ class JobLifecycleService:
             ValidationError: Predecessor job belongs to a different project
         """
         # Validate predecessor exists and belongs to same project + tenant
-        pred_job_result = await session.execute(
-            select(AgentJob).where(
-                and_(
-                    AgentJob.job_id == predecessor_job_id,
-                    AgentJob.tenant_key == tenant_key,
-                )
-            )
-        )
-        pred_job = pred_job_result.scalar_one_or_none()
+        repo = AgentCompletionRepository()
+        pred_job = await repo.get_predecessor_job(session, tenant_key, predecessor_job_id)
 
         if not pred_job:
             raise ResourceNotFoundError(
@@ -325,17 +315,7 @@ class JobLifecycleService:
             )
 
         # Fetch predecessor's completion result
-        pred_exec_result = await session.execute(
-            select(AgentExecution)
-            .where(
-                AgentExecution.job_id == predecessor_job_id,
-                AgentExecution.tenant_key == tenant_key,
-                AgentExecution.status == "complete",
-            )
-            .order_by(AgentExecution.completed_at.desc())
-            .limit(1)
-        )
-        pred_execution = pred_exec_result.scalar_one_or_none()
+        pred_execution = await repo.get_completed_execution_for_job(session, tenant_key, predecessor_job_id)
 
         # Build predecessor context
         pred_display_name = pred_execution.agent_display_name if pred_execution else "Unknown"
@@ -406,18 +386,8 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
             ValidationError: If all suffixes 2-50 are exhausted
         """
         # Query all active display names in this project
-        active_names_result = await session.execute(
-            select(AgentExecution.agent_display_name)
-            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-            .where(
-                and_(
-                    AgentJob.project_id == project_id,
-                    AgentJob.tenant_key == tenant_key,
-                    AgentExecution.status.in_(["waiting", "working", "blocked"]),
-                )
-            )
-        )
-        active_names = {row[0] for row in active_names_result.fetchall()}
+        repo = AgentCompletionRepository()
+        active_names = await repo.get_active_display_names_in_project(session, tenant_key, project_id)
 
         # If the requested name is free, return as-is
         if agent_display_name not in active_names:
@@ -483,17 +453,10 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
             ValidationError: Invalid agent_name or suffix cap exceeded
             AlreadyExistsError: Duplicate orchestrator
         """
+        repo = AgentCompletionRepository()
         if agent_display_name != "orchestrator":
             # Agent name validation against active templates (backported from tools layer)
-            template_result = await session.execute(
-                select(AgentTemplate.name).where(
-                    and_(
-                        AgentTemplate.tenant_key == tenant_key,
-                        AgentTemplate.is_active,
-                    )
-                )
-            )
-            valid_agent_names = [row[0] for row in template_result.fetchall()]
+            valid_agent_names = await repo.get_active_template_names(session, tenant_key)
 
             if agent_name not in valid_agent_names:
                 raise ValidationError(
@@ -512,19 +475,7 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
 
         # Duplicate orchestrator prevention (backported from tools layer)
         if agent_display_name == "orchestrator":
-            existing_result = await session.execute(
-                select(AgentExecution)
-                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                .where(
-                    and_(
-                        AgentJob.project_id == project_id,
-                        AgentJob.tenant_key == tenant_key,
-                        AgentExecution.agent_display_name == "orchestrator",
-                        AgentExecution.status.in_(["waiting", "working", "blocked"]),
-                    )
-                )
-            )
-            existing_orchestrator = existing_result.scalar_one_or_none()
+            existing_orchestrator = await repo.find_active_orchestrator_in_project(session, tenant_key, project_id)
 
             if existing_orchestrator:
                 # Allow succession: parent_job_id matches existing orchestrator's agent_id
@@ -577,17 +528,8 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
             Tuple of (mission unchanged, resolved template_id or None)
         """
         resolved_template_id = None
-
-        template_result = await session.execute(
-            select(AgentTemplate).where(
-                and_(
-                    AgentTemplate.name == agent_name,
-                    AgentTemplate.tenant_key == tenant_key,
-                    AgentTemplate.is_active,
-                )
-            )
-        )
-        template = template_result.scalar_one_or_none()
+        repo = AgentCompletionRepository()
+        template = await repo.get_template_by_name(session, tenant_key, agent_name)
 
         if template:
             resolved_template_id = template.id
@@ -703,7 +645,7 @@ do not act on them during staging. Complete the full staging sequence
         Returns:
             Tuple of (agent_job, agent_execution) after commit and refresh
         """
-        # AgentJob: Work order (WHAT) — persists across succession
+        # AgentJob: Work order (WHAT) -- persists across succession
         agent_job = AgentJob(
             job_id=job_id,
             tenant_key=tenant_key,
@@ -715,9 +657,8 @@ do not act on them during staging. Complete the full staging sequence
             phase=phase,  # Handover 0411a: Execution phase for multi-terminal ordering
             template_id=resolved_template_id,  # Handover 0411a: Template reference
         )
-        session.add(agent_job)
 
-        # AgentExecution: Executor instance (WHO) — changes on succession
+        # AgentExecution: Executor instance (WHO) -- changes on succession
         agent_execution = AgentExecution(
             agent_id=agent_id,
             job_id=job_id,
@@ -728,15 +669,14 @@ do not act on them during staging. Complete the full staging sequence
             spawned_by=parent_job_id,  # Points to parent's agent_id (executor)
         )
 
-        # Update project staging_status when orchestrator is spawned (Handover 0502)
-        if agent_display_name == "orchestrator":
-            project.staging_status = "staging"
-            project.updated_at = datetime.now(timezone.utc)
-
-        session.add(agent_execution)
-        await session.commit()
-        await session.refresh(agent_job)
-        await session.refresh(agent_execution)
+        repo = AgentCompletionRepository()
+        agent_job, agent_execution = await repo.persist_job_and_execution(
+            session=session,
+            agent_job=agent_job,
+            agent_execution=agent_execution,
+            project=project,
+            is_orchestrator=(agent_display_name == "orchestrator"),
+        )
 
         return agent_job, agent_execution
 

@@ -34,8 +34,9 @@ from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
 from giljo_mcp.models.products import Product
 from giljo_mcp.models.projects import Project
-from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 from giljo_mcp.schemas.jsonb_validators import validate_git_commits
+from giljo_mcp.services.dto import MemoryEntryCreateParams
+from giljo_mcp.services.product_memory_service import ProductMemoryService
 from giljo_mcp.tools._memory_helpers import (
     MAX_DECISIONS_MADE,
     MAX_KEY_OUTCOMES,
@@ -60,15 +61,20 @@ SKIP_STATUSES = {"decommissioned", "closed"}
 def _validate_tags(tags: list[str] | None) -> list[str]:
     """Validate tags input from untrusted agent sources.
 
+    BE-5022f: Now applies shared strip_tag_punctuation() for boundary punctuation
+    stripping in addition to the original validation constraints.
+
     Args:
         tags: List of tag strings, or None.
 
     Returns:
-        Validated list of tags (empty list if None).
+        Validated and sanitized list of tags (empty list if None).
 
     Raises:
         ValidationError: If tags fail validation constraints.
     """
+    from giljo_mcp.utils.tag_utils import strip_tag_punctuation
+
     if tags is None:
         return []
 
@@ -78,6 +84,7 @@ def _validate_tags(tags: list[str] | None) -> list[str]:
     if len(tags) > MAX_TAGS:
         raise ValidationError(f"Too many tags: maximum {MAX_TAGS} tags allowed, got {len(tags)}")
 
+    cleaned: list[str] = []
     for tag in tags:
         if not isinstance(tag, str):
             raise ValidationError("All tags must be strings")
@@ -87,8 +94,9 @@ def _validate_tags(tags: list[str] | None) -> list[str]:
             raise ValidationError(
                 f"Tag too long: maximum {MAX_TAG_LENGTH} characters per tag, got {len(tag)} characters"
             )
+        cleaned.append(strip_tag_punctuation(tag))
 
-    return tags
+    return [t for t in cleaned if t]
 
 
 async def _resolve_project_and_product(
@@ -582,11 +590,13 @@ async def write_360_memory(
                     project_id,
                 )
 
-            repo = ProductMemoryRepository()
-            sequence_number = await repo.get_next_sequence(
-                session=active_session,
-                product_id=UUID(product.id),
+            memory_service = ProductMemoryService(
+                db_manager=db_manager,
                 tenant_key=tenant_key,
+            )
+            sequence_number = await memory_service.get_next_sequence(
+                product_id=UUID(product.id),
+                session=active_session,
             )
 
             author_info = await _resolve_author_info(
@@ -595,8 +605,7 @@ async def write_360_memory(
                 tenant_key=tenant_key,
             )
 
-            entry = await repo.create_entry(
-                session=active_session,
+            params = MemoryEntryCreateParams(
                 tenant_key=tenant_key,
                 product_id=UUID(product.id),
                 project_id=UUID(project_id),
@@ -614,9 +623,13 @@ async def write_360_memory(
                 author_name=author_info.get("author_name"),
                 author_type=author_info.get("author_type"),
             )
+            entry = await memory_service.create_entry(
+                params=params,
+                session=active_session,
+            )
 
-            if owns_session:
-                await active_session.commit()
+            # Session commit handled by db_manager.get_session_async() context manager
+            # when owns_session=True; flush already done by repo.create_entry()
 
             logger.info(
                 f"Wrote 360 Memory entry {entry.id} for product {product.id} "

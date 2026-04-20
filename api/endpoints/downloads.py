@@ -27,7 +27,7 @@ from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from giljo_mcp.config_manager import get_config
 from giljo_mcp.models import AgentTemplate, User
 from giljo_mcp.tools.slash_command_templates import get_all_templates
-from giljo_mcp.utils.log_sanitizer import sanitize
+from giljo_mcp.utils.log_sanitizer import mask_token, sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -570,7 +570,7 @@ async def get_bootstrap_prompt(
     token_data = await token_manager.get_token_info(token, tenant_key)
     expires_at = token_data["expires_at"] if token_data else None
 
-    logger.info(f"Bootstrap prompt generated: platform={platform}, token={token}")
+    logger.info(f"Bootstrap prompt generated: platform={platform}, token={mask_token(token)}")
 
     return {
         "prompt": prompt,
@@ -680,7 +680,7 @@ async def generate_download_token(
     if not zip_path:
         # Mark failed and return error
         await token_manager.mark_failed(token, message)
-        logger.error(f"Failed to stage content for token {token}: {message}")
+        logger.error(f"Failed to stage content for token {mask_token(token)}: {message}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=message)
 
     # 3) Mark ready
@@ -693,7 +693,9 @@ async def generate_download_token(
     token_data = await token_manager.get_token_info(token, tenant_key)
     expires_at = token_data["expires_at"] if token_data else None
 
-    logger.info(f"Token generated and staged successfully: token={token}, type={content_type}, file={zip_path}")
+    logger.info(
+        f"Token generated and staged successfully: token={mask_token(token)}, type={content_type}, file={zip_path}"
+    )
     return {
         "download_url": download_url,
         "expires_at": expires_at,
@@ -745,7 +747,7 @@ async def download_temp_file(
     Example:
         curl -O http://localhost:7272/api/download/temp/{token}/slash_commands.zip
     """
-    logger.info(f"Download request: token={token}, filename={filename}")
+    logger.info(f"Download request: token={mask_token(token)}, filename={filename}")
 
     try:
         from giljo_mcp.downloads.token_manager import TokenManager
@@ -761,25 +763,25 @@ async def download_temp_file(
         # Get token info first (no tenant_key needed - token is globally unique)
         token_info = await token_manager.get_token_info_by_token(token)
         if not token_info:
-            logger.warning(f"Token validation failed: token={token}, reason=not_found")
+            logger.warning(f"Token validation failed: token={mask_token(token)}, reason=not_found")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token invalid or not ready")
 
         # Check if expired
         if token_info["is_expired"]:
-            logger.warning(f"Token validation failed: token={token}, reason=expired")
+            logger.warning(f"Token validation failed: token={mask_token(token)}, reason=expired")
             raise HTTPException(status_code=status.HTTP_410_GONE, detail="Download token expired")
 
         # Check if staging is ready
         if token_info.get("staging_status") != "ready":
             logger.warning(
-                f"Token validation failed: token={token}, reason=not_ready, status={token_info.get('staging_status')}"
+                f"Token validation failed: token={mask_token(token)}, reason=not_ready, status={token_info.get('staging_status')}"
             )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token invalid or not ready")
 
         # Check if filename matches token record
         expected_filename = token_info.get("filename", "")
         if expected_filename != filename:
-            logger.warning(f"Token validation failed: token={token}, reason=filename_mismatch")
+            logger.warning(f"Token validation failed: token={mask_token(token)}, reason=filename_mismatch")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
         # All validations passed
@@ -806,7 +808,7 @@ async def download_temp_file(
         # Increment download metrics
         await token_manager.increment_download_count(token)
 
-        logger.info(f"Download served: {filename} ({len(content)} bytes) token={token}")
+        logger.info(f"Download served: {filename} ({len(content)} bytes) token={mask_token(token)}")
 
         # Handover 0855b: Emit setup events when CLI downloads resources
         try:

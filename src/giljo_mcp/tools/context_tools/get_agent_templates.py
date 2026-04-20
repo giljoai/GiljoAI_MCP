@@ -15,17 +15,18 @@ Token Budget by Depth:
 - "basic": Name + role + full description (~400 tokens) - team roster + minimal identity
 - "full": Complete template JSON (~2400 tokens) - full agent definitions for tools without local templates
 """
+# Read-only tool -- uses direct session.execute() for SELECT queries (no writes)
 
+import logging
 from typing import Any
 
-import structlog
 from sqlalchemy import select
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import AgentTemplate
 
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def estimate_tokens(data: Any) -> int:
@@ -92,10 +93,10 @@ async def get_agent_templates(
             detail="basic"
         )
     """
-    logger.info("fetching_agent_templates_context", product_id=product_id, tenant_key=tenant_key, depth=detail)
+    logger.info("fetching_agent_templates_context product_id=%s tenant_key=%s depth=%s", product_id, tenant_key, detail)
 
     if db_manager is None:
-        logger.error("db_manager is required", operation="get_agent_templates")
+        logger.error("db_manager is required operation=get_agent_templates")
         raise ValueError("db_manager parameter is required")
 
     async with db_manager.get_session_async() as session:
@@ -110,7 +111,7 @@ async def get_agent_templates(
         templates = result.scalars().all()
 
         if not templates:
-            logger.debug("no_agent_templates", tenant_key=tenant_key, operation="get_agent_templates")
+            logger.debug("no_agent_templates tenant_key=%s operation=get_agent_templates", tenant_key)
             return {
                 "source": "agent_templates",
                 "depth": detail,
@@ -156,12 +157,12 @@ async def get_agent_templates(
         total_tokens = estimate_tokens(template_list)
 
         logger.info(
-            "agent_templates_fetched",
-            product_id=product_id,
-            tenant_key=tenant_key,
-            depth=detail,
-            num_templates=len(template_list),
-            estimated_tokens=total_tokens,
+            "agent_templates_fetched product_id=%s tenant_key=%s depth=%s num_templates=%s estimated_tokens=%s",
+            product_id,
+            tenant_key,
+            detail,
+            len(template_list),
+            total_tokens,
         )
 
         return {

@@ -16,6 +16,7 @@ from fastapi import Depends
 from giljo_mcp.auth.dependencies import get_current_active_user
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import User
+from giljo_mcp.services.job_query_service import JobQueryService
 from giljo_mcp.services.orchestration_service import OrchestrationService
 
 
@@ -73,4 +74,18 @@ async def get_orchestration_service(
         db_manager=state.db_manager,
         tenant_manager=state.tenant_manager,
         websocket_manager=state.websocket_manager,
+    )
+
+
+async def get_job_query_service() -> JobQueryService:
+    """Get JobQueryService instance for read-only job queries.
+
+    BE-5022a: Provides direct access to JobQueryService for endpoints
+    that only need read queries (e.g., message audit modal).
+    """
+    from api.app_state import state
+
+    return JobQueryService(
+        db_manager=state.db_manager,
+        tenant_manager=state.tenant_manager,
     )

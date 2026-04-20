@@ -77,6 +77,10 @@ const props = defineProps({
         'handed_over',
       ].includes(value),
   },
+  blockReason: {
+    type: String,
+    default: null,
+  },
   healthStatus: {
     type: String,
     default: 'healthy',
@@ -92,7 +96,7 @@ const props = defineProps({
   },
 })
 
-const statusConfig = computed(() => getStatusConfig(props.status))
+const statusConfig = computed(() => getStatusConfig(props.status, props.blockReason))
 const healthConfig = computed(() => getHealthConfig(props.healthStatus))
 
 const isStale = computed(() => {

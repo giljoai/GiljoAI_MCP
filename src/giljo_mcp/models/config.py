@@ -6,14 +6,14 @@
 """
 Configuration and system-related models for GiljoAI MCP.
 
-This module contains models for system configuration, git settings, setup state,
-optimization rules and metrics, download tokens, and API metrics.
+This module contains models for system configuration, git commits, setup state,
+download tokens, and API metrics.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, ClassVar
 
 from sqlalchemy import (
     Boolean,
@@ -62,113 +62,6 @@ class Configuration(Base):
 
     def __repr__(self) -> str:
         return f"<Configuration(id={self.id}, key='{self.key}', category='{self.category}')>"
-
-
-class DiscoveryConfig(Base):
-    """
-    Discovery Configuration model - stores dynamic path overrides and discovery settings.
-    Enables per-project customization of discovery behavior.
-    """
-
-    __tablename__ = "discovery_config"
-
-    id = Column(String(36), primary_key=True, default=generate_uuid)
-    tenant_key = Column(String(36), nullable=False)
-    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
-    path_key = Column(String(50), nullable=False)  # vision, sessions, docs, etc.
-    path_value = Column(Text, nullable=False)  # Resolved path
-    priority = Column(Integer, default=0)  # Higher priority overrides lower
-    enabled = Column(Boolean, default=True)
-    settings = Column(JSONB, default=dict)  # Additional settings (renamed from metadata)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    # Relationships
-    project = relationship("Project", backref="discovery_configs")
-
-    __table_args__ = (
-        UniqueConstraint("project_id", "path_key", name="uq_discovery_path"),
-        Index("idx_discovery_tenant", "tenant_key"),
-        Index("idx_discovery_project", "project_id"),
-    )
-
-    def __repr__(self) -> str:
-        return f"<DiscoveryConfig(id={self.id}, path_key='{self.path_key}')>"
-
-
-class GitConfig(Base):
-    """
-    Git Configuration model - stores git settings per product for version control integration.
-    Links to products via product_id for configuration-level git settings.
-    Supports multiple authentication methods and webhook configuration.
-    """
-
-    __tablename__ = "git_configs"
-
-    id = Column(String(36), primary_key=True, default=generate_uuid)
-    tenant_key = Column(String(36), nullable=False)
-    product_id = Column(String(36), nullable=False)  # Links to product configuration
-
-    # Repository configuration
-    repo_url = Column(String(500), nullable=False)  # Git repository URL
-    branch = Column(String(100), default="main")  # Default branch name
-    remote_name = Column(String(50), default="origin")  # Remote name
-
-    # Authentication settings
-    auth_method = Column(String(20), nullable=False)  # 'https', 'ssh', 'token'
-    username = Column(String(100), nullable=True)  # For HTTPS auth
-    password_encrypted = Column(Text, nullable=True)  # Encrypted password/token
-    ssh_key_path = Column(String(500), nullable=True)  # Path to SSH private key
-    ssh_key_encrypted = Column(Text, nullable=True)  # Encrypted SSH private key content
-
-    # Auto-commit settings
-    auto_commit = Column(Boolean, default=True)  # Enable auto-commit on project completion
-    auto_push = Column(Boolean, default=False)  # Enable auto-push after commit
-    commit_message_template = Column(Text, nullable=True)  # Template for commit messages
-
-    # CI/CD webhook configuration
-    webhook_url = Column(String(500), nullable=True)  # Webhook URL for CI/CD triggers
-    webhook_secret = Column(String(255), nullable=True)  # Webhook secret for verification
-    webhook_events = Column(JSONB, default=list)  # List of events to trigger webhook
-
-    # Git ignore and repository settings
-    ignore_patterns = Column(JSONB, default=list)  # Additional .gitignore patterns
-    git_config_options = Column(JSONB, default=dict)  # Custom git config options
-
-    # Status and metadata
-    is_active = Column(Boolean, default=True)
-    last_commit_hash = Column(String(40), nullable=True)  # Last known commit hash
-    last_push_at = Column(DateTime(timezone=True), nullable=True)
-    last_error = Column(Text, nullable=True)  # Last error message
-
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    verified_at = Column(DateTime(timezone=True), nullable=True)  # Last successful auth verification
-
-    __table_args__ = (
-        UniqueConstraint("product_id", name="uq_git_config_product"),
-        Index("idx_git_config_tenant", "tenant_key"),
-        Index("idx_git_config_product", "product_id"),
-        Index("idx_git_config_active", "is_active"),
-        Index("idx_git_config_auth", "auth_method"),
-        CheckConstraint("auth_method IN ('https', 'ssh', 'token')", name="ck_git_config_auth_method"),
-    )
-
-    @property
-    def is_configured(self) -> bool:
-        """Check if git configuration is complete and valid"""
-        if not self.repo_url or not self.auth_method:
-            return False
-
-        if (self.auth_method == "https" and not (self.username and self.password_encrypted)) or (
-            self.auth_method == "ssh" and not (self.ssh_key_path or self.ssh_key_encrypted)
-        ):
-            return False
-        return not (self.auth_method == "token" and not self.password_encrypted)
-
-    def __repr__(self) -> str:
-        return f"<GitConfig(id={self.id}, repo_url='{self.repo_url}')>"
 
 
 class GitCommit(Base):
@@ -407,29 +300,55 @@ class SetupState(Base):
         result = await session.execute(select(cls).where(cls.tenant_key == tenant_key))
         return result.scalar_one_or_none()
 
+    # Sprint 003c: Field allowlist for create_or_update (no hasattr gate)
+    _ALLOWED_FIELDS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "database_initialized",
+            "database_initialized_at",
+            "setup_version",
+            "database_version",
+            "python_version",
+            "node_version",
+            "first_admin_created",
+            "first_admin_created_at",
+            "features_configured",
+            "tools_enabled",
+            "config_snapshot",
+            "validation_passed",
+            "validation_failures",
+            "validation_warnings",
+            "last_validation_at",
+            "installer_version",
+            "install_mode",
+            "install_path",
+        }
+    )
+
     @classmethod
     def create_or_update(cls, session: Session, tenant_key: str, **kwargs) -> SetupState:
         """
         Create or update SetupState for a tenant.
 
+        Sprint 003c: Uses field allowlist instead of hasattr for security.
+
         Args:
             session: SQLAlchemy session
             tenant_key: Tenant identifier
-            **kwargs: Fields to set/update
+            **kwargs: Fields to set/update (must be in _ALLOWED_FIELDS)
 
         Returns:
             SetupState instance (new or updated)
         """
+        # Filter to allowed fields only (security: prevents id/tenant_key/created_at overwrite)
+        safe_kwargs = {k: v for k, v in kwargs.items() if k in cls._ALLOWED_FIELDS}
+
         state = cls.get_by_tenant(session, tenant_key)
 
         if state:
-            # Update existing
-            for key, value in kwargs.items():
-                if hasattr(state, key):
-                    setattr(state, key, value)
+            for key, value in safe_kwargs.items():
+                setattr(state, key, value)
         else:
-            # Create new
-            state = cls(tenant_key=tenant_key, **kwargs)
+            state = cls(tenant_key=tenant_key, **safe_kwargs)
             session.add(state)
 
         session.flush()
@@ -437,95 +356,6 @@ class SetupState(Base):
 
     def __repr__(self) -> str:
         return f"<SetupState(id={self.id}, tenant_key='{self.tenant_key}', db_initialized={self.database_initialized})>"
-
-
-class OptimizationRule(Base):
-    """
-    Optimization Rule model - stores custom optimization rules per tenant.
-
-    Rules define how Serena MCP operations should be optimized for specific contexts.
-    Overrides default SerenaOptimizer rules when present.
-    """
-
-    __tablename__ = "optimization_rules"
-
-    id = Column(String(36), primary_key=True, default=generate_uuid)
-    tenant_key = Column(String(36), nullable=False, index=True)
-
-    # Rule definition
-    operation_type = Column(String(50), nullable=False)  # OperationType enum value
-    max_answer_chars = Column(Integer, nullable=False)
-    prefer_symbolic = Column(Boolean, nullable=False, default=True)
-    guidance = Column(Text, nullable=False)
-    context_filter = Column(String(100), nullable=True)  # When to apply this rule
-
-    # Rule metadata
-    is_active = Column(Boolean, default=True, nullable=False)
-    priority = Column(Integer, default=100)  # Higher numbers = higher priority
-
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    __table_args__ = (
-        Index("idx_optimization_rule_tenant", "tenant_key"),
-        Index("idx_optimization_rule_type", "operation_type"),
-        Index("idx_optimization_rule_active", "is_active"),
-        CheckConstraint(
-            "operation_type IN ('file_read', 'symbol_search', 'symbol_replace', 'pattern_search', 'directory_list')",
-            name="ck_optimization_rule_operation_type",
-        ),
-        CheckConstraint("max_answer_chars > 0", name="ck_optimization_rule_max_chars"),
-        CheckConstraint("priority >= 0", name="ck_optimization_rule_priority"),
-    )
-
-    def __repr__(self) -> str:
-        return f"<OptimizationRule(id={self.id}, operation_type={self.operation_type}, tenant_key={self.tenant_key})>"
-
-
-class OptimizationMetric(Base):
-    """
-    Optimization Metric model - tracks context efficiency metrics from Serena MCP optimizations.
-
-    Records every optimization operation to measure effectiveness and calculate savings.
-    Enables performance analytics and optimization rule refinement.
-    """
-
-    __tablename__ = "optimization_metrics"
-
-    id = Column(String(36), primary_key=True, default=generate_uuid)
-    tenant_key = Column(String(36), nullable=False, index=True)
-
-    # Operation details
-    operation_type = Column(String(50), nullable=False)  # OperationType enum value
-    params_size = Column(Integer, nullable=False, default=0)
-    result_size = Column(Integer, nullable=False)
-    optimized = Column(Boolean, nullable=False, default=True)
-
-    # Token calculations
-    tokens_saved = Column(Integer, nullable=False, default=0)
-
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-
-    # Relationships removed (Handover 0116) - Agent model eliminated
-
-    __table_args__ = (
-        Index("idx_optimization_metric_tenant", "tenant_key"),
-        Index("idx_optimization_metric_type", "operation_type"),
-        Index("idx_optimization_metric_date", "created_at"),
-        Index("idx_optimization_metric_optimized", "optimized"),
-        CheckConstraint(
-            "operation_type IN ('file_read', 'symbol_search', 'symbol_replace', 'pattern_search', 'directory_list')",
-            name="ck_optimization_metric_operation_type",
-        ),
-        CheckConstraint("params_size >= 0", name="ck_optimization_metric_params_size"),
-        CheckConstraint("result_size >= 0", name="ck_optimization_metric_result_size"),
-        CheckConstraint("tokens_saved >= 0", name="ck_optimization_metric_tokens_saved"),
-    )
-
-    def __repr__(self) -> str:
-        return f"<OptimizationMetric(id={self.id}, operation_type={self.operation_type}, tokens_saved={self.tokens_saved})>"
 
 
 class DownloadToken(Base):

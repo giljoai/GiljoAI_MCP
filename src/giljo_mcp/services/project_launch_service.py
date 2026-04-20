@@ -29,15 +29,16 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import ResourceNotFoundError
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.projects import Project
+from giljo_mcp.repositories.project_lifecycle_repository import ProjectLifecycleRepository
+from giljo_mcp.repositories.project_repository import ProjectRepository
 from giljo_mcp.schemas.service_responses import ProjectLaunchResult
-from giljo_mcp.services.project_service import _build_ws_project_data
+from giljo_mcp.services.project_helpers import _build_ws_project_data
 from giljo_mcp.tenant import TenantManager
 
 
@@ -79,6 +80,8 @@ class ProjectLaunchService:
         self._test_session = test_session
         self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._project_repo = ProjectRepository()
+        self._lifecycle_repo = ProjectLifecycleRepository()
 
     def _get_session(self):
         """Get a session, preferring an injected test session when provided."""
@@ -167,10 +170,7 @@ class ProjectLaunchService:
         Raises:
             ResourceNotFoundError: Project not found
         """
-        result = await session.execute(
-            select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
-        )
-        project = result.scalar_one_or_none()
+        project = await self._project_repo.get_by_id(session, tenant_key, project_id)
 
         if not project:
             raise ResourceNotFoundError(
@@ -205,22 +205,10 @@ class ProjectLaunchService:
         depth_config: dict | None = None
 
         if user_id:
-            from giljo_mcp.models.auth import User, UserFieldPriority
-
-            user_stmt = select(User).where(and_(User.id == user_id, User.tenant_key == tenant_key))
-            user_result = await session.execute(user_stmt)
-            user = user_result.scalar_one_or_none()
+            user = await self._lifecycle_repo.get_user(session, tenant_key, user_id)
 
             if user:
-                prio_result = await session.execute(
-                    select(UserFieldPriority).where(
-                        and_(
-                            UserFieldPriority.user_id == user_id,
-                            UserFieldPriority.tenant_key == tenant_key,
-                        )
-                    )
-                )
-                rows = prio_result.scalars().all()
+                rows = await self._lifecycle_repo.get_user_field_priorities(session, tenant_key, user_id)
                 if rows:
                     from giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
 
@@ -270,19 +258,7 @@ class ProjectLaunchService:
         Returns:
             Existing AgentExecution if found, None otherwise
         """
-        existing_orch_stmt = (
-            select(AgentExecution)
-            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-            .where(
-                AgentJob.project_id == project_id,
-                AgentExecution.agent_display_name == "orchestrator",
-                AgentExecution.tenant_key == tenant_key,
-                ~AgentExecution.status.in_(["decommissioned"]),
-            )
-            .order_by(AgentExecution.started_at.desc())
-        )
-        result = await session.execute(existing_orch_stmt)
-        return result.scalars().first()
+        return await self._lifecycle_repo.find_non_decommissioned_orchestrator(session, tenant_key, project_id)
 
     def _build_reuse_result(self, project: Project, existing: AgentExecution) -> ProjectLaunchResult:
         """Build launch result for reusing an existing orchestrator.
@@ -350,7 +326,7 @@ class ProjectLaunchService:
                 "created_via": "project_launch_service",
             },
         )
-        session.add(agent_job)
+        await self._lifecycle_repo.add_entity(session, agent_job)
 
         # Create AgentExecution (executor) - first instance (Handover 0358a)
         agent_execution = AgentExecution(
@@ -363,17 +339,17 @@ class ProjectLaunchService:
             progress=0,
             health_status="unknown",
         )
-        session.add(agent_execution)
+        await self._lifecycle_repo.add_entity(session, agent_execution)
 
         # Set staging_status to 'staging' when orchestrator is launched
         project.staging_status = "staging"
         project.updated_at = datetime.now(timezone.utc)
 
-        await session.flush()
+        await self._lifecycle_repo.flush(session)
 
         launch_prompt = self._generate_launch_prompt(project.name, project.id, project.mission, orchestrator_job_id)
 
-        await session.commit()
+        await self._lifecycle_repo.commit(session)
 
         self._logger.info(f"Launched project {project_id} with orchestrator job {orchestrator_job_id}")
 

@@ -30,7 +30,8 @@ import yaml
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from .models import AgentTemplate
+from .codex_defaults import CODEX_DEFAULT_MODEL, CODEX_DEFAULT_REASONING_EFFORT
+from .models import AgentTemplate
 
 
 def _slugify_filename(name: str) -> str:
@@ -336,8 +337,8 @@ def render_codex_agent(template: AgentTemplate) -> dict[str, object]:
         "description": description,
         "role": template.role or "agent",
         "developer_instructions": developer_instructions,
-        "suggested_model": "gpt-5.2-codex",
-        "suggested_reasoning_effort": "medium",
+        "suggested_model": CODEX_DEFAULT_MODEL,
+        "suggested_reasoning_effort": CODEX_DEFAULT_REASONING_EFFORT,
     }
 
 
@@ -348,7 +349,7 @@ CODEX_TOML_FORMAT_REFERENCE = """\
 #
 # [agents.gil-implementer]
 # config_file = "agents/gil-implementer.toml"
-# model = "gpt-5.2-codex"
+# model = "gpt-5.3-codex"
 # model_reasoning_effort = "medium"
 # nickname_candidates = ["gil-implementer"]
 #

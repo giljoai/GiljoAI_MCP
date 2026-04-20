@@ -108,8 +108,7 @@ async def restore_template(
 
     await template_service.restore_template_from_archive(session, template, archive)
 
-    await session.commit()
-    await session.refresh(template)
+    await template_service.commit_and_refresh_template(session, template)
 
     from .crud import _convert_to_response  # local import to avoid cycles
 
@@ -143,8 +142,7 @@ async def reset_template(
 
     await template_service.reset_template_to_defaults(session, template)
 
-    await session.commit()
-    await session.refresh(template)
+    await template_service.commit_and_refresh_template(session, template)
 
     from .crud import _convert_to_response  # local import to avoid cycles
 
@@ -184,8 +182,7 @@ async def reset_system_instructions(
 
     await template_service.reset_system_instructions(session, template)
 
-    await session.commit()
-    await session.refresh(template)
+    await template_service.commit_and_refresh_template(session, template)
 
     from .crud import _convert_to_response  # local import to avoid cycles
 

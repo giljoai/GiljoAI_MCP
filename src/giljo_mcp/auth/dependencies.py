@@ -207,11 +207,10 @@ async def get_current_user(
                         logger.debug(f"Authenticated via API key: {user.username} ({key_record.name})")
                         # Log IP address for security tracking (passive, non-blocking)
                         try:
-                            from api.endpoints.mcp_session import MCPSessionManager
+                            from giljo_mcp.auth.ip_logger import log_api_key_ip
 
-                            ip_logger = MCPSessionManager(db)
                             client_ip = request.client.host if request.client else "unknown"
-                            await ip_logger.log_ip(str(key_record.id), client_ip)
+                            await log_api_key_ip(db, str(key_record.id), client_ip)
                         except (ImportError, AttributeError, OSError):
                             logger.debug("IP logging failed for API key auth (non-blocking)")
                         return user

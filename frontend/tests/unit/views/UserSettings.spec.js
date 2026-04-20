@@ -72,7 +72,7 @@ describe('UserSettings.vue', () => {
     McpIntegrationCard: true,
     SerenaIntegrationCard: true,
     GitIntegrationCard: true,
-    GitAdvancedSettingsDialog: true,
+
     ProductIntroTour: true,
   }
 

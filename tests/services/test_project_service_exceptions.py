@@ -124,7 +124,7 @@ class TestProjectServiceExceptions:
     async def test_cancel_project_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
         """Test cancel_project raises ResourceNotFoundError"""
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await project_service.cancel_project("nonexistent-id", test_tenant_key)
+            await project_service.lifecycle.cancel_project("nonexistent-id", test_tenant_key)
 
         assert "not found" in exc_info.value.message.lower()
 
@@ -132,7 +132,7 @@ class TestProjectServiceExceptions:
     async def test_restore_project_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
         """Test restore_project raises ResourceNotFoundError"""
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await project_service.restore_project("nonexistent-id", tenant_key=test_tenant_key)
+            await project_service.deletion.restore_project("nonexistent-id", tenant_key=test_tenant_key)
 
         assert "not found" in exc_info.value.message.lower()
 
@@ -143,7 +143,7 @@ class TestProjectServiceExceptions:
     async def test_cancel_staging_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
         """Test cancel_staging raises ResourceNotFoundError"""
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await project_service.cancel_staging("nonexistent-id", test_tenant_key)
+            await project_service.lifecycle.cancel_staging("nonexistent-id", test_tenant_key)
 
         assert "not found" in exc_info.value.message.lower()
 
@@ -197,7 +197,7 @@ class TestProjectServiceTypedReturns:
         await db_session.commit()
         await db_session.refresh(project)
 
-        result = await project_service.cancel_staging(project.id)
+        result = await project_service.lifecycle.cancel_staging(project.id)
         assert isinstance(result, ProjectData)
         assert result.status == "cancelled"
         assert result.name == "Staging Project"
@@ -233,7 +233,7 @@ class TestProjectServiceTypedReturns:
         await db_session.commit()
         await db_session.refresh(project)
 
-        result = await project_service.restore_project(project.id, tenant_key=test_tenant_key)
+        result = await project_service.deletion.restore_project(project.id, tenant_key=test_tenant_key)
         assert isinstance(result, OperationResult)
         assert "restored" in result.message.lower()
 
@@ -242,7 +242,7 @@ class TestProjectServiceTypedReturns:
         self, project_service: ProjectService, test_tenant_key: str, active_project
     ):
         """Test delete_project returns SoftDeleteResult typed model"""
-        result = await project_service.delete_project(active_project.id)
+        result = await project_service.deletion.delete_project(active_project.id)
         assert isinstance(result, SoftDeleteResult)
         assert result.message == "Project deleted successfully"
         assert result.deleted_at is not None

@@ -13,22 +13,23 @@ Routes:
 - DELETE /{type_id} - Delete project type (protected)
 
 All endpoints enforce tenant isolation via get_current_active_user dependency.
+BE-5022a: All DB access routed through project_type_ops service functions.
 """
 
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_db
 from giljo_mcp.auth.dependencies import get_current_active_user
-from giljo_mcp.models import Project, User
+from giljo_mcp.models import User
 
 from .crud_ops import (
     create_project_type,
     delete_project_type,
     ensure_default_types_seeded,
+    get_project_count_for_type,
     list_project_types,
     update_project_type,
 )
@@ -79,7 +80,14 @@ async def create_type(
     tenant_key = current_user.tenant_key
 
     try:
-        pt = await create_project_type(session, tenant_key, data)
+        pt = await create_project_type(
+            session,
+            tenant_key,
+            abbreviation=data.abbreviation,
+            label=data.label,
+            color=data.color,
+            sort_order=data.sort_order,
+        )
     except ValueError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Project type already exists.") from None
 
@@ -107,17 +115,12 @@ async def update_type(
     tenant_key = current_user.tenant_key
 
     try:
-        pt = await update_project_type(session, tenant_key, type_id, data)
+        update_fields = data.model_dump(exclude_unset=True)
+        pt = await update_project_type(session, tenant_key, type_id, **update_fields)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project type not found.") from None
 
-    project_count_result = await session.execute(
-        select(func.count(Project.id)).where(
-            Project.project_type_id == type_id,
-            Project.tenant_key == tenant_key,
-        )
-    )
-    count = project_count_result.scalar() or 0
+    count = await get_project_count_for_type(session, tenant_key, type_id)
 
     return ProjectTypeResponse(
         id=str(pt.id),

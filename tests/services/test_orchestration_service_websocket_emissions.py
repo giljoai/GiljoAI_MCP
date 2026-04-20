@@ -78,7 +78,7 @@ async def test_get_agent_mission_emits_ack_and_status_changed(
     mock_db_manager,
     mock_websocket_manager,
 ):
-    db_manager, session = mock_db_manager
+    _db_manager, session = mock_db_manager
     tenant_key = "tenant-test-123"
     project_id = str(uuid4())
     job_id = str(uuid4())
@@ -131,7 +131,7 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
     mock_db_manager,
     mock_websocket_manager,
 ):
-    db_manager, session = mock_db_manager
+    _db_manager, session = mock_db_manager
     tenant_key = "tenant-test-123"
     project_id = str(uuid4())
     job_id = str(uuid4())
@@ -180,7 +180,7 @@ async def test_complete_job_emits_status_changed_with_duration_seconds(
     mock_db_manager,
     mock_websocket_manager,
 ):
-    db_manager, session = mock_db_manager
+    _db_manager, session = mock_db_manager
     tenant_key = "tenant-test-123"
     job_id = str(uuid4())
 
@@ -240,9 +240,10 @@ async def test_complete_job_emits_status_changed_with_duration_seconds(
 
     result = await orchestration_service.complete_job(job_id=job_id, result={"ok": True}, tenant_key=tenant_key)
 
-    # Handover 0731c: Returns CompleteJobResult typed model
-    assert result.status == "success"
-    assert execution.status == "complete"
+    # Handover 0731c: Returns CompleteJobResult typed model.
+    # Orchestrator jobs may return "blocked_hitl" when HITL closeout is active (default).
+    assert result.status in ("success", "blocked_hitl")
+    assert execution.status in ("complete", "blocked")
 
     last_call = mock_websocket_manager.broadcast_to_tenant.await_args_list[-1].kwargs
     assert last_call["event_type"] == "agent:status_changed"
@@ -256,7 +257,7 @@ async def test_report_progress_fallback_emits_message_new_event(
     mock_websocket_manager,
     monkeypatch,
 ):
-    db_manager, session = mock_db_manager
+    _db_manager, session = mock_db_manager
     tenant_key = "tenant-test-123"
     job_id = str(uuid4())
 

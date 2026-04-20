@@ -9,14 +9,15 @@ These models enforce schema consistency at write time for JSONB columns
 that intentionally remain as flexible storage.
 
 Created: Handover 0840f
-Updated: Handover 0962c — added AgentExecutionResult, CloseoutChecklistItem, template
+Updated: Handover 0962c — added AgentExecutionResult, template
     validators; fixed ProductMemoryConfig field names; removed stale todo_steps from
     AgentJobMetadata.
+Updated: Sprint 002d — removed 6 dead validators + CloseoutChecklistItem.
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # --- AgentJob.job_metadata ---
@@ -198,16 +199,6 @@ class AgentExecutionResult(BaseModel):
     commits: list[str] | None = None
 
 
-# --- Project.closeout_checklist ---
-
-
-class CloseoutChecklistItem(BaseModel):
-    """Single item in projects.closeout_checklist JSONB array."""
-
-    task: str
-    completed: bool = False
-
-
 # --- Product.product_memory ---
 
 
@@ -237,6 +228,83 @@ class ProductTuningState(BaseModel):
     last_tuned_at_sequence: int | None = None
 
 
+# --- User.setup_selected_tools ---
+
+
+class SetupSelectedTools(BaseModel):
+    """Validates users.setup_selected_tools JSONB.
+
+    List of AI coding tool names selected during setup wizard.
+    Known values: claude, codex, gemini, etc.
+    """
+
+    items: list[str] = Field(default_factory=list, max_length=50)
+
+    @field_validator("items")
+    @classmethod
+    def validate_items(cls, v: list[str]) -> list[str]:
+        for item in v:
+            if len(item) > 200:
+                raise ValueError(f"Tool name exceeds 200 characters: {item[:20]}...")
+        return v
+
+
+# --- User.notification_preferences ---
+
+
+class NotificationPreferences(BaseModel):
+    """Validates users.notification_preferences JSONB.
+
+    Known schema with two fields. No extra fields allowed —
+    the schema is fully defined by DEFAULT_NOTIFICATION_PREFERENCES.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    context_tuning_reminder: bool = True
+    tuning_reminder_threshold: int = Field(default=10, ge=3, le=1000)
+
+
+# --- APIKey.permissions ---
+
+
+class APIKeyPermissions(BaseModel):
+    """Validates api_keys.permissions JSONB.
+
+    List of permission strings (e.g., ["*"], ["read", "write"]).
+    """
+
+    items: list[str] = Field(default_factory=list, max_length=50)
+
+    @field_validator("items")
+    @classmethod
+    def validate_items(cls, v: list[str]) -> list[str]:
+        for item in v:
+            if len(item) > 200:
+                raise ValueError(f"Permission string exceeds 200 characters: {item[:20]}...")
+        return v
+
+
+# --- MCPContextIndex.keywords ---
+
+
+class ContextIndexKeywords(BaseModel):
+    """Validates mcp_context_index.keywords JSONB.
+
+    Array of keyword strings extracted via regex or LLM.
+    """
+
+    items: list[str] = Field(default_factory=list, max_length=200)
+
+    @field_validator("items")
+    @classmethod
+    def validate_items(cls, v: list[str]) -> list[str]:
+        for item in v:
+            if len(item) > 500:
+                raise ValueError(f"Keyword exceeds 500 characters: {item[:20]}...")
+        return v
+
+
 # --- Convenience validators ---
 
 
@@ -247,32 +315,11 @@ def validate_job_metadata(data: dict | None) -> dict | None:
     return AgentJobMetadata(**data).model_dump(exclude_none=False)
 
 
-def validate_template_metadata(data: dict | None) -> dict | None:
-    """Validate and return template meta_data dict, or None."""
-    if data is None:
-        return None
-    return AgentTemplateMetadata(**data).model_dump(exclude_none=False)
-
-
 def validate_git_commits(data: list | None) -> list | None:
     """Validate git_commits array."""
     if data is None:
         return None
     return [GitCommitEntry(**entry).model_dump() for entry in data]
-
-
-def validate_memory_metrics(data: dict | None) -> dict | None:
-    """Validate metrics dict."""
-    if data is None:
-        return None
-    return MemoryEntryMetrics(**data).model_dump(exclude_none=False)
-
-
-def validate_session_data(data: dict | None) -> dict | None:
-    """Validate MCP session data."""
-    if data is None:
-        return None
-    return MCPSessionData(**data).model_dump(exclude_none=False)
 
 
 def validate_product_memory(data: dict | None) -> dict | None:
@@ -287,20 +334,6 @@ def validate_tuning_state(data: dict | None) -> dict | None:
     if data is None:
         return None
     return ProductTuningState(**data).model_dump(exclude_none=False)
-
-
-def validate_execution_result(data: dict | None) -> dict | None:
-    """Validate agent_executions.result dict."""
-    if data is None:
-        return None
-    return AgentExecutionResult(**data).model_dump(exclude_none=False)
-
-
-def validate_closeout_checklist(data: list | None) -> list | None:
-    """Validate projects.closeout_checklist JSONB array."""
-    if data is None:
-        return None
-    return [CloseoutChecklistItem(**item).model_dump() for item in data]
 
 
 def validate_behavioral_rules(data: list | None) -> list | None:
@@ -323,18 +356,6 @@ def validate_success_criteria(data: list | None) -> list | None:
     for item in data:
         if not isinstance(item, str):
             raise TypeError(f"success_criteria items must be strings, got {type(item).__name__}")
-        validated.append(item)
-    return validated
-
-
-def validate_template_variables(data: list | None) -> list | None:
-    """Validate agent_templates.variables — must be a list of strings (variable names)."""
-    if data is None:
-        return None
-    validated = []
-    for item in data:
-        if not isinstance(item, str):
-            raise TypeError(f"template variables items must be strings, got {type(item).__name__}")
         validated.append(item)
     return validated
 
@@ -369,3 +390,72 @@ def validate_settings_by_category(category: str, data: dict) -> dict:
     if validator_cls is None:
         return SettingsData(**data).model_dump(exclude_none=False)
     return validator_cls(**data).model_dump(exclude_none=False)
+
+
+# --- New convenience validators (sprint 002) ---
+
+
+def validate_setup_selected_tools(data: list | None) -> list | None:
+    """Validate User.setup_selected_tools — list of tool name strings."""
+    if data is None:
+        return None
+    return SetupSelectedTools(items=data).items
+
+
+def validate_notification_preferences(data: dict | None) -> dict | None:
+    """Validate User.notification_preferences dict."""
+    if data is None:
+        return None
+    return NotificationPreferences(**data).model_dump()
+
+
+def validate_api_key_permissions(data: list | None) -> list | None:
+    """Validate APIKey.permissions — list of permission strings."""
+    if data is None:
+        return None
+    return APIKeyPermissions(items=data).items
+
+
+def validate_context_keywords(data: list | None) -> list | None:
+    """Validate MCPContextIndex.keywords — list of keyword strings."""
+    if data is None:
+        return None
+    return ContextIndexKeywords(items=data).items
+
+
+def validate_string_list(
+    data: list | None,
+    field_name: str,
+    max_items: int = 1000,
+    max_length: int = 5000,
+) -> list | None:
+    """Generic validator for JSONB columns storing list[str].
+
+    Used for ProductMemoryEntry list columns: key_outcomes, decisions_made,
+    deliverables, tags.
+
+    Args:
+        data: List to validate, or None.
+        field_name: Column name for error messages.
+        max_items: Maximum number of items allowed.
+        max_length: Maximum character length per item.
+
+    Returns:
+        Validated list or None.
+
+    Raises:
+        TypeError: If any item is not a string.
+        ValueError: If list exceeds max_items or item exceeds max_length.
+    """
+    if data is None:
+        return None
+    if len(data) > max_items:
+        raise ValueError(f"{field_name} exceeds maximum of {max_items} items (got {len(data)})")
+    validated = []
+    for item in data:
+        if not isinstance(item, str):
+            raise TypeError(f"{field_name} items must be strings, got {type(item).__name__}")
+        if len(item) > max_length:
+            raise ValueError(f"{field_name} item exceeds {max_length} characters")
+        validated.append(item)
+    return validated

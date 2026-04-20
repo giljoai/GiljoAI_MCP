@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import case, delete, select
+from sqlalchemy import and_, case, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -248,7 +248,9 @@ class VisionDocumentRepository:
             "chunks_deleted": chunk_count,
         }
 
-    async def mark_chunked(self, session: AsyncSession, document_id: str, chunk_count: int, total_tokens: int) -> None:
+    async def mark_chunked(
+        self, session: AsyncSession, tenant_key: str, document_id: str, chunk_count: int, total_tokens: int
+    ) -> None:
         """
         Mark document as chunked with metadata.
 
@@ -263,11 +265,15 @@ class VisionDocumentRepository:
 
         Args:
             session: Async database session
+            tenant_key: Tenant isolation key (required)
             document_id: Document ID to mark as chunked
             chunk_count: Number of chunks created
             total_tokens: Total estimated tokens in document
         """
-        stmt = select(VisionDocument).where(VisionDocument.id == document_id)
+        stmt = select(VisionDocument).where(
+            VisionDocument.id == document_id,
+            VisionDocument.tenant_key == tenant_key,
+        )
         result = await session.execute(stmt)
         doc = result.scalar_one_or_none()
 
@@ -450,3 +456,66 @@ class VisionDocumentRepository:
         )
         result = await session.execute(stmt)
         return list(result.scalars().all())
+
+    # ========================================================================
+    # Product lookups (BE-5022d: moved from product_vision_service.py)
+    # ========================================================================
+
+    async def get_product_by_id(
+        self,
+        session: AsyncSession,
+        product_id: str,
+        tenant_key: str,
+    ) -> Product | None:
+        """
+        Get a product by ID with tenant isolation (non-deleted only).
+
+        Args:
+            session: Active database session
+            product_id: Product UUID
+            tenant_key: Tenant key for isolation
+
+        Returns:
+            Product ORM instance or None
+        """
+        stmt = select(Product).where(
+            and_(
+                Product.id == product_id,
+                Product.tenant_key == tenant_key,
+                Product.deleted_at.is_(None),
+            )
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def commit_session(self, session: AsyncSession) -> None:
+        """
+        Commit the current transaction.
+
+        Args:
+            session: Active database session
+        """
+        await session.commit()
+
+    async def reattach(self, session: AsyncSession, entity) -> None:
+        """
+        Re-attach a detached ORM entity to the session (async variant).
+
+        Args:
+            session: Active database session
+            entity: ORM instance to re-attach
+        """
+        session.add(entity)
+
+    def reattach_sync(self, session, entity) -> None:
+        """
+        Re-attach a detached ORM entity to the session (sync variant).
+
+        Used in sync methods like _summarize_document where session.add()
+        is a synchronous call.
+
+        Args:
+            session: Database session
+            entity: ORM instance to re-attach
+        """
+        session.add(entity)

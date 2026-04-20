@@ -12,6 +12,8 @@
     />
 
     <v-main>
+      <!-- SaaS Trial Expiry Banner (loaded dynamically, absent in CE) -->
+      <component :is="TrialBannerComponent" v-if="TrialBannerComponent" />
       <SystemStatusBanner />
       <router-view :current-user="currentUser" />
     </v-main>
@@ -21,11 +23,14 @@
 
     <!-- Community Edition Licensing Reminder -->
     <LicensingDialog />
+
+    <!-- SaaS Trial Expired Overlay (loaded dynamically, absent in CE) -->
+    <component :is="TrialExpiredOverlayComponent" v-if="TrialExpiredOverlayComponent" />
   </v-app>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, shallowRef, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useProductStore } from '@/stores/products'
@@ -39,6 +44,12 @@ import { defineAsyncComponent } from 'vue'
 const LicensingDialog = defineAsyncComponent(() => import('@/components/LicensingDialog.vue'))
 import SystemStatusBanner from '@/components/system/SystemStatusBanner.vue'
 import setupService from '@/services/setupService'
+import configService from '@/services/configService'
+
+// SaaS trial components -- loaded dynamically so CE export stays clean.
+// When the saas/ directory is absent (CE build), the import fails silently.
+const TrialBannerComponent = shallowRef(null)
+const TrialExpiredOverlayComponent = shallowRef(null)
 
 const route = useRoute()
 const router = useRouter()
@@ -102,6 +113,29 @@ onMounted(async () => {
   // Restore active product state from localStorage + backend
   if (userLoaded && currentUser.value) {
     await productStore.initializeFromStorage()
+  }
+
+  // Load SaaS trial components when in SaaS/Demo mode
+  if (userLoaded && currentUser.value) {
+    const mode = configService.getGiljoMode()
+    if (mode !== 'ce') {
+      try {
+        // Dynamic imports use @vite-ignore so CE static analysis skips them.
+        const bannerPath = `@/saas/components/TrialBanner.vue`
+        const overlayPath = `@/saas/components/TrialExpiredOverlay.vue`
+        const guardPath = `@/saas/composables/useTrialGuard`
+        const [bannerMod, overlayMod, guardMod] = await Promise.all([
+          import(/* @vite-ignore */ bannerPath),
+          import(/* @vite-ignore */ overlayPath),
+          import(/* @vite-ignore */ guardPath),
+        ])
+        TrialBannerComponent.value = bannerMod.default
+        TrialExpiredOverlayComponent.value = overlayMod.default
+        guardMod.installTrialGuardInterceptor()
+      } catch {
+        // SaaS directory absent (CE export) -- silently skip
+      }
+    }
   }
 
   // Initialize WebSocket and data polling only if user is authenticated

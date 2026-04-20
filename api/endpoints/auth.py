@@ -539,8 +539,10 @@ async def update_setup_state(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Update current user's setup wizard state (Handover 0855a)."""
+    from giljo_mcp.schemas.jsonb_validators import validate_setup_selected_tools
+
     if payload.setup_selected_tools is not None:
-        current_user.setup_selected_tools = payload.setup_selected_tools
+        current_user.setup_selected_tools = validate_setup_selected_tools(payload.setup_selected_tools)
     if payload.setup_step_completed is not None:
         current_user.setup_step_completed = payload.setup_step_completed
     if payload.setup_complete is not None:

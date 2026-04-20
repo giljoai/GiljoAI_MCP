@@ -19,10 +19,8 @@ import logging
 import re
 from typing import Any, Optional
 
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from giljo_mcp.exceptions import (
     AlreadyExistsError,
@@ -32,6 +30,7 @@ from giljo_mcp.exceptions import (
     ValidationError,
 )
 from giljo_mcp.models.organizations import Organization, OrgMembership
+from giljo_mcp.repositories.org_repository import OrgRepository
 
 
 logger = logging.getLogger(__name__)
@@ -43,6 +42,7 @@ class OrgService:
     def __init__(self, session: AsyncSession, websocket_manager: Optional[Any] = None):
         self.session = session
         self._websocket_manager = websocket_manager
+        self._repo = OrgRepository()
 
     # =========================================================================
     # Organization CRUD
@@ -86,15 +86,14 @@ class OrgService:
 
             # Create organization
             org = Organization(name=name, tenant_key=tenant_key, slug=slug, settings=settings or {})
-            self.session.add(org)
-            await self.session.flush()  # Get org.id
+            await self._repo.add_organization(self.session, org)
 
             # Create owner membership
             owner_membership = OrgMembership(org_id=org.id, user_id=owner_id, tenant_key=tenant_key, role="owner")
-            self.session.add(owner_membership)
+            await self._repo.add_membership(self.session, owner_membership)
 
-            await self.session.commit()
-            await self.session.refresh(org, ["members"])
+            await self._repo.commit(self.session)
+            await self._repo.refresh_with_members(self.session, org)
 
             logger.info("Organization created", extra={"org_id": org.id, "slug": slug, "owner_id": owner_id})
 
@@ -107,11 +106,11 @@ class OrgService:
             return org
 
         except AlreadyExistsError:
-            await self.session.rollback()
+            await self._repo.rollback(self.session)
             raise
         except SQLAlchemyError as e:
             logger.exception("Failed to create organization")
-            await self.session.rollback()
+            await self._repo.rollback(self.session)
             raise DatabaseError(
                 message="Failed to create organization", context={"name": name, "slug": slug, "error": str(e)}
             ) from e
@@ -131,17 +130,7 @@ class OrgService:
             DatabaseError: Database operation failed
         """
         try:
-            stmt = (
-                select(Organization)
-                .where(
-                    Organization.id == org_id,
-                    Organization.is_active,
-                )
-                .options(selectinload(Organization.members))
-            )
-
-            result = await self.session.execute(stmt)
-            org = result.scalar_one_or_none()
+            org = await self._repo.get_organization_by_id(self.session, org_id)
 
             if not org:
                 raise ResourceNotFoundError(message="Organization not found", context={"org_id": org_id})
@@ -171,10 +160,7 @@ class OrgService:
             DatabaseError: Database operation failed
         """
         try:
-            stmt = select(Organization).where(Organization.slug == slug).options(selectinload(Organization.members))
-
-            result = await self.session.execute(stmt)
-            org = result.scalar_one_or_none()
+            org = await self._repo.get_organization_by_slug(self.session, slug)
 
             if not org:
                 raise ResourceNotFoundError(message="Organization not found", context={"slug": slug})
@@ -215,7 +201,7 @@ class OrgService:
             if settings is not None:
                 org.settings = settings
 
-            await self.session.commit()
+            await self._repo.commit(self.session)
 
             logger.info("Organization updated", extra={"org_id": org_id})
 
@@ -226,7 +212,7 @@ class OrgService:
             raise
         except SQLAlchemyError as e:
             logger.exception("Failed to update organization")
-            await self.session.rollback()
+            await self._repo.rollback(self.session)
             raise DatabaseError(
                 message="Failed to update organization", context={"org_id": org_id, "error": str(e)}
             ) from e
@@ -246,7 +232,7 @@ class OrgService:
             org = await self.get_organization(org_id)
             org.is_active = False
 
-            await self.session.commit()
+            await self._repo.commit(self.session)
 
             logger.info("Organization deleted (soft)", extra={"org_id": org_id})
 
@@ -254,7 +240,7 @@ class OrgService:
             raise
         except SQLAlchemyError as e:
             logger.exception("Failed to delete organization")
-            await self.session.rollback()
+            await self._repo.rollback(self.session)
             raise DatabaseError(
                 message="Failed to delete organization", context={"org_id": org_id, "error": str(e)}
             ) from e
@@ -303,8 +289,8 @@ class OrgService:
             membership = OrgMembership(
                 org_id=org_id, user_id=user_id, role=role, invited_by=invited_by, tenant_key=tenant_key
             )
-            self.session.add(membership)
-            await self.session.commit()
+            await self._repo.add_membership(self.session, membership)
+            await self._repo.commit(self.session)
 
             logger.info(
                 "Member invited to organization",
@@ -320,11 +306,11 @@ class OrgService:
             return membership
 
         except (AlreadyExistsError, ValidationError):
-            await self.session.rollback()
+            await self._repo.rollback(self.session)
             raise
         except SQLAlchemyError as e:
             logger.exception("Failed to invite member")
-            await self.session.rollback()
+            await self._repo.rollback(self.session)
             raise DatabaseError(
                 message="Failed to invite member", context={"org_id": org_id, "user_id": user_id, "error": str(e)}
             ) from e
@@ -356,17 +342,17 @@ class OrgService:
                     context={"org_id": org_id, "user_id": user_id, "role": "owner"},
                 )
 
-            await self.session.delete(membership)
-            await self.session.commit()
+            await self._repo.delete_membership(self.session, membership)
+            await self._repo.commit(self.session)
 
             logger.info("Member removed from organization", extra={"org_id": org_id, "user_id": user_id})
 
         except (ResourceNotFoundError, AuthorizationError):
-            await self.session.rollback()
+            await self._repo.rollback(self.session)
             raise
         except SQLAlchemyError as e:
             logger.exception("Failed to remove member")
-            await self.session.rollback()
+            await self._repo.rollback(self.session)
             raise DatabaseError(
                 message="Failed to remove member", context={"org_id": org_id, "user_id": user_id, "error": str(e)}
             ) from e
@@ -410,18 +396,18 @@ class OrgService:
                 )
 
             membership.role = new_role
-            await self.session.commit()
+            await self._repo.commit(self.session)
 
             logger.info("Member role changed", extra={"org_id": org_id, "user_id": user_id, "new_role": new_role})
 
             return membership
 
         except (ResourceNotFoundError, AuthorizationError, ValidationError):
-            await self.session.rollback()
+            await self._repo.rollback(self.session)
             raise
         except SQLAlchemyError as e:
             logger.exception("Failed to change member role")
-            await self.session.rollback()
+            await self._repo.rollback(self.session)
             raise DatabaseError(
                 message="Failed to change member role", context={"org_id": org_id, "user_id": user_id, "error": str(e)}
             ) from e
@@ -459,16 +445,16 @@ class OrgService:
             current.role = "admin"  # Demote to admin
             new_owner.role = "owner"
 
-            await self.session.commit()
+            await self._repo.commit(self.session)
 
             logger.info("Ownership transferred", extra={"org_id": org_id, "from": current_owner_id, "to": new_owner_id})
 
         except (AuthorizationError, ResourceNotFoundError):
-            await self.session.rollback()
+            await self._repo.rollback(self.session)
             raise
         except SQLAlchemyError as e:
             logger.exception("Failed to transfer ownership")
-            await self.session.rollback()
+            await self._repo.rollback(self.session)
             raise DatabaseError(
                 message="Failed to transfer ownership",
                 context={"org_id": org_id, "from": current_owner_id, "to": new_owner_id, "error": str(e)},
@@ -488,16 +474,7 @@ class OrgService:
             DatabaseError: Database operation failed
         """
         try:
-            stmt = (
-                select(OrgMembership)
-                .where(OrgMembership.org_id == org_id, OrgMembership.is_active)
-                .order_by(OrgMembership.joined_at)
-            )
-
-            result = await self.session.execute(stmt)
-            members = result.scalars().all()
-
-            return list(members)
+            return await self._repo.list_members(self.session, org_id)
 
         except SQLAlchemyError as e:
             logger.exception("Failed to list members")
@@ -521,17 +498,7 @@ class OrgService:
             DatabaseError: Database operation failed
         """
         try:
-            stmt = (
-                select(Organization)
-                .join(OrgMembership, Organization.id == OrgMembership.org_id)
-                .where(OrgMembership.user_id == user_id, OrgMembership.is_active, Organization.is_active)
-                .options(selectinload(Organization.members))
-            )
-
-            result = await self.session.execute(stmt)
-            orgs = result.scalars().all()
-
-            return list(orgs)
+            return await self._repo.get_user_organizations(self.session, user_id)
 
         except SQLAlchemyError as e:
             logger.exception("Failed to get user organizations")
@@ -574,11 +541,7 @@ class OrgService:
 
     async def _get_membership(self, org_id: str, user_id: str) -> Optional[OrgMembership]:
         """Get membership for user in org."""
-        stmt = select(OrgMembership).where(
-            OrgMembership.org_id == org_id, OrgMembership.user_id == user_id, OrgMembership.is_active
-        )
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self._repo.get_membership(self.session, org_id, user_id)
 
     def _generate_slug(self, name: str) -> str:
         """Generate URL-friendly slug from name."""

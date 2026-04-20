@@ -40,7 +40,7 @@ class TestCreateProjectActiveProductResolution:
 
         # Mock ProductService with active product
         with (
-            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.services.product_service.ProductService") as mock_product_service_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -94,7 +94,7 @@ class TestCreateProjectActiveProductResolution:
         )
 
         with (
-            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.services.product_service.ProductService") as mock_product_service_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -139,7 +139,7 @@ class TestCreateProjectActiveProductResolution:
             test_session=None,
         )
 
-        with patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls:
+        with patch("giljo_mcp.services.product_service.ProductService") as mock_product_service_cls:
             mock_ps_instance = AsyncMock()
             mock_ps_instance.get_active_product = AsyncMock(return_value=None)
             mock_product_service_cls.return_value = mock_ps_instance
@@ -168,7 +168,7 @@ class TestCreateProjectActiveProductResolution:
         )
 
         with (
-            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_product_service_cls,
+            patch("giljo_mcp.services.product_service.ProductService") as mock_product_service_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",

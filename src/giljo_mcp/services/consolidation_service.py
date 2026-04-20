@@ -13,12 +13,11 @@ import hashlib
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from giljo_mcp.models.products import Product
+from giljo_mcp.repositories.project_repository import ProjectRepository
 from giljo_mcp.schemas.service_responses import ConsolidationResult, SummaryLevel
 from giljo_mcp.utils.log_sanitizer import sanitize
 
@@ -33,6 +32,7 @@ class ConsolidatedVisionService:
         from giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
         self.summarizer = VisionDocumentSummarizer()
+        self._repo = ProjectRepository()
 
     async def consolidate_vision_documents(
         self, product_id: str, session: AsyncSession, tenant_key: str, force: bool = False
@@ -54,12 +54,7 @@ class ConsolidatedVisionService:
             ValidationError: No changes detected (unless force=True)
         """
         # Fetch product with vision documents (defense-in-depth: tenant_key in WHERE clause)
-        result = await session.execute(
-            select(Product)
-            .options(selectinload(Product.vision_documents))
-            .where(Product.id == product_id, Product.tenant_key == tenant_key)
-        )
-        product = result.scalar_one_or_none()
+        product = await self._repo.get_product_with_vision_docs(session, tenant_key, product_id)
 
         if not product:
             logger.warning("consolidate_vision_documents.product_not_found: product_id=%s", sanitize(product_id))
@@ -100,7 +95,7 @@ class ConsolidatedVisionService:
         product.consolidated_at = datetime.now(timezone.utc)
 
         # Commit changes
-        await session.commit()
+        await self._repo.commit(session)
 
         logger.info(
             "consolidate_vision_documents.success: product_id=%s light_tokens=%d medium_tokens=%d",

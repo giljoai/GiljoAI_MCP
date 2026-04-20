@@ -108,6 +108,13 @@ class TestCodexTemplates:
         assert "Verification" in GIL_GET_AGENTS_CODEX_SKILL_MD
         assert "mcp__giljo_mcp__health_check" in GIL_GET_AGENTS_CODEX_SKILL_MD
 
+    def test_codex_get_agents_uses_supported_default_model(self):
+        """Codex skill defaults to the supported GiljoAI Codex model."""
+        assert "gpt-5.3-codex" in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert "gpt-5.2-codex" not in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert 'model = "gpt-5.3-codex"' in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert 'model_reasoning_effort = "medium"' in GIL_GET_AGENTS_CODEX_SKILL_MD
+
     def test_codex_gil_add_has_same_modes_as_claude(self):
         """GIL_ADD_CODEX_SKILL_MD mentions direct and interactive modes."""
         assert "--task" in GIL_ADD_CODEX_SKILL_MD

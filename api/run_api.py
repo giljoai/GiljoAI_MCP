@@ -14,31 +14,16 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import ClassVar
 
 import uvicorn
 
 
-# Add parent directory to path
-# TODO: Remove after editable install confirmed on all platforms
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-# Import colored logger and filter utilities
-try:
-    from giljo_mcp.colored_logger import (
-        LogFilter,
-        print_error,
-        print_highlight,
-        print_info,
-        print_success,
-        print_warning,
-        setup_colored_logging,
-    )
-
-    COLORED_LOGGING_AVAILABLE = True
-except ImportError:
-    COLORED_LOGGING_AVAILABLE = False
-    # Fallback
-    print_success = print_error = print_info = print_highlight = print_warning = print
+# Ensure project root is on sys.path so uvicorn can resolve "api.app:app"
+# (api/ is not a pip package — it needs the project root on sys.path)
+PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 # Import PortManager for centralized port management
 try:
@@ -162,6 +147,54 @@ def get_default_host() -> str:
     return "0.0.0.0"
 
 
+class _ColoredFormatter(logging.Formatter):
+    """Colored log output for terminal readability."""
+
+    COLORS: ClassVar[dict[str, str]] = {
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
+        "WARNING": "\033[33m",  # Yellow
+        "ERROR": "\033[31m",  # Red
+        "CRITICAL": "\033[35m",  # Magenta
+    }
+    RESET: ClassVar[str] = "\033[0m"
+    BOLD: ClassVar[str] = "\033[1m"
+
+    def format(self, record: logging.LogRecord) -> str:
+        color = self.COLORS.get(record.levelname, "")
+        levelname = f"{self.BOLD}{color}{record.levelname:<8}{self.RESET}"
+        timestamp = self.formatTime(record, self.datefmt)
+        name = f"\033[34m{record.name}\033[0m"  # Blue for logger name
+        message = record.getMessage()
+        if record.exc_info and not record.exc_text:
+            record.exc_text = self.formatException(record.exc_info)
+        exc = f"\n{record.exc_text}" if record.exc_text else ""
+        return f"{timestamp} - {name} - {levelname} - {color}{message}{self.RESET}{exc}"
+
+
+class _NoiseFilter(logging.Filter):
+    """Filter to exclude health check, ping, and static asset log noise."""
+
+    EXCLUDE_PATTERNS: ClassVar[list[str]] = [
+        "GET /health",
+        "GET /api/v1/health",
+        "WebSocket ping",
+        "WebSocket pong",
+        "keepalive",
+        "keep-alive",
+        "heartbeat",
+        "/ws/",
+        "ping-pong",
+        "GET /assets/",
+        "GET /index.html",
+        "GET /favicon.ico",
+    ]
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage().lower()
+        return not any(p.lower() in message for p in self.EXCLUDE_PATTERNS)
+
+
 def main():
     """Main entry point for running the API server"""
     parser = argparse.ArgumentParser(description="GiljoAI MCP REST API Server")
@@ -171,7 +204,7 @@ def main():
     parser.add_argument("--workers", type=int, default=1, help="Number of worker processes")
     parser.add_argument(
         "--log-level",
-        default="info",  # Changed to info to reduce noise
+        default="info",
         choices=["debug", "info", "warning", "error", "critical"],
         help="Logging level (default: info)",
     )
@@ -200,66 +233,44 @@ def main():
         # If port specified on command line, still check if available
         try:
             args.port = find_available_port(args.port)
-        except RuntimeError as e:
-            print_error(f"Port error: {e}")
+        except RuntimeError:
+            logging.exception("Port error")
             sys.exit(1)
 
-    # Configure colored logging if available
-    if COLORED_LOGGING_AVAILABLE:
-        setup_colored_logging(level=getattr(logging, args.log_level.upper()))
+    # Configure stdlib logging with colored output
+    log_level = getattr(logging, args.log_level.upper())
+    colored_formatter = _ColoredFormatter(datefmt="%Y-%m-%d %H:%M:%S")
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(colored_formatter)
+    console_handler.setLevel(log_level)
 
-        # Create filter to exclude ping/keepalive/health check messages
-        exclude_patterns = [
-            "GET /health",
-            "GET /api/v1/health",
-            "WebSocket ping",
-            "WebSocket pong",
-            "keepalive",
-            "keep-alive",
-            "heartbeat",
-            "/ws/",
-            "ping-pong",
-            "GET /assets/",
-            "GET /index.html",
-            "GET /favicon.ico",
-        ]
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+    root_logger.handlers.clear()
+    root_logger.addHandler(console_handler)
 
-        # Apply filter to root logger
-        log_filter = LogFilter(exclude_patterns)
-        root_logger = logging.getLogger()
-        for handler in root_logger.handlers:
-            handler.addFilter(log_filter)
+    # Apply noise filter
+    noise_filter = _NoiseFilter()
+    console_handler.addFilter(noise_filter)
 
-        # Apply to uvicorn loggers
-        for logger_name in ["uvicorn", "uvicorn.access", "uvicorn.error", "fastapi"]:
-            uvicorn_logger = logging.getLogger(logger_name)
-            uvicorn_logger.setLevel(getattr(logging, args.log_level.upper()))
-            for handler in uvicorn_logger.handlers:
-                handler.addFilter(log_filter)
-    else:
-        # Fallback to basic logging
-        logging.basicConfig(
-            level=getattr(logging, args.log_level.upper()),
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            force=True,
-        )
-        logging.getLogger("uvicorn").setLevel(getattr(logging, args.log_level.upper()))
-        logging.getLogger("uvicorn.access").setLevel(logging.WARNING)  # Reduce access log noise
-        logging.getLogger("uvicorn.error").setLevel(getattr(logging, args.log_level.upper()))
-        logging.getLogger("fastapi").setLevel(getattr(logging, args.log_level.upper()))
+    for logger_name in ["uvicorn", "uvicorn.access", "uvicorn.error", "fastapi"]:
+        uvicorn_logger = logging.getLogger(logger_name)
+        uvicorn_logger.setLevel(log_level)
+        for handler in uvicorn_logger.handlers:
+            handler.addFilter(noise_filter)
 
     logger = logging.getLogger(__name__)
 
-    # Log startup information with colored output
-    print_highlight("=" * 60)
-    print_highlight("  GiljoAI MCP REST API Beta 1.0.0")
-    print_highlight("=" * 60)
+    # Log startup information
+    logger.info("=" * 60)
+    logger.info("  GiljoAI MCP REST API Beta 1.0.0")
+    logger.info("=" * 60)
 
-    print_success(f"Server binding to {args.host}:{args.port}")
-    print_info(f"Port selection: {'Command line' if args.port else 'Auto-detected'}")
-    print_info(f"Workers: {args.workers}")
-    print_info(f"Auto-reload: {'Enabled' if args.reload else 'Disabled'}")
-    print_info(f"Log level: {args.log_level.upper()}")
+    logger.info(f"Server binding to {args.host}:{args.port}")
+    logger.info(f"Port selection: {'Command line' if args.port else 'Auto-detected'}")
+    logger.info(f"Workers: {args.workers}")
+    logger.info(f"Auto-reload: {'Enabled' if args.reload else 'Disabled'}")
+    logger.info(f"Log level: {args.log_level.upper()}")
 
     # SSL Configuration Priority:
     # 1. Command-line arguments (--ssl-keyfile, --ssl-certfile)
@@ -270,7 +281,7 @@ def main():
     # Try command-line arguments first
     if args.ssl_keyfile and args.ssl_certfile:
         ssl_config = {"ssl_keyfile": args.ssl_keyfile, "ssl_certfile": args.ssl_certfile}
-        print_success(f"SSL enabled via CLI: {args.ssl_certfile}")
+        logger.info(f"SSL enabled via CLI: {args.ssl_certfile}")
 
     # Try config.yaml if no CLI args
     if not ssl_config:
@@ -292,14 +303,14 @@ def main():
 
                     if cert_path.exists() and key_path.exists():
                         ssl_config = {"ssl_keyfile": str(key_path), "ssl_certfile": str(cert_path)}
-                        print_success(f"SSL enabled via config.yaml: {cert_path}")
+                        logger.info(f"SSL enabled via config.yaml: {cert_path}")
                     else:
-                        print_warning("SSL enabled in config but certificate files not found:")
+                        logger.warning("SSL enabled in config but certificate files not found:")
                         if not cert_path.exists():
-                            print_warning(f"  Cert: {cert_path} (not found)")
+                            logger.warning(f"  Cert: {cert_path} (not found)")
                         if not key_path.exists():
-                            print_warning(f"  Key:  {key_path} (not found)")
-                        print_info("Falling back to HTTP mode")
+                            logger.warning(f"  Key:  {key_path} (not found)")
+                        logger.info("Falling back to HTTP mode")
         except (OSError, ValueError, ImportError) as e:
             logger.warning(f"Failed to load SSL config from config.yaml: {e}")
 
@@ -312,33 +323,33 @@ def main():
             key_path = Path(ssl_key_env)
             if cert_path.exists() and key_path.exists():
                 ssl_config = {"ssl_keyfile": str(key_path), "ssl_certfile": str(cert_path)}
-                print_success(f"SSL enabled via environment: {cert_path}")
+                logger.info(f"SSL enabled via environment: {cert_path}")
 
     if not ssl_config:
-        print_info("Running in HTTP mode (no SSL configured)")
+        logger.info("Running in HTTP mode (no SSL configured)")
 
-    print_info("-" * 60)
+    logger.info("-" * 60)
     http_proto = "https" if ssl_config else "http"
     ws_proto = "wss" if ssl_config else "ws"
-    print_info("API Endpoints:")
-    print_info(f"  Documentation: {http_proto}://{args.host}:{args.port}/docs")
-    print_info(f"  ReDoc: {http_proto}://{args.host}:{args.port}/redoc")
-    print_info(f"  OpenAPI JSON: {http_proto}://{args.host}:{args.port}/openapi.json")
-    print_success(f"  Health Check: {http_proto}://{args.host}:{args.port}/health")
-    print_success(f"  WebSocket: {ws_proto}://{args.host}:{args.port}/ws/{{client_id}}")
-    print_info("-" * 60)
-    print_info("Available API Routes:")
-    print_info("  /api/v1/projects - Project management")
-    print_info("  /api/v1/agents - Agent control")
-    print_info("  /api/v1/messages - Inter-agent messaging")
-    print_info("  /api/v1/tasks - Task management")
-    print_info("  /api/v1/context - Context and vision documents")
-    print_info("  /api/v1/config - Configuration management")
-    print_info("  /api/v1/stats - Statistics and monitoring")
-    print_highlight("=" * 60)
-    print_success("Server starting... Ready to accept connections!")
-    print_info("Ping/keepalive messages are filtered from output")
-    print_highlight("=" * 60)
+    logger.info("API Endpoints:")
+    logger.info(f"  Documentation: {http_proto}://{args.host}:{args.port}/docs")
+    logger.info(f"  ReDoc: {http_proto}://{args.host}:{args.port}/redoc")
+    logger.info(f"  OpenAPI JSON: {http_proto}://{args.host}:{args.port}/openapi.json")
+    logger.info(f"  Health Check: {http_proto}://{args.host}:{args.port}/health")
+    logger.info(f"  WebSocket: {ws_proto}://{args.host}:{args.port}/ws/{{client_id}}")
+    logger.info("-" * 60)
+    logger.info("Available API Routes:")
+    logger.info("  /api/v1/projects - Project management")
+    logger.info("  /api/v1/agents - Agent control")
+    logger.info("  /api/v1/messages - Inter-agent messaging")
+    logger.info("  /api/v1/tasks - Task management")
+    logger.info("  /api/v1/context - Context and vision documents")
+    logger.info("  /api/v1/config - Configuration management")
+    logger.info("  /api/v1/stats - Statistics and monitoring")
+    logger.info("=" * 60)
+    logger.info("Server starting... Ready to accept connections!")
+    logger.info("Ping/keepalive messages are filtered from output")
+    logger.info("=" * 60)
 
     try:
         # Run the server

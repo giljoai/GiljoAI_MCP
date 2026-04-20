@@ -190,7 +190,9 @@ async def cancel_project(
     logger.info("User %s cancelling project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Cancel via ProjectService (raises exceptions on error)
-    await project_service.cancel_project(project_id=project_id, tenant_key=current_user.tenant_key, reason=reason)
+    await project_service.lifecycle.cancel_project(
+        project_id=project_id, tenant_key=current_user.tenant_key, reason=reason
+    )
 
     logger.info("Cancelled project %s", sanitize(project_id))
 
@@ -225,7 +227,7 @@ async def restore_project(
 
     # Restore via ProjectService (raises exceptions on error)
     # SECURITY: Explicit tenant_key prevents cross-tenant project restoration
-    await project_service.restore_project(project_id=project_id, tenant_key=current_user.tenant_key)
+    await project_service.deletion.restore_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     logger.info("Restored project %s", sanitize(project_id))
 
@@ -264,7 +266,7 @@ async def cancel_project_staging(
     logger.info("User %s cancelling staging for project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Cancel staging via ProjectService (raises exceptions on error)
-    await project_service.cancel_staging(project_id=project_id)
+    await project_service.lifecycle.cancel_staging(project_id=project_id)
 
     logger.info("Cancelled staging for project %s", sanitize(project_id))
 
@@ -308,7 +310,7 @@ async def restage_project(
     logger.info("Restage requested", extra={"user": str(current_user.username), "project_id": str(project_id)})
 
     try:
-        result = await project_service.restage(project_id=project_id)
+        result = await project_service.lifecycle.restage(project_id=project_id)
     except ResourceNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -341,7 +343,7 @@ async def unstage_project(
     logger.info("Unstage requested", extra={"user": str(current_user.username), "project_id": str(project_id)})
 
     try:
-        result = await project_service.unstage(project_id=project_id)
+        result = await project_service.lifecycle.unstage(project_id=project_id)
     except ResourceNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except ProjectStateError as e:
@@ -363,7 +365,7 @@ async def purge_all_deleted_projects(
     logger.info("User %s purging all deleted projects", current_user.username)
 
     # Service raises exceptions on error
-    result = await project_service.purge_all_deleted_projects()
+    result = await project_service.deletion.purge_all_deleted_projects()
 
     # 0731d: ProjectService returns ProjectPurgeResult typed model
     projects = [PurgedProject(**proj) for proj in result.projects]
@@ -390,7 +392,7 @@ async def purge_deleted_project(
     logger.info("User %s performing NUCLEAR PURGE on deleted project %s", current_user.username, project_id)
 
     # Use nuclear delete for immediate permanent deletion (raises exceptions on error)
-    result = await project_service.nuclear_delete_project(project_id)
+    result = await project_service.deletion.nuclear_delete_project(project_id)
 
     # 0731d: ProjectService returns NuclearDeleteResult typed model
     project_info = {
@@ -453,13 +455,19 @@ async def archive_project(
 
     # Handover 0435b: transition 'complete' agents to 'closed' on user archive action
     try:
-        from giljo_mcp.tools.project_closeout import _close_completed_agents
+        from giljo_mcp.services.project_closeout_service import ProjectCloseoutService
+        from giljo_mcp.tenant import TenantManager
 
-        async with project_service.db_manager.get_session_async() as session:
-            closed_names = await _close_completed_agents(session, project_id, current_user.tenant_key)
-            if closed_names:
-                logger.info("Closed %d agent(s) on archive: %s", len(closed_names), ", ".join(closed_names))
-            await session.commit()
+        closeout_service = ProjectCloseoutService(
+            db_manager=project_service.db_manager,
+            tenant_manager=TenantManager(),
+        )
+        closed_names = await closeout_service.close_completed_agents_with_commit(
+            project_id=project_id,
+            tenant_key=current_user.tenant_key,
+        )
+        if closed_names:
+            logger.info("Closed %d agent(s) on archive: %s", len(closed_names), ", ".join(closed_names))
     except (ImportError, OSError):
         logger.warning("Failed to close agents during project archive")
 
@@ -486,7 +494,7 @@ async def delete_project(
     logger.info("User %s deleting project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Service raises exceptions on error
-    result = await project_service.delete_project(project_id)
+    result = await project_service.deletion.delete_project(project_id)
 
     # 0731d: ProjectService returns SoftDeleteResult typed model
     return ProjectDeleteResponse(

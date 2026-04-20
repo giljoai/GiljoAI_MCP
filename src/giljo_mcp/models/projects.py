@@ -224,6 +224,7 @@ class Project(Base):
         Index(
             "uq_project_taxonomy_active",
             "tenant_key",
+            "product_id",
             "project_type_id",
             "series_number",
             "subseries",

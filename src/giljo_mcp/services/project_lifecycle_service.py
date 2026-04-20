@@ -15,9 +15,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
-from uuid import uuid4
 
-from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -27,14 +25,14 @@ from giljo_mcp.exceptions import (
     ResourceNotFoundError,
     ValidationError,
 )
-from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.projects import Project
+from giljo_mcp.repositories.project_lifecycle_repository import ProjectLifecycleRepository
 from giljo_mcp.schemas.service_responses import (
     ProjectCompleteResult,
     ProjectData,
     ProjectResumeResult,
 )
-from giljo_mcp.services.project_service import _build_ws_project_data
+from giljo_mcp.services.project_helpers import _build_ws_project_data
 from giljo_mcp.tenant import TenantManager
 
 
@@ -56,6 +54,13 @@ class ProjectLifecycleService:
         self._test_session = test_session
         self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._repo = ProjectLifecycleRepository()
+
+        from giljo_mcp.services.project_staging_service import ProjectStagingService
+
+        self._staging = ProjectStagingService(
+            db_manager, tenant_manager, test_session, websocket_manager, lifecycle_service=self
+        )
 
     def _get_session(self):
         """Get a session, preferring an injected test session when provided."""
@@ -107,10 +112,7 @@ class ProjectLifecycleService:
             resolved_tenant = tenant_key or self.tenant_manager.get_current_tenant()
             async with self._get_session() as session:
                 # Fetch project
-                result = await session.execute(
-                    select(Project).where(and_(Project.id == project_id, Project.tenant_key == resolved_tenant))
-                )
-                project = result.scalar_one_or_none()
+                project = await self._repo.get_by_id(session, resolved_tenant, project_id)
 
                 if not project:
                     raise ResourceNotFoundError(
@@ -126,17 +128,9 @@ class ProjectLifecycleService:
 
                 # Check for existing active project in same product (Single Active Project constraint)
                 if project.product_id:
-                    existing_active_result = await session.execute(
-                        select(Project).where(
-                            and_(
-                                Project.product_id == project.product_id,
-                                Project.status == "active",
-                                Project.id != project_id,
-                                Project.tenant_key == resolved_tenant,
-                            )
-                        )
+                    existing_active = await self._repo.find_active_in_product(
+                        session, resolved_tenant, str(project.product_id), project_id
                     )
-                    existing_active = existing_active_result.scalar_one_or_none()
 
                     if existing_active:
                         # Auto-deactivate existing active project
@@ -150,7 +144,7 @@ class ProjectLifecycleService:
                         # satisfy the unique index idx_project_single_active_per_product.
                         # Otherwise Postgres may see two active projects for the same product
                         # in a single flush and raise a unique violation.
-                        await session.flush()
+                        await self._repo.flush(session)
 
                 # Activate project
                 project.status = "active"
@@ -160,8 +154,8 @@ class ProjectLifecycleService:
                 if not project.activated_at:
                     project.activated_at = datetime.now(timezone.utc)
 
-                await session.commit()
-                await session.refresh(project)
+                await self._repo.commit(session)
+                await self._repo.refresh(session, project)
 
                 self._logger.info(f"Activated project {project_id}")
 
@@ -226,18 +220,7 @@ class ProjectLifecycleService:
 
         # Check if orchestrator already exists for this project
         # FIX 1 (Handover 0485): Use exclusion-based filter (finds: waiting, working, complete, blocked)
-        existing_stmt = (
-            select(AgentExecution)
-            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-            .where(
-                AgentJob.project_id == project.id,
-                AgentExecution.agent_display_name == "orchestrator",
-                AgentExecution.tenant_key == tenant_key,
-                ~AgentExecution.status.in_(["decommissioned"]),  # Handover 0491: Simplified statuses
-            )
-        )
-        existing_result = await session.execute(existing_stmt)
-        existing = existing_result.scalar_one_or_none()
+        existing = await self._repo.find_existing_orchestrator(session, tenant_key, str(project.id))
 
         if existing:
             self._logger.info(
@@ -246,41 +229,12 @@ class ProjectLifecycleService:
             )
             return None
 
-        # Generate IDs
-        job_id = str(uuid4())
-        agent_id = str(uuid4())
+        # Create orchestrator fixture via repository
+        fixture_ids = await self._repo.create_orchestrator_fixture(session, tenant_key, project)
 
-        # Create AgentJob (work order)
-        agent_job = AgentJob(
-            job_id=job_id,
-            tenant_key=tenant_key,
-            project_id=project.id,
-            mission=f"Orchestrator for project: {project.name}",  # Placeholder
-            job_type="orchestrator",
-            status="active",
-            job_metadata={
-                "created_via": "project_activation_fixture",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            },
-        )
-        session.add(agent_job)
-
-        # Create AgentExecution (executor)
-        agent_execution = AgentExecution(
-            agent_id=agent_id,
-            job_id=job_id,
-            tenant_key=tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            status="waiting",
-            progress=0,
-            health_status="unknown",
-        )
-        session.add(agent_execution)
-
-        await session.commit()
-        await session.refresh(agent_job)
-        await session.refresh(agent_execution)
+        job_id = fixture_ids["job_id"]
+        agent_id = fixture_ids["agent_id"]
+        execution_id = fixture_ids["execution_id"]
 
         self._logger.info(
             f"[ORCHESTRATOR FIXTURE] Created orchestrator fixture for project {project.id}: "
@@ -295,7 +249,7 @@ class ProjectLifecycleService:
                     event_type="agent:created",
                     data={
                         "project_id": project.id,
-                        "execution_id": agent_execution.id,  # Handover 0457: Unique row ID for frontend Map key
+                        "execution_id": execution_id,  # Handover 0457: Unique row ID for frontend Map key
                         "agent_id": agent_id,
                         "job_id": job_id,
                         "agent_display_name": "orchestrator",
@@ -349,10 +303,7 @@ class ProjectLifecycleService:
         resolved_tenant = tenant_key or self.tenant_manager.get_current_tenant()
         async with self._get_session() as session:
             # Fetch project
-            result = await session.execute(
-                select(Project).where(and_(Project.id == project_id, Project.tenant_key == resolved_tenant))
-            )
-            project = result.scalar_one_or_none()
+            project = await self._repo.get_by_id(session, resolved_tenant, project_id)
 
             if not project:
                 raise ResourceNotFoundError(
@@ -375,8 +326,8 @@ class ProjectLifecycleService:
             if reason:
                 project.deactivation_reason = reason
 
-            await session.commit()
-            await session.refresh(project)
+            await self._repo.commit(session)
+            await self._repo.refresh(session, project)
 
             self._logger.info(f"Deactivated project {project_id}")
 
@@ -396,254 +347,20 @@ class ProjectLifecycleService:
             return project
 
     def check_staging_allowed(self, project: Project) -> None:
-        """Check if a project can be staged. Raises if staging is already in progress.
-
-        Args:
-            project: The project to check.
-
-        Raises:
-            ProjectStateError: If project.staging_status is 'staging'.
-        """
-        if project.staging_status == "staging":
-            raise ProjectStateError(
-                message="Staging already in progress. Use Re-Stage to reset first.",
-                context={"project_id": project.id, "staging_status": project.staging_status},
-            )
+        """Facade: delegates to ProjectStagingService."""
+        self._staging.check_staging_allowed(project)
 
     async def restage(self, project_id: str) -> dict:
-        """Reset a staged project so it can be re-staged with a fresh orchestrator.
-
-        Guards:
-            1. project.staging_status must be 'staging' — otherwise reject.
-            2. The orchestrator AgentExecution must have status 'waiting'.
-
-        Actions (single transaction):
-            1. Set project.staging_status = None
-            2. Set project.execution_mode = 'multi_terminal'
-            3. Decommission the existing orchestrator execution
-            4. Create a fresh orchestrator fixture
-
-        Args:
-            project_id: Project UUID.
-
-        Returns:
-            Dict with message, project_id, and new_orchestrator fixture info.
-
-        Raises:
-            ResourceNotFoundError: Project not found.
-            ProjectStateError: Invalid state for restage.
-        """
-        tenant_key = self.tenant_manager.get_current_tenant()
-
-        async with self._get_session() as session:
-            # 1. Fetch project
-            result = await session.execute(
-                select(Project).where(
-                    and_(
-                        Project.id == project_id,
-                        Project.tenant_key == tenant_key,
-                    )
-                )
-            )
-            project = result.scalar_one_or_none()
-
-            if not project:
-                raise ResourceNotFoundError(
-                    message="Project not found",
-                    context={"project_id": project_id},
-                )
-
-            # 2. Guard: must be in 'staging' state
-            if project.staging_status != "staging":
-                raise ProjectStateError(
-                    message="Project is not currently staged",
-                    context={
-                        "project_id": project_id,
-                        "staging_status": project.staging_status,
-                    },
-                )
-
-            # 3. Find orchestrator execution
-            orch_result = await session.execute(
-                select(AgentExecution)
-                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                .where(
-                    AgentJob.project_id == project_id,
-                    AgentExecution.agent_display_name == "orchestrator",
-                    AgentExecution.tenant_key == tenant_key,
-                    ~AgentExecution.status.in_(["decommissioned"]),
-                )
-            )
-            orchestrator = orch_result.scalar_one_or_none()
-
-            # 4. Guard: orchestrator must be waiting
-            if orchestrator and orchestrator.status != "waiting":
-                raise ProjectStateError(
-                    message="Cannot restage: orchestrator agent is already active",
-                    context={
-                        "project_id": project_id,
-                        "orchestrator_status": orchestrator.status,
-                    },
-                )
-
-            # 5. Reset project state
-            project.staging_status = None
-            project.execution_mode = "multi_terminal"
-            project.updated_at = datetime.now(timezone.utc)
-
-            # 6. Decommission existing orchestrator
-            if orchestrator:
-                orchestrator.status = "decommissioned"
-
-            await session.commit()
-
-            # 7. Create fresh orchestrator fixture
-            new_fixture = await self._ensure_orchestrator_fixture(session, project)
-
-            self._logger.info(
-                "[RESTAGE] Project %s restaged, new orchestrator: %s",
-                project_id,
-                new_fixture,
-            )
-
-            return {
-                "message": "Project restaged successfully",
-                "project_id": project.id,
-                "new_orchestrator": new_fixture,
-            }
+        """Facade: delegates to ProjectStagingService."""
+        return await self._staging.restage(project_id)
 
     async def unstage(self, project_id: str) -> dict:
-        """Revert a project from 'staged' back to ready state.
-
-        Only allowed when staging_status == 'staged' (prompt generated, agent
-        has not yet made first contact).
-
-        Actions:
-            1. Reset staging_status to None
-            2. Clear mission (prompt was generated but never used)
-
-        Raises:
-            ResourceNotFoundError: Project not found.
-            ProjectStateError: Not in 'staged' state.
-        """
-        tenant_key = self.tenant_manager.get_current_tenant()
-
-        async with self._get_session() as session:
-            result = await session.execute(
-                select(Project).where(
-                    and_(
-                        Project.id == project_id,
-                        Project.tenant_key == tenant_key,
-                    )
-                )
-            )
-            project = result.scalar_one_or_none()
-
-            if not project:
-                raise ResourceNotFoundError(
-                    message="Project not found",
-                    context={"project_id": project_id},
-                )
-
-            if project.staging_status != "staged":
-                raise ProjectStateError(
-                    message="Project is not in staged state. Cannot unstage.",
-                    context={
-                        "project_id": project_id,
-                        "staging_status": project.staging_status,
-                    },
-                )
-
-            project.staging_status = None
-            project.updated_at = datetime.now(timezone.utc)
-            await session.commit()
-
-            self._logger.info("[UNSTAGE] Project %s unstaged", project_id)
-
-            return {
-                "message": "Project unstaged successfully",
-                "project_id": project.id,
-            }
+        """Facade: delegates to ProjectStagingService."""
+        return await self._staging.unstage(project_id)
 
     async def cancel_staging(self, project_id: str, websocket_manager: Any | None = None) -> ProjectData:
-        """
-        Cancel a project in staging state.
-
-        State Transition: staging -> cancelled
-
-        Similar to cancel_project() but specifically for staging state.
-        Cleans up any pending orchestrator jobs.
-
-        Args:
-            project_id: Project UUID
-            websocket_manager: Optional WebSocket manager for real-time updates
-
-        Returns:
-            Project data dictionary
-
-        Raises:
-            ResourceNotFoundError: Project not found
-            ProjectStateError: Cannot cancel staging for project with current status
-
-        Example:
-            >>> result = await service.cancel_staging("abc-123")
-        """
-        async with self._get_session() as session:
-            # Fetch project
-            result = await session.execute(
-                select(Project).where(
-                    and_(Project.id == project_id, Project.tenant_key == self.tenant_manager.get_current_tenant())
-                )
-            )
-            project = result.scalar_one_or_none()
-
-            if not project:
-                raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
-
-            # Validate state
-            if project.status != "staging":
-                raise ProjectStateError(
-                    message=f"Cannot cancel staging for project with status '{project.status}'",
-                    context={"project_id": project_id, "current_status": project.status},
-                )
-
-            # Cancel project
-            project.status = "cancelled"
-            project.completed_at = datetime.now(timezone.utc)  # Using completed_at for cancelled_at
-            project.updated_at = datetime.now(timezone.utc)
-
-            await session.commit()
-            await session.refresh(project)
-
-            self._logger.info(f"Cancelled staging for project {project_id}")
-
-            # Broadcast WebSocket event
-            if websocket_manager:
-                try:
-                    await websocket_manager.broadcast_project_update(
-                        project_id=project.id,
-                        update_type="cancelled",
-                        project_data=_build_ws_project_data(project),
-                        tenant_key=project.tenant_key,
-                    )
-                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
-                    self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
-
-            return ProjectData(
-                id=project.id,
-                name=project.name,
-                status=project.status,
-                mission=project.mission,
-                description=project.description,
-                cancellation_reason=project.cancellation_reason,
-                deactivation_reason=project.deactivation_reason,
-                early_termination=project.early_termination,
-                created_at=project.created_at.isoformat() if project.created_at else None,
-                updated_at=project.updated_at.isoformat() if project.updated_at else None,
-                activated_at=project.activated_at.isoformat() if project.activated_at else None,
-                completed_at=project.completed_at.isoformat() if project.completed_at else None,
-                product_id=project.product_id,
-            )
+        """Facade: delegates to ProjectStagingService."""
+        return await self._staging.cancel_staging(project_id, websocket_manager)
 
     async def complete_project(
         self,
@@ -733,15 +450,7 @@ class ProjectLifecycleService:
         """
         now = datetime.now(timezone.utc)
 
-        result = await session.execute(
-            select(Project).where(
-                and_(
-                    Project.id == project_id,
-                    Project.tenant_key == tenant_key,
-                )
-            )
-        )
-        project = result.scalar_one_or_none()
+        project = await self._repo.get_by_id(session, tenant_key, project_id)
 
         if not project:
             raise ResourceNotFoundError(
@@ -778,7 +487,7 @@ class ProjectLifecycleService:
             git_commits_count = 0
 
         if commit:
-            await session.commit()
+            await self._repo.commit(session)
 
         # Broadcast project status change to all browsers
         ws_mgr = self._websocket_manager
@@ -833,30 +542,15 @@ class ProjectLifecycleService:
         """
         try:
             async with self._get_session() as session:
-                # Build update values
-                update_values = {
-                    "status": "cancelled",
-                    "completed_at": datetime.now(timezone.utc),
-                    "updated_at": datetime.now(timezone.utc),
-                }
+                rowcount = await self._repo.cancel_project(session, tenant_key, project_id, reason)
 
-                # Add cancellation reason if provided
-                if reason:
-                    update_values["cancellation_reason"] = reason
-
-                result = await session.execute(
-                    update(Project)
-                    .where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
-                    .values(**update_values)
-                )
-
-                if result.rowcount == 0:
+                if rowcount == 0:
                     raise ResourceNotFoundError(
                         message="Project not found or access denied",
                         context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
-                await session.commit()
+                await self._repo.commit(session)
 
                 self._logger.info(f"Cancelled project {project_id}")
 
@@ -900,10 +594,7 @@ class ProjectLifecycleService:
         try:
             async with self._get_session() as session:
                 # Fetch project with tenant validation
-                result = await session.execute(
-                    select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
-                )
-                project = result.scalar_one_or_none()
+                project = await self._repo.get_by_id(session, tenant_key, project_id)
 
                 if not project:
                     raise ResourceNotFoundError(
@@ -925,18 +616,7 @@ class ProjectLifecycleService:
                 project.updated_at = datetime.now(timezone.utc)
 
                 # Resume decommissioned agents (migrated to AgentExecution - Handover 0367a)
-                agent_result = await session.execute(
-                    select(AgentExecution)
-                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                    .where(
-                        and_(
-                            AgentJob.project_id == project_id,
-                            AgentJob.tenant_key == tenant_key,
-                            AgentExecution.status == "decommissioned",
-                        )
-                    )
-                )
-                executions_to_resume = agent_result.scalars().all()
+                executions_to_resume = await self._repo.find_decommissioned_executions(session, tenant_key, project_id)
                 resumed_ids = []
 
                 for execution in executions_to_resume:
@@ -944,7 +624,7 @@ class ProjectLifecycleService:
                     execution.updated_at = datetime.now(timezone.utc)
                     resumed_ids.append(execution.job_id)
 
-                await session.commit()
+                await self._repo.commit(session)
 
                 self._logger.info(f"Resumed project {project_id} with {len(resumed_ids)} agents resumed")
 
