@@ -817,6 +817,7 @@ watch(
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+  padding-left: 4px;
 }
 
 .hitl-toggle-label {
