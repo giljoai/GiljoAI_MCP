@@ -25,15 +25,6 @@
       </button>
       <button
         class="pill-toggle smooth-border"
-        :class="{ 'pill-toggle--active': activeTab === 'orchestration' }"
-        data-testid="orchestration-settings-tab"
-        @click="activeTab = 'orchestration'"
-      >
-        <v-icon size="16" class="pill-toggle-icon">mdi-robot</v-icon>
-        Orchestration
-      </button>
-      <button
-        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'agents' }"
         data-testid="agent-templates-settings-tab"
         @click="activeTab = 'agents'"
@@ -124,35 +115,6 @@
           </div>
         </div>
         <CertTrustModal v-model="showCertModal" />
-      </v-window-item>
-
-      <!-- Orchestration Settings (HITL Closeout Checkpoint) -->
-      <v-window-item value="orchestration">
-        <div class="tab-header mb-4">
-          <h2 class="text-h6">Orchestration</h2>
-          <p class="text-body-2 text-muted-a11y mt-1">Control how the orchestrator handles project lifecycle decisions</p>
-        </div>
-        <v-card variant="flat" class="smooth-border settings-card" data-testid="orchestration-settings">
-          <v-card-text>
-            <div class="d-flex align-center justify-space-between">
-              <div class="orchestration-toggle-info">
-                <div class="text-body-1 font-weight-medium">Require user approval before project closeout</div>
-                <div class="text-body-2 text-muted-a11y mt-1" style="max-width: 560px;">
-                  When enabled, the orchestrator will pause and ask for your review before closing a project.
-                  When disabled, the orchestrator proceeds autonomously.
-                </div>
-              </div>
-              <v-switch
-                :model-value="closeoutModeHitl"
-                color="primary"
-                hide-details
-                :aria-label="'Require user approval before project closeout'"
-                data-testid="closeout-mode-toggle"
-                @update:model-value="toggleCloseoutMode"
-              />
-            </div>
-          </v-card-text>
-        </v-card>
       </v-window-item>
 
       <!-- Notification Settings -->
@@ -281,7 +243,6 @@ import McpIntegrationCard from '@/components/settings/integrations/McpIntegratio
 import SerenaIntegrationCard from '@/components/settings/integrations/SerenaIntegrationCard.vue'
 import GitIntegrationCard from '@/components/settings/integrations/GitIntegrationCard.vue'
 import setupService from '@/services/setupService'
-import api from '@/services/api'
 import CertTrustModal from '@/components/setup/CertTrustModal.vue'
 // Stores and Theme
 const settingsStore = useSettingsStore()
@@ -306,9 +267,6 @@ const gitEnabled = ref(false)
 const templateExportEvent = ref(null)
 provide('templateExportEvent', templateExportEvent)
 const togglingGit = ref(false)
-
-// Orchestration settings: closeout_mode (HITL Closeout Checkpoint)
-const closeoutModeHitl = ref(true) // Default: ON (hitl mode)
 
 // Settings object
 const settings = ref({
@@ -337,28 +295,6 @@ function resetNotificationSettings() {
     position: 'bottom-right',
     duration: 5,
     agent_silence_threshold_minutes: 10,
-  }
-}
-
-// Orchestration: Toggle closeout mode between hitl and autonomous
-async function toggleCloseoutMode(enabled) {
-  const newMode = enabled ? 'hitl' : 'autonomous'
-  const previousValue = closeoutModeHitl.value
-  closeoutModeHitl.value = enabled
-  try {
-    await api.settings.updateGeneral({ closeout_mode: newMode })
-    // Keep localStorage in sync for immediate UI feedback on next page load
-    settingsStore.updateSettings({ closeout_mode: newMode })
-    showToast({
-      message: enabled
-        ? 'User approval required before project closeout'
-        : 'Orchestrator will close projects autonomously',
-      type: 'success',
-    })
-  } catch (error) {
-    console.error('[USER SETTINGS] Failed to save closeout mode:', error)
-    closeoutModeHitl.value = previousValue
-    showToast({ message: 'Failed to save orchestration settings. Please try again.', type: 'error' })
   }
 }
 
@@ -410,20 +346,6 @@ onMounted(async () => {
   // Apply stored notification settings to local state
   if (settingsStore.settings.notifications) {
     settings.value.notifications = { ...settings.value.notifications, ...settingsStore.settings.notifications }
-  }
-
-  // Load closeout_mode from backend Settings table (source of truth)
-  try {
-    const generalRes = await api.settings.getGeneral()
-    const generalSettings = generalRes.data?.settings || {}
-    if (generalSettings.closeout_mode) {
-      closeoutModeHitl.value = generalSettings.closeout_mode === 'hitl'
-    }
-  } catch {
-    // Fall back to store/localStorage if backend unavailable
-    if (settingsStore.settings.closeout_mode) {
-      closeoutModeHitl.value = settingsStore.settings.closeout_mode === 'hitl'
-    }
   }
 
   // Load git integration settings (system-level)
@@ -707,14 +629,4 @@ function handleTemplateExportEvent(data) {
   padding: 16px 0;
 }
 
-/* Orchestration toggle layout */
-.orchestration-toggle-info {
-  flex: 1;
-  min-width: 0;
-}
-
-/* Compact v-switch in orchestration tab */
-:deep(.v-switch .v-selection-control) {
-  min-height: auto;
-}
 </style>
