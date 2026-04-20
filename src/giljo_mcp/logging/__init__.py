@@ -6,35 +6,18 @@
 """
 Structured Logging with Error Codes
 
-Production-grade structured logging using structlog with:
+Production-grade structured logging using structlog as a processing
+pipeline on top of stdlib logging.getLogger():
 - JSON output for production (machine-parseable)
 - Console output for development (human-readable)
-- Backward compatibility with standard Python logging
 - Error code support for quick diagnosis
 
 Usage:
-    from giljo_mcp.logging import get_logger, ErrorCode
+    import logging
+    from giljo_mcp.logging import ErrorCode
 
-    logger = get_logger(__name__)
-
-    # Structured logging with context
-    logger.info(
-        "user_authenticated",
-        user_id=user.id,
-        ip_address=request.client.host,
-        tenant_key=user.tenant_key
-    )
-
-    # Error logging with error code
-    logger.error(
-        "authentication_failed",
-        error_code=ErrorCode.AUTH_INVALID_CREDENTIALS.value,
-        user_id=user_id,
-        reason="invalid_password"
-    )
-
-    # Backward compatible (no code changes needed)
-    logger.info("Processing request...")  # Still works!
+    logger = logging.getLogger(__name__)
+    logger.info("Processing request for user_id=%s", user_id)
 
 Environment Variables:
     ENVIRONMENT: Set to "production" for JSON output, anything else for console
@@ -47,13 +30,12 @@ import sys
 from typing import Optional
 
 import structlog
-from structlog.types import FilteringBoundLogger
 
 from .error_codes import ErrorCode, get_error_description
 
 
 # Re-export for convenience
-__all__ = ["ErrorCode", "configure_logging", "get_colored_logger", "get_error_description", "get_logger"]
+__all__ = ["ErrorCode", "configure_logging", "get_error_description"]
 
 
 # Module-level configuration state
@@ -69,7 +51,11 @@ def configure_logging(
     force_json: bool = False,
 ) -> None:
     """
-    Configure structlog for the application.
+    Configure structlog processing pipeline for the application.
+
+    Structlog acts as a log processor/formatter on top of stdlib logging.
+    Individual modules should use ``logging.getLogger(__name__)`` to obtain
+    their loggers.
 
     Args:
         environment: "production" for JSON, anything else for console (default: from ENVIRONMENT env var)
@@ -87,7 +73,7 @@ def configure_logging(
     level_str = os.getenv("LOG_LEVEL", log_level).upper()
     level = getattr(logging, level_str, logging.INFO)
 
-    # Configure standard logging (for backward compatibility)
+    # Configure standard logging
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
@@ -126,53 +112,7 @@ def configure_logging(
     _LoggingState.configured = True
 
 
-def get_logger(name: Optional[str] = None) -> FilteringBoundLogger:
-    """
-    Get a structured logger instance.
-
-    Args:
-        name: Logger name (typically __name__), optional
-
-    Returns:
-        Structlog logger with error code support
-
-    Example:
-        logger = get_logger(__name__)
-        logger.info("user_login", user_id="123", ip="192.168.1.1")
-        logger.error(
-            "auth_failed",
-            error_code=ErrorCode.AUTH_INVALID_CREDENTIALS.value,
-            user_id="123"
-        )
-    """
-    # Ensure logging is configured
-    if not _LoggingState.configured:
-        configure_logging()
-
-    # Get structlog logger
-    if name:
-        return structlog.get_logger(name)
-    return structlog.get_logger()
-
-
-def get_colored_logger(name: Optional[str] = None) -> FilteringBoundLogger:
-    """
-    Get a colored console logger (alias for backward compatibility).
-
-    This is an alias for get_logger() to maintain compatibility with
-    existing code that uses get_colored_logger().
-
-    Args:
-        name: Logger name (typically __name__), optional
-
-    Returns:
-        Structlog logger instance
-    """
-    return get_logger(name)
-
-
 # Initialize logging configuration on import (lazy initialization)
-# This ensures backward compatibility - existing code just works
 def _init_logging() -> None:
     """Initialize logging configuration on module import"""
     if not _LoggingState.configured:

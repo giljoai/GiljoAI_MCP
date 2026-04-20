@@ -40,7 +40,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -50,13 +50,33 @@ from giljo_mcp.exceptions import (
     ResourceNotFoundError,
     ValidationError,
 )
-from giljo_mcp.models import Project, Task
+from giljo_mcp.models import Task
+from giljo_mcp.repositories.task_repository import TaskRepository
 from giljo_mcp.schemas.service_responses import ConversionResult, TaskUpdateResult
 from giljo_mcp.services.task_conversion_service import TaskConversionService
 from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
+
+# Field allowlist for task updates — only these fields may be set via
+# update_task().  Replaces the previous hasattr() gate which allowed setting
+# any model attribute including id, tenant_key, created_at, etc.
+_ALLOWED_TASK_UPDATE_FIELDS: frozenset[str] = frozenset(
+    {
+        "title",
+        "description",
+        "category",
+        "status",
+        "priority",
+        "estimated_effort",
+        "actual_effort",
+        "due_date",
+        "project_id",
+        "parent_task_id",
+        "converted_to_project_id",
+    }
+)
 
 
 class TaskService:
@@ -91,6 +111,7 @@ class TaskService:
         self.tenant_manager = tenant_manager
         self._session = session  # Store for test transaction isolation
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._repo = TaskRepository()
         self._conversion = TaskConversionService(db_manager, tenant_manager, session)
 
     def _get_session(self):
@@ -243,12 +264,7 @@ class TaskService:
         # Get project if specified
         if project_id:
             # Always filter by both tenant_key AND product_id for security
-            result = await session.execute(
-                select(Project).where(
-                    and_(Project.id == project_id, Project.product_id == product_id, Project.tenant_key == tenant_key)
-                )
-            )
-            project = result.scalar_one_or_none()
+            project = await self._repo.get_project_by_id(session, project_id, product_id, tenant_key)
 
             # If project_id was provided but project not found, fail immediately
             if not project:
@@ -273,8 +289,7 @@ class TaskService:
             status="pending",
         )
 
-        session.add(task)
-        await session.commit()
+        await self._repo.add_and_commit(session, task)
 
         task_id = str(task.id)
 
@@ -438,11 +453,7 @@ class TaskService:
                 query = query.where(Task.product_id == product_id)
             else:
                 # Get active product for tenant
-                from giljo_mcp.models.products import Product
-
-                product_query = select(Product).where(and_(Product.tenant_key == tenant_key, Product.is_active))
-                product_result = await session.execute(product_query)
-                active_product = product_result.scalar_one_or_none()
+                active_product = await self._repo.get_active_product(session, tenant_key)
 
                 if active_product:
                     query = query.where(Task.product_id == active_product.id)
@@ -470,10 +481,7 @@ class TaskService:
         query = query.order_by(Task.created_at.desc())
 
         # Execute query
-        result = await session.execute(query)
-        tasks = result.scalars().all()
-
-        return list(tasks)
+        return await self._repo.list_tasks(session, query)
 
     # ============================================================================
     # Task Updates
@@ -536,9 +544,7 @@ class TaskService:
                 context={"operation": "update_task", "task_id": task_id},
             )
 
-        task_query = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
-        task_result = await session.execute(task_query)
-        task = task_result.scalar_one_or_none()
+        task = await self._repo.get_task_by_id(session, task_id, tenant_key)
 
         if not task:
             raise ResourceNotFoundError(
@@ -546,14 +552,14 @@ class TaskService:
                 context={"task_id": task_id, "tenant_key": tenant_key},
             )
 
-        # Update fields
+        # Update fields (allowlist-gated — see _ALLOWED_TASK_UPDATE_FIELDS)
         updated_fields = []
         for key, value in kwargs.items():
-            if hasattr(task, key):
+            if key in _ALLOWED_TASK_UPDATE_FIELDS:
                 setattr(task, key, value)
                 updated_fields.append(key)
             else:
-                self._logger.warning(f"Attempted to update non-existent field '{key}' on task {task_id}")
+                self._logger.warning(f"Rejected update to disallowed field '{key}' on task {task_id}")
 
         # Auto-update timestamps based on status changes (Handover 0324)
         if "status" in kwargs:
@@ -570,7 +576,7 @@ class TaskService:
                 updated_fields.append("completed_at")
                 self._logger.debug(f"Auto-set completed_at for task {task_id}")
 
-        await session.commit()
+        await self._repo.commit(session)
 
         self._logger.info(f"Updated task {task_id}: {updated_fields}")
 
@@ -629,9 +635,7 @@ class TaskService:
                 message="No tenant context available", context={"operation": "get_task", "task_id": task_id}
             )
 
-        stmt = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
-        result = await session.execute(stmt)
-        task = result.scalar_one_or_none()
+        task = await self._repo.get_task_by_id(session, task_id, tenant_key)
 
         if not task:
             raise ResourceNotFoundError(
@@ -692,9 +696,7 @@ class TaskService:
             )
 
         # Get task
-        task_stmt = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
-        task_result = await session.execute(task_stmt)
-        task = task_result.scalar_one_or_none()
+        task = await self._repo.get_task_by_id(session, task_id, tenant_key)
 
         if not task:
             raise ResourceNotFoundError(
@@ -702,11 +704,7 @@ class TaskService:
             )
 
         # Get user for permission check
-        from giljo_mcp.models.auth import User
-
-        user_stmt = select(User).where(User.id == user_id)
-        user_result = await session.execute(user_stmt)
-        user = user_result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id)
 
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
@@ -719,8 +717,7 @@ class TaskService:
             )
 
         # Delete task
-        await session.delete(task)
-        await session.commit()
+        await self._repo.delete_and_commit(session, task)
 
         self._logger.info(f"Deleted task {task_id} by user {user_id}")
 
@@ -780,9 +777,7 @@ class TaskService:
                 message="No tenant context available", context={"operation": "change_status", "task_id": task_id}
             )
 
-        stmt = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
-        result = await session.execute(stmt)
-        task = result.scalar_one_or_none()
+        task = await self._repo.get_task_by_id(session, task_id, tenant_key)
 
         if not task:
             raise ResourceNotFoundError(
@@ -799,8 +794,7 @@ class TaskService:
         elif new_status in ("completed", "cancelled") and not task.completed_at:
             task.completed_at = now
 
-        await session.commit()
-        await session.refresh(task)
+        await self._repo.commit_and_refresh(session, task)
 
         self._logger.info(f"Changed task {task_id} status to {new_status}")
 
@@ -809,3 +803,80 @@ class TaskService:
     async def get_summary(self, product_id: Optional[str] = None) -> dict[str, Any]:
         """Facade: delegates to TaskConversionService."""
         return await self._conversion.get_summary(product_id)
+
+    # ============================================================================
+    # MCP Tool Methods (sprint 002f: pushed down from ToolAccessor)
+    # ============================================================================
+
+    async def create_task_for_mcp(
+        self,
+        title: str,
+        description: str,
+        priority: str = "medium",
+        category: str | None = None,
+        assigned_to: str | None = None,
+        tenant_key: str | None = None,
+        db_manager: Any | None = None,
+        websocket_manager: Any | None = None,
+    ) -> dict[str, Any]:
+        """Create a task via MCP tool (validation + active product resolution).
+
+        Pushed down from ToolAccessor.create_task (sprint 002f).
+        """
+        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+        effective_db = db_manager or self.db_manager
+
+        from giljo_mcp.services.product_service import ProductService
+
+        product_service = ProductService(
+            db_manager=effective_db,
+            tenant_key=effective_tenant_key,
+            websocket_manager=websocket_manager,
+        )
+        active_product = await product_service.get_active_product()
+
+        if not active_product:
+            raise ValidationError(
+                "No active product set. Please activate a product first.",
+                context={"tenant_key": effective_tenant_key, "operation": "create_task"},
+            )
+
+        product_id = active_product.id
+        effective_category = category or "general"
+
+        task_id = await self.log_task(
+            content=title,
+            title=title,
+            description=description,
+            category=effective_category,
+            priority=priority,
+            product_id=product_id,
+            tenant_key=effective_tenant_key,
+        )
+
+        self._logger.info(
+            "Created task %s for tenant %s in product %s",
+            task_id,
+            effective_tenant_key,
+            product_id,
+        )
+
+        if websocket_manager:
+            try:
+                await websocket_manager.broadcast_to_tenant(
+                    tenant_key=effective_tenant_key,
+                    event_type="task:created",
+                    data={"task_id": task_id, "title": title, "product_id": product_id},
+                )
+            except (RuntimeError, ValueError, OSError) as e:
+                self._logger.warning(f"Failed to broadcast task:created event: {e}")
+
+        return {
+            "success": True,
+            "task_id": task_id,
+            "title": title,
+            "priority": priority,
+            "category": effective_category,
+            "product_id": product_id,
+            "message": f"Task '{title}' created successfully",
+        }

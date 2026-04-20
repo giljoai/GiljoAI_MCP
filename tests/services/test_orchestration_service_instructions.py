@@ -84,7 +84,7 @@ class TestGetOrchestratorInstructions:
         service._mission._orchestration._test_session = db_session
 
         # Act: Get orchestrator instructions
-        result = await service.get_orchestrator_instructions(
+        result = await service._mission.get_orchestrator_instructions(
             job_id=orchestrator_job.job_id,
             tenant_key=test_project.tenant_key,
         )
@@ -122,7 +122,7 @@ class TestGetOrchestratorInstructions:
 
         # Handover 0730b: Exception-based error handling
         with pytest.raises(ValidationError) as exc_info:
-            await service.get_orchestrator_instructions(
+            await service._mission.get_orchestrator_instructions(
                 job_id="",
                 tenant_key=test_project.tenant_key,
             )
@@ -140,7 +140,7 @@ class TestGetOrchestratorInstructions:
 
         # Handover 0730b: Exception-based error handling
         with pytest.raises(ValidationError) as exc_info:
-            await service.get_orchestrator_instructions(
+            await service._mission.get_orchestrator_instructions(
                 job_id=str(uuid4()),
                 tenant_key="",
             )
@@ -183,7 +183,7 @@ class TestGetOrchestratorInstructions:
 
         # Handover 0730b: Exception-based error handling
         with pytest.raises(ValidationError) as exc_info:
-            await service.get_orchestrator_instructions(
+            await service._mission.get_orchestrator_instructions(
                 job_id=implementer_job.job_id,
                 tenant_key=test_project.tenant_key,
             )
@@ -253,7 +253,7 @@ class TestGetOrchestratorInstructions:
         # Handover 0730b: Exception-based error handling
         # Tenant B tries to access tenant A's orchestrator - should raise ResourceNotFoundError
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await service.get_orchestrator_instructions(
+            await service._mission.get_orchestrator_instructions(
                 job_id=orchestrator_job_a.job_id,
                 tenant_key=tenant_b,  # Different tenant
             )
@@ -298,7 +298,7 @@ class TestUpdateAgentMission:
 
         # Act: Update mission
         new_mission = "Updated mission with execution plan"
-        result = await service.update_agent_mission(
+        result = await service._mission.update_agent_mission(
             job_id=agent_job.job_id,
             tenant_key=test_project.tenant_key,
             mission=new_mission,
@@ -325,7 +325,7 @@ class TestUpdateAgentMission:
         # Handover 0730b: Exception-based error handling
         # update_agent_mission wraps ResourceNotFoundError in OrchestrationError
         with pytest.raises(OrchestrationError) as exc_info:
-            await service.update_agent_mission(
+            await service._mission.update_agent_mission(
                 job_id=str(uuid4()),  # Non-existent
                 tenant_key=test_project.tenant_key,
                 mission="New mission",
@@ -385,7 +385,7 @@ class TestUpdateAgentMission:
         # Tenant B tries to update tenant A's job - should raise OrchestrationError
         # (update_agent_mission wraps ResourceNotFoundError in OrchestrationError)
         with pytest.raises(OrchestrationError) as exc_info:
-            await service.update_agent_mission(
+            await service._mission.update_agent_mission(
                 job_id=job_a.job_id,
                 tenant_key=tenant_b,  # Different tenant
                 mission="Malicious mission update",

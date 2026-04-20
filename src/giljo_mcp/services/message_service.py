@@ -32,8 +32,8 @@ from giljo_mcp.exceptions import (
     RetryExhaustedError,
     ValidationError,
 )
-from giljo_mcp.models import Message, Project
-from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models import Message
+from giljo_mcp.models.agent_identity import AgentExecution
 from giljo_mcp.models.tasks import MessageAcknowledgment, MessageCompletion, MessageRecipient
 from giljo_mcp.repositories.message_repository import MessageRepository
 from giljo_mcp.schemas.service_responses import (
@@ -169,8 +169,7 @@ class MessageService:
                 if project_id:
                     query = query.where(Message.project_id == project_id)
 
-                result = await session.execute(query)
-                messages = result.scalars().all()
+                messages = await self._repo.execute_query(session, query)
 
                 # Build message dicts
                 agent_messages = [
@@ -245,13 +244,7 @@ class MessageService:
             async with self._get_session() as session:
                 # Handover 0372: Look up AgentExecution by agent_id, then get job
                 # Handover 0429: Get latest instance by agent_id
-                result = await session.execute(
-                    select(AgentExecution)
-                    .where(and_(AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == tenant_key))
-                    .order_by(AgentExecution.started_at.desc())
-                    .limit(1)
-                )
-                execution = result.scalar_one_or_none()
+                execution = await self._repo.get_execution_by_agent_id(session, tenant_key, agent_id)
 
                 if not execution:
                     raise ResourceNotFoundError(
@@ -261,10 +254,7 @@ class MessageService:
 
                 # Get the job to access project_id
                 # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
-                job_result = await session.execute(
-                    select(AgentJob).where(AgentJob.job_id == execution.job_id, AgentJob.tenant_key == tenant_key)
-                )
-                job = job_result.scalar_one_or_none()
+                job = await self._repo.get_agent_job_by_job_id(session, tenant_key, execution.job_id)
 
                 if not job:
                     raise ResourceNotFoundError(
@@ -283,8 +273,7 @@ class MessageService:
                     limit=limit,
                 )
 
-                result = await session.execute(query)
-                messages = result.scalars().all()
+                messages = await self._repo.execute_query(session, query)
 
                 # Auto-acknowledge, update counters, resolve senders, format results
                 messages_list = await self._process_received_messages(
@@ -396,9 +385,9 @@ class MessageService:
                     )
                     .on_conflict_do_nothing(constraint="uq_msg_ack")
                 )
-                await session.execute(ack_stmt)
+                await self._repo.execute_ack_stmt(session, ack_stmt)
 
-            await session.commit()
+            await self._repo.commit(session)
             self._logger.info(f"Auto-acknowledged {len(messages)} messages for agent {agent_id}")
 
             # Self-healing counter: count actual remaining pending messages
@@ -417,12 +406,11 @@ class MessageService:
                         MessageRecipient.agent_id == agent_id,
                     )
                 )
-                pending_result = await session.execute(pending_stmt)
-                actual_pending = pending_result.scalar() or 0
+                actual_pending = await self._repo.count_pending_messages(session, pending_stmt)
 
                 # SET waiting count to actual pending (self-healing)
                 # INCREMENT read count by number of messages just acknowledged
-                await session.execute(
+                counter_update_stmt = (
                     update(AgentExecution)
                     .where(
                         AgentExecution.agent_id == agent_id,
@@ -433,7 +421,8 @@ class MessageService:
                         messages_read_count=AgentExecution.messages_read_count + len(messages),
                     )
                 )
-                await session.commit()
+                await self._repo.execute_ack_stmt(session, counter_update_stmt)
+                await self._repo.commit(session)
 
             try:
                 await with_deadlock_retry(
@@ -480,15 +469,7 @@ class MessageService:
         # Handover 0840b: Use from_agent_id / from_display_name columns
         sender_ids = {msg.from_agent_id for msg in messages if msg.from_agent_id and not msg.from_display_name}
         uuid_ids = [s for s in sender_ids if s and "-" in s and len(s) == 36]
-        sender_name_map: dict[str, str] = {}
-        if uuid_ids:
-            name_result = await session.execute(
-                select(AgentExecution.agent_id, AgentExecution.agent_display_name).where(
-                    AgentExecution.agent_id.in_(uuid_ids),
-                    AgentExecution.tenant_key == tenant_key,
-                )
-            )
-            sender_name_map = {row.agent_id: row.agent_display_name for row in name_result}
+        sender_name_map = await self._repo.resolve_sender_names_batch(session, uuid_ids, tenant_key)
 
         # Convert to AgentMessageQueue-compatible format
         messages_list = []
@@ -596,8 +577,7 @@ class MessageService:
                 if query is None:
                     return MessageListResult(messages=[], count=0)
 
-                result = await session.execute(query)
-                messages = result.scalars().all()
+                messages = await self._repo.execute_query(session, query)
                 message_list = [self._format_list_message(msg, for_agent_id) for msg in messages]
                 return MessageListResult(messages=message_list, count=len(message_list))
 
@@ -626,10 +606,7 @@ class MessageService:
         """
         if agent_id:
             # TENANT ISOLATION: Always filter by tenant_key
-            result = await session.execute(
-                select(AgentJob).where(and_(AgentJob.job_id == agent_id, AgentJob.tenant_key == tenant_key))
-            )
-            job = result.scalar_one_or_none()
+            job = await self._repo.get_agent_job_by_job_id(session, tenant_key, agent_id)
             if not job:
                 raise ResourceNotFoundError(
                     message=f"Job {agent_id} not found",
@@ -662,15 +639,9 @@ class MessageService:
                 .where(and_(Message.project_id == project_id, Message.tenant_key == tenant_key))
             )
         else:
-            project_query = select(Project).where(and_(Project.tenant_key == tenant_key, Project.status == "active"))
-            project_result = await session.execute(project_query)
-            project = project_result.scalar_one_or_none()
+            project = await self._repo.get_active_project(session, tenant_key)
             if not project:
-                project_query = (
-                    select(Project).where(Project.tenant_key == tenant_key).order_by(Project.created_at.desc()).limit(1)
-                )
-                project_result = await session.execute(project_query)
-                project = project_result.scalar_one_or_none()
+                project = await self._repo.get_latest_project(session, tenant_key)
             if not project:
                 return None, None
 
@@ -749,10 +720,7 @@ class MessageService:
 
             async with self._get_session() as session:
                 # TENANT ISOLATION: Filter by both message_id AND tenant_key
-                msg_result = await session.execute(
-                    select(Message).where(and_(Message.id == message_id, Message.tenant_key == tenant_key))
-                )
-                message = msg_result.scalar_one_or_none()
+                message = await self._repo.get_message_by_id(session, message_id, tenant_key)
 
                 if not message:
                     raise ResourceNotFoundError(
@@ -775,9 +743,9 @@ class MessageService:
                     )
                     .on_conflict_do_nothing(constraint="uq_msg_completion")
                 )
-                await session.execute(completion_stmt)
+                await self._repo.execute_ack_stmt(session, completion_stmt)
 
-                await session.commit()
+                await self._repo.commit(session)
 
                 self._logger.info(f"Message {message_id} completed by {agent_name}")
 
@@ -841,17 +809,7 @@ class MessageService:
                 )
 
             async with self._get_session() as session:
-                stmt = (
-                    select(Message)
-                    .options(
-                        selectinload(Message.acknowledgments),
-                        selectinload(Message.recipients),
-                        selectinload(Message.completions),
-                    )
-                    .where(and_(Message.id == message_id, Message.tenant_key == tenant_key))
-                )
-                result = await session.execute(stmt)
-                message = result.scalar_one_or_none()
+                message = await self._repo.get_message_with_relations(session, message_id, tenant_key)
 
                 if not message:
                     raise ResourceNotFoundError(

@@ -95,7 +95,9 @@ class TestAutoClearSilent:
         ws_manager = AsyncMock()
         ws_manager.broadcast_event_to_tenant = AsyncMock()
 
-        await auto_clear_silent(session=session, job_id=str(agent.job_id), ws_manager=ws_manager)
+        await auto_clear_silent(
+            session=session, job_id=str(agent.job_id), ws_manager=ws_manager, tenant_key=agent.tenant_key
+        )
 
         ws_manager.broadcast_event_to_tenant.assert_called_once()
         call_kwargs = ws_manager.broadcast_event_to_tenant.call_args
@@ -117,7 +119,9 @@ class TestAutoClearSilent:
         ws_manager = AsyncMock()
         ws_manager.broadcast_event_to_tenant = AsyncMock()
 
-        await auto_clear_silent(session=session, job_id=str(agent.job_id), ws_manager=ws_manager)
+        await auto_clear_silent(
+            session=session, job_id=str(agent.job_id), ws_manager=ws_manager, tenant_key=agent.tenant_key
+        )
 
         call_kwargs = ws_manager.broadcast_event_to_tenant.call_args
         event = call_kwargs.kwargs.get("event") or call_kwargs[1].get("event")
@@ -136,7 +140,9 @@ class TestAutoClearSilent:
         ws_manager = AsyncMock()
         ws_manager.broadcast_event_to_tenant = AsyncMock()
 
-        await auto_clear_silent(session=session, job_id=str(agent.job_id), ws_manager=ws_manager)
+        await auto_clear_silent(
+            session=session, job_id=str(agent.job_id), ws_manager=ws_manager, tenant_key=agent.tenant_key
+        )
 
         call_kwargs = ws_manager.broadcast_event_to_tenant.call_args
         event = call_kwargs.kwargs.get("event") or call_kwargs[1].get("event")
@@ -153,7 +159,9 @@ class TestAutoClearSilent:
         ws_manager = AsyncMock()
         ws_manager.broadcast_event_to_tenant = AsyncMock()
 
-        await auto_clear_silent(session=session, job_id=str(agent.job_id), ws_manager=ws_manager)
+        await auto_clear_silent(
+            session=session, job_id=str(agent.job_id), ws_manager=ws_manager, tenant_key=agent.tenant_key
+        )
 
         assert agent.status == "working"
 
@@ -167,7 +175,9 @@ class TestAutoClearSilent:
         ws_manager = AsyncMock()
         ws_manager.broadcast_event_to_tenant = AsyncMock()
 
-        await auto_clear_silent(session=session, job_id=str(agent.job_id), ws_manager=ws_manager)
+        await auto_clear_silent(
+            session=session, job_id=str(agent.job_id), ws_manager=ws_manager, tenant_key=agent.tenant_key
+        )
 
         assert agent.last_progress_at is not None
 
@@ -179,7 +189,9 @@ class TestAutoClearSilent:
         ws_manager = AsyncMock()
         ws_manager.broadcast_event_to_tenant = AsyncMock()
 
-        await auto_clear_silent(session=session, job_id=str(uuid.uuid4()), ws_manager=ws_manager)
+        await auto_clear_silent(
+            session=session, job_id=str(uuid.uuid4()), ws_manager=ws_manager, tenant_key="test-tenant"
+        )
 
         ws_manager.broadcast_event_to_tenant.assert_not_called()
 
@@ -190,7 +202,7 @@ class TestAutoClearSilent:
         agent = _make_mock_agent(status="silent")
         session = _make_session_returning_row(agent, project_id)
 
-        await auto_clear_silent(session=session, job_id=str(agent.job_id), ws_manager=None)
+        await auto_clear_silent(session=session, job_id=str(agent.job_id), ws_manager=None, tenant_key=agent.tenant_key)
 
         assert agent.status == "working"
 
@@ -202,7 +214,9 @@ class TestAutoClearSilent:
         session = _make_session_returning_row(agent, project_id)
 
         with patch("giljo_mcp.services.silence_detector.logger") as mock_logger:
-            await auto_clear_silent(session=session, job_id=str(agent.job_id), ws_manager=None)
+            await auto_clear_silent(
+                session=session, job_id=str(agent.job_id), ws_manager=None, tenant_key=agent.tenant_key
+            )
 
         mock_logger.warning.assert_called_once()
 
@@ -216,7 +230,9 @@ class TestAutoClearSilent:
         ws_manager = AsyncMock()
         ws_manager.broadcast_event_to_tenant = AsyncMock()
 
-        await auto_clear_silent(session=session, job_id=str(agent.job_id), ws_manager=ws_manager)
+        await auto_clear_silent(
+            session=session, job_id=str(agent.job_id), ws_manager=ws_manager, tenant_key=agent.tenant_key
+        )
 
         session.flush.assert_called_once()
 
@@ -229,7 +245,9 @@ class TestAutoClearSilent:
         ws_manager = AsyncMock()
         ws_manager.broadcast_event_to_tenant = AsyncMock()
 
-        await auto_clear_silent(session=session, job_id=str(agent.job_id), ws_manager=ws_manager)
+        await auto_clear_silent(
+            session=session, job_id=str(agent.job_id), ws_manager=ws_manager, tenant_key=agent.tenant_key
+        )
 
         call_kwargs = ws_manager.broadcast_event_to_tenant.call_args
         event = call_kwargs.kwargs.get("event") or call_kwargs[1].get("event")

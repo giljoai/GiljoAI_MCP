@@ -21,7 +21,6 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -35,6 +34,7 @@ from giljo_mcp.models import (
     AgentJob,
     AgentTodoItem,
 )
+from giljo_mcp.repositories.progress_repository import ProgressRepository
 from giljo_mcp.schemas.service_responses import ProgressResult
 from giljo_mcp.tenant import TenantManager
 
@@ -69,6 +69,7 @@ class ProgressService:
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         # Handover 0406: Track todo_items warning timestamps (throttle 1 per 5 min per job)
         self._todo_warning_timestamps: dict[str, datetime] = {}
+        self._repo = ProgressRepository()
 
     def _get_session(self):
         """
@@ -209,9 +210,9 @@ class ProgressService:
                 # Process TODO items (replace or append strategies)
                 await self._process_todo_items(session, job, job_id, tenant_key, progress, todo_append)
 
-                await session.commit()
-                await session.refresh(execution)
-                await session.refresh(job)
+                await self._repo.commit(session)
+                await self._repo.refresh(session, execution)
+                await self._repo.refresh(session, job)
 
             if not job:
                 raise ResourceNotFoundError(
@@ -249,13 +250,7 @@ class ProgressService:
         # Handover 0402: Query todo_items for WebSocket payload
         todo_items_payload = None
         async with self._get_session() as session:
-            # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
-            result = await session.execute(
-                select(AgentTodoItem)
-                .where(AgentTodoItem.job_id == job_id, AgentTodoItem.tenant_key == tenant_key)
-                .order_by(AgentTodoItem.sequence)
-            )
-            items = result.scalars().all()
+            items = await self._repo.get_todo_items(session, tenant_key, job_id)
             if items:
                 todo_items_payload = [{"content": item.content, "status": item.status} for item in items]
 
@@ -353,33 +348,11 @@ class ProgressService:
         tenant_key: str,
     ) -> AgentExecution:
         """Fetch the latest active execution for a job, raising on not-found."""
-        exec_stmt = (
-            select(AgentExecution)
-            .where(
-                AgentExecution.job_id == job_id,
-                AgentExecution.tenant_key == tenant_key,
-                AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
-            )
-            .order_by(AgentExecution.started_at.desc())
-            .limit(1)
-        )
-        exec_res = await session.execute(exec_stmt)
-        execution = exec_res.scalar_one_or_none()
+        execution = await self._repo.get_active_execution(session, tenant_key, job_id)
 
         if not execution:
             # Check if decommissioned for better diagnostics (Handover 0824)
-            decomm_stmt = (
-                select(AgentExecution)
-                .where(
-                    AgentExecution.job_id == job_id,
-                    AgentExecution.tenant_key == tenant_key,
-                    AgentExecution.status == "decommissioned",
-                )
-                .order_by(AgentExecution.started_at.desc())
-                .limit(1)
-            )
-            decomm_res = await session.execute(decomm_stmt)
-            decommissioned_exec = decomm_res.scalar_one_or_none()
+            decommissioned_exec = await self._repo.get_decommissioned_execution(session, tenant_key, job_id)
 
             if decommissioned_exec:
                 raise ResourceNotFoundError(
@@ -411,10 +384,7 @@ class ProgressService:
     ) -> AgentJob:
         """Fetch the job record, raising on not-found."""
         # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
-        job_res = await session.execute(
-            select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
-        )
-        job = job_res.scalar_one_or_none()
+        job = await self._repo.get_job(session, tenant_key, job_id)
 
         if not job:
             raise ResourceNotFoundError(
@@ -464,19 +434,10 @@ class ProgressService:
         # Handover 0402: Store todo_items in dedicated table for Plan/TODOs tab display
         todo_items = progress.get("todo_items")
         if isinstance(todo_items, list) and len(todo_items) > 0:
-            from sqlalchemy import delete as sql_delete
-            from sqlalchemy import func as sa_func
-
             # Regression guard: reject todo_items that would lose completed work.
             # Agents sometimes rebuild the list from scratch, accidentally resetting
             # completed items back to pending. This check prevents that.
-            existing_completed_result = await session.execute(
-                select(sa_func.count(AgentTodoItem.id))
-                .where(AgentTodoItem.job_id == job_id)
-                .where(AgentTodoItem.tenant_key == tenant_key)
-                .where(AgentTodoItem.status == "completed")
-            )
-            existing_completed = existing_completed_result.scalar() or 0
+            existing_completed = await self._repo.count_completed_todos(session, tenant_key, job_id)
 
             if existing_completed > 0:
                 incoming_completed = len([t for t in todo_items if t.get("status") == "completed"])
@@ -497,9 +458,7 @@ class ProgressService:
 
             # Delete existing items for this job (replace strategy)
             # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
-            await session.execute(
-                sql_delete(AgentTodoItem).where(AgentTodoItem.job_id == job_id, AgentTodoItem.tenant_key == tenant_key)
-            )
+            await self._repo.delete_todo_items(session, tenant_key, job_id)
 
             # Insert new items with sequence
             for seq, item in enumerate(todo_items):
@@ -515,7 +474,7 @@ class ProgressService:
                         status=status,
                         sequence=seq,
                     )
-                    session.add(todo_item)
+                    await self._repo.add_todo_item(session, todo_item)
 
         # Handover 0827d: Append new items without deleting existing ones
         if isinstance(todo_append, list) and len(todo_append) > 0:
@@ -530,15 +489,8 @@ class ProgressService:
         todo_append: list[dict],
     ) -> None:
         """Append new TODO items after existing ones and recount totals."""
-        from sqlalchemy import func as sa_func
-
         # Find current max sequence number
-        max_seq_result = await session.execute(
-            select(sa_func.max(AgentTodoItem.sequence))
-            .where(AgentTodoItem.job_id == job_id)
-            .where(AgentTodoItem.tenant_key == tenant_key)
-        )
-        max_seq = max_seq_result.scalar() or -1
+        max_seq = await self._repo.get_max_todo_sequence(session, tenant_key, job_id)
 
         # Insert only new items after existing ones
         appended_count = 0
@@ -555,36 +507,18 @@ class ProgressService:
                     status=status,
                     sequence=max_seq + 1 + i,
                 )
-                session.add(todo_item)
+                await self._repo.add_todo_item(session, todo_item)
                 appended_count += 1
 
         # Recount totals and update JSONB summary
         if appended_count > 0:
             from sqlalchemy.orm.attributes import flag_modified
 
-            await session.flush()
+            await self._repo.flush(session)
 
-            total_result = await session.execute(
-                select(sa_func.count(AgentTodoItem.id))
-                .where(AgentTodoItem.job_id == job_id)
-                .where(AgentTodoItem.tenant_key == tenant_key)
-            )
-            completed_result = await session.execute(
-                select(sa_func.count(AgentTodoItem.id))
-                .where(AgentTodoItem.job_id == job_id)
-                .where(AgentTodoItem.tenant_key == tenant_key)
-                .where(AgentTodoItem.status == "completed")
-            )
-            skipped_result = await session.execute(
-                select(sa_func.count(AgentTodoItem.id))
-                .where(AgentTodoItem.job_id == job_id)
-                .where(AgentTodoItem.tenant_key == tenant_key)
-                .where(AgentTodoItem.status == "skipped")
-            )
-
-            total_count = total_result.scalar()
-            completed_count = completed_result.scalar()
-            skipped_count = skipped_result.scalar()
+            total_count = await self._repo.count_all_todos(session, tenant_key, job_id)
+            completed_count = await self._repo.count_todos_by_status(session, tenant_key, job_id, "completed")
+            skipped_count = await self._repo.count_todos_by_status(session, tenant_key, job_id, "skipped")
 
             metadata = job.job_metadata or {}
             metadata["todo_steps"] = {

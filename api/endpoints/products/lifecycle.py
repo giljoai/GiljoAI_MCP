@@ -67,7 +67,7 @@ async def activate_product(
 
         # Get full product details and statistics
         product = await service.get_product(product_id)
-        stats = await service.get_product_statistics(str(product.id))
+        stats = await service.memory.get_product_statistics(str(product.id))
 
         # Build ProductResponse
         product_response = _build_product_response(product, stats, override_active=True)
@@ -120,7 +120,7 @@ async def deactivate_product(
 
         # Get full product details and statistics
         product = await service.get_product(product_id)
-        stats = await service.get_product_statistics(str(product.id))
+        stats = await service.memory.get_product_statistics(str(product.id))
 
         return _build_product_response(product, stats)
     finally:
@@ -159,7 +159,7 @@ async def delete_product(
     product = await service.get_product(product_id)
     was_active = product.is_active
 
-    await service.delete_product(product_id)
+    await service.lifecycle.delete_product(product_id)
 
     # Get remaining products count
     remaining_products = await service.list_products()
@@ -188,7 +188,7 @@ async def purge_product(
     tech_stack, architecture, test_config.
     """
     logger.info("User %s permanently deleting product %s", sanitize(current_user.username), sanitize(product_id))
-    result = await service.purge_product(product_id)
+    result = await service.lifecycle.purge_product(product_id)
     return ProductPurgeResponse(**result)
 
 
@@ -205,11 +205,11 @@ async def restore_product(
     """
     logger.info(f"User {current_user.username} restoring product {product_id}")
 
-    await service.restore_product(product_id)
+    await service.lifecycle.restore_product(product_id)
 
     # Get full product details and statistics
     product = await service.get_product(product_id)
-    stats = await service.get_product_statistics(str(product.id))
+    stats = await service.memory.get_product_statistics(str(product.id))
 
     return _build_product_response(product, stats)
 
@@ -227,7 +227,7 @@ async def get_cascade_impact(
     """
     logger.debug(f"User {current_user.username} checking cascade impact for product {product_id}")
 
-    impact = await service.get_cascade_impact(product_id)
+    impact = await service.memory.get_cascade_impact(product_id)
 
     return CascadeImpact(
         product_id=impact.product_id,
@@ -256,7 +256,7 @@ async def refresh_active_product(
     if not product:
         return ActiveProductRefreshResponse(has_active_product=False, product=None)
 
-    stats = await service.get_product_statistics(str(product.id))
+    stats = await service.memory.get_product_statistics(str(product.id))
 
     return ActiveProductRefreshResponse(
         has_active_product=True,

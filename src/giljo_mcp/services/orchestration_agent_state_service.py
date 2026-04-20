@@ -15,7 +15,6 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -28,11 +27,8 @@ from giljo_mcp.exceptions import (
 from giljo_mcp.models import (
     AgentExecution,
     AgentJob,
-    Message,
-    ProductMemoryEntry,
-    Project,
 )
-from giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.repositories.agent_job_repository import AgentJobRepository
 from giljo_mcp.schemas.service_responses import (
     DismissResult,
     ErrorReportResult,
@@ -70,6 +66,7 @@ class OrchestrationAgentStateService:
         self._message_service = message_service
         self._websocket_manager = websocket_manager or getattr(message_service, "_websocket_manager", None)
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._job_repo = AgentJobRepository(db_manager)
 
     def _get_session(self):
         """Get a session, preferring an injected test session when provided."""
@@ -131,12 +128,7 @@ class OrchestrationAgentStateService:
         # Handover 0710: Check if orchestrator needs 360 memory reminder
         if execution.agent_display_name == "orchestrator":
             # Get project to check staging status
-            project_stmt = select(Project).where(
-                Project.id == job.project_id,
-                Project.tenant_key == tenant_key,
-            )
-            project_res = await session.execute(project_stmt)
-            project = project_res.scalar_one_or_none()
+            project = await self._job_repo.get_project_by_id(session, tenant_key, str(job.project_id))
 
             # Only warn for non-staging orchestrators with a product
             skip_staging = project and project.staging_status in ("staging", "staged", "staging_complete")
@@ -144,16 +136,7 @@ class OrchestrationAgentStateService:
 
             if not skip_staging and has_product:
                 # Check if any 360 memory entry exists for this project
-                memory_stmt = (
-                    select(ProductMemoryEntry)
-                    .where(
-                        ProductMemoryEntry.project_id == str(job.project_id),
-                        ProductMemoryEntry.tenant_key == tenant_key,
-                    )
-                    .limit(1)
-                )
-                memory_res = await session.execute(memory_stmt)
-                has_memory = memory_res.scalar_one_or_none() is not None
+                has_memory = await self._job_repo.check_memory_entry_exists(session, tenant_key, str(job.project_id))
 
                 if not has_memory:
                     warnings.append(
@@ -167,12 +150,7 @@ class OrchestrationAgentStateService:
         if resolved_items and isinstance(resolved_items, list) and job.project_id:
             try:
                 # Get product_id from the project
-                project_stmt = select(Project).where(
-                    Project.id == job.project_id,
-                    Project.tenant_key == tenant_key,
-                )
-                proj_res = await session.execute(project_stmt)
-                proj = proj_res.scalar_one_or_none()
+                proj = await self._job_repo.get_project_by_id(session, tenant_key, str(job.project_id))
 
                 if proj and proj.product_id:
                     from uuid import UUID
@@ -201,27 +179,17 @@ class OrchestrationAgentStateService:
 
         # 0497b: Auto-generate completion message to orchestrator
         if job.project_id and execution.agent_display_name != "orchestrator":
-            orch_exec = await self._find_orchestrator_execution(session, str(job.project_id), tenant_key)
+            orch_exec = await self._job_repo.find_orchestrator_execution(session, tenant_key, str(job.project_id))
             if orch_exec and orch_exec.agent_id != execution.agent_id:
                 summary = result.get("summary", "Work completed")
-                auto_message = Message(
+                await self._job_repo.create_auto_completion_message(
+                    session=session,
                     tenant_key=tenant_key,
                     project_id=str(job.project_id),
                     from_agent_id=str(execution.agent_id),
                     from_display_name=execution.agent_display_name,
-                    auto_generated=True,
                     content=f"COMPLETION REPORT from {execution.agent_display_name}: {summary}",
-                    message_type="completion_report",
-                    status="pending",
-                )
-                session.add(auto_message)
-                await session.flush()
-                session.add(
-                    MessageRecipient(
-                        message_id=auto_message.id,
-                        agent_id=orch_exec.agent_id,
-                        tenant_key=tenant_key,
-                    )
+                    recipient_agent_id=orch_exec.agent_id,
                 )
                 # Handover 0821: Single batch UPDATE for completion report counters
                 # prevents cross-statement deadlock with concurrent broadcasts
@@ -234,27 +202,6 @@ class OrchestrationAgentStateService:
                     sent_increments={execution.agent_id: 1},
                     waiting_increments={orch_exec.agent_id: 1},
                 )
-
-    async def _find_orchestrator_execution(self, session, project_id: str, tenant_key: str):
-        """Find the active orchestrator execution for a project."""
-        from sqlalchemy import select
-
-        from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-
-        stmt = (
-            select(AgentExecution)
-            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-            .where(
-                AgentJob.project_id == project_id,
-                AgentJob.tenant_key == tenant_key,
-                AgentExecution.tenant_key == tenant_key,
-                AgentExecution.agent_display_name == "orchestrator",
-                AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
-            )
-            .limit(1)
-        )
-        res = await session.execute(stmt)
-        return res.scalar_one_or_none()
 
     async def reactivate_job(
         self, job_id: str, tenant_key: Optional[str] = None, reason: str = ""
@@ -290,18 +237,7 @@ class OrchestrationAgentStateService:
 
             async with self._get_session() as session:
                 # Find execution in blocked status
-                exec_stmt = (
-                    select(AgentExecution)
-                    .where(
-                        AgentExecution.job_id == job_id,
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status == "blocked",
-                    )
-                    .order_by(AgentExecution.started_at.desc())
-                    .limit(1)
-                )
-                exec_res = await session.execute(exec_stmt)
-                execution = exec_res.scalar_one_or_none()
+                execution = await self._job_repo.find_blocked_execution_for_job(session, tenant_key, job_id)
 
                 if not execution:
                     raise ResourceNotFoundError(
@@ -310,10 +246,7 @@ class OrchestrationAgentStateService:
                     )
 
                 # Get job
-                job_res = await session.execute(
-                    select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
-                )
-                job = job_res.scalar_one_or_none()
+                job = await self._job_repo.get_agent_job_by_job_id(session, tenant_key, job_id)
                 if not job:
                     raise ResourceNotFoundError(
                         message=f"Job {job_id} not found", context={"job_id": job_id, "method": "reactivate_job"}
@@ -321,10 +254,7 @@ class OrchestrationAgentStateService:
 
                 # Check project is not closed out
                 if job.project_id:
-                    project_res = await session.execute(
-                        select(Project).where(Project.id == job.project_id, Project.tenant_key == tenant_key)
-                    )
-                    project = project_res.scalar_one_or_none()
+                    project = await self._job_repo.get_project_by_id(session, tenant_key, str(job.project_id))
                     if project and project.status in ("completed", "cancelled"):
                         raise ProjectStateError(
                             message="Cannot reactivate - project is already closed out.",
@@ -353,7 +283,7 @@ class OrchestrationAgentStateService:
                     job.status = "active"
                     job.completed_at = None
 
-                await session.flush()
+                await self._job_repo.flush(session)
 
                 project_id = str(job.project_id) if job.project_id else None
 
@@ -429,18 +359,7 @@ class OrchestrationAgentStateService:
 
             async with self._get_session() as session:
                 # Find execution in blocked status
-                exec_stmt = (
-                    select(AgentExecution)
-                    .where(
-                        AgentExecution.job_id == job_id,
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status == "blocked",
-                    )
-                    .order_by(AgentExecution.started_at.desc())
-                    .limit(1)
-                )
-                exec_res = await session.execute(exec_stmt)
-                execution = exec_res.scalar_one_or_none()
+                execution = await self._job_repo.find_blocked_execution_for_job(session, tenant_key, job_id)
 
                 if not execution:
                     raise ResourceNotFoundError(
@@ -454,25 +373,17 @@ class OrchestrationAgentStateService:
                 execution.block_reason = None
 
                 # Restore job status if it was completed before
-                job_res = await session.execute(
-                    select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
-                )
-                job = job_res.scalar_one_or_none()
+                job = await self._job_repo.get_agent_job_by_job_id(session, tenant_key, job_id)
 
                 if job and job.status == "active":
                     # Only restore if no other executions are still active
-                    other_active_stmt = select(AgentExecution).where(
-                        AgentExecution.job_id == job_id,
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.id != execution.id,
-                        AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
+                    other_active = await self._job_repo.find_other_active_executions(
+                        session, tenant_key, job_id, execution.id
                     )
-                    other_active_res = await session.execute(other_active_stmt)
-                    other_active = other_active_res.scalar_one_or_none()
                     if not other_active:
                         job.status = "completed"
 
-                await session.flush()
+                await self._job_repo.flush(session)
 
                 project_id = str(job.project_id) if job and job.project_id else None
 
@@ -538,18 +449,7 @@ class OrchestrationAgentStateService:
 
             project_id = None
             async with self._get_session() as session:
-                exec_stmt = (
-                    select(AgentExecution)
-                    .where(
-                        AgentExecution.job_id == job_id,
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status == "complete",
-                    )
-                    .order_by(AgentExecution.started_at.desc())
-                    .limit(1)
-                )
-                exec_res = await session.execute(exec_stmt)
-                execution = exec_res.scalar_one_or_none()
+                execution = await self._job_repo.find_complete_execution_for_job(session, tenant_key, job_id)
 
                 if not execution:
                     raise ResourceNotFoundError(
@@ -559,13 +459,10 @@ class OrchestrationAgentStateService:
 
                 execution.status = "closed"
 
-                job_res = await session.execute(
-                    select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
-                )
-                job = job_res.scalar_one_or_none()
+                job = await self._job_repo.get_agent_job_by_job_id(session, tenant_key, job_id)
                 project_id = str(job.project_id) if job and job.project_id else None
 
-                await session.flush()
+                await self._job_repo.flush(session)
                 self._logger.info("Job %s closed (final acceptance)", job_id)
 
             if self._websocket_manager:
@@ -658,18 +555,7 @@ class OrchestrationAgentStateService:
 
             job = None
             async with self._get_session() as session:
-                exec_stmt = (
-                    select(AgentExecution)
-                    .where(
-                        AgentExecution.job_id == job_id,
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
-                    )
-                    .order_by(AgentExecution.started_at.desc())
-                    .limit(1)
-                )
-                exec_res = await session.execute(exec_stmt)
-                execution = exec_res.scalar_one_or_none()
+                execution = await self._job_repo.find_active_execution_for_job(session, tenant_key, job_id)
 
                 if not execution:
                     raise ResourceNotFoundError(
@@ -678,16 +564,13 @@ class OrchestrationAgentStateService:
                     )
 
                 # TENANT ISOLATION: Filter by tenant_key
-                job_res = await session.execute(
-                    select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
-                )
-                job = job_res.scalar_one_or_none()
+                job = await self._job_repo.get_agent_job_by_job_id(session, tenant_key, job_id)
 
                 old_status = execution.status
                 execution.status = status
                 execution.block_reason = block_reason if block_reason else None
 
-                await session.commit()
+                await self._job_repo.commit(session)
 
             # WebSocket broadcast for real-time UI updates
             try:

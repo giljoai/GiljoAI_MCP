@@ -24,7 +24,6 @@ from typing import Any
 from uuid import uuid4
 
 import bcrypt
-from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -36,6 +35,7 @@ from giljo_mcp.exceptions import (
     ValidationError,
 )
 from giljo_mcp.models.auth import TOGGLEABLE_CATEGORIES, User, UserFieldPriority
+from giljo_mcp.repositories.user_repository import UserRepository
 from giljo_mcp.services.user_auth_service import UserAuthService
 
 
@@ -68,8 +68,10 @@ class UserService:
         self.tenant_key = tenant_key
         self._websocket_manager = websocket_manager
         self._session = session  # Store for test transaction isolation
+        self._repo = UserRepository()
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        self._auth = UserAuthService(db_manager, tenant_key, websocket_manager, session)
+        # Sprint 002f: Public sub-service for direct caller access (collapsed pass-throughs)
+        self.auth = UserAuthService(db_manager, tenant_key, websocket_manager, session)
 
     def _get_session(self):
         """
@@ -120,14 +122,7 @@ class UserService:
 
     async def _list_users_impl(self, session: AsyncSession, include_all_tenants: bool = False) -> list[User]:
         """Implementation that uses provided session"""
-        if include_all_tenants:
-            # Admin cross-tenant view - see all users
-            stmt = select(User).order_by(User.created_at)
-        else:
-            # Regular tenant-isolated view
-            stmt = select(User).where(User.tenant_key == self.tenant_key).order_by(User.created_at)
-        result = await session.execute(stmt)
-        users = list(result.scalars().all())
+        users = await self._repo.list_users(session, self.tenant_key, include_all_tenants)
 
         log_msg = f"Found {len(users)} users" + (
             " (all tenants)" if include_all_tenants else f" for tenant {self.tenant_key}"
@@ -170,14 +165,7 @@ class UserService:
         Raises:
             ResourceNotFoundError: User not found
         """
-        if include_all_tenants:
-            # Admin cross-tenant fetch
-            stmt = select(User).where(User.id == user_id)
-        else:
-            # Regular tenant-isolated fetch
-            stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key, include_all_tenants)
 
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
@@ -242,17 +230,12 @@ class UserService:
             ValidationError: Username or email already exists
         """
         # Check for duplicate username (global uniqueness)
-        stmt = select(User).where(User.username == username)
-        result = await session.execute(stmt)
-        if result.scalar_one_or_none():
+        if await self._repo.check_username_exists(session, username):
             raise ValidationError(message=f"Username '{username}' already exists", context={"username": username})
 
         # Check for duplicate email if provided
-        if email:
-            stmt = select(User).where(User.email == email)
-            result = await session.execute(stmt)
-            if result.scalar_one_or_none():
-                raise ValidationError(message=f"Email '{email}' already exists", context={"email": email})
+        if email and await self._repo.check_email_exists(session, email):
+            raise ValidationError(message=f"Email '{email}' already exists", context={"email": email})
 
         # Hash password (default to "GiljoMCP" per Handover 0023)
         password_hash = bcrypt.hashpw((password or "GiljoMCP").encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -273,9 +256,7 @@ class UserService:
             created_at=datetime.now(timezone.utc),
         )
 
-        session.add(user)
-        await session.commit()
-        await session.refresh(user)
+        user = await self._repo.add_user(session, user)
 
         self._logger.info(f"Created user {user.id} for tenant {self.tenant_key}")
 
@@ -320,39 +301,34 @@ class UserService:
             ResourceNotFoundError: User not found
             ValidationError: Email already exists
         """
-        if include_all_tenants:
-            # Admin cross-tenant update
-            stmt = select(User).where(User.id == user_id)
-        else:
-            # Regular tenant-isolated update
-            stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key, include_all_tenants)
 
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Check for duplicate username if changing username
-        if "username" in updates and updates["username"] and updates["username"] != user.username:
-            stmt = select(User).where(User.username == updates["username"])
-            result = await session.execute(stmt)
-            existing_user = result.scalar_one_or_none()
-            if existing_user:
-                raise ValidationError(
-                    message=f"Username '{updates['username']}' already taken",
-                    context={"username": updates["username"], "user_id": user_id},
-                )
+        if (
+            "username" in updates
+            and updates["username"]
+            and updates["username"] != user.username
+            and await self._repo.check_username_exists(session, updates["username"])
+        ):
+            raise ValidationError(
+                message=f"Username '{updates['username']}' already taken",
+                context={"username": updates["username"], "user_id": user_id},
+            )
 
         # Check for duplicate email if changing email
-        if "email" in updates and updates["email"] and updates["email"] != user.email:
-            stmt = select(User).where(User.email == updates["email"])
-            result = await session.execute(stmt)
-            existing_user = result.scalar_one_or_none()
-            if existing_user:
-                raise ValidationError(
-                    message=f"Email '{updates['email']}' already exists",
-                    context={"email": updates["email"], "user_id": user_id},
-                )
+        if (
+            "email" in updates
+            and updates["email"]
+            and updates["email"] != user.email
+            and await self._repo.check_email_exists(session, updates["email"])
+        ):
+            raise ValidationError(
+                message=f"Email '{updates['email']}' already exists",
+                context={"email": updates["email"], "user_id": user_id},
+            )
 
         # Apply updates (only allowed fields)
         allowed_fields = {"username", "email", "full_name", "is_active"}
@@ -365,8 +341,7 @@ class UserService:
             user.password_hash = bcrypt.hashpw(updates["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
             self._logger.info(f"Password updated for user {user_id}")
 
-        await session.commit()
-        await session.refresh(user)
+        user = await self._repo.commit_and_refresh_user(session, user)
 
         self._logger.info(f"Updated user {user_id}")
 
@@ -399,55 +374,70 @@ class UserService:
         Raises:
             ResourceNotFoundError: User not found
         """
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
 
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        # Soft delete
-        user.is_active = False
-
-        await session.commit()
+        await self._repo.soft_delete_user(session, user)
 
         self._logger.info(f"Soft deleted user {user_id}")
 
     # ============================================================================
-    # Role Management (facade — implementation in UserAuthService)
-    # ============================================================================
-
-    async def change_role(self, *a, **kw) -> User:
-        """Facade: delegates to UserAuthService."""
-        return await self._auth.change_role(*a, **kw)
-
-    # ============================================================================
-    # Password Management (facade — implementation in UserAuthService)
-    # ============================================================================
-
-    async def change_password(self, *a, **kw) -> None:
-        """Facade: delegates to UserAuthService."""
-        return await self._auth.change_password(*a, **kw)
-
-    async def verify_password(self, *a, **kw) -> bool:
-        """Facade: delegates to UserAuthService."""
-        return await self._auth.verify_password(*a, **kw)
-
-    # ============================================================================
-    # Validation Methods (facade — implementation in UserAuthService)
-    # ============================================================================
-
-    async def check_username_exists(self, *a, **kw) -> bool:
-        """Facade: delegates to UserAuthService."""
-        return await self._auth.check_username_exists(*a, **kw)
-
-    async def check_email_exists(self, *a, **kw) -> bool:
-        """Facade: delegates to UserAuthService."""
-        return await self._auth.check_email_exists(*a, **kw)
-
-    # ============================================================================
     # Configuration Management
     # ============================================================================
+
+    async def update_notification_preferences(self, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Update a user's notification preferences JSONB column.
+
+        Sprint 003c: Extracted from api/endpoints/users.py to enforce write discipline.
+
+        Args:
+            user_id: User UUID (must belong to current tenant)
+            payload: Dict with optional keys: context_tuning_reminder (bool),
+                     tuning_reminder_threshold (int, minimum 3).
+
+        Returns:
+            The validated notification preferences dict.
+
+        Raises:
+            ResourceNotFoundError: User not found
+            BaseGiljoError: Database operation failed
+        """
+        from giljo_mcp.config.defaults import DEFAULT_NOTIFICATION_PREFERENCES
+        from giljo_mcp.schemas.jsonb_validators import validate_notification_preferences
+
+        try:
+            async with self._get_session() as session:
+                user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
+                if not user:
+                    raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
+
+                prefs = dict(user.notification_preferences or DEFAULT_NOTIFICATION_PREFERENCES)
+
+                if "context_tuning_reminder" in payload:
+                    prefs["context_tuning_reminder"] = bool(payload["context_tuning_reminder"])
+
+                if "tuning_reminder_threshold" in payload:
+                    threshold = int(payload["tuning_reminder_threshold"])
+                    prefs["tuning_reminder_threshold"] = max(threshold, 3)
+
+                prefs = validate_notification_preferences(prefs)
+
+                user.notification_preferences = prefs
+                await self._repo.commit(session)
+
+                self._logger.info("Updated notification preferences for user %s", user_id)
+                return prefs
+
+        except (ResourceNotFoundError, ValidationError, BaseGiljoError):
+            raise
+        except (RuntimeError, ValueError) as e:
+            self._logger.exception("Failed to update notification preferences")
+            raise BaseGiljoError(
+                message=str(e),
+                context={"operation": "update_notification_preferences", "user_id": user_id},
+            ) from e
 
     async def get_field_priority_config(self, user_id: str) -> dict[str, Any]:
         """Get user's field toggle configuration from user_field_priorities table.
@@ -470,18 +460,12 @@ class UserService:
         from giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES, DEFAULT_FIELD_PRIORITY
 
         # Verify user exists
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Query user's toggle rows
-        prio_stmt = select(UserFieldPriority).where(
-            and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == self.tenant_key)
-        )
-        prio_result = await session.execute(prio_stmt)
-        rows = prio_result.scalars().all()
+        rows = await self._repo.get_field_priorities(session, user_id, self.tenant_key)
 
         if not rows:
             return DEFAULT_FIELD_PRIORITY
@@ -534,18 +518,13 @@ class UserService:
                     context={"category": category, "value": value},
                 )
 
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Get existing priority rows
-        prio_stmt = select(UserFieldPriority).where(
-            and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == self.tenant_key)
-        )
-        prio_result = await session.execute(prio_stmt)
-        existing = {row.category: row for row in prio_result.scalars().all()}
+        existing_rows = await self._repo.get_field_priorities(session, user_id, self.tenant_key)
+        existing = {row.category: row for row in existing_rows}
 
         # Upsert toggleable categories
         now = datetime.now(timezone.utc)
@@ -559,7 +538,8 @@ class UserService:
                 existing[category].enabled = enabled
                 existing[category].updated_at = now
             else:
-                session.add(
+                await self._repo.add_field_priority(
+                    session,
                     UserFieldPriority(
                         id=str(uuid4()),
                         user_id=user_id,
@@ -568,10 +548,10 @@ class UserService:
                         enabled=enabled,
                         created_at=now,
                         updated_at=now,
-                    )
+                    ),
                 )
 
-        await session.commit()
+        await self._repo.commit(session)
         self._logger.info(f"Updated field toggle config for user {user.username}")
 
         await self._emit_websocket_event(
@@ -594,21 +574,16 @@ class UserService:
 
     async def _reset_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> None:
         """Delete all user_field_priorities rows for user (reverts to defaults)."""
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Delete all priority rows
-        prio_stmt = select(UserFieldPriority).where(
-            and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == self.tenant_key)
-        )
-        prio_result = await session.execute(prio_stmt)
-        for row in prio_result.scalars().all():
-            await session.delete(row)
+        rows = await self._repo.get_field_priorities(session, user_id, self.tenant_key)
+        for row in rows:
+            await self._repo.delete_field_priority(session, row)
 
-        await session.commit()
+        await self._repo.commit(session)
         self._logger.info(f"Reset field priority config for user {user.username}")
 
     async def bulk_disable_field_priority(self, category: str) -> int:
@@ -634,20 +609,7 @@ class UserService:
 
         try:
             async with self._get_session() as session:
-                stmt = (
-                    update(UserFieldPriority)
-                    .where(
-                        and_(
-                            UserFieldPriority.tenant_key == self.tenant_key,
-                            UserFieldPriority.category == category,
-                            UserFieldPriority.enabled.is_(True),
-                        )
-                    )
-                    .values(enabled=False, updated_at=datetime.now(timezone.utc))
-                )
-                result = await session.execute(stmt)
-                await session.commit()
-                count = result.rowcount
+                count = await self._repo.bulk_disable_field_priority(session, self.tenant_key, category)
                 if count > 0:
                     self._logger.info(
                         "Bulk-disabled field priority '%s' for %d user(s) in tenant %s",
@@ -677,9 +639,7 @@ class UserService:
 
     async def _get_depth_config_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
         """Read depth columns from users table, return as dict."""
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
@@ -715,9 +675,7 @@ class UserService:
                 context={"vision_documents": config["vision_documents"], "valid_values": valid_vision},
             )
 
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
@@ -737,8 +695,7 @@ class UserService:
             if col_name:
                 setattr(user, col_name, value)
 
-        await session.commit()
-        await session.refresh(user)
+        user = await self._repo.commit_and_refresh_user(session, user)
 
         self._logger.info(f"Updated depth config for user {user.username}")
 
@@ -772,9 +729,7 @@ class UserService:
 
     async def _get_execution_mode_impl(self, session: AsyncSession, user_id: str) -> str:
         """Read execution_mode column from users table."""
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
         return user.execution_mode or "claude_code"
@@ -801,15 +756,12 @@ class UserService:
                 context={"execution_mode": execution_mode, "valid_modes": list(valid_modes)},
             )
 
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         user.execution_mode = execution_mode
-        await session.commit()
-        await session.refresh(user)
+        await self._repo.commit_and_refresh_user(session, user)
 
         await self._emit_websocket_event(
             event_type="execution_mode_updated",

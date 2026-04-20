@@ -9,6 +9,7 @@ DatabaseManager for GiljoAI MCP with PostgreSQL support.
 Provides connection pooling, tenant isolation, and production-ready database management.
 """
 
+import logging
 from contextlib import asynccontextmanager, contextmanager, suppress
 from typing import Optional
 from urllib.parse import quote_plus
@@ -19,12 +20,15 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engin
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
-from .logging import ErrorCode, get_logger
+from .logging import ErrorCode
 from .models import Base
 from .tenant import TenantManager
 
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
+
+# Sprint 002f: Named constants for pool/cache configuration
+POOL_RECYCLE_SECONDS = 3600  # 1 hour -- recycle stale DB connections
 
 
 class DatabaseManager:
@@ -117,7 +121,7 @@ class DatabaseManager:
             pool_size=self.pool_size,
             max_overflow=self.max_overflow,
             pool_pre_ping=True,
-            pool_recycle=3600,
+            pool_recycle=POOL_RECYCLE_SECONDS,
             echo=False,
         )
         return engine
@@ -134,7 +138,7 @@ class DatabaseManager:
             pool_size=self.pool_size,
             max_overflow=self.max_overflow,
             pool_pre_ping=True,
-            pool_recycle=3600,
+            pool_recycle=POOL_RECYCLE_SECONDS,
             echo=False,
         )
 
@@ -233,9 +237,9 @@ class DatabaseManager:
                 await session.rollback()
             except (SQLAlchemyError, RuntimeError) as rollback_error:
                 logger.error(
-                    "session_rollback_failed",
-                    error_code=ErrorCode.DB_TRANSACTION_ROLLBACK.value,
-                    error_message=str(rollback_error),
+                    "session_rollback_failed error_code=%s error_message=%s",
+                    ErrorCode.DB_TRANSACTION_ROLLBACK.value,
+                    str(rollback_error),
                     exc_info=True,
                 )
             raise

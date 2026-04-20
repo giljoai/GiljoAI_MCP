@@ -114,6 +114,32 @@ class ConfigurationRepository:
         result = await session.execute(delete(Configuration).where(Configuration.tenant_key == tenant_key))
         return result.rowcount
 
+    async def add_configuration(
+        self,
+        session: AsyncSession,
+        config: Configuration,
+    ) -> None:
+        """
+        Add a configuration entity to the session.
+
+        Args:
+            session: Async database session
+            config: Fully constructed Configuration ORM instance
+        """
+        session.add(config)
+
+    async def commit(
+        self,
+        session: AsyncSession,
+    ) -> None:
+        """
+        Commit the current transaction.
+
+        Args:
+            session: Async database session
+        """
+        await session.commit()
+
     # ============================================================================
     # SETUP / FIRST-RUN DOMAIN
     # ============================================================================

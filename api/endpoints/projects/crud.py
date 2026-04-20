@@ -253,7 +253,7 @@ async def get_active_project(
     logger.debug(f"User {current_user.username} fetching active project")
 
     # Get active project via ProjectService (raises exceptions on error, returns None if no active project)
-    proj = await project_service.get_active_project()
+    proj = await project_service.query.get_active_project()
 
     # No active project is OK - return None
     if not proj:
@@ -486,10 +486,10 @@ async def get_project_review(
     )
 
     # Fetch agent job details and memory entries
-    agent_details = await project_service.get_project_agent_details(
+    agent_details = await project_service.query.get_project_agent_details(
         project_id=project_id, tenant_key=current_user.tenant_key
     )
-    memory_entries = await project_service.get_project_memory_entries(
+    memory_entries = await project_service.query.get_project_memory_entries(
         project_id=project_id, tenant_key=current_user.tenant_key
     )
 

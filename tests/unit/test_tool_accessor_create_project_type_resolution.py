@@ -65,7 +65,7 @@ class TestCreateProjectTypeResolution:
         mock_type.id = "pt-frontend-uuid"
 
         with (
-            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_ps_cls,
+            patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -105,7 +105,7 @@ class TestCreateProjectTypeResolution:
         mock_type.id = "pt-frontend-uuid"
 
         with (
-            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_ps_cls,
+            patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -142,7 +142,7 @@ class TestCreateProjectTypeResolution:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_ps_cls,
+            patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -179,7 +179,7 @@ class TestCreateProjectTypeResolution:
         tool_accessor = _make_tool_accessor()
 
         with (
-            patch("giljo_mcp.tools.tool_accessor.ProductService") as mock_ps_cls,
+            patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",

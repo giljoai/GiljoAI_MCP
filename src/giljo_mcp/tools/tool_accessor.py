@@ -28,127 +28,13 @@ from giljo_mcp.schemas.service_responses import (
 from giljo_mcp.services.message_routing_service import MessageRoutingService
 from giljo_mcp.services.message_service import MessageService
 from giljo_mcp.services.orchestration_service import OrchestrationService
-from giljo_mcp.services.product_service import ProductService
 from giljo_mcp.services.project_service import ProjectService
 from giljo_mcp.services.task_service import TaskService
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.tools.setup_instructions import build_setup_instructions
 
 
 logger = logging.getLogger(__name__)
-
-
-def _build_setup_instructions(platform: str, download_url: str) -> str:
-    """Build a natural-language prompt the LLM will execute to install GiljoAI CLI integration."""
-    if platform == "claude_code":
-        return (
-            "Install the GiljoAI CLI integration. This is a one-time setup.\n\n"
-            "Step 1 — Download and extract:\n"
-            f"Download: {download_url}\n"
-            "Extract to: ~/.claude/ (create if needed, overwrite existing)\n"
-            "Delete the downloaded zip.\n\n"
-            "Adapt all commands for the OS you are running on.\n\n"
-            "Step 2 — Tell the user:\n"
-            "Two commands are now available:\n"
-            "- /gil_get_agents — install/update GiljoAI agent templates\n"
-            "- /gil_add — add tasks and projects from the CLI (try /gil_add --help)\n\n"
-            "Restart Claude Code, then run /gil_get_agents to install agent templates.\n"
-            "Note: Download link expires in 15 minutes."
-        )
-    if platform == "gemini_cli":
-        return (
-            "Install the GiljoAI CLI integration. This is a one-time setup.\n\n"
-            "Step 1 — Download and extract:\n"
-            f"Download: {download_url}\n"
-            "Extract to: ~/.gemini/ (create if needed, overwrite existing)\n"
-            "Delete the downloaded zip.\n\n"
-            "Step 2 — Enable custom agents:\n"
-            'Merge {"experimental": {"enableAgents": true}} into ~/.gemini/settings.json '
-            "(create if it does not exist). Preserve all existing settings.\n"
-            "IMPORTANT — Use a shell command for this step. Your file-write tool may be "
-            "sandboxed to the workspace and unable to write to the home directory.\n"
-            'Linux/macOS: python3 -c "'
-            "import json,pathlib; "
-            "p=pathlib.Path.home()/'.gemini'/'settings.json'; "
-            "d=json.loads(p.read_text()) if p.exists() else {}; "
-            "d.setdefault('experimental',{})['enableAgents']=True; "
-            'p.write_text(json.dumps(d,indent=2))"\n'
-            'Windows PowerShell: $p="$env:USERPROFILE\\.gemini\\settings.json"; '
-            "$d=if(Test-Path $p){Get-Content $p -Raw|ConvertFrom-Json -AsHashtable}else{@{}}; "
-            "if(-not $d.ContainsKey('experimental')){$d['experimental']=@{}}; "
-            "$d['experimental']['enableAgents']=$true; "
-            "$utf8NoBom=New-Object System.Text.UTF8Encoding($false); "
-            "[System.IO.File]::WriteAllText($p,($d|ConvertTo-Json -Depth 10),$utf8NoBom)\n\n"
-            "Adapt all commands for the OS you are running on.\n\n"
-            "Step 3 — Tell the user:\n"
-            "Two commands are now available:\n"
-            "- /gil_get_agents — install/update GiljoAI agent templates\n"
-            "- /gil_add — add tasks and projects from the CLI (try /gil_add --help)\n\n"
-            "Restart Gemini CLI, then run /gil_get_agents to install agent templates.\n"
-            "Note: Download link expires in 15 minutes."
-        )
-    if platform == "generic":
-        return (
-            "Your platform was not identified. To install GiljoAI agent templates\n"
-            "and commands manually:\n\n"
-            f"Step 1 — Download: {download_url}\n"
-            "Step 2 — Extract the ZIP. It contains:\n"
-            "  - agents/ — Markdown files with agent role definitions and system prompts\n"
-            "  - commands/ — Reference documents describing available GiljoAI commands\n"
-            "Step 3 — Install these files according to your MCP client's documentation\n"
-            "  for custom agents and commands/skills.\n\n"
-            "For platform-specific setup, visit your GiljoAI server's web interface\n"
-            "at Settings → Integrations.\n"
-            "Note: Download link expires in 15 minutes."
-        )
-    # codex_cli
-    return (
-        "Install the GiljoAI CLI integration. This is a one-time setup.\n\n"
-        "Step 1 — Download and extract:\n"
-        f"Download: {download_url}\n"
-        "Extract to: ~/.codex/ (create if needed, overwrite existing)\n"
-        "Delete the downloaded zip.\n\n"
-        "Step 2 — Enable interactive menus:\n"
-        "Read ~/.codex/config.toml (create if it does not exist).\n"
-        "Under the [features] section, ensure these flags are set:\n"
-        "  default_mode_request_user_input = true\n"
-        "  multi_agent = true\n"
-        "If [features] already exists, merge — do NOT remove existing flags.\n"
-        "CRITICAL: Use a TOML parser to read-then-merge. Never overwrite config.toml.\n"
-        "Back up config.toml before writing.\n"
-        "Sandbox fallback: If your file-write tool cannot write outside the workspace, "
-        "use a shell command instead: cp -p ~/.codex/config.toml ~/.codex/config.toml.bak "
-        '&& python3 -c "import tomllib,pathlib; '
-        "p=pathlib.Path.home()/'.codex'/'config.toml'; "
-        "t=p.read_text() if p.exists() else ''; "
-        "tomllib.loads(t) if t.strip() else None; "
-        "t+='\\n[features]\\ndefault_mode_request_user_input = true\\nmulti_agent = true\\n' "
-        "if '[features]' not in t else t; "
-        'p.write_text(t); tomllib.loads(p.read_text())"\n'
-        "IMPORTANT — Windows BOM trap: Use your built-in write_file tool if available. "
-        "If you must use PowerShell: $utf8NoBom = New-Object System.Text.UTF8Encoding($false); "
-        "[System.IO.File]::WriteAllText($path, $content, $utf8NoBom). "
-        "Do NOT use Set-Content, Out-File, or [System.Text.Encoding]::UTF8 (all add BOM).\n\n"
-        "Adapt all commands for the OS you are running on.\n\n"
-        "Step 3 — Register agent templates:\n"
-        "The ZIP extracted agent files to ~/.codex/agents/ (e.g. gil-analyzer.toml, "
-        "gil-implementer.toml). Each one MUST be registered in config.toml.\n"
-        "For each gil-*.toml file in the agents/ directory, add a section:\n"
-        "  [agents.gil-{name}]\n"
-        "  config_file = 'agents/gil-{name}.toml'\n"
-        "  model = 'o3'\n"
-        "  model_reasoning_effort = 'medium'\n"
-        "  nickname_candidates = ['gil-{name}']\n"
-        "Where {name} is the agent name from the filename (without gil- prefix and .toml).\n"
-        "Preserve any existing non-GiljoAI [agents.*] entries.\n"
-        "Use the same TOML parser read-then-merge approach from Step 2.\n"
-        "If sandboxed, use the same shell fallback: back up, append, validate.\n\n"
-        "Step 4 — Tell the user:\n"
-        "Two skills are now available:\n"
-        "- $gil-get-agents — install/update GiljoAI agent templates\n"
-        "- $gil-add — add tasks and projects from the CLI (try $gil-add --help)\n\n"
-        "Restart Codex CLI, then run $gil-get-agents to install agent templates.\n"
-        "Note: Download link expires in 15 minutes."
-    )
 
 
 class ToolAccessor:
@@ -166,8 +52,6 @@ class ToolAccessor:
         self._websocket_manager = websocket_manager
         self._test_session = test_session
 
-        # Initialize service layer (Handover 0121 - Phase 1, Handover 0123 - Phase 2 ✅ COMPLETE)
-        # Note: ProductService requires tenant_key directly, we'll pass it when needed
         self._product_service = None  # Lazy initialization per-request
         self._project_service = ProjectService(
             db_manager,
@@ -189,9 +73,16 @@ class ToolAccessor:
         self._orchestration_service = OrchestrationService(
             db_manager,
             tenant_manager,
-            message_service=self._message_service,  # Pass MessageService for WebSocket-enabled messaging
-            test_session=test_session,  # Pass test session for transaction sharing (Handover 0358c)
+            message_service=self._message_service,
+            test_session=test_session,
         )
+
+        # Sprint 002f: Direct sub-service references for collapsed pass-throughs
+        self._mission_service = self._orchestration_service._mission
+        self._progress_service = self._orchestration_service._progress
+        self._agent_state_service = self._orchestration_service._agent_state
+        self._workflow_status_service = self._orchestration_service._workflow_status
+        self._job_completion_service = self._orchestration_service._job_completion
 
     def get_session_async(self):
         """
@@ -210,17 +101,6 @@ class ToolAccessor:
             return _test_session_wrapper()
         return self.db_manager.get_session_async()
 
-    # Internal helpers
-
-    async def _get_valid_project_types(self, tenant_key: str) -> list[dict[str, Any]]:
-        """Return available project types for a tenant (used in error messages and list_projects)."""
-        from api.endpoints.project_types.crud_ops import ensure_default_types_seeded, list_project_types
-
-        async with self.db_manager.get_session_async() as session:
-            await ensure_default_types_seeded(session, tenant_key)
-            types = await list_project_types(session, tenant_key)
-            return [{"abbreviation": t.abbreviation, "label": t.label, "color": t.color} for t in types]
-
     # Project Tools
 
     async def create_project(
@@ -234,127 +114,18 @@ class ToolAccessor:
         series_number: int | None = None,
         subseries: str | None = None,
     ) -> dict[str, Any]:
-        """
-        Create a new project bound to the active product.
-
-        Args:
-            name: Project name (required)
-            mission: AI-generated mission statement (default: "" - orchestrator fills later)
-            description: Human-written project description (default: "")
-            product_id: Parent product ID (auto-resolved from active product if not provided)
-            tenant_key: Tenant isolation key (injected by MCP security layer)
-
-        Returns:
-            Dict with success status, project_id, alias, and metadata
-
-        Raises:
-            ValidationError: If no active product is set for the tenant
-        """
-        # Validate required fields (description validated at MCP schema layer)
-        if not name or not name.strip():
-            raise ValidationError(
-                "Project name is required and cannot be empty.",
-                context={"operation": "create_project"},
-            )
-        name = name.strip()
-        description = description.strip() if description else ""
-
-        # Resolve effective tenant key
-        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
-
-        # Resolve optional type label to project_type_id (Handover 0837b)
-        project_type_id = None
-        resolved_type_label = ""
-        if project_type:
-            resolved_type = await self._project_service.get_project_type_by_label(project_type, effective_tenant_key)
-            if resolved_type:
-                project_type_id = resolved_type.id
-                resolved_type_label = resolved_type.abbreviation or project_type
-
-        # Resolve product_id from active product if not explicitly provided
-        if not product_id:
-            product_service = ProductService(
-                db_manager=self.db_manager,
-                tenant_key=effective_tenant_key,
-                websocket_manager=self._websocket_manager,
-                test_session=self._test_session,
-            )
-            active_product = await product_service.get_active_product()
-
-            if not active_product:
-                raise ValidationError(
-                    "No active product set. Please activate a product first.",
-                    context={
-                        "tenant_key": effective_tenant_key,
-                        "operation": "create_project",
-                    },
-                )
-
-            product_id = active_product.id
-
-        # Delegate to ProjectService (always create as inactive)
-        project = await self._project_service.create_project(
+        """Create a new project bound to the active product. Sprint 002f: delegates to ProjectService."""
+        return await self._project_service.create_project_for_mcp(
             name=name,
             mission=mission,
             description=description,
             product_id=product_id,
-            tenant_key=effective_tenant_key,
-            status="inactive",
-            project_type_id=project_type_id,
+            tenant_key=tenant_key,
+            project_type=project_type,
             series_number=series_number,
             subseries=subseries,
+            websocket_manager=self._websocket_manager,
         )
-
-        logger.info(
-            "Created project %s (alias: %s) for tenant %s in product %s",
-            project.id,
-            project.alias,
-            effective_tenant_key,
-            product_id,
-        )
-
-        # Broadcast WebSocket event so frontend refreshes
-        if self._websocket_manager:
-            try:
-                await self._websocket_manager.broadcast_to_tenant(
-                    tenant_key=effective_tenant_key,
-                    event_type="project:created",
-                    data={"project_id": str(project.id), "name": project.name, "product_id": product_id},
-                )
-            except (RuntimeError, ValueError, OSError) as e:
-                logger.warning(f"Failed to broadcast project:created event: {e}")
-
-        return {
-            "success": True,
-            "project_id": project.id,
-            "alias": project.alias,
-            "name": project.name,
-            "description": project.description,
-            "mission": project.mission,
-            "status": project.status,
-            "product_id": project.product_id,
-            "project_type": resolved_type_label,
-            "series_number": project.series_number or 0,
-            "taxonomy_alias": project.taxonomy_alias,
-            "created_at": project.created_at.isoformat() if project.created_at else None,
-            "message": f"Project '{project.name}' created successfully"
-            + (
-                f". NOTE: project_type '{project_type}' is not a recognized category — "
-                "project created without taxonomy. Add the category in the dashboard first, "
-                "then assign it to this project."
-                if project_type and not project_type_id
-                else ""
-            ),
-        }
-
-    # ------------------------------------------------------------------
-    # list_projects / update_project_metadata — MCP tool layer
-    # ------------------------------------------------------------------
-
-    _VALID_PROJECT_STATUS_FILTERS = frozenset({"inactive", "active", "completed", "cancelled", "all"})
-    _VALID_PROJECT_UPDATE_STATUSES = frozenset({"inactive", "active", "completed", "cancelled"})
-
-    _VALID_DEPTH_LEVELS = frozenset({0, 1, 2, 3})
 
     async def list_projects(
         self,
@@ -363,166 +134,14 @@ class ToolAccessor:
         depth: int = 0,
         tenant_key: str | None = None,
     ) -> dict[str, Any]:
-        """List projects for the active product with optional status filter and depth control.
-
-        Args:
-            status_filter: One of "inactive", "active", "completed", "cancelled", "all" (default "all").
-                Cancelled projects are excluded from default results; use "cancelled" or "all" to include them.
-            summary_only: When True (default for MCP), return only summary fields.
-                When False, return full project data including description and mission.
-            depth: Detail level 0-3 (only used when summary_only=False):
-                0 = summary fields only (same as summary_only=True)
-                1 = + description, mission, agent job summary (types spawned, counts)
-                2 = + 360 memory entries for this project, agent job details (display names, status, result)
-                3 = + message history, git commits from 360 memory
-            tenant_key: Tenant isolation key (injected by MCP security layer).
-
-        Returns:
-            Dict with success flag and list of project summaries.
-
-        Raises:
-            ValidationError: Invalid status_filter, depth, or no active product.
-        """
-        # Validate status_filter (untrusted agent input)
-        if status_filter not in self._VALID_PROJECT_STATUS_FILTERS:
-            raise ValidationError(
-                f"Invalid status_filter '{status_filter}'. "
-                f"Must be one of: {', '.join(sorted(self._VALID_PROJECT_STATUS_FILTERS))}",
-                context={"operation": "list_projects"},
-            )
-
-        # Validate depth (untrusted agent input)
-        if not isinstance(depth, int) or depth not in self._VALID_DEPTH_LEVELS:
-            raise ValidationError(
-                f"Invalid depth '{depth}'. Must be an integer 0-3.",
-                context={"operation": "list_projects"},
-            )
-
-        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
-
-        # Resolve active product (same pattern as create_project)
-        product_service = ProductService(
-            db_manager=self.db_manager,
-            tenant_key=effective_tenant_key,
+        """List projects for active product. Sprint 002f: delegates to ProjectService."""
+        return await self._project_service.list_projects_for_mcp(
+            status_filter=status_filter,
+            summary_only=summary_only,
+            depth=depth,
+            tenant_key=tenant_key,
             websocket_manager=self._websocket_manager,
-            test_session=self._test_session,
         )
-        active_product = await product_service.get_active_product()
-        if not active_product:
-            raise ValidationError(
-                "No active product set. Please activate a product first.",
-                context={"tenant_key": effective_tenant_key, "operation": "list_projects"},
-            )
-
-        # Delegate to service — pass status=None when filter is "all"
-        svc_status = None if status_filter == "all" else status_filter
-        # "all" includes cancelled; "cancelled" is handled by explicit filter;
-        # default (no filter) excludes cancelled via service layer
-        include_cancelled = status_filter == "all"
-        all_projects = await self._project_service.list_projects(
-            status=svc_status,
-            tenant_key=effective_tenant_key,
-            include_cancelled=include_cancelled,
-        )
-
-        # Filter to active product only
-        product_projects = [p for p in all_projects if p.product_id == active_product.id]
-
-        # Determine effective depth: summary_only=True forces depth=0
-        effective_depth = 0 if summary_only else depth
-
-        # Build response — depth controls field inclusion
-        projects_out = await self._build_project_list(product_projects, effective_depth, effective_tenant_key)
-
-        # Include available project types so agents don't need a separate discovery call
-        project_types = await self._get_valid_project_types(effective_tenant_key)
-
-        return {
-            "success": True,
-            "product_id": active_product.id,
-            "count": len(projects_out),
-            "depth": effective_depth,
-            "projects": projects_out,
-            "project_types": project_types,
-        }
-
-    async def _build_project_list(
-        self,
-        projects: list,
-        depth: int,
-        tenant_key: str,
-    ) -> list[dict[str, Any]]:
-        """Build project list dicts with graduated detail based on depth level.
-
-        Args:
-            projects: List of ProjectListItem objects from service layer.
-            depth: 0=summary, 1=+desc/mission/agent_summary, 2=+memory/agent_detail, 3=+messages/commits.
-            tenant_key: Tenant isolation key.
-
-        Returns:
-            List of project dicts with depth-appropriate fields.
-        """
-        results = []
-        for p in projects:
-            # depth 0: summary fields only
-            item: dict[str, Any] = {
-                "project_id": p.id,
-                "name": p.name,
-                "status": p.status,
-                "project_type": getattr(p.project_type, "abbreviation", None) if p.project_type else None,
-                "series_number": p.series_number,
-                "taxonomy_alias": p.taxonomy_alias,
-                "created_at": p.created_at,
-                "completed_at": p.completed_at,
-            }
-
-            if depth >= 1:
-                # depth 1: add description, mission, agent job summary
-                item["description"] = p.description or ""
-                item["mission"] = getattr(p, "mission", None) or ""
-                agent_summary = await self._project_service.get_project_agent_summary(
-                    project_id=p.id, tenant_key=tenant_key
-                )
-                item["agent_summary"] = agent_summary
-
-            if depth >= 2:
-                # depth 2: add 360 memory entries, agent job details
-                memory_entries = await self._project_service.get_project_memory_entries(
-                    project_id=p.id, tenant_key=tenant_key
-                )
-                item["memory_entries"] = memory_entries
-                agent_details = await self._project_service.get_project_agent_details(
-                    project_id=p.id, tenant_key=tenant_key
-                )
-                item["agent_details"] = agent_details
-
-            if depth >= 3:
-                # depth 3: add git commits from memory, message history
-                item["git_commits"] = self._extract_git_commits(memory_entries if depth >= 2 else [])
-                message_history = await self._project_service.get_project_messages(
-                    project_id=p.id, tenant_key=tenant_key
-                )
-                item["message_history"] = message_history
-
-            results.append(item)
-        return results
-
-    @staticmethod
-    def _extract_git_commits(memory_entries: list[dict]) -> list[dict]:
-        """Extract git commits from 360 memory entries.
-
-        Args:
-            memory_entries: List of memory entry dicts (from get_project_memory_entries).
-
-        Returns:
-            Flat list of git commit dicts across all memory entries.
-        """
-        commits = []
-        for entry in memory_entries:
-            entry_commits = entry.get("git_commits", [])
-            if isinstance(entry_commits, list):
-                commits.extend(entry_commits)
-        return commits
 
     async def update_project_metadata(
         self,
@@ -535,156 +154,18 @@ class ToolAccessor:
         series_number: int | None = None,
         subseries: str | None = None,
     ) -> dict[str, Any]:
-        """Update project metadata fields (name, description, status, taxonomy).
-
-        Args:
-            project_id: Project UUID (required).
-            name: New name (max 200 chars, optional).
-            description: New description (max 5000 chars, optional).
-            status: New status — "inactive", "active", "completed", or "cancelled" (optional).
-            tenant_key: Tenant isolation key (injected by MCP security layer).
-            project_type: Taxonomy type label (resolved to ID internally, optional).
-            series_number: Sequential number within type series (1-9999, optional).
-            subseries: Single-letter suffix a-z (optional).
-
-        Returns:
-            Dict with success flag and updated project summary.
-
-        Raises:
-            ValidationError: On invalid input (empty project_id, bad status, field too long, no fields).
-            ResourceNotFoundError: Project not found or not in active product.
-        """
-        # --- Input validation (untrusted agent input) ---
-        if not project_id or not project_id.strip():
-            raise ValidationError(
-                "Project ID is required and cannot be empty.",
-                context={"operation": "update_project_metadata"},
-            )
-        project_id = project_id.strip()
-
-        # Validate at least one field is provided
-        if all(v is None for v in (name, description, status, project_type, series_number, subseries)):
-            raise ValidationError(
-                "At least one field must be provided.",
-                context={"operation": "update_project_metadata"},
-            )
-
-        # Validate field lengths
-        if name is not None:
-            name = name.strip()
-            if len(name) > 200:
-                raise ValidationError(
-                    f"Name exceeds 200 character limit (got {len(name)}).",
-                    context={"operation": "update_project_metadata"},
-                )
-            if not name:
-                raise ValidationError(
-                    "Name cannot be empty.",
-                    context={"operation": "update_project_metadata"},
-                )
-
-        if description is not None and len(description) > 5000:
-            raise ValidationError(
-                f"Description exceeds 5000 character limit (got {len(description)}).",
-                context={"operation": "update_project_metadata"},
-            )
-
-        if status is not None and status not in self._VALID_PROJECT_UPDATE_STATUSES:
-            raise ValidationError(
-                f"Invalid status '{status}'. Must be one of: {', '.join(sorted(self._VALID_PROJECT_UPDATE_STATUSES))}",
-                context={"operation": "update_project_metadata"},
-            )
-
-        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
-
-        # Resolve active product and verify project belongs to it
-        product_service = ProductService(
-            db_manager=self.db_manager,
-            tenant_key=effective_tenant_key,
-            websocket_manager=self._websocket_manager,
-            test_session=self._test_session,
-        )
-        active_product = await product_service.get_active_product()
-        if not active_product:
-            raise ValidationError(
-                "No active product set. Please activate a product first.",
-                context={"tenant_key": effective_tenant_key, "operation": "update_project_metadata"},
-            )
-
-        # Fetch project to verify it belongs to the active product
-        project = await self._project_service.get_project(
+        """Update project metadata. Sprint 002f: delegates to ProjectService."""
+        return await self._project_service.update_project_metadata_for_mcp(
             project_id=project_id,
-            tenant_key=effective_tenant_key,
-        )
-        if project.product_id != active_product.id:
-            raise ValidationError(
-                "Project does not belong to the active product.",
-                context={
-                    "project_id": project_id,
-                    "project_product_id": project.product_id,
-                    "active_product_id": active_product.id,
-                },
-            )
-
-        # Resolve taxonomy type label to ID if provided
-        if project_type is not None:
-            resolved_type = await self._project_service.get_project_type_by_label(project_type, effective_tenant_key)
-            if resolved_type:
-                project_type = resolved_type.id
-            else:
-                # Include valid types in error so agents don't need a separate lookup
-                valid_types = await self._get_valid_project_types(effective_tenant_key)
-                valid_labels = [t["abbreviation"] for t in valid_types]
-                raise ValidationError(
-                    f"Unknown project type '{project_type}'. "
-                    f"Valid types: {', '.join(valid_labels)}. "
-                    "Use list_projects() to see all valid project_types.",
-                    context={"operation": "update_project_metadata", "valid_types": valid_types},
-                )
-
-        # Validate taxonomy fields
-        if series_number is not None and (series_number < 1 or series_number > 9999):
-            raise ValidationError(
-                f"series_number must be 1-9999, got {series_number}.",
-                context={"operation": "update_project_metadata"},
-            )
-        if subseries is not None and (len(subseries) != 1 or not subseries.isalpha() or not subseries.islower()):
-            raise ValidationError(
-                f"subseries must be a single lowercase letter (a-z), got '{subseries}'.",
-                context={"operation": "update_project_metadata"},
-            )
-
-        # Build updates dict — only include provided fields
-        updates: dict[str, Any] = {}
-        if name is not None:
-            updates["name"] = name
-        if description is not None:
-            updates["description"] = description
-        if status is not None:
-            updates["status"] = status
-        if project_type is not None:
-            updates["project_type_id"] = project_type
-        if series_number is not None:
-            updates["series_number"] = series_number
-        if subseries is not None:
-            updates["subseries"] = subseries
-
-        # Delegate to service (single write path)
-        updated = await self._project_service.update_project(
-            project_id=project_id,
-            updates=updates,
+            name=name,
+            description=description,
+            status=status,
+            tenant_key=tenant_key,
+            project_type=project_type,
+            series_number=series_number,
+            subseries=subseries,
             websocket_manager=self._websocket_manager,
         )
-
-        return {
-            "success": True,
-            "project_id": updated.id,
-            "name": updated.name,
-            "description": updated.description,
-            "status": updated.status,
-            "updated_at": updated.updated_at,
-            "message": f"Project '{updated.name}' updated successfully.",
-        }
 
     async def update_project_mission(self, project_id: str, mission: str) -> dict[str, Any]:
         """Update the mission field (delegates to ProjectService)"""
@@ -693,8 +174,8 @@ class ToolAccessor:
         return await self._project_service.update_project_mission(project_id, mission, tenant_key=tenant_key)
 
     async def update_agent_mission(self, job_id: str, tenant_key: str, mission: str) -> dict[str, Any]:
-        """Delegate to OrchestrationService (Handover 0451)"""
-        return await self._orchestration_service.update_agent_mission(job_id, tenant_key, mission)
+        """Delegate to MissionService (sprint 002f: collapsed via OrchestrationService)."""
+        return await self._mission_service.update_agent_mission(job_id, tenant_key, mission)
 
     # Message Tools (delegates to MessageService / MessageRoutingService)
 
@@ -784,97 +265,17 @@ class ToolAccessor:
         assigned_to: str | None = None,
         tenant_key: str | None = None,
     ) -> dict[str, Any]:
-        """
-        Create a new task bound to the active product.
-
-        Args:
-            title: Task title/summary
-            description: Detailed task description
-            priority: Task priority (default: "medium")
-            category: Optional category (frontend, backend, database, infra, docs, general)
-            assigned_to: Optional agent name to assign to (not implemented yet)
-            tenant_key: Tenant isolation key (injected by MCP security layer)
-
-        Returns:
-            Dict with success status and task_id or error
-
-        Raises:
-            ValidationError: If no active product is set for the tenant
-
-        Example:
-            >>> result = await tool_accessor.create_task(
-            ...     title="Fix login bug",
-            ...     description="Users cannot login with email",
-            ...     priority="high",
-            ...     tenant_key="tenant-abc"
-            ... )
-            >>> print(result["task_id"])
-        """
-        # Use tenant_key from parameter or fall back to tenant_manager
-        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
-
-        # Fetch active product for tenant (Handover 0433 Phase 3)
-        # ProductService requires tenant_key in constructor, instantiate per-request
-        product_service = ProductService(
-            db_manager=self.db_manager,
-            tenant_key=effective_tenant_key,
-            websocket_manager=self._websocket_manager,
-            test_session=self._test_session,
-        )
-        active_product = await product_service.get_active_product()
-
-        if not active_product:
-            raise ValidationError(
-                "No active product set. Please activate a product first.",
-                context={
-                    "tenant_key": effective_tenant_key,
-                    "operation": "create_task",
-                },
-            )
-
-        product_id = active_product.id
-
-        # Default category to "general" when not provided (Bug 3 fix)
-        effective_category = category or "general"
-
-        # Create task with product binding and tenant isolation
-        task_id = await self._task_service.log_task(
-            content=title,
+        """Create a task bound to active product. Sprint 002f: delegates to TaskService."""
+        return await self._task_service.create_task_for_mcp(
             title=title,
             description=description,
-            category=effective_category,
             priority=priority,
-            product_id=product_id,
-            tenant_key=effective_tenant_key,
+            category=category,
+            assigned_to=assigned_to,
+            tenant_key=tenant_key,
+            db_manager=self.db_manager,
+            websocket_manager=self._websocket_manager,
         )
-
-        logger.info(
-            "Created task %s for tenant %s in product %s",
-            task_id,
-            effective_tenant_key,
-            product_id,
-        )
-
-        # Broadcast WebSocket event so frontend refreshes
-        if self._websocket_manager:
-            try:
-                await self._websocket_manager.broadcast_to_tenant(
-                    tenant_key=effective_tenant_key,
-                    event_type="task:created",
-                    data={"task_id": task_id, "title": title, "product_id": product_id},
-                )
-            except (RuntimeError, ValueError, OSError) as e:
-                logger.warning(f"Failed to broadcast task:created event: {e}")
-
-        return {
-            "success": True,
-            "task_id": task_id,
-            "title": title,
-            "priority": priority,
-            "category": effective_category,
-            "product_id": product_id,
-            "message": f"Task '{title}' created successfully",
-        }
 
     # Orchestration Tools
 
@@ -998,7 +399,7 @@ class ToolAccessor:
                 download_url = f"{server_url}/api/download/temp/{token}/{filename}"
 
                 # Build natural-language install prompt the LLM will execute
-                instructions = _build_setup_instructions(platform, download_url)
+                instructions = build_setup_instructions(platform, download_url)
 
                 return {
                     "status": "ready",
@@ -1054,7 +455,19 @@ class ToolAccessor:
                 selected = select_templates_for_packaging(all_active, max_count=8)
 
                 assembler = AgentTemplateAssembler()
-                return assembler.assemble(selected, platform)
+                response = assembler.assemble(selected, platform)
+
+                # Update last_exported_at via TemplateService (write discipline)
+                from giljo_mcp.services.template_service import TemplateService
+
+                template_svc = TemplateService(
+                    db_manager=self.db_manager,
+                    tenant_manager=self.tenant_manager,
+                )
+                template_ids = [str(t.id) for t in selected]
+                await template_svc.mark_templates_exported(template_ids, tenant_key)
+
+                return response
         except ValidationError:
             raise
         except Exception:  # Broad catch: tool boundary, logs and re-raises
@@ -1062,8 +475,8 @@ class ToolAccessor:
             raise
 
     async def get_orchestrator_instructions(self, job_id: str, tenant_key: str) -> dict[str, Any]:
-        """Delegate to OrchestrationService (Handover 0451)"""
-        return await self._orchestration_service.get_orchestrator_instructions(job_id, tenant_key)
+        """Delegate to MissionService (sprint 002f: collapsed via OrchestrationService)."""
+        return await self._mission_service.get_orchestrator_instructions(job_id, tenant_key)
 
     async def spawn_job(
         self,
@@ -1096,21 +509,21 @@ class ToolAccessor:
         return {"result": result}
 
     async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
-        """Get agent-specific mission (delegates to OrchestrationService). Handover 0381: job_id contract."""
-        return await self._orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
+        """Get agent-specific mission (delegates to MissionService). Sprint 002f: collapsed."""
+        return await self._mission_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
 
     async def get_workflow_status(
         self, project_id: str, tenant_key: str, exclude_job_id: str | None = None
     ) -> WorkflowStatus:
-        """Get workflow status for a project (delegates to OrchestrationService)"""
-        return await self._orchestration_service.get_workflow_status(
+        """Get workflow status for a project (delegates to WorkflowStatusService). Sprint 002f: collapsed."""
+        return await self._workflow_status_service.get_workflow_status(
             project_id=project_id, tenant_key=tenant_key, exclude_job_id=exclude_job_id
         )
 
     # Agent Coordination Tools
 
     async def get_pending_jobs(self, agent_display_name: str, tenant_key: str) -> dict[str, Any]:
-        """Get pending jobs for agent display name (delegates to OrchestrationService)"""
+        """Get pending jobs for agent display name (delegates to OrchestrationService)."""
         return await self._orchestration_service.get_pending_jobs(
             agent_display_name=agent_display_name, tenant_key=tenant_key
         )
@@ -1128,7 +541,7 @@ class ToolAccessor:
         Handover 0407: Accept todo_items parameter for simplified progress reporting.
         Handover 0827d: Accept todo_append to add steps without replacing existing ones.
         """
-        return await self._orchestration_service.report_progress(
+        return await self._progress_service.report_progress(
             job_id=job_id,
             progress=progress,
             tenant_key=tenant_key,
@@ -1137,24 +550,22 @@ class ToolAccessor:
         )
 
     async def complete_job(self, job_id: str, result: dict[str, Any], tenant_key: str | None = None) -> dict[str, Any]:
-        """Mark job as complete (delegates to OrchestrationService)"""
-        return await self._orchestration_service.complete_job(job_id=job_id, result=result, tenant_key=tenant_key)
+        """Mark job as complete (delegates to JobCompletionService). Sprint 002f: collapsed."""
+        return await self._job_completion_service.complete_job(job_id=job_id, result=result, tenant_key=tenant_key)
 
     async def close_job(self, job_id: str, tenant_key: str | None = None) -> dict[str, Any]:
-        """Close a completed job (final acceptance). Handover 0435b."""
-        return await self._orchestration_service.close_job(job_id=job_id, tenant_key=tenant_key)
+        """Close a completed job (final acceptance). Sprint 002f: collapsed."""
+        return await self._agent_state_service.close_job(job_id=job_id, tenant_key=tenant_key)
 
     async def reactivate_job(self, job_id: str, tenant_key: str | None = None, reason: str = "") -> dict[str, Any]:
-        """Resume work on a completed job (delegates to OrchestrationService). Handover 0827c."""
-        return await self._orchestration_service.reactivate_job(job_id=job_id, tenant_key=tenant_key, reason=reason)
+        """Resume work on a completed job (delegates to AgentStateService). Sprint 002f: collapsed."""
+        return await self._agent_state_service.reactivate_job(job_id=job_id, tenant_key=tenant_key, reason=reason)
 
     async def dismiss_reactivation(
         self, job_id: str, tenant_key: str | None = None, reason: str = ""
     ) -> dict[str, Any]:
-        """Dismiss reactivation and return to complete (delegates to OrchestrationService). Handover 0827c."""
-        return await self._orchestration_service.dismiss_reactivation(
-            job_id=job_id, tenant_key=tenant_key, reason=reason
-        )
+        """Dismiss reactivation and return to complete (delegates to AgentStateService). Sprint 002f: collapsed."""
+        return await self._agent_state_service.dismiss_reactivation(job_id=job_id, tenant_key=tenant_key, reason=reason)
 
     async def set_agent_status(
         self,
@@ -1165,8 +576,8 @@ class ToolAccessor:
         tenant_key: str | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """Set agent resting/blocked status (Handover 0880: expanded from report_error)."""
-        return await self._orchestration_service.set_agent_status(
+        """Set agent resting/blocked status. Sprint 002f: collapsed to AgentStateService."""
+        return await self._agent_state_service.set_agent_status(
             job_id=job_id, status=status, reason=reason, wake_in_minutes=wake_in_minutes, tenant_key=tenant_key
         )
 

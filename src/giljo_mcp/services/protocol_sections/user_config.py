@@ -10,11 +10,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from sqlalchemy import and_, select
-
 from giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
 from giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
 from giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
+from giljo_mcp.repositories.user_repository import UserRepository
 
 
 logger = logging.getLogger(__name__)
@@ -75,15 +74,12 @@ async def _get_user_config(
     Returns:
         dict with 'field_toggles' and 'depth_config' keys
     """
-    from giljo_mcp.models.auth import User, UserFieldPriority
+    repo = UserRepository()
 
     try:
-        result = await session.execute(
-            select(User).where(and_(User.id == user_id, User.tenant_key == tenant_key, User.is_active))
-        )
-        user = result.scalar_one_or_none()
+        user = await repo.get_user_by_id(session, user_id, tenant_key)
 
-        if not user:
+        if not user or not user.is_active:
             logger.warning(
                 "user_not_found_using_defaults",
                 extra={"user_id": user_id, "tenant_key": tenant_key},
@@ -92,12 +88,7 @@ async def _get_user_config(
             return {"field_toggles": normalized_defaults, "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
 
         # Build field toggles from user_field_priorities table
-        prio_result = await session.execute(
-            select(UserFieldPriority).where(
-                and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == tenant_key)
-            )
-        )
-        rows = prio_result.scalars().all()
+        rows = await repo.get_field_priorities(session, user_id, tenant_key)
 
         if rows:
             # Start with defaults, override with user rows

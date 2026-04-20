@@ -53,7 +53,7 @@ class TestRegisterUser:
         result_db = await db_session.execute(stmt)
         new_user = result_db.scalar_one()
         assert new_user.password_hash != "NewPassword123!"
-        assert bcrypt.checkpw("NewPassword123!".encode("utf-8"), new_user.password_hash.encode("utf-8"))
+        assert bcrypt.checkpw(b"NewPassword123!", new_user.password_hash.encode("utf-8"))
 
     @pytest.mark.asyncio
     async def test_register_user_duplicate_username(self, auth_service, auth_user_with_password):

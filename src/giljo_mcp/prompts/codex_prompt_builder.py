@@ -6,84 +6,31 @@
 """Codex CLI execution prompt builder.
 
 Extracted from ThinClientPromptGenerator (Handover 0950g).
-Builds implementation-phase prompts for Codex CLI subagent mode.
+Refactored to inherit from ExecutionPromptBuilderBase (quality-sprint-002e).
 """
 
+from giljo_mcp.prompts.execution_prompt_base import ExecutionPromptBuilderBase
 
-class CodexPromptBuilder:
+
+class CodexPromptBuilder(ExecutionPromptBuilderBase):
     """Builds Codex CLI execution prompts for the implementation phase."""
 
-    def build_execution_prompt(self, orchestrator_id: str, project, agent_jobs: list, git_enabled: bool = False) -> str:
-        """Build Codex CLI subagent mode execution prompt (Handover 0838).
+    @property
+    def platform_name(self) -> str:
+        return "Codex CLI Mode"
 
-        Like Claude Code mode but uses spawn_agent() with 'gil-' prefix on agent names.
-        """
-        context_recap = [
-            "# GiljoAI Implementation Phase - Codex CLI Mode",
-            "",
-            "## FIRST ACTION (MANDATORY)",
-            "Before anything else, verify MCP connection:",
-            "```python",
-            "mcp__giljo_mcp__health_check()",
-            "```",
-            'Expected: `{"status": "healthy"}` - If failed, STOP and report error',
-            "",
-            "## Who You Are",
-            f"You are Orchestrator (job_id: {orchestrator_id}) for project '{project.name}'",
-            f"Project ID: {project.id}",
-            f"Product ID: {project.product_id}",
-            "",
-            "## Your Execution Plan (from Staging)",
-            "",
-            "Fetch your stored execution plan from staging:",
-            "```python",
-            f'mcp__giljo_mcp__get_agent_mission(job_id="{orchestrator_id}")',
-            "```",
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "",
-            "Follow this plan to coordinate agents.",
-            "",
-            "## What You've Already Done",
-            "In a PREVIOUS session, you completed staging:",
-            "- Analyzed project requirements",
-            "- Created mission plan",
-            f"- Spawned {len(agent_jobs) if agent_jobs else 0} specialist agents",
-            "",
-            "## Current State",
-            "All agent jobs are in waiting status, ready for execution.",
-            "Your job now: Spawn and coordinate these agents to complete the project.",
-            "---",
-            "",
-        ]
-
-        agent_spawn_lines = []
-        if agent_jobs:
-            for idx, agent in enumerate(agent_jobs, 1):
-                mission = getattr(agent.job, "mission", None) or "(No mission assigned)"
-                mission_summary = mission[:100] + "..." if len(mission) > 100 else mission
-                agent_spawn_lines.extend(
-                    [
-                        f"**{idx}. {agent.agent_name}**",
-                        f"   - Agent Name: `{agent.agent_name}` → Codex: `gil-{agent.agent_name}`",
-                        f"   - Agent Type: `{agent.agent_display_name}` (display category)",
-                        f"   - Job ID: `{agent.job_id}`",
-                        f"   - Status: {agent.status}",
-                        f"   - Mission Summary: {mission_summary}",
-                        "",
-                    ]
-                )
-        else:
-            agent_spawn_lines.append("(No agents spawned yet - use spawn_job() first)")
-
-        agent_list_section = [
-            "## Agent Jobs to Execute",
-            "",
+    def _build_agent_list_preamble(self) -> list[str]:
+        return [
             "Below are the specialist agents spawned during staging.",
             "Each has a unique job_id. In Codex CLI, ALL agent names require the 'gil-' prefix.",
             "",
-            *agent_spawn_lines,
-            "## EXECUTION DIRECTIVE",
-            "",
+        ]
+
+    def _build_agent_name_line(self, agent) -> str:
+        return f"   - Agent Name: `{agent.agent_name}` \u2192 Codex: `gil-{agent.agent_name}`"
+
+    def _build_execution_directive_text(self) -> list[str]:
+        return [
             "After fetching your mission, you MUST invoke every agent listed above.",
             "Do NOT skip agents. Do NOT summarize the plan and stop. Your job is to",
             "launch each agent using spawn_agent() as shown below, monitor their progress,",
@@ -96,14 +43,16 @@ class CodexPromptBuilder:
             "",
         ]
 
-        spawning_section = [
+    def _build_spawning_section(self, agent_jobs: list) -> list[str]:
+        """Build Codex spawn_agent spawning template section."""
+        lines = [
             "## How to Spawn Agents via Codex spawn_agent",
             "",
             "### CRITICAL: Template-First Spawning",
             "The `agent=` parameter loads an INSTALLED agent template from",
             "`~/.codex/agents/gil-{agent_name}.toml`. This template contains the agent's",
             "developer_instructions, model config, and sandbox settings.",
-            "The agent ALREADY KNOWS its role — you do NOT re-explain it.",
+            "The agent ALREADY KNOWS its role \u2014 you do NOT re-explain it.",
             "",
             "### NEVER spawn generic workers",
             "- NEVER spawn a generic/default Codex worker and instruct it to 'act as' a GiljoAI agent",
@@ -130,13 +79,13 @@ class CodexPromptBuilder:
             '    """',
             ")",
             "```",
-            "Keep instructions= MINIMAL — only the job_id and mission fetch call above.",
+            "Keep instructions= MINIMAL \u2014 only the job_id and mission fetch call above.",
             "",
         ]
 
         if agent_jobs:
             first = agent_jobs[0]
-            spawning_section.extend(
+            lines.extend(
                 [
                     "### Example: First Agent",
                     "```",
@@ -156,64 +105,4 @@ class CodexPromptBuilder:
                 ]
             )
 
-        monitoring_section = [
-            "## Monitoring Agent Progress",
-            "",
-            "### mcp__giljo_mcp__get_workflow_status()",
-            "Check all agent statuses:",
-            "```python",
-            f'mcp__giljo_mcp__get_workflow_status(project_id="{project.id}")',
-            "```",
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "",
-        ]
-
-        context_refresh_section = [
-            "## Refreshing Your Context",
-            "",
-            "If you need to re-read your orchestrator mission:",
-            "```python",
-            f'mcp__giljo_mcp__get_orchestrator_instructions(job_id="{orchestrator_id}")',
-            "```",
-            "",
-        ]
-
-        git_closeout_lines = []
-        if git_enabled:
-            tag = getattr(project, "taxonomy_alias", None) or project.name
-            git_closeout_lines = [
-                "### Git Closeout Commit",
-                "Before calling complete_job, create a closeout commit:",
-                "```bash",
-                f'git commit --allow-empty -m "closeout({tag}): {project.name}',
-                "",
-                "Completed: <today YYYY-MM-DD>",
-                "Key outcomes:",
-                '- <list each concrete outcome>"',
-                "```",
-                "",
-            ]
-
-        completion_section = [
-            "## When You're Done",
-            "",
-            "1. Check all agents via mcp__giljo_mcp__get_workflow_status()",
-            "2. Ensure all have status='complete'",
-            "3. Review final deliverables",
-            *git_closeout_lines,
-            "### Complete Your Orchestrator Job",
-            "```python",
-            f'mcp__giljo_mcp__complete_job(job_id="{orchestrator_id}")',
-            "```",
-            "",
-        ]
-
-        all_sections = (
-            context_recap
-            + agent_list_section
-            + spawning_section
-            + monitoring_section
-            + context_refresh_section
-            + completion_section
-        )
-        return "\n".join(all_sections)
+        return lines

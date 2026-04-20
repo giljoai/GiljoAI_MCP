@@ -136,13 +136,17 @@ async def purge_expired_deleted_items(db_manager: DatabaseManager, tenant_manage
                     # Set tenant context for this purge
                     tenant_manager.set_current_tenant(tenant_key)
 
-                    project_purge_result = await project_service.purge_expired_deleted_projects(days_before_purge=10)
+                    project_purge_result = await project_service.deletion.purge_expired_deleted_projects(
+                        days_before_purge=10
+                    )
                     total_projects_purged += project_purge_result.purged_count
 
                     # Purge expired deleted products
                     product_service = ProductService(db_manager=db_manager, tenant_key=tenant_key)
 
-                    product_purge_result = await product_service.purge_expired_deleted_products(days_before_purge=10)
+                    product_purge_result = await product_service.lifecycle.purge_expired_deleted_products(
+                        days_before_purge=10
+                    )
                     total_products_purged += product_purge_result.purged_count
 
                 # Clear tenant context

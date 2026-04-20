@@ -155,7 +155,7 @@ async def create_product(
     )
 
     # Get statistics for the newly created product
-    stats = await service.get_product_statistics(str(product.id))
+    stats = await service.memory.get_product_statistics(str(product.id))
 
     return _build_product_response(product, stats)
 
@@ -179,7 +179,7 @@ async def list_products(
 
     responses = []
     for product in products:
-        stats = await service.get_product_statistics(str(product.id))
+        stats = await service.memory.get_product_statistics(str(product.id))
         responses.append(_build_product_response(product, stats))
 
     return responses
@@ -196,7 +196,7 @@ async def list_deleted_products(
     Uses ProductService.list_deleted_products() for database operations.
     Handover 0731d: Purge date computation moved from service to endpoint layer.
     """
-    products = await service.list_deleted_products()
+    products = await service.lifecycle.list_deleted_products()
 
     result = []
     for p in products:
@@ -210,7 +210,7 @@ async def list_deleted_products(
         # Use sensible defaults since deleted products have limited metrics.
         stats = None
         try:
-            stats = await service.get_product_statistics(str(p.id))
+            stats = await service.memory.get_product_statistics(str(p.id))
         except (ResourceNotFoundError, ValueError, KeyError):
             # Product is deleted so get_product_statistics may raise ResourceNotFoundError
             logger.debug("Could not get statistics for deleted product %s", p.id)
@@ -243,7 +243,7 @@ async def get_product(
     Uses ProductService.get_product() for database operations.
     """
     product = await service.get_product(product_id=product_id)
-    stats = await service.get_product_statistics(str(product.id))
+    stats = await service.memory.get_product_statistics(str(product.id))
 
     # Handover 0412: Ensure product_memory is passed through correctly
     pm = product.product_memory
@@ -273,7 +273,7 @@ async def update_product(
     product = await service.update_product(product_id, **update_data)
 
     # Get statistics for the updated product
-    stats = await service.get_product_statistics(str(product.id))
+    stats = await service.memory.get_product_statistics(str(product.id))
 
     logger.info("Updated product %s", sanitize(product_id))
 

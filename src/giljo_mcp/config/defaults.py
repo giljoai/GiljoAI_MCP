@@ -95,32 +95,3 @@ TUNING_SECTION_TOGGLE_MAP: dict[str, str] = {
     "target_platforms": "product_core",
     "vision_documents": "vision_documents",
 }
-
-
-def get_toggle_for_category(category: str) -> bool:
-    """
-    Get the default toggle status for a specific category.
-
-    Args:
-        category: Category name (e.g., 'product_core', 'git_history')
-
-    Returns:
-        Toggle status (True=enabled, False=disabled), defaults to True if category not found
-    """
-    config = DEFAULT_FIELD_PRIORITY["priorities"].get(category)
-    if isinstance(config, dict):
-        return config.get("toggle", True)
-    return True
-
-
-def get_depth_for_category(category: str) -> Any:
-    """
-    Get the default depth configuration for a specific category.
-
-    Args:
-        category: Category name (e.g., 'vision_documents', 'memory_360')
-
-    Returns:
-        Depth value (string or int depending on category), or None if not configured
-    """
-    return DEFAULT_DEPTH_CONFIG.get(category)

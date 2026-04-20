@@ -604,7 +604,9 @@ class TestGetOrchestratorInstructionsRedirectBranches:
 
         self._mock_session_for_get_orchestrator_instructions(session, execution, project)
 
-        result = await orchestration_service.get_orchestrator_instructions(job_id=job_id, tenant_key="tenant-test")
+        result = await orchestration_service._mission.get_orchestrator_instructions(
+            job_id=job_id, tenant_key="tenant-test"
+        )
 
         assert result["staging_complete"] is True
         assert result["redirect"] == "get_agent_mission"
@@ -621,7 +623,9 @@ class TestGetOrchestratorInstructionsRedirectBranches:
 
         self._mock_session_for_get_orchestrator_instructions(session, execution, project)
 
-        result = await orchestration_service.get_orchestrator_instructions(job_id=job_id, tenant_key="tenant-test")
+        result = await orchestration_service._mission.get_orchestrator_instructions(
+            job_id=job_id, tenant_key="tenant-test"
+        )
 
         assert result["staging_complete"] is True
         assert result["redirect"] is None
@@ -638,7 +642,9 @@ class TestGetOrchestratorInstructionsRedirectBranches:
 
         self._mock_session_for_get_orchestrator_instructions(session, execution, project)
 
-        result = await orchestration_service.get_orchestrator_instructions(job_id=job_id, tenant_key="tenant-test")
+        result = await orchestration_service._mission.get_orchestrator_instructions(
+            job_id=job_id, tenant_key="tenant-test"
+        )
 
         identity = result["identity"]
         assert identity["job_id"] == job_id
@@ -656,7 +662,9 @@ class TestGetOrchestratorInstructionsRedirectBranches:
 
         self._mock_session_for_get_orchestrator_instructions(session, execution, project)
 
-        result = await orchestration_service.get_orchestrator_instructions(job_id=job_id, tenant_key="tenant-test")
+        result = await orchestration_service._mission.get_orchestrator_instructions(
+            job_id=job_id, tenant_key="tenant-test"
+        )
 
         identity = result["identity"]
         assert identity["job_id"] == job_id

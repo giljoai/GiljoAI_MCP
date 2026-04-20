@@ -243,16 +243,16 @@ class TestToolAccessorCancelledConstants:
     """Verify tool accessor accepts 'cancelled' in status constants."""
 
     def test_cancelled_in_valid_status_filters(self):
-        """'cancelled' should be in _VALID_PROJECT_STATUS_FILTERS."""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        """'cancelled' should be in _VALID_STATUS_FILTERS (sprint 002f: moved to ProjectService)."""
+        from giljo_mcp.services.project_service import ProjectService
 
-        assert "cancelled" in ToolAccessor._VALID_PROJECT_STATUS_FILTERS
+        assert "cancelled" in ProjectService._VALID_STATUS_FILTERS
 
     def test_cancelled_in_valid_update_statuses(self):
-        """'cancelled' should be in _VALID_PROJECT_UPDATE_STATUSES."""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        """'cancelled' should be in _VALID_UPDATE_STATUSES (sprint 002f: moved to ProjectService)."""
+        from giljo_mcp.services.project_service import ProjectService
 
-        assert "cancelled" in ToolAccessor._VALID_PROJECT_UPDATE_STATUSES
+        assert "cancelled" in ProjectService._VALID_UPDATE_STATUSES
 
     def test_immutable_statuses_includes_cancelled(self):
         """'cancelled' should be in IMMUTABLE_PROJECT_STATUSES."""

@@ -27,12 +27,13 @@ from typing import Optional
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.auth.dependencies import get_current_user, get_db_session
+from giljo_mcp.auth.dependencies import get_current_user
 from giljo_mcp.config_manager import get_config
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import ResourceNotFoundError
 from giljo_mcp.models import User
+from giljo_mcp.services.user_service import UserService
 from giljo_mcp.utils.log_sanitizer import sanitize
 
 
@@ -40,16 +41,42 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # JWT secret for token generation
-# Load from environment variable; generate a random secret per-process if unset
-_GENERATED_FALLBACK_SECRET = secrets.token_urlsafe(32)
-SECRET_KEY = os.getenv("MCP_INSTALLER_SECRET_KEY") or _GENERATED_FALLBACK_SECRET
+# Load from environment variable; generate a random fallback for localhost only
+_CONFIGURED_SECRET = os.getenv("MCP_INSTALLER_SECRET_KEY")
 
-if SECRET_KEY is _GENERATED_FALLBACK_SECRET:
+
+def _resolve_installer_secret() -> str:
+    """Resolve the installer JWT secret, enforcing it in network mode."""
+    if _CONFIGURED_SECRET:
+        return _CONFIGURED_SECRET
+
+    # Detect bind mode: check env var first, then config.yaml
+    bind_address = os.getenv("BIND_ADDRESS")
+    if not bind_address:
+        try:
+            config = get_config()
+            bind_address = getattr(config.api, "host", "127.0.0.1")
+        except (AttributeError, FileNotFoundError, OSError):
+            bind_address = "127.0.0.1"
+
+    is_network_mode = bind_address != "127.0.0.1"
+
+    if is_network_mode:
+        raise SystemExit(
+            "MCP_INSTALLER_SECRET_KEY must be set for network mode. "
+            'Add it to .env (generate with: python -c "import secrets; print(secrets.token_urlsafe(32))")'
+        )
+
+    # Localhost mode: allow ephemeral fallback with a warning
     logger.warning(
         "MCP_INSTALLER_SECRET_KEY not set. Using ephemeral random secret; "
         "installer download tokens will not survive server restarts. "
         "Set MCP_INSTALLER_SECRET_KEY environment variable for production."
     )
+    return secrets.token_urlsafe(32)
+
+
+SECRET_KEY = _resolve_installer_secret()
 
 ALGORITHM = "HS256"
 
@@ -180,26 +207,11 @@ def render_template(
     return script
 
 
-async def get_user_by_id(session: AsyncSession, user_id: str, tenant_key: str = "default") -> Optional[User]:
-    """
-    Query user from database by ID.
+async def _get_db_manager() -> DatabaseManager:
+    """Get DatabaseManager from app state for token-based download endpoint."""
+    from api.app_state import state
 
-    NOTE: This is a simple helper function with a straightforward query
-    that is only used within this endpoint file. For complex business logic
-    or queries used across multiple endpoints, consider adding to a repository.
-
-    Args:
-        session: Database session
-        user_id: User identifier
-
-    Returns:
-        User object or None if not found
-    """
-    # Defense-in-depth: scope by tenant_key (Handover 0769a)
-    stmt = select(User).where(User.id == user_id, User.is_active, User.tenant_key == tenant_key)
-    result = await session.execute(stmt)
-    user = result.scalar_one_or_none()
-    return user
+    return state.db_manager
 
 
 # API Endpoints
@@ -387,7 +399,11 @@ async def generate_share_link(current_user: Optional[User] = Depends(get_current
 
 
 @router.get("/download/{token}/{platform}", tags=["MCP Integration"])
-async def download_via_token(token: str, platform: str, session: AsyncSession = Depends(get_db_session)):
+async def download_via_token(
+    token: str,
+    platform: str,
+    db_manager: DatabaseManager = Depends(_get_db_manager),
+):
     """
     Public download endpoint using secure token.
 
@@ -395,10 +411,12 @@ async def download_via_token(token: str, platform: str, session: AsyncSession = 
     (generated via /share-link). No authentication required - the token
     provides access.
 
+    BE-5022a: User lookup routed through UserService instead of direct session.
+
     Args:
         token: Secure JWT token from share link
         platform: "windows" or "unix"
-        session: Database session (from dependency)
+        db_manager: Database manager (from dependency)
 
     Returns:
         Response with script file download
@@ -416,14 +434,19 @@ async def download_via_token(token: str, platform: str, session: AsyncSession = 
         logger.warning("Invalid/expired token used for download")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
-    # Get user from database
+    # Get user from database via UserService
     user_id = user_info["user_id"]
     tenant_key = user_info.get("tenant_key", "default")
-    user = await get_user_by_id(session, user_id, tenant_key=tenant_key)
-
-    if not user:
+    user_service = UserService(db_manager=db_manager, tenant_key=tenant_key)
+    try:
+        user = await user_service.get_user(user_id)
+    except ResourceNotFoundError:
         logger.warning("User not found for token: %s", sanitize(str(user_id)))
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found") from None
+
+    if not user.is_active:
+        logger.warning("Inactive user attempted token download: %s", sanitize(str(user_id)))
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User account is inactive")
 
     # Validate platform
     if platform not in ["windows", "unix"]:

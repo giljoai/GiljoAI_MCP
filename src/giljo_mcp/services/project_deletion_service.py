@@ -18,7 +18,6 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -27,9 +26,8 @@ from giljo_mcp.exceptions import (
     ResourceNotFoundError,
     ValidationError,
 )
-from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.projects import Project
-from giljo_mcp.models.tasks import Message, Task
+from giljo_mcp.repositories.project_repository import ProjectRepository
 from giljo_mcp.schemas.service_responses import (
     NuclearDeleteResult,
     OperationResult,
@@ -57,6 +55,7 @@ class ProjectDeletionService:
         self._test_session = test_session
         self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._repo = ProjectRepository()
 
     def _get_session(self):
         """Get a session, preferring an injected test session when provided."""
@@ -92,15 +91,7 @@ class ProjectDeletionService:
             raise ValidationError(message="No tenant context available", context={"project_id": project_id})
 
         async with self._get_session() as session:
-            stmt = select(Project).where(
-                and_(
-                    Project.id == project_id,
-                    Project.tenant_key == tenant_key,
-                    Project.deleted_at.is_(None),
-                )
-            )
-            result = await session.execute(stmt)
-            project = result.scalar_one_or_none()
+            project = await self._repo.get_not_deleted(session, tenant_key, project_id)
 
             if not project:
                 raise ResourceNotFoundError(
@@ -114,19 +105,7 @@ class ProjectDeletionService:
             project.updated_at = now
 
             # Cascade soft delete to agent jobs - cancel all executions for this project (migrated to AgentExecution - Handover 0367a)
-            executions_stmt = (
-                select(AgentExecution)
-                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                .where(
-                    and_(
-                        AgentJob.project_id == project_id,
-                        AgentJob.tenant_key == tenant_key,
-                        AgentExecution.status.notin_(["complete", "decommissioned"]),
-                    )
-                )
-            )
-            executions_result = await session.execute(executions_stmt)
-            executions = executions_result.scalars().all()
+            executions = await self._repo.get_active_executions_for_project(session, tenant_key, project_id)
 
             decommissioned_jobs_count = 0
             for execution in executions:
@@ -134,7 +113,7 @@ class ProjectDeletionService:
                 execution.completed_at = now
                 decommissioned_jobs_count += 1
 
-            await session.commit()
+            await self._repo.commit(session)
 
             self._logger.info(
                 f"Soft deleted project {project_id} for tenant {tenant_key} "
@@ -205,14 +184,7 @@ class ProjectDeletionService:
 
         async with self._get_session() as session:
             # Fetch project with tenant validation
-            stmt = select(Project).where(
-                and_(
-                    Project.id == project_id,
-                    Project.tenant_key == tenant_key,
-                )
-            )
-            result = await session.execute(stmt)
-            project = result.scalar_one_or_none()
+            project = await self._repo.get_by_id(session, tenant_key, project_id)
 
             if not project:
                 raise ResourceNotFoundError(
@@ -226,7 +198,7 @@ class ProjectDeletionService:
             if project.status == "active":
                 project.status = "inactive"
                 project.updated_at = datetime.now(timezone.utc)
-                await session.flush()  # Flush deactivation before deleting
+                await self._repo.flush(session)
                 self._logger.info(f"Deactivated project {project_id} before nuclear delete")
 
             # Initialize deletion counters
@@ -238,39 +210,21 @@ class ProjectDeletionService:
 
             # Delete agent jobs (migrated to AgentJob - Handover 0367a)
             # Note: AgentExecution records will cascade delete via FK relationship
-            agent_job_stmt = select(AgentJob).where(
-                and_(
-                    AgentJob.project_id == project_id,
-                    AgentJob.tenant_key == tenant_key,
-                )
-            )
-            agent_jobs = (await session.execute(agent_job_stmt)).scalars().all()
+            agent_jobs = await self._repo.get_agent_jobs_for_project(session, tenant_key, project_id)
             for job in agent_jobs:
-                await session.delete(job)
+                await self._repo.delete_entity(session, job)
             deleted_counts["agent_jobs"] = len(agent_jobs)
 
             # Delete tasks
-            task_stmt = select(Task).where(
-                and_(
-                    Task.project_id == project_id,
-                    Task.tenant_key == tenant_key,
-                )
-            )
-            tasks = (await session.execute(task_stmt)).scalars().all()
+            tasks = await self._repo.get_tasks_for_project(session, tenant_key, project_id)
             for task in tasks:
-                await session.delete(task)
+                await self._repo.delete_entity(session, task)
             deleted_counts["tasks"] = len(tasks)
 
             # Delete messages
-            message_stmt = select(Message).where(
-                and_(
-                    Message.project_id == project_id,
-                    Message.tenant_key == tenant_key,
-                )
-            )
-            messages = (await session.execute(message_stmt)).scalars().all()
+            messages = await self._repo.get_messages_for_deletion(session, tenant_key, project_id)
             for message in messages:
-                await session.delete(message)
+                await self._repo.delete_entity(session, message)
             deleted_counts["messages"] = len(messages)
 
             # Mark 360 memory entries as deleted by user (preserve historical reference)
@@ -294,10 +248,10 @@ class ProjectDeletionService:
             deleted_counts["memory_entries_marked"] = memory_entries_marked
 
             # Finally, delete the project itself
-            await session.delete(project)
+            await self._repo.delete_entity(session, project)
 
             # Commit transaction
-            await session.commit()
+            await self._repo.commit(session)
 
             self._logger.info(
                 f"Nuclear delete completed for project {project_id} ({project_name}): "
@@ -355,24 +309,19 @@ class ProjectDeletionService:
         tenant_key = project.tenant_key
 
         # Delete agent jobs (migrated to AgentJob - Handover 0367a)
-        agent_job_stmt = select(AgentJob).where(
-            and_(AgentJob.project_id == project.id, AgentJob.tenant_key == tenant_key)
-        )
-        agent_jobs = (await session.execute(agent_job_stmt)).scalars().all()
+        agent_jobs = await self._repo.get_agent_jobs_for_project(session, tenant_key, project.id)
         for job in agent_jobs:
-            await session.delete(job)
+            await self._repo.delete_entity(session, job)
 
-        task_stmt = select(Task).where(and_(Task.project_id == project.id, Task.tenant_key == tenant_key))
-        tasks = (await session.execute(task_stmt)).scalars().all()
+        tasks = await self._repo.get_tasks_for_project(session, tenant_key, project.id)
         for task in tasks:
-            await session.delete(task)
+            await self._repo.delete_entity(session, task)
 
-        message_stmt = select(Message).where(and_(Message.project_id == project.id, Message.tenant_key == tenant_key))
-        messages = (await session.execute(message_stmt)).scalars().all()
+        messages = await self._repo.get_messages_for_deletion(session, tenant_key, project.id)
         for message in messages:
-            await session.delete(message)
+            await self._repo.delete_entity(session, message)
 
-        await session.delete(project)
+        await self._repo.delete_entity(session, project)
         return project_info
 
     async def purge_all_deleted_projects(self) -> ProjectPurgeResult:
@@ -393,11 +342,7 @@ class ProjectDeletionService:
             raise ValidationError(message="No tenant context available", context={})
 
         async with self._get_session() as session:
-            stmt = select(Project).where(
-                and_(Project.tenant_key == tenant_key, Project.status == "deleted", Project.deleted_at.isnot(None))
-            )
-            result = await session.execute(stmt)
-            deleted_projects = result.scalars().all()
+            deleted_projects = await self._repo.get_deleted_projects(session, tenant_key)
 
             if not deleted_projects:
                 return ProjectPurgeResult(purged_count=0, projects=[])
@@ -469,14 +414,7 @@ class ProjectDeletionService:
             # Find projects deleted more than specified days ago
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_before_purge)
 
-            stmt = select(Project).where(
-                Project.deleted_at.isnot(None),
-                Project.status == "deleted",
-                Project.deleted_at < cutoff_date,
-            )
-
-            result = await session.execute(stmt)
-            expired_projects = result.scalars().all()
+            expired_projects = await self._repo.get_expired_deleted_projects(session, cutoff_date)
 
             if not expired_projects:
                 self._logger.info(
@@ -527,24 +465,15 @@ class ProjectDeletionService:
         """
         async with self._get_session() as session:
             # TENANT ISOLATION: Filter by both project_id AND tenant_key
-            result = await session.execute(
-                update(Project)
-                .where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
-                .values(
-                    status="inactive",
-                    completed_at=None,
-                    deleted_at=None,
-                    updated_at=datetime.now(timezone.utc),
-                )
-            )
+            rowcount = await self._repo.restore_project(session, tenant_key, project_id)
 
-            if result.rowcount == 0:
+            if rowcount == 0:
                 raise ResourceNotFoundError(
                     message="Project not found or access denied",
                     context={"project_id": project_id, "tenant_key": tenant_key},
                 )
 
-            await session.commit()
+            await self._repo.commit(session)
 
             self._logger.info(f"Restored project {project_id}")
 

@@ -27,7 +27,7 @@ from giljo_mcp.models.context import MCPContextIndex
 from giljo_mcp.models.products import (
     Product,
 )
-from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from giljo_mcp.services.product_vision_service import ProductVisionService
 
 
 logger = logging.getLogger(__name__)
@@ -226,7 +226,7 @@ async def get_vision_doc(
 
         # Notify frontend that the agent has connected and started analysis
         if websocket_manager and chunk is None:
-            from api.events.schemas import EventFactory
+            from giljo_mcp.events.schemas import EventFactory
 
             event = EventFactory.tenant_envelope(
                 event_type="vision:analysis_started",
@@ -386,7 +386,7 @@ async def update_product_fields(
 
     # WebSocket emission (after commit via context manager)
     if websocket_manager and fields_written:
-        from api.events.schemas import EventFactory
+        from giljo_mcp.events.schemas import EventFactory
 
         event = EventFactory.tenant_envelope(
             event_type="vision:analysis_complete",
@@ -430,13 +430,14 @@ async def _write_summaries(
         return
 
     first_doc = active_docs[0]
-    repo = VisionDocumentRepository(db_manager)
+    vision_service = ProductVisionService(
+        db_manager=db_manager,
+        tenant_key=tenant_key,
+    )
 
     if summary_33:
         token_count = len(summary_33.split())
-        await repo.create_summary(
-            session=session,
-            tenant_key=tenant_key,
+        await vision_service.create_summary(
             document_id=str(first_doc.id),
             product_id=str(product.id),
             source="ai",
@@ -444,14 +445,13 @@ async def _write_summaries(
             summary=summary_33,
             tokens_original=token_count,
             tokens_summary=token_count,
+            session=session,
         )
         fields_written.append("summary_33")
 
     if summary_66:
         token_count = len(summary_66.split())
-        await repo.create_summary(
-            session=session,
-            tenant_key=tenant_key,
+        await vision_service.create_summary(
             document_id=str(first_doc.id),
             product_id=str(product.id),
             source="ai",
@@ -459,5 +459,6 @@ async def _write_summaries(
             summary=summary_66,
             tokens_original=token_count,
             tokens_summary=token_count,
+            session=session,
         )
         fields_written.append("summary_66")

@@ -159,11 +159,6 @@ class PathResolver:
         self._cache[cache_key] = path
         self._cache_timestamps[cache_key] = datetime.now(timezone.utc)
 
-    def clear_cache(self):
-        """Clear all cached paths"""
-        self._cache.clear()
-        self._cache_timestamps.clear()
-
 
 class DiscoveryManager:
     """
@@ -192,16 +187,3 @@ class DiscoveryManager:
             Dictionary of path keys to resolved paths
         """
         return await self.path_resolver.get_all_paths(project_id)
-
-
-class SerenaHooks:
-    """
-    Integration hooks for Serena MCP server.
-    Placeholder class retained for backward compatibility.
-    """
-
-    def __init__(self, db_manager: "DatabaseManager", tenant_manager: "TenantManager"):
-        self.db_manager = db_manager
-        self.tenant_manager = tenant_manager
-        self._symbol_cache = {}
-        self._cache_ttl = timedelta(minutes=10)

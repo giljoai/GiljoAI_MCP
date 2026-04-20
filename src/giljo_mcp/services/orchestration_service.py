@@ -15,41 +15,25 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 
-from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import (
     DatabaseError,
-    OrchestrationError,
-    ResourceNotFoundError,
     ValidationError,
 )
 from giljo_mcp.mission_planner import MissionPlanner
-from giljo_mcp.models import (
-    AgentExecution,
-    AgentJob,
-    AgentTodoItem,
-    Message,
-    ProductMemoryEntry,
-    Project,
-)
-from giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.repositories.agent_operations_repository import AgentOperationsRepository
 from giljo_mcp.schemas.service_responses import (
-    AgentTodoCounts,
-    AgentWorkflowDetail,
     CompleteJobResult,
-    DismissResult,
     JobListResult,
     MissionResponse,
     MissionUpdateResult,
     PendingJobsResult,
     ProgressResult,
-    ReactivationResult,
     SpawnResult,
     WorkflowStatus,
 )
-from giljo_mcp.services.dto import BroadcastAgentCreatedContext
 from giljo_mcp.services.job_lifecycle_service import JobLifecycleService
 from giljo_mcp.services.mission_service import MissionService
 from giljo_mcp.services.orchestration_agent_state_service import OrchestrationAgentStateService
@@ -114,6 +98,17 @@ class OrchestrationService:
             db_manager, tenant_manager, test_session, message_service, websocket_manager
         )
 
+        # Sprint 002e: Extracted sub-services
+        from giljo_mcp.services.job_completion_service import JobCompletionService
+        from giljo_mcp.services.job_query_service import JobQueryService
+        from giljo_mcp.services.workflow_status_service import WorkflowStatusService
+
+        self._workflow_status = WorkflowStatusService(db_manager, tenant_manager, test_session)
+        self._job_completion = JobCompletionService(
+            db_manager, tenant_manager, test_session, message_service, websocket_manager, self._agent_state
+        )
+        self._job_query = JobQueryService(db_manager, tenant_manager, test_session)
+
     @property
     def mission_planner(self):
         """Lazy initialization of MissionPlanner."""
@@ -175,163 +170,8 @@ class OrchestrationService:
         tenant_key: str,
         exclude_job_id: Optional[str] = None,
     ) -> WorkflowStatus:
-        """
-        Get workflow status for a project.
-
-        Handover 0491: Simplified status model.
-        - Counts execution statuses (waiting, working, complete, blocked, silent, decommissioned)
-        - Job status comes from AgentJob (active, completed, cancelled)
-        - Execution status from AgentExecution (execution progress)
-        - Removed: failed_agents, cancelled_agents (replaced by blocked/silent/decommissioned)
-
-        Args:
-            project_id: Project UUID
-            tenant_key: Tenant key for isolation
-            exclude_job_id: Optional job_id to exclude from the query
-                (e.g. the orchestrator's own job to avoid counting itself)
-
-        Returns:
-            WorkflowStatus with agent counts, progress, and current stage
-
-        Raises:
-            ResourceNotFoundError: Project not found
-            DatabaseError: Database operation failed
-        """
-        try:
-            async with self._get_session() as session:
-                # Verify project exists
-                result = await session.execute(
-                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
-                )
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    raise ResourceNotFoundError(
-                        message=f"Project '{project_id}' not found",
-                        context={"project_id": project_id, "tenant_key": tenant_key},
-                    )
-
-                # Get all AgentExecutions for this project/tenant (join with AgentJob)
-                query = (
-                    select(AgentExecution, AgentJob)
-                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                    .where(
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentJob.project_id == project_id,
-                    )
-                )
-                if exclude_job_id:
-                    query = query.where(AgentJob.job_id != exclude_job_id)
-                jobs_result = await session.execute(query)
-                rows = jobs_result.all()
-
-                # Handover 0491: Count by simplified execution statuses
-                executions = [row[0] for row in rows]
-                # Handover 0808: Map job_id -> job_type for workflow detail
-                job_type_map = {row[1].job_id: row[1].job_type or "" for row in rows}
-                active_count = sum(1 for execution in executions if execution.status == "working")
-                completed_count = sum(1 for execution in executions if execution.status == "complete")
-                pending_count = sum(1 for execution in executions if execution.status == "waiting")
-                blocked_count = sum(1 for execution in executions if execution.status == "blocked")
-                silent_count = sum(1 for execution in executions if execution.status == "silent")
-                decommissioned_count = sum(1 for execution in executions if execution.status == "decommissioned")
-                total_count = len(executions)
-
-                # Calculate progress (exclude decommissioned agents from denominator)
-                # Decommissioned agents should not prevent progress from reaching 100%
-                actionable_count = total_count - decommissioned_count
-                progress_percent = (completed_count / actionable_count * 100.0) if actionable_count > 0 else 0.0
-
-                # Determine current stage
-                if total_count == 0:
-                    current_stage = "Not started"
-                elif completed_count == actionable_count:
-                    current_stage = "Completed"
-                elif blocked_count > 0 and silent_count > 0:
-                    current_stage = f"In Progress ({blocked_count} blocked, {silent_count} silent)"
-                elif blocked_count > 0:
-                    current_stage = f"In Progress ({blocked_count} blocked)"
-                elif silent_count > 0:
-                    current_stage = f"In Progress ({silent_count} silent)"
-                elif active_count > 0:
-                    current_stage = "In Progress"
-                elif pending_count > 0:
-                    current_stage = "Pending"
-                else:
-                    current_stage = "Unknown"
-
-                # Caller note: remind the agent it's counted in active
-                if exclude_job_id:
-                    caller_note = "Your job was excluded from these counts."
-                else:
-                    caller_note = "Note: You (the calling agent) are included in the active count above."
-
-                # Per-agent detail: todo counts and unread messages
-                agent_details: list[AgentWorkflowDetail] = []
-                if executions:
-                    job_ids = [ex.job_id for ex in executions]
-                    todo_stmt = (
-                        select(
-                            AgentTodoItem.job_id,
-                            AgentTodoItem.status,
-                            func.count().label("cnt"),
-                        )
-                        .where(
-                            AgentTodoItem.job_id.in_(job_ids),
-                            AgentTodoItem.tenant_key == tenant_key,
-                        )
-                        .group_by(AgentTodoItem.job_id, AgentTodoItem.status)
-                    )
-                    todo_result = await session.execute(todo_stmt)
-                    todo_rows = todo_result.all()
-
-                    # Build lookup: job_id -> {status: count}
-                    todo_map: dict[str, dict[str, int]] = {}
-                    for t_job_id, t_status, t_cnt in todo_rows:
-                        todo_map.setdefault(t_job_id, {})[t_status] = t_cnt
-
-                    for execution in executions:
-                        counts = todo_map.get(execution.job_id, {})
-                        agent_details.append(
-                            AgentWorkflowDetail(
-                                job_id=execution.job_id,
-                                agent_id=execution.agent_id,
-                                agent_name=execution.agent_name or "",
-                                display_name=execution.agent_display_name or "",
-                                status=execution.status or "",
-                                job_type=job_type_map.get(execution.job_id, ""),
-                                unread_messages=execution.messages_waiting_count or 0,
-                                todos=AgentTodoCounts(
-                                    completed=counts.get("completed", 0),
-                                    in_progress=counts.get("in_progress", 0),
-                                    pending=counts.get("pending", 0),
-                                    skipped=counts.get("skipped", 0),
-                                ),
-                            )
-                        )
-
-                return WorkflowStatus(
-                    active_agents=active_count,
-                    completed_agents=completed_count,
-                    pending_agents=pending_count,
-                    blocked_agents=blocked_count,
-                    silent_agents=silent_count,
-                    decommissioned_agents=decommissioned_count,
-                    current_stage=current_stage,
-                    progress_percent=round(progress_percent, 2),
-                    total_agents=total_count,
-                    caller_note=caller_note,
-                    agents=agent_details,
-                )
-
-        except ResourceNotFoundError:
-            raise
-        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
-            self._logger.exception("Failed to get workflow status")
-            raise DatabaseError(
-                message=f"Failed to get workflow status: {e!s}",
-                context={"project_id": project_id, "tenant_key": tenant_key},
-            ) from e
+        """Facade: delegates to WorkflowStatusService."""
+        return await self._workflow_status.get_workflow_status(project_id, tenant_key, exclude_job_id)
 
     # ============================================================================
     # Agent Job Management — Facade Delegations (Handover 0769)
@@ -341,22 +181,6 @@ class OrchestrationService:
         """Facade: delegates to JobLifecycleService."""
         return await self._job_lifecycle.spawn_job(*a, **kw)
 
-    async def _build_predecessor_context(self, *a, **kw):
-        """Facade: delegates to JobLifecycleService."""
-        return await self._job_lifecycle._build_predecessor_context(*a, **kw)
-
-    async def _validate_spawn_agent(self, *a, **kw):
-        """Facade: delegates to JobLifecycleService."""
-        return await self._job_lifecycle._validate_spawn_agent(*a, **kw)
-
-    async def _resolve_spawn_template(self, *a, **kw):
-        """Facade: delegates to JobLifecycleService."""
-        return await self._job_lifecycle._resolve_spawn_template(*a, **kw)
-
-    async def _broadcast_agent_created(self, ctx: BroadcastAgentCreatedContext):
-        """Facade: delegates to JobLifecycleService."""
-        return await self._job_lifecycle._broadcast_agent_created(ctx)
-
     # ============================================================================
     # Mission & Orchestrator Instructions — Facade Delegations (Handover 0769)
     # ============================================================================
@@ -365,21 +189,9 @@ class OrchestrationService:
         """Facade: delegates to MissionService."""
         return await self._mission.get_agent_mission(job_id, tenant_key)
 
-    async def get_orchestrator_instructions(self, job_id, tenant_key):
+    async def update_agent_mission(self, job_id: str, tenant_key: str, mission: str) -> MissionUpdateResult:
         """Facade: delegates to MissionService."""
-        return await self._mission.get_orchestrator_instructions(job_id, tenant_key)
-
-    async def update_agent_mission(self, job_id, tenant_key, mission) -> MissionUpdateResult:
-        """Facade: delegates to MissionService."""
-        return await self._mission.update_agent_mission(job_id, tenant_key, mission)
-
-    async def _get_agent_template_internal(self, *a, **kw):
-        """Facade: delegates to MissionService."""
-        return await self._mission._get_agent_template_internal(*a, **kw)
-
-    def _build_execution_mode_fields(self, *a, **kw):
-        """Facade: delegates to MissionService."""
-        return self._mission._build_execution_mode_fields(*a, **kw)
+        return await self._mission.update_agent_mission(job_id=job_id, tenant_key=tenant_key, mission=mission)
 
     # ============================================================================
     # Progress Reporting — Facade Delegation (Handover 0769)
@@ -388,10 +200,6 @@ class OrchestrationService:
     async def report_progress(self, *a, **kw) -> ProgressResult:
         """Facade: delegates to ProgressService."""
         return await self._progress.report_progress(*a, **kw)
-
-    async def _fetch_and_broadcast_progress(self, *a, **kw):
-        """Facade: delegates to ProgressService."""
-        return await self._progress._fetch_and_broadcast_progress(*a, **kw)
 
     # ============================================================================
     # Pending Jobs
@@ -424,22 +232,9 @@ class OrchestrationService:
                 )
 
             # Get pending executions with their jobs (dual-model)
+            repo = AgentOperationsRepository()
             async with self._get_session() as session:
-                # Build query with optional agent_display_name filter
-                stmt = (
-                    select(AgentExecution, AgentJob)
-                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                    .where(
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status == "waiting",  # Execution status, not job status
-                    )
-                )
-                # Add optional filter by agent_display_name
-                if agent_display_name and agent_display_name.strip():
-                    stmt = stmt.where(AgentExecution.agent_display_name == agent_display_name)
-                stmt = stmt.limit(10)
-                result = await session.execute(stmt)
-                rows = result.all()
+                rows = await repo.get_pending_executions_with_jobs(session, tenant_key, agent_display_name)
 
                 # Format jobs for response
                 formatted_jobs = []
@@ -481,350 +276,8 @@ class OrchestrationService:
     async def complete_job(
         self, job_id: str, result: dict[str, Any], tenant_key: Optional[str] = None
     ) -> CompleteJobResult:
-        """
-        Mark job as complete (AgentExecution, async safe).
-
-        Args:
-            job_id: Job UUID (looks up latest active execution)
-            result: Job result data dict (for backwards compatibility, not currently used)
-            tenant_key: Optional tenant key (uses current if not provided)
-
-        Returns:
-            Dict with success status
-
-        """
-        try:
-            # Use provided tenant_key or get from context
-            if not tenant_key:
-                tenant_key = self.tenant_manager.get_current_tenant()
-
-            if not tenant_key:
-                raise ValidationError(message="No tenant context available", context={"method": "complete_job"})
-
-            if not job_id or not job_id.strip():
-                raise ValidationError(message="job_id cannot be empty", context={"method": "complete_job"})
-            if not result or not isinstance(result, dict):
-                raise ValidationError(
-                    message="result must be a non-empty dict",
-                    context={"method": "complete_job", "result_type": type(result).__name__},
-                )
-
-            completion_attempt_time = datetime.now(timezone.utc)
-
-            # Database update
-            job = None
-            execution = None
-            old_status = None
-            duration_seconds = None
-            warnings: list[str] = []  # Handover 0710: Soft warnings for orchestrator completion
-            async with self._get_session() as session:
-                # Try new dual-model path first
-                exec_stmt = (
-                    select(AgentExecution)
-                    .where(
-                        AgentExecution.job_id == job_id,
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
-                    )
-                    .order_by(AgentExecution.started_at.desc())
-                    .limit(1)
-                )
-                exec_res = await session.execute(exec_stmt)
-                execution = exec_res.scalar_one_or_none()
-
-                if execution:
-                    # NEW PATH: Dual-model (AgentExecution)
-                    job = await self._fetch_job_for_completion(session, job_id, tenant_key)
-
-                    # Validate completion requirements (unread messages and incomplete TODOs)
-                    await self._validate_completion_requirements(
-                        session, job, execution, tenant_key, job_id, completion_attempt_time
-                    )
-
-                    # Update execution and job status
-                    old_status, duration_seconds = self._apply_completion_status(execution, result)
-
-                    # Check if this is the last active execution and update job
-                    await self._finalize_job_if_last_execution(session, job, execution, tenant_key, job_id)
-
-                    # Handle post-completion side effects (warnings, auto-messages)
-                    await self._handle_completion_side_effects(
-                        session=session,
-                        job=job,
-                        execution=execution,
-                        result=result,
-                        tenant_key=tenant_key,
-                        warnings=warnings,
-                    )
-
-                    # Handover 0435d: Soft 360 memory check (warn, don't block)
-                    if job and getattr(job, "job_type", "") == "orchestrator":
-                        has_memory = await self._check_360_memory_written(session, job, tenant_key)
-                        if not has_memory:
-                            warnings.append(
-                                "360 memory has not been written for this project. "
-                                "Run write_360_memory() to record project learnings. "
-                                "The job has been completed, but the closeout is incomplete."
-                            )
-
-                    await session.commit()
-                else:
-                    # No active execution found -- check if decommissioned (Handover 0824)
-                    await self._raise_for_missing_execution(session, job_id, tenant_key)
-
-            # WebSocket emission for real-time UI updates (after session closed)
-            if execution:
-                await self._broadcast_completion(tenant_key, job_id, job, execution, old_status, duration_seconds)
-
-            # Git commit reminder for orchestrators (only when git integration is enabled)
-            if job and getattr(job, "job_type", "") == "orchestrator":
-                try:
-                    from giljo_mcp.services.settings_service import SettingsService
-
-                    async with self._get_session() as settings_session:
-                        settings_svc = SettingsService(settings_session, tenant_key)
-                        git_settings = await settings_svc.get_setting_value(
-                            "integrations",
-                            "git_integration",
-                            {},
-                        )
-                    git_enabled = git_settings.get("enabled", False)
-                    if git_enabled and "commits" not in (result or {}):
-                        warnings.append(
-                            "Git integration is enabled but no commits were included in the result. "
-                            "Run `git status` to check for uncommitted work, then `git add` and `git commit` "
-                            "before writing 360 memory."
-                        )
-                except Exception:  # noqa: BLE001, S110
-                    pass  # Settings read failure is not a blocker
-
-            # Handover 0731c: Typed return (CompleteJobResult)
-            return CompleteJobResult(
-                status="success",
-                job_id=job_id,
-                message="Job completed successfully",
-                warnings=warnings,
-                result_stored=True,
-            )
-        except (ValidationError, ResourceNotFoundError):
-            raise
-        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
-            self._logger.exception("Failed to complete job")
-            raise OrchestrationError(
-                message="Failed to complete job", context={"job_id": job_id, "error": str(e)}
-            ) from e
-
-    async def _fetch_job_for_completion(self, session: AsyncSession, job_id: str, tenant_key: str) -> "AgentJob":
-        """Fetch the AgentJob record for completion, raising if not found."""
-        job_res = await session.execute(
-            select(AgentJob).where(
-                AgentJob.job_id == job_id,
-                AgentJob.tenant_key == tenant_key,
-            )
-        )
-        job = job_res.scalar_one_or_none()
-        if not job:
-            raise ResourceNotFoundError(
-                message=f"Job {job_id} not found", context={"job_id": job_id, "method": "complete_job"}
-            )
-        return job
-
-    async def _check_360_memory_written(self, session: AsyncSession, job: "AgentJob", tenant_key: str) -> bool:
-        """Check if a 360 memory entry exists for the project (Handover 0435d).
-
-        Soft prerequisite — returns False if missing, caller decides whether to warn or block.
-        """
-        if not job.project_id:
-            return True  # No project context, skip check
-
-        project_res = await session.execute(
-            select(Project).where(Project.id == job.project_id, Project.tenant_key == tenant_key)
-        )
-        project = project_res.scalar_one_or_none()
-        if not project or not project.product_id:
-            return True  # No product context, skip check
-
-        stmt = (
-            select(ProductMemoryEntry)
-            .where(
-                ProductMemoryEntry.product_id == project.product_id,
-                ProductMemoryEntry.tenant_key == tenant_key,
-                ProductMemoryEntry.entry_type == "project_completion",
-            )
-            .limit(1)
-        )
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none() is not None
-
-    async def _validate_completion_requirements(
-        self,
-        session: AsyncSession,
-        job: "AgentJob",
-        execution: "AgentExecution",
-        tenant_key: str,
-        job_id: str,
-        completion_attempt_time: datetime,
-    ) -> None:
-        """Check unread messages and incomplete TODOs; raise if completion is blocked."""
-        unread_query = (
-            select(Message)
-            .join(MessageRecipient)
-            .where(
-                and_(
-                    Message.tenant_key == tenant_key,
-                    Message.project_id == job.project_id,
-                    Message.status == "pending",
-                    MessageRecipient.agent_id == execution.agent_id,
-                )
-            )
-        )
-        unread_res = await session.execute(unread_query)
-        unread_messages = unread_res.scalars().all()
-
-        def _is_before_attempt(message: Message) -> bool:
-            if not message.created_at:
-                return True
-            created_at = message.created_at
-            if created_at.tzinfo is None:
-                created_at = created_at.replace(tzinfo=timezone.utc)
-            return created_at <= completion_attempt_time
-
-        unread_messages = [message for message in unread_messages if _is_before_attempt(message)]
-
-        todo_query = select(AgentTodoItem).where(
-            and_(
-                AgentTodoItem.job_id == job_id,
-                AgentTodoItem.tenant_key == tenant_key,
-                AgentTodoItem.status.notin_(["completed", "skipped"]),
-            )
-        )
-        todo_res = await session.execute(todo_query)
-        incomplete_todos = todo_res.scalars().all()
-
-        if unread_messages or incomplete_todos:
-            reasons = []
-            if unread_messages:
-                unread_ids = [str(msg.id) for msg in unread_messages[:5]]
-                reasons.append(
-                    f"Read and process {len(unread_messages)} pending message(s) before completing. "
-                    f"Call receive_messages() to retrieve: {unread_ids}"
-                )
-            if incomplete_todos:
-                todo_names = [todo.content for todo in incomplete_todos[:5]]
-                reasons.append(f"{len(incomplete_todos)} TODO items not completed: {todo_names}")
-
-            self._logger.info(
-                "Completion blocked by protocol validation",
-                extra={
-                    "job_id": job_id,
-                    "tenant_key": tenant_key,
-                    "unread_messages": len(unread_messages),
-                    "incomplete_todos": len(incomplete_todos),
-                },
-            )
-
-            raise ValidationError(
-                message="COMPLETION_BLOCKED: Complete all TODO items and read all messages before calling complete_job()",
-                error_code="COMPLETION_BLOCKED",
-                context={
-                    "job_id": job_id,
-                    "reasons": reasons,
-                    "unread_messages": len(unread_messages),
-                    "incomplete_todos": len(incomplete_todos),
-                },
-            )
-
-    def _apply_completion_status(
-        self, execution: "AgentExecution", result: dict[str, Any]
-    ) -> tuple[str | None, float | None]:
-        """Update execution fields for completion. Returns (old_status, duration_seconds)."""
-        old_status = execution.status
-        execution.status = "complete"
-        execution.completed_at = datetime.now(timezone.utc)
-        execution.progress = 100  # Set to 100% on completion
-        # 0497b: Persist completion result
-        execution.result = result
-
-        # Calculate duration if started_at exists
-        duration_seconds = None
-        if execution.started_at and execution.completed_at:
-            duration_seconds = (execution.completed_at - execution.started_at).total_seconds()
-        return old_status, duration_seconds
-
-    async def _finalize_job_if_last_execution(
-        self,
-        session: AsyncSession,
-        job: "AgentJob",
-        execution: "AgentExecution",
-        tenant_key: str,
-        job_id: str,
-    ) -> None:
-        """Mark job as completed if no other active executions remain."""
-        # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
-        other_active_stmt = select(AgentExecution).where(
-            AgentExecution.job_id == job_id,
-            AgentExecution.tenant_key == tenant_key,
-            AgentExecution.agent_id != execution.agent_id,
-            AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
-        )
-        other_active_res = await session.execute(other_active_stmt)
-        other_active = other_active_res.scalar_one_or_none()
-
-        if not other_active:
-            # No other active executions, mark job as completed
-            job.status = "completed"
-            job.completed_at = execution.completed_at
-
-    async def _raise_for_missing_execution(self, session: AsyncSession, job_id: str, tenant_key: str) -> None:
-        """Check if execution was decommissioned and raise appropriate error."""
-        decomm_stmt = (
-            select(AgentExecution)
-            .where(
-                AgentExecution.job_id == job_id,
-                AgentExecution.tenant_key == tenant_key,
-                AgentExecution.status == "decommissioned",
-            )
-            .order_by(AgentExecution.started_at.desc())
-            .limit(1)
-        )
-        decomm_res = await session.execute(decomm_stmt)
-        decommissioned_exec = decomm_res.scalar_one_or_none()
-
-        if decommissioned_exec:
-            raise ResourceNotFoundError(
-                message=(
-                    f"Job {job_id} was decommissioned and cannot transition to 'completed'. "
-                    f"This typically happens when close_project_and_update_memory(force=true) "
-                    f"was called before complete_job()."
-                ),
-                context={
-                    "job_id": job_id,
-                    "method": "complete_job",
-                    "execution_status": "decommissioned",
-                    "cause": "Project was force-closed before this job called complete_job()",
-                },
-            )
-
-        raise ResourceNotFoundError(
-            message=f"No active execution found for job {job_id}",
-            context={"job_id": job_id, "method": "complete_job"},
-        )
-
-    async def _broadcast_completion(self, tenant_key, job_id, job, execution, old_status, duration_seconds):
-        """Facade: delegates to OrchestrationAgentStateService."""
-        return await self._agent_state._broadcast_completion(
-            tenant_key, job_id, job, execution, old_status, duration_seconds
-        )
-
-    async def _handle_completion_side_effects(self, session, job, execution, result, tenant_key, warnings):
-        """Facade: delegates to OrchestrationAgentStateService."""
-        return await self._agent_state._handle_completion_side_effects(
-            session, job, execution, result, tenant_key, warnings
-        )
-
-    async def _find_orchestrator_execution(self, session, project_id, tenant_key):
-        """Facade: delegates to OrchestrationAgentStateService."""
-        return await self._agent_state._find_orchestrator_execution(session, project_id, tenant_key)
+        """Facade: delegates to JobCompletionService."""
+        return await self._job_completion.complete_job(job_id, result, tenant_key)
 
     async def get_agent_result(self, job_id: str, tenant_key: str | None = None) -> dict | None:
         """Fetch the completion result for a given job's latest execution.
@@ -841,34 +294,9 @@ class OrchestrationService:
         if not tenant_key:
             return None
 
+        repo = AgentOperationsRepository()
         async with self._get_session() as session:
-            stmt = (
-                select(AgentExecution)
-                .where(
-                    AgentExecution.job_id == job_id,
-                    AgentExecution.tenant_key == tenant_key,
-                    AgentExecution.status == "complete",
-                )
-                .order_by(AgentExecution.completed_at.desc())
-                .limit(1)
-            )
-            res = await session.execute(stmt)
-            execution = res.scalar_one_or_none()
-            if execution and execution.result:
-                return execution.result
-            return None
-
-    async def close_job(self, job_id, tenant_key=None):
-        """Facade: delegates to OrchestrationAgentStateService. Handover 0435b."""
-        return await self._agent_state.close_job(job_id, tenant_key)
-
-    async def reactivate_job(self, job_id, tenant_key=None, reason="") -> ReactivationResult:
-        """Facade: delegates to OrchestrationAgentStateService."""
-        return await self._agent_state.reactivate_job(job_id, tenant_key, reason)
-
-    async def dismiss_reactivation(self, job_id, tenant_key=None, reason="") -> DismissResult:
-        """Facade: delegates to OrchestrationAgentStateService."""
-        return await self._agent_state.dismiss_reactivation(job_id, tenant_key, reason)
+            return await repo.get_completed_execution_result(session, tenant_key, job_id)
 
     async def set_agent_status(self, job_id, status, reason="", wake_in_minutes=None, tenant_key=None):
         """Facade: delegates to OrchestrationAgentStateService."""
@@ -883,167 +311,8 @@ class OrchestrationService:
         limit: int = 100,
         offset: int = 0,
     ) -> JobListResult:
-        """
-        List agent jobs with flexible filtering.
-
-        Handover 0358b: Migrated to dual-model (AgentJob + AgentExecution).
-        - Joins AgentExecution with AgentJob to get complete data
-        - Mission comes from AgentJob
-        - Status, progress, timestamps from AgentExecution
-        - Returns both job_id (work order) and agent_id (executor)
-
-        Supports filtering by project, status, and agent display name with pagination.
-        All jobs are filtered by tenant_key for multi-tenant isolation.
-
-        Args:
-            tenant_key: Tenant key for isolation (required)
-            project_id: Filter by project UUID (optional)
-            status_filter: Filter by execution status (waiting, working, blocked, idle, sleeping, complete, silent, decommissioned) (optional)
-            agent_display_name: Filter by agent display name (Orchestrator, Implementer, etc.) (optional)
-            limit: Maximum results (default 100, max 500)
-            offset: Pagination offset (default 0)
-
-        Returns:
-            Dict with structure:
-            {
-                "jobs": [list of job dicts],
-                "total": int (total count matching filters),
-                "limit": int (limit applied),
-                "offset": int (offset applied)
-            }
-
-        Raises:
-            Exception: Database errors (logged and returned in error field)
-
-        """
-        try:
-            from sqlalchemy import func, select
-            from sqlalchemy.orm import selectinload
-
-            async with self._get_session() as session:
-                # Build query with filters (join AgentExecution with AgentJob)
-                # Handover 0423: Load todo_items relationship for Plan tab display
-                query = (
-                    select(AgentExecution, AgentJob)
-                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                    .options(selectinload(AgentJob.todo_items))
-                    .where(AgentExecution.tenant_key == tenant_key)
-                )
-
-                if project_id:
-                    query = query.where(AgentJob.project_id == project_id)
-                if status_filter:
-                    query = query.where(AgentExecution.status == status_filter)
-                if agent_display_name:
-                    query = query.where(AgentExecution.agent_display_name == agent_display_name)
-
-                # Get total count
-                count_query = select(func.count()).select_from(query.subquery())
-                total_result = await session.execute(count_query)
-                total = total_result.scalar()
-
-                # Apply pagination and order
-                query = query.order_by(AgentJob.created_at.desc())
-                query = query.limit(limit).offset(offset)
-
-                result = await session.execute(query)
-                rows = result.all()
-
-                # Convert to dicts
-                job_dicts = []
-                for execution, job in rows:
-                    # DIAGNOSTIC: Log message counters for debugging persistence
-                    self._logger.debug(
-                        f"[LIST_JOBS DEBUG] Agent {execution.agent_display_name} (job={job.job_id}, agent={execution.agent_id}): "
-                        f"{execution.messages_sent_count} sent, {execution.messages_waiting_count} waiting, {execution.messages_read_count} read"
-                    )
-
-                    # Derive simple numeric steps summary from job_metadata.todo_steps (Handover 0297)
-                    steps_summary = None
-                    try:
-                        metadata = job.job_metadata or {}
-                        todo_steps = metadata.get("todo_steps") or {}
-                        total_steps = todo_steps.get("total_steps")
-                        completed_steps = todo_steps.get("completed_steps")
-                        skipped_steps = todo_steps.get("skipped_steps", 0)
-                        if (
-                            isinstance(total_steps, int)
-                            and total_steps > 0
-                            and isinstance(completed_steps, int)
-                            and 0 <= completed_steps <= total_steps
-                        ):
-                            steps_summary = {
-                                "total": total_steps,
-                                "completed": completed_steps,
-                                "skipped": skipped_steps if isinstance(skipped_steps, int) else 0,
-                            }
-                        # Fallback: derive steps from todo_items if metadata doesn't have it
-                        if not steps_summary and job.todo_items:
-                            total = len(job.todo_items)
-                            completed = sum(1 for item in job.todo_items if item.status == "completed")
-                            skipped = sum(1 for item in job.todo_items if item.status == "skipped")
-                            if total > 0:
-                                steps_summary = {"total": total, "completed": completed, "skipped": skipped}
-                    except (KeyError, ValueError, TypeError, AttributeError):
-                        # Do not break listing if metadata has unexpected shape
-                        self._logger.warning(
-                            "[LIST_JOBS] Failed to derive steps summary from job_metadata",
-                            exc_info=True,
-                        )
-
-                    job_dicts.append(
-                        {
-                            "job_id": job.job_id,  # Work order ID
-                            "agent_id": execution.agent_id,  # Executor ID (same across succession)
-                            "execution_id": execution.id,  # UNIQUE per row - use as Map key
-                            "tenant_key": execution.tenant_key,
-                            "project_id": job.project_id,
-                            "agent_display_name": execution.agent_display_name,
-                            "agent_name": execution.agent_name,
-                            "mission": job.mission,  # Mission from AgentJob
-                            "phase": job.phase,  # Handover 0411a: Execution phase
-                            "status": execution.status,  # Execution status
-                            "progress": execution.progress,  # Execution progress
-                            "spawned_by": execution.spawned_by,  # Parent agent_id
-                            "tool_type": execution.tool_type,
-                            "context_chunks": [],  # Context chunks removed in 0366a (stored in job_metadata)
-                            # Counter fields replace JSONB messages array (Handover 0387)
-                            "messages_sent_count": execution.messages_sent_count,
-                            "messages_waiting_count": execution.messages_waiting_count,
-                            "messages_read_count": execution.messages_read_count,
-                            "started_at": execution.started_at.isoformat() if execution.started_at else None,
-                            "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
-                            "created_at": job.created_at.isoformat() if job.created_at else None,
-                            "steps": steps_summary,
-                            # Handover 0423: Include todo_items for Plan tab display
-                            "todo_items": [
-                                {"content": item.content, "status": item.status}
-                                for item in sorted(job.todo_items or [], key=lambda x: x.sequence)
-                            ],
-                            "result": execution.result,  # Handover 0497e
-                            "template_id": job.template_id,  # Handover 0814: for AgentDetailsModal lookup
-                            # Handover 0827d: Reactivation tracking for frontend duration display
-                            "accumulated_duration_seconds": execution.accumulated_duration_seconds or 0.0,
-                            "reactivation_count": execution.reactivation_count or 0,
-                        }
-                    )
-
-                self._logger.info(
-                    f"Listed {len(job_dicts)} jobs (total={total}, project={project_id}, status={status_filter})"
-                )
-
-                return JobListResult(
-                    jobs=job_dicts,
-                    total=total,
-                    limit=limit,
-                    offset=offset,
-                )
-
-        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
-            self._logger.exception("Failed to list jobs")
-            raise OrchestrationError(
-                message="Failed to list jobs", context={"tenant_key": tenant_key, "error": str(e)}
-            ) from e
+        """Facade: delegates to JobQueryService."""
+        return await self._job_query.list_jobs(tenant_key, project_id, status_filter, agent_display_name, limit, offset)
 
     # NOTE: update_context_usage(), estimate_message_tokens(), _trigger_auto_succession(),
     # and trigger_succession() were removed in Handover 0422/0700d - the MCP server is passive

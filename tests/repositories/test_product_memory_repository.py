@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.services.dto import MemoryEntryCreateParams
 
 
 class TestProductMemoryRepository:
@@ -52,15 +53,17 @@ class TestProductMemoryRepository:
         repo = ProductMemoryRepository()
         entry = await repo.create_entry(
             session=db_session,
-            tenant_key="test_tenant",
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.utcnow(),
-            summary="Test summary",
-            key_outcomes=["outcome1"],
-            decisions_made=["decision1"],
+            params=MemoryEntryCreateParams(
+                tenant_key="test_tenant",
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.utcnow(),
+                summary="Test summary",
+                key_outcomes=["outcome1"],
+                decisions_made=["decision1"],
+            ),
         )
         assert entry.id is not None
         assert entry.sequence == 1
@@ -74,12 +77,14 @@ class TestProductMemoryRepository:
         for i in range(3):
             await repo.create_entry(
                 session=db_session,
-                tenant_key="test_tenant",
-                product_id=test_product.id,
-                sequence=i + 1,
-                entry_type="project_completion",
-                source="test_v1",
-                timestamp=datetime.utcnow(),
+                params=MemoryEntryCreateParams(
+                    tenant_key="test_tenant",
+                    product_id=test_product.id,
+                    sequence=i + 1,
+                    entry_type="project_completion",
+                    source="test_v1",
+                    timestamp=datetime.utcnow(),
+                ),
             )
 
         entries = await repo.get_entries_by_product(
@@ -91,29 +96,33 @@ class TestProductMemoryRepository:
         assert len(entries) == 2
 
     @pytest.mark.asyncio
-    async def test_get_next_sequence(self, db_session: AsyncSession, test_product):
+    async def test_get_next_sequence(self, db_session: AsyncSession, test_product, test_tenant_key):
         """get_next_sequence should return max(sequence) + 1."""
         repo = ProductMemoryRepository()
         # Initially should be 1
         seq1 = await repo.get_next_sequence(
             session=db_session,
             product_id=test_product.id,
+            tenant_key=test_tenant_key,
         )
         assert seq1 == 1
 
         # After creating entry, should be 2
         await repo.create_entry(
             session=db_session,
-            tenant_key="test_tenant",
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="test",
-            source="test_v1",
-            timestamp=datetime.utcnow(),
+            params=MemoryEntryCreateParams(
+                tenant_key=test_tenant_key,
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="test",
+                source="test_v1",
+                timestamp=datetime.utcnow(),
+            ),
         )
         seq2 = await repo.get_next_sequence(
             session=db_session,
             product_id=test_product.id,
+            tenant_key=test_tenant_key,
         )
         assert seq2 == 2
 
@@ -123,13 +132,15 @@ class TestProductMemoryRepository:
         repo = ProductMemoryRepository()
         entry = await repo.create_entry(
             session=db_session,
-            tenant_key="test_tenant",
-            product_id=test_product.id,
-            project_id=test_project.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.utcnow(),
+            params=MemoryEntryCreateParams(
+                tenant_key="test_tenant",
+                product_id=test_product.id,
+                project_id=test_project.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.utcnow(),
+            ),
         )
         assert entry.deleted_by_user is False
 
@@ -151,12 +162,14 @@ class TestProductMemoryRepository:
         # Create entry in tenant_a
         await repo.create_entry(
             session=db_session,
-            tenant_key="tenant_a",
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="test",
-            source="test_v1",
-            timestamp=datetime.utcnow(),
+            params=MemoryEntryCreateParams(
+                tenant_key="tenant_a",
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="test",
+                source="test_v1",
+                timestamp=datetime.utcnow(),
+            ),
         )
 
         # Query with tenant_b should return nothing
@@ -173,23 +186,27 @@ class TestProductMemoryRepository:
         repo = ProductMemoryRepository()
         await repo.create_entry(
             session=db_session,
-            tenant_key="test_tenant",
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="test",
-            source="test_v1",
-            timestamp=datetime.utcnow(),
+            params=MemoryEntryCreateParams(
+                tenant_key="test_tenant",
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="test",
+                source="test_v1",
+                timestamp=datetime.utcnow(),
+            ),
         )
 
         with pytest.raises(Exception):  # IntegrityError
             await repo.create_entry(
                 session=db_session,
-                tenant_key="test_tenant",
-                product_id=test_product.id,
-                sequence=1,  # Duplicate!
-                entry_type="test",
-                source="test_v1",
-                timestamp=datetime.utcnow(),
+                params=MemoryEntryCreateParams(
+                    tenant_key="test_tenant",
+                    product_id=test_product.id,
+                    sequence=1,  # Duplicate!
+                    entry_type="test",
+                    source="test_v1",
+                    timestamp=datetime.utcnow(),
+                ),
             )
 
     @pytest.mark.asyncio
@@ -212,12 +229,14 @@ class TestProductMemoryRepository:
         for seq in [3, 1, 2]:
             await repo.create_entry(
                 session=db_session,
-                tenant_key="test_tenant",
-                product_id=test_product.id,
-                sequence=seq,
-                entry_type="test",
-                source="test_v1",
-                timestamp=datetime.utcnow(),
+                params=MemoryEntryCreateParams(
+                    tenant_key="test_tenant",
+                    product_id=test_product.id,
+                    sequence=seq,
+                    entry_type="test",
+                    source="test_v1",
+                    timestamp=datetime.utcnow(),
+                ),
             )
 
         entries = await repo.get_entries_by_product(

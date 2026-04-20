@@ -6,60 +6,22 @@
 """Claude Code CLI execution prompt builder.
 
 Extracted from ThinClientPromptGenerator (Handover 0950g).
-Builds the implementation-phase prompt for Claude Code subagent mode.
+Refactored to inherit from ExecutionPromptBuilderBase (quality-sprint-002e).
 """
 
+from giljo_mcp.prompts.execution_prompt_base import ExecutionPromptBuilderBase
 
-class ClaudePromptBuilder:
+
+class ClaudePromptBuilder(ExecutionPromptBuilderBase):
     """Builds Claude Code CLI execution prompts for the implementation phase."""
 
-    def build_execution_prompt(self, orchestrator_id: str, project, agent_jobs: list, git_enabled: bool = False) -> str:
-        """Build Claude Code subagent mode execution prompt.
+    @property
+    def platform_name(self) -> str:
+        return "Claude Code CLI Mode"
 
-        Orchestrator spawns sub-agents using Task tool.
-        Sub-agents receive identity via instructions string.
-
-        Used by GET /api/prompts/implementation/{project_id} endpoint.
-        """
-        sections = [
-            self._build_context_recap(orchestrator_id, project, agent_jobs),
-            self._build_agent_list(agent_jobs),
-            self._build_spawning_section(agent_jobs),
-            self._build_monitoring_section(project),
-            self._build_context_refresh_section(orchestrator_id),
-            self._build_cli_constraints_section(),
-            self._build_completion_section(orchestrator_id, project, agent_jobs, git_enabled),
-        ]
-        lines = []
-        for section in sections:
-            lines.extend(section)
-        return "\n".join(lines)
-
-    def _build_context_recap(self, orchestrator_id: str, project, agent_jobs: list) -> list[str]:
-        """Build the identity and context recap section."""
+    def _build_execution_plan_details(self) -> list[str]:
+        """Claude includes extra detail about what the plan contains."""
         return [
-            "# GiljoAI Implementation Phase - Claude Code CLI Mode",
-            "",
-            "## FIRST ACTION (MANDATORY)",
-            "Before anything else, verify MCP connection:",
-            "```python",
-            "mcp__giljo_mcp__health_check()",
-            "```",
-            'Expected: `{"status": "healthy"}` - If failed, STOP and report error',
-            "",
-            "## Who You Are",
-            f"You are Orchestrator (job_id: {orchestrator_id}) for project '{project.name}'",
-            f"Project ID: {project.id}",
-            f"Product ID: {project.product_id}",
-            "",
-            "## Your Execution Plan (from Staging)",
-            "",
-            "Fetch your stored execution plan from staging:",
-            "```python",
-            f'mcp__giljo_mcp__get_agent_mission(job_id="{orchestrator_id}")',
-            "```",
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "",
             "This returns your plan with:",
             "- Agent execution order (sequential/parallel/hybrid)",
             "- Dependency graph between agents",
@@ -68,50 +30,20 @@ class ClaudePromptBuilder:
             "",
             "Follow this plan to coordinate agents.",
             "",
-            "## What You've Already Done",
-            "In a PREVIOUS session, you completed staging:",
-            "- Analyzed project requirements",
-            "- Created mission plan",
-            f"- Spawned {len(agent_jobs) if agent_jobs else 0} specialist agents",
-            "",
-            "## Current State",
-            "All agent jobs are in waiting status, ready for execution.",
-            "Your job now: Spawn and coordinate these agents to complete the project.",
-            "---",
-            "",
         ]
 
-    def _build_agent_list(self, agent_jobs: list) -> list[str]:
-        """Build the agent jobs listing section."""
-        agent_spawn_lines = []
-        if agent_jobs:
-            for idx, agent in enumerate(agent_jobs, 1):
-                mission = getattr(agent.job, "mission", None) or "(No mission assigned)"
-                mission_summary = mission[:100] + "..." if len(mission) > 100 else mission
-
-                agent_spawn_lines.extend(
-                    [
-                        f"**{idx}. {agent.agent_name}**",
-                        f"   - Agent Name: `{agent.agent_name}` (matches .claude/agents/{agent.agent_name}.md)",
-                        f"   - Agent Type: `{agent.agent_display_name}` (display category)",
-                        f"   - Job ID: `{agent.job_id}`",
-                        f"   - Status: {agent.status}",
-                        f"   - Mission Summary: {mission_summary}",
-                        "",
-                    ]
-                )
-        else:
-            agent_spawn_lines.append("(No agents spawned yet - use spawn_job() first)")
-
+    def _build_agent_list_preamble(self) -> list[str]:
         return [
-            "## Agent Jobs to Execute",
-            "",
             "Below are the specialist agents spawned during staging.",
             "Each has a unique job_id and agent_display_name.",
             "",
-            *agent_spawn_lines,
-            "## EXECUTION DIRECTIVE",
-            "",
+        ]
+
+    def _build_agent_name_line(self, agent) -> str:
+        return f"   - Agent Name: `{agent.agent_name}` (matches .claude/agents/{agent.agent_name}.md)"
+
+    def _build_execution_directive_text(self) -> list[str]:
+        return [
             "After fetching your mission, you MUST invoke every agent listed above.",
             "Do NOT skip agents. Do NOT summarize the plan and stop. Your job is to",
             "launch each agent using the Task tool as shown below, monitor their progress,",
@@ -125,7 +57,7 @@ class ClaudePromptBuilder:
         ]
 
     def _build_spawning_section(self, agent_jobs: list) -> list[str]:
-        """Build the Task tool spawning template section."""
+        """Build Task tool spawning template section."""
         lines = [
             "## How to Spawn Agents via Task Tool",
             "",
@@ -188,59 +120,12 @@ class ClaudePromptBuilder:
 
         return lines
 
-    def _build_monitoring_section(self, project) -> list[str]:
-        """Build the agent monitoring instructions section."""
-        return [
-            "## Monitoring Agent Progress",
-            "",
-            "### mcp__giljo_mcp__get_workflow_status()",
-            "Check all agent statuses:",
-            "```python",
-            f'mcp__giljo_mcp__get_workflow_status(project_id="{project.id}")',
-            "```",
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "",
-            "Returns:",
-            "```json",
-            "{",
-            '  "agents": [',
-            '    {"job_id": "...", "status": "working", "progress": 45},',
-            '    {"job_id": "...", "status": "blocked", "block_reason": "..."}',
-            "  ]",
-            "}",
-            "```",
-            "",
-            "### Handle Blockers",
-            "- When agent status is 'blocked', read their messages",
-            "- Respond via mcp__giljo_mcp__send_message(to_agents=['<agent-id-uuid>'], ...) using agent_id UUID",
-            "- Update their next_instruction field if needed",
-            "",
-            "### Message Handling",
-            "- Agents report progress via mcp__giljo_mcp__report_progress() and mcp__giljo_mcp__send_message()",
-            "- Monitor messages for questions or blockers",
-            "- Respond promptly to keep workflow moving",
-            "- ALWAYS use agent_id UUIDs in to_agents (from spawn_job responses), never display names",
-            "",
-        ]
-
-    def _build_context_refresh_section(self, orchestrator_id: str) -> list[str]:
-        """Build the context refresh capability section."""
-        return [
-            "## Refreshing Your Context",
-            "",
-            "If you need to re-read your orchestrator mission:",
-            "```python",
-            f'mcp__giljo_mcp__get_orchestrator_instructions(job_id="{orchestrator_id}")',
-            "```",
-            "Note: tenant_key is auto-injected by server from your API key session",
-            "",
-            "This MCP tool fetches your original staging mission and context.",
-            "Use this if you lose track of project objectives or need to verify requirements.",
-            "",
-        ]
+    def _build_extra_sections(self, orchestrator_id: str, project, agent_jobs: list) -> list[list[str]]:
+        """Claude has CLI constraints section."""
+        return [self._build_cli_constraints_section()]
 
     def _build_cli_constraints_section(self) -> list[str]:
-        """Build the CLI mode constraints section."""
+        """Build the CLI mode constraints section (Claude-only)."""
         return [
             "## CLI Mode Constraints",
             "",
@@ -265,23 +150,8 @@ class ClaudePromptBuilder:
     def _build_completion_section(
         self, orchestrator_id: str, project, agent_jobs: list, git_enabled: bool
     ) -> list[str]:
-        """Build the completion and closeout instructions section."""
-        git_closeout_lines = []
-        if git_enabled:
-            tag = getattr(project, "taxonomy_alias", None) or project.name
-            git_closeout_lines = [
-                "### Git Closeout Commit",
-                "Before calling complete_job, create a closeout commit to preserve project history:",
-                "```bash",
-                f'git commit --allow-empty -m "closeout({tag}): {project.name}',
-                "",
-                "Completed: <today YYYY-MM-DD>",
-                "Key outcomes:",
-                '- <list each concrete outcome>"',
-                "```",
-                f'This makes project history searchable via `git log --grep="closeout"` or `git log --grep="{tag}"`.',
-                "",
-            ]
+        """Build extended completion section with CLOSEOUT_BLOCKED recovery (Claude-specific)."""
+        git_closeout_lines = self._build_git_closeout_lines(project, git_enabled)
 
         return [
             "## When You're Done",

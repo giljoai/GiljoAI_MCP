@@ -17,10 +17,9 @@ Responsibilities:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -29,8 +28,8 @@ from giljo_mcp.exceptions import (
     DatabaseError,
     ResourceNotFoundError,
 )
-from giljo_mcp.models import Product, Project
-from giljo_mcp.models.agent_identity import AgentJob
+from giljo_mcp.models import Product
+from giljo_mcp.repositories.product_repository import ProductRepository
 from giljo_mcp.schemas.service_responses import DeleteResult, PurgeResult
 
 
@@ -68,6 +67,7 @@ class ProductLifecycleService:
         self._test_session = test_session
         self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._repo = ProductRepository()
 
     def _get_session(self):
         """
@@ -136,11 +136,7 @@ class ProductLifecycleService:
         """
         try:
             async with self._get_session() as session:
-                stmt = select(Product).where(
-                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
-                )
-                result = await session.execute(stmt)
-                product = result.scalar_one_or_none()
+                product = await self._repo.get_by_id(session, self.tenant_key, product_id)
 
                 if not product:
                     raise ResourceNotFoundError(
@@ -149,40 +145,25 @@ class ProductLifecycleService:
 
                 # Deactivate all other products for tenant FIRST
                 # Must flush deactivation before activation due to unique constraint
-                deactivate_stmt = select(Product).where(
-                    and_(Product.tenant_key == self.tenant_key, Product.is_active, Product.id != product_id)
+                products_to_deactivate = await self._repo.find_other_active_products(
+                    session, self.tenant_key, product_id
                 )
-                deactivate_result = await session.execute(deactivate_stmt)
-                products_to_deactivate = deactivate_result.scalars().all()
 
                 for p in products_to_deactivate:
                     p.is_active = False
                     p.updated_at = datetime.now(timezone.utc)
 
                 if products_to_deactivate:
-                    await session.flush()
+                    await self._repo.flush(session)
 
                     deactivated_product_ids = [p.id for p in products_to_deactivate]
 
                     # Bulk deactivate projects in all deactivated products
-                    project_deactivate_stmt = (
-                        update(Project)
-                        .where(Project.product_id.in_(deactivated_product_ids))
-                        .where(Project.status == "active")
-                        .values(status="inactive", updated_at=datetime.now(timezone.utc))
-                    )
-                    await session.execute(project_deactivate_stmt)
+                    await self._repo.bulk_deactivate_projects(session, deactivated_product_ids)
 
                     # Cascade: cancel active jobs under deactivated products
-                    project_ids_stmt = select(Project.id).where(Project.product_id.in_(deactivated_product_ids))
-                    job_cancel_stmt = (
-                        update(AgentJob)
-                        .where(AgentJob.project_id.in_(project_ids_stmt))
-                        .where(AgentJob.status == "active")
-                        .values(status="cancelled")
-                    )
-                    await session.execute(job_cancel_stmt)
-                    await session.flush()
+                    await self._repo.bulk_cancel_jobs(session, deactivated_product_ids)
+                    await self._repo.flush(session)
 
                     await self._emit_websocket_event(
                         event_type="projects:bulk:deactivated",
@@ -195,11 +176,8 @@ class ProductLifecycleService:
                 product.is_active = True
                 product.updated_at = datetime.now(timezone.utc)
 
-                await session.commit()
-                await session.refresh(
-                    product,
-                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
-                )
+                await self._repo.commit(session)
+                await self._repo.refresh(session, product)
 
                 self._logger.info(f"Activated product {product_id} (deactivated {len(products_to_deactivate)} others)")
 
@@ -230,11 +208,7 @@ class ProductLifecycleService:
         """
         try:
             async with self._get_session() as session:
-                stmt = select(Product).where(
-                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
-                )
-                result = await session.execute(stmt)
-                product = result.scalar_one_or_none()
+                product = await self._repo.get_by_id(session, self.tenant_key, product_id)
 
                 if not product:
                     raise ResourceNotFoundError(
@@ -245,29 +219,13 @@ class ProductLifecycleService:
                 product.updated_at = datetime.now(timezone.utc)
 
                 # Cascade: deactivate active projects under this product
-                project_deactivate_stmt = (
-                    update(Project)
-                    .where(Project.product_id == product_id)
-                    .where(Project.status == "active")
-                    .values(status="inactive", updated_at=datetime.now(timezone.utc))
-                )
-                await session.execute(project_deactivate_stmt)
+                await self._repo.deactivate_product_projects(session, product_id)
 
                 # Cascade: cancel active jobs under this product's projects
-                project_ids_stmt = select(Project.id).where(Project.product_id == product_id)
-                job_cancel_stmt = (
-                    update(AgentJob)
-                    .where(AgentJob.project_id.in_(project_ids_stmt))
-                    .where(AgentJob.status == "active")
-                    .values(status="cancelled")
-                )
-                await session.execute(job_cancel_stmt)
+                await self._repo.cancel_product_jobs(session, product_id)
 
-                await session.commit()
-                await session.refresh(
-                    product,
-                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
-                )
+                await self._repo.commit(session)
+                await self._repo.refresh(session, product)
 
                 self._logger.info(f"Deactivated product {product_id} (cascaded to projects and jobs)")
 
@@ -298,11 +256,7 @@ class ProductLifecycleService:
         """
         try:
             async with self._get_session() as session:
-                stmt = select(Product).where(
-                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
-                )
-                result = await session.execute(stmt)
-                product = result.scalar_one_or_none()
+                product = await self._repo.get_by_id(session, self.tenant_key, product_id)
 
                 if not product:
                     raise ResourceNotFoundError(
@@ -313,7 +267,7 @@ class ProductLifecycleService:
                 product.is_active = False
                 product.updated_at = datetime.now(timezone.utc)
 
-                await session.commit()
+                await self._repo.commit(session)
 
                 self._logger.info(f"Soft deleted product {product_id}")
 
@@ -344,15 +298,7 @@ class ProductLifecycleService:
         """
         try:
             async with self._get_session() as session:
-                stmt = select(Product).where(
-                    and_(
-                        Product.id == product_id,
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.isnot(None),
-                    )
-                )
-                result = await session.execute(stmt)
-                product = result.scalar_one_or_none()
+                product = await self._repo.get_deleted_by_id(session, self.tenant_key, product_id)
 
                 if not product:
                     raise ResourceNotFoundError(
@@ -363,11 +309,8 @@ class ProductLifecycleService:
                 product.deleted_at = None
                 product.updated_at = datetime.now(timezone.utc)
 
-                await session.commit()
-                await session.refresh(
-                    product,
-                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
-                )
+                await self._repo.commit(session)
+                await self._repo.refresh(session, product)
 
                 self._logger.info(f"Restored product {product_id}")
 
@@ -402,9 +345,7 @@ class ProductLifecycleService:
         """
         try:
             async with self._get_session() as session:
-                stmt = select(Product).where(and_(Product.id == product_id, Product.tenant_key == self.tenant_key))
-                result = await session.execute(stmt)
-                product = result.scalar_one_or_none()
+                product = await self._repo.get_by_id(session, self.tenant_key, product_id, include_deleted=True)
 
                 if not product:
                     raise ResourceNotFoundError(
@@ -413,8 +354,8 @@ class ProductLifecycleService:
                     )
 
                 product_name = product.name
-                await session.delete(product)
-                await session.commit()
+                await self._repo.delete_hard(session, product)
+                await self._repo.commit(session)
 
                 self._logger.info(f"Permanently deleted product {product_id} ({product_name})")
 
@@ -441,16 +382,7 @@ class ProductLifecycleService:
         """
         try:
             async with self._get_session() as session:
-                stmt = (
-                    select(Product)
-                    .where(and_(Product.tenant_key == self.tenant_key, Product.deleted_at.isnot(None)))
-                    .order_by(Product.deleted_at.desc())
-                )
-
-                result = await session.execute(stmt)
-                deleted_products = result.scalars().all()
-
-                return list(deleted_products)
+                return await self._repo.list_deleted(session, self.tenant_key)
 
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to list deleted products")
@@ -486,15 +418,7 @@ class ProductLifecycleService:
 
         try:
             async with self._get_session() as session:
-                cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_before_purge)
-
-                stmt = select(Product).where(
-                    Product.deleted_at.isnot(None),
-                    Product.deleted_at < cutoff_date,
-                )
-
-                result = await session.execute(stmt)
-                expired_products = result.scalars().all()
+                expired_products = await self._repo.find_expired_deleted(session, days_before_purge)
 
                 if not expired_products:
                     self._logger.info(
@@ -507,13 +431,13 @@ class ProductLifecycleService:
                     days_ago = (datetime.now(timezone.utc) - product.deleted_at).days
                     purged_ids.append(str(product.id))
 
-                    await session.delete(product)
+                    await self._repo.delete_hard(session, product)
 
                     self._logger.info(
                         f"[Product Purge] Auto-purged expired product {product.id} (deleted {days_ago} days ago)"
                     )
 
-                await session.commit()
+                await self._repo.commit(session)
 
                 self._logger.info(f"[Product Purge] Successfully purged {len(purged_ids)} expired deleted products")
 

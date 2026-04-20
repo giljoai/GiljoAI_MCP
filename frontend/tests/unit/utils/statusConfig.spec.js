@@ -4,6 +4,9 @@ import {
   getHealthConfig,
   isJobStale,
   formatLastActivity,
+  isCloseoutBlocked,
+  getStatusLabel,
+  getStatusColor,
   STALENESS_THRESHOLD
 } from '@/utils/statusConfig';
 
@@ -21,6 +24,67 @@ describe('statusConfig.js', () => {
 
     it('returns default config for unknown status', () => {
       expect(getStatusConfig('invalid').icon).toBe('mdi-clock-outline');
+    });
+
+    it('returns closeout-blocked config when status is blocked with Closeout reason', () => {
+      const config = getStatusConfig('blocked', 'Closeout: awaiting user review');
+      expect(config.label).toBe('Decision Required');
+      expect(config.icon).toBe('mdi-clipboard-check-outline');
+    });
+
+    it('returns generic blocked config when block_reason does not start with Closeout', () => {
+      const config = getStatusConfig('blocked', 'Waiting for upstream agent');
+      expect(config.label).toBe('Needs Input');
+      expect(config.icon).toBe('mdi-account-question');
+    });
+  });
+
+  describe('isCloseoutBlocked', () => {
+    it('returns true when status is blocked and reason starts with Closeout', () => {
+      expect(isCloseoutBlocked('blocked', 'Closeout: awaiting user review')).toBe(true);
+      expect(isCloseoutBlocked('blocked', 'Closeout: deferred findings')).toBe(true);
+    });
+
+    it('returns false when status is not blocked', () => {
+      expect(isCloseoutBlocked('working', 'Closeout: something')).toBe(false);
+      expect(isCloseoutBlocked('complete', 'Closeout: done')).toBe(false);
+    });
+
+    it('returns false when block_reason does not start with Closeout', () => {
+      expect(isCloseoutBlocked('blocked', 'Waiting for input')).toBe(false);
+      expect(isCloseoutBlocked('blocked', 'BLOCKED: unclear requirements')).toBe(false);
+    });
+
+    it('returns false when block_reason is null or undefined', () => {
+      expect(isCloseoutBlocked('blocked', null)).toBe(false);
+      expect(isCloseoutBlocked('blocked', undefined)).toBe(false);
+      expect(isCloseoutBlocked('blocked')).toBe(false);
+    });
+  });
+
+  describe('getStatusLabel with closeout', () => {
+    it('returns Decision Required for closeout-blocked agent', () => {
+      expect(getStatusLabel('blocked', 'Closeout: awaiting user review')).toBe('Decision Required');
+    });
+
+    it('returns Needs Input for generic blocked agent', () => {
+      expect(getStatusLabel('blocked', null)).toBe('Needs Input');
+      expect(getStatusLabel('blocked')).toBe('Needs Input');
+    });
+
+    it('returns normal label when status is not blocked', () => {
+      expect(getStatusLabel('working', 'Closeout: something')).toBe('Working');
+    });
+  });
+
+  describe('getStatusColor with closeout', () => {
+    it('returns amber for closeout-blocked agent', () => {
+      expect(getStatusColor('blocked', 'Closeout: awaiting user review')).toBe('#ffc107');
+    });
+
+    it('returns orange for generic blocked agent', () => {
+      expect(getStatusColor('blocked', null)).toBe('#ff9800');
+      expect(getStatusColor('blocked')).toBe('#ff9800');
     });
   });
 

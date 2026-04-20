@@ -11,7 +11,6 @@ Provides REST API and WebSocket endpoints for orchestration system
 import asyncio
 import logging
 import os
-import sys
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import Optional
@@ -58,10 +57,15 @@ if jwt_secret:
 else:
     logger.error("JWT secret key NOT found in environment - authentication will fail")
 
-# Add src to path
-# TODO: Remove after editable install confirmed on all platforms
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-logger.debug(f"Added to Python path: {Path(__file__).parent.parent / 'src'}")
+# Ensure project root is on sys.path for module resolution
+# (api/ is not a pip package — it needs the project root on sys.path)
+import sys as _sys
+from pathlib import Path as _Path
+
+
+_PROJECT_ROOT = str(_Path(__file__).resolve().parent.parent)
+if _PROJECT_ROOT not in _sys.path:
+    _sys.path.insert(0, _PROJECT_ROOT)
 
 try:
     from giljo_mcp.models import Project
@@ -229,6 +233,20 @@ async def lifespan(app: FastAPI):
         logger.warning("Optional startup phase [mcp_session_manager] failed: %s — running in degraded mode", e)
         state.degraded_services.append("mcp_session_manager")
 
+    # Phase 9: Trial reaper (SaaS/Demo only — SAAS-008)
+    # Uses importlib to satisfy CE/SaaS import boundary (no static import from saas/)
+    _trial_reaper_task = None
+    if GILJO_MODE in ("saas", "demo"):
+        try:
+            import importlib
+
+            _reaper_mod = importlib.import_module("giljo_mcp.saas.trial.reaper")
+            _trial_reaper_task = await _reaper_mod.start_trial_reaper(state.db_manager.engine)
+            logger.info("Trial reaper background task started")
+        except Exception as e:
+            logger.warning("Optional startup phase [trial_reaper] failed: %s — running without trial reaper", e)
+            state.degraded_services.append("trial_reaper")
+
     # Mark startup complete
     state.startup_complete = True
     app.state.startup_complete = True
@@ -242,6 +260,12 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
+    if _trial_reaper_task is not None:
+        _trial_reaper_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await _trial_reaper_task
+        logger.info("Trial reaper stopped")
+
     if "mcp_session_manager" not in state.degraded_services:
         await stop_mcp_session_manager()
     await shutdown(state)

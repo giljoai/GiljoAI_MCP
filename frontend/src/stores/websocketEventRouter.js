@@ -1,6 +1,5 @@
 import { useWebSocketStore } from './websocket'
 import { useAgentJobsStore } from './agentJobsStore'
-import { useAgentStore } from './agents'
 import { useMessageStore } from './messages'
 import { useProjectMessagesStore } from './projectMessagesStore'
 import { useProjectStateStore } from './projectStateStore'
@@ -19,7 +18,7 @@ import { SYSTEM_EVENT_ROUTES } from './eventRoutes/systemEventRoutes'
 
 const STORE_REGISTRY = {
   agentJobs: () => useAgentJobsStore(),
-  agents: () => useAgentStore(),
+  agents: () => useAgentJobsStore(),
   messages: () => useMessageStore(),
   projectMessages: () => useProjectMessagesStore(),
   projectState: () => useProjectStateStore(),

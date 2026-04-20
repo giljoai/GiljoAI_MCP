@@ -7,7 +7,7 @@
 Tests for shared/generic service-layer Pydantic response models.
 
 Split from test_service_responses.py — covers DeleteResult, OperationResult,
-TransferResult, PaginatedResult, and cross-cutting serialization tests.
+PaginatedResult, and cross-cutting serialization tests.
 
 Created: Handover 0731
 """
@@ -25,7 +25,6 @@ from giljo_mcp.schemas.service_responses import (
     ProductStatistics,
     SpawnResult,
     TaskSummary,
-    TransferResult,
 )
 
 
@@ -84,35 +83,6 @@ class TestOperationResult:
 
     def test_from_attributes_config(self):
         assert OperationResult.model_config.get("from_attributes") is True
-
-
-class TestTransferResult:
-    """Tests for TransferResult model."""
-
-    def test_creation_with_required_fields(self):
-        """TransferResult requires from_user_id and to_user_id."""
-        result = TransferResult(from_user_id="user-1", to_user_id="user-2")
-        assert result.transferred is True
-        assert result.from_user_id == "user-1"
-        assert result.to_user_id == "user-2"
-
-    def test_missing_from_user_id_raises(self):
-        with pytest.raises(ValidationError):
-            TransferResult(to_user_id="user-2")
-
-    def test_missing_to_user_id_raises(self):
-        with pytest.raises(ValidationError):
-            TransferResult(from_user_id="user-1")
-
-    def test_model_dump(self):
-        result = TransferResult(from_user_id="a", to_user_id="b")
-        dumped = result.model_dump()
-        assert dumped["transferred"] is True
-        assert dumped["from_user_id"] == "a"
-        assert dumped["to_user_id"] == "b"
-
-    def test_from_attributes_config(self):
-        assert TransferResult.model_config.get("from_attributes") is True
 
 
 class TestPaginatedResult:

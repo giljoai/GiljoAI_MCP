@@ -63,7 +63,7 @@ async def test_get_closeout_data_all_agents_complete(
 
     service = ProjectService(db_manager, tenant_manager)
     # 0731c: get_closeout_data returns CloseoutData typed model
-    data = await service.get_closeout_data(project.id, db_session=db_session)
+    data = await service.closeout.get_closeout_data(project.id, db_session=db_session)
 
     assert isinstance(data, CloseoutData)
     assert data.project_id == project.id
@@ -149,7 +149,7 @@ async def test_get_closeout_data_with_blocked_agents(
 
     service = ProjectService(db_manager, tenant_manager)
     # 0731c: get_closeout_data returns CloseoutData typed model
-    data = await service.get_closeout_data(project.id, db_session=db_session)
+    data = await service.closeout.get_closeout_data(project.id, db_session=db_session)
 
     assert isinstance(data, CloseoutData)
     assert data.project_id == project.id
@@ -212,7 +212,7 @@ async def test_get_closeout_data_with_git_integration(
 
     service = ProjectService(db_manager, tenant_manager)
     # 0731c: get_closeout_data returns CloseoutData typed model
-    data = await service.get_closeout_data(project.id, db_session=db_session)
+    data = await service.closeout.get_closeout_data(project.id, db_session=db_session)
 
     assert isinstance(data, CloseoutData)
     assert data.project_id == project.id
@@ -246,6 +246,6 @@ async def test_get_closeout_data_tenant_isolation(db_manager, db_session: AsyncS
 
     # 0731c: Exception-based error handling - raises ResourceNotFoundError
     with pytest.raises(ResourceNotFoundError) as exc_info:
-        await service.get_closeout_data(project.id)
+        await service.closeout.get_closeout_data(project.id)
 
     assert "not found" in str(exc_info.value).lower()

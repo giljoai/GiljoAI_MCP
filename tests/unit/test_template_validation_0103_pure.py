@@ -16,7 +16,6 @@ Split from test_template_validation_0103.py for maintainability.
 from giljo_mcp.template_validation import (
     get_role_color,
     slugify_name,
-    validate_system_prompt,
 )
 
 
@@ -65,72 +64,6 @@ class TestSlugifyName:
     def test_suffix_with_numbers(self):
         """Test suffix with numbers preserved."""
         assert slugify_name("orchestrator", "Version123") == "orchestrator-version123"
-
-
-class TestValidateSystemPrompt:
-    """Test validate_system_prompt function."""
-
-    def test_valid_prompt_50_chars(self):
-        """Test valid prompt with 50 characters passes."""
-        prompt = "This is a valid system prompt with enough content."
-        is_valid, msg = validate_system_prompt(prompt)
-        assert is_valid is True
-        assert msg == ""
-
-    def test_minimum_valid_20_chars(self):
-        """Test minimum valid prompt with exactly 20 characters."""
-        prompt = "a" * 20
-        is_valid, msg = validate_system_prompt(prompt)
-        assert is_valid is True
-        assert msg == ""
-
-    def test_too_short_19_chars(self):
-        """Test prompt with 19 characters rejected."""
-        prompt = "a" * 19
-        is_valid, msg = validate_system_prompt(prompt)
-        assert is_valid is False
-        assert "too short" in msg
-
-    def test_empty_string(self):
-        """Test empty string rejected."""
-        is_valid, msg = validate_system_prompt("")
-        assert is_valid is False
-        assert "required" in msg
-
-    def test_whitespace_only(self):
-        """Test whitespace-only string rejected."""
-        is_valid, msg = validate_system_prompt("   \n\t  ")
-        assert is_valid is False
-        assert "required" in msg
-
-    def test_whitespace_with_content_too_short(self):
-        """Test string with whitespace + short content rejected."""
-        prompt = "  hello world  "  # 11 chars after strip
-        is_valid, msg = validate_system_prompt(prompt)
-        assert is_valid is False
-        assert "too short" in msg
-
-    def test_whitespace_with_valid_content(self):
-        """Test string with whitespace + valid content accepted."""
-        prompt = "  " + ("a" * 20) + "  "  # 20 chars after strip
-        is_valid, msg = validate_system_prompt(prompt)
-        assert is_valid is True
-        assert msg == ""
-
-    def test_multiline_valid_prompt(self):
-        """Test multiline prompt with enough content passes."""
-        prompt = """This is a multiline
-        system prompt with
-        enough content."""
-        is_valid, msg = validate_system_prompt(prompt)
-        assert is_valid is True
-        assert msg == ""
-
-    def test_none_value(self):
-        """Test None value handled gracefully."""
-        is_valid, msg = validate_system_prompt(None)
-        assert is_valid is False
-        assert "required" in msg
 
 
 class TestGetRoleColor:

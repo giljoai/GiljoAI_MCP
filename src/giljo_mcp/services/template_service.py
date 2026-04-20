@@ -31,8 +31,6 @@ from contextlib import asynccontextmanager
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import and_, func, select, update
-from sqlalchemy import delete as sql_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -43,8 +41,8 @@ from giljo_mcp.exceptions import (
 )
 
 # Model imports: Use domain-specific imports (Post-0128a)
-from giljo_mcp.models.agent_identity import AgentJob
-from giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
+from giljo_mcp.models.templates import AgentTemplate, TemplateArchive
+from giljo_mcp.repositories.template_repository import TemplateRepository
 from giljo_mcp.schemas.jsonb_validators import validate_behavioral_rules, validate_success_criteria
 from giljo_mcp.schemas.service_responses import (
     TemplateCreateResult,
@@ -88,6 +86,7 @@ class TemplateService:
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self._session = session
+        self._repo = TemplateRepository()
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def _get_session(self):
@@ -142,8 +141,7 @@ class TemplateService:
 
             async with self._get_session() as session:
                 # TENANT ISOLATION: Only return templates for the specified tenant
-                result = await session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
-                templates = result.scalars().all()
+                templates = await self._repo.list_by_tenant(session, tenant_key)
 
                 template_list = [
                     {
@@ -207,18 +205,11 @@ class TemplateService:
                 raise ValidationError(message="No tenant context available", context={"operation": "get_template"})
 
             async with self._get_session() as session:
-                # Build query based on provided identifier
+                # Retrieve template by ID or name
                 if template_id:
-                    query = select(AgentTemplate).where(
-                        AgentTemplate.id == template_id, AgentTemplate.tenant_key == tenant_key
-                    )
+                    template = await self._repo.get_by_id(session, template_id, tenant_key)
                 else:
-                    query = select(AgentTemplate).where(
-                        AgentTemplate.name == template_name, AgentTemplate.tenant_key == tenant_key
-                    )
-
-                result = await session.execute(query)
-                template = result.scalar_one_or_none()
+                    template = await self._repo.get_by_name(session, template_name, tenant_key)
 
                 if not template:
                     identifier = template_id if template_id else template_name
@@ -320,8 +311,8 @@ class TemplateService:
                     background_color=background_color,
                 )
 
-                session.add(template)
-                await session.commit()
+                await self._repo.add_template(session, template)
+                await self._repo.commit(session)
 
                 template_id = str(template.id)
 
@@ -395,10 +386,7 @@ class TemplateService:
 
             async with self._get_session() as session:
                 # Get template with tenant isolation
-                result = await session.execute(
-                    select(AgentTemplate).where(AgentTemplate.id == template_id, AgentTemplate.tenant_key == tenant_key)
-                )
-                template = result.scalar_one_or_none()
+                template = await self._repo.get_by_id(session, template_id, tenant_key)
 
                 if not template:
                     raise TemplateNotFoundError(
@@ -421,7 +409,7 @@ class TemplateService:
                 if background_color is not None:
                     template.background_color = background_color
 
-                await session.commit()
+                await self._repo.commit(session)
 
                 self._logger.info(f"Updated template {template_id}")
 
@@ -510,27 +498,12 @@ class TemplateService:
 
         # Get current template to fetch its role if not provided
         if role is None:
-            stmt = select(AgentTemplate.role).where(AgentTemplate.id == template_id)
-            result = await session.execute(stmt)
-            role = result.scalar_one_or_none()
+            role = await self._repo.get_template_role(session, template_id)
             if not role:
                 return False, "Template not found"
 
         # Count currently active distinct roles (excluding the one being toggled)
-        system_roles = list(SYSTEM_MANAGED_ROLES)
-        stmt = (
-            select(AgentTemplate.role)
-            .where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.is_active,
-                AgentTemplate.id != template_id,
-            )
-            .where(AgentTemplate.role.notin_(system_roles))
-            .distinct()
-        )
-
-        result = await session.execute(stmt)
-        active_roles = {row[0] for row in result.all()}
+        active_roles = await self._repo.get_active_distinct_roles(session, tenant_key, template_id)
 
         # If this role is already active elsewhere, allow toggle
         if role in active_roles:
@@ -572,15 +545,7 @@ class TemplateService:
             >>> if template:
             ...     print(template.name)
         """
-        # ORIGINAL QUERY: crud.py line 115-122 (get_template endpoint)
-        stmt = select(AgentTemplate).where(
-            and_(
-                AgentTemplate.id == template_id,
-                AgentTemplate.tenant_key == tenant_key,
-            )
-        )
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self._repo.get_by_id(session, template_id, tenant_key)
 
     async def list_templates_with_filters(
         self,
@@ -606,16 +571,7 @@ class TemplateService:
             ...     session, "tenant-1", role="orchestrator", is_active=True
             ... )
         """
-        # ORIGINAL QUERY: crud.py line 151-160 (list_templates endpoint)
-        query = select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-
-        if role:
-            query = query.where(AgentTemplate.role == role)
-        if is_active is not None:
-            query = query.where(AgentTemplate.is_active == is_active)
-
-        result = await session.execute(query)
-        return list(result.scalars().all())
+        return await self._repo.list_with_filters(session, tenant_key, role, is_active)
 
     async def check_template_name_exists(
         self,
@@ -639,10 +595,7 @@ class TemplateService:
             ...     session, "tenant-1", "my-analyzer"
             ... )
         """
-        # ORIGINAL QUERY: crud.py line 197-205 (create_template uniqueness check)
-        stmt = select(AgentTemplate).where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.name == name))
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none() is not None
+        return await self._repo.check_name_exists(session, tenant_key, name)
 
     async def get_default_templates_by_role(
         self,
@@ -668,18 +621,7 @@ class TemplateService:
             ...     session, "tenant-1", "orchestrator", "product-1"
             ... )
         """
-        # ORIGINAL QUERY: crud.py line 229-240 (create_template default flag management)
-        filters = [
-            AgentTemplate.tenant_key == tenant_key,
-            AgentTemplate.role == role,
-            AgentTemplate.is_default,
-        ]
-        if product_id:
-            filters.append(AgentTemplate.product_id == product_id)
-
-        stmt = select(AgentTemplate).where(and_(*filters))
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
+        return await self._repo.get_defaults_by_role(session, tenant_key, role, product_id)
 
     async def get_active_user_managed_count(
         self,
@@ -700,16 +642,7 @@ class TemplateService:
             >>> count = await service.get_active_user_managed_count(session, "tenant-1")
             >>> print(f"Active: {count}/{USER_MANAGED_AGENT_LIMIT}")
         """
-        # ORIGINAL QUERY: crud.py line 496-504 (get_active_count endpoint)
-        stmt = select(func.count(AgentTemplate.id)).where(
-            and_(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.is_active,
-                AgentTemplate.role.not_in(SYSTEM_MANAGED_ROLES),
-            )
-        )
-        result = await session.execute(stmt)
-        return result.scalar()
+        return await self._repo.count_active_user_managed(session, tenant_key)
 
     # ============================================================================
     # Template Deletion Methods (Phase 2 - Handover 1011)
@@ -749,18 +682,18 @@ class TemplateService:
             return False
 
         # 1. Set AgentJob.template_id to NULL for historical jobs
-        await session.execute(update(AgentJob).where(AgentJob.template_id == template_id).values(template_id=None))
-
-        # NOTE: TemplateAugmentation deletion removed (Handover 0423 - table removed)
+        await self._repo.nullify_job_template_refs(session, template_id)
 
         # 2. Delete related TemplateUsageStats records
-        await session.execute(sql_delete(TemplateUsageStats).where(TemplateUsageStats.template_id == template_id))
+        await self._repo.delete_usage_stats(session, template_id)
 
-        # 4. Delete related TemplateArchive records (version history)
-        await session.execute(sql_delete(TemplateArchive).where(TemplateArchive.template_id == template_id))
+        # 3. Delete related TemplateArchive records (version history)
+        await self._repo.delete_archives(session, template_id)
 
-        # 5. Delete the template itself
-        await session.delete(template)
+        # 4. Delete the template itself
+        await self._repo.delete_template(session, template)
+
+        await self._repo.commit(session)
 
         return True
 
@@ -790,17 +723,7 @@ class TemplateService:
             >>> for archive in history:
             ...     print(f"{archive.version} - {archive.archive_reason}")
         """
-        # ORIGINAL QUERY: history.py line 41-50 (get_template_history endpoint)
-        stmt = (
-            select(TemplateArchive)
-            .where(
-                TemplateArchive.template_id == template_id,
-                TemplateArchive.tenant_key == tenant_key,
-            )
-            .order_by(TemplateArchive.archived_at.desc())
-        )
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
+        return await self._repo.get_template_history(session, template_id, tenant_key)
 
     async def get_archive_by_id(
         self,
@@ -826,14 +749,7 @@ class TemplateService:
             ...     session, "arc-456", "tpl-123", "tenant-1"
             ... )
         """
-        # ORIGINAL QUERY: history.py line 91-98 (restore_template endpoint)
-        stmt = select(TemplateArchive).where(
-            TemplateArchive.id == archive_id,
-            TemplateArchive.template_id == template_id,
-            TemplateArchive.tenant_key == tenant_key,
-        )
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self._repo.get_archive_by_id(session, archive_id, template_id, tenant_key)
 
     async def create_template_archive(
         self,
@@ -880,7 +796,7 @@ class TemplateService:
             usage_count_at_archive=template.usage_count,
             avg_generation_ms_at_archive=template.avg_generation_ms,
         )
-        session.add(archive)
+        await self._repo.add_archive(session, archive)
         return archive
 
     async def restore_template_from_archive(
@@ -968,8 +884,92 @@ class TemplateService:
         Example:
             >>> exists = await service.check_cross_tenant_template_exists(session, "tpl-123")
         """
-        # ORIGINAL QUERIES: crud.py line 311-314, history.py lines 169-172, 231-234
-        # (update_template, reset_template, reset_system_instructions cross-tenant checks)
-        stmt = select(AgentTemplate).where(AgentTemplate.id == template_id)
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none() is not None
+        return await self._repo.check_template_exists_any_tenant(session, template_id)
+
+    # ============================================================================
+    # Export Tracking (Sprint 003b)
+    # ============================================================================
+
+    async def mark_templates_exported(
+        self,
+        template_ids: list[str],
+        tenant_key: str,
+    ) -> int:
+        """
+        Update last_exported_at timestamp for a set of templates.
+
+        Used by list_agent_templates MCP tool after exporting templates
+        to detect staleness on next export.
+
+        Args:
+            template_ids: List of template UUIDs to mark as exported.
+            tenant_key: Tenant isolation key (REQUIRED).
+
+        Returns:
+            Number of templates updated.
+
+        Example:
+            >>> updated = await service.mark_templates_exported(
+            ...     ["tpl-1", "tpl-2"], "tenant-1"
+            ... )
+        """
+        from datetime import datetime, timezone
+
+        if not template_ids:
+            return 0
+
+        export_timestamp = datetime.now(timezone.utc)
+
+        async with self._get_session() as session:
+            updated_count = await self._repo.update_exported_timestamps(
+                session, template_ids, tenant_key, export_timestamp
+            )
+            self._logger.info(
+                "Updated last_exported_at for %d template(s) via MCP export",
+                updated_count,
+            )
+            return updated_count
+
+    # ============================================================================
+    # Session Commit Helpers (write discipline — no endpoint commits)
+    # ============================================================================
+
+    async def add_and_commit_template(
+        self,
+        session: AsyncSession,
+        template: "AgentTemplate",
+    ) -> "AgentTemplate":
+        """
+        Add a new template to the session, commit, and refresh.
+
+        Used by endpoints that construct the AgentTemplate entity themselves
+        (e.g., create_template with complex validation logic).
+
+        Args:
+            session: Database session
+            template: Fully constructed AgentTemplate ORM object
+
+        Returns:
+            The refreshed AgentTemplate after commit.
+        """
+        return await self._repo.add_and_commit_template(session, template)
+
+    async def commit_and_refresh_template(
+        self,
+        session: AsyncSession,
+        template: "AgentTemplate",
+    ) -> "AgentTemplate":
+        """
+        Commit pending changes and refresh the template.
+
+        Used after chained service operations (archive + restore, archive + reset)
+        that mutate the template in-session but do not commit.
+
+        Args:
+            session: Database session
+            template: AgentTemplate ORM object with pending changes
+
+        Returns:
+            The refreshed AgentTemplate after commit.
+        """
+        return await self._repo.commit_and_refresh_template(session, template)

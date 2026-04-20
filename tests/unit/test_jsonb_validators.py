@@ -27,10 +27,7 @@ from giljo_mcp.schemas.jsonb_validators import (
     SetupValidationEntry,
     validate_git_commits,
     validate_job_metadata,
-    validate_memory_metrics,
     validate_product_memory,
-    validate_session_data,
-    validate_template_metadata,
     validate_tuning_state,
 )
 
@@ -327,24 +324,6 @@ class TestValidateJobMetadata:
             validate_job_metadata({"template_name": ["invalid"]})
 
 
-class TestValidateTemplateMetadata:
-    """Tests for validate_template_metadata convenience function."""
-
-    def test_none_returns_none(self):
-        assert validate_template_metadata(None) is None
-
-    def test_valid_data_returns_dict(self):
-        result = validate_template_metadata({"capabilities": ["review"]})
-        assert result["capabilities"] == ["review"]
-
-    def test_defaults_populated(self):
-        result = validate_template_metadata({})
-        assert result["capabilities"] == []
-        assert result["expertise"] == []
-        assert result["typical_tasks"] == []
-        assert result["tools"] == []
-
-
 class TestValidateGitCommits:
     """Tests for validate_git_commits convenience function."""
 
@@ -368,33 +347,6 @@ class TestValidateGitCommits:
     def test_empty_list(self):
         result = validate_git_commits([])
         assert result == []
-
-
-class TestValidateMemoryMetrics:
-    """Tests for validate_memory_metrics convenience function."""
-
-    def test_none_returns_none(self):
-        assert validate_memory_metrics(None) is None
-
-    def test_valid_data(self):
-        result = validate_memory_metrics({"test_coverage": 92.5, "lines_added": 50})
-        assert result["test_coverage"] == 92.5
-        assert result["lines_added"] == 50
-
-    def test_extra_keys_preserved(self):
-        result = validate_memory_metrics({"custom_metric": 42})
-        assert result["custom_metric"] == 42
-
-
-class TestValidateSessionData:
-    """Tests for validate_session_data convenience function."""
-
-    def test_none_returns_none(self):
-        assert validate_session_data(None) is None
-
-    def test_valid_data(self):
-        result = validate_session_data({"client_info": {"name": "test"}})
-        assert result["client_info"]["name"] == "test"
 
 
 class TestValidateProductMemory:

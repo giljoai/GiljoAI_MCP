@@ -23,6 +23,8 @@ from .models import AgentTemplate
 
 logger = logging.getLogger(__name__)
 
+REDIS_CACHE_TTL_SECONDS = 3600  # 1 hour
+
 
 class TemplateCache:
     """
@@ -131,7 +133,7 @@ class TemplateCache:
 
             if self.redis:
                 try:
-                    await self._set_in_redis(cache_key, template, ttl=3600)
+                    await self._set_in_redis(cache_key, template, ttl=REDIS_CACHE_TTL_SECONDS)
                 except (ValueError, KeyError, RuntimeError) as e:
                     logger.warning(f"Redis cache write error: {e}")
 

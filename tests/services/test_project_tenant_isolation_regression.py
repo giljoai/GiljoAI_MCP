@@ -157,7 +157,7 @@ async def test_restore_project_blocks_cross_tenant(db_session, two_tenant_projec
 
     # Tenant A tries to restore tenant B's cancelled project
     with pytest.raises(ResourceNotFoundError) as exc_info:
-        await service.restore_project(
+        await service.deletion.restore_project(
             project_id=cancelled_b.id,
             tenant_key=tenant_a,
         )
@@ -180,7 +180,7 @@ async def test_restore_project_same_tenant_succeeds(db_session, two_tenant_proje
     service = two_tenant_projects["service"]
 
     # Tenant A restores their own deleted project
-    result = await service.restore_project(
+    result = await service.deletion.restore_project(
         project_id=deleted_a.id,
         tenant_key=tenant_a,
     )
@@ -204,7 +204,7 @@ async def test_restore_project_requires_tenant_key(db_session, two_tenant_projec
     service = two_tenant_projects["service"]
 
     with pytest.raises(TypeError):
-        await service.restore_project(project_id=cancelled_b.id)
+        await service.deletion.restore_project(project_id=cancelled_b.id)
 
 
 # ============================================================================
@@ -228,7 +228,7 @@ async def test_project_service_cross_tenant_audit(db_session, two_tenant_project
 
     # 1. Restore cross-tenant — should raise
     try:
-        await service.restore_project(project_id=cancelled_b.id, tenant_key=tenant_a)
+        await service.deletion.restore_project(project_id=cancelled_b.id, tenant_key=tenant_a)
         violations.append("restore_project() allowed cross-tenant restoration")
     except (ResourceNotFoundError, ValidationError):
         pass

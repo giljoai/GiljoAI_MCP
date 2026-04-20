@@ -9,16 +9,17 @@ Handles database connection, table creation, and configuration loading.
 Extracted from api/app.py lifespan function (lines ~160-214).
 """
 
+import logging
 import os
 
 from api.app_state import APIState
 from giljo_mcp.config_manager import get_config
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.logging import ErrorCode, get_logger
+from giljo_mcp.logging import ErrorCode
 from giljo_mcp.system_prompts import SystemPromptService
 
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 async def init_database(state: APIState) -> None:
@@ -39,9 +40,9 @@ async def init_database(state: APIState) -> None:
         # Bind address derived from install-time network choice (127.0.0.1 for localhost, 0.0.0.0 for LAN/WAN with HTTPS via mkcert)
     except Exception as e:  # Broad catch: database initialization resilience
         logger.error(
-            "config_load_failed",
-            error_code=ErrorCode.API_INTERNAL_ERROR.value,
-            error_message=str(e),
+            "config_load_failed error_code=%s error_message=%s",
+            ErrorCode.API_INTERNAL_ERROR.value,
+            str(e),
             exc_info=True,
         )
         raise
@@ -64,18 +65,17 @@ async def init_database(state: APIState) -> None:
             logger.debug(
                 f"Database config: host={state.config.database.host}, port={state.config.database.port}, database={state.config.database.database_name}"
             )
-        except Exception as e:  # Broad catch: database initialization resilience
+        except Exception:  # Broad catch: database initialization resilience
             logger.exception(
-                "database_url_build_failed",
-                error_code=ErrorCode.DB_CONNECTION_FAILED.value,
-                error_message=str(e),
+                "database_url_build_failed error_code=%s",
+                ErrorCode.DB_CONNECTION_FAILED.value,
             )
             raise
 
     if not db_url:
         logger.error(
-            "database_config_missing",
-            error_code=ErrorCode.DB_CONNECTION_FAILED.value,
+            "database_config_missing error_code=%s",
+            ErrorCode.DB_CONNECTION_FAILED.value,
         )
         raise ValueError("Database URL not configured. PostgreSQL is required.")
 
@@ -93,9 +93,9 @@ async def init_database(state: APIState) -> None:
         logger.info("System prompt service initialized")
     except Exception as e:  # Broad catch: database initialization resilience
         logger.error(
-            "database_init_failed",
-            error_code=ErrorCode.DB_CONNECTION_FAILED.value,
-            error_message=str(e),
+            "database_init_failed error_code=%s error_message=%s",
+            ErrorCode.DB_CONNECTION_FAILED.value,
+            str(e),
             exc_info=True,
         )
         raise

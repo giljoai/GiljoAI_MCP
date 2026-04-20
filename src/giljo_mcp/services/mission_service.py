@@ -22,7 +22,6 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 
-from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -36,8 +35,8 @@ from giljo_mcp.models import (
     AgentExecution,
     AgentJob,
     AgentTemplate,
-    Project,
 )
+from giljo_mcp.repositories.mission_repository import MissionRepository
 from giljo_mcp.schemas.service_responses import (
     MissionResponse,
     MissionUpdateResult,
@@ -80,6 +79,7 @@ class MissionService:
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._mission_planner = None
         self._template_generator = None
+        self._repo = MissionRepository()
         self._orchestration = MissionOrchestrationService(
             db_manager=db_manager,
             tenant_manager=tenant_manager,
@@ -179,8 +179,8 @@ class MissionService:
                     execution.last_progress_at = now
                     status_changed = True
 
-                    await session.commit()
-                    await session.refresh(execution)
+                    await self._repo.commit(session)
+                    await self._repo.refresh(session, execution)
 
                     self._logger.info(
                         "[JOB SIGNALING] Mission started via get_agent_mission",
@@ -281,60 +281,14 @@ class MissionService:
         """
         # Use provided session or create new one
         if session:
-            # Use provided session (no context manager, caller manages session)
-            # Try product-specific template first (if product_id provided)
-            if product_id:
-                stmt = select(AgentTemplate).where(
-                    AgentTemplate.tenant_key == tenant_key,
-                    AgentTemplate.role == role,
-                    AgentTemplate.product_id == product_id,
-                    AgentTemplate.is_active,
-                )
-                result = await session.execute(stmt)
-                template = result.scalar_one_or_none()
-                if template:
-                    self._logger.info(
-                        f"[_get_agent_template_internal] Found product-specific template for "
-                        f"role={role}, product={product_id}, tenant={tenant_key}"
-                    )
-                    return template
-
-            # Try tenant-specific template (no product_id constraint)
-            stmt = select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == role,
-                AgentTemplate.product_id.is_(None),
-                AgentTemplate.is_active,
-            )
-            result = await session.execute(stmt)
-            template = result.scalar_one_or_none()
+            template = await self._repo.get_template_by_role(session, tenant_key, role, product_id)
             if template:
-                self._logger.info(
-                    f"[_get_agent_template_internal] Found tenant-specific template for role={role}, tenant={tenant_key}"
+                self._logger.info(f"[_get_agent_template_internal] Found template for role={role}, tenant={tenant_key}")
+            else:
+                self._logger.warning(
+                    f"[_get_agent_template_internal] No template found for role={role}, tenant={tenant_key}, product={product_id}"
                 )
-                return template
-
-            # Try system default template (is_default=True, any tenant)
-            # Use .limit(1) since multiple system defaults may exist for same role
-            stmt = (
-                select(AgentTemplate)
-                .where(
-                    AgentTemplate.role == role,
-                    AgentTemplate.is_default,
-                    AgentTemplate.is_active,
-                )
-                .limit(1)
-            )
-            result = await session.execute(stmt)
-            template = result.scalar_one_or_none()
-            if template:
-                self._logger.info(f"[_get_agent_template_internal] Found system default template for role={role}")
-                return template
-
-            self._logger.warning(
-                f"[_get_agent_template_internal] No template found for role={role}, tenant={tenant_key}, product={product_id}"
-            )
-            return None
+            return template
         # Create new session
         async with self._get_session() as db_session:
             return await self._get_agent_template_internal(role, tenant_key, product_id, db_session)
@@ -346,34 +300,14 @@ class MissionService:
         tenant_key: str,
     ) -> tuple[AgentJob, AgentExecution]:
         """Fetch the job and its latest active execution, raising on not-found."""
-        job_result = await session.execute(
-            select(AgentJob).where(
-                and_(
-                    AgentJob.job_id == job_id,
-                    AgentJob.tenant_key == tenant_key,
-                )
-            )
-        )
-        job = job_result.scalar_one_or_none()
+        job = await self._repo.get_job(session, tenant_key, job_id)
 
         if not job:
             raise ResourceNotFoundError(
                 message=f"Agent job {job_id} not found", context={"job_id": job_id, "tenant_key": tenant_key}
             )
 
-        exec_result = await session.execute(
-            select(AgentExecution)
-            .where(
-                and_(
-                    AgentExecution.job_id == job_id,
-                    AgentExecution.tenant_key == tenant_key,
-                    AgentExecution.status.not_in(["complete", "closed", "decommissioned"]),
-                )
-            )
-            .order_by(AgentExecution.started_at.desc())
-            .limit(1)
-        )
-        execution = exec_result.scalar_one_or_none()
+        execution = await self._repo.get_active_execution(session, tenant_key, job_id)
 
         if not execution:
             raise ResourceNotFoundError(
@@ -395,12 +329,7 @@ class MissionService:
         Returns:
             Tuple of (project, gate_response). gate_response is non-None if blocked.
         """
-        from giljo_mcp.models.projects import Project
-
-        project_res = await session.execute(
-            select(Project).where(Project.id == job.project_id, Project.tenant_key == tenant_key)
-        )
-        project = project_res.scalar_one_or_none()
+        project = await self._repo.get_project_by_id(session, tenant_key, job.project_id)
 
         if project and project.implementation_launched_at is None:
             if job.job_type == "orchestrator":
@@ -449,17 +378,7 @@ class MissionService:
         if not job.project_id:
             return [execution], {job.job_id: job.mission}, None
 
-        all_exec_result = await session.execute(
-            select(AgentExecution, AgentJob)
-            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-            .where(
-                and_(
-                    AgentJob.project_id == job.project_id,
-                    AgentExecution.tenant_key == tenant_key,
-                )
-            )
-        )
-        rows = all_exec_result.all()
+        rows = await self._repo.get_project_executions_with_jobs(session, tenant_key, job.project_id)
         all_project_executions = [row[0] for row in rows]
 
         mission_lookup: dict[str, str] = {}
@@ -504,15 +423,7 @@ class MissionService:
         job_id = job.job_id
 
         if getattr(job, "template_id", None):
-            template_result = await session.execute(
-                select(AgentTemplate).where(
-                    and_(
-                        AgentTemplate.id == job.template_id,
-                        AgentTemplate.tenant_key == tenant_key,
-                    )
-                )
-            )
-            identity_template = template_result.scalar_one_or_none()
+            identity_template = await self._repo.get_template_by_id(session, tenant_key, job.template_id)
 
             if identity_template:
                 identity_parts = []
@@ -696,19 +607,7 @@ class MissionService:
         """
         try:
             async with self._get_session() as session:
-                from sqlalchemy import and_, select
-
-                from giljo_mcp.models.agent_identity import AgentJob
-
-                result = await session.execute(
-                    select(AgentJob).where(
-                        and_(
-                            AgentJob.job_id == job_id,
-                            AgentJob.tenant_key == tenant_key,
-                        )
-                    )
-                )
-                job = result.scalar_one_or_none()
+                job = await self._repo.get_job(session, tenant_key, job_id)
 
                 if not job:
                     raise ResourceNotFoundError(
@@ -726,7 +625,7 @@ class MissionService:
                     )
 
                 job.mission = mission
-                await session.commit()
+                await self._repo.commit(session)
 
                 # Emit WebSocket event for UI update
                 if self._websocket_manager:
@@ -753,31 +652,14 @@ class MissionService:
                 # staging is structurally complete -- emit a deterministic signal
                 # so the UI doesn't rely solely on the LLM sending a broadcast message.
                 if job.job_type == "orchestrator" and job.project_id:
-                    agent_count_result = await session.execute(
-                        select(func.count())
-                        .select_from(AgentExecution)
-                        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                        .where(
-                            AgentJob.project_id == job.project_id,
-                            AgentJob.tenant_key == tenant_key,
-                            AgentExecution.agent_display_name != "orchestrator",
-                            AgentExecution.status.not_in(["decommissioned"]),
-                        )
-                    )
-                    agent_count = agent_count_result.scalar() or 0
+                    agent_count = await self._repo.count_non_orchestrator_agents(session, tenant_key, job.project_id)
 
                     if agent_count > 0:
-                        project_result = await session.execute(
-                            select(Project).where(
-                                Project.id == job.project_id,
-                                Project.tenant_key == tenant_key,
-                            )
-                        )
-                        project = project_result.scalar_one_or_none()
+                        project = await self._repo.get_project_by_id(session, tenant_key, job.project_id)
                         if project and project.staging_status != "staging_complete":
                             project.staging_status = "staging_complete"
                             project.updated_at = datetime.now(timezone.utc)
-                            await session.commit()
+                            await self._repo.commit(session)
 
                             if self._websocket_manager:
                                 try:

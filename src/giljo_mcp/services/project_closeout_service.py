@@ -16,7 +16,6 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -25,8 +24,9 @@ from giljo_mcp.exceptions import (
     ResourceNotFoundError,
     ValidationError,
 )
-from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.projects import Project
+from giljo_mcp.repositories.project_lifecycle_repository import ProjectLifecycleRepository
+from giljo_mcp.repositories.project_repository import ProjectRepository
 from giljo_mcp.schemas.service_responses import (
     CanCloseResult,
     CloseoutData,
@@ -54,6 +54,8 @@ class ProjectCloseoutService:
         self._test_session = test_session
         self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._project_repo = ProjectRepository()
+        self._lifecycle_repo = ProjectLifecycleRepository()
 
     def _get_session(self):
         """Get a session, preferring an injected test session when provided."""
@@ -98,10 +100,7 @@ class ProjectCloseoutService:
         try:
             async with self._get_session() as session:
                 # Fetch project with tenant validation
-                result = await session.execute(
-                    select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
-                )
-                project = result.scalar_one_or_none()
+                project = await self._project_repo.get_by_id(session, tenant_key, project_id)
 
                 if not project:
                     raise ResourceNotFoundError(
@@ -116,19 +115,9 @@ class ProjectCloseoutService:
                 project.closeout_executed_at = datetime.now(timezone.utc)
 
                 # Decommission associated agents with smart lifecycle drain (Handover 0498)
-                # Query AgentExecution records via join with AgentJob
-                agent_result = await session.execute(
-                    select(AgentExecution)
-                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                    .where(
-                        and_(
-                            AgentJob.project_id == project_id,
-                            AgentJob.tenant_key == tenant_key,
-                            AgentExecution.status.notin_(["complete", "decommissioned"]),
-                        )
-                    )
+                executions_to_decommission = await self._lifecycle_repo.get_active_agent_executions(
+                    session, tenant_key, project_id
                 )
-                executions_to_decommission = agent_result.scalars().all()
                 decommissioned_ids = []
 
                 for execution in executions_to_decommission:
@@ -136,7 +125,7 @@ class ProjectCloseoutService:
                     execution.updated_at = datetime.now(timezone.utc)
                     decommissioned_ids.append(execution.job_id)
 
-                await session.commit()
+                await self._project_repo.commit(session)
 
                 self._logger.info(
                     f"Closed out project {project_id} with {len(decommissioned_ids)} agents decommissioned"
@@ -170,6 +159,105 @@ class ProjectCloseoutService:
                 message=f"Failed to close out project: {e!s}",
                 context={"project_id": project_id, "tenant_key": tenant_key},
             ) from e
+
+    async def decommission_project_agents(
+        self,
+        session: AsyncSession,
+        project_id: str,
+        tenant_key: str,
+    ) -> list[str]:
+        """
+        Decommission all active agents for a project (session-in pattern).
+
+        Sets execution status to 'decommissioned' for any still-active agents.
+        Caller owns the session and transaction boundary.
+
+        Args:
+            session: Active database session (caller-managed).
+            project_id: Project UUID being closed.
+            tenant_key: Tenant isolation key.
+
+        Returns:
+            List of agent display names that were decommissioned.
+        """
+        active_statuses = ["waiting", "working", "blocked", "silent"]
+        executions = await self._lifecycle_repo.get_executions_by_status(
+            session, tenant_key, project_id, active_statuses
+        )
+
+        decommissioned_names: list[str] = []
+        for execution in executions:
+            execution.status = "decommissioned"
+            decommissioned_names.append(execution.agent_display_name or execution.agent_name or execution.agent_id)
+
+        if decommissioned_names:
+            await self._lifecycle_repo.flush(session)
+
+        return decommissioned_names
+
+    async def close_completed_agents(
+        self,
+        session: AsyncSession,
+        project_id: str,
+        tenant_key: str,
+    ) -> list[str]:
+        """
+        Transition all 'complete' agents to 'closed' during project closeout (session-in pattern).
+
+        Normal closeout = accepted work. Agents in 'complete' become 'closed'
+        (final acceptance). Caller owns the session and transaction boundary.
+
+        Args:
+            session: Active database session (caller-managed).
+            project_id: Project UUID being closed.
+            tenant_key: Tenant isolation key.
+
+        Returns:
+            List of agent display names that were closed.
+        """
+        executions = await self._lifecycle_repo.get_executions_by_status(session, tenant_key, project_id, ["complete"])
+
+        closed_names: list[str] = []
+        for execution in executions:
+            execution.status = "closed"
+            closed_names.append(execution.agent_display_name or execution.agent_name or execution.agent_id)
+
+        if closed_names:
+            await self._lifecycle_repo.flush(session)
+            self._logger.info(
+                "Closed %d agent(s) during project closeout: %s",
+                len(closed_names),
+                ", ".join(closed_names),
+            )
+
+        return closed_names
+
+    async def close_completed_agents_with_commit(
+        self,
+        project_id: str,
+        tenant_key: str,
+    ) -> list[str]:
+        """
+        Transition 'complete' agents to 'closed' and commit in a single transaction.
+
+        Session-owning wrapper around close_completed_agents for use from endpoints
+        that should not manage sessions directly.
+
+        Args:
+            project_id: Project UUID being closed.
+            tenant_key: Tenant isolation key.
+
+        Returns:
+            List of agent display names that were closed.
+        """
+        async with self._get_session() as session:
+            closed_names = await self.close_completed_agents(
+                session=session,
+                project_id=project_id,
+                tenant_key=tenant_key,
+            )
+            await self._project_repo.commit(session)
+            return closed_names
 
     async def get_closeout_data(self, project_id: str, db_session: Any | None = None) -> CloseoutData:
         """
@@ -366,7 +454,7 @@ class ProjectCloseoutService:
         ]
 
         project.closeout_prompt = prompt
-        await session.commit()
+        await self._project_repo.commit(session)
 
         return CloseoutPromptResult(
             prompt=prompt,
@@ -379,18 +467,7 @@ class ProjectCloseoutService:
         """
         Aggregate agent status counts for closeout operations (migrated to AgentExecution - Handover 0367a).
         """
-        job_counts_result = await session.execute(
-            select(AgentExecution.status, func.count(AgentExecution.agent_id).label("count"))
-            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-            .where(
-                and_(
-                    AgentJob.project_id == project_id,
-                    AgentJob.tenant_key == tenant_key,
-                )
-            )
-            .group_by(AgentExecution.status)
-        )
-        job_counts = dict(job_counts_result.all())
+        job_counts = await self._lifecycle_repo.get_agent_status_counts(session, tenant_key, project_id)
 
         total_agents = sum(job_counts.values())
         completed_agents = job_counts.get("complete", 0)
@@ -413,7 +490,4 @@ class ProjectCloseoutService:
         """
         Fetch a project scoped to tenant for closeout operations.
         """
-        result = await session.execute(
-            select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
-        )
-        return result.scalar_one_or_none()
+        return await self._project_repo.get_by_id(session, tenant_key, project_id)

@@ -113,7 +113,7 @@ describe('UserSettings.vue', () => {
           SerenaAdvancedSettingsDialog: true,
           ContextPriorityConfig: true,
           ProductIntroTour: true,
-          GitAdvancedSettingsDialog: true,
+
           McpIntegrationCard: {
             name: 'McpIntegrationCard',
             template: '<div class="mcp-integration-card-stub"></div>',

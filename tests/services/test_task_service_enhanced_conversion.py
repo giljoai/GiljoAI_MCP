@@ -162,7 +162,7 @@ async def test_convert_to_project_permission_denied(task_service, test_task, db_
         id=str(uuid4()),
         username=f"unauthorized_{uuid4().hex[:6]}",
         email=f"unauth_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hashpw("Password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        password_hash=bcrypt.hashpw(b"Password123", bcrypt.gensalt()).decode("utf-8"),
         role="developer",
         tenant_key=test_tenant_key,
         is_active=True,

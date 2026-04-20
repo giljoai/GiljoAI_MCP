@@ -63,7 +63,7 @@ class TestProductCRUDWorkflows:
         assert deactivate_result.is_active is False
 
         # 5. Soft delete product (0731b: returns DeleteResult Pydantic model)
-        delete_result = await service.delete_product(product_id)
+        delete_result = await service.lifecycle.delete_product(product_id)
         assert isinstance(delete_result, DeleteResult)
         assert delete_result.deleted is True
         assert delete_result.deleted_at is not None
@@ -73,12 +73,12 @@ class TestProductCRUDWorkflows:
         assert len(list_result) == 0
 
         # Verify in deleted list (0731b: returns list[Product])
-        deleted_list = await service.list_deleted_products()
+        deleted_list = await service.lifecycle.list_deleted_products()
         assert len(deleted_list) >= 1
         assert any(str(p.id) == product_id for p in deleted_list)
 
         # 6. Restore product (0731b: returns Product ORM model)
-        restore_result = await service.restore_product(product_id)
+        restore_result = await service.lifecycle.restore_product(product_id)
         assert isinstance(restore_result, Product)
 
         # Verify back in regular list (0731b: returns list[Product])
@@ -139,7 +139,7 @@ class TestProductCRUDWorkflows:
         product1_id = str(create1.id)
 
         # Soft delete
-        await service.delete_product(product1_id)
+        await service.lifecycle.delete_product(product1_id)
 
         # Create new product with same name - should succeed
         create2 = await service.create_product(name="Reusable Name")
@@ -177,7 +177,7 @@ class TestProductProjectCascade:
             await session.commit()
 
         # Get cascade impact (0731b: returns CascadeImpact Pydantic model)
-        impact_result = await service.get_cascade_impact(product_id)
+        impact_result = await service.memory.get_cascade_impact(product_id)
         assert isinstance(impact_result, CascadeImpact)
         assert impact_result.total_projects == 3
 
@@ -206,7 +206,7 @@ class TestProductProjectCascade:
             await session.commit()
 
         # Delete product (0731b: returns DeleteResult Pydantic model)
-        delete_result = await service.delete_product(product_id)
+        delete_result = await service.lifecycle.delete_product(product_id)
         assert isinstance(delete_result, DeleteResult)
         assert delete_result.deleted is True
         assert delete_result.deleted_at is not None

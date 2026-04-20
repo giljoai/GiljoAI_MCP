@@ -314,7 +314,10 @@ def check_database_connectivity() -> Tuple[bool, Optional[str]]:
             db_port = os.getenv("DB_PORT", "5432")
             db_name = os.getenv("DB_NAME", "giljo_mcp")
             db_user = os.getenv("DB_USER", "postgres")
-            db_password = os.getenv("DB_PASSWORD", "4010")
+            db_password = os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD")
+
+            if not db_password:
+                raise SystemExit("Database password not configured. Run install.py or set POSTGRES_PASSWORD in .env")
 
             from urllib.parse import quote_plus
 
@@ -1163,7 +1166,7 @@ def _get_database_url() -> Optional[str]:
         db_port = os.getenv("DB_PORT", "5432")
         db_name = os.getenv("DB_NAME", "giljo_mcp")
         db_user = os.getenv("DB_USER", "postgres")
-        db_password = os.getenv("DB_PASSWORD", "")
+        db_password = os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD", "")
         if not db_password:
             return None
         return f"postgresql://{db_user}:{quote_plus(db_password)}@{db_host}:{db_port}/{db_name}"

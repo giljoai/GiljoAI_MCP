@@ -136,7 +136,7 @@ async def test_get_active_project_counts_only_own_tenant(two_tenant_products):
         test_session=data["db_session"],
     )
 
-    result = await service.get_active_project()
+    result = await service.query.get_active_project()
 
     # Should return tenant A's active project with correct counts
     assert result is not None
@@ -212,14 +212,14 @@ async def test_medium_defense_in_depth_audit(two_tenant_products):
         test_session=data["db_session"],
     )
     try:
-        await product_service_a.get_cascade_impact(product_id=data["product_b"].id)
+        await product_service_a.memory.get_cascade_impact(product_id=data["product_b"].id)
         violations.append("get_cascade_impact() allowed cross-tenant access")
     except ResourceNotFoundError:
         pass
 
     # 2. get_product_statistics cross-tenant
     try:
-        await product_service_a.get_product_statistics(product_id=data["product_b"].id)
+        await product_service_a.memory.get_product_statistics(product_id=data["product_b"].id)
         violations.append("get_product_statistics() allowed cross-tenant access")
     except ResourceNotFoundError:
         pass

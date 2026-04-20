@@ -194,39 +194,60 @@
 
       <!-- Modal actions -->
       <div class="dlg-footer">
-        <v-btn
-          color="primary"
-          variant="elevated"
-          :loading="continueLoading"
-          :disabled="closeoutLoading"
-          prepend-icon="mdi-play-circle"
-          :aria-label="'Continue working on project'"
-          data-testid="continue-working-btn"
-          @click="handleContinueWorking"
-        >
-          Continue Working
-        </v-btn>
-        <v-btn
-          color="success"
-          variant="elevated"
-          :loading="closeoutLoading"
-          :disabled="continueLoading"
-          prepend-icon="mdi-check-circle"
-          :aria-label="'Close out project'"
-          data-testid="close-out-btn"
-          @click="handleCloseOutProject"
-        >
-          Close Out Project
-        </v-btn>
-        <v-spacer />
-        <v-btn
-          variant="text"
-          :disabled="continueLoading || closeoutLoading"
-          :aria-label="'Cancel'"
-          @click="handleClose"
-        >
-          Cancel
-        </v-btn>
+        <!-- HITL Closeout: When orchestrator is closeout-blocked, show amber indicator -->
+        <template v-if="orchestratorCloseoutBlocked">
+          <div class="closeout-blocked-indicator" data-testid="closeout-blocked-indicator">
+            <v-icon icon="mdi-clipboard-check-outline" size="18" class="closeout-blocked-icon" />
+            <div class="closeout-blocked-text">
+              <span class="closeout-blocked-label">Decision Required</span>
+              <span class="closeout-blocked-note">The orchestrator is reviewing deferred findings. Please respond in the orchestrator terminal.</span>
+            </div>
+          </div>
+          <v-spacer />
+          <v-btn
+            variant="text"
+            :aria-label="'Cancel'"
+            @click="handleClose"
+          >
+            Cancel
+          </v-btn>
+        </template>
+        <!-- Normal actions: Continue Working / Close Out Project -->
+        <template v-else>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            :loading="continueLoading"
+            :disabled="closeoutLoading"
+            prepend-icon="mdi-play-circle"
+            :aria-label="'Continue working on project'"
+            data-testid="continue-working-btn"
+            @click="handleContinueWorking"
+          >
+            Continue Working
+          </v-btn>
+          <v-btn
+            color="success"
+            variant="elevated"
+            :loading="closeoutLoading"
+            :disabled="continueLoading"
+            prepend-icon="mdi-check-circle"
+            :aria-label="'Close out project'"
+            data-testid="close-out-btn"
+            @click="handleCloseOutProject"
+          >
+            Close Out Project
+          </v-btn>
+          <v-spacer />
+          <v-btn
+            variant="text"
+            :disabled="continueLoading || closeoutLoading"
+            :aria-label="'Cancel'"
+            @click="handleClose"
+          >
+            Cancel
+          </v-btn>
+        </template>
       </div>
     </v-card>
   </v-dialog>
@@ -264,6 +285,10 @@ const props = defineProps({
   projectStatus: {
     type: String,
     default: 'active',
+  },
+  orchestratorCloseoutBlocked: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -458,5 +483,40 @@ const resetState = () => {
 
 :deep(.v-expansion-panel-text__wrapper) {
   padding: 16px 20px;
+}
+
+/* HITL Closeout: Amber blocked indicator in footer */
+.closeout-blocked-indicator {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: $border-radius-md;
+  background: rgba($color-status-warning, 0.10);
+  max-width: 500px;
+}
+
+.closeout-blocked-icon {
+  color: $color-status-warning;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.closeout-blocked-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.closeout-blocked-label {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: $color-status-warning;
+}
+
+.closeout-blocked-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 </style>

@@ -18,7 +18,7 @@ import pytest
 
 def test_build_ws_project_data_includes_description():
     """_build_ws_project_data should include description field."""
-    from giljo_mcp.services.project_service import _build_ws_project_data
+    from giljo_mcp.services.project_helpers import _build_ws_project_data
 
     project = MagicMock()
     project.name = "Test Project"

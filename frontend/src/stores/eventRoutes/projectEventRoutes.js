@@ -1,4 +1,3 @@
-import { useAgentStore } from '../agents'
 import { useAgentJobsStore } from '../agentJobsStore'
 import { useMessageStore } from '../messages'
 import { useProductStore } from '../products'
@@ -37,9 +36,9 @@ export const PROJECT_EVENT_ROUTES = {
       }
 
       if (payload.entity_type === 'agent') {
-        const agentsStore = useAgentStore()
-        agentsStore.handleRealtimeUpdate?.(payload)
-        useAgentJobsStore().handleUpdated?.(payload)
+        const agentJobsStore = useAgentJobsStore()
+        agentJobsStore.handleRealtimeUpdate?.(payload)
+        agentJobsStore.handleUpdated?.(payload)
         return
       }
 

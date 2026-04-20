@@ -14,10 +14,12 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import and_, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from giljo_mcp.models import Product, Project, Task, VisionDocument
 from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+from giljo_mcp.services.dto import MemoryEntryCreateParams
 
 
 logger = logging.getLogger(__name__)
@@ -29,41 +31,14 @@ class ProductMemoryRepository:
     async def create_entry(
         self,
         session: AsyncSession,
-        tenant_key: str,
-        product_id: UUID,
-        sequence: int,
-        entry_type: str,
-        source: str,
-        timestamp: datetime,
-        project_id: UUID | None = None,
-        project_name: str | None = None,
-        summary: str | None = None,
-        key_outcomes: list[str | None] = None,
-        decisions_made: list[str | None] = None,
-        git_commits: list[dict[str, Any | None]] = None,
-        deliverables: list[str | None] = None,
-        metrics: dict[str, Any | None] = None,
-        priority: int = 3,
-        significance_score: float = 0.5,
-        token_estimate: int | None = None,
-        tags: list[str | None] = None,
-        author_job_id: UUID | None = None,
-        author_name: str | None = None,
-        author_type: str | None = None,
+        params: MemoryEntryCreateParams,
     ) -> ProductMemoryEntry:
         """
         Create a new 360 memory entry.
 
         Args:
             session: Database session
-            tenant_key: Tenant isolation key
-            product_id: Parent product ID
-            sequence: Sequence number (must be unique per product)
-            entry_type: Entry type (project_closeout, project_completion, handover_closeout)
-            source: Source tool identifier
-            timestamp: When the entry was created
-            project_id: Source project ID (optional)
-            ... (other fields)
+            params: DTO containing all entry fields (tenant_key, product_id, sequence, etc.)
 
         Returns:
             Created ProductMemoryEntry instance
@@ -71,36 +46,48 @@ class ProductMemoryRepository:
         Raises:
             IntegrityError: If sequence is duplicate for product
         """
+        # Validate JSONB list columns at the write boundary
+        from giljo_mcp.schemas.jsonb_validators import (
+            validate_git_commits,
+            validate_string_list,
+        )
+
+        validated_key_outcomes = validate_string_list(params.key_outcomes, "key_outcomes") or []
+        validated_decisions = validate_string_list(params.decisions_made, "decisions_made") or []
+        validated_deliverables = validate_string_list(params.deliverables, "deliverables") or []
+        validated_tags = validate_string_list(params.tags, "tags", max_items=100, max_length=200) or []
+        validated_git_commits = validate_git_commits(params.git_commits) or []
+
         entry = ProductMemoryEntry(
-            tenant_key=tenant_key,
-            product_id=str(product_id),  # Convert UUID to string (column is String(36))
-            project_id=str(project_id) if project_id else None,  # Convert UUID to string
-            sequence=sequence,
-            entry_type=entry_type,
-            source=source,
-            timestamp=timestamp,
-            project_name=project_name,
-            summary=summary,
-            key_outcomes=key_outcomes or [],
-            decisions_made=decisions_made or [],
-            git_commits=git_commits or [],
-            deliverables=deliverables or [],
-            metrics=metrics or {},
-            priority=priority,
-            significance_score=significance_score,
-            token_estimate=token_estimate,
-            tags=tags or [],
-            author_job_id=str(author_job_id) if author_job_id else None,  # Convert UUID to string
-            author_name=author_name,
-            author_type=author_type,
+            tenant_key=params.tenant_key,
+            product_id=str(params.product_id),  # Convert UUID to string (column is String(36))
+            project_id=str(params.project_id) if params.project_id else None,
+            sequence=params.sequence,
+            entry_type=params.entry_type,
+            source=params.source,
+            timestamp=params.timestamp,
+            project_name=params.project_name,
+            summary=params.summary,
+            key_outcomes=validated_key_outcomes,
+            decisions_made=validated_decisions,
+            git_commits=validated_git_commits,
+            deliverables=validated_deliverables,
+            metrics=params.metrics or {},
+            priority=params.priority,
+            significance_score=params.significance_score,
+            token_estimate=params.token_estimate,
+            tags=validated_tags,
+            author_job_id=str(params.author_job_id) if params.author_job_id else None,
+            author_name=params.author_name,
+            author_type=params.author_type,
         )
         session.add(entry)
         await session.flush()
         await session.refresh(entry)
 
         logger.info(
-            f"Created memory entry {entry.id} for product {product_id} (seq={sequence})",
-            extra={"tenant_key": tenant_key, "entry_type": entry_type},
+            f"Created memory entry {entry.id} for product {params.product_id} (seq={params.sequence})",
+            extra={"tenant_key": params.tenant_key, "entry_type": params.entry_type},
         )
         return entry
 
@@ -248,7 +235,7 @@ class ProductMemoryRepository:
         self,
         session: AsyncSession,
         product_id: UUID,
-        tenant_key: str = "",
+        tenant_key: str,
     ) -> int:
         """
         Get the next available sequence number for a product.
@@ -258,14 +245,15 @@ class ProductMemoryRepository:
         Args:
             session: Database session
             product_id: Product ID
-            tenant_key: Tenant isolation key
+            tenant_key: Tenant isolation key (required, no default)
 
         Returns:
             Next sequence number (1-based)
         """
-        filters = [ProductMemoryEntry.product_id == str(product_id)]
-        if tenant_key:
-            filters.append(ProductMemoryEntry.tenant_key == tenant_key)
+        filters = [
+            ProductMemoryEntry.product_id == str(product_id),
+            ProductMemoryEntry.tenant_key == tenant_key,
+        ]
         stmt = select(func.max(ProductMemoryEntry.sequence)).where(*filters)
         result = await session.execute(stmt)
         max_seq = result.scalar_one_or_none()
@@ -486,3 +474,238 @@ class ProductMemoryRepository:
             )
 
         return total_removed
+
+    # ========================================================================
+    # Product lookups (BE-5022d: moved from product_memory_service.py)
+    # ========================================================================
+
+    async def get_product_by_id(
+        self,
+        session: AsyncSession,
+        product_id: str,
+        tenant_key: str,
+    ) -> Product | None:
+        """
+        Get a product by ID with tenant isolation (non-deleted only).
+
+        Args:
+            session: Active database session
+            product_id: Product UUID
+            tenant_key: Tenant key for isolation
+
+        Returns:
+            Product ORM instance or None
+        """
+        stmt = select(Product).where(
+            and_(
+                Product.id == product_id,
+                Product.tenant_key == tenant_key,
+                Product.deleted_at.is_(None),
+            )
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    # ========================================================================
+    # Cascade impact counts (BE-5022d: moved from product_memory_service.py)
+    # ========================================================================
+
+    async def count_projects(
+        self,
+        session: AsyncSession,
+        product_id: str,
+        tenant_key: str,
+    ) -> int:
+        """
+        Count non-deleted projects for a product.
+
+        Args:
+            session: Active database session
+            product_id: Product UUID
+            tenant_key: Tenant key for isolation
+
+        Returns:
+            Count of non-deleted projects
+        """
+        stmt = select(func.count(Project.id)).where(
+            and_(
+                Project.product_id == product_id,
+                Project.tenant_key == tenant_key,
+                or_(Project.status != "deleted", Project.status.is_(None)),
+            )
+        )
+        result = await session.execute(stmt)
+        return result.scalar() or 0
+
+    async def count_tasks(
+        self,
+        session: AsyncSession,
+        product_id: str,
+        tenant_key: str,
+    ) -> int:
+        """
+        Count tasks for a product.
+
+        Args:
+            session: Active database session
+            product_id: Product UUID
+            tenant_key: Tenant key for isolation
+
+        Returns:
+            Count of tasks
+        """
+        stmt = select(func.count(Task.id)).where(and_(Task.product_id == product_id, Task.tenant_key == tenant_key))
+        result = await session.execute(stmt)
+        return result.scalar() or 0
+
+    async def count_vision_documents(
+        self,
+        session: AsyncSession,
+        product_id: str,
+        tenant_key: str,
+    ) -> int:
+        """
+        Count vision documents for a product.
+
+        Args:
+            session: Active database session
+            product_id: Product UUID
+            tenant_key: Tenant key for isolation
+
+        Returns:
+            Count of vision documents
+        """
+        stmt = select(func.count(VisionDocument.id)).where(
+            and_(VisionDocument.product_id == product_id, VisionDocument.tenant_key == tenant_key)
+        )
+        result = await session.execute(stmt)
+        return result.scalar() or 0
+
+    async def count_unfinished_projects(
+        self,
+        session: AsyncSession,
+        product_id: str,
+        tenant_key: str,
+    ) -> int:
+        """
+        Count active or inactive projects for a product.
+
+        Args:
+            session: Active database session
+            product_id: Product UUID
+            tenant_key: Tenant key for isolation
+
+        Returns:
+            Count of unfinished projects
+        """
+        stmt = select(func.count(Project.id)).where(
+            and_(
+                Project.product_id == product_id,
+                Project.tenant_key == tenant_key,
+                Project.status.in_(["active", "inactive"]),
+            )
+        )
+        result = await session.execute(stmt)
+        return result.scalar() or 0
+
+    async def count_unresolved_tasks(
+        self,
+        session: AsyncSession,
+        product_id: str,
+        tenant_key: str,
+    ) -> int:
+        """
+        Count pending or in-progress tasks for a product.
+
+        Args:
+            session: Active database session
+            product_id: Product UUID
+            tenant_key: Tenant key for isolation
+
+        Returns:
+            Count of unresolved tasks
+        """
+        stmt = select(func.count(Task.id)).where(
+            and_(
+                Task.product_id == product_id,
+                Task.tenant_key == tenant_key,
+                Task.status.in_(["pending", "in_progress"]),
+            )
+        )
+        result = await session.execute(stmt)
+        return result.scalar() or 0
+
+    async def get_memory_entries_paginated(
+        self,
+        session: AsyncSession,
+        product_id: str,
+        tenant_key: str,
+        project_id: str | None = None,
+        limit: int = 10,
+    ) -> tuple[list[ProductMemoryEntry], int]:
+        """
+        Get memory entries with total count for a product.
+
+        Args:
+            session: Active database session
+            product_id: Product UUID
+            tenant_key: Tenant key for isolation
+            project_id: Optional project filter
+            limit: Maximum entries to return
+
+        Returns:
+            Tuple of (entries list, total count)
+        """
+        query = (
+            select(ProductMemoryEntry)
+            .where(
+                ProductMemoryEntry.product_id == product_id,
+                ProductMemoryEntry.tenant_key == tenant_key,
+                ~ProductMemoryEntry.deleted_by_user,
+            )
+            .order_by(ProductMemoryEntry.sequence.desc())
+        )
+
+        if project_id:
+            query = query.where(ProductMemoryEntry.project_id == project_id)
+
+        query = query.limit(limit)
+
+        result = await session.execute(query)
+        entries = list(result.scalars().all())
+
+        # Get total count
+        total_count_stmt = select(func.count(ProductMemoryEntry.id)).where(
+            ProductMemoryEntry.product_id == product_id,
+            ProductMemoryEntry.tenant_key == tenant_key,
+        )
+        total_count_result = await session.execute(total_count_stmt)
+        total_count = total_count_result.scalar_one()
+
+        return entries, total_count
+
+    async def commit(self, session: AsyncSession) -> None:
+        """
+        Commit the current transaction.
+
+        Args:
+            session: Active database session
+        """
+        await session.commit()
+
+    async def refresh_product(
+        self,
+        session: AsyncSession,
+        product: Product,
+    ) -> None:
+        """
+        Refresh a product with its relationships after commit.
+
+        Args:
+            session: Active database session
+            product: Product ORM instance
+        """
+        await session.refresh(
+            product,
+            attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+        )

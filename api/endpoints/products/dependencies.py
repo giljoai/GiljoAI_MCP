@@ -14,6 +14,7 @@ from fastapi import Depends
 from api.dependencies import get_tenant_key
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.services import ProductService
+from giljo_mcp.services.product_memory_service import ProductMemoryService
 from giljo_mcp.services.product_vision_service import ProductVisionService
 
 
@@ -61,3 +62,21 @@ async def get_product_vision_service(
         ProductVisionService instance configured for the current tenant
     """
     return ProductVisionService(db_manager=db_manager, tenant_key=tenant_key)
+
+
+async def get_product_memory_service(
+    tenant_key: str = Depends(get_tenant_key),
+    db_manager: DatabaseManager = Depends(get_db_manager),
+) -> ProductMemoryService:
+    """Get ProductMemoryService instance with tenant isolation.
+
+    BE-5022a: Added dependency for memory entry queries.
+
+    Args:
+        tenant_key: Tenant key from request context
+        db_manager: Database manager instance
+
+    Returns:
+        ProductMemoryService instance configured for the current tenant
+    """
+    return ProductMemoryService(db_manager=db_manager, tenant_key=tenant_key)

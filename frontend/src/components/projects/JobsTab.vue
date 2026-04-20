@@ -105,15 +105,16 @@
             </td>
 
             <!-- Agent Status: Dynamic binding from agent.status -->
+            <!-- HITL Closeout: Pass block_reason for closeout-specific display -->
             <td
               class="status-cell"
               data-testid="status-chip"
               :style="{
-                color: getStatusColor(agent.status),
+                color: getStatusColor(agent.status, agent.block_reason),
                 fontStyle: isStatusItalic(agent.status) ? 'italic' : 'normal'
               }"
             >
-              {{ getStatusLabel(agent.status) }}<span v-if="agent.status === 'working'" class="working-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
+              {{ getStatusLabel(agent.status, agent.block_reason) }}<span v-if="agent.status === 'working'" class="working-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
             </td>
 
             <!-- Duration -->

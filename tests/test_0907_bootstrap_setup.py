@@ -166,6 +166,9 @@ class TestStageCombinedSetup:
                 assert "name =" in content
                 assert "description =" in content
                 assert "developer_instructions" in content
+                assert 'model = "gpt-5.3-codex"' in content
+                assert 'model_reasoning_effort = "medium"' in content
+                assert "gpt-5.2-codex" not in content
 
     @pytest.mark.asyncio
     async def test_zip_filename(self, staging_dir, mock_session):

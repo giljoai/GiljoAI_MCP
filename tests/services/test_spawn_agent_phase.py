@@ -254,7 +254,7 @@ class TestOrchestratorPhaseInstructions:
         )
 
         # Get orchestrator instructions
-        instructions = await service.get_orchestrator_instructions(
+        instructions = await service._mission.get_orchestrator_instructions(
             job_id=result.job_id,
             tenant_key=test_tenant_key,
         )
@@ -313,7 +313,7 @@ class TestOrchestratorPhaseInstructions:
         )
 
         # Get orchestrator instructions
-        instructions = await service.get_orchestrator_instructions(
+        instructions = await service._mission.get_orchestrator_instructions(
             job_id=result.job_id,
             tenant_key=test_tenant_key,
         )

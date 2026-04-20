@@ -57,7 +57,7 @@ async def test_list_users_tenant_isolation(user_service, db_session, test_tenant
         id=str(uuid4()),
         username=f"otheruser_{uuid4().hex[:6]}",
         email=f"other_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hashpw("OtherPassword123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        password_hash=bcrypt.hashpw(b"OtherPassword123", bcrypt.gensalt()).decode("utf-8"),
         tenant_key=other_tenant,
         role="developer",
         is_active=True,
@@ -84,7 +84,7 @@ async def test_list_users_includes_inactive(user_service, db_session, test_tenan
         id=str(uuid4()),
         username=f"inactive_{uuid4().hex[:6]}",
         email=f"inactive_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hashpw("Password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        password_hash=bcrypt.hashpw(b"Password123", bcrypt.gensalt()).decode("utf-8"),
         tenant_key=test_tenant_key,
         role="developer",
         is_active=False,
@@ -138,7 +138,7 @@ async def test_get_user_tenant_isolation(user_service, db_session):
         id=str(uuid4()),
         username=f"otheruser_{uuid4().hex[:6]}",
         email=f"other_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hashpw("Password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        password_hash=bcrypt.hashpw(b"Password123", bcrypt.gensalt()).decode("utf-8"),
         tenant_key=other_tenant,
         role="developer",
         is_active=True,
@@ -301,7 +301,7 @@ async def test_delete_user_not_found(user_service):
 @pytest.mark.asyncio
 async def test_change_role_success(user_service, test_user, db_session):
     """Test successful role change returns User ORM model"""
-    user = await user_service.change_role(user_id=test_user.id, new_role="viewer")
+    user = await user_service.auth.change_role(user_id=test_user.id, new_role="viewer")
 
     assert isinstance(user, User)
     assert user.role == "viewer"
@@ -314,7 +314,7 @@ async def test_change_role_success(user_service, test_user, db_session):
 async def test_change_role_invalid_role(user_service, test_user):
     """Test that change_role rejects invalid roles"""
     with pytest.raises(ValidationError) as exc_info:
-        await user_service.change_role(
+        await user_service.auth.change_role(
             user_id=test_user.id,
             new_role="superuser",  # Invalid
         )
@@ -326,6 +326,6 @@ async def test_change_role_invalid_role(user_service, test_user):
 async def test_change_role_admin_restriction(user_service, admin_user):
     """Test that last admin cannot be demoted"""
     with pytest.raises(AuthorizationError) as exc_info:
-        await user_service.change_role(user_id=admin_user.id, new_role="developer")
+        await user_service.auth.change_role(user_id=admin_user.id, new_role="developer")
 
     assert "admin" in str(exc_info.value).lower()

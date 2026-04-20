@@ -44,12 +44,33 @@ vi.mock('@/stores/products', () => ({
   })
 }))
 
-vi.mock('@/stores/agents', () => ({
-  useAgentStore: () => ({
-    fetchAgents: vi.fn().mockResolvedValue(),
-    agents: []
-  })
-}))
+vi.mock('@/stores/agentJobsStore', async (importOriginal) => {
+  const original = await importOriginal()
+  return {
+    ...original,
+    useAgentJobsStore: () => ({
+      fetchAgents: vi.fn().mockResolvedValue(),
+      agents: [],
+      jobs: [],
+      sortedJobs: [],
+      jobCount: 0,
+      setJobs: vi.fn(),
+      upsertJob: vi.fn(),
+      removeJob: vi.fn(),
+      getJob: vi.fn(),
+      resolveJobId: vi.fn(),
+      handleCreated: vi.fn(),
+      handleUpdated: vi.fn(),
+      handleStatusChanged: vi.fn(),
+      handleProgressUpdate: vi.fn(),
+      handleMessageSent: vi.fn(),
+      handleMessageReceived: vi.fn(),
+      handleMessageAcknowledged: vi.fn(),
+      flushPendingUpdates: vi.fn(),
+      $reset: vi.fn(),
+    }),
+  }
+})
 
 vi.mock('@/stores/projectTabs', () => ({
   useProjectTabsStore: () => ({

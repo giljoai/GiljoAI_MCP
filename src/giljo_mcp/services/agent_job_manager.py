@@ -26,16 +26,15 @@ Design Philosophy:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import BaseGiljoError, ResourceNotFoundError
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.repositories.agent_job_repository import AgentJobRepository
 from giljo_mcp.schemas.jsonb_validators import validate_job_metadata
 from giljo_mcp.tenant import TenantManager
 
@@ -145,6 +144,7 @@ class AgentJobManager:
             >>> print(f"Job ID: {job_id}, Agent ID: {agent_id}")
         """
         try:
+            repo = AgentJobRepository(None)
             async with self._get_session() as session:
                 # Create job (work order)
                 validated_metadata = validate_job_metadata(job_metadata) or {}
@@ -170,11 +170,7 @@ class AgentJobManager:
                     agent_name=agent_name,
                 )
 
-                session.add(job)
-                session.add(execution)
-                await session.commit()
-                await session.refresh(job)
-                await session.refresh(execution)
+                job, execution = await repo.create_job_and_execution_pair(session, job, execution)
 
                 self._logger.info(
                     f"Spawned agent: job_id={job.job_id}, agent_id={execution.agent_id}, "
@@ -221,21 +217,8 @@ class AgentJobManager:
             BaseGiljoError: Database operation failed
         """
         try:
+            repo = AgentJobRepository(None)
             async with self._get_session() as session:
-                job_result = await session.execute(
-                    select(AgentJob).where(
-                        AgentJob.job_id == job_id,
-                        AgentJob.tenant_key == tenant_key,
-                    )
-                )
-                job = job_result.scalar_one_or_none()
-
-                if not job:
-                    raise ResourceNotFoundError(
-                        message=f"AgentJob with job_id={job_id} not found for tenant {tenant_key}",
-                        context={"job_id": job_id, "tenant_key": tenant_key},
-                    )
-
                 new_agent_id = str(uuid4())
                 execution = AgentExecution(
                     agent_id=new_agent_id,
@@ -248,9 +231,13 @@ class AgentJobManager:
                     tool_type="universal",
                 )
 
-                session.add(execution)
-                await session.commit()
-                await session.refresh(execution)
+                try:
+                    await repo.add_execution_for_existing_job(session, tenant_key, job_id, execution)
+                except ValueError as exc:
+                    raise ResourceNotFoundError(
+                        message=f"AgentJob with job_id={job_id} not found for tenant {tenant_key}",
+                        context={"job_id": job_id, "tenant_key": tenant_key},
+                    ) from exc
 
                 self._logger.info(
                     f"Spawned execution: agent_id={new_agent_id} for job_id={job_id}, tenant={tenant_key}"
@@ -298,36 +285,12 @@ class AgentJobManager:
             >>> print(f"Decommissioned {count} execution(s)")
         """
         try:
+            repo = AgentJobRepository(None)
             async with self._get_session() as session:
-                # Get job
-                job_result = await session.execute(
-                    select(AgentJob).where(and_(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key))
-                )
-                job = job_result.scalar_one_or_none()
+                job, executions = await repo.complete_job_with_executions(session, tenant_key, job_id)
 
                 if not job:
                     raise ResourceNotFoundError(message=f"Job {job_id} not found", context={"job_id": job_id})
-
-                # Mark job complete
-                job.status = "completed"
-                job.completed_at = datetime.now(timezone.utc)
-
-                # Decommission ALL executions for this job
-                # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
-                executions_result = await session.execute(
-                    select(AgentExecution).where(
-                        AgentExecution.job_id == job_id, AgentExecution.tenant_key == tenant_key
-                    )
-                )
-                executions = executions_result.scalars().all()
-
-                for execution in executions:
-                    execution.status = "complete"
-
-                await session.commit()
-                await session.refresh(job)
-                for execution in executions:
-                    await session.refresh(execution)
 
                 self._logger.info(f"Completed job {job_id} and marked {len(executions)} execution(s) as complete")
 
@@ -383,20 +346,9 @@ class AgentJobManager:
             ...     print(f"{member['agent_display_name']}: {member['status']}")
         """
         try:
+            repo = AgentJobRepository(None)
             async with self._get_session() as session:
-                # Build query
-                query = select(AgentExecution).where(
-                    and_(AgentExecution.job_id == job_id, AgentExecution.tenant_key == tenant_key)
-                )
-
-                # Filter by status unless include_inactive is True
-                if not include_inactive:
-                    # Only return active statuses (waiting, working, blocked)
-                    query = query.where(AgentExecution.status.in_(["waiting", "working", "blocked"]))
-
-                # Execute query
-                result = await session.execute(query.order_by(AgentExecution.started_at))
-                executions = result.scalars().all()
+                executions = await repo.list_team_executions(session, tenant_key, job_id, include_inactive)
 
                 # Convert to dict format
                 team_members = [

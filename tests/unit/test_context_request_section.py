@@ -25,10 +25,10 @@ from giljo_mcp.template_seeder import (
 )
 
 
-@pytest.mark.asyncio
 class TestContextRequestSection:
     """Test suite for context request instructions (Handover 0109, updated 0813)."""
 
+    @pytest.mark.asyncio
     async def test_context_request_in_full_protocol(self, db_session: AsyncSession):
         """Verify context request guidance is delivered via full_protocol, not system_instructions.
 
@@ -42,6 +42,7 @@ class TestContextRequestSection:
         assert "REQUEST_CONTEXT:" in protocol, "full_protocol should contain REQUEST_CONTEXT prefix"
         assert "Requesting Broader Context" in protocol, "full_protocol should contain context request guidance"
 
+    @pytest.mark.asyncio
     async def test_system_instructions_has_slim_bootstrap(self, db_session: AsyncSession):
         """Verify system_instructions is now slim bootstrap (Handover 0813)."""
         tenant_key = "test_tenant_context_0813"
@@ -62,6 +63,7 @@ class TestContextRequestSection:
                 f"{template.role} should not have context request section in bootstrap"
             )
 
+    @pytest.mark.asyncio
     async def test_full_protocol_has_messaging_prefixes(self, db_session: AsyncSession):
         """Verify full_protocol contains all messaging prefixes including REQUEST_CONTEXT."""
         from giljo_mcp.services.protocol_builder import _generate_agent_protocol
@@ -73,6 +75,7 @@ class TestContextRequestSection:
         assert "READY:" in protocol
         assert "REQUEST_CONTEXT:" in protocol
 
+    @pytest.mark.asyncio
     async def test_full_protocol_has_context_request_specificity_guidance(self, db_session: AsyncSession):
         """Verify full_protocol tells agents to be specific about context needs."""
         from giljo_mcp.services.protocol_builder import _generate_agent_protocol
@@ -81,6 +84,7 @@ class TestContextRequestSection:
         # Should instruct agents to be specific
         assert "specific" in protocol.lower() or "REQUEST_CONTEXT:" in protocol
 
+    @pytest.mark.asyncio
     async def test_full_protocol_instructs_wait_for_response(self, db_session: AsyncSession):
         """Verify full_protocol tells agents to wait for orchestrator response."""
         from giljo_mcp.services.protocol_builder import _generate_agent_protocol
@@ -89,6 +93,7 @@ class TestContextRequestSection:
         assert "receive_messages" in protocol
         assert "wait" in protocol.lower() or "Wait" in protocol
 
+    @pytest.mark.asyncio
     async def test_full_protocol_has_send_message_for_context(self, db_session: AsyncSession):
         """Verify full_protocol references send_message for context requests."""
         from giljo_mcp.services.protocol_builder import _generate_agent_protocol
@@ -96,6 +101,7 @@ class TestContextRequestSection:
         protocol = _generate_agent_protocol(job_id="test-job", tenant_key="test-tenant", agent_name="documenter")
         assert "send_message" in protocol
 
+    @pytest.mark.asyncio
     async def test_full_protocol_warns_against_guessing(self, db_session: AsyncSession):
         """Verify full_protocol tells agents not to guess at ambiguities."""
         from giljo_mcp.services.protocol_builder import _generate_agent_protocol
@@ -123,6 +129,7 @@ class TestContextRequestSection:
             "Orchestrator should mention providing filtered excerpts, not full text"
         )
 
+    @pytest.mark.asyncio
     async def test_non_orchestrator_agents_lack_response_section(self, db_session: AsyncSession):
         """Verify non-orchestrator templates don't have orchestrator-specific response instructions."""
         tenant_key = "test_tenant_non_orch"

@@ -46,27 +46,6 @@ router = APIRouter()
 # Helper Functions
 
 
-def can_modify_task(task: Task, user: User) -> bool:
-    """
-    Check if user can modify a task.
-
-    Args:
-        task: Task to check
-        user: User attempting modification
-
-    Returns:
-        True if user can modify task, False otherwise
-
-    Authorization rules (Handover 0076: removed assignment check):
-    - Admins can modify any task in their tenant
-    - Users can modify tasks they created
-    """
-    if user.role == "admin":
-        return task.tenant_key == user.tenant_key
-
-    return task.tenant_key == user.tenant_key and task.created_by_user_id == user.id
-
-
 def can_delete_task(task: Task, user: User) -> bool:
     """
     Check if user can delete a task.

@@ -8,21 +8,21 @@ Agent Job Messages Endpoint - Handover 0387g
 
 Provides message content for MessageAuditModal.
 Fetches messages where the agent is sender or recipient.
+BE-5022a: All DB access routed through JobQueryService.
 """
 
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import status as http_status
-from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from giljo_mcp.models import Message, User
-from giljo_mcp.models.agent_identity import AgentExecution
-from giljo_mcp.models.tasks import MessageRecipient
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.exceptions import ResourceNotFoundError
+from giljo_mcp.models import User
+from giljo_mcp.services.job_query_service import JobQueryService
 from giljo_mcp.utils.log_sanitizer import sanitize
+
+from .dependencies import get_job_query_service
 
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ async def get_job_messages(
     job_id: str,
     limit: int = Query(50, ge=1, le=200, description="Maximum messages to retrieve (default 50, max 200)"),
     current_user: User = Depends(get_current_active_user),
-    session: AsyncSession = Depends(get_db_session),
+    job_query_service: JobQueryService = Depends(get_job_query_service),
 ):
     """
     Get messages for an agent job (for MessageAuditModal).
@@ -79,7 +79,7 @@ async def get_job_messages(
         job_id: Agent job ID to retrieve messages for
         limit: Maximum messages to retrieve (default 50, max 200)
         current_user: Authenticated user (from dependency)
-        session: Database session (from dependency)
+        job_query_service: Service for job queries (from dependency)
 
     Returns:
         Dictionary with job_id, agent_id, and messages list
@@ -95,54 +95,25 @@ async def get_job_messages(
         "User %s retrieving messages for job %s (limit=%d)", sanitize(current_user.username), sanitize(job_id), limit
     )
 
-    # Get execution to verify tenant access and get agent_id
-    exec_stmt = select(AgentExecution).where(
-        AgentExecution.job_id == job_id,
-        AgentExecution.tenant_key == current_user.tenant_key,
-    )
-    execution = (await session.execute(exec_stmt)).scalar_one_or_none()
-
-    if not execution:
-        logger.warning("Job %s not found for tenant %s", sanitize(job_id), sanitize(current_user.tenant_key))
-        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Job not found")
-
-    # Build agent_id -> display name lookup for sender resolution
-    # Fetch all agents in this tenant for name resolution
-    agents_stmt = select(AgentExecution).where(AgentExecution.tenant_key == current_user.tenant_key)
-    agents_result = await session.execute(agents_stmt)
-    agents = agents_result.scalars().all()
-
-    # Build lookup: agent_id -> "DisplayName" (e.g., "Orchestrator")
-    agent_lookup = {}
-    for agent in agents:
-        display_name = agent.agent_display_name.capitalize() if agent.agent_display_name else "Agent"
-        agent_lookup[agent.agent_id] = display_name
-        # Also add agent_name for resolution (e.g., "impl-alpha" -> "Implementer")
-        if agent.agent_name:
-            agent_lookup[agent.agent_name] = display_name
-
-    # Query messages where agent is sender or recipient
-    msg_stmt = (
-        select(Message)
-        .outerjoin(MessageRecipient)
-        .where(
-            Message.tenant_key == current_user.tenant_key,
-            or_(
-                Message.from_agent_id == execution.agent_id,
-                MessageRecipient.agent_id == execution.agent_id,
-            ),
+    try:
+        result = await job_query_service.get_job_messages(
+            tenant_key=current_user.tenant_key,
+            job_id=job_id,
+            limit=limit,
         )
-        .options(selectinload(Message.recipients))
-        .order_by(Message.created_at.desc())
-        .limit(limit)
-    )
-    messages = (await session.execute(msg_stmt)).scalars().unique().all()
+    except ResourceNotFoundError:
+        logger.warning("Job %s not found for tenant %s", sanitize(job_id), sanitize(current_user.tenant_key))
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Job not found") from None
+
+    agent_id = result["agent_id"]
+    agent_lookup = result["agent_lookup"]
+    messages = result["messages"]
 
     logger.info(
         "Retrieved %d messages for job %s (agent_id=%s, tenant=%s)",
         len(messages),
         sanitize(job_id),
-        execution.agent_id,
+        agent_id,
         sanitize(current_user.tenant_key),
     )
 
@@ -151,7 +122,7 @@ async def get_job_messages(
     for m in messages:
         raw_from_agent = m.from_agent_id or "unknown"
         resolved_from = _resolve_sender_display_name(raw_from_agent, agent_lookup)
-        is_outbound = raw_from_agent == execution.agent_id
+        is_outbound = raw_from_agent == agent_id
 
         # Resolve recipient display name (Handover 0410)
         recipient_ids = [r.agent_id for r in m.recipients] if m.recipients else []
@@ -182,6 +153,6 @@ async def get_job_messages(
 
     return {
         "job_id": job_id,
-        "agent_id": execution.agent_id,
+        "agent_id": agent_id,
         "messages": message_list,
     }

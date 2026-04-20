@@ -357,6 +357,8 @@ class VisionDocumentChunker:
             }
 
         # Create chunk records with vision_document_id link
+        from giljo_mcp.schemas.jsonb_validators import validate_context_keywords
+
         total_tokens = 0
         for idx, chunk_data in enumerate(chunks):
             chunk_record = MCPContextIndex(
@@ -364,7 +366,7 @@ class VisionDocumentChunker:
                 product_id=doc.product_id,
                 vision_document_id=vision_document_id,  # Link to vision document
                 content=chunk_data["content"],
-                keywords=chunk_data.get("keywords", []),
+                keywords=validate_context_keywords(chunk_data.get("keywords", [])) or [],
                 token_count=chunk_data.get("tokens", 0),
                 chunk_order=idx,
                 summary=chunk_data.get("summary", None),
@@ -375,7 +377,7 @@ class VisionDocumentChunker:
         await session.flush()
 
         # Update vision document metadata (async)
-        await vision_repo.mark_chunked(session, vision_document_id, len(chunks), total_tokens)
+        await vision_repo.mark_chunked(session, tenant_key, vision_document_id, len(chunks), total_tokens)
 
         logger.info(
             f"Successfully chunked document {vision_document_id}: "

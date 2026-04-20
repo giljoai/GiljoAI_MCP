@@ -9,6 +9,7 @@ WebSocket manager for real-time updates
 
 import asyncio
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
@@ -18,10 +19,10 @@ from fastapi import HTTPException, WebSocket
 from api.auth_utils import check_subscription_permission
 from api.broker.base import WebSocketBrokerMessage, WebSocketEventBroker
 from api.events.schemas import EventFactory
-from giljo_mcp.logging import ErrorCode, get_logger
+from giljo_mcp.logging import ErrorCode
 
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class WebSocketManager:
@@ -140,12 +141,12 @@ class WebSocketManager:
             except (RuntimeError, ValueError, KeyError) as e:
                 failed_count += 1
                 logger.warning(
-                    "websocket_send_failed",
-                    error_code=ErrorCode.WS_MESSAGE_SEND_FAILED.value,
-                    client_id=client_id,
-                    tenant_key=tenant_key,
-                    event_type=event_type,
-                    error_message=str(e),
+                    "websocket_send_failed error_code=%s client_id=%s tenant_key=%s event_type=%s error_message=%s",
+                    ErrorCode.WS_MESSAGE_SEND_FAILED.value,
+                    client_id,
+                    tenant_key,
+                    event_type,
+                    str(e),
                 )
                 disconnected_clients.append(client_id)
 
@@ -164,11 +165,11 @@ class WebSocketManager:
                 )
             except (RuntimeError, ValueError, KeyError) as e:
                 logger.warning(
-                    "websocket_broker_publish_failed",
-                    error_code=ErrorCode.WS_BROADCAST_FAILED.value,
-                    tenant_key=tenant_key,
-                    event_type=event_type,
-                    error_message=str(e),
+                    "websocket_broker_publish_failed error_code=%s tenant_key=%s event_type=%s error_message=%s",
+                    ErrorCode.WS_BROADCAST_FAILED.value,
+                    tenant_key,
+                    event_type,
+                    str(e),
                 )
 
         logger.info(
@@ -225,12 +226,12 @@ class WebSocketManager:
         auth_context = self.auth_contexts.get(client_id, {})
         if not check_subscription_permission(auth_context, entity_type, entity_id, tenant_key):
             logger.warning(
-                "unauthorized_subscription_attempt",
-                error_code=ErrorCode.WS_AUTHENTICATION_FAILED.value,
-                client_id=client_id,
-                entity_type=entity_type,
-                entity_id=entity_id,
-                tenant_key=tenant_key,
+                "unauthorized_subscription_attempt error_code=%s client_id=%s entity_type=%s entity_id=%s tenant_key=%s",
+                ErrorCode.WS_AUTHENTICATION_FAILED.value,
+                client_id,
+                entity_type,
+                entity_id,
+                tenant_key,
             )
             raise HTTPException(status_code=403, detail="Not authorized to subscribe to this entity")
 
@@ -269,12 +270,11 @@ class WebSocketManager:
             websocket = self.active_connections[client_id]
             try:
                 await websocket.send_json(data)
-            except Exception as e:  # Broad catch: WebSocket handler resilience
+            except Exception:  # Broad catch: WebSocket handler resilience
                 logger.exception(
-                    "websocket_send_json_error",
-                    error_code=ErrorCode.WS_MESSAGE_SEND_FAILED.value,
-                    client_id=client_id,
-                    error_message=str(e),
+                    "websocket_send_json_error error_code=%s client_id=%s",
+                    ErrorCode.WS_MESSAGE_SEND_FAILED.value,
+                    client_id,
                 )
                 self.disconnect(client_id)
 
@@ -284,12 +284,11 @@ class WebSocketManager:
         for client_id, websocket in self.active_connections.items():
             try:
                 await websocket.send_text(message)
-            except Exception as e:  # noqa: PERF203 - Broadcast resilience: continue sending to other clients on error
+            except Exception:  # noqa: PERF203 - Broadcast resilience: continue sending to other clients on error
                 logger.exception(
-                    "websocket_broadcast_error",
-                    error_code=ErrorCode.WS_BROADCAST_FAILED.value,
-                    client_id=client_id,
-                    error_message=str(e),
+                    "websocket_broadcast_error error_code=%s client_id=%s",
+                    ErrorCode.WS_BROADCAST_FAILED.value,
+                    client_id,
                 )
                 disconnected.append(client_id)
 
@@ -346,12 +345,11 @@ class WebSocketManager:
                 if client_id in self.active_connections:
                     try:
                         await self.send_json(message, client_id)
-                    except Exception as e:  # Broad catch: WebSocket handler resilience
+                    except Exception:  # Broad catch: WebSocket handler resilience
                         logger.exception(
-                            "websocket_notify_error",
-                            error_code=ErrorCode.WS_MESSAGE_SEND_FAILED.value,
-                            client_id=client_id,
-                            error_message=str(e),
+                            "websocket_notify_error error_code=%s client_id=%s",
+                            ErrorCode.WS_MESSAGE_SEND_FAILED.value,
+                            client_id,
                         )
                         disconnected.append(client_id)
 
@@ -876,10 +874,10 @@ class WebSocketManager:
         await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
 
         logger.warning(
-            "broadcast_health_alert",
-            job_id=job_id,
-            health_state=health_status.health_state,
-            minutes_since_update=round(health_status.minutes_since_update, 1),
+            "broadcast_health_alert job_id=%s health_state=%s minutes_since_update=%s",
+            job_id,
+            health_status.health_state,
+            round(health_status.minutes_since_update, 1),
         )
 
     async def broadcast_agent_auto_failed(
@@ -908,7 +906,7 @@ class WebSocketManager:
         await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
 
         logger.error(
-            "broadcast_auto_failed",
-            job_id=job_id,
-            reason=reason,
+            "broadcast_auto_failed job_id=%s reason=%s",
+            job_id,
+            reason,
         )

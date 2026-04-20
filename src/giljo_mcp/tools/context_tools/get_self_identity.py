@@ -11,11 +11,12 @@ Handover 0430: Internal tool for fetch_context() self_identity category.
 Fetches the agent's own template from the database, providing behavioral guidance,
 success criteria, and protocol instructions from the AgentTemplate stored in Admin Settings.
 """
+# Read-only tool -- uses direct session.execute() for SELECT queries (no writes)
 
 import json
+import logging
 from typing import Any
 
-import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,7 +24,7 @@ from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import AgentTemplate
 
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def estimate_tokens(data: dict[str, Any]) -> int:
@@ -94,10 +95,10 @@ async def get_self_identity(
             db_manager=db_manager
         )
     """
-    logger.info("fetching_self_identity", agent_name=agent_name, tenant_key=tenant_key)
+    logger.info("fetching_self_identity agent_name=%s tenant_key=%s", agent_name, tenant_key)
 
     if db_manager is None and session is None:
-        logger.error("db_manager or session is required", operation="get_self_identity")
+        logger.error("db_manager or session is required operation=get_self_identity")
         raise ValueError("db_manager or session parameter is required")
 
     if session is not None:
@@ -147,14 +148,14 @@ async def _get_self_identity_impl(
     total_tokens = estimate_tokens(data)
 
     logger.info(
-        "self_identity_fetched",
-        agent_name=agent_name,
-        tenant_key=tenant_key,
-        has_system_instructions=bool(template.system_instructions),
-        has_user_instructions=bool(template.user_instructions),
-        num_behavioral_rules=len(data["behavioral_rules"]),
-        num_success_criteria=len(data["success_criteria"]),
-        estimated_tokens=total_tokens,
+        "self_identity_fetched agent_name=%s tenant_key=%s has_system_instructions=%s has_user_instructions=%s num_behavioral_rules=%s num_success_criteria=%s estimated_tokens=%s",
+        agent_name,
+        tenant_key,
+        bool(template.system_instructions),
+        bool(template.user_instructions),
+        len(data["behavioral_rules"]),
+        len(data["success_criteria"]),
+        total_tokens,
     )
 
     return {

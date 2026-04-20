@@ -111,7 +111,7 @@ class TestMultiTenantIsolation:
 
         # Try to delete from tenant2 - should raise exception
         with pytest.raises(ResourceNotFoundError):
-            await service2.delete_product(product_id)
+            await service2.lifecycle.delete_product(product_id)
 
         # Verify product still exists in tenant1 (0731b: returns Product ORM model)
         get_result = await service1.get_product(product_id)

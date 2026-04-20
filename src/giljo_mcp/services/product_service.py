@@ -30,9 +30,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import (
@@ -41,19 +39,9 @@ from giljo_mcp.exceptions import (
     ValidationError,
 )
 from giljo_mcp.models import Product
-from giljo_mcp.models.products import (
-    VALID_TARGET_PLATFORMS,
-    ProductArchitecture,
-    ProductTechStack,
-    ProductTestConfig,
-)
+from giljo_mcp.models.products import VALID_TARGET_PLATFORMS
+from giljo_mcp.repositories.product_repository import ProductRepository
 from giljo_mcp.schemas.jsonb_validators import validate_product_memory
-from giljo_mcp.schemas.service_responses import (
-    CascadeImpact,
-    DeleteResult,
-    ProductStatistics,
-    PurgeResult,
-)
 from giljo_mcp.services.product_lifecycle_service import ProductLifecycleService
 from giljo_mcp.services.product_memory_service import ProductMemoryService
 
@@ -111,14 +99,16 @@ class ProductService:
         self._test_session = test_session
         self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._repo = ProductRepository()
 
-        self._lifecycle = ProductLifecycleService(
+        # Sprint 002f: Public sub-services for direct caller access (collapsed pass-throughs)
+        self.lifecycle = ProductLifecycleService(
             db_manager=db_manager,
             tenant_key=tenant_key,
             websocket_manager=websocket_manager,
             test_session=test_session,
         )
-        self._memory = ProductMemoryService(
+        self.memory = ProductMemoryService(
             db_manager=db_manager,
             tenant_key=tenant_key,
             test_session=test_session,
@@ -170,88 +160,6 @@ class ProductService:
 
         return True, None
 
-    def _create_config_relations(self, session: AsyncSession, product_id: str, config_data: dict) -> None:
-        """Create normalized config table rows from config data. Handover 0840i: canonical names only."""
-        tech_stack = config_data.get("tech_stack")
-        if tech_stack and isinstance(tech_stack, dict):
-            ts = ProductTechStack(
-                product_id=product_id,
-                tenant_key=self.tenant_key,
-                programming_languages=tech_stack.get("programming_languages", ""),
-                frontend_frameworks=tech_stack.get("frontend_frameworks", ""),
-                backend_frameworks=tech_stack.get("backend_frameworks", ""),
-                databases_storage=tech_stack.get("databases_storage", ""),
-                infrastructure=tech_stack.get("infrastructure", ""),
-                dev_tools=tech_stack.get("dev_tools", ""),
-            )
-            session.add(ts)
-
-        architecture = config_data.get("architecture")
-        if architecture and isinstance(architecture, dict):
-            arch = ProductArchitecture(
-                product_id=product_id,
-                tenant_key=self.tenant_key,
-                primary_pattern=architecture.get("primary_pattern", ""),
-                design_patterns=architecture.get("design_patterns", ""),
-                api_style=architecture.get("api_style", ""),
-                architecture_notes=architecture.get("architecture_notes", ""),
-                coding_conventions=architecture.get("coding_conventions", ""),
-            )
-            session.add(arch)
-
-        test_config = config_data.get("test_config")
-        if test_config and isinstance(test_config, dict):
-            tc = ProductTestConfig(
-                product_id=product_id,
-                tenant_key=self.tenant_key,
-                quality_standards=test_config.get("quality_standards", ""),
-                test_strategy=test_config.get("test_strategy", ""),
-                coverage_target=test_config.get("coverage_target", 80),
-                testing_frameworks=test_config.get("testing_frameworks", ""),
-            )
-            session.add(tc)
-
-    async def _update_config_relations(self, session: AsyncSession, product: Product, config_data: dict) -> None:
-        """Update normalized config table rows. Handover 0840i: canonical names only."""
-        tech_stack = config_data.get("tech_stack")
-        if tech_stack and isinstance(tech_stack, dict):
-            ts = product.tech_stack
-            if ts is None:
-                ts = ProductTechStack(product_id=product.id, tenant_key=self.tenant_key)
-                session.add(ts)
-                product.tech_stack = ts
-            ts.programming_languages = tech_stack.get("programming_languages", "")
-            ts.frontend_frameworks = tech_stack.get("frontend_frameworks", "")
-            ts.backend_frameworks = tech_stack.get("backend_frameworks", "")
-            ts.databases_storage = tech_stack.get("databases_storage", "")
-            ts.infrastructure = tech_stack.get("infrastructure", "")
-            ts.dev_tools = tech_stack.get("dev_tools", "")
-
-        architecture = config_data.get("architecture")
-        if architecture and isinstance(architecture, dict):
-            arch = product.architecture
-            if arch is None:
-                arch = ProductArchitecture(product_id=product.id, tenant_key=self.tenant_key)
-                session.add(arch)
-                product.architecture = arch
-            arch.primary_pattern = architecture.get("primary_pattern", "")
-            arch.design_patterns = architecture.get("design_patterns", "")
-            arch.api_style = architecture.get("api_style", "")
-            arch.architecture_notes = architecture.get("architecture_notes", "")
-            arch.coding_conventions = architecture.get("coding_conventions", "")
-
-        test_config = config_data.get("test_config")
-        if test_config and isinstance(test_config, dict):
-            tc = product.test_config
-            if tc is None:
-                tc = ProductTestConfig(product_id=product.id, tenant_key=self.tenant_key)
-                session.add(tc)
-                product.test_config = tc
-            tc.quality_standards = test_config.get("quality_standards", "")
-            tc.test_strategy = test_config.get("test_strategy", "")
-            tc.coverage_target = test_config.get("coverage_target", 80)
-            tc.testing_frameworks = test_config.get("testing_frameworks", "")
-
     # ============================================================================
     # CRUD Operations
     # ============================================================================
@@ -299,11 +207,8 @@ class ProductService:
                     raise ValidationError(message=error_msg, context={"target_platforms": target_platforms})
 
             async with self._get_session() as session:
-                stmt = select(Product).where(
-                    and_(Product.tenant_key == self.tenant_key, Product.name == name, Product.deleted_at.is_(None))
-                )
-                result = await session.execute(stmt)
-                if result.scalar_one_or_none():
+                existing = await self._repo.get_by_name(session, self.tenant_key, name)
+                if existing:
                     raise ValidationError(
                         message=f"Product '{name}' already exists",
                         context={"product_name": name, "tenant_key": self.tenant_key},
@@ -332,7 +237,7 @@ class ProductService:
                     created_at=datetime.now(timezone.utc),
                 )
 
-                session.add(product)
+                await self._repo.add(session, product)
 
                 # Handover 0840i: Create normalized config table rows from typed fields
                 config_parts = {}
@@ -343,18 +248,10 @@ class ProductService:
                 if test_config:
                     config_parts["test_config"] = test_config
                 if config_parts:
-                    self._create_config_relations(session, product_id, config_parts)
+                    await self._repo.create_config_relations(session, product_id, self.tenant_key, config_parts)
 
-                await session.commit()
-                await session.refresh(
-                    product,
-                    attribute_names=[
-                        "tech_stack",
-                        "architecture",
-                        "test_config",
-                        "vision_documents",
-                    ],
-                )
+                await self._repo.commit(session)
+                await self._repo.refresh(session, product)
 
                 self._logger.info(f"Created product {product.id} for tenant {self.tenant_key}")
 
@@ -385,24 +282,7 @@ class ProductService:
         """
         try:
             async with self._get_session() as session:
-                stmt = (
-                    select(Product)
-                    .options(
-                        selectinload(Product.vision_documents),
-                        selectinload(Product.tech_stack),
-                        selectinload(Product.architecture),
-                        selectinload(Product.test_config),
-                    )
-                    .where(
-                        and_(
-                            Product.id == product_id,
-                            Product.tenant_key == self.tenant_key,
-                            Product.deleted_at.is_(None),
-                        )
-                    )
-                )
-                result = await session.execute(stmt)
-                product = result.scalar_one_or_none()
+                product = await self._repo.get_by_id(session, self.tenant_key, product_id, eager_load=True)
 
                 if not product:
                     raise ResourceNotFoundError(
@@ -410,14 +290,11 @@ class ProductService:
                     )
 
                 # Handover 0136: Ensure product_memory is initialized (backward compatibility)
-                await self._memory._ensure_product_memory_initialized(session, product)
+                await self.memory._ensure_product_memory_initialized(session, product)
 
                 # Handover 0412: Force refresh to ensure we have latest DB data
                 # Handover 0840h: Include relationships so refresh doesn't discard eager loads
-                await session.refresh(
-                    product,
-                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
-                )
+                await self._repo.refresh(session, product)
 
                 return product
 
@@ -445,32 +322,15 @@ class ProductService:
         """
         try:
             async with self._get_session() as session:
-                conditions = [Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None)]
-
-                if not include_inactive:
-                    conditions.append(Product.is_active)
-
-                stmt = (
-                    select(Product)
-                    .where(and_(*conditions))
-                    .options(
-                        selectinload(Product.vision_documents),
-                        selectinload(Product.tech_stack),
-                        selectinload(Product.architecture),
-                        selectinload(Product.test_config),
-                    )
-                    .order_by(Product.is_active.desc(), Product.created_at.desc())
-                )
-                result = await session.execute(stmt)
-                products = result.scalars().all()
+                products = await self._repo.list_products(session, self.tenant_key, include_inactive=include_inactive)
 
                 for product in products:
                     # Handover 0136: Ensure product_memory is initialized (backward compatibility)
-                    await self._memory._ensure_product_memory_initialized(session, product)
+                    await self.memory._ensure_product_memory_initialized(session, product)
 
                 self._logger.debug(f"Found {len(products)} products for tenant {self.tenant_key}")
 
-                return list(products)
+                return products
 
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to list products")
@@ -502,23 +362,7 @@ class ProductService:
                     raise ValidationError(message=error_msg, context={"target_platforms": updates["target_platforms"]})
 
             async with self._get_session() as session:
-                stmt = (
-                    select(Product)
-                    .options(
-                        selectinload(Product.tech_stack),
-                        selectinload(Product.architecture),
-                        selectinload(Product.test_config),
-                    )
-                    .where(
-                        and_(
-                            Product.id == product_id,
-                            Product.tenant_key == self.tenant_key,
-                            Product.deleted_at.is_(None),
-                        )
-                    )
-                )
-                result = await session.execute(stmt)
-                product = result.scalar_one_or_none()
+                product = await self._repo.get_by_id(session, self.tenant_key, product_id, eager_load=True)
 
                 if not product:
                     raise ResourceNotFoundError(
@@ -542,7 +386,7 @@ class ProductService:
                 if test_config and isinstance(test_config, dict):
                     config_parts["test_config"] = test_config
                 if config_parts:
-                    await self._update_config_relations(session, product, config_parts)
+                    await self._repo.update_config_relations(session, product, self.tenant_key, config_parts)
 
                 for field, value in updates.items():
                     if field in _ALLOWED_PRODUCT_FIELDS:
@@ -550,19 +394,16 @@ class ProductService:
 
                 product.updated_at = datetime.now(timezone.utc)
 
-                await session.commit()
-                await session.refresh(
-                    product,
-                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
-                )
+                await self._repo.commit(session)
+                await self._repo.refresh(session, product)
 
                 self._logger.info(f"Updated product {product_id}")
 
                 # Handover 0139a: Emit WebSocket event if product_memory was updated
                 # Handover 0390b: Build product_memory from table for WebSocket event
                 if "product_memory" in updates:
-                    product_memory = await self._memory._build_product_memory_response(session, product)
-                    await self._lifecycle._emit_websocket_event(
+                    product_memory = await self.memory._build_product_memory_response(session, product)
+                    await self.lifecycle._emit_websocket_event(
                         event_type="product:memory:updated",
                         data={"product_id": product_id, "product_memory": product_memory},
                     )
@@ -584,31 +425,11 @@ class ProductService:
 
     async def activate_product(self, product_id: str) -> Product:
         """Activate a product (deactivates other products for tenant). Delegated to ProductLifecycleService."""
-        return await self._lifecycle.activate_product(product_id)
+        return await self.lifecycle.activate_product(product_id)
 
     async def deactivate_product(self, product_id: str) -> Product:
         """Deactivate a product. Delegated to ProductLifecycleService."""
-        return await self._lifecycle.deactivate_product(product_id)
-
-    async def delete_product(self, product_id: str) -> DeleteResult:
-        """Soft delete a product. Delegated to ProductLifecycleService."""
-        return await self._lifecycle.delete_product(product_id)
-
-    async def restore_product(self, product_id: str) -> Product:
-        """Restore a soft-deleted product. Delegated to ProductLifecycleService."""
-        return await self._lifecycle.restore_product(product_id)
-
-    async def purge_product(self, product_id: str) -> dict:
-        """Permanently delete a product and ALL related data. Delegated to ProductLifecycleService."""
-        return await self._lifecycle.purge_product(product_id)
-
-    async def list_deleted_products(self) -> list[Product]:
-        """List soft-deleted products. Delegated to ProductLifecycleService."""
-        return await self._lifecycle.list_deleted_products()
-
-    async def purge_expired_deleted_products(self, days_before_purge: int = 10) -> PurgeResult:
-        """Hard delete products soft-deleted more than N days ago. Delegated to ProductLifecycleService."""
-        return await self._lifecycle.purge_expired_deleted_products(days_before_purge)
+        return await self.lifecycle.deactivate_product(product_id)
 
     # ============================================================================
     # Active Product Management
@@ -626,25 +447,7 @@ class ProductService:
         """
         try:
             async with self._get_session() as session:
-                stmt = (
-                    select(Product)
-                    .options(
-                        selectinload(Product.vision_documents),
-                        selectinload(Product.tech_stack),
-                        selectinload(Product.architecture),
-                        selectinload(Product.test_config),
-                    )
-                    .where(
-                        and_(
-                            Product.tenant_key == self.tenant_key,
-                            Product.is_active,
-                            Product.deleted_at.is_(None),
-                        )
-                    )
-                )
-                result = await session.execute(stmt)
-                product = result.scalar_one_or_none()
-
+                product = await self._repo.get_active_product(session, self.tenant_key)
                 return product
 
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
@@ -652,18 +455,6 @@ class ProductService:
             raise BaseGiljoError(
                 message=f"Failed to get active product: {e!s}", context={"tenant_key": self.tenant_key}
             ) from e
-
-    # ============================================================================
-    # Metrics & Statistics -- delegated to ProductMemoryService
-    # ============================================================================
-
-    async def get_product_statistics(self, product_id: str) -> ProductStatistics:
-        """Get comprehensive statistics for a product. Delegated to ProductMemoryService."""
-        return await self._memory.get_product_statistics(product_id)
-
-    async def get_cascade_impact(self, product_id: str) -> CascadeImpact:
-        """Get cascade impact analysis for product deletion. Delegated to ProductMemoryService."""
-        return await self._memory.get_cascade_impact(product_id)
 
     # ============================================================================
     # Git Integration
@@ -696,11 +487,7 @@ class ProductService:
         """
         try:
             async with self._get_session() as session:
-                stmt = select(Product).where(
-                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
-                )
-                result = await session.execute(stmt)
-                product = result.scalar_one_or_none()
+                product = await self._repo.get_by_id(session, self.tenant_key, product_id)
 
                 if not product:
                     raise ResourceNotFoundError(
@@ -732,16 +519,13 @@ class ProductService:
                 except AttributeError:
                     pass
 
-                await session.commit()
-                await session.refresh(
-                    product,
-                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
-                )
+                await self._repo.commit(session)
+                await self._repo.refresh(session, product)
 
                 self._logger.info(f"Updated git integration for product {product_id}: enabled={enabled}")
 
                 # Handover 013B: Emit WebSocket event for git settings change
-                await self._lifecycle._emit_websocket_event(
+                await self.lifecycle._emit_websocket_event(
                     event_type="product:git:settings:changed",
                     data={"product_id": product_id, "settings": product.product_memory["git_integration"]},
                 )

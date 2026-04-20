@@ -110,4 +110,4 @@ class TestGetAgentMissionPlaceholderGuard:
     def test_placeholder_set_contents(self):
         """The placeholder set should contain exactly the expected values."""
         expected = {"unknown", "none", "null", "", "undefined", "placeholder"}
-        assert _PLACEHOLDER_JOB_IDS == expected
+        assert expected == _PLACEHOLDER_JOB_IDS

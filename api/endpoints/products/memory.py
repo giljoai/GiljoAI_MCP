@@ -7,6 +7,7 @@
 Product Memory Entries Endpoint - Handover 0490
 
 Handles fetching 360 memory entries from the normalized product_memory_entries table.
+BE-5022a: All DB access routed through ProductMemoryService.
 """
 
 import logging
@@ -14,14 +15,13 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
 
 from giljo_mcp.auth.dependencies import get_current_active_user
-from giljo_mcp.models import Product
+from giljo_mcp.exceptions import ResourceNotFoundError
 from giljo_mcp.models.auth import User
-from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+from giljo_mcp.services.product_memory_service import ProductMemoryService
 
-from .dependencies import get_db_manager
+from .dependencies import get_product_memory_service
 from .models import MemoryEntriesResponse, MemoryEntryResponse
 
 
@@ -35,7 +35,7 @@ async def get_memory_entries(
     project_id: Optional[str] = Query(None, description="Filter by specific project"),
     limit: int = Query(10, ge=1, le=100, description="Maximum entries to return (1-100)"),
     current_user: User = Depends(get_current_active_user),
-    db_manager=Depends(get_db_manager),
+    memory_service: ProductMemoryService = Depends(get_product_memory_service),
 ) -> MemoryEntriesResponse:
     """
     Get 360 memory entries for a product.
@@ -54,105 +54,76 @@ async def get_memory_entries(
         404: Product not found or not accessible to tenant
         422: Invalid UUID format
     """
-    tenant_key = current_user.tenant_key
-
     try:
         UUID(product_id)  # Validate product_id format
-        project_uuid = UUID(project_id) if project_id else None
+        project_uuid_str = None
+        if project_id:
+            UUID(project_id)  # Validate project_id format
+            project_uuid_str = project_id
     except ValueError as e:
         raise HTTPException(
             status_code=422,
             detail="Invalid UUID format.",
         ) from e
 
-    async with db_manager.get_tenant_session_async(tenant_key) as session:
-        # Verify product exists and belongs to tenant
-        stmt = select(Product).where(
-            Product.id == product_id,
-            Product.tenant_key == tenant_key,
+    try:
+        result = await memory_service.get_memory_entries(
+            product_id=product_id,
+            project_id=project_uuid_str,
+            limit=limit,
         )
-        result = await session.execute(stmt)
-        product = result.scalar_one_or_none()
+    except ResourceNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Product {product_id} not found or not accessible",
+        ) from None
 
-        if not product:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Product {product_id} not found or not accessible",
+    entries = result["entries"]
+    total_count = result["total_count"]
+
+    # Convert entries to response format
+    entry_responses = []
+    for entry in entries:
+        entry_dict = entry.to_dict()
+        entry_responses.append(
+            MemoryEntryResponse(
+                id=entry_dict["id"],
+                sequence=entry_dict["sequence"],
+                entry_type=entry_dict["type"],
+                source=entry_dict["source"],
+                timestamp=entry_dict["timestamp"],
+                project_id=entry_dict["project_id"],
+                project_name=entry_dict["project_name"],
+                summary=entry_dict["summary"],
+                key_outcomes=entry_dict["key_outcomes"],
+                decisions_made=entry_dict["decisions_made"],
+                git_commits=entry_dict["git_commits"],
+                deliverables=entry_dict["deliverables"],
+                metrics=entry_dict["metrics"],
+                priority=entry_dict["priority"],
+                significance_score=entry_dict["significance_score"],
+                tags=entry_dict["tags"],
+                author_job_id=entry_dict["author_job_id"],
+                author_name=entry_dict["author_name"],
+                author_type=entry_dict["author_type"],
+                deleted_by_user=entry_dict["deleted_by_user"],
             )
-
-        # Build query for entries (direct SQLAlchemy query for better performance)
-        query = (
-            select(ProductMemoryEntry)
-            .where(
-                ProductMemoryEntry.product_id == product_id,
-                ProductMemoryEntry.tenant_key == tenant_key,
-                ~ProductMemoryEntry.deleted_by_user,  # Exclude deleted by default
-            )
-            .order_by(ProductMemoryEntry.sequence.desc())
         )
 
-        # Apply project filter if provided
-        if project_uuid:
-            query = query.where(ProductMemoryEntry.project_id == str(project_uuid))
+    logger.info(
+        f"Fetched {len(entry_responses)} memory entries for product {product_id}",
+        extra={
+            "tenant_key": current_user.tenant_key,
+            "product_id": product_id,
+            "project_id": project_id,
+            "limit": limit,
+            "filtered_count": len(entry_responses),
+        },
+    )
 
-        # Apply limit
-        query = query.limit(limit)
-
-        # Execute query
-        result = await session.execute(query)
-        entries = result.scalars().all()
-
-        # Get total count (all entries for product, including deleted)
-        total_count_stmt = select(func.count(ProductMemoryEntry.id)).where(
-            ProductMemoryEntry.product_id == product_id,
-            ProductMemoryEntry.tenant_key == tenant_key,
-        )
-        total_count_result = await session.execute(total_count_stmt)
-        total_count = total_count_result.scalar_one()
-
-        # Convert entries to response format
-        entry_responses = []
-        for entry in entries:
-            entry_dict = entry.to_dict()
-            entry_responses.append(
-                MemoryEntryResponse(
-                    id=entry_dict["id"],
-                    sequence=entry_dict["sequence"],
-                    entry_type=entry_dict["type"],
-                    source=entry_dict["source"],
-                    timestamp=entry_dict["timestamp"],
-                    project_id=entry_dict["project_id"],
-                    project_name=entry_dict["project_name"],
-                    summary=entry_dict["summary"],
-                    key_outcomes=entry_dict["key_outcomes"],
-                    decisions_made=entry_dict["decisions_made"],
-                    git_commits=entry_dict["git_commits"],
-                    deliverables=entry_dict["deliverables"],
-                    metrics=entry_dict["metrics"],
-                    priority=entry_dict["priority"],
-                    significance_score=entry_dict["significance_score"],
-                    tags=entry_dict["tags"],
-                    author_job_id=entry_dict["author_job_id"],
-                    author_name=entry_dict["author_name"],
-                    author_type=entry_dict["author_type"],
-                    deleted_by_user=entry_dict["deleted_by_user"],
-                )
-            )
-
-        logger.info(
-            f"Fetched {len(entry_responses)} memory entries for product {product_id}",
-            extra={
-                "tenant_key": tenant_key,
-                "product_id": product_id,
-                "project_id": project_id,
-                "limit": limit,
-                "filtered_count": len(entry_responses),
-            },
-        )
-
-        return MemoryEntriesResponse(
-            success=True,
-            entries=entry_responses,
-            total_count=total_count,
-            filtered_count=len(entry_responses),
-        )
+    return MemoryEntriesResponse(
+        success=True,
+        entries=entry_responses,
+        total_count=total_count,
+        filtered_count=len(entry_responses),
+    )

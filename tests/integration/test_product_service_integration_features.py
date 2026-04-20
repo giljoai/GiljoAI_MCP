@@ -42,7 +42,7 @@ class TestProductStatisticsIntegration:
         product_id = str(product_result.id)
 
         # Get statistics (0731b: returns ProductStatistics Pydantic model)
-        stats_result = await service.get_product_statistics(product_id)
+        stats_result = await service.memory.get_product_statistics(product_id)
         assert isinstance(stats_result, ProductStatistics)
         assert stats_result.project_count >= 0
         assert stats_result.vision_documents_count >= 0
@@ -261,7 +261,7 @@ class TestDatabaseTransactions:
         # Create and delete product (0731b: returns Product ORM model)
         create_result = await service.create_product(name="To Delete")
         product_id = str(create_result.id)
-        await service.delete_product(product_id)
+        await service.lifecycle.delete_product(product_id)
 
         # Verify soft delete persisted in new session
         async with db_manager.get_session_async() as session:

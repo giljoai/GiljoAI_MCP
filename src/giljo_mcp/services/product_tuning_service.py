@@ -18,9 +18,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from giljo_mcp.config.defaults import (
     DEFAULT_FIELD_PRIORITY,
@@ -29,8 +27,9 @@ from giljo_mcp.config.defaults import (
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from giljo_mcp.models import Product
-from giljo_mcp.models.auth import User
 from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.repositories.product_repository import ProductRepository
+from giljo_mcp.repositories.user_repository import UserRepository
 from giljo_mcp.schemas.jsonb_validators import validate_tuning_state
 
 
@@ -68,6 +67,37 @@ SECTION_FIELD_MAP: dict[str, dict[str, str]] = {
             "architecture_notes": "architecture_notes",
             "coding_conventions": "coding_conventions",
         },
+    },
+    "tech_stack.backend_frameworks": {
+        "type": "relation_field",
+        "relation": "tech_stack",
+        "field": "backend_frameworks",
+    },
+    "tech_stack.frontend_frameworks": {
+        "type": "relation_field",
+        "relation": "tech_stack",
+        "field": "frontend_frameworks",
+    },
+    "tech_stack.programming_languages": {
+        "type": "relation_field",
+        "relation": "tech_stack",
+        "field": "programming_languages",
+    },
+    "tech_stack.databases_storage": {"type": "relation_field", "relation": "tech_stack", "field": "databases_storage"},
+    "tech_stack.infrastructure": {"type": "relation_field", "relation": "tech_stack", "field": "infrastructure"},
+    "tech_stack.dev_tools": {"type": "relation_field", "relation": "tech_stack", "field": "dev_tools"},
+    "architecture.primary_pattern": {"type": "relation_field", "relation": "architecture", "field": "primary_pattern"},
+    "architecture.design_patterns": {"type": "relation_field", "relation": "architecture", "field": "design_patterns"},
+    "architecture.api_style": {"type": "relation_field", "relation": "architecture", "field": "api_style"},
+    "architecture.architecture_notes": {
+        "type": "relation_field",
+        "relation": "architecture",
+        "field": "architecture_notes",
+    },
+    "architecture.coding_conventions": {
+        "type": "relation_field",
+        "relation": "architecture",
+        "field": "coding_conventions",
     },
     "core_features": {"type": "direct", "field": "core_features"},
     "brand_guidelines": {"type": "direct", "field": "brand_guidelines"},
@@ -215,6 +245,8 @@ class ProductTuningService:
         self._test_session = test_session
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._memory_repo = ProductMemoryRepository()
+        self._product_repo = ProductRepository()
+        self._user_repo = UserRepository()
 
     def _get_session(self):
         if self._test_session is not None:
@@ -228,23 +260,7 @@ class ProductTuningService:
         return self.db_manager.get_session_async()
 
     async def _get_product(self, session: AsyncSession, product_id: str) -> Product:
-        stmt = (
-            select(Product)
-            .options(
-                selectinload(Product.tech_stack),
-                selectinload(Product.architecture),
-                selectinload(Product.test_config),
-            )
-            .where(
-                and_(
-                    Product.id == product_id,
-                    Product.tenant_key == self.tenant_key,
-                    Product.deleted_at.is_(None),
-                )
-            )
-        )
-        result = await session.execute(stmt)
-        product = result.scalar_one_or_none()
+        product = await self._product_repo.get_by_id(session, self.tenant_key, product_id, eager_load=True)
         if not product:
             raise ResourceNotFoundError(
                 message="Product not found",
@@ -255,21 +271,13 @@ class ProductTuningService:
     async def _get_user_configs(self, session: AsyncSession, user_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
         """Get user's toggle and depth configurations from normalized tables/columns."""
         from giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
-        from giljo_mcp.models.auth import UserFieldPriority
 
-        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._user_repo.get_user_by_id(session, user_id, self.tenant_key)
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Build toggle_config from user_field_priorities table
-        prio_result = await session.execute(
-            select(UserFieldPriority).where(
-                and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == self.tenant_key)
-            )
-        )
-        rows = prio_result.scalars().all()
+        rows = await self._user_repo.get_field_priorities(session, user_id, self.tenant_key)
 
         if rows:
             toggles = dict(DEFAULT_CATEGORY_TOGGLES)
@@ -495,7 +503,7 @@ class ProductTuningService:
             tuning_state["last_tuned_at"] = datetime.now(timezone.utc).isoformat()
             product.tuning_state = validate_tuning_state(tuning_state)
 
-            await session.commit()
+            await self._product_repo.commit(session)
 
         await self._emit_websocket_event(
             event_type="product:context_updated",
@@ -530,9 +538,7 @@ class ProductTuningService:
             product = await self._get_product(session, product_id)
 
             # Get user's notification preferences
-            stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
-            result = await session.execute(stmt)
-            user = result.scalar_one_or_none()
+            user = await self._user_repo.get_user_by_id(session, user_id, self.tenant_key)
 
             prefs = (user.notification_preferences if user else None) or {}
             if not prefs.get("context_tuning_reminder", True):
@@ -541,7 +547,7 @@ class ProductTuningService:
             threshold = max(prefs.get("tuning_reminder_threshold", 10), 3)
 
             # Get current sequence
-            current_sequence = await self._memory_repo.get_next_sequence(session, product_id) - 1
+            current_sequence = await self._memory_repo.get_next_sequence(session, product_id, self.tenant_key) - 1
 
             # Get last tuned sequence
             tuning_state = product.tuning_state or {}

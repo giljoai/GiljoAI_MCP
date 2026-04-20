@@ -24,8 +24,11 @@ from giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError, Valid
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
 from giljo_mcp.models.products import Product
 from giljo_mcp.models.projects import Project
-from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 from giljo_mcp.schemas.jsonb_validators import validate_git_commits
+from giljo_mcp.services.dto import MemoryEntryCreateParams
+from giljo_mcp.services.product_memory_service import ProductMemoryService
+from giljo_mcp.services.project_closeout_service import ProjectCloseoutService
+from giljo_mcp.tenant import TenantManager
 from giljo_mcp.tools._memory_helpers import (
     MAX_DECISIONS_MADE,
     MAX_KEY_OUTCOMES,
@@ -97,14 +100,16 @@ async def _handle_force_close(
     tenant_key: str,
     force: bool,
     blockers: list,
+    closeout_service: ProjectCloseoutService,
 ) -> None:
     """
     Handle force-close path: guard against orchestrator self-decommission, then decommission agents.
 
     When force=True and agents are still active, checks that the calling orchestrator
-    is not among them (raising ProjectStateError if so), then calls
-    _force_decommission_agents to set all remaining active agents to 'decommissioned'.
-    Does nothing when force=False or when all agents are already ready.
+    is not among them (raising ProjectStateError if so), then delegates to
+    ProjectCloseoutService.decommission_project_agents to set all remaining active
+    agents to 'decommissioned'. Does nothing when force=False or when all agents
+    are already ready.
 
     Args:
         session: Active database session.
@@ -112,6 +117,7 @@ async def _handle_force_close(
         tenant_key: Tenant isolation key.
         force: Whether force-close was requested by the caller.
         blockers: List of blocker dicts from _check_agent_readiness; empty means no action needed.
+        closeout_service: ProjectCloseoutService instance for agent status transitions.
     """
     if not blockers or not force:
         return
@@ -149,7 +155,9 @@ async def _handle_force_close(
             },
         )
 
-    decommissioned = await _force_decommission_agents(session, project_id, tenant_key)
+    decommissioned = await closeout_service.decommission_project_agents(
+        session=session, project_id=project_id, tenant_key=tenant_key
+    )
     if decommissioned:
         logger.warning(
             "Force-closed project %s: auto-decommissioned %d agent(s): %s",
@@ -157,6 +165,75 @@ async def _handle_force_close(
             len(decommissioned),
             ", ".join(decommissioned),
         )
+
+
+async def _resolve_git_commits(
+    *,
+    session: AsyncSession,
+    project_id: str,
+    tenant_key: str,
+    product_memory: dict[str, Any],
+    git_commits: list[dict[str, Any]] | None,
+    project: Any,
+) -> list[dict[str, Any]]:
+    """Resolve git commits from agent input, GitHub API, or empty default.
+
+    Validates agent-supplied commits, falls back to GitHub API in SaaS mode,
+    or returns an empty list in CE mode. Raises ValidationError when git
+    integration is enabled but no commits are provided.
+
+    Returns:
+        Validated list of git commit dicts (possibly empty).
+    """
+    git_integration_enabled = False
+    try:
+        from giljo_mcp.services.settings_service import SettingsService
+
+        settings_svc = SettingsService(session, tenant_key)
+        git_settings = await settings_svc.get_setting_value("integrations", "git_integration", {})
+        git_integration_enabled = git_settings.get("enabled", False)
+    except Exception:  # noqa: BLE001, S110
+        pass  # Settings read failure is not a blocker
+
+    if git_integration_enabled and not git_commits:
+        raise ValidationError(
+            message=(
+                "Git integration is enabled. Provide at least one commit before closing the project. "
+                "Recovery: run 'git status' to check for uncommitted changes, then "
+                "'git add <files> && git commit -m \"<message>\"' to create a commit. "
+                "Use the resulting commit SHA in the git_commits parameter and retry."
+            ),
+            context={"project_id": project_id, "error_code": "GIT_COMMITS_REQUIRED"},
+        )
+
+    if git_commits is not None:
+        git_commits = validate_git_commits(git_commits)
+        logger.info(
+            "Using %d agent-supplied git commits for project %s",
+            len(git_commits),
+            project_id,
+        )
+    elif os.environ.get("GILJO_MODE") == "saas":
+        git_config = _get_git_config(product_memory)
+        if git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner"):
+            git_commits = await _fetch_github_commits(
+                repo_name=git_config.get("repo_name"),
+                repo_owner=git_config.get("repo_owner"),
+                access_token=git_config.get("access_token"),
+                project_created_at=project.created_at,
+                project_completed_at=project.completed_at or datetime.now(timezone.utc),
+            )
+    else:
+        git_commits = []
+        logger.info(
+            "No agent-supplied git commits for project %s (CE server is passive)",
+            project_id,
+        )
+
+    if git_commits is None:
+        git_commits = []
+
+    return git_commits
 
 
 async def close_project_and_update_memory(
@@ -244,6 +321,13 @@ async def close_project_and_update_memory(
                     },
                 )
 
+            # Build a lightweight service for agent status transitions
+            # (session-in pattern: service methods accept the active session)
+            closeout_service = ProjectCloseoutService(
+                db_manager=db_manager,
+                tenant_manager=TenantManager(),
+            )
+
             # Handover 0824: force-close guard + agent decommission
             await _handle_force_close(
                 session=active_session,
@@ -251,6 +335,7 @@ async def close_project_and_update_memory(
                 tenant_key=tenant_key,
                 force=force,
                 blockers=blockers,
+                closeout_service=closeout_service,
             )
 
             # Handover 0435b: agent 'complete' → 'closed' moved to archive endpoint
@@ -260,60 +345,23 @@ async def close_project_and_update_memory(
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
-            # Hard gate: if git integration is enabled, require commits
-            git_integration_enabled = False
-            try:
-                from giljo_mcp.services.settings_service import SettingsService
+            git_commits = await _resolve_git_commits(
+                session=active_session,
+                project_id=project_id,
+                tenant_key=tenant_key,
+                product_memory=product_memory,
+                git_commits=git_commits,
+                project=project,
+            )
 
-                settings_svc = SettingsService(active_session, tenant_key)
-                git_settings = await settings_svc.get_setting_value("integrations", "git_integration", {})
-                git_integration_enabled = git_settings.get("enabled", False)
-            except Exception:  # noqa: BLE001, S110
-                pass  # Settings read failure is not a blocker
-
-            if git_integration_enabled and not git_commits:
-                raise ValidationError(
-                    message=(
-                        "Git integration is enabled. Provide at least one commit before closing the project. "
-                        "Recovery: run 'git status' to check for uncommitted changes, then "
-                        "'git add <files> && git commit -m \"<message>\"' to create a commit. "
-                        "Use the resulting commit SHA in the git_commits parameter and retry."
-                    ),
-                    context={"project_id": project_id, "error_code": "GIT_COMMITS_REQUIRED"},
-                )
-
-            # Use agent-supplied commits; SaaS can fall back to GitHub API
-            if git_commits is not None:
-                git_commits = validate_git_commits(git_commits)
-                logger.info(
-                    "Using %d agent-supplied git commits for project %s",
-                    len(git_commits),
-                    project_id,
-                )
-            elif os.environ.get("GILJO_MODE") == "saas":
-                git_config = _get_git_config(product_memory)
-                if git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner"):
-                    git_commits = await _fetch_github_commits(
-                        repo_name=git_config.get("repo_name"),
-                        repo_owner=git_config.get("repo_owner"),
-                        access_token=git_config.get("access_token"),
-                        project_created_at=project.created_at,
-                        project_completed_at=project.completed_at or datetime.now(timezone.utc),
-                    )
-            else:
-                git_commits = []
-                logger.info(
-                    "No agent-supplied git commits for project %s (CE server is passive)",
-                    project_id,
-                )
-
-            if git_commits is None:
-                git_commits = []
-
-            # Use repository for atomic sequence generation and entry creation
-            repo = ProductMemoryRepository()
-            sequence_number = await repo.get_next_sequence(
-                session=active_session, product_id=product.id, tenant_key=tenant_key
+            # Use service for atomic sequence generation and entry creation
+            memory_service = ProductMemoryService(
+                db_manager=db_manager,
+                tenant_key=tenant_key,
+            )
+            sequence_number = await memory_service.get_next_sequence(
+                product_id=product.id,
+                session=active_session,
             )
 
             deliverables = _extract_deliverables(key_outcomes)
@@ -324,8 +372,7 @@ async def close_project_and_update_memory(
             metrics = _build_metrics(git_commits)
 
             # Create entry in product_memory_entries table
-            entry = await repo.create_entry(
-                session=active_session,
+            params = MemoryEntryCreateParams(
                 tenant_key=tenant_key,
                 product_id=product.id,
                 project_id=project.id,
@@ -345,9 +392,13 @@ async def close_project_and_update_memory(
                 token_estimate=token_estimate,
                 tags=tags,
             )
+            entry = await memory_service.create_entry(
+                params=params,
+                session=active_session,
+            )
 
-            if owns_session:
-                await active_session.commit()
+            # Session commit handled by db_manager.get_session_async() context manager
+            # when owns_session=True; flush already done by repo.create_entry()
 
             logger.info(
                 f"Updated 360 Memory for product {product.id} "
@@ -478,71 +529,15 @@ async def _force_decommission_agents(
     """
     Decommission all active agents for project closeout.
 
-    Sets execution status to 'decommissioned' for any still-active agents.
+    Delegates to ProjectCloseoutService.decommission_project_agents (session-in pattern).
     Returns list of agent display names that were decommissioned.
     """
-    exec_stmt = (
-        select(AgentExecution)
-        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-        .where(
-            and_(
-                AgentJob.project_id == project_id,
-                AgentExecution.tenant_key == tenant_key,
-                AgentExecution.status.in_(_ACTIVE_STATUSES),
-            )
-        )
+    # Session-in methods don't use db_manager or tenant_manager; safe to pass None
+    svc = ProjectCloseoutService(
+        db_manager=None,  # type: ignore[arg-type]
+        tenant_manager=TenantManager(),
     )
-    result = await session.execute(exec_stmt)
-    executions = result.scalars().all()
-
-    decommissioned_names: list[str] = []
-    for execution in executions:
-        execution.status = "decommissioned"
-        decommissioned_names.append(execution.agent_display_name or execution.agent_name or execution.agent_id)
-
-    if decommissioned_names:
-        await session.flush()
-
-    return decommissioned_names
-
-
-async def _close_completed_agents(
-    session: AsyncSession,
-    project_id: str,
-    tenant_key: str,
-) -> list[str]:
-    """
-    Transition all 'complete' agents to 'closed' during project closeout (Handover 0435b).
-
-    Normal closeout = accepted work. Agents in 'complete' become 'closed' (final acceptance).
-    Only agents in abnormal states get 'decommissioned' via _force_decommission_agents.
-
-    Returns list of agent display names that were closed.
-    """
-    exec_stmt = (
-        select(AgentExecution)
-        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-        .where(
-            and_(
-                AgentJob.project_id == project_id,
-                AgentExecution.tenant_key == tenant_key,
-                AgentExecution.status == "complete",
-            )
-        )
-    )
-    result = await session.execute(exec_stmt)
-    executions = result.scalars().all()
-
-    closed_names: list[str] = []
-    for execution in executions:
-        execution.status = "closed"
-        closed_names.append(execution.agent_display_name or execution.agent_name or execution.agent_id)
-
-    if closed_names:
-        await session.flush()
-        logger.info("Closed %d agent(s) during project closeout: %s", len(closed_names), ", ".join(closed_names))
-
-    return closed_names
+    return await svc.decommission_project_agents(session=session, project_id=project_id, tenant_key=tenant_key)
 
 
 def _extract_deliverables(key_outcomes: list[str]) -> list[str]:
@@ -558,24 +553,20 @@ def _extract_deliverables(key_outcomes: list[str]) -> list[str]:
 
 
 def _extract_tags(summary: str, key_outcomes: list[str], decisions_made: list[str]) -> list[str]:
-    """Extract lightweight tags from summary/outcomes/decisions."""
+    """Extract lightweight tags from summary/outcomes/decisions.
+
+    BE-5022f: Now uses shared clean_tags() for stopword filtering,
+    punctuation stripping, case-insensitive dedup, and length caps.
+    """
+    from giljo_mcp.utils.tag_utils import clean_tags
+
     tokens = (summary or "").split()
     for item in key_outcomes or []:
         tokens.extend((item or "").split())
     for decision in decisions_made or []:
         tokens.extend((decision or "").split())
 
-    cleaned = []
-    for token in tokens:
-        t = token.strip(".,;:-").lower()
-        if len(t) > 3:
-            cleaned.append(t)
-
-    tags = []
-    for token in cleaned:
-        if token not in tags:
-            tags.append(token)
-    return tags[:10]
+    return clean_tags(tokens)
 
 
 def _derive_priority(project: Project, summary: str, key_outcomes: list[str]) -> int:

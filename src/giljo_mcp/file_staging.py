@@ -40,6 +40,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .codex_defaults import CODEX_DEFAULT_MODEL, CODEX_DEFAULT_REASONING_EFFORT
 from .models import AgentTemplate
 from .tools.slash_command_templates import get_all_templates
 
@@ -70,8 +71,8 @@ def _codex_agents_to_toml(agents: list[dict]) -> list[tuple[str, str]]:
             f'name = "{slug}"\n'
             f'description = "{agent.get("description", "")}"\n'
             f'nickname_candidates = ["{slug}"]\n'
-            f'model = "{agent.get("suggested_model", "gpt-5.2-codex")}"\n'
-            f'model_reasoning_effort = "{agent.get("suggested_reasoning_effort", "medium")}"\n'
+            f'model = "{agent.get("suggested_model", CODEX_DEFAULT_MODEL)}"\n'
+            f'model_reasoning_effort = "{agent.get("suggested_reasoning_effort", CODEX_DEFAULT_REASONING_EFFORT)}"\n'
             f'developer_instructions = """\n{instructions}\n"""\n'
         )
         entries.append((f"agents/{slug}.toml", toml_content))

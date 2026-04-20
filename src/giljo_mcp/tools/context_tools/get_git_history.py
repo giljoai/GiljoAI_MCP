@@ -16,19 +16,20 @@ Token Budget by Depth:
 - 50: Last 50 commits (~2500 tokens)
 - 100: Last 100 commits (~5000 tokens)
 """
+# Read-only tool -- uses direct session.execute() for SELECT queries (no writes)
 
+import logging
 from typing import Any
 
-import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import Product
-from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.services.product_memory_service import ProductMemoryService
 
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def estimate_tokens(data: Any) -> int:
@@ -100,10 +101,10 @@ async def get_git_history(
             commits=25
         )
     """
-    logger.info("fetching_git_history_context", product_id=product_id, tenant_key=tenant_key, depth=commits)
+    logger.info("fetching_git_history_context product_id=%s tenant_key=%s depth=%s", product_id, tenant_key, commits)
 
     if db_manager is None and session is None:
-        logger.error("db_manager or session is required", operation="get_git_history")
+        logger.error("db_manager or session is required operation=get_git_history")
         raise ValueError("db_manager or session parameter is required")
 
     if session is not None:
@@ -126,7 +127,9 @@ async def _get_git_history_impl(
     product = result.scalar_one_or_none()
 
     if not product:
-        logger.warning("product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_git_history")
+        logger.warning(
+            "product_not_found product_id=%s tenant_key=%s operation=get_git_history", product_id, tenant_key
+        )
         return {
             "source": "git_history",
             "depth": commits,
@@ -146,7 +149,7 @@ async def _get_git_history_impl(
     git_enabled = git_config.get("enabled", False)
 
     if not git_enabled:
-        logger.debug("git_integration_disabled", product_id=product_id, operation="get_git_history")
+        logger.debug("git_integration_disabled product_id=%s operation=get_git_history", product_id)
         return {
             "source": "git_history",
             "depth": commits,
@@ -166,17 +169,19 @@ async def _get_git_history_impl(
             },
         }
 
-    # Use repository to fetch git commits from table
-    repo = ProductMemoryRepository()
-    all_commits = await repo.get_git_history(
-        session=session,
-        product_id=product_id,
+    # Use service to fetch git commits from table
+    memory_service = ProductMemoryService(
+        db_manager=None,  # session provided directly
         tenant_key=tenant_key,
+    )
+    all_commits = await memory_service.get_git_history(
+        product_id=product_id,
         limit=commits,
+        session=session,
     )
 
     if not all_commits:
-        logger.debug("no_git_commits_found", product_id=product_id, operation="get_git_history")
+        logger.debug("no_git_commits_found product_id=%s operation=get_git_history", product_id)
         return {
             "source": "git_history",
             "depth": commits,
@@ -202,13 +207,13 @@ async def _get_git_history_impl(
     total_tokens = estimate_tokens(filtered_commits)
 
     logger.info(
-        "git_history_fetched",
-        product_id=product_id,
-        tenant_key=tenant_key,
-        depth=commits,
-        total_commits=len(all_commits),
-        returned_commits=len(filtered_commits),
-        estimated_tokens=total_tokens,
+        "git_history_fetched product_id=%s tenant_key=%s depth=%s total=%d returned=%d tokens=%d",
+        product_id,
+        tenant_key,
+        commits,
+        len(all_commits),
+        len(filtered_commits),
+        total_tokens,
     )
 
     return {

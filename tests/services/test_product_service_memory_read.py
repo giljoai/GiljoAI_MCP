@@ -15,6 +15,7 @@ from datetime import datetime
 import pytest
 
 from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.services.dto import MemoryEntryCreateParams
 
 
 @pytest.mark.asyncio
@@ -50,10 +51,12 @@ async def test_product_memory_entries_available_via_repository(db_session, test_
     for data in entries_data:
         await repo.create_entry(
             session=db_session,
-            tenant_key=test_tenant_key,
-            product_id=test_product.id,
-            timestamp=datetime.utcnow(),
-            **data,
+            params=MemoryEntryCreateParams(
+                tenant_key=test_tenant_key,
+                product_id=test_product.id,
+                timestamp=datetime.utcnow(),
+                **data,
+            ),
         )
 
     await db_session.commit()
@@ -94,15 +97,17 @@ async def test_get_entries_for_context_returns_lightweight_dicts(db_session, tes
     for i in range(3):
         await repo.create_entry(
             session=db_session,
-            tenant_key=test_tenant_key,
-            product_id=test_product.id,
-            sequence=i + 1,
-            entry_type="project_closeout",
-            source="test",
-            timestamp=datetime.utcnow(),
-            project_name=f"Project {i + 1}",
-            summary=f"Summary {i + 1}",
-            key_outcomes=[f"Outcome {i + 1}"],
+            params=MemoryEntryCreateParams(
+                tenant_key=test_tenant_key,
+                product_id=test_product.id,
+                sequence=i + 1,
+                entry_type="project_closeout",
+                source="test",
+                timestamp=datetime.utcnow(),
+                project_name=f"Project {i + 1}",
+                summary=f"Summary {i + 1}",
+                key_outcomes=[f"Outcome {i + 1}"],
+            ),
         )
 
     await db_session.commit()
@@ -133,25 +138,29 @@ async def test_repository_respects_include_deleted_flag(db_session, test_tenant_
     # We use an entry WITHOUT project_id first, then mark it as deleted by setting the flag directly
     entry1 = await repo.create_entry(
         session=db_session,
-        tenant_key=test_tenant_key,
-        product_id=test_product.id,
-        project_id=None,  # No project_id to avoid FK constraint
-        sequence=1,
-        entry_type="project_closeout",
-        source="test",
-        timestamp=datetime.utcnow(),
-        summary="Entry 1",
+        params=MemoryEntryCreateParams(
+            tenant_key=test_tenant_key,
+            product_id=test_product.id,
+            project_id=None,  # No project_id to avoid FK constraint
+            sequence=1,
+            entry_type="project_closeout",
+            source="test",
+            timestamp=datetime.utcnow(),
+            summary="Entry 1",
+        ),
     )
 
     await repo.create_entry(
         session=db_session,
-        tenant_key=test_tenant_key,
-        product_id=test_product.id,
-        sequence=2,
-        entry_type="project_closeout",
-        source="test",
-        timestamp=datetime.utcnow(),
-        summary="Entry 2",
+        params=MemoryEntryCreateParams(
+            tenant_key=test_tenant_key,
+            product_id=test_product.id,
+            sequence=2,
+            entry_type="project_closeout",
+            source="test",
+            timestamp=datetime.utcnow(),
+            summary="Entry 2",
+        ),
     )
 
     await db_session.commit()

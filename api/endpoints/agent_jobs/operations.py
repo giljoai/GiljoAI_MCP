@@ -10,7 +10,7 @@ Handles agent job operational controls:
 - GET /api/jobs/{job_id}/health - Get job health metrics
 - PATCH /api/jobs/{job_id}/mission - Update agent mission (Handover 0244b)
 
-Operations use standalone functions from agent_job_manager module or direct database access.
+Sprint 003c: Mission update routed through MissionService (no direct session.commit).
 """
 
 import logging
@@ -23,9 +23,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from giljo_mcp.exceptions import ResourceNotFoundError
 from giljo_mcp.models import User
-from giljo_mcp.repositories.agent_job_repository import AgentJobRepository
+from giljo_mcp.services.job_query_service import JobQueryService
+from giljo_mcp.services.orchestration_service import OrchestrationService
 from giljo_mcp.utils.log_sanitizer import sanitize
 
+from .dependencies import get_job_query_service, get_orchestration_service
 from .models import (
     JobHealthResponse,
     UpdateMissionRequest,
@@ -42,6 +44,7 @@ async def get_job_health(
     job_id: str,
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
+    job_query_service: JobQueryService = Depends(get_job_query_service),
 ) -> JobHealthResponse:
     """
     Get health metrics for an agent job (Handover 0107).
@@ -62,23 +65,20 @@ async def get_job_health(
     """
     logger.debug("User %s checking health of job %s", sanitize(current_user.username), sanitize(job_id))
 
-    # Initialize repository
-    repo = AgentJobRepository(None)  # Repository doesn't use db_manager for queries
-
     # Get execution with tenant isolation (job_id could be agent_id or job_id)
     # Try agent_id first (new model)
-    execution = await repo.get_execution_by_agent_id(
-        session=session,
+    execution = await job_query_service.get_execution_by_agent_id(
         tenant_key=current_user.tenant_key,
         agent_id=job_id,
+        session=session,
     )
 
     # Fallback to job_id if not found by agent_id
     if not execution:
-        execution = await repo.get_execution_by_job_id(
-            session=session,
+        execution = await job_query_service.get_execution_by_job_id(
             tenant_key=current_user.tenant_key,
             job_id=job_id,
+            session=session,
         )
 
     if not execution:
@@ -113,63 +113,57 @@ async def update_agent_mission(
     job_id: str,
     request: UpdateMissionRequest,
     current_user: User = Depends(get_current_active_user),
+    orchestration_service: OrchestrationService = Depends(get_orchestration_service),
     session: AsyncSession = Depends(get_db_session),
+    job_query_service: JobQueryService = Depends(get_job_query_service),
 ) -> UpdateMissionResponse:
     """
     Update agent mission with validation and WebSocket broadcast (Handover 0244b).
 
-    Allows users to modify the mission/instructions for an agent job.
-    The mission is the task instructions created by the orchestrator.
+    Sprint 003c: Write routed through MissionService (no direct session.commit).
 
     Args:
         job_id: Job ID to update
         request: Update request with new mission text
         current_user: Authenticated user (from dependency)
-        session: Database session (from dependency)
+        orchestration_service: Service for mission updates
+        session: Database session (read-only, for WebSocket context)
 
     Returns:
         UpdateMissionResponse with success status and updated mission
 
     Raises:
-        HTTPException 404: Job not found
-        HTTPException 403: User not authorized (tenant mismatch)
+        ResourceNotFoundError: Job not found
         HTTPException 422: Validation error (empty or too long)
-        HTTPException 500: Internal server error
     """
     logger.debug("User %s updating mission for job %s", sanitize(current_user.username), sanitize(job_id))
 
-    # Initialize repository
-    repo = AgentJobRepository(None)
-
-    # Get AgentJob with tenant isolation (mission is stored on job, not execution)
-    job = await repo.get_agent_job_by_job_id(
-        session=session,
-        tenant_key=current_user.tenant_key,
+    # Route write through OrchestrationService facade (handles commit + WebSocket)
+    result = await orchestration_service.update_agent_mission(
         job_id=job_id,
+        tenant_key=current_user.tenant_key,
+        mission=request.mission,
     )
-
-    if not job:
-        raise ResourceNotFoundError(f"Agent job {job_id} not found")
-    job.mission = request.mission
-
-    await session.commit()
-    await session.refresh(job)
 
     logger.info(
         "Mission updated for job %s by user %s. New length: %d chars",
         sanitize(job_id),
         sanitize(current_user.username),
-        len(request.mission),
+        result.mission_length,
     )
 
-    # Get current execution for WebSocket event
-    current_execution = await repo.get_latest_execution_for_job(
-        session=session,
+    # Emit detailed WebSocket event for frontend (agent display name + full mission)
+    job = await job_query_service.get_agent_job_by_job_id(
         tenant_key=current_user.tenant_key,
         job_id=job_id,
+        session=session,
+    )
+    current_execution = await job_query_service.get_latest_execution_for_job(
+        tenant_key=current_user.tenant_key,
+        job_id=job_id,
+        session=session,
     )
 
-    # Emit WebSocket event for real-time updates
     from api.websocket_manager import manager as websocket_manager
 
     await websocket_manager.emit_to_tenant(
@@ -177,16 +171,17 @@ async def update_agent_mission(
         "agent:mission_updated",
         {
             "job_id": job_id,
-            "agent_display_name": current_execution.agent_display_name if current_execution else job.job_type,
+            "agent_display_name": current_execution.agent_display_name
+            if current_execution
+            else (job.job_type if job else "unknown"),
             "agent_name": current_execution.agent_name if current_execution else None,
-            "mission": job.mission,
-            "project_id": job.project_id,
+            "mission": request.mission,
+            "project_id": str(job.project_id) if job and job.project_id else None,
         },
     )
 
-    # Return success response
     return UpdateMissionResponse(
         success=True,
         job_id=job_id,
-        mission=job.mission,
+        mission=request.mission,
     )

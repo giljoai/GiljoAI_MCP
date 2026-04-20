@@ -24,8 +24,9 @@ Design Principles:
 
 import logging
 from contextlib import asynccontextmanager
+from decimal import Decimal
+from typing import Any
 
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -36,7 +37,7 @@ from giljo_mcp.exceptions import (
     ResourceNotFoundError,
     ValidationError,
 )
-from giljo_mcp.models import Product
+from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from giljo_mcp.schemas.service_responses import VisionUploadResult
 from giljo_mcp.tools.chunking import VISION_MAX_INGEST_TOKENS
 
@@ -71,6 +72,7 @@ class ProductVisionService:
         self.db_manager = db_manager
         self.tenant_key = tenant_key
         self._test_session = test_session
+        self._vision_repo = VisionDocumentRepository(db_manager=db_manager)
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def _get_session(self):
@@ -124,15 +126,9 @@ class ProductVisionService:
             >>> print(f"Created {result.chunks_created} chunks")
         """
         try:
-            from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
-
             async with self._get_session() as session:
                 # Verify product exists and belongs to tenant
-                stmt = select(Product).where(
-                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
-                )
-                result = await session.execute(stmt)
-                product = result.scalar_one_or_none()
+                product = await self._vision_repo.get_product_by_id(session, product_id, self.tenant_key)
 
                 if not product:
                     raise ResourceNotFoundError(
@@ -140,14 +136,11 @@ class ProductVisionService:
                         context={"product_id": product_id, "tenant_key": self.tenant_key},
                     )
 
-                # Create vision document via repository
-                vision_repo = VisionDocumentRepository(db_manager=self.db_manager)
-
                 # Calculate file size
                 file_size = len(content.encode("utf-8"))
 
                 # Create document (inline storage)
-                doc = await vision_repo.create(
+                doc = await self._vision_repo.create(
                     session=session,
                     tenant_key=self.tenant_key,
                     product_id=product_id,
@@ -160,7 +153,7 @@ class ProductVisionService:
                     display_order=0,
                 )
 
-                await session.commit()
+                await self._vision_repo.commit_session(session)
 
                 self._logger.info(f"Created vision document {doc.id} for product {product_id}")
 
@@ -221,7 +214,7 @@ class ProductVisionService:
             summaries = summarizer.summarize_multi_level(content)
 
             # Re-attach doc to session after previous commit (fixes detached state)
-            session.add(doc)
+            self._vision_repo.reattach_sync(session, doc)
 
             # Store summary levels (Handover 0352: light and medium only)
             doc.summary_light = summaries.light.summary
@@ -280,7 +273,7 @@ class ProductVisionService:
                 session=session, tenant_key=self.tenant_key, vision_document_id=str(doc.id)
             )
 
-            await session.commit()
+            await self._vision_repo.commit_session(session)
 
             chunks_created = chunk_result["chunks_created"]
             total_tokens = chunk_result["total_tokens"]
@@ -313,3 +306,264 @@ class ProductVisionService:
             self._logger.info(f"Auto-consolidated vision documents for product {product_id}")
         except (ValidationError, ResourceNotFoundError, ValueError, KeyError) as e:
             self._logger.warning(f"Auto-consolidation failed for product {product_id}: {e}")
+
+    # ---- BE-5022b: Service wrappers for VisionDocumentRepository methods ----
+
+    async def get_product_summaries(
+        self,
+        product_id: str,
+        ratio: Decimal,
+        session: AsyncSession | None = None,
+    ) -> list:
+        """Fetch per-document summaries for a product at a given compression ratio.
+
+        BE-5022b: Service wrapper for VisionDocumentRepository.get_product_summaries().
+
+        Args:
+            product_id: Product UUID
+            ratio: Compression ratio (e.g. Decimal("0.33") or Decimal("0.66"))
+            session: Optional existing session
+
+        Returns:
+            List of VisionDocumentSummary rows
+        """
+        repo = self._vision_repo
+        if session is not None:
+            return await repo.get_product_summaries(
+                session=session,
+                tenant_key=self.tenant_key,
+                product_id=product_id,
+                ratio=ratio,
+            )
+        async with self._get_session() as new_session:
+            return await repo.get_product_summaries(
+                session=new_session,
+                tenant_key=self.tenant_key,
+                product_id=product_id,
+                ratio=ratio,
+            )
+
+    async def create_summary(
+        self,
+        document_id: str,
+        product_id: str,
+        source: str,
+        ratio: Decimal,
+        summary: str,
+        tokens_original: int,
+        tokens_summary: int,
+        session: AsyncSession | None = None,
+    ) -> Any:
+        """Create or update a vision document summary.
+
+        BE-5022b: Service wrapper for VisionDocumentRepository.create_summary().
+
+        Args:
+            document_id: Vision document UUID
+            product_id: Product UUID
+            source: Summary source ("ai" or "sumy")
+            ratio: Compression ratio
+            summary: Summary text
+            tokens_original: Original document token count
+            tokens_summary: Summary token count
+            session: Optional existing session
+
+        Returns:
+            Created VisionDocumentSummary instance
+        """
+        repo = self._vision_repo
+        if session is not None:
+            return await repo.create_summary(
+                session=session,
+                tenant_key=self.tenant_key,
+                document_id=document_id,
+                product_id=product_id,
+                source=source,
+                ratio=ratio,
+                summary=summary,
+                tokens_original=tokens_original,
+                tokens_summary=tokens_summary,
+            )
+        async with self._get_session() as new_session:
+            return await repo.create_summary(
+                session=new_session,
+                tenant_key=self.tenant_key,
+                document_id=document_id,
+                product_id=product_id,
+                source=source,
+                ratio=ratio,
+                summary=summary,
+                tokens_original=tokens_original,
+                tokens_summary=tokens_summary,
+            )
+
+    async def get_summaries(
+        self,
+        document_id: str,
+        session: AsyncSession | None = None,
+    ) -> list:
+        """Fetch all summaries for a vision document.
+
+        BE-5022b: Service wrapper for VisionDocumentRepository.get_summaries().
+
+        Args:
+            document_id: Vision document UUID
+            session: Optional existing session
+
+        Returns:
+            List of VisionDocumentSummary rows
+        """
+        repo = self._vision_repo
+        if session is not None:
+            return await repo.get_summaries(
+                session=session,
+                tenant_key=self.tenant_key,
+                document_id=document_id,
+            )
+        async with self._get_session() as new_session:
+            return await repo.get_summaries(
+                session=new_session,
+                tenant_key=self.tenant_key,
+                document_id=document_id,
+            )
+
+    async def create_document(
+        self,
+        session: AsyncSession,
+        product_id: str,
+        document_name: str,
+        content: str,
+        document_type: str = "vision",
+        storage_type: str = "inline",
+        file_path: str | None = None,
+        file_size: int | None = None,
+        display_order: int = 0,
+        version: str = "1.0.0",
+    ) -> Any:
+        """Create a new vision document.
+
+        BE-5022b: Service wrapper for VisionDocumentRepository.create().
+
+        Args:
+            session: Active database session
+            product_id: Product UUID
+            document_name: Human-readable name
+            content: Document content
+            document_type: Document category
+            storage_type: How content is stored
+            file_path: Optional file path
+            file_size: Optional file size in bytes
+            display_order: Display order in UI
+            version: Semantic version
+
+        Returns:
+            Created VisionDocument instance
+        """
+        repo = self._vision_repo
+        return await repo.create(
+            session=session,
+            tenant_key=self.tenant_key,
+            product_id=product_id,
+            document_name=document_name,
+            content=content,
+            document_type=document_type,
+            storage_type=storage_type,
+            file_path=file_path,
+            file_size=file_size,
+            display_order=display_order,
+            version=version,
+        )
+
+    async def get_document_by_id(
+        self,
+        session: AsyncSession,
+        document_id: str,
+    ) -> Any:
+        """Get a vision document by ID.
+
+        BE-5022b: Service wrapper for VisionDocumentRepository.get_by_id().
+
+        Args:
+            session: Active database session
+            document_id: Vision document UUID
+
+        Returns:
+            VisionDocument instance or None
+        """
+        repo = self._vision_repo
+        return await repo.get_by_id(session, self.tenant_key, document_id)
+
+    async def list_documents_by_product(
+        self,
+        session: AsyncSession,
+        product_id: str,
+        active_only: bool = True,
+    ) -> list:
+        """List vision documents for a product.
+
+        BE-5022b: Service wrapper for VisionDocumentRepository.list_by_product().
+
+        Args:
+            session: Active database session
+            product_id: Product UUID
+            active_only: Only return active documents
+
+        Returns:
+            List of VisionDocument instances
+        """
+        repo = self._vision_repo
+        return await repo.list_by_product(
+            session=session,
+            tenant_key=self.tenant_key,
+            product_id=product_id,
+            active_only=active_only,
+        )
+
+    async def update_document_content(
+        self,
+        session: AsyncSession,
+        document_id: str,
+        new_content: str,
+    ) -> Any:
+        """Update vision document content.
+
+        BE-5022b: Service wrapper for VisionDocumentRepository.update_content().
+
+        Args:
+            session: Active database session
+            document_id: Vision document UUID
+            new_content: New document content
+
+        Returns:
+            Updated VisionDocument instance or None
+        """
+        repo = self._vision_repo
+        return await repo.update_content(
+            session=session,
+            tenant_key=self.tenant_key,
+            document_id=document_id,
+            new_content=new_content,
+        )
+
+    async def delete_document(
+        self,
+        session: AsyncSession,
+        document_id: str,
+    ) -> dict:
+        """Delete a vision document.
+
+        BE-5022b: Service wrapper for VisionDocumentRepository.delete().
+
+        Args:
+            session: Active database session
+            document_id: Vision document UUID
+
+        Returns:
+            Dict with deletion result
+        """
+        repo = self._vision_repo
+        return await repo.delete(
+            session=session,
+            tenant_key=self.tenant_key,
+            document_id=document_id,
+        )

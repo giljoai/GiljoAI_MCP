@@ -34,7 +34,11 @@ def create_mock_db_session(project_mock, product_mock):
     """
     mock_session = AsyncMock()
     mock_db_manager = MagicMock()
-    mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
+    # Use AsyncMock for __aenter__ so it returns a coroutine when awaited
+    mock_cm = AsyncMock()
+    mock_cm.__aenter__.return_value = mock_session
+    mock_cm.__aexit__.return_value = False
+    mock_db_manager.get_session_async.return_value = mock_cm
 
     # Mock database queries to return actual objects (not coroutines)
     call_counter = {"count": 0}
@@ -140,9 +144,10 @@ class TestRepositoryIntegration:
 
         mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
-        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
+        # BE-5022b: project_closeout now routes through ProductMemoryService
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryService") as mock_svc_class:
             mock_repo = MagicMock()
-            mock_repo_class.return_value = mock_repo
+            mock_svc_class.return_value = mock_repo
             mock_repo.get_next_sequence = AsyncMock(return_value=5)
             mock_repo.create_entry = AsyncMock(return_value=mock_memory_entry)
 
@@ -155,10 +160,8 @@ class TestRepositoryIntegration:
                 db_manager=mock_db_manager,
             )
 
-            # Verify repository was used
-            mock_repo.get_next_sequence.assert_called_once_with(
-                session=mock_session, product_id=mock_product.id, tenant_key=tenant_key
-            )
+            # Verify service was used for sequence generation
+            mock_repo.get_next_sequence.assert_called_once_with(session=mock_session, product_id=mock_product.id)
             assert "entry_id" in result
             assert "message" in result
             assert result["sequence_number"] == 5
@@ -176,9 +179,10 @@ class TestRepositoryIntegration:
 
         mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
-        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
+        # BE-5022b: project_closeout now routes through ProductMemoryService
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryService") as mock_svc_class:
             mock_repo = MagicMock()
-            mock_repo_class.return_value = mock_repo
+            mock_svc_class.return_value = mock_repo
             mock_repo.get_next_sequence = AsyncMock(return_value=3)
             mock_repo.create_entry = AsyncMock(return_value=mock_memory_entry)
 
@@ -196,23 +200,24 @@ class TestRepositoryIntegration:
             call_kwargs = mock_repo.create_entry.call_args[1]
 
             assert call_kwargs["session"] == mock_session
-            assert call_kwargs["tenant_key"] == tenant_key
-            assert call_kwargs["product_id"] == mock_product.id
-            assert call_kwargs["project_id"] == mock_project.id
-            assert call_kwargs["sequence"] == 3
-            assert call_kwargs["entry_type"] == "project_closeout"
-            assert call_kwargs["source"] == "closeout_v1"
-            assert call_kwargs["project_name"] == "Test Project Alpha"
-            assert call_kwargs["summary"] == "Test summary"
-            assert call_kwargs["key_outcomes"] == ["Outcome 1", "Outcome 2"]
-            assert call_kwargs["decisions_made"] == ["Decision 1"]
-            assert "timestamp" in call_kwargs
-            assert "deliverables" in call_kwargs
-            assert "metrics" in call_kwargs
-            assert "priority" in call_kwargs
-            assert "significance_score" in call_kwargs
-            assert "token_estimate" in call_kwargs
-            assert "tags" in call_kwargs
+            params = call_kwargs["params"]
+            assert params.tenant_key == tenant_key
+            assert params.product_id == mock_product.id
+            assert params.project_id == mock_project.id
+            assert params.sequence == 3
+            assert params.entry_type == "project_closeout"
+            assert params.source == "closeout_v1"
+            assert params.project_name == "Test Project Alpha"
+            assert params.summary == "Test summary"
+            assert params.key_outcomes == ["Outcome 1", "Outcome 2"]
+            assert params.decisions_made == ["Decision 1"]
+            assert params.timestamp is not None
+            assert params.deliverables is not None
+            assert params.metrics is not None
+            assert params.priority is not None
+            assert params.significance_score is not None
+            assert params.token_estimate is not None
+            assert params.tags is not None
 
     @pytest.mark.asyncio
     async def test_does_not_mutate_jsonb_sequential_history(
@@ -227,13 +232,14 @@ class TestRepositoryIntegration:
         """
         from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
-        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
+        _mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
         initial_history = mock_product.product_memory["sequential_history"].copy()
 
-        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
+        # BE-5022b: project_closeout now routes through ProductMemoryService
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryService") as mock_svc_class:
             mock_repo = MagicMock()
-            mock_repo_class.return_value = mock_repo
+            mock_svc_class.return_value = mock_repo
             mock_repo.get_next_sequence = AsyncMock(return_value=1)
             mock_repo.create_entry = AsyncMock(return_value=mock_memory_entry)
 
@@ -261,16 +267,17 @@ class TestRepositoryIntegration:
         """
         from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
-        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
+        _mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
         entry_id = uuid4()
         mock_entry = MagicMock(spec=ProductMemoryEntry)
         mock_entry.id = entry_id
         mock_entry.sequence = 1
 
-        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
+        # BE-5022b: project_closeout now routes through ProductMemoryService
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryService") as mock_svc_class:
             mock_repo = MagicMock()
-            mock_repo_class.return_value = mock_repo
+            mock_svc_class.return_value = mock_repo
             mock_repo.get_next_sequence = AsyncMock(return_value=1)
             mock_repo.create_entry = AsyncMock(return_value=mock_entry)
 
@@ -298,7 +305,7 @@ class TestRepositoryIntegration:
         """
         from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
-        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
+        _mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
         # Enable git integration
         mock_product.product_memory["git_integration"] = {
@@ -307,9 +314,10 @@ class TestRepositoryIntegration:
             "repo_owner": "test-owner",
         }
 
-        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
+        # BE-5022b: project_closeout now routes through ProductMemoryService
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryService") as mock_svc_class:
             mock_repo = MagicMock()
-            mock_repo_class.return_value = mock_repo
+            mock_svc_class.return_value = mock_repo
             mock_repo.get_next_sequence = AsyncMock(return_value=1)
             mock_repo.create_entry = AsyncMock(return_value=mock_memory_entry)
 
@@ -325,31 +333,32 @@ class TestRepositoryIntegration:
 
             # Verify all computed fields were passed
             call_kwargs = mock_repo.create_entry.call_args[1]
+            params = call_kwargs["params"]
 
             # Check git_commits
-            assert len(call_kwargs["git_commits"]) == 1
-            assert call_kwargs["git_commits"][0]["sha"] == "abc123"
+            assert len(params.git_commits) == 1
+            assert params.git_commits[0]["sha"] == "abc123"
 
             # Check deliverables (derived from key_outcomes)
-            assert call_kwargs["deliverables"] == ["Outcome A", "Outcome B", "Outcome C"]
+            assert params.deliverables == ["Outcome A", "Outcome B", "Outcome C"]
 
             # Check metrics
-            assert "commits" in call_kwargs["metrics"]
-            assert call_kwargs["metrics"]["commits"] == 1
-            assert call_kwargs["metrics"]["test_coverage"] == 0.0
+            assert "commits" in params.metrics
+            assert params.metrics["commits"] == 1
+            assert params.metrics["test_coverage"] == 0.0
 
             # Check priority (should be 2 for key_outcomes present)
-            assert call_kwargs["priority"] == 2
+            assert params.priority == 2
 
             # Check significance_score
-            assert 0.0 <= call_kwargs["significance_score"] <= 1.0
+            assert 0.0 <= params.significance_score <= 1.0
 
             # Check token_estimate
-            assert call_kwargs["token_estimate"] > 0
+            assert params.token_estimate > 0
 
             # Check tags
-            assert isinstance(call_kwargs["tags"], list)
-            assert len(call_kwargs["tags"]) > 0
+            assert isinstance(params.tags, list)
+            assert len(params.tags) > 0
 
     @pytest.mark.asyncio
     async def test_git_commits_empty_when_disabled(self, mock_product, mock_project, tenant_key, mock_memory_entry):
@@ -362,11 +371,12 @@ class TestRepositoryIntegration:
         """
         from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
-        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
+        _mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
-        with patch("giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
+        # BE-5022b: project_closeout now routes through ProductMemoryService
+        with patch("giljo_mcp.tools.project_closeout.ProductMemoryService") as mock_svc_class:
             mock_repo = MagicMock()
-            mock_repo_class.return_value = mock_repo
+            mock_svc_class.return_value = mock_repo
             mock_repo.get_next_sequence = AsyncMock(return_value=1)
             mock_repo.create_entry = AsyncMock(return_value=mock_memory_entry)
 
@@ -380,4 +390,5 @@ class TestRepositoryIntegration:
             )
 
             call_kwargs = mock_repo.create_entry.call_args[1]
-            assert call_kwargs["git_commits"] == []
+            params = call_kwargs["params"]
+            assert params.git_commits == []
