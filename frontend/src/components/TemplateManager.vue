@@ -575,7 +575,7 @@ const duplicateTemplate = (template) => {
     name: `${template.name} (Copy)`,
     user_instructions: template.user_instructions || '',
     cli_tool: template.cli_tool || 'claude',
-    custom_suffix: '-copy',
+    custom_suffix: '',
     background_color: template.background_color || '',
     model: template.model || 'sonnet',
     tools: template.tools || null,
@@ -647,10 +647,12 @@ const saveTemplateAndPreview = async () => {
   } catch (error) {
     console.error('Failed to save template:', error)
     previewContent.value = ''
+    const detail = error.response?.data?.detail || 'Failed to save template. Check your connection and try again.'
+    const isNameCollision = error.response?.status === 400 && /already exists|unique/i.test(detail)
     showToast({
-      message: error.response?.data?.detail || 'Failed to save template. Check your connection and try again.',
-      type: 'error',
-      title: 'Error',
+      message: detail,
+      type: isNameCollision ? 'warning' : 'error',
+      title: isNameCollision ? 'Name Already Exists' : 'Error',
     })
   } finally {
     saving.value = false
