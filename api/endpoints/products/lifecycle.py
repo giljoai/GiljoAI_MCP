@@ -203,7 +203,7 @@ async def restore_product(
 
     Uses ProductService.restore_product() for database operations.
     """
-    logger.info(f"User {current_user.username} restoring product {product_id}")
+    logger.info(f"User {sanitize(current_user.username)} restoring product {sanitize(product_id)}")
 
     await service.lifecycle.restore_product(product_id)
 

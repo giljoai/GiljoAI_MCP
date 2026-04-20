@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import api from '@/services/api'
 import { TASK_STATUS } from '@/utils/constants'
 import { useProductStore } from './products'
@@ -145,19 +145,6 @@ export const useTaskStore = defineStore('tasks', () => {
     }
   }
 
-
-  // Watch for product changes and reload tasks
-  watch(
-    () => productStore.currentProductId,
-    async (newProductId) => {
-      if (newProductId) {
-        await fetchTasks({ product_id: newProductId })
-        await fetchTaskSummary(newProductId)
-      } else {
-        tasks.value = []
-      }
-    },
-  )
 
   // Handle real-time updates from WebSocket
   function handleRealtimeUpdate(data) {
