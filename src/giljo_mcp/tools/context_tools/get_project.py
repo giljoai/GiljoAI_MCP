@@ -9,17 +9,18 @@ Project Context Tool - Handover 0316
 Fetch current project context for orchestrator awareness.
 Returns project metadata, mission, status.
 """
+# Read-only tool -- uses direct session.execute() for SELECT queries (no writes)
 
+import logging
 from typing import Any
 
-import structlog
 from sqlalchemy import select
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models.projects import Project
 
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def estimate_tokens(data: Any) -> int:
@@ -78,7 +79,7 @@ async def get_project(
     )
 
     if db_manager is None:
-        logger.error("db_manager is required", operation="get_project")
+        logger.error("db_manager is required operation=get_project")
         raise ValueError("db_manager parameter is required")
 
     async with db_manager.get_session_async() as session:
@@ -88,7 +89,9 @@ async def get_project(
         project = result.scalar_one_or_none()
 
         if not project:
-            logger.warning("project_not_found", project_id=project_id, tenant_key=tenant_key, operation="get_project")
+            logger.warning(
+                "project_not_found project_id=%s tenant_key=%s operation=get_project", project_id, tenant_key
+            )
             return {
                 "source": "project_description",
                 "data": {},
@@ -113,12 +116,12 @@ async def get_project(
         total_tokens = estimate_tokens(data)
 
         logger.info(
-            "project_description_fetched",
-            project_id=project_id,
-            tenant_key=tenant_key,
-            status=project.status,
-            summary_included=include_summary and bool(project.orchestrator_summary),
-            estimated_tokens=total_tokens,
+            "project_description_fetched project_id=%s tenant_key=%s status=%s summary_included=%s estimated_tokens=%s",
+            project_id,
+            tenant_key,
+            project.status,
+            include_summary and bool(project.orchestrator_summary),
+            total_tokens,
         )
 
         return {

@@ -32,9 +32,6 @@ vi.mock('@/components/AgentExport.vue', () => ({
   default: { template: '<div data-test="agent-export-mock">Agent Export</div>' }
 }))
 
-vi.mock('@/components/GitAdvancedSettingsDialog.vue', () => ({
-  default: { template: '<div data-test="git-advanced-mock">Git Advanced</div>' }
-}))
 
 vi.mock('@/components/settings/ContextPriorityConfig.vue', () => ({
   default: { template: '<div data-test="context-priority-mock">Context Priority Config</div>' }

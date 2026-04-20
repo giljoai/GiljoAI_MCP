@@ -232,7 +232,7 @@ class TestReactivateJob:
         """Blocked agent should transition to working on reactivation."""
         job, agent = blocked_agent
 
-        result = await orchestration_service.reactivate_job(
+        result = await orchestration_service._agent_state.reactivate_job(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
             reason="fix request from File-Creator",
@@ -261,7 +261,7 @@ class TestReactivateJob:
         # Agent worked for ~3 minutes (started 5m ago, completed 2m ago)
         prior_duration = (agent.completed_at - agent.started_at).total_seconds()
 
-        await orchestration_service.reactivate_job(
+        await orchestration_service._agent_state.reactivate_job(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
             reason="fix request",
@@ -282,7 +282,7 @@ class TestReactivateJob:
         job, agent = blocked_agent
         assert agent.reactivation_count == 0
 
-        result = await orchestration_service.reactivate_job(
+        result = await orchestration_service._agent_state.reactivate_job(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
             reason="fix request",
@@ -304,7 +304,7 @@ class TestReactivateJob:
         job, agent = blocked_agent
         assert job.status == "completed"
 
-        await orchestration_service.reactivate_job(
+        await orchestration_service._agent_state.reactivate_job(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
             reason="fix request",
@@ -324,7 +324,7 @@ class TestReactivateJob:
         """Reactivation result should include step-by-step instruction."""
         job, _ = blocked_agent
 
-        result = await orchestration_service.reactivate_job(
+        result = await orchestration_service._agent_state.reactivate_job(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
         )
@@ -353,7 +353,7 @@ class TestReactivateJob:
         await db_session.commit()
 
         with pytest.raises(ResourceNotFoundError, match="not in blocked status"):
-            await orchestration_service.reactivate_job(
+            await orchestration_service._agent_state.reactivate_job(
                 job_id=job.job_id,
                 tenant_key=test_tenant_key,
             )
@@ -378,7 +378,7 @@ class TestReactivateJob:
         await db_session.commit()
 
         with pytest.raises(ResourceNotFoundError, match="not in blocked status"):
-            await orchestration_service.reactivate_job(
+            await orchestration_service._agent_state.reactivate_job(
                 job_id=job.job_id,
                 tenant_key=test_tenant_key,
             )
@@ -400,7 +400,7 @@ class TestReactivateJob:
         await db_session.commit()
 
         with pytest.raises(ProjectStateError, match="closed out"):
-            await orchestration_service.reactivate_job(
+            await orchestration_service._agent_state.reactivate_job(
                 job_id=job.job_id,
                 tenant_key=test_tenant_key,
             )
@@ -416,7 +416,7 @@ class TestReactivateJob:
         """Reactivation should broadcast an agent:status_changed WebSocket event."""
         job, _ = blocked_agent
 
-        await orchestration_service.reactivate_job(
+        await orchestration_service._agent_state.reactivate_job(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
         )
@@ -447,7 +447,7 @@ class TestDismissReactivation:
         """Dismissing should return blocked agent to complete status."""
         job, agent = blocked_agent
 
-        result = await orchestration_service.dismiss_reactivation(
+        result = await orchestration_service._agent_state.dismiss_reactivation(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
             reason="FYI message only",
@@ -473,7 +473,7 @@ class TestDismissReactivation:
         original_started = agent.started_at
         original_completed = agent.completed_at
 
-        await orchestration_service.dismiss_reactivation(
+        await orchestration_service._agent_state.dismiss_reactivation(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
         )
@@ -497,7 +497,7 @@ class TestDismissReactivation:
         # already "completed", dismiss should keep it that way
         assert job.status == "completed"
 
-        await orchestration_service.dismiss_reactivation(
+        await orchestration_service._agent_state.dismiss_reactivation(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
         )
@@ -525,7 +525,7 @@ class TestDismissReactivation:
         await db_session.commit()
 
         with pytest.raises(ResourceNotFoundError, match="not in blocked status"):
-            await orchestration_service.dismiss_reactivation(
+            await orchestration_service._agent_state.dismiss_reactivation(
                 job_id=job.job_id,
                 tenant_key=test_tenant_key,
             )
@@ -541,7 +541,7 @@ class TestDismissReactivation:
         """Dismiss should broadcast an agent:status_changed WebSocket event."""
         job, _ = blocked_agent
 
-        await orchestration_service.dismiss_reactivation(
+        await orchestration_service._agent_state.dismiss_reactivation(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
         )

@@ -6,7 +6,7 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import ProjectsView from '@/views/ProjectsView.vue'
 import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
-import { useAgentStore } from '@/stores/agents'
+import { useAgentJobsStore as useAgentStore } from '@/stores/agentJobsStore'
 
 describe('ProjectsView.vue', () => {
   let pinia

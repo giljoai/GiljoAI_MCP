@@ -20,14 +20,12 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from giljo_mcp.models.settings import Settings
+from giljo_mcp.models.agent_identity import AgentExecution
+from giljo_mcp.repositories.agent_operations_repository import AgentOperationsRepository
 
 
 logger = logging.getLogger(__name__)
@@ -101,7 +99,9 @@ class SilenceDetector:
         """Execute one complete silence detection cycle."""
         async with self.db.get_session_async() as session:
             # Read threshold from settings (scan all tenants for the global setting)
-            threshold = await _get_silence_threshold(session)
+            repo = AgentOperationsRepository()
+            threshold_val = await repo.get_silence_threshold_setting(session)
+            threshold = threshold_val if threshold_val is not None else DEFAULT_SILENCE_THRESHOLD_MINUTES
 
             count = await self._detect_silent_agents(session, threshold_minutes=threshold)
 
@@ -133,28 +133,12 @@ class SilenceDetector:
         # system-wide background health monitor (like a database cleanup job), not
         # a tenant-facing operation. It runs on a server timer with no user/tenant
         # context. Cross-tenant scope is BY DESIGN.
-        stmt = (
-            select(AgentExecution)
-            .options(selectinload(AgentExecution.job).selectinload(AgentJob.project))
-            .where(
-                AgentExecution.status == "working",
-                or_(
-                    AgentExecution.last_progress_at < cutoff,
-                    and_(
-                        AgentExecution.last_progress_at.is_(None),
-                        AgentExecution.started_at < cutoff,
-                    ),
-                ),
-            )
-        )
-
-        result = await session.execute(stmt)
-        stale_agents = result.scalars().all()
+        repo = AgentOperationsRepository()
+        stale_agents = await repo.find_stale_working_agents(session, cutoff)
 
         count = 0
         for agent in stale_agents:
             old_status = agent.status
-            agent.status = "silent"
 
             # Extract project context from eagerly-loaded relationships
             project_id = str(agent.job.project_id) if agent.job else None
@@ -179,7 +163,7 @@ class SilenceDetector:
                 )
 
                 # Emit dedicated agent:silent event for notification bell
-                from api.events.schemas import EventFactory
+                from giljo_mcp.events.schemas import EventFactory
 
                 silent_event = EventFactory.agent_silent(
                     job_id=str(agent.job_id),
@@ -203,7 +187,7 @@ class SilenceDetector:
             count += 1
 
         if count > 0:
-            await session.flush()
+            await repo.mark_agents_silent(session, stale_agents)
 
         return count
 
@@ -212,7 +196,7 @@ async def auto_clear_silent(
     session: AsyncSession,
     job_id: str,
     ws_manager,
-    tenant_key: str = "",
+    tenant_key: str,
 ) -> None:
     """Auto-clear silent status when an agent makes an MCP call.
 
@@ -225,31 +209,16 @@ async def auto_clear_silent(
         session: Database session
         job_id: The job_id extracted from MCP tool arguments
         ws_manager: WebSocket manager for broadcasting
-        tenant_key: Tenant isolation key
+        tenant_key: Tenant isolation key (required, no default)
     """
-    conditions = [
-        AgentExecution.job_id == job_id,
-        AgentExecution.status == "silent",
-    ]
-    if tenant_key:
-        conditions.append(AgentExecution.tenant_key == tenant_key)
+    repo = AgentOperationsRepository()
+    agent, project_id = await repo.find_silent_agent_with_project(session, tenant_key, job_id)
 
-    stmt = (
-        select(AgentExecution, AgentJob.project_id)
-        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-        .where(*conditions)
-    )
-    result = await session.execute(stmt)
-    row = result.one_or_none()
-
-    if row is None:
+    if agent is None:
         return
 
-    agent, project_id = row
     old_status = agent.status
-    agent.status = "working"
-    agent.last_progress_at = datetime.now(timezone.utc)
-    await session.flush()
+    await repo.clear_silent_to_working(session, agent)
 
     logger.info(
         "Auto-cleared silent status: agent_id=%s, job_id=%s, display_name=%s",
@@ -293,26 +262,14 @@ async def clear_silent_status(
     Returns:
         Dict with updated agent info if cleared, None if agent not found or not silent
     """
-    stmt = (
-        select(AgentExecution, AgentJob.project_id)
-        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-        .where(
-            AgentExecution.agent_id == agent_id,
-            AgentExecution.tenant_key == tenant_key,
-            AgentExecution.status == "silent",
-        )
-    )
-    result = await session.execute(stmt)
-    row = result.one_or_none()
+    repo = AgentOperationsRepository()
+    agent, project_id = await repo.find_silent_agent_by_agent_id(session, tenant_key, agent_id)
 
-    if row is None:
+    if agent is None:
         return None
 
-    agent, project_id = row
     old_status = agent.status
-    agent.status = "working"
-    agent.last_progress_at = datetime.now(timezone.utc)
-    await session.flush()
+    await repo.clear_silent_to_working(session, agent)
 
     logger.info(
         "Manually cleared silent status: agent_id=%s, tenant_key=%s, display_name=%s",
@@ -356,14 +313,10 @@ async def _get_silence_threshold(session: AsyncSession) -> int:
         Silence threshold in minutes
     """
     try:
-        stmt = select(Settings).where(Settings.category == "general").limit(1)
-        result = await session.execute(stmt)
-        settings = result.scalar_one_or_none()
-
-        if settings and settings.settings_data:
-            threshold = settings.settings_data.get("agent_silence_threshold_minutes")
-            if threshold is not None and isinstance(threshold, (int, float)):
-                return max(1, int(threshold))
+        repo = AgentOperationsRepository()
+        threshold_val = await repo.get_silence_threshold_setting(session)
+        if threshold_val is not None:
+            return threshold_val
     except (SQLAlchemyError, KeyError, ValueError):
         logger.exception("Failed to read silence threshold from settings")
 
@@ -398,7 +351,7 @@ async def _broadcast_status_change(
         )
         return
 
-    from api.events.schemas import EventFactory
+    from giljo_mcp.events.schemas import EventFactory
 
     event = EventFactory.agent_status_changed(
         job_id=str(agent.job_id),

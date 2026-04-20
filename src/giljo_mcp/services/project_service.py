@@ -29,10 +29,8 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import (
@@ -45,29 +43,17 @@ from giljo_mcp.exceptions import (
 
 # Import Pattern: Use modular imports from models package (Post-0128a)
 # See models/__init__.py for migration guidance
-from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from giljo_mcp.models.projects import Project, ProjectType
-from giljo_mcp.models.tasks import Message
+from giljo_mcp.repositories.project_repository import ProjectRepository
 from giljo_mcp.schemas.service_responses import (
-    ActiveProjectDetail,
-    CanCloseResult,
-    CloseoutData,
-    CloseoutPromptResult,
-    NuclearDeleteResult,
-    OperationResult,
-    ProjectCloseOutResult,
     ProjectCompleteResult,
     ProjectData,
     ProjectDetail,
     ProjectLaunchResult,
     ProjectListItem,
     ProjectMissionUpdateResult,
-    ProjectPurgeResult,
-    ProjectResumeResult,
-    ProjectSummaryResult,
-    SoftDeleteResult,
 )
+from giljo_mcp.services.project_helpers import _build_ws_project_data
 from giljo_mcp.tenant import TenantManager
 
 
@@ -79,28 +65,6 @@ IMMUTABLE_PROJECT_STATUSES: frozenset[str] = frozenset({"completed", "cancelled"
 # Fields that are always writable regardless of project status.
 # These are UI/display preferences (archive, visibility) — not project data.
 ALWAYS_MUTABLE_FIELDS: frozenset[str] = frozenset({"hidden"})
-
-
-def _build_ws_project_data(project) -> dict:
-    """Build standardized project data dict for WebSocket broadcasts.
-
-    Single source of truth for project data sent to frontend via
-    WebSocket ``broadcast_project_update`` events. All project broadcast
-    sites should use this helper to ensure a consistent field structure.
-
-    Args:
-        project: Project model instance (SQLAlchemy).
-
-    Returns:
-        Dict with the fields extracted by
-        ``WebSocketManager.broadcast_project_update``.
-    """
-    return {
-        "name": project.name,
-        "description": project.description,
-        "status": project.status,
-        "mission": project.mission,
-    }
 
 
 class ProjectService:
@@ -140,6 +104,7 @@ class ProjectService:
         self._test_session = test_session
         self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._repo = ProjectRepository()
 
         # Facade sub-services (Handover 0769: ProjectService split, 0950i: launch extraction,
         #                      0950n: summary extraction)
@@ -149,11 +114,16 @@ class ProjectService:
         from giljo_mcp.services.project_lifecycle_service import ProjectLifecycleService
         from giljo_mcp.services.project_summary_service import ProjectSummaryService
 
-        self._lifecycle = ProjectLifecycleService(db_manager, tenant_manager, test_session, websocket_manager)
-        self._closeout = ProjectCloseoutService(db_manager, tenant_manager, test_session, websocket_manager)
-        self._deletion = ProjectDeletionService(db_manager, tenant_manager, test_session, websocket_manager)
-        self._launch = ProjectLaunchService(db_manager, tenant_manager, test_session, websocket_manager)
-        self._summary = ProjectSummaryService(db_manager, tenant_manager, test_session, websocket_manager)
+        # Sprint 002f: Public sub-services for direct caller access (collapsed pass-throughs)
+        self.lifecycle = ProjectLifecycleService(db_manager, tenant_manager, test_session, websocket_manager)
+        self.closeout = ProjectCloseoutService(db_manager, tenant_manager, test_session, websocket_manager)
+        self.deletion = ProjectDeletionService(db_manager, tenant_manager, test_session, websocket_manager)
+        self.launch = ProjectLaunchService(db_manager, tenant_manager, test_session, websocket_manager)
+        self.summary = ProjectSummaryService(db_manager, tenant_manager, test_session, websocket_manager)
+
+        from giljo_mcp.services.project_query_service import ProjectQueryService
+
+        self.query = ProjectQueryService(db_manager, tenant_manager, test_session)
 
     def _get_session(self):
         """
@@ -236,42 +206,17 @@ class ProjectService:
                     # Lock matching rows to prevent concurrent duplicates,
                     # then compute max. FOR UPDATE can't be used with aggregates.
                     # Include deleted rows: uq_project_taxonomy doesn't exclude them.
-                    lock_query = select(Project.id).where(
-                        Project.tenant_key == tenant_key,
+                    await self._repo.lock_rows_for_series(session, tenant_key, product_id, project_type_id)
+                    series_number = await self._repo.get_next_series_number(
+                        session, tenant_key, product_id, project_type_id
                     )
-                    if project_type_id:
-                        lock_query = lock_query.where(Project.project_type_id == project_type_id)
-                    else:
-                        lock_query = lock_query.where(Project.project_type_id.is_(None))
-                    await session.execute(lock_query.with_for_update())
-
-                    max_query = select(func.coalesce(func.max(Project.series_number), 0) + 1).where(
-                        Project.tenant_key == tenant_key,
-                    )
-                    if project_type_id:
-                        max_query = max_query.where(Project.project_type_id == project_type_id)
-                    else:
-                        max_query = max_query.where(Project.project_type_id.is_(None))
-                    result = await session.execute(max_query)
-                    series_number = result.scalar_one()
 
                 # Application-level duplicate check before insert
                 else:
-                    dup_query = select(Project.id).where(
-                        Project.tenant_key == tenant_key,
-                        Project.series_number == series_number,
-                        Project.deleted_at.is_(None),
+                    is_dup = await self._repo.check_duplicate_taxonomy(
+                        session, tenant_key, product_id, project_type_id, series_number, subseries
                     )
-                    if project_type_id:
-                        dup_query = dup_query.where(Project.project_type_id == project_type_id)
-                    else:
-                        dup_query = dup_query.where(Project.project_type_id.is_(None))
-                    if subseries is not None:
-                        dup_query = dup_query.where(Project.subseries == subseries)
-                    else:
-                        dup_query = dup_query.where(Project.subseries.is_(None))
-                    dup_result = await session.execute(dup_query)
-                    if dup_result.scalar_one_or_none():
+                    if is_dup:
                         raise AlreadyExistsError(
                             message="Taxonomy combination already in use. Please choose a different series number or suffix.",
                             context={"name": name, "tenant_key": tenant_key},
@@ -292,16 +237,13 @@ class ProjectService:
                     updated_at=now,  # Explicitly set since DB schema may not have DEFAULT
                 )
 
-                session.add(project)
-                await session.commit()
-                await session.refresh(project)  # Load DB-generated fields (created_at, updated_at)
+                await self._repo.add(session, project)
+                await self._repo.commit(session)
+                await self._repo.refresh(session, project)
 
                 # Handover 0440a: Eagerly load project_type relationship for taxonomy_alias
                 if project.project_type_id:
-                    result = await session.execute(
-                        select(Project).options(selectinload(Project.project_type)).where(Project.id == project.id)
-                    )
-                    project = result.scalar_one()
+                    project = await self._repo.get_with_project_type(session, project.id)
 
                 self._logger.info(f"Created project {project.id} with status '{status}' and tenant key {tenant_key}")
 
@@ -329,6 +271,9 @@ class ProjectService:
             raise BaseGiljoError(
                 message=f"Failed to create project: {e!s}", context={"name": name, "tenant_key": tenant_key}
             ) from e
+        except BaseGiljoError:
+            # Re-raise domain errors (AlreadyExistsError, ValidationError, etc.) unchanged.
+            raise
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to create project")
             raise BaseGiljoError(
@@ -350,24 +295,12 @@ class ProjectService:
         """
         async with self._get_session() as session:
             # Try label match first (Handover 0837b)
-            result = await session.execute(
-                select(ProjectType).where(
-                    ProjectType.tenant_key == tenant_key,
-                    func.lower(ProjectType.label) == label.lower(),
-                )
-            )
-            match = result.scalar_one_or_none()
+            match = await self._repo.get_project_type_by_label(session, tenant_key, label)
             if match:
                 return match
 
             # Fall back to abbreviation match (Handover 0841)
-            result = await session.execute(
-                select(ProjectType).where(
-                    ProjectType.tenant_key == tenant_key,
-                    func.upper(ProjectType.abbreviation) == label.upper(),
-                )
-            )
-            return result.scalar_one_or_none()
+            return await self._repo.get_project_type_by_abbreviation(session, tenant_key, label)
 
     async def get_project(self, project_id: str, tenant_key: str) -> ProjectDetail:
         """
@@ -394,12 +327,7 @@ class ProjectService:
             async with self._get_session() as session:
                 # Get project with mandatory tenant isolation filter (Handover 0424 Phase 0)
                 # Handover 0440a: Eagerly load project_type for taxonomy_alias property
-                result = await session.execute(
-                    select(Project)
-                    .options(selectinload(Project.project_type))
-                    .where(Project.tenant_key == tenant_key, Project.id == project_id)
-                )
-                project = result.scalar_one_or_none()
+                project = await self._repo.get_by_id_with_type(session, tenant_key, project_id)
 
                 if not project:
                     raise ResourceNotFoundError(
@@ -408,14 +336,7 @@ class ProjectService:
                     )
 
                 # Get agent jobs for this project (defense-in-depth: tenant_key on join query)
-                agent_query = (
-                    select(AgentJob, AgentExecution)
-                    .join(AgentExecution, AgentJob.job_id == AgentExecution.job_id)
-                    .where(AgentJob.project_id == project_id, AgentJob.tenant_key == tenant_key)
-                    .order_by(AgentJob.created_at)
-                )
-                agent_result = await session.execute(agent_query)
-                agent_pairs = agent_result.all()
+                agent_pairs = await self._repo.get_agent_pairs_for_project(session, tenant_key, project_id)
 
                 # Convert agents to simple dicts (matching AgentSimple schema)
                 # Include messages for JobsTab WebSocket refresh fix (Handover 0358)
@@ -475,97 +396,6 @@ class ProjectService:
                 message=f"Failed to get project: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
 
-    async def get_active_project(self) -> ActiveProjectDetail | None:
-        """
-        Get the currently active project for the current tenant.
-
-        Returns the active project (status='active') or None if no project is active.
-
-        Follows Single Active Project architecture (Handover 0050b):
-        - Only ONE project can be active per product at any time
-        - Database enforces this via partial unique index
-
-        Returns:
-            Dict with project details, or None if no active project
-
-        Raises:
-            ValidationError: When no tenant context is available
-            BaseGiljoError: When operation fails
-
-        """
-        try:
-            # Get current tenant from context
-            tenant_key = self.tenant_manager.get_current_tenant()
-
-            # DEBUG: Log tenant context retrieval
-            self._logger.debug(f"[get_active_project] Retrieved tenant_key from context: {tenant_key}")
-
-            if not tenant_key:
-                self._logger.error("[get_active_project] No tenant context available!")
-                raise ValidationError(
-                    message="No tenant context available", context={"operation": "get_active_project"}
-                )
-
-            async with self._get_session() as session:
-                # Query for active project (tenant-isolated)
-                # Handover 0440a: Eagerly load project_type for taxonomy_alias property
-                stmt = (
-                    select(Project)
-                    .options(selectinload(Project.project_type))
-                    .where(and_(Project.tenant_key == tenant_key, Project.status == "active"))
-                    .limit(1)
-                )
-
-                result = await session.execute(stmt)
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    self._logger.info(f"No active project found for tenant {tenant_key}")
-                    return None
-
-                # Get agent job and message counts (defense-in-depth: tenant_key on child queries)
-                agent_job_stmt = select(func.count(AgentJob.job_id)).where(
-                    AgentJob.project_id == project.id, AgentJob.tenant_key == tenant_key
-                )
-                agent_count_result = await session.execute(agent_job_stmt)
-                agent_count = agent_count_result.scalar() or 0
-
-                message_stmt = select(func.count(Message.id)).where(
-                    Message.project_id == project.id, Message.tenant_key == tenant_key
-                )
-                message_count_result = await session.execute(message_stmt)
-                message_count = message_count_result.scalar() or 0
-
-                self._logger.info(f"Found active project: {project.name} (ID: {project.id})")
-
-                return ActiveProjectDetail(
-                    id=str(project.id),
-                    alias=project.alias or "",
-                    name=project.name,
-                    mission=project.mission or "",
-                    description=project.description,
-                    status=project.status,
-                    product_id=project.product_id,
-                    created_at=project.created_at.isoformat() if project.created_at else None,
-                    updated_at=project.updated_at.isoformat() if project.updated_at else None,
-                    completed_at=project.completed_at.isoformat() if project.completed_at else None,
-                    deleted_at=project.deleted_at.isoformat() if project.deleted_at else None,
-                    agent_count=agent_count,
-                    message_count=message_count,
-                    # Handover 0440a: Taxonomy fields
-                    project_type_id=project.project_type_id,
-                    series_number=project.series_number,
-                    subseries=project.subseries,
-                    taxonomy_alias=project.taxonomy_alias,
-                )
-
-        except ValidationError:
-            # Re-raise our custom exceptions
-            raise
-        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
-            self._logger.exception("Failed to get active project")
-            raise BaseGiljoError(message=f"Failed to get active project: {e!s}", context={}) from e
-
     async def list_projects(
         self,
         status: str | None = None,
@@ -596,25 +426,7 @@ class ProjectService:
                 raise ValidationError(message="No tenant context available", context={"operation": "list_projects"})
 
             async with self.db_manager.get_tenant_session_async(tenant_key) as session:
-                # TENANT ISOLATION: Only return projects for the specified tenant
-                # Handover 0440a: Eagerly load project_type for taxonomy_alias property
-                query = (
-                    select(Project).options(selectinload(Project.project_type)).where(Project.tenant_key == tenant_key)
-                )
-
-                if status:
-                    # Explicit status filter, including deleted if requested
-                    query = query.where(Project.status == status)
-                    if status == "deleted":
-                        query = query.where(Project.deleted_at.isnot(None))
-                else:
-                    # Default listing excludes soft-deleted and cancelled projects
-                    query = query.where(Project.deleted_at.is_(None))
-                    if not include_cancelled:
-                        query = query.where(Project.status != "cancelled")
-
-                result = await session.execute(query)
-                projects = result.scalars().all()
+                projects = await self._repo.list_projects(session, tenant_key, status, include_cancelled)
 
                 # For list view, we include basic metrics
                 # (agent_count and message_count would require additional queries)
@@ -653,156 +465,6 @@ class ProjectService:
             self._logger.exception("Failed to list projects")
             raise BaseGiljoError(message=f"Failed to list projects: {e!s}", context={"tenant_key": tenant_key}) from e
 
-    # ============================================================================
-    # Project Detail Helpers (depth-level data for list_projects)
-    # ============================================================================
-
-    async def get_project_agent_summary(self, project_id: str, tenant_key: str) -> dict:
-        """Get a lightweight summary of agent jobs for a project.
-
-        Returns counts and types of agents spawned, without full details.
-
-        Args:
-            project_id: Project UUID.
-            tenant_key: Tenant isolation key (required).
-
-        Returns:
-            Dict with agent_count and job_types list.
-        """
-        try:
-            async with self._get_session() as session:
-                query = (
-                    select(AgentJob.job_type, func.count(AgentJob.job_id).label("count"))
-                    .where(AgentJob.project_id == project_id, AgentJob.tenant_key == tenant_key)
-                    .group_by(AgentJob.job_type)
-                )
-                result = await session.execute(query)
-                rows = result.all()
-                total = sum(r.count for r in rows)
-                return {
-                    "agent_count": total,
-                    "job_types": [{"type": r.job_type, "count": r.count} for r in rows],
-                }
-        except Exception as e:  # noqa: BLE001 — graceful degradation for optional enrichment
-            self._logger.warning("Failed to get agent summary for project %s: %s", project_id, e)
-            return {"agent_count": 0, "job_types": []}
-
-    async def get_project_agent_details(self, project_id: str, tenant_key: str) -> list[dict]:
-        """Get detailed agent job info for a project (depth 2).
-
-        Returns agent display names, statuses, and results.
-
-        Args:
-            project_id: Project UUID.
-            tenant_key: Tenant isolation key (required).
-
-        Returns:
-            List of agent job detail dicts.
-        """
-        try:
-            async with self._get_session() as session:
-                query = (
-                    select(AgentJob, AgentExecution)
-                    .join(AgentExecution, AgentJob.job_id == AgentExecution.job_id)
-                    .where(AgentJob.project_id == project_id, AgentJob.tenant_key == tenant_key)
-                    .order_by(AgentJob.created_at)
-                )
-                result = await session.execute(query)
-                pairs = result.all()
-                return [
-                    {
-                        "job_id": job.job_id,
-                        "job_type": job.job_type,
-                        "status": job.status,
-                        "display_name": execution.agent_display_name,
-                        "agent_status": execution.status,
-                        "mission": job.mission,
-                        "result": execution.result,
-                        "created_at": job.created_at.isoformat() if job.created_at else None,
-                        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-                    }
-                    for job, execution in pairs
-                ]
-        except Exception as e:  # noqa: BLE001 — graceful degradation for optional enrichment
-            self._logger.warning("Failed to get agent details for project %s: %s", project_id, e)
-            return []
-
-    async def get_project_memory_entries(self, project_id: str, tenant_key: str) -> list[dict]:
-        """Get 360 memory entries for a project (depth 2).
-
-        Args:
-            project_id: Project UUID.
-            tenant_key: Tenant isolation key (required).
-
-        Returns:
-            List of memory entry dicts with summary, outcomes, decisions, and git_commits.
-        """
-        try:
-            async with self._get_session() as session:
-                query = (
-                    select(ProductMemoryEntry)
-                    .where(
-                        ProductMemoryEntry.project_id == project_id,
-                        ProductMemoryEntry.tenant_key == tenant_key,
-                    )
-                    .order_by(ProductMemoryEntry.sequence)
-                )
-                result = await session.execute(query)
-                entries = result.scalars().all()
-                return [
-                    {
-                        "id": str(entry.id),
-                        "entry_type": entry.entry_type,
-                        "sequence": entry.sequence,
-                        "project_name": entry.project_name,
-                        "summary": entry.summary,
-                        "key_outcomes": entry.key_outcomes or [],
-                        "decisions_made": entry.decisions_made or [],
-                        "git_commits": entry.git_commits or [],
-                        "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
-                    }
-                    for entry in entries
-                ]
-        except Exception as e:  # noqa: BLE001 — graceful degradation for optional enrichment
-            self._logger.warning("Failed to get memory entries for project %s: %s", project_id, e)
-            return []
-
-    async def get_project_messages(self, project_id: str, tenant_key: str) -> list[dict]:
-        """Get message history for a project (depth 3).
-
-        Args:
-            project_id: Project UUID.
-            tenant_key: Tenant isolation key (required).
-
-        Returns:
-            List of message dicts with sender, content, and timestamps.
-        """
-        try:
-            async with self._get_session() as session:
-                query = (
-                    select(Message)
-                    .where(
-                        Message.project_id == project_id,
-                        Message.tenant_key == tenant_key,
-                    )
-                    .order_by(Message.created_at)
-                )
-                result = await session.execute(query)
-                messages = result.scalars().all()
-                return [
-                    {
-                        "id": str(msg.id),
-                        "from_agent_id": msg.from_agent_id,
-                        "content": msg.content,
-                        "message_type": msg.message_type,
-                        "created_at": msg.created_at.isoformat() if msg.created_at else None,
-                    }
-                    for msg in messages
-                ]
-        except Exception as e:  # noqa: BLE001 — graceful degradation for optional enrichment
-            self._logger.warning("Failed to get messages for project %s: %s", project_id, e)
-            return []
-
     async def update_project_mission(
         self, project_id: str, mission: str, tenant_key: str | None = None
     ) -> ProjectMissionUpdateResult:
@@ -838,10 +500,7 @@ class ProjectService:
                     )
 
                 # Fetch project to validate state before writing
-                project_result = await session.execute(
-                    select(Project).where(and_(Project.tenant_key == tenant_key, Project.id == project_id))
-                )
-                project = project_result.scalar_one_or_none()
+                project = await self._repo.get_by_id(session, tenant_key, project_id)
 
                 if not project:
                     raise ResourceNotFoundError(
@@ -862,7 +521,7 @@ class ProjectService:
                 project.staging_status = "staging"
                 project.updated_at = datetime.now(timezone.utc)
 
-                await session.commit()
+                await self._repo.commit(session)
 
                 # Broadcast mission update via WebSocketManager
                 await self._broadcast_mission_update(project_id, mission, project.tenant_key)
@@ -895,21 +554,9 @@ class ProjectService:
         db_session: Any | None = None,
     ) -> ProjectCompleteResult:
         """Facade: delegates to ProjectLifecycleService."""
-        return await self._lifecycle.complete_project(
+        return await self.lifecycle.complete_project(
             project_id, summary, key_outcomes, decisions_made, tenant_key, db_session
         )
-
-    async def cancel_project(self, project_id: str, tenant_key: str, reason: str | None = None) -> None:
-        """Facade: delegates to ProjectLifecycleService."""
-        return await self._lifecycle.cancel_project(project_id, tenant_key, reason)
-
-    async def close_out_project(self, project_id: str, tenant_key: str) -> ProjectCloseOutResult:
-        """Facade: delegates to ProjectCloseoutService."""
-        return await self._closeout.close_out_project(project_id, tenant_key)
-
-    async def continue_working(self, project_id: str, tenant_key: str) -> ProjectResumeResult:
-        """Facade: delegates to ProjectLifecycleService."""
-        return await self._lifecycle.continue_working(project_id, tenant_key)
 
     async def activate_project(
         self,
@@ -919,7 +566,7 @@ class ProjectService:
         tenant_key: str | None = None,
     ) -> Project:
         """Facade: delegates to ProjectLifecycleService."""
-        return await self._lifecycle.activate_project(project_id, force, websocket_manager, tenant_key)
+        return await self.lifecycle.activate_project(project_id, force, websocket_manager, tenant_key)
 
     async def deactivate_project(
         self,
@@ -929,43 +576,7 @@ class ProjectService:
         websocket_manager: Any | None = None,
     ) -> Project:
         """Facade: delegates to ProjectLifecycleService."""
-        return await self._lifecycle.deactivate_project(project_id, tenant_key, reason, websocket_manager)
-
-    async def cancel_staging(self, project_id: str, websocket_manager: Any | None = None) -> ProjectData:
-        """Facade: delegates to ProjectLifecycleService."""
-        return await self._lifecycle.cancel_staging(project_id, websocket_manager)
-
-    def check_staging_allowed(self, project: Any) -> None:
-        """Facade: delegates to ProjectLifecycleService."""
-        self._lifecycle.check_staging_allowed(project)
-
-    async def restage(self, project_id: str) -> dict:
-        """Facade: delegates to ProjectLifecycleService."""
-        return await self._lifecycle.restage(project_id)
-
-    async def unstage(self, project_id: str) -> dict:
-        """Facade: delegates to ProjectLifecycleService."""
-        return await self._lifecycle.unstage(project_id)
-
-    async def get_project_summary(self, project_id: str) -> ProjectSummaryResult:
-        """Facade: delegates to ProjectSummaryService."""
-        return await self._summary.get_project_summary(project_id)
-
-    async def get_closeout_data(self, project_id: str, db_session: Any | None = None) -> CloseoutData:
-        """Facade: delegates to ProjectCloseoutService."""
-        return await self._closeout.get_closeout_data(project_id, db_session)
-
-    async def can_close_project(
-        self, project_id: str, tenant_key: str | None = None, db_session: Any | None = None
-    ) -> CanCloseResult:
-        """Facade: delegates to ProjectCloseoutService."""
-        return await self._closeout.can_close_project(project_id, tenant_key, db_session)
-
-    async def generate_closeout_prompt(
-        self, project_id: str, tenant_key: str | None = None, db_session: Any | None = None
-    ) -> CloseoutPromptResult:
-        """Facade: delegates to ProjectCloseoutService."""
-        return await self._closeout.generate_closeout_prompt(project_id, tenant_key, db_session)
+        return await self.lifecycle.deactivate_project(project_id, tenant_key, reason, websocket_manager)
 
     def _apply_project_updates(self, project, updates: dict[str, Any]) -> None:
         """Apply validated field updates to a project model.
@@ -1073,12 +684,9 @@ class ProjectService:
         async with self._get_session() as session:
             # Fetch project
             # Handover 0440a: Eagerly load project_type for taxonomy_alias property
-            result = await session.execute(
-                select(Project)
-                .options(selectinload(Project.project_type))
-                .where(and_(Project.id == project_id, Project.tenant_key == self.tenant_manager.get_current_tenant()))
+            project = await self._repo.get_by_id_with_type(
+                session, self.tenant_manager.get_current_tenant(), project_id
             )
-            project = result.scalar_one_or_none()
 
             if not project:
                 raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
@@ -1096,7 +704,7 @@ class ProjectService:
             self._apply_project_updates(project, updates)
 
             try:
-                await session.commit()
+                await self._repo.commit(session)
             except IntegrityError as e:
                 if "uq_project_taxonomy" in str(e):
                     raise AlreadyExistsError(
@@ -1104,14 +712,11 @@ class ProjectService:
                         context={"project_id": project_id},
                     ) from e
                 raise
-            await session.refresh(project)
+            await self._repo.refresh(session, project)
 
             # Reload project_type relationship (expired after commit)
             if project.project_type_id:
-                result = await session.execute(
-                    select(Project).options(selectinload(Project.project_type)).where(Project.id == project.id)
-                )
-                project = result.scalar_one()
+                project = await self._repo.get_with_project_type(session, project.id)
 
             self._logger.info(f"Updated project {project_id}")
 
@@ -1138,39 +743,13 @@ class ProjectService:
         websocket_manager: Any | None = None,
     ) -> ProjectLaunchResult:
         """Facade: delegates to ProjectLaunchService (Handover 0950i)."""
-        return await self._launch.launch_project(
+        return await self.launch.launch_project(
             project_id,
             user_id,
             launch_config,
             websocket_manager,
             project_service=self,
         )
-
-    async def restore_project(self, project_id: str, tenant_key: str) -> OperationResult:
-        """Facade: delegates to ProjectDeletionService."""
-        return await self._deletion.restore_project(project_id, tenant_key)
-
-    # ============================================================================
-    # Maintenance & Cleanup Methods (Facade)
-    # ============================================================================
-
-    async def nuclear_delete_project(
-        self, project_id: str, websocket_manager: Any | None = None
-    ) -> NuclearDeleteResult:
-        """Facade: delegates to ProjectDeletionService."""
-        return await self._deletion.nuclear_delete_project(project_id, websocket_manager)
-
-    async def delete_project(self, project_id: str) -> SoftDeleteResult:
-        """Facade: delegates to ProjectDeletionService."""
-        return await self._deletion.delete_project(project_id)
-
-    async def purge_all_deleted_projects(self) -> ProjectPurgeResult:
-        """Facade: delegates to ProjectDeletionService."""
-        return await self._deletion.purge_all_deleted_projects()
-
-    async def purge_expired_deleted_projects(self, days_before_purge: int = 10) -> ProjectPurgeResult:
-        """Facade: delegates to ProjectDeletionService."""
-        return await self._deletion.purge_expired_deleted_projects(days_before_purge)
 
     # ============================================================================
     # Private Helper Methods
@@ -1210,3 +789,384 @@ class ProjectService:
                 f"[WEBSOCKET ERROR] Failed to broadcast project:mission_updated: {ws_error}",
                 exc_info=True,
             )
+
+    # ============================================================================
+    # MCP Tool Methods (sprint 002f: pushed down from ToolAccessor)
+    # ============================================================================
+
+    _VALID_STATUS_FILTERS = frozenset({"inactive", "active", "completed", "cancelled", "all"})
+    _VALID_UPDATE_STATUSES = frozenset({"inactive", "active", "completed", "cancelled"})
+    _VALID_DEPTH_LEVELS = frozenset({0, 1, 2, 3})
+
+    async def create_project_for_mcp(
+        self,
+        name: str,
+        mission: str = "",
+        description: str = "",
+        product_id: str | None = None,
+        tenant_key: str | None = None,
+        project_type: str | None = None,
+        series_number: int | None = None,
+        subseries: str | None = None,
+        websocket_manager: Any | None = None,
+    ) -> dict[str, Any]:
+        """Create a project via MCP tool (validation + active product resolution).
+
+        Pushed down from ToolAccessor.create_project (sprint 002f).
+        """
+        if not name or not name.strip():
+            raise ValidationError(
+                "Project name is required and cannot be empty.",
+                context={"operation": "create_project"},
+            )
+        name = name.strip()
+        description = description.strip() if description else ""
+
+        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+        ws = websocket_manager or self._websocket_manager
+
+        project_type_id = None
+        resolved_type_label = ""
+        if project_type:
+            resolved_type = await self.get_project_type_by_label(project_type, effective_tenant_key)
+            if resolved_type:
+                project_type_id = resolved_type.id
+                resolved_type_label = resolved_type.abbreviation or project_type
+
+        if not product_id:
+            from giljo_mcp.services.product_service import ProductService
+
+            product_service = ProductService(
+                db_manager=self.db_manager,
+                tenant_key=effective_tenant_key,
+                websocket_manager=ws,
+            )
+            active_product = await product_service.get_active_product()
+            if not active_product:
+                raise ValidationError(
+                    "No active product set. Please activate a product first.",
+                    context={"tenant_key": effective_tenant_key, "operation": "create_project"},
+                )
+            product_id = active_product.id
+
+        project = await self.create_project(
+            name=name,
+            mission=mission,
+            description=description,
+            product_id=product_id,
+            tenant_key=effective_tenant_key,
+            status="inactive",
+            project_type_id=project_type_id,
+            series_number=series_number,
+            subseries=subseries,
+        )
+
+        logger.info(
+            "Created project %s (alias: %s) for tenant %s in product %s",
+            project.id,
+            project.alias,
+            effective_tenant_key,
+            product_id,
+        )
+
+        if ws:
+            try:
+                await ws.broadcast_to_tenant(
+                    tenant_key=effective_tenant_key,
+                    event_type="project:created",
+                    data={"project_id": str(project.id), "name": project.name, "product_id": product_id},
+                )
+            except (RuntimeError, ValueError, OSError) as e:
+                logger.warning(f"Failed to broadcast project:created event: {e}")
+
+        return {
+            "success": True,
+            "project_id": project.id,
+            "alias": project.alias,
+            "name": project.name,
+            "description": project.description,
+            "mission": project.mission,
+            "status": project.status,
+            "product_id": project.product_id,
+            "project_type": resolved_type_label,
+            "series_number": project.series_number or 0,
+            "taxonomy_alias": project.taxonomy_alias,
+            "created_at": project.created_at.isoformat() if project.created_at else None,
+            "message": f"Project '{project.name}' created successfully"
+            + (
+                f". NOTE: project_type '{project_type}' is not a recognized category -- "
+                "project created without taxonomy. Add the category in the dashboard first, "
+                "then assign it to this project."
+                if project_type and not project_type_id
+                else ""
+            ),
+        }
+
+    async def list_projects_for_mcp(
+        self,
+        status_filter: str = "all",
+        summary_only: bool = True,
+        depth: int = 0,
+        tenant_key: str | None = None,
+        websocket_manager: Any | None = None,
+    ) -> dict[str, Any]:
+        """List projects via MCP tool (validation + depth-level assembly).
+
+        Pushed down from ToolAccessor.list_projects (sprint 002f).
+        """
+        if status_filter not in self._VALID_STATUS_FILTERS:
+            raise ValidationError(
+                f"Invalid status_filter '{status_filter}'. "
+                f"Must be one of: {', '.join(sorted(self._VALID_STATUS_FILTERS))}",
+                context={"operation": "list_projects"},
+            )
+        if not isinstance(depth, int) or depth not in self._VALID_DEPTH_LEVELS:
+            raise ValidationError(
+                f"Invalid depth '{depth}'. Must be an integer 0-3.",
+                context={"operation": "list_projects"},
+            )
+
+        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+        ws = websocket_manager or self._websocket_manager
+
+        from giljo_mcp.services.product_service import ProductService
+
+        product_service = ProductService(
+            db_manager=self.db_manager,
+            tenant_key=effective_tenant_key,
+            websocket_manager=ws,
+        )
+        active_product = await product_service.get_active_product()
+        if not active_product:
+            raise ValidationError(
+                "No active product set. Please activate a product first.",
+                context={"tenant_key": effective_tenant_key, "operation": "list_projects"},
+            )
+
+        svc_status = None if status_filter == "all" else status_filter
+        include_cancelled = status_filter == "all"
+        all_projects = await self.list_projects(
+            status=svc_status,
+            tenant_key=effective_tenant_key,
+            include_cancelled=include_cancelled,
+        )
+
+        product_projects = [p for p in all_projects if p.product_id == active_product.id]
+        effective_depth = 0 if summary_only else depth
+
+        projects_out = await self._build_mcp_project_list(product_projects, effective_depth, effective_tenant_key)
+
+        project_types = await self._get_valid_project_types(effective_tenant_key)
+
+        return {
+            "success": True,
+            "product_id": active_product.id,
+            "count": len(projects_out),
+            "depth": effective_depth,
+            "projects": projects_out,
+            "project_types": project_types,
+        }
+
+    async def _build_mcp_project_list(
+        self,
+        projects: list,
+        depth: int,
+        tenant_key: str,
+    ) -> list[dict[str, Any]]:
+        """Build project list dicts with graduated detail based on depth level."""
+        results = []
+        for p in projects:
+            item: dict[str, Any] = {
+                "project_id": p.id,
+                "name": p.name,
+                "status": p.status,
+                "project_type": getattr(p.project_type, "abbreviation", None) if p.project_type else None,
+                "series_number": p.series_number,
+                "taxonomy_alias": p.taxonomy_alias,
+                "created_at": p.created_at,
+                "completed_at": p.completed_at,
+            }
+
+            if depth >= 1:
+                item["description"] = p.description or ""
+                item["mission"] = getattr(p, "mission", None) or ""
+                agent_summary = await self.query.get_project_agent_summary(
+                    project_id=p.id,
+                    tenant_key=tenant_key,
+                )
+                item["agent_summary"] = agent_summary
+
+            if depth >= 2:
+                memory_entries = await self.query.get_project_memory_entries(
+                    project_id=p.id,
+                    tenant_key=tenant_key,
+                )
+                item["memory_entries"] = memory_entries
+                agent_details = await self.query.get_project_agent_details(
+                    project_id=p.id,
+                    tenant_key=tenant_key,
+                )
+                item["agent_details"] = agent_details
+
+            if depth >= 3:
+                item["git_commits"] = self._extract_git_commits(memory_entries if depth >= 2 else [])
+                message_history = await self.query.get_project_messages(
+                    project_id=p.id,
+                    tenant_key=tenant_key,
+                )
+                item["message_history"] = message_history
+
+            results.append(item)
+        return results
+
+    @staticmethod
+    def _extract_git_commits(memory_entries: list[dict]) -> list[dict]:
+        """Extract git commits from 360 memory entries."""
+        commits = []
+        for entry in memory_entries:
+            entry_commits = entry.get("git_commits", [])
+            if isinstance(entry_commits, list):
+                commits.extend(entry_commits)
+        return commits
+
+    async def _get_valid_project_types(self, tenant_key: str) -> list[dict[str, Any]]:
+        """Return available project types for a tenant."""
+        from giljo_mcp.services.project_type_ops import ensure_default_types_seeded, list_project_types
+
+        async with self.db_manager.get_session_async() as session:
+            await ensure_default_types_seeded(session, tenant_key)
+            types = await list_project_types(session, tenant_key)
+            return [{"abbreviation": t.abbreviation, "label": t.label, "color": t.color} for t in types]
+
+    async def update_project_metadata_for_mcp(
+        self,
+        project_id: str,
+        name: str | None = None,
+        description: str | None = None,
+        status: str | None = None,
+        tenant_key: str | None = None,
+        project_type: str | None = None,
+        series_number: int | None = None,
+        subseries: str | None = None,
+        websocket_manager: Any | None = None,
+    ) -> dict[str, Any]:
+        """Update project metadata via MCP tool (validation + active product enforcement).
+
+        Pushed down from ToolAccessor.update_project_metadata (sprint 002f).
+        """
+        if not project_id or not project_id.strip():
+            raise ValidationError(
+                "Project ID is required and cannot be empty.",
+                context={"operation": "update_project_metadata"},
+            )
+        project_id = project_id.strip()
+
+        if all(v is None for v in (name, description, status, project_type, series_number, subseries)):
+            raise ValidationError(
+                "At least one field must be provided.",
+                context={"operation": "update_project_metadata"},
+            )
+
+        if name is not None:
+            name = name.strip()
+            if len(name) > 200:
+                raise ValidationError(
+                    f"Name exceeds 200 character limit (got {len(name)}).",
+                    context={"operation": "update_project_metadata"},
+                )
+            if not name:
+                raise ValidationError(
+                    "Name cannot be empty.",
+                    context={"operation": "update_project_metadata"},
+                )
+
+        if description is not None and len(description) > 5000:
+            raise ValidationError(
+                f"Description exceeds 5000 character limit (got {len(description)}).",
+                context={"operation": "update_project_metadata"},
+            )
+
+        if status is not None and status not in self._VALID_UPDATE_STATUSES:
+            raise ValidationError(
+                f"Invalid status '{status}'. Must be one of: {', '.join(sorted(self._VALID_UPDATE_STATUSES))}",
+                context={"operation": "update_project_metadata"},
+            )
+
+        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+        ws = websocket_manager or self._websocket_manager
+
+        from giljo_mcp.services.product_service import ProductService
+
+        product_service = ProductService(
+            db_manager=self.db_manager,
+            tenant_key=effective_tenant_key,
+            websocket_manager=ws,
+        )
+        active_product = await product_service.get_active_product()
+        if not active_product:
+            raise ValidationError(
+                "No active product set. Please activate a product first.",
+                context={"tenant_key": effective_tenant_key, "operation": "update_project_metadata"},
+            )
+
+        project = await self.get_project(project_id=project_id, tenant_key=effective_tenant_key)
+        if project.product_id != active_product.id:
+            raise ValidationError(
+                "Project does not belong to the active product.",
+                context={
+                    "project_id": project_id,
+                    "project_product_id": project.product_id,
+                    "active_product_id": active_product.id,
+                },
+            )
+
+        if project_type is not None:
+            resolved_type = await self.get_project_type_by_label(project_type, effective_tenant_key)
+            if resolved_type:
+                project_type = resolved_type.id
+            else:
+                valid_types = await self._get_valid_project_types(effective_tenant_key)
+                valid_labels = [t["abbreviation"] for t in valid_types]
+                raise ValidationError(
+                    f"Unknown project type '{project_type}'. "
+                    f"Valid types: {', '.join(valid_labels)}. "
+                    "Use list_projects() to see all valid project_types.",
+                    context={"operation": "update_project_metadata", "valid_types": valid_types},
+                )
+
+        if series_number is not None and (series_number < 1 or series_number > 9999):
+            raise ValidationError(
+                f"series_number must be 1-9999, got {series_number}.",
+                context={"operation": "update_project_metadata"},
+            )
+        if subseries is not None and (len(subseries) != 1 or not subseries.isalpha() or not subseries.islower()):
+            raise ValidationError(
+                f"subseries must be a single lowercase letter (a-z), got '{subseries}'.",
+                context={"operation": "update_project_metadata"},
+            )
+
+        updates: dict[str, Any] = {}
+        if name is not None:
+            updates["name"] = name
+        if description is not None:
+            updates["description"] = description
+        if status is not None:
+            updates["status"] = status
+        if project_type is not None:
+            updates["project_type_id"] = project_type
+        if series_number is not None:
+            updates["series_number"] = series_number
+        if subseries is not None:
+            updates["subseries"] = subseries
+
+        updated = await self.update_project(project_id=project_id, updates=updates, websocket_manager=ws)
+
+        return {
+            "success": True,
+            "project_id": updated.id,
+            "name": updated.name,
+            "description": updated.description,
+            "status": updated.status,
+            "updated_at": updated.updated_at,
+            "message": f"Project '{updated.name}' updated successfully.",
+        }

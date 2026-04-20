@@ -74,7 +74,9 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
 
     # Act - Nuclear delete the project
     # 0731c: nuclear_delete_project returns NuclearDeleteResult typed model
-    result = await project_service_with_session.nuclear_delete_project(project_id=project.id, websocket_manager=None)
+    result = await project_service_with_session.deletion.nuclear_delete_project(
+        project_id=project.id, websocket_manager=None
+    )
 
     # Assert - Verify result is typed NuclearDeleteResult
     assert isinstance(result, NuclearDeleteResult)
@@ -122,7 +124,9 @@ async def test_nuclear_delete_with_no_memory_entries(
 
     # Act - Nuclear delete
     # 0731c: nuclear_delete_project returns NuclearDeleteResult typed model
-    result = await project_service_with_session.nuclear_delete_project(project_id=project.id, websocket_manager=None)
+    result = await project_service_with_session.deletion.nuclear_delete_project(
+        project_id=project.id, websocket_manager=None
+    )
 
     # Assert - Typed model with 0 entries marked
     assert isinstance(result, NuclearDeleteResult)
@@ -170,7 +174,9 @@ async def test_nuclear_delete_tenant_isolation(db_session, test_tenant_key, test
 
     # Act - Delete first project
     # 0731c: nuclear_delete_project returns NuclearDeleteResult typed model
-    result = await project_service_with_session.nuclear_delete_project(project_id=project1.id, websocket_manager=None)
+    result = await project_service_with_session.deletion.nuclear_delete_project(
+        project_id=project1.id, websocket_manager=None
+    )
 
     # Assert - Typed model with 1 entry marked
     assert isinstance(result, NuclearDeleteResult)

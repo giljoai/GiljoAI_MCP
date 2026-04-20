@@ -12,10 +12,11 @@ quality_standards now comes from product_test_configs table.
 
 Always returns FULL data (no truncation).
 """
+# Read-only tool -- uses direct session.execute() for SELECT queries (no writes)
 
+import logging
 from typing import Any
 
-import structlog
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
@@ -23,7 +24,7 @@ from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models.products import Product
 
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def estimate_tokens(data: Any) -> int:
@@ -51,10 +52,10 @@ async def get_testing(product_id: str, tenant_key: str, db_manager: DatabaseMana
     Multi-Tenant Isolation:
         All queries filter by tenant_key and product_id.
     """
-    logger.info("fetching_testing_context", product_id=product_id, tenant_key=tenant_key)
+    logger.info("fetching_testing_context product_id=%s tenant_key=%s", product_id, tenant_key)
 
     if db_manager is None:
-        logger.error("db_manager is required", operation="get_testing")
+        logger.error("db_manager is required operation=get_testing")
         raise ValueError("db_manager parameter is required")
 
     async with db_manager.get_session_async() as session:
@@ -67,7 +68,9 @@ async def get_testing(product_id: str, tenant_key: str, db_manager: DatabaseMana
         product = result.unique().scalar_one_or_none()
 
         if not product:
-            logger.warning("product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_testing")
+            logger.warning(
+                "product_not_found product_id=%s tenant_key=%s operation=get_testing", product_id, tenant_key
+            )
             return {
                 "source": "testing",
                 "data": {},
@@ -85,11 +88,11 @@ async def get_testing(product_id: str, tenant_key: str, db_manager: DatabaseMana
         total_tokens = estimate_tokens(data)
 
         logger.info(
-            "testing_context_fetched",
-            product_id=product_id,
-            tenant_key=tenant_key,
-            has_test_config=tc is not None,
-            estimated_tokens=total_tokens,
+            "testing_context_fetched product_id=%s tenant_key=%s has_test_config=%s estimated_tokens=%s",
+            product_id,
+            tenant_key,
+            tc is not None,
+            total_tokens,
         )
 
         return {"source": "testing", "data": data, "metadata": {"product_id": product_id, "tenant_key": tenant_key}}

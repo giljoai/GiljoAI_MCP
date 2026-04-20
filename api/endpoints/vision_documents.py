@@ -39,8 +39,8 @@ from api.schemas.vision_document import (
 from giljo_mcp.auth.dependencies import get_current_active_user
 from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from giljo_mcp.models import Product, User
-from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+from giljo_mcp.services.product_vision_service import ProductVisionService
 from giljo_mcp.utils.log_sanitizer import sanitize
 
 
@@ -53,16 +53,15 @@ AI_SUMMARY_MEDIUM_RATIO = Decimal("0.66")
 
 
 async def _attach_ai_summary_metadata(
-    vision_repo: VisionDocumentRepository,
+    vision_service: ProductVisionService,
     db: AsyncSession,
     tenant_key: str,
     response_model: VisionDocumentResponse,
 ) -> VisionDocumentResponse:
     """Augment a vision document response with AI summary token metadata."""
-    summaries = await vision_repo.get_summaries(
-        session=db,
-        tenant_key=tenant_key,
+    summaries = await vision_service.get_summaries(
         document_id=response_model.id,
+        session=db,
     )
 
     for summary in summaries:
@@ -114,7 +113,7 @@ async def trigger_consolidation(product_id: str, tenant_key: str, db_session: As
 
 
 async def _persist_sumy_summaries(
-    vision_repo: VisionDocumentRepository,
+    vision_service: ProductVisionService,
     session: AsyncSession,
     tenant_key: str,
     document_id: str,
@@ -122,9 +121,7 @@ async def _persist_sumy_summaries(
     summaries,  # SummarizeMultiLevelResult from VisionDocumentSummarizer
 ) -> None:
     """Persist Sumy summaries to vision_document_summaries table (upsert)."""
-    await vision_repo.create_summary(
-        session=session,
-        tenant_key=tenant_key,
+    await vision_service.create_summary(
         document_id=document_id,
         product_id=product_id,
         source="sumy",
@@ -132,10 +129,9 @@ async def _persist_sumy_summaries(
         summary=summaries.light.summary,
         tokens_original=summaries.original_tokens,
         tokens_summary=summaries.light.tokens,
-    )
-    await vision_repo.create_summary(
         session=session,
-        tenant_key=tenant_key,
+    )
+    await vision_service.create_summary(
         document_id=document_id,
         product_id=product_id,
         source="sumy",
@@ -143,6 +139,7 @@ async def _persist_sumy_summaries(
         summary=summaries.medium.summary,
         tokens_original=summaries.original_tokens,
         tokens_summary=summaries.medium.tokens,
+        session=session,
     )
 
 
@@ -163,19 +160,24 @@ async def get_db():
         yield session
 
 
-def get_vision_repo():
+def get_vision_service(tenant_key: str = Depends(get_tenant_key)):
     """
-    Get VisionDocumentRepository instance.
+    Get ProductVisionService instance.
+
+    BE-5022b: Replaced get_vision_repo() to route through service layer.
 
     Returns:
-        VisionDocumentRepository: Repository instance
+        ProductVisionService: Service instance
     """
     from api.app_state import state
 
     if not state.db_manager:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database not available")
 
-    return VisionDocumentRepository(state.db_manager)
+    return ProductVisionService(
+        db_manager=state.db_manager,
+        tenant_key=tenant_key,
+    )
 
 
 @router.post("/", response_model=VisionDocumentResponse, status_code=status.HTTP_201_CREATED)
@@ -190,7 +192,7 @@ async def create_vision_document(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
-    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
+    vision_service: ProductVisionService = Depends(get_vision_service),
 ):
     """
     Create a new vision document for a product.
@@ -291,9 +293,8 @@ async def create_vision_document(
         # IMPORTANT: Store path with forward slashes (OS-neutral, prevents escape sequence bugs)
         normalized_path = str(file_path).replace("\\", "/") if file_path else None
 
-        doc = await vision_repo.create(
+        doc = await vision_service.create_document(
             session=db,
-            tenant_key=tenant_key,
             product_id=product_id,
             document_name=document_name,
             content=document_content,
@@ -330,7 +331,9 @@ async def create_vision_document(
                 doc.original_token_count = summaries.original_tokens
 
                 # 0842a: Persist to vision_document_summaries table
-                await _persist_sumy_summaries(vision_repo, db, tenant_key, str(doc.id), str(doc.product_id), summaries)
+                await _persist_sumy_summaries(
+                    vision_service, db, tenant_key, str(doc.id), str(doc.product_id), summaries
+                )
 
                 await db.commit()
 
@@ -399,7 +402,7 @@ async def get_vision_document(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
-    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
+    vision_service: ProductVisionService = Depends(get_vision_service),
 ):
     """
     Get a single vision document by ID.
@@ -432,7 +435,7 @@ async def get_vision_document(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Vision document {document_id} not found")
 
     response_model = VisionDocumentResponse.model_validate(doc)
-    return await _attach_ai_summary_metadata(vision_repo, db, tenant_key, response_model)
+    return await _attach_ai_summary_metadata(vision_service, db, tenant_key, response_model)
 
 
 @router.get("/product/{product_id}", response_model=list[VisionDocumentResponse])
@@ -442,7 +445,7 @@ async def list_vision_documents(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
-    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
+    vision_service: ProductVisionService = Depends(get_vision_service),
 ):
     """
     List all vision documents for a product.
@@ -465,14 +468,12 @@ async def list_vision_documents(
     Raises:
         HTTPException 500: If listing fails
     """
-    docs = await vision_repo.list_by_product(
-        session=db, tenant_key=tenant_key, product_id=product_id, active_only=active_only
-    )
+    docs = await vision_service.list_documents_by_product(session=db, product_id=product_id, active_only=active_only)
 
     response_models = []
     for doc in docs:
         response_model = VisionDocumentResponse.model_validate(doc)
-        response_models.append(await _attach_ai_summary_metadata(vision_repo, db, tenant_key, response_model))
+        response_models.append(await _attach_ai_summary_metadata(vision_service, db, tenant_key, response_model))
 
     return response_models
 
@@ -484,7 +485,7 @@ async def update_vision_document(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
-    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
+    vision_service: ProductVisionService = Depends(get_vision_service),
 ):
     """
     Update vision document content.
@@ -507,9 +508,7 @@ async def update_vision_document(
     """
     try:
         # Update content
-        doc = await vision_repo.update_content(
-            session=db, tenant_key=tenant_key, document_id=document_id, new_content=content
-        )
+        doc = await vision_service.update_document_content(session=db, document_id=document_id, new_content=content)
 
         if not doc:
             raise HTTPException(
@@ -542,7 +541,9 @@ async def update_vision_document(
                 doc.original_token_count = summaries.original_tokens
 
                 # 0842a: Persist to vision_document_summaries table
-                await _persist_sumy_summaries(vision_repo, db, tenant_key, str(doc.id), str(doc.product_id), summaries)
+                await _persist_sumy_summaries(
+                    vision_service, db, tenant_key, str(doc.id), str(doc.product_id), summaries
+                )
 
                 await db.commit()
 
@@ -581,7 +582,7 @@ async def delete_vision_document(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
-    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
+    vision_service: ProductVisionService = Depends(get_vision_service),
 ):
     """
     Delete vision document and all associated chunks.
@@ -622,7 +623,7 @@ async def delete_vision_document(
         product_id = doc.product_id  # Store before deletion
 
         # Delete the document (already verified existence above, so this will succeed)
-        delete_result = await vision_repo.delete(session=db, tenant_key=tenant_key, document_id=document_id)
+        delete_result = await vision_service.delete_document(session=db, document_id=document_id)
 
         await db.commit()
 
@@ -711,7 +712,7 @@ async def regenerate_summaries(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
-    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
+    vision_service: ProductVisionService = Depends(get_vision_service),
 ):
     """
     Regenerate summaries for a vision document.
@@ -739,7 +740,7 @@ async def regenerate_summaries(
         from giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
         # Verify document exists and belongs to tenant
-        doc = await vision_repo.get_by_id(db, tenant_key, document_id)
+        doc = await vision_service.get_document_by_id(db, document_id)
         if not doc:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail=f"Vision document {document_id} not found"
@@ -769,7 +770,7 @@ async def regenerate_summaries(
         doc.original_token_count = summaries.original_tokens
 
         # 0842a: Persist to vision_document_summaries table
-        await _persist_sumy_summaries(vision_repo, db, tenant_key, str(doc.id), str(doc.product_id), summaries)
+        await _persist_sumy_summaries(vision_service, db, tenant_key, str(doc.id), str(doc.product_id), summaries)
 
         await db.commit()
 
@@ -808,7 +809,7 @@ async def get_ai_summary(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
-    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
+    vision_service: ProductVisionService = Depends(get_vision_service),
 ):
     """
     Get AI summary content for a vision document at a given compression level.
@@ -827,7 +828,7 @@ async def get_ai_summary(
             status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid level: {level}. Use 'light' or 'medium'."
         )
 
-    summaries = await vision_repo.get_summaries(session=db, tenant_key=tenant_key, document_id=document_id)
+    summaries = await vision_service.get_summaries(document_id=document_id, session=db)
     ai_summary = None
     for s in summaries:
         if s.source == "ai" and s.ratio == ratio:

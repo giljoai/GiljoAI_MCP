@@ -224,14 +224,19 @@ For trivial items (~10 lines), prefer fixing immediately rather than deferring.
 **Closeout steps (order matters):**
 1. Mark any remaining TODO items as `completed` via `report_progress()`
 2. `mcp__giljo_mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})` — mark YOUR orchestrator job complete FIRST
-3. `mcp__giljo_mcp__close_project_and_update_memory(project_id="...", summary="...", key_outcomes=[...], decisions_made=[...], git_commits=[...])` — close the project and write 360 memory
-4. Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
+   → READ the `closeout_checklist` in the response
+   → If `user_approval_required=true`: set status blocked with reason "Closeout: awaiting user review", present deferred findings and options to user, WAIT for user response
+   → If `user_approval_required=false`: proceed with best judgment
+3. Write `action_required` tags for deferred findings via `write_360_memory()` BEFORE closing the project
+4. Create follow-up tasks/projects if needed via `create_task()` or `create_project()`
+5. `mcp__giljo_mcp__close_project_and_update_memory(project_id="...", summary="...", key_outcomes=[...], decisions_made=[...], git_commits=[...])` — final close
+6. Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
 
-**IMPORTANT:** You MUST complete your own job (step 2) BEFORE closing the project (step 3). The server requires all agents including the orchestrator to be complete before project closeout.
+**IMPORTANT:** You MUST complete your own job (step 2) BEFORE closing the project (step 5). The server requires all agents including the orchestrator to be complete before project closeout.
 
 **If `complete_job()` is rejected:** Read the error. Common causes:
 - Unread messages remain → run receive_messages() and process them
-- TODO items incomplete → review and update your TODO list, then retry
+- TODO items incomplete �� review and update your TODO list, then retry
 
 ## ORCHESTRATOR CONSTRAINTS
 - **Git commit requirement does NOT apply.** You coordinate, you do not commit.

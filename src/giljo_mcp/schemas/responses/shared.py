@@ -1,0 +1,42 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition — source-available, single-user use only.
+
+"""Shared/generic service response models."""
+
+from datetime import datetime
+from typing import Generic, Optional, TypeVar
+
+from pydantic import BaseModel, ConfigDict
+
+
+T = TypeVar("T")
+
+
+class DeleteResult(BaseModel):
+    """Standard delete operation result."""
+
+    deleted: bool = True
+    deleted_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OperationResult(BaseModel):
+    """Generic operation success result with a message."""
+
+    message: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaginatedResult(BaseModel, Generic[T]):
+    """Paginated list result."""
+
+    items: list[T]
+    total: int
+    page: int = 1
+    page_size: int = 50
+
+    model_config = ConfigDict(from_attributes=True)

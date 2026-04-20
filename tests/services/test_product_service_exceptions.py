@@ -258,7 +258,7 @@ class TestLifecycleMethodExceptions:
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await service.delete_product("nonexistent-id")
+            await service.lifecycle.delete_product("nonexistent-id")
 
         assert "not found" in exc_info.value.message.lower()
 
@@ -272,7 +272,7 @@ class TestLifecycleMethodExceptions:
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await service.restore_product("nonexistent-id")
+            await service.lifecycle.restore_product("nonexistent-id")
 
         assert "not found" in exc_info.value.message.lower()
 
@@ -315,7 +315,7 @@ class TestQueryMethodExceptions:
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(BaseGiljoError) as exc_info:
-            await service.list_deleted_products()
+            await service.lifecycle.list_deleted_products()
 
         assert "List failed" in str(exc_info.value)
 
@@ -346,7 +346,7 @@ class TestQueryMethodExceptions:
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await service.get_product_statistics("nonexistent-id")
+            await service.memory.get_product_statistics("nonexistent-id")
 
         assert "not found" in exc_info.value.message.lower()
 
@@ -360,7 +360,7 @@ class TestQueryMethodExceptions:
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await service.get_cascade_impact("nonexistent-id")
+            await service.memory.get_cascade_impact("nonexistent-id")
 
         assert "not found" in exc_info.value.message.lower()
 
@@ -423,7 +423,7 @@ class TestMaintenanceMethodExceptions:
         service = ProductService(None, "test-tenant")
 
         with pytest.raises(DatabaseError) as exc_info:
-            await service.purge_expired_deleted_products(days_before_purge=30)
+            await service.lifecycle.purge_expired_deleted_products(days_before_purge=30)
 
         assert "not available" in exc_info.value.message.lower()
 
@@ -440,7 +440,7 @@ class TestMaintenanceMethodExceptions:
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(BaseGiljoError) as exc_info:
-            await service.purge_expired_deleted_products(days_before_purge=30)
+            await service.lifecycle.purge_expired_deleted_products(days_before_purge=30)
 
         assert "Purge failed" in str(exc_info.value)
 

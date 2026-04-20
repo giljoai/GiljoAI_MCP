@@ -16,6 +16,7 @@ const STATUS_COLORS = {
   HANDED_OVER: '#9e9e9e', // $color-status-handed-over
   CLOSED: '#4a9c5f',      // $color-status-closed (darker green, signals finality)
   DECOMMISSIONED: '#757575', // $color-status-decommissioned
+  CLOSEOUT: '#ffc107',    // $color-status-staged — amber for closeout decision required
   FALLBACK: '#666666',    // Fallback muted
 }
 
@@ -88,20 +89,37 @@ const statusConfig = {
 }
 
 /**
- * Get human-readable label for status
+ * Check if an agent is in closeout-blocked state.
+ * Closeout-blocked: status is "blocked" AND block_reason starts with "Closeout".
  * @param {string} status - Agent status value
+ * @param {string|null|undefined} blockReason - Block reason text
+ * @returns {boolean}
+ */
+export const isCloseoutBlocked = (status, blockReason) => {
+  return status === 'blocked' && typeof blockReason === 'string' && blockReason.startsWith('Closeout')
+}
+
+/**
+ * Get human-readable label for status.
+ * When the agent is closeout-blocked, returns "Decision Required" instead of "Needs Input".
+ * @param {string} status - Agent status value
+ * @param {string|null|undefined} blockReason - Optional block reason for closeout detection
  * @returns {string} Display label
  */
-export const getStatusLabel = (status) => {
+export const getStatusLabel = (status, blockReason) => {
+  if (isCloseoutBlocked(status, blockReason)) return 'Decision Required'
   return statusConfig[status]?.label || 'Unknown'
 }
 
 /**
- * Get color for status display
+ * Get color for status display.
+ * Closeout-blocked uses amber (#ffc107) to distinguish from generic blocked orange.
  * @param {string} status - Agent status value
+ * @param {string|null|undefined} blockReason - Optional block reason for closeout detection
  * @returns {string} Hex color code
  */
-export const getStatusColor = (status) => {
+export const getStatusColor = (status, blockReason) => {
+  if (isCloseoutBlocked(status, blockReason)) return STATUS_COLORS.CLOSEOUT
   return statusConfig[status]?.color || STATUS_COLORS.FALLBACK
 }
 
@@ -112,6 +130,14 @@ export const getStatusColor = (status) => {
  */
 export const isStatusItalic = (status) => {
   return statusConfig[status]?.italic || false
+}
+
+// Closeout-blocked config for StatusChip (legacy config format)
+const CLOSEOUT_BLOCKED_CONFIG = {
+  icon: 'mdi-clipboard-check-outline',
+  color: 'amber-darken-1',
+  label: 'Decision Required',
+  description: 'Orchestrator is awaiting user review before project closeout',
 }
 
 // Legacy status config for other components
@@ -221,7 +247,8 @@ const HEALTH_CONFIG = {
 
 const STALENESS_THRESHOLD = 10 // minutes
 
-export function getStatusConfig(status) {
+export function getStatusConfig(status, blockReason) {
+  if (isCloseoutBlocked(status, blockReason)) return CLOSEOUT_BLOCKED_CONFIG
   return STATUS_CONFIG[status] || STATUS_CONFIG.waiting
 }
 

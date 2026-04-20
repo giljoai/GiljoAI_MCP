@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.exceptions import ValidationError
 from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.services.dto import MemoryEntryCreateParams
 
 
 class TestWriteTagsPersistence:
@@ -36,16 +37,18 @@ class TestWriteTagsPersistence:
 
         entry = await repo.create_entry(
             session=db_session,
-            tenant_key="test_tenant",
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Test summary with tags",
-            key_outcomes=["outcome1"],
-            decisions_made=["decision1"],
-            tags=tags,
+            params=MemoryEntryCreateParams(
+                tenant_key="test_tenant",
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Test summary with tags",
+                key_outcomes=["outcome1"],
+                decisions_made=["decision1"],
+                tags=tags,
+            ),
         )
         assert entry.tags == tags
         assert len(entry.tags) == 2
@@ -57,13 +60,15 @@ class TestWriteTagsPersistence:
         repo = ProductMemoryRepository()
         entry = await repo.create_entry(
             session=db_session,
-            tenant_key="test_tenant",
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="No tags entry",
+            params=MemoryEntryCreateParams(
+                tenant_key="test_tenant",
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="No tags entry",
+            ),
         )
         assert entry.tags == []
 
@@ -126,40 +131,46 @@ class TestGetEntriesByTagPrefix:
         # Entry with action_required tag
         await repo.create_entry(
             session=db_session,
-            tenant_key=tenant_key,
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Has action tag",
-            tags=["action_required:fix auth", "other:tag"],
+            params=MemoryEntryCreateParams(
+                tenant_key=tenant_key,
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Has action tag",
+                tags=["action_required:fix auth", "other:tag"],
+            ),
         )
 
         # Entry without action_required tag
         await repo.create_entry(
             session=db_session,
-            tenant_key=tenant_key,
-            product_id=test_product.id,
-            sequence=2,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="No action tag",
-            tags=["priority:high"],
+            params=MemoryEntryCreateParams(
+                tenant_key=tenant_key,
+                product_id=test_product.id,
+                sequence=2,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="No action tag",
+                tags=["priority:high"],
+            ),
         )
 
         # Entry with no tags
         await repo.create_entry(
             session=db_session,
-            tenant_key=tenant_key,
-            product_id=test_product.id,
-            sequence=3,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Empty tags",
-            tags=[],
+            params=MemoryEntryCreateParams(
+                tenant_key=tenant_key,
+                product_id=test_product.id,
+                sequence=3,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Empty tags",
+                tags=[],
+            ),
         )
 
         results = await repo.get_entries_by_tag_prefix(
@@ -179,14 +190,16 @@ class TestGetEntriesByTagPrefix:
         # Create entry with correct tenant
         await repo.create_entry(
             session=db_session,
-            tenant_key="test_tenant",
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Correct tenant",
-            tags=["action_required:fix bug"],
+            params=MemoryEntryCreateParams(
+                tenant_key="test_tenant",
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Correct tenant",
+                tags=["action_required:fix bug"],
+            ),
         )
 
         # Query with wrong tenant
@@ -206,14 +219,16 @@ class TestGetEntriesByTagPrefix:
 
         entry = await repo.create_entry(
             session=db_session,
-            tenant_key=tenant_key,
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Deleted entry",
-            tags=["action_required:fix bug"],
+            params=MemoryEntryCreateParams(
+                tenant_key=tenant_key,
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Deleted entry",
+                tags=["action_required:fix bug"],
+            ),
         )
         # Soft-delete the entry
         entry.deleted_by_user = True
@@ -249,18 +264,20 @@ class TestResolveActionTags:
 
         await repo.create_entry(
             session=db_session,
-            tenant_key=tenant_key,
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Entry with tags",
-            tags=[
-                "action_required:fix auth regression",
-                "action_required:update docs",
-                "priority:high",
-            ],
+            params=MemoryEntryCreateParams(
+                tenant_key=tenant_key,
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Entry with tags",
+                tags=[
+                    "action_required:fix auth regression",
+                    "action_required:update docs",
+                    "priority:high",
+                ],
+            ),
         )
 
         count = await repo.resolve_action_tags(
@@ -291,14 +308,16 @@ class TestResolveActionTags:
 
         await repo.create_entry(
             session=db_session,
-            tenant_key=tenant_key,
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Case test",
-            tags=["action_required:Fix Auth Regression"],
+            params=MemoryEntryCreateParams(
+                tenant_key=tenant_key,
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Case test",
+                tags=["action_required:Fix Auth Regression"],
+            ),
         )
 
         count = await repo.resolve_action_tags(
@@ -317,14 +336,16 @@ class TestResolveActionTags:
 
         await repo.create_entry(
             session=db_session,
-            tenant_key=tenant_key,
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="No match",
-            tags=["action_required:fix auth regression"],
+            params=MemoryEntryCreateParams(
+                tenant_key=tenant_key,
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="No match",
+                tags=["action_required:fix auth regression"],
+            ),
         )
 
         count = await repo.resolve_action_tags(
@@ -342,14 +363,16 @@ class TestResolveActionTags:
 
         await repo.create_entry(
             session=db_session,
-            tenant_key="test_tenant",
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Correct tenant",
-            tags=["action_required:fix bug"],
+            params=MemoryEntryCreateParams(
+                tenant_key="test_tenant",
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Correct tenant",
+                tags=["action_required:fix bug"],
+            ),
         )
 
         count = await repo.resolve_action_tags(
@@ -442,14 +465,16 @@ class TestGetEntriesByTagPrefixEdgeCases:
         repo = ProductMemoryRepository()
         await repo.create_entry(
             session=db_session,
-            tenant_key="test_tenant",
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Unrelated tags",
-            tags=["priority:high", "scope:backend"],
+            params=MemoryEntryCreateParams(
+                tenant_key="test_tenant",
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Unrelated tags",
+                tags=["priority:high", "scope:backend"],
+            ),
         )
         results = await repo.get_entries_by_tag_prefix(
             session=db_session,
@@ -469,14 +494,16 @@ class TestResolveActionTagsEdgeCases:
         repo = ProductMemoryRepository()
         await repo.create_entry(
             session=db_session,
-            tenant_key="test_tenant",
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Has tags",
-            tags=["action_required:fix bug"],
+            params=MemoryEntryCreateParams(
+                tenant_key="test_tenant",
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Has tags",
+                tags=["action_required:fix bug"],
+            ),
         )
         count = await repo.resolve_action_tags(
             session=db_session,
@@ -502,25 +529,29 @@ class TestResolveActionTagsEdgeCases:
 
         await repo.create_entry(
             session=db_session,
-            tenant_key=tenant_key,
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Entry 1",
-            tags=["action_required:fix auth"],
+            params=MemoryEntryCreateParams(
+                tenant_key=tenant_key,
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Entry 1",
+                tags=["action_required:fix auth"],
+            ),
         )
         await repo.create_entry(
             session=db_session,
-            tenant_key=tenant_key,
-            product_id=test_product.id,
-            sequence=2,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Entry 2",
-            tags=["action_required:fix auth", "priority:high"],
+            params=MemoryEntryCreateParams(
+                tenant_key=tenant_key,
+                product_id=test_product.id,
+                sequence=2,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Entry 2",
+                tags=["action_required:fix auth", "priority:high"],
+            ),
         )
 
         count = await repo.resolve_action_tags(
@@ -540,14 +571,16 @@ class TestResolveActionTagsEdgeCases:
 
         entry = await repo.create_entry(
             session=db_session,
-            tenant_key=tenant_key,
-            product_id=test_product.id,
-            sequence=1,
-            entry_type="project_completion",
-            source="test_v1",
-            timestamp=datetime.now(timezone.utc),
-            summary="Multi-colon tag",
-            tags=tags,
+            params=MemoryEntryCreateParams(
+                tenant_key=tenant_key,
+                product_id=test_product.id,
+                sequence=1,
+                entry_type="project_completion",
+                source="test_v1",
+                timestamp=datetime.now(timezone.utc),
+                summary="Multi-colon tag",
+                tags=tags,
+            ),
         )
         assert entry.tags == tags
 

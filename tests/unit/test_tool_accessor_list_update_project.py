@@ -20,7 +20,7 @@ import pytest
 from giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
-_PRODUCT_SERVICE_PATH = "giljo_mcp.tools.tool_accessor.ProductService"
+_PRODUCT_SERVICE_PATH = "giljo_mcp.services.product_service.ProductService"
 
 
 # ---------------------------------------------------------------------------
@@ -158,8 +158,15 @@ class TestListProjectsBehavior:
                 return_value=[mock_list_item],
             ),
             patch(_PRODUCT_SERVICE_PATH) as mock_product_svc,
-            patch.object(accessor, "_build_project_list", new_callable=AsyncMock, return_value=[built_project]),
-            patch.object(accessor, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]),
+            patch.object(
+                accessor._project_service,
+                "_build_mcp_project_list",
+                new_callable=AsyncMock,
+                return_value=[built_project],
+            ),
+            patch.object(
+                accessor._project_service, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]
+            ),
         ):
             mock_product_svc.return_value.get_active_product = AsyncMock(
                 return_value=mock_product,
@@ -187,8 +194,10 @@ class TestListProjectsBehavior:
                 return_value=[],
             ) as mock_list,
             patch(_PRODUCT_SERVICE_PATH) as mock_product_svc,
-            patch.object(accessor, "_build_project_list", new_callable=AsyncMock, return_value=[]),
-            patch.object(accessor, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]),
+            patch.object(accessor._project_service, "_build_mcp_project_list", new_callable=AsyncMock, return_value=[]),
+            patch.object(
+                accessor._project_service, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]
+            ),
         ):
             mock_product_svc.return_value.get_active_product = AsyncMock(
                 return_value=mock_product,
@@ -218,8 +227,10 @@ class TestListProjectsBehavior:
                 return_value=[],
             ) as mock_list,
             patch(_PRODUCT_SERVICE_PATH) as mock_product_svc,
-            patch.object(accessor, "_build_project_list", new_callable=AsyncMock, return_value=[]),
-            patch.object(accessor, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]),
+            patch.object(accessor._project_service, "_build_mcp_project_list", new_callable=AsyncMock, return_value=[]),
+            patch.object(
+                accessor._project_service, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]
+            ),
         ):
             mock_product_svc.return_value.get_active_product = AsyncMock(
                 return_value=mock_product,
@@ -273,8 +284,15 @@ class TestListProjectsBehavior:
                 return_value=[mock_list_item],
             ),
             patch(_PRODUCT_SERVICE_PATH) as mock_product_svc,
-            patch.object(accessor, "_build_project_list", new_callable=AsyncMock, return_value=[long_project]),
-            patch.object(accessor, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]),
+            patch.object(
+                accessor._project_service,
+                "_build_mcp_project_list",
+                new_callable=AsyncMock,
+                return_value=[long_project],
+            ),
+            patch.object(
+                accessor._project_service, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]
+            ),
         ):
             mock_product_svc.return_value.get_active_product = AsyncMock(
                 return_value=mock_product,

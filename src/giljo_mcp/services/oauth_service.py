@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 BUILTIN_CLIENT_ID = "giljo-mcp-default"
 AUTHORIZATION_CODE_LIFETIME_MINUTES = 10
+ACCESS_TOKEN_LIFETIME_SECONDS = 86400  # 24 hours
 ALLOWED_REDIRECT_URI_PATTERNS = [
     r"^http://localhost(:\d+)?/",
     r"^http://127\.0\.0\.1(:\d+)?/",
@@ -227,7 +228,7 @@ class OAuthService:
         return {
             "access_token": access_token,
             "token_type": "bearer",
-            "expires_in": 86400,
+            "expires_in": ACCESS_TOKEN_LIFETIME_SECONDS,
         }
 
     @staticmethod

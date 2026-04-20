@@ -96,6 +96,11 @@ class TestCodexSafetyProtocol:
         lower = GIL_GET_AGENTS_CODEX_SKILL_MD.lower()
         assert "confirm" in lower or "diff" in lower
 
+    def test_codex_uses_supported_default_model(self):
+        """Codex get_agents skill uses the supported default model in examples."""
+        assert "gpt-5.3-codex" in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert "gpt-5.2-codex" not in GIL_GET_AGENTS_CODEX_SKILL_MD
+
 
 class TestBootstrapTemplateIntegration:
     """Test bootstrap templates work end-to-end with placeholder substitution."""

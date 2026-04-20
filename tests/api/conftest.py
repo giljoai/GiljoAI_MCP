@@ -37,12 +37,6 @@ async def setup_agent_coordination():
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
-async def setup_project_tools():
-    """No-op override for API tests (parent conftest opens db_session transactions)."""
-    yield
-
-
-@pytest_asyncio.fixture(scope="function", autouse=True)
 async def setup_context_module():
     """No-op override for API tests (parent conftest opens db_session transactions)."""
     yield
@@ -176,7 +170,7 @@ async def auth_headers(db_manager, api_client) -> dict:
         tenant_key = TenantManager.generate_tenant_key()
 
         # Create test user with password hash (models.User uses password_hash + role)
-        password_hash = bcrypt.hashpw("test_password".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        password_hash = bcrypt.hashpw(b"test_password", bcrypt.gensalt()).decode("utf-8")
 
         # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(

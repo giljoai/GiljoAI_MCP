@@ -23,13 +23,11 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
-from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import ResourceNotFoundError
-from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from giljo_mcp.models.projects import Project
+from giljo_mcp.repositories.project_repository import ProjectRepository
 from giljo_mcp.schemas.service_responses import ProjectSummaryResult
 from giljo_mcp.tenant import TenantManager
 
@@ -69,6 +67,7 @@ class ProjectSummaryService:
         self._test_session = test_session
         self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._repo = ProjectRepository()
 
     def _get_session(self):
         """Get a session, preferring an injected test session when provided."""
@@ -106,26 +105,12 @@ class ProjectSummaryService:
         async with self._get_session() as session:
             tenant_key = self.tenant_manager.get_current_tenant()
 
-            result = await session.execute(
-                select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
-            )
-            project = result.scalar_one_or_none()
+            project = await self._repo.get_by_id(session, tenant_key, project_id)
 
             if not project:
                 raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
 
-            job_counts_result = await session.execute(
-                select(AgentExecution.status, func.count(AgentExecution.agent_id).label("count"))
-                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                .where(
-                    and_(
-                        AgentJob.project_id == project_id,
-                        AgentJob.tenant_key == tenant_key,
-                    )
-                )
-                .group_by(AgentExecution.status)
-            )
-            job_counts = dict(job_counts_result.all())
+            job_counts = await self._repo.get_agent_status_counts(session, tenant_key, project_id)
 
             total_jobs = sum(job_counts.values())
             completed_jobs = job_counts.get("complete", 0)
@@ -137,39 +122,11 @@ class ProjectSummaryService:
             if total_jobs > 0:
                 completion_percentage = (completed_jobs / total_jobs) * 100.0
 
-            last_activity_result = await session.execute(
-                select(
-                    func.greatest(
-                        func.max(AgentExecution.completed_at),
-                        func.max(AgentExecution.started_at),
-                        func.max(AgentExecution.last_progress_at),
-                        func.max(AgentExecution.last_activity_at),
-                    )
-                )
-                .select_from(AgentExecution)
-                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                .where(
-                    and_(
-                        AgentJob.project_id == project_id,
-                        AgentJob.tenant_key == tenant_key,
-                    )
-                )
-            )
-            last_activity_at = last_activity_result.scalar()
+            last_activity_at = await self._repo.get_last_activity_at(session, tenant_key, project_id)
 
             product_name = ""
             if project.product_id:
-                from giljo_mcp.models.products import Product
-
-                product_result = await session.execute(
-                    select(Product).where(
-                        and_(
-                            Product.id == project.product_id,
-                            Product.tenant_key == tenant_key,
-                        )
-                    )
-                )
-                product = product_result.scalar_one_or_none()
+                product = await self._repo.get_product_by_id(session, tenant_key, project.product_id)
                 if product:
                     product_name = product.name
 

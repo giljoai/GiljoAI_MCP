@@ -48,15 +48,15 @@ async def job_with_execution(db_session, test_tenant_key):
     )
     db_session.add(execution)
     await db_session.flush()
-    return job_id, agent_id
+    return job_id, agent_id, test_tenant_key
 
 
 @pytest.mark.asyncio
 async def test_heartbeat_sets_last_activity(db_session, job_with_execution):
     """First MCP call should set last_activity_at from NULL."""
-    job_id, _ = job_with_execution
+    job_id, _, tenant_key = job_with_execution
 
-    await touch_heartbeat(db_session, job_id)
+    await touch_heartbeat(db_session, job_id, tenant_key=tenant_key)
 
     result = await db_session.execute(select(AgentExecution.last_activity_at).where(AgentExecution.job_id == job_id))
     ts = result.scalar_one()
@@ -67,7 +67,7 @@ async def test_heartbeat_sets_last_activity(db_session, job_with_execution):
 @pytest.mark.asyncio
 async def test_heartbeat_debounce_skips_recent(db_session, job_with_execution):
     """If last_activity_at is recent (< 30s), heartbeat should NOT update."""
-    job_id, _ = job_with_execution
+    job_id, _, tenant_key = job_with_execution
 
     recent_ts = datetime.now(timezone.utc) - timedelta(seconds=10)
     result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job_id))
@@ -75,7 +75,7 @@ async def test_heartbeat_debounce_skips_recent(db_session, job_with_execution):
     execution.last_activity_at = recent_ts
     await db_session.flush()
 
-    await touch_heartbeat(db_session, job_id)
+    await touch_heartbeat(db_session, job_id, tenant_key=tenant_key)
 
     await db_session.refresh(execution)
     # Should still be the old timestamp (within 1s tolerance for rounding)
@@ -85,7 +85,7 @@ async def test_heartbeat_debounce_skips_recent(db_session, job_with_execution):
 @pytest.mark.asyncio
 async def test_heartbeat_updates_stale(db_session, job_with_execution):
     """If last_activity_at is older than debounce window, heartbeat should update."""
-    job_id, _ = job_with_execution
+    job_id, _, tenant_key = job_with_execution
 
     old_ts = datetime.now(timezone.utc) - timedelta(seconds=DEBOUNCE_SECONDS + 10)
     result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job_id))
@@ -93,7 +93,7 @@ async def test_heartbeat_updates_stale(db_session, job_with_execution):
     execution.last_activity_at = old_ts
     await db_session.flush()
 
-    await touch_heartbeat(db_session, job_id)
+    await touch_heartbeat(db_session, job_id, tenant_key=tenant_key)
 
     await db_session.refresh(execution)
     assert (datetime.now(timezone.utc) - execution.last_activity_at).total_seconds() < 5
@@ -127,18 +127,18 @@ async def test_heartbeat_skips_terminal_status(db_session, test_tenant_key):
     db_session.add(execution)
     await db_session.flush()
 
-    await touch_heartbeat(db_session, job_id)
+    await touch_heartbeat(db_session, job_id, tenant_key=test_tenant_key)
 
     await db_session.refresh(execution)
     assert execution.last_activity_at is None
 
 
 @pytest.mark.asyncio
-async def test_heartbeat_nonexistent_job_is_noop(db_session):
+async def test_heartbeat_nonexistent_job_is_noop(db_session, test_tenant_key):
     """touch_heartbeat with a job_id that has no matching execution should be a silent no-op."""
     fake_job_id = str(uuid4())
     # Should not raise -- fire-and-forget semantics
-    await touch_heartbeat(db_session, fake_job_id)
+    await touch_heartbeat(db_session, fake_job_id, tenant_key=test_tenant_key)
 
 
 @pytest.mark.asyncio
@@ -169,7 +169,7 @@ async def test_heartbeat_skips_closed_status(db_session, test_tenant_key):
     db_session.add(execution)
     await db_session.flush()
 
-    await touch_heartbeat(db_session, job_id)
+    await touch_heartbeat(db_session, job_id, tenant_key=test_tenant_key)
 
     await db_session.refresh(execution)
     assert execution.last_activity_at is None
@@ -203,7 +203,7 @@ async def test_heartbeat_skips_decommissioned_status(db_session, test_tenant_key
     db_session.add(execution)
     await db_session.flush()
 
-    await touch_heartbeat(db_session, job_id)
+    await touch_heartbeat(db_session, job_id, tenant_key=test_tenant_key)
 
     await db_session.refresh(execution)
     assert execution.last_activity_at is None

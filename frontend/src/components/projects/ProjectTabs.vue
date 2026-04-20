@@ -141,6 +141,20 @@
       </v-chip>
     </div>
 
+    <!-- State A2: Orchestrator closeout-blocked — HITL decision required -->
+    <div
+      v-else-if="activeTab === 'jobs' && orchestratorCloseoutBlocked"
+      class="action-buttons-row"
+    >
+      <div class="closeout-decision-banner smooth-border" data-testid="closeout-decision-banner">
+        <v-icon icon="mdi-clipboard-check-outline" size="20" class="closeout-decision-icon" />
+        <div class="closeout-decision-content">
+          <span class="closeout-decision-title">Decision Required</span>
+          <span class="closeout-decision-desc">Review deferred findings before project closure</span>
+        </div>
+      </div>
+    </div>
+
     <!-- State B: All agents terminal, project NOT done -> closeout button -->
     <div v-else-if="activeTab === 'jobs' && showCloseoutButton" class="action-buttons-row">
       <v-btn
@@ -290,6 +304,7 @@
       :project-name="project.name"
       :product-id="project.product_id"
       :project-status="project.status"
+      :orchestrator-closeout-blocked="orchestratorCloseoutBlocked"
       @close="showCloseoutModal = false"
       @closeout="handleCloseoutComplete"
       @continue="handleContinueWorking"
@@ -308,6 +323,7 @@ import { useProjectStateStore } from '@/stores/projectStateStore'
 import { useIntegrationStatus } from '@/composables/useIntegrationStatus'
 import { useToast } from '@/composables/useToast'
 import { useClipboard } from '@/composables/useClipboard'
+import { isCloseoutBlocked } from '@/utils/statusConfig'
 import { useProjectCloseout } from '@/composables/useProjectCloseout'
 import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
@@ -475,6 +491,16 @@ const {
   projectId,
   sortedJobs,
   onComplete: () => emit('project-updated'),
+})
+
+/**
+ * Computed: Orchestrator is in closeout-blocked state (HITL Closeout Checkpoint).
+ * True when the orchestrator agent has status "blocked" with a block_reason starting with "Closeout".
+ */
+const orchestratorCloseoutBlocked = computed(() => {
+  const jobs = sortedJobs.value || []
+  const orch = jobs.find((j) => j.agent_display_name === 'orchestrator')
+  return orch ? isCloseoutBlocked(orch.status, orch.block_reason) : false
 })
 
 /**
@@ -957,6 +983,39 @@ async function handleLaunchJobs() {
   &:hover {
     background: rgb(var(--v-theme-highlight-hover));
   }
+}
+
+/* HITL Closeout: Amber decision-required banner */
+.closeout-decision-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-radius: $border-radius-md;
+  background: rgba($color-status-warning, 0.10);
+  --smooth-border-color: rgba($color-status-warning, 0.30);
+}
+
+.closeout-decision-icon {
+  color: $color-status-warning;
+  flex-shrink: 0;
+}
+
+.closeout-decision-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.closeout-decision-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: $color-status-warning;
+}
+
+.closeout-decision-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
 
 /* Gemini subagent notice */

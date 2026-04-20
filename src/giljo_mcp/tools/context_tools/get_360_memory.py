@@ -15,19 +15,20 @@ Token Budget by Depth:
 - 5: Last 5 projects (~2500 tokens)
 - 10: Last 10 projects (~5000 tokens)
 """
+# Read-only tool -- uses direct session.execute() for SELECT queries (no writes)
 
+import logging
 from typing import Any
 
-import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import Product
-from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from giljo_mcp.services.product_memory_service import ProductMemoryService
 
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def estimate_tokens(data: Any) -> int:
@@ -112,16 +113,16 @@ async def get_360_memory(
         )
     """
     logger.info(
-        "fetching_360_memory_context",
-        product_id=product_id,
-        tenant_key=tenant_key,
-        depth=last_n_projects,
-        offset=offset,
-        limit=limit,
+        "fetching_360_memory_context product_id=%s tenant_key=%s depth=%s offset=%s limit=%s",
+        product_id,
+        tenant_key,
+        last_n_projects,
+        offset,
+        limit,
     )
 
     if db_manager is None and session is None:
-        logger.error("db_manager or session is required", operation="get_360_memory")
+        logger.error("db_manager or session is required operation=get_360_memory")
         raise ValueError("db_manager or session parameter is required")
 
     if session is not None:
@@ -146,7 +147,7 @@ async def _get_360_memory_impl(
     product = result.scalar_one_or_none()
 
     if not product:
-        logger.warning("product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_360_memory")
+        logger.warning("product_not_found product_id=%s tenant_key=%s operation=get_360_memory", product_id, tenant_key)
         return {
             "source": "360_memory",
             "depth": last_n_projects,
@@ -165,20 +166,22 @@ async def _get_360_memory_impl(
             },
         }
 
-    # Use repository to fetch entries grouped by distinct projects
-    repo = ProductMemoryRepository()
-
-    entries, total_projects = await repo.get_entries_by_last_n_projects(
-        session=session,
-        product_id=product_id,
+    # Use service to fetch entries grouped by distinct projects
+    memory_service = ProductMemoryService(
+        db_manager=None,  # session provided directly
         tenant_key=tenant_key,
+    )
+
+    entries, total_projects = await memory_service.get_entries_by_last_n_projects(
+        product_id=product_id,
         last_n_projects=last_n_projects,
         offset=offset,
         include_deleted=False,
+        session=session,
     )
 
     if total_projects == 0:
-        logger.debug("no_memory_entries", product_id=product_id, operation="get_360_memory")
+        logger.debug("no_memory_entries product_id=%s operation=get_360_memory", product_id)
         return {
             "source": "360_memory",
             "depth": last_n_projects,
@@ -208,11 +211,10 @@ async def _get_360_memory_impl(
 
     # Fetch action_required tagged entries beyond depth window
     depth_entry_ids = {str(e.id) for e in entries}
-    tagged_entries = await repo.get_entries_by_tag_prefix(
-        session=session,
+    tagged_entries = await memory_service.get_entries_by_tag_prefix(
         product_id=product_id,
-        tenant_key=tenant_key,
         prefix="action_required",
+        session=session,
     )
     # Deduplicate: exclude entries already in depth-limited results
     extra_tagged = [e for e in tagged_entries if str(e.id) not in depth_entry_ids]
@@ -222,17 +224,17 @@ async def _get_360_memory_impl(
     total_tokens = estimate_tokens(paginated_history)
 
     logger.info(
-        "360_memory_fetched",
-        product_id=product_id,
-        tenant_key=tenant_key,
-        depth=last_n_projects,
-        offset=offset,
-        total_projects=total_projects,
-        returned_projects=returned_projects,
-        returned_entries=len(paginated_history),
-        has_more=has_more,
-        estimated_tokens=total_tokens,
-        action_required_count=len(action_required_items),
+        "360_memory_fetched product_id=%s tenant_key=%s depth=%s offset=%s total_projects=%s returned_projects=%s returned_entries=%s has_more=%s estimated_tokens=%s action_required_count=%s",
+        product_id,
+        tenant_key,
+        last_n_projects,
+        offset,
+        total_projects,
+        returned_projects,
+        len(paginated_history),
+        has_more,
+        total_tokens,
+        len(action_required_items),
     )
 
     result = {

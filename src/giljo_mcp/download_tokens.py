@@ -43,7 +43,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import DownloadToken
-from .utils.log_sanitizer import sanitize
+from .utils.log_sanitizer import mask_token, sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -149,15 +149,15 @@ class TokenManager:
             token_record = result.scalar_one_or_none()
 
             if not token_record:
-                logger.debug("Token not found or tenant mismatch: %s", sanitize(token))
+                logger.debug("Token not found or tenant mismatch: %s", mask_token(token))
                 return False
 
             # Check if expired
             if token_record.is_expired:
-                logger.debug("Token expired: %s", sanitize(token))
+                logger.debug("Token expired: %s", mask_token(token))
                 return False
 
-            logger.debug("Token validated successfully: %s", sanitize(token))
+            logger.debug("Token validated successfully: %s", mask_token(token))
             return True
 
         except SQLAlchemyError:
@@ -293,7 +293,7 @@ class TokenManager:
             token_record = result.scalar_one_or_none()
 
             if not token_record:
-                logger.warning("Cannot mark non-existent token as failed: %s", sanitize(token))
+                logger.warning("Cannot mark non-existent token as failed: %s", mask_token(token))
                 return False
 
             # Update staging status
@@ -302,7 +302,7 @@ class TokenManager:
 
             await self.db_session.commit()
 
-            logger.info("Token marked as failed: %s, error: %s", sanitize(token), sanitize(error_message))
+            logger.info("Token marked as failed: %s, error: %s", mask_token(token), sanitize(error_message))
             return True
 
         except SQLAlchemyError:
@@ -330,7 +330,7 @@ class TokenManager:
             token_record = result.scalar_one_or_none()
 
             if not token_record:
-                logger.warning("Cannot mark non-existent token as ready: %s", sanitize(token))
+                logger.warning("Cannot mark non-existent token as ready: %s", mask_token(token))
                 return False
 
             # Update staging status
@@ -339,7 +339,7 @@ class TokenManager:
 
             await self.db_session.commit()
 
-            logger.info("Token marked as ready: %s", sanitize(token))
+            logger.info("Token marked as ready: %s", mask_token(token))
             return True
 
         except SQLAlchemyError:
@@ -367,7 +367,7 @@ class TokenManager:
             token_record = result.scalar_one_or_none()
 
             if not token_record:
-                logger.warning("Cannot increment download count for non-existent token: %s", sanitize(token))
+                logger.warning("Cannot increment download count for non-existent token: %s", mask_token(token))
                 return False
 
             # Increment counter and update timestamp
@@ -377,7 +377,9 @@ class TokenManager:
             await self.db_session.commit()
 
             logger.info(
-                "Download count incremented for token: %s, new count: %d", sanitize(token), token_record.download_count
+                "Download count incremented for token: %s, new count: %d",
+                mask_token(token),
+                token_record.download_count,
             )
             return True
 

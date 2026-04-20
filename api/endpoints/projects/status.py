@@ -59,7 +59,7 @@ async def get_project_summary(
     logger.debug("User %s getting summary for project %s", sanitize(current_user.username), sanitize(project_id))
 
     # Get summary via ProjectService (raises exceptions on error, returns ProjectSummaryResult)
-    summary_data = await project_service.get_project_summary(project_id=project_id)
+    summary_data = await project_service.summary.get_project_summary(project_id=project_id)
 
     logger.info("Retrieved summary for project %s", sanitize(project_id))
 

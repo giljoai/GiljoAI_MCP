@@ -35,7 +35,7 @@ async def test_change_password_success(user_service, test_user, db_session):
     """Test successful password change"""
     new_password = "NewPassword456"
 
-    result = await user_service.change_password(
+    result = await user_service.auth.change_password(
         user_id=test_user.id, old_password="TestPassword123", new_password=new_password
     )
 
@@ -51,7 +51,7 @@ async def test_change_password_success(user_service, test_user, db_session):
 async def test_change_password_incorrect_old_password(user_service, test_user):
     """Test that change_password rejects incorrect old password"""
     with pytest.raises(AuthenticationError) as exc_info:
-        await user_service.change_password(
+        await user_service.auth.change_password(
             user_id=test_user.id, old_password="WrongPassword", new_password="NewPassword456"
         )
 
@@ -63,7 +63,7 @@ async def test_change_password_admin_bypass(user_service, test_user, db_session)
     """Test that admin can change password without old password"""
     new_password = "AdminSetPassword789"
 
-    result = await user_service.change_password(
+    result = await user_service.auth.change_password(
         user_id=test_user.id,
         old_password=None,  # Admin bypass
         new_password=new_password,
@@ -85,7 +85,7 @@ async def test_change_password_admin_bypass(user_service, test_user, db_session)
 @pytest.mark.asyncio
 async def test_check_username_exists_true(user_service, test_user):
     """Test that check_username_exists detects existing username"""
-    exists = await user_service.check_username_exists(test_user.username)
+    exists = await user_service.auth.check_username_exists(test_user.username)
 
     assert exists is True
 
@@ -93,7 +93,7 @@ async def test_check_username_exists_true(user_service, test_user):
 @pytest.mark.asyncio
 async def test_check_username_exists_false(user_service):
     """Test that check_username_exists returns false for non-existent username"""
-    exists = await user_service.check_username_exists(f"nonexistent_{uuid4().hex}")
+    exists = await user_service.auth.check_username_exists(f"nonexistent_{uuid4().hex}")
 
     assert exists is False
 
@@ -106,7 +106,7 @@ async def test_check_username_exists_false(user_service):
 @pytest.mark.asyncio
 async def test_check_email_exists_true(user_service, test_user):
     """Test that check_email_exists detects existing email"""
-    exists = await user_service.check_email_exists(test_user.email)
+    exists = await user_service.auth.check_email_exists(test_user.email)
 
     assert exists is True
 
@@ -114,7 +114,7 @@ async def test_check_email_exists_true(user_service, test_user):
 @pytest.mark.asyncio
 async def test_check_email_exists_false(user_service):
     """Test that check_email_exists returns false for non-existent email"""
-    exists = await user_service.check_email_exists(f"nonexistent_{uuid4().hex}@example.com")
+    exists = await user_service.auth.check_email_exists(f"nonexistent_{uuid4().hex}@example.com")
 
     assert exists is False
 
@@ -127,7 +127,7 @@ async def test_check_email_exists_false(user_service):
 @pytest.mark.asyncio
 async def test_verify_password_correct(user_service, test_user):
     """Test that verify_password returns true for correct password"""
-    verified = await user_service.verify_password(user_id=test_user.id, password="TestPassword123")
+    verified = await user_service.auth.verify_password(user_id=test_user.id, password="TestPassword123")
 
     assert verified is True
 
@@ -135,7 +135,7 @@ async def test_verify_password_correct(user_service, test_user):
 @pytest.mark.asyncio
 async def test_verify_password_incorrect(user_service, test_user):
     """Test that verify_password returns false for incorrect password"""
-    verified = await user_service.verify_password(user_id=test_user.id, password="WrongPassword")
+    verified = await user_service.auth.verify_password(user_id=test_user.id, password="WrongPassword")
 
     assert verified is False
 

@@ -125,11 +125,10 @@ describe('websocketEventRouter - defaultShouldRoute (Handover 0463)', () => {
       const userStore = useUserStore()
       userStore.currentUser = { tenant_key: 'test-tenant' }
 
-      const agentJobsStore = { handleCreated: vi.fn() }
-      const agentsStore = { handleAgentSpawn: vi.fn() }
+      const agentJobsStore = { handleCreated: vi.fn(), handleAgentSpawn: vi.fn() }
       const storeRegistry = {
         agentJobs: () => agentJobsStore,
-        agents: () => agentsStore,
+        agents: () => agentJobsStore,
       }
 
       await routeWebsocketEvent(
@@ -150,7 +149,7 @@ describe('websocketEventRouter - defaultShouldRoute (Handover 0463)', () => {
       )
 
       expect(agentJobsStore.handleCreated).toHaveBeenCalledTimes(1)
-      expect(agentsStore.handleAgentSpawn).toHaveBeenCalledTimes(1)
+      expect(agentJobsStore.handleAgentSpawn).toHaveBeenCalledTimes(1)
     })
 
     it('drops agent:created when project_id does not match current project', async () => {
@@ -160,11 +159,10 @@ describe('websocketEventRouter - defaultShouldRoute (Handover 0463)', () => {
       const userStore = useUserStore()
       userStore.currentUser = { tenant_key: 'test-tenant' }
 
-      const agentJobsStore = { handleCreated: vi.fn() }
-      const agentsStore = { handleAgentSpawn: vi.fn() }
+      const agentJobsStore = { handleCreated: vi.fn(), handleAgentSpawn: vi.fn() }
       const storeRegistry = {
         agentJobs: () => agentJobsStore,
-        agents: () => agentsStore,
+        agents: () => agentJobsStore,
       }
 
       await routeWebsocketEvent(
@@ -185,7 +183,7 @@ describe('websocketEventRouter - defaultShouldRoute (Handover 0463)', () => {
       )
 
       expect(agentJobsStore.handleCreated).not.toHaveBeenCalled()
-      expect(agentsStore.handleAgentSpawn).not.toHaveBeenCalled()
+      expect(agentJobsStore.handleAgentSpawn).not.toHaveBeenCalled()
     })
 
     it('drops job:progress_update when project_id does not match current project', async () => {
@@ -261,14 +259,12 @@ describe('websocketEventRouter - defaultShouldRoute (Handover 0463)', () => {
         handleStatusChanged: vi.fn(),
         handleUpdated: vi.fn(),
         handleCreated: vi.fn(),
-      }
-      const agentsStore = {
         handleRealtimeUpdate: vi.fn(),
         handleAgentSpawn: vi.fn(),
       }
       const storeRegistry = {
         agentJobs: () => agentJobsStore,
-        agents: () => agentsStore,
+        agents: () => agentJobsStore,
       }
 
       // Test agent:status_changed (store/action pattern)
@@ -373,13 +369,12 @@ describe('websocketEventRouter - normalization + routing', () => {
     )
   })
 
-  it('routes agent:update to both agentJobs + agents handlers', async () => {
-    const agentJobsStore = { handleUpdated: vi.fn() }
-    const agentsStore = { handleRealtimeUpdate: vi.fn() }
+  it('routes agent:update to agentJobs handlers (handleUpdated + handleRealtimeUpdate)', async () => {
+    const agentJobsStore = { handleUpdated: vi.fn(), handleRealtimeUpdate: vi.fn() }
 
     const storeRegistry = {
       agentJobs: () => agentJobsStore,
-      agents: () => agentsStore,
+      agents: () => agentJobsStore,
     }
 
     await routeWebsocketEvent(
@@ -391,16 +386,15 @@ describe('websocketEventRouter - normalization + routing', () => {
     )
 
     expect(agentJobsStore.handleUpdated).toHaveBeenCalledTimes(1)
-    expect(agentsStore.handleRealtimeUpdate).toHaveBeenCalledTimes(1)
+    expect(agentJobsStore.handleRealtimeUpdate).toHaveBeenCalledTimes(1)
   })
 
-  it('routes agent:created to agentJobs.create + agents.spawn handlers', async () => {
-    const agentJobsStore = { handleCreated: vi.fn() }
-    const agentsStore = { handleAgentSpawn: vi.fn() }
+  it('routes agent:created to agentJobs handlers (handleCreated + handleAgentSpawn)', async () => {
+    const agentJobsStore = { handleCreated: vi.fn(), handleAgentSpawn: vi.fn() }
 
     const storeRegistry = {
       agentJobs: () => agentJobsStore,
-      agents: () => agentsStore,
+      agents: () => agentJobsStore,
     }
 
     await routeWebsocketEvent(
@@ -412,16 +406,15 @@ describe('websocketEventRouter - normalization + routing', () => {
     )
 
     expect(agentJobsStore.handleCreated).toHaveBeenCalledTimes(1)
-    expect(agentsStore.handleAgentSpawn).toHaveBeenCalledTimes(1)
+    expect(agentJobsStore.handleAgentSpawn).toHaveBeenCalledTimes(1)
   })
 
   it('routes nested agent:created payloads into agentJobs store', async () => {
-    const agentJobsStore = { handleCreated: vi.fn() }
-    const agentsStore = { handleAgentSpawn: vi.fn() }
+    const agentJobsStore = { handleCreated: vi.fn(), handleAgentSpawn: vi.fn() }
 
     const storeRegistry = {
       agentJobs: () => agentJobsStore,
-      agents: () => agentsStore,
+      agents: () => agentJobsStore,
     }
 
     await routeWebsocketEvent(

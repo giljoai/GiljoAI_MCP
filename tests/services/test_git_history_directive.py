@@ -54,11 +54,11 @@ class TestGitHistoryDirective:
 
         mock_session.execute = mock_execute
 
-        # Mock repository returning empty
-        with patch("giljo_mcp.tools.context_tools.get_git_history.ProductMemoryRepository") as mock_repo_cls:
-            mock_repo = MagicMock()
-            mock_repo.get_git_history = AsyncMock(return_value=[])
-            mock_repo_cls.return_value = mock_repo
+        # Mock service returning empty commits (BE-5022b: routes through ProductMemoryService)
+        with patch("giljo_mcp.tools.context_tools.get_git_history.ProductMemoryService") as mock_svc_cls:
+            mock_svc = MagicMock()
+            mock_svc.get_git_history = AsyncMock(return_value=[])
+            mock_svc_cls.return_value = mock_svc
 
             result = await get_git_history(
                 product_id="prod-123",
@@ -98,10 +98,10 @@ class TestGitHistoryDirective:
 
         mock_session.execute = mock_execute
 
-        with patch("giljo_mcp.tools.context_tools.get_git_history.ProductMemoryRepository") as mock_repo_cls:
-            mock_repo = MagicMock()
-            mock_repo.get_git_history = AsyncMock(return_value=[])
-            mock_repo_cls.return_value = mock_repo
+        with patch("giljo_mcp.tools.context_tools.get_git_history.ProductMemoryService") as mock_svc_cls:
+            mock_svc = MagicMock()
+            mock_svc.get_git_history = AsyncMock(return_value=[])
+            mock_svc_cls.return_value = mock_svc
 
             result = await get_git_history(
                 product_id="prod-123",
@@ -168,10 +168,10 @@ class TestGitHistoryDirective:
             {"hash": "def456", "message": "fix: bug", "author": "dev", "timestamp": "2026-01-02"},
         ]
 
-        with patch("giljo_mcp.tools.context_tools.get_git_history.ProductMemoryRepository") as mock_repo_cls:
-            mock_repo = MagicMock()
-            mock_repo.get_git_history = AsyncMock(return_value=fake_commits)
-            mock_repo_cls.return_value = mock_repo
+        with patch("giljo_mcp.tools.context_tools.get_git_history.ProductMemoryService") as mock_svc_cls:
+            mock_svc = MagicMock()
+            mock_svc.get_git_history = AsyncMock(return_value=fake_commits)
+            mock_svc_cls.return_value = mock_svc
 
             result = await get_git_history(
                 product_id="prod-123",

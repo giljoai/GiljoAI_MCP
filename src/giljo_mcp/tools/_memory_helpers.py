@@ -46,10 +46,9 @@ async def emit_websocket_event(
         - Logs warning if WebSocket fails (doesn't crash operation)
     """
     try:
-        # Import app to access websocket manager from app state
-        from api.app import app
+        from giljo_mcp.app_registry.service_registry import get_websocket_manager
 
-        websocket_manager = getattr(app.state, "websocket_manager", None)
+        websocket_manager = get_websocket_manager()
 
         if websocket_manager:
             await websocket_manager.broadcast_to_tenant(
@@ -57,7 +56,7 @@ async def emit_websocket_event(
                 event_type=event_type,
                 data={"product_id": product_id, **data},
             )
-    except (RuntimeError, ValueError, KeyError) as exc:  # pragma: no cover - best-effort emit
+    except (RuntimeError, ValueError, KeyError, TypeError) as exc:  # pragma: no cover - best-effort emit
         logger.warning("WebSocket emit failed", extra={"error": str(exc), "event_type": event_type})
 
 

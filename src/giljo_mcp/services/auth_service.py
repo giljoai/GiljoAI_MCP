@@ -34,7 +34,6 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import bcrypt
-from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
@@ -49,6 +48,7 @@ from giljo_mcp.exceptions import (
 )
 from giljo_mcp.models.auth import APIKey, User
 from giljo_mcp.models.config import SetupState
+from giljo_mcp.repositories.auth_repository import AuthRepository
 from giljo_mcp.schemas.service_responses import (
     ApiKeyCreateResult,
     ApiKeyInfo,
@@ -90,6 +90,7 @@ class AuthService:
         self.db_manager = db_manager
         self._websocket_manager = websocket_manager
         self._session = session  # Store for test transaction isolation
+        self._repo = AuthRepository()
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def _get_session(self):
@@ -149,9 +150,7 @@ class AuthService:
     async def _authenticate_user_impl(self, session: AsyncSession, username: str, password: str) -> AuthResult:
         """Implementation that uses provided session."""
         # Find user by username
-        stmt = select(User).where(User.username == username)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_username(session, username)
 
         # Verify user exists and password matches
         if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8")):
@@ -221,15 +220,12 @@ class AuthService:
 
     async def _update_last_login_impl(self, session: AsyncSession, user_id: str, timestamp: datetime) -> None:
         """Implementation that uses provided session."""
-        stmt = select(User).where(User.id == user_id)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await self._repo.get_user_by_id(session, user_id)
 
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        user.last_login = timestamp
-        await session.commit()
+        await self._repo.update_last_login(session, user, timestamp)
 
         self._logger.debug(
             f"Updated last login for user {user_id}", extra={"user_id": user_id, "timestamp": timestamp.isoformat()}
@@ -270,9 +266,7 @@ class AuthService:
 
     async def _check_setup_state_impl(self, session: AsyncSession, tenant_key: str) -> SetupStateInfo | None:
         """Implementation that uses provided session."""
-        stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
-        result = await session.execute(stmt)
-        setup_state = result.scalar_one_or_none()
+        setup_state = await self._repo.get_setup_state(session, tenant_key)
 
         if not setup_state:
             return None
@@ -316,13 +310,7 @@ class AuthService:
 
     async def _list_api_keys_impl(self, session: AsyncSession, user_id: str, include_revoked: bool) -> list[ApiKeyInfo]:
         """Implementation that uses provided session."""
-        if include_revoked:
-            stmt = select(APIKey).where(APIKey.user_id == user_id).order_by(APIKey.created_at.desc())
-        else:
-            stmt = select(APIKey).where(APIKey.user_id == user_id, APIKey.is_active).order_by(APIKey.created_at.desc())
-
-        result = await session.execute(stmt)
-        api_keys = result.scalars().all()
+        api_keys = await self._repo.list_api_keys(session, user_id, include_revoked)
 
         return [
             ApiKeyInfo(
@@ -378,15 +366,7 @@ class AuthService:
         self, session: AsyncSession, user_id: str, tenant_key: str, name: str, permissions: list[str]
     ) -> ApiKeyCreateResult:
         """Implementation that uses provided session."""
-        active_count = await session.scalar(
-            select(func.count())
-            .select_from(APIKey)
-            .where(
-                APIKey.user_id == user_id,
-                APIKey.is_active.is_(True),
-                or_(APIKey.expires_at > func.now(), APIKey.expires_at.is_(None)),
-            )
-        )
+        active_count = await self._repo.count_active_api_keys(session, user_id)
         if active_count >= 5:
             raise ValidationError(
                 message="Maximum of 5 active API keys allowed. Revoke an existing key first.",
@@ -398,6 +378,11 @@ class AuthService:
         key_hash = hash_api_key(api_key)
         key_prefix = get_key_prefix(api_key, length=12)
 
+        # Validate permissions JSONB before persisting
+        from giljo_mcp.schemas.jsonb_validators import validate_api_key_permissions
+
+        validated_permissions = validate_api_key_permissions(permissions) or []
+
         # Create API key record
         new_key = APIKey(
             id=str(uuid4()),
@@ -406,15 +391,13 @@ class AuthService:
             name=name,
             key_hash=key_hash,
             key_prefix=key_prefix,
-            permissions=permissions,
+            permissions=validated_permissions,
             is_active=True,
             created_at=datetime.now(timezone.utc),
             expires_at=datetime.now(timezone.utc) + timedelta(days=90),
         )
 
-        session.add(new_key)
-        await session.commit()
-        await session.refresh(new_key)
+        new_key = await self._repo.create_api_key(session, new_key)
 
         self._logger.info(
             f"API key created: {name} (user: {user_id})",
@@ -460,9 +443,7 @@ class AuthService:
 
     async def _revoke_api_key_impl(self, session: AsyncSession, key_id: str, user_id: str) -> None:
         """Implementation that uses provided session."""
-        stmt = select(APIKey).where(APIKey.id == key_id, APIKey.user_id == user_id)
-        result = await session.execute(stmt)
-        api_key = result.scalar_one_or_none()
+        api_key = await self._repo.get_api_key_by_id_and_user(session, key_id, user_id)
 
         if not api_key:
             raise ResourceNotFoundError(
@@ -470,9 +451,7 @@ class AuthService:
             )
 
         # Revoke key
-        api_key.is_active = False
-        api_key.revoked_at = datetime.now(timezone.utc)
-        await session.commit()
+        await self._repo.revoke_api_key(session, api_key, datetime.now(timezone.utc))
 
         self._logger.info(
             f"API key revoked: {api_key.name} (user: {user_id})",
@@ -537,21 +516,14 @@ class AuthService:
     ) -> UserInfo:
         """Implementation that uses provided session."""
         # Check for duplicate username
-        stmt = select(User).where(User.username == username)
-        result = await session.execute(stmt)
-        if result.scalar_one_or_none():
+        if await self._repo.check_username_exists(session, username):
             raise ValidationError(
                 message=f"Username '{username}' already exists", context={"username": username, "field": "username"}
             )
 
         # Check for duplicate email if provided
-        if email:
-            stmt = select(User).where(User.email == email)
-            result = await session.execute(stmt)
-            if result.scalar_one_or_none():
-                raise ValidationError(
-                    message=f"Email '{email}' already exists", context={"email": email, "field": "email"}
-                )
+        if email and await self._repo.check_email_exists(session, email):
+            raise ValidationError(message=f"Email '{email}' already exists", context={"email": email, "field": "email"})
 
         # Hash password
         password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -572,8 +544,7 @@ class AuthService:
             created_at=datetime.now(timezone.utc),
         )
 
-        session.add(new_user)
-        await session.flush()  # Get user.id for membership
+        await self._repo.create_user(session, new_user)
 
         # Create organization membership if org_id provided (Handover 0424g)
         if org_id:
@@ -582,7 +553,7 @@ class AuthService:
             membership = OrgMembership(
                 org_id=org_id, user_id=str(new_user.id), tenant_key=tenant_key, role=org_role, is_active=True
             )
-            session.add(membership)
+            await self._repo.create_org_membership(session, membership)
         else:
             # Create default organization for user without org_id (backward compatibility)
             created_org_id = await self._create_default_organization(
@@ -595,10 +566,9 @@ class AuthService:
             membership = OrgMembership(
                 org_id=created_org_id, user_id=str(new_user.id), tenant_key=tenant_key, role="owner", is_active=True
             )
-            session.add(membership)
+            await self._repo.create_org_membership(session, membership)
 
-        await session.commit()
-        await session.refresh(new_user)
+        new_user = await self._repo.commit_and_refresh_user(session, new_user)
 
         self._logger.info(
             f"User registered: {username} (role: {role}, org_role: {org_role}, by admin: {requesting_admin_id})",
@@ -642,14 +612,9 @@ class AuthService:
             ...     session, admin_id, "newuser", "new@example.com", "member", "TempPass123!"
             ... )
         """
-        from sqlalchemy.orm import selectinload
-
-        from giljo_mcp.models.organizations import OrgMembership
 
         # Verify admin has owner/admin role in their organization
-        admin_stmt = select(User).where(User.id == admin_user_id).options(selectinload(User.organization))
-        admin_result = await session.execute(admin_stmt)
-        admin = admin_result.scalar_one_or_none()
+        admin = await self._repo.get_user_with_org(session, admin_user_id)
 
         if not admin or not admin.org_id:
             raise AuthorizationError(
@@ -658,13 +623,7 @@ class AuthService:
             )
 
         # Check admin's membership role (must be owner or admin)
-        membership_stmt = (
-            select(OrgMembership)
-            .where(OrgMembership.org_id == admin.org_id)
-            .where(OrgMembership.user_id == admin_user_id)
-        )
-        membership_result = await session.execute(membership_stmt)
-        membership = membership_result.scalar_one_or_none()
+        membership = await self._repo.get_org_membership(session, admin.org_id, admin_user_id)
 
         if not membership or membership.role not in ("owner", "admin"):
             raise AuthorizationError(
@@ -742,9 +701,7 @@ class AuthService:
     ) -> AuthResult:
         """Implementation that uses provided session (Handover 0424h: accepts org_name)."""
         # Check if users already exist (must be fresh install)
-        user_count_stmt = select(func.count(User.id))
-        result = await session.execute(user_count_stmt)
-        total_users = result.scalar()
+        total_users = await self._repo.get_total_user_count(session)
 
         if total_users > 0:
             raise ValidationError(
@@ -800,8 +757,7 @@ class AuthService:
             created_at=datetime.now(timezone.utc),
         )
 
-        session.add(admin_user)
-        await session.flush()  # Get user.id for membership
+        await self._repo.create_user(session, admin_user)
 
         # Create owner membership (Handover 0424g)
         from giljo_mcp.models.organizations import OrgMembership
@@ -809,14 +765,11 @@ class AuthService:
         owner_membership = OrgMembership(
             org_id=org_id, user_id=str(admin_user.id), tenant_key=tenant_key, role="owner", is_active=True
         )
-        session.add(owner_membership)
-        await session.commit()
-        await session.refresh(admin_user)
+        await self._repo.create_org_membership(session, owner_membership)
+        admin_user = await self._repo.commit_and_refresh_user(session, admin_user)
 
         # Mark first admin created in SetupState
-        setup_state_stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
-        setup_result = await session.execute(setup_state_stmt)
-        setup_state = setup_result.scalar_one_or_none()
+        setup_state = await self._repo.get_setup_state(session, tenant_key)
 
         if setup_state:
             setup_state.first_admin_created = True
@@ -830,9 +783,9 @@ class AuthService:
                 first_admin_created=True,
                 first_admin_created_at=datetime.now(timezone.utc),
             )
-            session.add(setup_state)
+            await self._repo.create_setup_state(session, setup_state)
 
-        await session.commit()
+        await self._repo.commit(session)
 
         # Generate JWT token for immediate login
         token = JWTManager.create_access_token(
@@ -890,8 +843,7 @@ class AuthService:
 
         # Create organization
         org = Organization(name=org_name, tenant_key=tenant_key, slug=slug, settings={})
-        session.add(org)
-        await session.flush()  # Get org.id
+        org = await self._repo.create_organization(session, org)
 
         # No commit here - parent method handles it
         self._logger.info(

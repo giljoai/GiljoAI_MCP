@@ -12,6 +12,7 @@ This is the existing AuthMiddleware from api/middleware.py,
 moved to the new middleware directory structure in Handover 0129c.
 """
 
+import logging
 import time
 from typing import Callable, Optional
 
@@ -19,10 +20,10 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from giljo_mcp.logging import ErrorCode, get_logger
+from giljo_mcp.logging import ErrorCode
 
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -64,10 +65,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
             auth_manager = getattr(request.app.state, "auth", None)
             if not auth_manager:
                 logger.error(
-                    "auth_manager_not_configured",
-                    error_code=ErrorCode.API_INTERNAL_ERROR.value,
-                    path=request.url.path,
-                    method=request.method,
+                    "auth_manager_not_configured error_code=%s path=%s method=%s",
+                    ErrorCode.API_INTERNAL_ERROR.value,
+                    request.url.path,
+                    request.method,
                 )
                 return JSONResponse(
                     status_code=500,
@@ -79,23 +80,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         # DIAGNOSTIC: Log incoming request details
         logger.info(
-            "auth_request_received",
-            method=request.method,
-            path=request.url.path,
-            ip_address=request.client.host if request.client else "unknown",
-            has_cookie=bool(request.headers.get("cookie")),
-            has_authorization=bool(request.headers.get("authorization")),
+            "auth_request_received method=%s path=%s ip=%s has_cookie=%s has_auth=%s",
+            request.method,
+            request.url.path,
+            request.client.host if request.client else "unknown",
+            bool(request.headers.get("cookie")),
+            bool(request.headers.get("authorization")),
         )
 
         auth_result = await auth_manager.authenticate_request(request)
 
         # DIAGNOSTIC: Log auth result
         logger.info(
-            "auth_result",
-            authenticated=auth_result.get("authenticated"),
-            user=auth_result.get("user"),
-            error=auth_result.get("error"),
-            is_auto_login=auth_result.get("is_auto_login", False),
+            "auth_result authenticated=%s user=%s error=%s is_auto_login=%s",
+            auth_result.get("authenticated"),
+            auth_result.get("user"),
+            auth_result.get("error"),
+            auth_result.get("is_auto_login", False),
         )
 
         # Set request state consistently
@@ -106,9 +107,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
             tenant_key = auth_result.get("tenant_key")
             if not tenant_key:
                 logger.warning(
-                    "authenticated_missing_tenant_key",
-                    user_id=auth_result.get("user_id"),
-                    path=request.url.path,
+                    "authenticated_missing_tenant_key user_id=%s path=%s",
+                    auth_result.get("user_id"),
+                    request.url.path,
                 )
                 # Fall back to config-based default for setup/localhost mode only
                 from api.dependencies import _get_default_tenant_key
@@ -120,12 +121,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
         else:
             # Auth failed - return 401
             logger.warning(
-                "authentication_failed",
-                error_code=ErrorCode.AUTH_UNAUTHORIZED.value,
-                path=request.url.path,
-                method=request.method,
-                ip_address=request.client.host if request.client else "unknown",
-                reason=auth_result.get("error", "No credentials provided"),
+                "authentication_failed error_code=%s path=%s method=%s ip=%s reason=%s",
+                ErrorCode.AUTH_UNAUTHORIZED.value,
+                request.url.path,
+                request.method,
+                request.client.host if request.client else "unknown",
+                auth_result.get("error", "No credentials provided"),
             )
             return JSONResponse(
                 status_code=401,

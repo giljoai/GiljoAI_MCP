@@ -316,7 +316,7 @@ You are the GiljoAI agent template installer for Codex CLI.
        "options": [
          {
            "label": "Default model for all agents (Recommended)",
-           "description": "Use gpt-5.2-codex for every agent — fastest setup."
+           "description": "Use gpt-5.3-codex for every agent — fastest setup."
          },
          {
            "label": "Choose a model per agent",
@@ -328,7 +328,7 @@ You are the GiljoAI agent template installer for Codex CLI.
    ```
 
    **If the user picks "Default model for all agents":**
-   Proceed using `gpt-5.2-codex` for every agent. Use `request_user_input` to ask reasoning effort:
+   Proceed using `gpt-5.3-codex` for every agent. Use `request_user_input` to ask reasoning effort:
 
    ```json
    {
@@ -362,7 +362,7 @@ You are the GiljoAI agent template installer for Codex CLI.
          "id": "model_analyzer",
          "question": "Which model for the Analyzer agent?",
          "options": [
-           {"label": "gpt-5.2-codex", "description": "Default Codex model"},
+           {"label": "gpt-5.3-codex", "description": "Default Codex model"},
            {"label": "o3", "description": "Reasoning-optimized model"},
            {"label": "gpt-5.4", "description": "Latest GPT model"}
          ]
@@ -372,7 +372,7 @@ You are the GiljoAI agent template installer for Codex CLI.
          "id": "model_implementer",
          "question": "Which model for the Implementer agent?",
          "options": [
-           {"label": "gpt-5.2-codex", "description": "Default Codex model"},
+           {"label": "gpt-5.3-codex", "description": "Default Codex model"},
            {"label": "o3", "description": "Reasoning-optimized model"},
            {"label": "gpt-5.4", "description": "Latest GPT model"}
          ]
@@ -450,7 +450,7 @@ Valid fields in agent .toml files (all optional, inherit from parent session if 
 - description — string, from server response
 - nickname_candidates — array of strings, use the gil-prefixed name
 - developer_instructions — multi-line string (use triple quotes)
-- model — string, e.g. "gpt-5.2-codex", "gpt-5.4", "o3"
+- model — string, e.g. "gpt-5.3-codex", "gpt-5.4", "o3"
 - model_reasoning_effort — "low", "medium", "high", "xhigh"
 - sandbox_mode — "read-only", "workspace-write", "danger-full-access"
 - approval_policy — "on-request", "unless-allow-listed", "never"
@@ -474,7 +474,7 @@ max_depth = 1
 
 [agents.gil-analyzer]
 config_file = "agents/gil-analyzer.toml"
-model = "gpt-5.2-codex"
+model = "gpt-5.3-codex"
 model_reasoning_effort = "medium"
 nickname_candidates = ["gil-analyzer"]
 ```

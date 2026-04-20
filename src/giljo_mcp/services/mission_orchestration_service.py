@@ -20,7 +20,6 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any, Optional
 
-from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -29,10 +28,7 @@ from giljo_mcp.exceptions import (
     ResourceNotFoundError,
     ValidationError,
 )
-from giljo_mcp.models import (
-    AgentExecution,
-    AgentTemplate,
-)
+from giljo_mcp.repositories.mission_repository import MissionRepository
 from giljo_mcp.services.protocol_builder import (
     _build_orchestrator_protocol,
     _get_user_config,
@@ -63,6 +59,7 @@ class MissionOrchestrationService:
         self._test_session = test_session
         self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._repo = MissionRepository()
 
     def _get_session(self):
         """
@@ -195,10 +192,6 @@ class MissionOrchestrationService:
         Returns a context dict with execution, job, project, product, config, and templates.
         If a staging redirect is needed, returns {"early_return": <response_dict>}.
         """
-        from sqlalchemy.orm import joinedload, selectinload
-
-        from giljo_mcp.models import Product, Project
-
         if not job_id or not job_id.strip():
             raise ValidationError(
                 message="Job ID is required",
@@ -214,18 +207,7 @@ class MissionOrchestrationService:
             )
 
         # Query AgentExecution and join to AgentJob
-        result = await session.execute(
-            select(AgentExecution)
-            .options(joinedload(AgentExecution.job))
-            .where(
-                and_(
-                    AgentExecution.job_id == job_id,
-                    AgentExecution.tenant_key == tenant_key,
-                )
-            )
-            .order_by(AgentExecution.started_at.desc())
-        )
-        execution = result.scalars().first()
+        execution = await self._repo.get_execution_with_job(session, tenant_key, job_id)
 
         if not execution:
             raise ResourceNotFoundError(
@@ -253,10 +235,7 @@ class MissionOrchestrationService:
                 },
             )
 
-        result = await session.execute(
-            select(Project).where(and_(Project.id == agent_job.project_id, Project.tenant_key == tenant_key))
-        )
-        project = result.scalar_one_or_none()
+        project = await self._repo.get_project_by_id(session, tenant_key, agent_job.project_id)
 
         if not project:
             raise ResourceNotFoundError(
@@ -272,12 +251,7 @@ class MissionOrchestrationService:
 
         product = None
         if project.product_id:
-            result = await session.execute(
-                select(Product)
-                .where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
-                .options(selectinload(Product.vision_documents))
-            )
-            product = result.scalar_one_or_none()
+            product = await self._repo.get_project_with_vision_docs(session, tenant_key, project.product_id)
 
         metadata = agent_job.job_metadata or {}
         user_id = metadata.get("user_id")
@@ -295,10 +269,7 @@ class MissionOrchestrationService:
             depth_config = metadata.get("depth_config", {})
             logger.debug("[USER_CONFIG] No user_id, using frozen job_metadata config", extra={"job_id": job_id})
 
-        result = await session.execute(
-            select(AgentTemplate).where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active)).limit(8)
-        )
-        templates = result.scalars().all()
+        templates = await self._repo.get_active_templates(session, tenant_key)
 
         # CE-OPT-001: Build category_metadata with Modified timestamps
         category_metadata = await self._build_category_metadata(
@@ -330,8 +301,8 @@ class MissionOrchestrationService:
             "integrations": integrations,
         }
 
-    @staticmethod
     async def _build_category_metadata(
+        self,
         session: AsyncSession,
         product: Any | None,
         tenant_key: str,
@@ -343,8 +314,6 @@ class MissionOrchestrationService:
         Returns:
             Dict mapping category name -> {modified: str, entries?: int}
         """
-        from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
-
         metadata: dict[str, dict] = {}
         if not product:
             return metadata
@@ -358,20 +327,7 @@ class MissionOrchestrationService:
                 metadata[cat] = {"modified": ts}
 
         # memory_360: COUNT + MAX(created_at) from ProductMemoryEntry
-        result = await session.execute(
-            select(
-                func.count(ProductMemoryEntry.id),
-                func.max(ProductMemoryEntry.created_at),
-            ).where(
-                and_(
-                    ProductMemoryEntry.product_id == product.id,
-                    ProductMemoryEntry.tenant_key == tenant_key,
-                    ProductMemoryEntry.deleted_by_user.is_(False),
-                )
-            )
-        )
-        row = result.one()
-        entry_count, max_created = row[0], row[1]
+        entry_count, max_created = await self._repo.get_category_metadata(session, tenant_key, product.id)
         if entry_count > 0 and max_created:
             metadata["memory_360"] = {
                 "modified": max_created.strftime("%Y-%m-%dT%H:%M"),

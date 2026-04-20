@@ -167,12 +167,11 @@ class TestSpawnWebSocketBroadcastPhase:
             call_count += 1
             if call_count == 1:
                 return project_result
-            elif call_count == 2:
+            if call_count == 2:
                 return template_validation_result
-            elif call_count == 3:
+            if call_count == 3:
                 return duplicate_check_result
-            else:
-                return template_lookup_result
+            return template_lookup_result
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
@@ -250,12 +249,11 @@ class TestSpawnWebSocketBroadcastPhase:
             call_count += 1
             if call_count == 1:
                 return project_result
-            elif call_count == 2:
+            if call_count == 2:
                 return template_validation_result
-            elif call_count == 3:
+            if call_count == 3:
                 return duplicate_check_result
-            else:
-                return template_lookup_result
+            return template_lookup_result
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
