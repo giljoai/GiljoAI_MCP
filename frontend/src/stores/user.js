@@ -37,8 +37,21 @@ export const useUserStore = defineStore('user', () => {
     }
   })
 
+  // Deduplicates concurrent fetchCurrentUser() calls (single in-flight request)
+  let _fetchPending = null
+
   // Actions
   async function fetchCurrentUser() {
+    if (_fetchPending) return _fetchPending
+    _fetchPending = _doFetchCurrentUser()
+    try {
+      return await _fetchPending
+    } finally {
+      _fetchPending = null
+    }
+  }
+
+  async function _doFetchCurrentUser() {
     try {
       const response = await api.auth.me()
       currentUser.value = response.data

@@ -52,7 +52,7 @@ def _build_cookie_params(request: Request) -> dict:
 
     Extracts the request host header and applies security checks to determine
     the appropriate cookie domain:
-    - IP addresses: auto-allowed (no subdomain hierarchy risk)
+    - IP addresses: domain omitted (browser uses origin-matching per RFC 6265)
     - Domain names: must be in security.cookie_domain_whitelist config
     - Unknown hosts: domain=None (fail secure)
 
@@ -73,10 +73,15 @@ def _build_cookie_params(request: Request) -> dict:
         if host_header:
             host_only = host_header.split(":")[0].lower()
 
-            # IP addresses (including localhost) share cookies across ports
+            # IP addresses: omit domain so browser uses origin-matching.
+            # Setting an explicit domain on IP addresses is unreliable per
+            # RFC 6265 Section 5.2.3 (domain attribute is for DNS names).
+            # Browsers handle domain=<IP> inconsistently — some reject the
+            # cookie entirely. Omitting domain ensures the cookie is scoped
+            # to the exact origin, consistent with how csrf_token is set.
             if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", host_only):
-                cookie_domain = host_only
-                logger.debug(f"Cookie domain set to IP address (safe): {host_only}")
+                cookie_domain = None
+                logger.debug(f"Cookie domain omitted for IP address: {host_only} (origin-matching)")
 
             # Domain names MUST be whitelisted (prevent header injection)
             elif host_only in allowed_domains:

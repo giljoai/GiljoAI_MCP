@@ -11,7 +11,7 @@ validation logic previously duplicated in login, logout, and
 create-first-admin endpoints.
 
 Covers:
-- IP address detection (auto-allowed, no whitelist needed)
+- IP address detection (domain omitted for origin-matching per RFC 6265)
 - Domain whitelist enforcement (cookie_domain_whitelist config key)
 - Unknown host fail-secure behavior (domain=None)
 - Missing/empty request scenarios
@@ -69,28 +69,33 @@ class TestBuildCookieParams:
     # --- IP address tests ---
 
     @patch("api.endpoints.auth.get_config")
-    def test_ip_address_sets_cookie_domain(self, mock_config):
-        """IP addresses should auto-set cookie domain (no whitelist needed)."""
+    def test_ip_address_omits_cookie_domain(self, mock_config):
+        """IP addresses should omit cookie domain (browser uses origin-matching).
+
+        Per RFC 6265 Section 5.2.3, the domain attribute is designed for DNS
+        names. Setting an explicit domain on an IP address is unreliable across
+        browsers. Omitting it lets the browser use exact origin matching.
+        """
         mock_config.return_value = {"security": {"cookies": {"secure": False}}}
         request = self._make_request("10.1.0.164:7272")
 
         result = _build_cookie_params(request)
 
-        assert result["domain"] == "10.1.0.164"
+        assert result["domain"] is None
 
     @patch("api.endpoints.auth.get_config")
-    def test_localhost_ip_sets_cookie_domain(self, mock_config):
-        """Localhost IP (127.0.0.1) should set cookie domain for cross-port sharing."""
+    def test_localhost_ip_omits_cookie_domain(self, mock_config):
+        """Localhost IP (127.0.0.1) should omit cookie domain (origin-matching)."""
         mock_config.return_value = {"security": {"cookies": {"secure": False}}}
         request = self._make_request("127.0.0.1:7272")
 
         result = _build_cookie_params(request)
 
-        assert result["domain"] == "127.0.0.1"
+        assert result["domain"] is None
 
     @patch("api.endpoints.auth.get_config")
-    def test_ip_without_port_sets_cookie_domain(self, mock_config):
-        """IP address without port should still work."""
+    def test_ip_without_port_omits_cookie_domain(self, mock_config):
+        """IP address without port should also omit cookie domain."""
         mock_config.return_value = {"security": {"cookies": {"secure": False}}}
         request = self._make_request("192.168.1.100")
         # Adjust headers since no port present
@@ -98,7 +103,7 @@ class TestBuildCookieParams:
 
         result = _build_cookie_params(request)
 
-        assert result["domain"] == "192.168.1.100"
+        assert result["domain"] is None
 
     # --- Domain whitelist tests ---
 

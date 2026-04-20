@@ -102,6 +102,83 @@ describe('User Store', () => {
       expect(store.currentUser).toBeNull()
       expect(store.isAuthenticated).toBe(false)
     })
+
+    it('should deduplicate concurrent calls — only one API request fires', async () => {
+      const store = useUserStore()
+      const mockUser = { id: 1, username: 'testuser', role: 'user' }
+
+      // Slow response so both calls overlap
+      api.auth.me.mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve({ data: mockUser }), 50))
+      )
+
+      // Fire two concurrent calls
+      const [r1, r2] = await Promise.all([
+        store.fetchCurrentUser(),
+        store.fetchCurrentUser(),
+      ])
+
+      // Both callers get the same result
+      expect(r1).toBe(true)
+      expect(r2).toBe(true)
+      // Only ONE network request was made
+      expect(api.auth.me).toHaveBeenCalledTimes(1)
+      expect(store.currentUser).toEqual(mockUser)
+    })
+
+    it('should allow a new fetch after the previous one completes', async () => {
+      const store = useUserStore()
+      const mockUser1 = { id: 1, username: 'user1', role: 'user' }
+      const mockUser2 = { id: 2, username: 'user2', role: 'admin' }
+
+      api.auth.me
+        .mockResolvedValueOnce({ data: mockUser1 })
+        .mockResolvedValueOnce({ data: mockUser2 })
+
+      await store.fetchCurrentUser()
+      expect(store.currentUser).toEqual(mockUser1)
+
+      await store.fetchCurrentUser()
+      expect(store.currentUser).toEqual(mockUser2)
+      expect(api.auth.me).toHaveBeenCalledTimes(2)
+    })
+
+    it('should clear pending state after a failed fetch so retries work', async () => {
+      const store = useUserStore()
+      const mockUser = { id: 1, username: 'testuser', role: 'user' }
+
+      api.auth.me
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce({ data: mockUser })
+
+      const r1 = await store.fetchCurrentUser()
+      expect(r1).toBe(false)
+      expect(store.currentUser).toBeNull()
+
+      // Second call should fire a NEW request, not reuse the failed promise
+      const r2 = await store.fetchCurrentUser()
+      expect(r2).toBe(true)
+      expect(store.currentUser).toEqual(mockUser)
+      expect(api.auth.me).toHaveBeenCalledTimes(2)
+    })
+
+    it('should propagate failure to all concurrent callers on error', async () => {
+      const store = useUserStore()
+
+      api.auth.me.mockImplementation(
+        () => new Promise((_, reject) => setTimeout(() => reject(new Error('Server down')), 50))
+      )
+
+      const [r1, r2] = await Promise.all([
+        store.fetchCurrentUser(),
+        store.fetchCurrentUser(),
+      ])
+
+      expect(r1).toBe(false)
+      expect(r2).toBe(false)
+      expect(api.auth.me).toHaveBeenCalledTimes(1)
+      expect(store.currentUser).toBeNull()
+    })
   })
 
   describe('Actions - login', () => {
