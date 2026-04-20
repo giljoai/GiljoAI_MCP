@@ -20,6 +20,7 @@ from giljo_mcp.auth.dependencies import get_current_active_user
 from giljo_mcp.exceptions import ResourceNotFoundError
 from giljo_mcp.models.auth import User
 from giljo_mcp.services.product_memory_service import ProductMemoryService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .dependencies import get_product_memory_service
 from .models import MemoryEntriesResponse, MemoryEntryResponse
@@ -111,7 +112,7 @@ async def get_memory_entries(
         )
 
     logger.info(
-        f"Fetched {len(entry_responses)} memory entries for product {product_id}",
+        f"Fetched {len(entry_responses)} memory entries for product {sanitize(product_id)}",
         extra={
             "tenant_key": current_user.tenant_key,
             "product_id": product_id,
