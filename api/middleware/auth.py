@@ -153,6 +153,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
         static_extensions = (".svg", ".png", ".jpg", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".css")
         if path.endswith(static_extensions) or path.startswith(("/icons/", "/mascot/")):
             return True
+        # Vue Router SPA routes — must serve index.html without auth so F5 refresh works
+        if path in {"/login", "/first-login", "/server-down", "/oauth/authorize"}:
+            return True
         # Setup wizard routes must be accessible before any user exists
         if path in {"/welcome", "/create-admin"} or path.startswith("/api/setup/"):
             return True

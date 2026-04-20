@@ -747,7 +747,7 @@ async def download_temp_file(
     Example:
         curl -O http://localhost:7272/api/download/temp/{token}/slash_commands.zip
     """
-    logger.info(f"Download request: token={mask_token(token)}, filename={filename}")
+    logger.info(f"Download request: token={mask_token(token)}, filename={sanitize(filename)}")
 
     try:
         from giljo_mcp.downloads.token_manager import TokenManager
@@ -755,7 +755,7 @@ async def download_temp_file(
 
         # Validate filename for security
         if not FileStaging.validate_filename(filename):
-            logger.warning(f"Invalid filename requested: {filename}")
+            logger.warning(f"Invalid filename requested: {sanitize(filename)}")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid token or file")
 
         token_manager = TokenManager(db_session=db)
@@ -808,7 +808,7 @@ async def download_temp_file(
         # Increment download metrics
         await token_manager.increment_download_count(token)
 
-        logger.info(f"Download served: {filename} ({len(content)} bytes) token={mask_token(token)}")
+        logger.info(f"Download served: {sanitize(filename)} ({len(content)} bytes) token={mask_token(token)}")
 
         # Handover 0855b: Emit setup events when CLI downloads resources
         try:
