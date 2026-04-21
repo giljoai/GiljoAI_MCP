@@ -497,6 +497,7 @@ async def test_write_product_partial_fields(
         product_id=product_a.id,
         tenant_key=tenant_a,
         _test_session=db_session,
+        force=True,
         programming_languages="Python, Rust",
     )
 

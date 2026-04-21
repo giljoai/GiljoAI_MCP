@@ -135,30 +135,15 @@ class MissionRepository:
         session: AsyncSession,
         tenant_key: str,
         role: str,
-        product_id: str | None = None,
     ) -> AgentTemplate | None:
-        """Get an active agent template for a role with cascade resolution.
+        """Get an active agent template for a role.
 
-        Resolution: product-specific -> tenant-specific -> system default.
+        Resolution: tenant-specific -> system default.
         """
-        # 1. Product-specific
-        if product_id:
-            stmt = select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == role,
-                AgentTemplate.product_id == product_id,
-                AgentTemplate.is_active,
-            )
-            result = await session.execute(stmt)
-            template = result.scalar_one_or_none()
-            if template:
-                return template
-
-        # 2. Tenant-specific
+        # 1. Tenant-specific
         stmt = select(AgentTemplate).where(
             AgentTemplate.tenant_key == tenant_key,
             AgentTemplate.role == role,
-            AgentTemplate.product_id.is_(None),
             AgentTemplate.is_active,
         )
         result = await session.execute(stmt)
@@ -166,7 +151,7 @@ class MissionRepository:
         if template:
             return template
 
-        # 3. System default
+        # 2. System default
         stmt = (
             select(AgentTemplate)
             .where(

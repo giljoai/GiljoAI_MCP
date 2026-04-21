@@ -427,9 +427,9 @@ export const api = {
     status: () => apiClient.get('/api/setup/status'),
   },
 
-  // Templates
+  // Templates (tenant-scoped — no product_id params)
   templates: {
-    list: (params) => apiClient.get('/api/v1/templates/', { params }),
+    list: () => apiClient.get('/api/v1/templates/'),
     get: (id) => apiClient.get(`/api/v1/templates/${id}`),
     create: (data) => apiClient.post('/api/v1/templates/', data),
     update: (id, data) => apiClient.put(`/api/v1/templates/${id}`, data),
@@ -444,8 +444,13 @@ export const api = {
     preview: (id, data = {}) => apiClient.post(`/api/v1/templates/${id}/preview/`, data),
     reset: (id) => apiClient.post(`/api/v1/templates/${id}/reset/`),
     activeCount: () => apiClient.get('/api/v1/templates/stats/active-count'),
-    cloneToProduct: (templateId, targetProductId) =>
-      apiClient.post(`/api/v1/templates/${templateId}/clone`, { target_product_id: targetProductId }),
+  },
+
+  // Per-product agent assignments (junction table toggle)
+  assignments: {
+    list: (productId) => apiClient.get(`/api/products/${productId}/agent-assignments`),
+    toggle: (productId, templateId, isActive) =>
+      apiClient.put(`/api/products/${productId}/agent-assignments/${templateId}`, { is_active: isActive }),
   },
 
   // Authentication (JWT via httpOnly cookies)

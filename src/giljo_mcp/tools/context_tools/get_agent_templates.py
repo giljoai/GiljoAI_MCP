@@ -52,7 +52,8 @@ async def get_agent_templates(
     Returns active agent templates with varying detail levels.
 
     Args:
-        product_id: Product UUID (for context, not filtering - templates are tenant-wide)
+        product_id: Product UUID. When provided and assignments exist, only templates
+                    with active assignments for this product are returned.
         tenant_key: Tenant isolation key
         detail: Detail level ("basic", "full")
         offset: Skip first N items (reserved for future pagination)
@@ -108,7 +109,27 @@ async def get_agent_templates(
         )
 
         result = await session.execute(stmt)
-        templates = result.scalars().all()
+        templates = list(result.scalars().all())
+
+        # Filter by product assignments when product_id is provided
+        if product_id and templates:
+            try:
+                from giljo_mcp.repositories.product_agent_assignment_repository import (
+                    ProductAgentAssignmentRepository,
+                )
+
+                assignment_repo = ProductAgentAssignmentRepository()
+                active_ids = await assignment_repo.get_active_template_ids_for_product(session, product_id, tenant_key)
+                # Only filter if assignments exist (no assignments = show all)
+                if active_ids:
+                    templates = [t for t in templates if t.id in active_ids]
+            except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
+                # Non-fatal: fall back to showing all templates
+                logger.warning(
+                    "Failed to filter templates by product assignments (product_id=%s): %s",
+                    product_id,
+                    exc,
+                )
 
         if not templates:
             logger.debug("no_agent_templates tenant_key=%s operation=get_agent_templates", tenant_key)

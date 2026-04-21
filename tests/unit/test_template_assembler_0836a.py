@@ -146,8 +146,8 @@ class TestRenderCodexAgent:
         assert result["agent_name"] == "implementer-frontend"
         assert result["description"] == "Implements frontend features using Vue 3"
         assert result["role"] == "implementer"
-        assert result["suggested_model"] == "gpt-5.3-codex"
-        assert result["suggested_reasoning_effort"] == "medium"
+        assert result["suggested_model"] == "gpt-5.4"
+        assert result["suggested_reasoning_effort"] == "high"
 
     def test_developer_instructions_content(self):
         """Test developer_instructions combines all body sections."""
@@ -272,8 +272,8 @@ class TestAgentTemplateAssembler:
         agents = result["agents"]
         assert len(agents) == 2
         assert agents[0]["agent_name"] == "implementer-frontend"
-        assert agents[0]["suggested_model"] == "gpt-5.3-codex"
-        assert agents[0]["suggested_reasoning_effort"] == "medium"
+        assert agents[0]["suggested_model"] == "gpt-5.4"
+        assert agents[0]["suggested_reasoning_effort"] == "high"
         assert "developer_instructions" in agents[0]
         # Codex should NOT have 'content' or 'filename' keys
         assert "content" not in agents[0]

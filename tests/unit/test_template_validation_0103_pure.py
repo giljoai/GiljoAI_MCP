@@ -51,11 +51,10 @@ class TestSlugifyName:
         assert slugify_name("documenter", None) == "documenter"
 
     def test_multiple_spaces_consolidated(self):
-        """Test multiple consecutive spaces consolidated."""
-        # Multiple spaces become multiple hyphens (regex doesn't consolidate)
+        """Test multiple consecutive spaces consolidated into single hyphens."""
         result = slugify_name("tester", "Super  Fast   Runner")
-        # The regex replaces each space with hyphen individually
-        assert result == "tester-super--fast---runner"
+        # slugify_name collapses double hyphens into single hyphens
+        assert result == "tester-super-fast-runner"
 
     def test_mixed_case_suffix(self):
         """Test mixed case suffix converted to lowercase."""

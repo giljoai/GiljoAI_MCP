@@ -256,42 +256,32 @@ class MissionService:
             ) from e
 
     async def _get_agent_template_internal(
-        self, role: str, tenant_key: str, product_id: Optional[str] = None, session: Optional[AsyncSession] = None
+        self, role: str, tenant_key: str, session: Optional[AsyncSession] = None
     ) -> Optional[AgentTemplate]:
         """
         Get agent template for role with cascade resolution.
 
-        Resolution order (highest to lowest priority):
-        1. Product-specific template (if product_id provided)
-        2. Tenant-specific template (user customizations)
-        3. System default template (is_default=True)
+        Resolution: tenant-specific -> system default.
 
         Args:
             role: Agent role name (e.g., "implementer", "tester")
             tenant_key: Tenant key for multi-tenant isolation
-            product_id: Optional product ID for product-specific templates
             session: Optional AsyncSession (if not provided, creates new session)
 
         Returns:
             AgentTemplate instance or None if no template found
-
-        Multi-tenant isolation:
-            - Only returns templates owned by tenant
-            - No cross-tenant leakage possible
         """
-        # Use provided session or create new one
         if session:
-            template = await self._repo.get_template_by_role(session, tenant_key, role, product_id)
+            template = await self._repo.get_template_by_role(session, tenant_key, role)
             if template:
                 self._logger.info(f"[_get_agent_template_internal] Found template for role={role}, tenant={tenant_key}")
             else:
                 self._logger.warning(
-                    f"[_get_agent_template_internal] No template found for role={role}, tenant={tenant_key}, product={product_id}"
+                    f"[_get_agent_template_internal] No template found for role={role}, tenant={tenant_key}"
                 )
             return template
-        # Create new session
         async with self._get_session() as db_session:
-            return await self._get_agent_template_internal(role, tenant_key, product_id, db_session)
+            return await self._get_agent_template_internal(role, tenant_key, db_session)
 
     async def _fetch_job_and_execution(
         self,
