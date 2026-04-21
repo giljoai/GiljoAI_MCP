@@ -372,7 +372,8 @@ class ProductService:
                     )
 
                 # WI-1: Active Product Guard — only the active product can be written to
-                if not product.is_active:
+                # force=True bypasses this (used during vision doc analysis, product setup)
+                if not product.is_active and not force:
                     raise ValidationError(
                         message=f"Target product {product_id} is not the active product. Switch products first.",
                         context={"product_id": product_id, "tenant_key": self.tenant_key},
