@@ -356,16 +356,18 @@ async def unstage_project(
 
 @router.delete("/deleted", response_model=ProjectPurgeResponse)
 async def purge_all_deleted_projects(
+    product_id: str | None = None,
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
 ) -> ProjectPurgeResponse:
     """
-    Permanently delete all soft-deleted projects for the current tenant.
+    Permanently delete all soft-deleted projects for the current tenant,
+    optionally scoped to a product.
     """
-    logger.info("User %s purging all deleted projects", current_user.username)
+    logger.info("User %s purging all deleted projects (product=%s)", current_user.username, product_id)
 
     # Service raises exceptions on error
-    result = await project_service.deletion.purge_all_deleted_projects()
+    result = await project_service.deletion.purge_all_deleted_projects(product_id=product_id)
 
     # 0731d: ProjectService returns ProjectPurgeResult typed model
     projects = [PurgedProject(**proj) for proj in result.projects]

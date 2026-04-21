@@ -93,15 +93,13 @@ class TestStageCombinedSetup:
             # Slash commands in commands/ directory
             assert "commands/gil_get_agents.md" in names
             assert "commands/gil_add.md" in names
-            # Agent templates in agents/ directory
+            # Agent templates are NOT included (split: use /gil_get_agents)
             agent_files = [n for n in names if n.startswith("agents/")]
-            assert len(agent_files) == 2
-            for af in agent_files:
-                assert af.endswith(".md")
+            assert len(agent_files) == 0
 
     @pytest.mark.asyncio
     async def test_gemini_cli_zip_structure(self, staging_dir, mock_session):
-        """Gemini CLI ZIP contains commands/*.toml and agents/*.md."""
+        """Gemini CLI ZIP contains commands/*.toml only (no agent templates)."""
         staging = FileStaging(db_session=mock_session)
 
         zip_path, _ = await staging.stage_combined_setup(
@@ -117,15 +115,13 @@ class TestStageCombinedSetup:
             # Slash commands as TOML
             assert "commands/gil_get_agents.toml" in names
             assert "commands/gil_add.toml" in names
-            # Agent templates as MD
+            # No agent templates
             agent_files = [n for n in names if n.startswith("agents/")]
-            assert len(agent_files) == 2
-            for af in agent_files:
-                assert af.endswith(".md")
+            assert len(agent_files) == 0
 
     @pytest.mark.asyncio
     async def test_codex_cli_zip_structure(self, staging_dir, mock_session):
-        """Codex CLI ZIP contains skills/*/SKILL.md and agents/gil-*.toml."""
+        """Codex CLI ZIP contains skills/*/SKILL.md only (no agent templates)."""
         staging = FileStaging(db_session=mock_session)
 
         zip_path, _ = await staging.stage_combined_setup(
@@ -141,11 +137,9 @@ class TestStageCombinedSetup:
             # Skills (Codex's slash command format)
             assert "skills/gil-get-agents/SKILL.md" in names
             assert "skills/gil-add/SKILL.md" in names
-            # Agent templates as TOML
+            # No agent templates
             agent_files = [n for n in names if n.startswith("agents/")]
-            assert len(agent_files) == 2
-            for af in agent_files:
-                assert af.endswith(".toml")
+            assert len(agent_files) == 0
 
     @pytest.mark.asyncio
     async def test_codex_agent_toml_content(self, staging_dir, mock_session):
@@ -238,18 +232,13 @@ class TestStageCombinedSetup:
             # Slash commands as plain MD reference
             cmd_files = [n for n in names if n.startswith("commands/")]
             assert len(cmd_files) >= 2
-            # Agent templates as plain MD
+            # No agent templates in generic ZIP
             agent_files = [n for n in names if n.startswith("agents/")]
-            assert len(agent_files) == 2
-            for af in agent_files:
-                assert af.endswith(".md")
-                content = zf.read(af).decode("utf-8")
-                # Generic templates must NOT have YAML frontmatter
-                assert not content.startswith("---")
+            assert len(agent_files) == 0
 
     @pytest.mark.asyncio
     async def test_updates_last_exported_at(self, staging_dir, mock_session, templates):
-        """Agent templates get last_exported_at updated after staging."""
+        """Skills-only setup does not update agent template timestamps."""
         staging = FileStaging(db_session=mock_session)
 
         await staging.stage_combined_setup(
@@ -258,8 +247,8 @@ class TestStageCombinedSetup:
             platform="claude_code",
         )
 
-        # Verify commit was called (timestamp update persisted)
-        mock_session.commit.assert_awaited_once()
-        # Verify templates got timestamps set
+        # Commit should NOT be called -- no agent templates in skills-only ZIP
+        mock_session.commit.assert_not_awaited()
+        # Templates should NOT have timestamps set
         for t in templates:
-            assert t.last_exported_at is not None
+            assert t.last_exported_at is None

@@ -482,9 +482,9 @@ async def health_check(ctx: Context = None) -> dict:
 
 @mcp.tool(
     description=(
-        "First-time setup: downloads slash commands and agent templates as a ZIP. "
-        "Run once after connecting. Installs with default models. "
-        "To customize models later, run /gil_get_agents (or $gil-get-agents for Codex). "
+        "First-time setup: downloads slash commands/skills as a ZIP. "
+        "Run once after connecting. Installs user-level commands only. "
+        "After setup, run /gil_get_agents to install product-scoped agent templates. "
         "IMPORTANT: You MUST pass the platform parameter identifying which CLI tool you are. "
         "Use 'claude_code' for Claude Code, 'gemini_cli' for Gemini CLI, 'codex_cli' for Codex CLI."
     ),
@@ -493,7 +493,7 @@ async def giljo_setup(
     platform: Literal["claude_code", "gemini_cli", "codex_cli", "generic"] = "claude_code",
     ctx: Context = None,
 ) -> dict:
-    """Install slash commands and agent templates for your CLI tool."""
+    """Install slash commands/skills for your CLI tool."""
     logger.info("giljo_setup called with platform=%s", platform)
 
     result = await _call_tool(ctx, "bootstrap_setup", {"platform": platform})
@@ -548,10 +548,14 @@ async def generate_download_token(
 )
 async def list_agent_templates(
     platform: str,
+    product_id: str = "",
     ctx: Context = None,
 ) -> dict:
     """Export agent templates for target CLI platform."""
-    result = await _call_tool(ctx, "list_agent_templates", {"platform": platform})
+    kwargs = {"platform": platform}
+    if product_id:
+        kwargs["product_id"] = product_id
+    result = await _call_tool(ctx, "list_agent_templates", kwargs)
 
     # Handover 0855b: Emit setup:agents_downloaded when CLI fetches templates via MCP
     try:
@@ -578,6 +582,24 @@ async def list_agent_templates(
         logger.warning(f"setup:agents_downloaded emission failed: {type(e).__name__}: {e}")
 
     return result
+
+
+@mcp.tool(
+    description=(
+        "Clone agent templates from one product (or tenant-level defaults) to another product. "
+        "Skips templates that already exist on the target by name+version."
+    ),
+)
+async def clone_templates_to_product(
+    target_product_id: str,
+    source_product_id: str = "",
+    ctx: Context = None,
+) -> dict:
+    """Clone agent templates between products."""
+    kwargs = {"target_product_id": target_product_id}
+    if source_product_id:
+        kwargs["source_product_id"] = source_product_id
+    return await _call_tool(ctx, "clone_templates_to_product", kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -1033,12 +1055,15 @@ async def submit_tuning_review(
     product_id: str,
     proposals: list[dict],
     overall_summary: str = "",
+    force: bool = False,
     ctx: Context = None,
 ) -> dict:
     """Submit product context tuning proposals."""
     kwargs: dict[str, Any] = {"product_id": product_id, "proposals": proposals}
     if overall_summary:
         kwargs["overall_summary"] = overall_summary
+    if force:
+        kwargs["force"] = True
     return await _call_tool(ctx, "submit_tuning_review", kwargs)
 
 
@@ -1099,6 +1124,7 @@ async def write_product_from_analysis(
     testing_strategy: str = "",
     testing_frameworks: str = "",
     test_coverage_target: int | None = None,
+    force: bool = False,
     summary_33: str = "",
     summary_66: str = "",
     ctx: Context = None,
@@ -1132,6 +1158,8 @@ async def write_product_from_analysis(
         kwargs["target_platforms"] = target_platforms
     if test_coverage_target is not None:
         kwargs["test_coverage_target"] = test_coverage_target
+    if force:
+        kwargs["force"] = True
     return await _call_tool(ctx, "write_product_from_analysis", kwargs)
 
 

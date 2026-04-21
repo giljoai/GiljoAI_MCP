@@ -23,6 +23,7 @@ from fastapi import APIRouter, Body, Cookie, Depends, Header, HTTPException, Que
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.app_state import GILJO_MODE
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from giljo_mcp.config_manager import get_config
 from giljo_mcp.models import AgentTemplate, User
@@ -846,3 +847,127 @@ async def download_temp_file(
 # NOTE: Legacy agent-template installers were removed in Jan 2026.
 # Use the `gil_get_agents` slash command (which calls `/api/download/generate-token`)
 # for the supported download-and-install flow.
+
+
+# ============================================================================
+# LOG DOWNLOAD ENDPOINTS (CE-only — not available in SaaS or Demo mode)
+# ============================================================================
+
+if GILJO_MODE == "ce":
+    import re as _re
+
+    _LOG_DIR = Path(__file__).resolve().parent.parent.parent / "logs"
+    _ARCHIVE_PATTERN = _re.compile(r"^giljo_mcp\.log\.\d{4}-\d{2}-\d{2}$")
+
+    @router.get("/logs/current")
+    async def download_current_log(
+        current_user: User = Depends(get_current_active_user),
+    ):
+        """
+        Download the current runtime log file (giljo_mcp.log).
+
+        CE-only endpoint. Requires authentication.
+
+        Returns:
+            FileResponse with the current log file.
+
+        Raises:
+            HTTPException 404: Log file does not exist yet.
+        """
+        from fastapi.responses import FileResponse
+
+        log_file = _LOG_DIR / "giljo_mcp.log"
+        if not log_file.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Log file not found. Server may not have generated logs yet.",
+            )
+
+        logger.info(
+            "Log download: current log requested by user=%s",
+            sanitize(current_user.username),
+        )
+
+        return FileResponse(
+            path=str(log_file),
+            filename="giljo_mcp.log",
+            media_type="text/plain",
+        )
+
+    @router.get("/logs/archives")
+    async def list_log_archives(
+        current_user: User = Depends(get_current_active_user),
+    ):
+        """
+        List available log archive files with metadata.
+
+        CE-only endpoint. Requires authentication.
+
+        Returns:
+            JSON list of archive files: [{filename, date, size_kb}]
+        """
+        archives = []
+
+        if _LOG_DIR.exists():
+            for entry in sorted(_LOG_DIR.iterdir()):
+                if _ARCHIVE_PATTERN.match(entry.name):
+                    # Extract date from filename: giljo_mcp.log.YYYY-MM-DD
+                    date_str = entry.name.replace("giljo_mcp.log.", "")
+                    size_kb = round(entry.stat().st_size / 1024, 1)
+                    archives.append(
+                        {
+                            "filename": entry.name,
+                            "date": date_str,
+                            "size_kb": size_kb,
+                        }
+                    )
+
+        return archives
+
+    @router.get("/logs/archive/{filename}")
+    async def download_log_archive(
+        filename: str,
+        current_user: User = Depends(get_current_active_user),
+    ):
+        """
+        Download a specific log archive file.
+
+        CE-only endpoint. Requires authentication.
+        Filename is validated against strict pattern to prevent path traversal.
+
+        Args:
+            filename: Archive filename (must match giljo_mcp.log.YYYY-MM-DD pattern)
+
+        Returns:
+            FileResponse with the archive file.
+
+        Raises:
+            HTTPException 400: Invalid filename pattern.
+            HTTPException 404: Archive file does not exist.
+        """
+        from fastapi.responses import FileResponse
+
+        if not _ARCHIVE_PATTERN.match(filename):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid filename. Must match pattern: giljo_mcp.log.YYYY-MM-DD",
+            )
+
+        archive_file = _LOG_DIR / filename
+        if not archive_file.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Archive file not found.",
+            )
+
+        logger.info(
+            "Log download: archive %s requested by user=%s",
+            sanitize(filename),
+            sanitize(current_user.username),
+        )
+
+        return FileResponse(
+            path=str(archive_file),
+            filename=filename,
+            media_type="text/plain",
+        )

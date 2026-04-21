@@ -119,4 +119,23 @@ export const SYSTEM_EVENT_ROUTES = {
       await taskStore.fetchTasks()
     },
   },
+
+  // Agent setup: update local skills version when agents are downloaded
+  'setup:agents_downloaded': {
+    handler: async (payload) => {
+      if (payload?.skills_version) {
+        localStorage.setItem('giljo_skills_version', payload.skills_version)
+      }
+      dispatchWindowEvent('setup:agents_downloaded', payload)
+    },
+  },
+
+  'setup:bootstrap_complete': {
+    handler: async (payload) => {
+      if (payload?.skills_version) {
+        localStorage.setItem('giljo_skills_version', payload.skills_version)
+      }
+      dispatchWindowEvent('setup:bootstrap_complete', payload)
+    },
+  },
 }

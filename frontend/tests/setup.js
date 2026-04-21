@@ -267,6 +267,7 @@ vi.mock('@/services/api', () => {
       preview: vi.fn(() => Promise.resolve({ data: {} })),
       reset: vi.fn(() => Promise.resolve({ data: { success: true } })),
       activeCount: vi.fn(() => Promise.resolve({ data: { count: 0 } })),
+      cloneToProduct: vi.fn(() => Promise.resolve({ data: { success: true } })),
     },
     projects: {
       list: vi.fn(() => Promise.resolve({ data: [] })),
@@ -355,6 +356,9 @@ vi.mock('@/services/api', () => {
       getCookieDomains: vi.fn(() => Promise.resolve({ data: [] })),
       addCookieDomain: vi.fn(() => Promise.resolve({ data: { success: true } })),
       removeCookieDomain: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    health: {
+      check: vi.fn(() => Promise.resolve({ data: { status: 'healthy' } })),
     },
     setup: {
       status: vi.fn(() => Promise.resolve({ data: { is_fresh_install: false, is_configured: true } })),

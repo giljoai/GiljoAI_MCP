@@ -11,6 +11,7 @@ pipeline on top of stdlib logging.getLogger():
 - JSON output for production (machine-parseable)
 - Console output for development (human-readable)
 - Error code support for quick diagnosis
+- File logging with daily rotation (logs/giljo_mcp.log)
 
 Usage:
     import logging
@@ -27,6 +28,8 @@ Environment Variables:
 import logging
 import os
 import sys
+from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
 from typing import Optional
 
 import structlog
@@ -43,6 +46,33 @@ class _LoggingState:
     """Configuration state holder to avoid global statement."""
 
     configured = False
+
+
+def _setup_file_handler(level: int) -> None:
+    """Add a TimedRotatingFileHandler to the root logger.
+
+    Writes human-readable log lines to logs/giljo_mcp.log with daily
+    rotation at midnight, keeping the current file plus 2 archives
+    (48 hours of history).
+    """
+    # Determine project root (3 levels up from this file: src/giljo_mcp/logging/)
+    project_root = Path(__file__).resolve().parent.parent.parent.parent
+    logs_dir = project_root / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    log_file = logs_dir / "giljo_mcp.log"
+
+    handler = TimedRotatingFileHandler(
+        filename=str(log_file),
+        when="midnight",
+        backupCount=2,
+        encoding="utf-8",
+    )
+    handler.setLevel(level)
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
 
 
 def configure_logging(
@@ -79,6 +109,9 @@ def configure_logging(
         stream=sys.stdout,
         level=level,
     )
+
+    # Add file handler for persistent logging (daily rotation)
+    _setup_file_handler(level)
 
     # Shared processors for all configurations
     shared_processors = [

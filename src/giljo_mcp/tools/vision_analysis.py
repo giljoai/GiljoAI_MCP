@@ -244,6 +244,7 @@ async def update_product_fields(
     db_manager: DatabaseManager | None = None,
     websocket_manager: Any = None,
     _test_session: AsyncSession | None = None,
+    force: bool = False,
     **fields: Any,
 ) -> dict[str, Any]:
     """
@@ -379,7 +380,7 @@ async def update_product_fields(
                 tenant_key=tenant_key,
                 test_session=_test_session,
             )
-            await product_service.update_product(product_id, **kwargs)
+            await product_service.update_product(product_id, force=force, **kwargs)
 
         # -- Summaries (written via VisionDocumentRepository, not ProductService) --
         await _write_summaries(product, tenant_key, session, fields, fields_written, db_manager)

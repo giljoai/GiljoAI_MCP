@@ -11,29 +11,28 @@ Zero coupling to ToolAccessor -- generates install instructions for
 bootstrap_setup based on the target CLI platform.
 """
 
-from giljo_mcp.codex_defaults import CODEX_DEFAULT_MODEL, CODEX_DEFAULT_REASONING_EFFORT
-
 
 def build_setup_instructions(platform: str, download_url: str) -> str:
     """Build a natural-language prompt the LLM will execute to install GiljoAI CLI integration."""
     if platform == "claude_code":
         return (
-            "Install the GiljoAI CLI integration. This is a one-time setup.\n\n"
+            "Install the GiljoAI CLI skills. This is a one-time setup.\n\n"
             "Step 1 — Download and extract:\n"
             f"Download: {download_url}\n"
             "Extract to: ~/.claude/ (create if needed, overwrite existing)\n"
             "Delete the downloaded zip.\n\n"
             "Adapt all commands for the OS you are running on.\n\n"
             "Step 2 — Tell the user:\n"
+            "Skills installed to user-level (~/.claude/commands/).\n"
             "Two commands are now available:\n"
-            "- /gil_get_agents — install/update GiljoAI agent templates\n"
+            "- /gil_get_agents — pull agent templates for your active product\n"
             "- /gil_add — add tasks and projects from the CLI (try /gil_add --help)\n\n"
             "Restart Claude Code, then run /gil_get_agents to install agent templates.\n"
             "Note: Download link expires in 15 minutes."
         )
     if platform == "gemini_cli":
         return (
-            "Install the GiljoAI CLI integration. This is a one-time setup.\n\n"
+            "Install the GiljoAI CLI skills. This is a one-time setup.\n\n"
             "Step 1 — Download and extract:\n"
             f"Download: {download_url}\n"
             "Extract to: ~/.gemini/ (create if needed, overwrite existing)\n"
@@ -57,29 +56,29 @@ def build_setup_instructions(platform: str, download_url: str) -> str:
             "[System.IO.File]::WriteAllText($p,($d|ConvertTo-Json -Depth 10),$utf8NoBom)\n\n"
             "Adapt all commands for the OS you are running on.\n\n"
             "Step 3 — Tell the user:\n"
+            "Skills installed to user-level (~/.gemini/commands/).\n"
             "Two commands are now available:\n"
-            "- /gil_get_agents — install/update GiljoAI agent templates\n"
+            "- /gil_get_agents — pull agent templates for your active product\n"
             "- /gil_add — add tasks and projects from the CLI (try /gil_add --help)\n\n"
             "Restart Gemini CLI, then run /gil_get_agents to install agent templates.\n"
             "Note: Download link expires in 15 minutes."
         )
     if platform == "generic":
         return (
-            "Your platform was not identified. To install GiljoAI agent templates\n"
-            "and commands manually:\n\n"
+            "Your platform was not identified. To install GiljoAI skills manually:\n\n"
             f"Step 1 — Download: {download_url}\n"
             "Step 2 — Extract the ZIP. It contains:\n"
-            "  - agents/ — Markdown files with agent role definitions and system prompts\n"
-            "  - commands/ — Reference documents describing available GiljoAI commands\n"
+            "  - commands/ — Slash command reference documents\n"
             "Step 3 — Install these files according to your MCP client's documentation\n"
-            "  for custom agents and commands/skills.\n\n"
+            "  for commands/skills.\n"
+            "Step 4 — Use the appropriate get-agents command to pull agent templates.\n\n"
             "For platform-specific setup, visit your GiljoAI server's web interface\n"
-            "at Settings → Integrations.\n"
+            "at Settings -> Integrations.\n"
             "Note: Download link expires in 15 minutes."
         )
     # codex_cli
     return (
-        "Install the GiljoAI CLI integration. This is a one-time setup.\n\n"
+        "Install the GiljoAI CLI skills. This is a one-time setup.\n\n"
         "Step 1 — Download and extract:\n"
         f"Download: {download_url}\n"
         "Extract to: ~/.codex/ (create if needed, overwrite existing)\n"
@@ -106,23 +105,11 @@ def build_setup_instructions(platform: str, download_url: str) -> str:
         "[System.IO.File]::WriteAllText($path, $content, $utf8NoBom). "
         "Do NOT use Set-Content, Out-File, or [System.Text.Encoding]::UTF8 (all add BOM).\n\n"
         "Adapt all commands for the OS you are running on.\n\n"
-        "Step 3 — Register agent templates:\n"
-        "The ZIP extracted agent files to ~/.codex/agents/ (e.g. gil-analyzer.toml, "
-        "gil-implementer.toml). Each one MUST be registered in config.toml.\n"
-        "For each gil-*.toml file in the agents/ directory, add a section:\n"
-        "  [agents.gil-{name}]\n"
-        "  config_file = 'agents/gil-{name}.toml'\n"
-        f"  model = '{CODEX_DEFAULT_MODEL}'\n"
-        f"  model_reasoning_effort = '{CODEX_DEFAULT_REASONING_EFFORT}'\n"
-        "  nickname_candidates = ['gil-{name}']\n"
-        "Where {name} is the agent name from the filename (without gil- prefix and .toml).\n"
-        "Preserve any existing non-GiljoAI [agents.*] entries.\n"
-        "Use the same TOML parser read-then-merge approach from Step 2.\n"
-        "If sandboxed, use the same shell fallback: back up, append, validate.\n\n"
-        "Step 4 — Tell the user:\n"
+        "Step 3 — Tell the user:\n"
+        "Skills installed to user-level (~/.codex/skills/).\n"
         "Two skills are now available:\n"
-        "- $gil-get-agents — install/update GiljoAI agent templates\n"
+        "- $gil-get-agents — pull agent templates for your active product\n"
         "- $gil-add — add tasks and projects from the CLI (try $gil-add --help)\n\n"
-        "Restart Codex CLI, then run $gil-get-agents to install agent templates.\n"
+        "Use $gil-get-agents to pull agent templates for your product.\n"
         "Note: Download link expires in 15 minutes."
     )

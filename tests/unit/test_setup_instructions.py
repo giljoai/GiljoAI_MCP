@@ -32,14 +32,16 @@ def test_codex_cli_instructions_contain_download_url():
     assert "~/.codex/" in result
 
 
-def test_codex_cli_instructions_use_codex_default_model():
-    """Codex config registration examples use the supported GiljoAI default model."""
+def test_codex_cli_instructions_skills_only():
+    """Codex setup instructions only install skills, not agent template config."""
     result = build_setup_instructions("codex_cli", "https://example.com/download/test")
 
-    assert "model = 'gpt-5.3-codex'" in result
-    assert "model_reasoning_effort = 'medium'" in result
-    assert "model = 'gpt-5.2-codex'" not in result
-    assert "model = 'o3'" not in result
+    # Skills-only: no agent template registration step
+    assert "model = 'gpt-5.3-codex'" not in result
+    assert "agents/gil-" not in result
+    # Should mention skills and $gil-get-agents
+    assert "$gil-get-agents" in result
+    assert "skills" in result.lower()
 
 
 def test_generic_instructions_contain_download_url():

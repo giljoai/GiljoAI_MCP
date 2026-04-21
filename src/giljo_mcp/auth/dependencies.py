@@ -182,11 +182,18 @@ async def get_current_user(
     # Try API key header (MCP tools)
     if x_api_key:
         try:
-            # Query all active, non-expired API keys (optimized with index)
+            # WI-3: Narrow candidates by key_prefix + tenant_key on APIKey table.
+            # Note: tenant_key pre-filtering by user is not possible here because
+            # tenant_key is derived FROM the API key (we don't know it yet). However,
+            # we filter by the APIKey's own tenant_key consistency post-match and use
+            # key_prefix to avoid loading all keys.
             from sqlalchemy import func, or_, select
 
+            key_prefix = f"{x_api_key[:12]}..." if len(x_api_key) >= 12 else x_api_key
             stmt = select(APIKey).where(
-                APIKey.is_active, or_(APIKey.expires_at > func.now(), APIKey.expires_at.is_(None))
+                APIKey.is_active,
+                APIKey.key_prefix == key_prefix,
+                or_(APIKey.expires_at > func.now(), APIKey.expires_at.is_(None)),
             )
             result = await db.execute(stmt)
             api_keys = result.scalars().all()
@@ -198,12 +205,16 @@ async def get_current_user(
                     key_record.last_used = datetime.now(timezone.utc)
                     await db.commit()
 
-                    # Get associated user
-                    stmt = select(User).where(User.id == key_record.user_id)
+                    # Get associated user with tenant_key consistency check
+                    stmt = select(User).where(
+                        User.id == key_record.user_id,
+                        User.is_active,
+                        User.tenant_key == key_record.tenant_key,
+                    )
                     result = await db.execute(stmt)
                     user = result.scalar_one_or_none()
 
-                    if user and user.is_active:
+                    if user:
                         logger.debug(f"Authenticated via API key: {user.username} ({key_record.name})")
                         # Log IP address for security tracking (passive, non-blocking)
                         try:
@@ -214,7 +225,7 @@ async def get_current_user(
                         except (ImportError, AttributeError, OSError):
                             logger.debug("IP logging failed for API key auth (non-blocking)")
                         return user
-                    logger.warning(f"API key valid but user inactive: {key_record.user_id}")
+                    logger.warning(f"API key valid but user inactive or tenant mismatch: {key_record.user_id}")
                     break
 
             logger.warning("Invalid API key provided")

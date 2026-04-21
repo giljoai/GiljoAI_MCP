@@ -10,6 +10,7 @@
 ## Using GiljoAI MCP
 
 - [User Guide](USER_GUIDE.md): Every page explained: Home, Dashboard, Products, Projects, Jobs, Tasks, and Settings.
+- [Agent Templates Guide](AGENT_TEMPLATES_GUIDE.md): Where agent templates live, monorepo conventions, and git commit guidance.
 
 ## Reference
 

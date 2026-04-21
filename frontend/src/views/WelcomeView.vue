@@ -140,6 +140,14 @@
       @continue="handleCertContinue"
     />
 
+    <!-- Project Review Modal (same as Dashboard) -->
+    <ProjectReviewModal
+      :show="showReviewModal"
+      :project-id="reviewProjectId"
+      :product-id="reviewProductId"
+      @close="showReviewModal = false; reviewProjectId = null; reviewProductId = null"
+    />
+
     <!-- Setup wizard overlay -->
     <SetupWizardOverlay
       v-model="showSetupOverlay"
@@ -167,6 +175,7 @@ import GilMascot from '@/components/GilMascot.vue'
 import SetupWizardOverlay from '@/components/setup/SetupWizardOverlay.vue'
 import CertTrustModal from '@/components/setup/CertTrustModal.vue'
 import RecentProjectsList from '@/components/dashboard/RecentProjectsList.vue'
+import ProjectReviewModal from '@/components/projects/ProjectReviewModal.vue'
 import configService from '@/services/configService'
 
 const route = useRoute()
@@ -448,8 +457,14 @@ const quickCards = computed(() => {
 // Recent projects (from dashboard API)
 const recentProjects = ref([])
 
+const showReviewModal = ref(false)
+const reviewProjectId = ref(null)
+const reviewProductId = ref(null)
+
 function handleReviewProject(project) {
-  router.push(`/Projects/${project.id}`)
+  reviewProjectId.value = project.id || project.project_id
+  reviewProductId.value = project.product_id || null
+  if (reviewProjectId.value) showReviewModal.value = true
 }
 
 // Version

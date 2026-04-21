@@ -70,7 +70,12 @@ class MCPSessionManager:
                     key_record.last_used = datetime.now(timezone.utc)
                     await self.db.commit()
 
-                    stmt = select(User).where(User.id == key_record.user_id, User.is_active)
+                    # WI-3: tenant_key consistency — verify user belongs to same tenant as key
+                    stmt = select(User).where(
+                        User.id == key_record.user_id,
+                        User.is_active,
+                        User.tenant_key == key_record.tenant_key,
+                    )
                     result = await self.db.execute(stmt)
                     user = result.scalar_one_or_none()
 
@@ -78,7 +83,7 @@ class MCPSessionManager:
                         logger.debug(f"API key authenticated: {key_record.name} (user: {user.username})")
                         return (key_record, user)
 
-                    logger.warning(f"API key valid but user inactive: {key_record.user_id}")
+                    logger.warning(f"API key valid but user inactive or tenant mismatch: {key_record.user_id}")
                     return None
 
             logger.warning("Invalid API key provided")

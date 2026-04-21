@@ -322,10 +322,13 @@ class OrchestrationService:
     @staticmethod
     async def health_check() -> dict[str, Any]:
         """MCP server health check."""
+        from giljo_mcp.tools.slash_command_templates import SKILLS_VERSION
+
         return {
             "status": "healthy",
             "server": "giljo_mcp",
             "version": "1.0.0",
+            "skills_version": SKILLS_VERSION,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "database": "connected",
             "message": "GiljoAI MCP server is operational",

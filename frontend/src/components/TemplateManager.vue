@@ -24,6 +24,17 @@
       >
         {{ totalActiveAgents }} / {{ totalCapacity }}
       </v-chip>
+      <v-chip
+        v-if="activeProduct"
+        size="small"
+        variant="tonal"
+        color="primary"
+        prepend-icon="mdi-package-variant"
+        class="ml-3"
+        data-testid="template-product-indicator"
+      >
+        {{ activeProduct.name }}
+      </v-chip>
     </div>
 
     <!-- HITL Closeout Toggle -->
@@ -223,6 +234,12 @@
                   prepend-icon="mdi-content-copy"
                   title="Duplicate"
                   @click="duplicateTemplate(item)"
+                ></v-list-item>
+                <v-list-item
+                  v-if="productStore.products.length > 1"
+                  prepend-icon="mdi-package-variant"
+                  title="Clone to Product"
+                  @click="openCloneDialog(item)"
                 ></v-list-item>
                 <v-list-item
                   prepend-icon="mdi-refresh"
@@ -450,6 +467,15 @@
       </v-card>
     </v-dialog>
 
+    <!-- Clone to Product Dialog -->
+    <CloneToProductDialog
+      v-model="cloneDialog"
+      :template="cloningTemplate"
+      :products="productStore.products"
+      :current-product-id="activeProductId"
+      @cloned="onTemplateCloned"
+    />
+
     </v-card>
   </div>
 </template>
@@ -460,16 +486,27 @@ import api from '@/services/api'
 import { format } from 'date-fns'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
+import { useProductStore } from '@/stores/products'
 import { useToast } from '@/composables/useToast'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
 import { hexToRgba } from '@/utils/colorUtils'
 import { useTemplateData } from '@/composables/useTemplateData'
+import CloneToProductDialog from '@/components/CloneToProductDialog.vue'
 
 // Handover 0335: WebSocket setup for real-time export status updates
 const { on, off } = useWebSocketV2()
 const userStore = useUserStore()
+const productStore = useProductStore()
 const { showToast } = useToast()
 const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
+
+// Product scope
+const activeProduct = computed(() => productStore.activeProduct)
+const activeProductId = computed(() => activeProduct.value?.id || null)
+
+// Clone dialog
+const cloneDialog = ref(false)
+const cloningTemplate = ref(null)
 
 // Handover 0335: Inject template export event from parent (UserSettings.vue)
 const templateExportEvent = inject('templateExportEvent', ref(null))
@@ -682,6 +719,16 @@ const saveTemplateAndPreview = async () => {
   }
 }
 
+const openCloneDialog = (template) => {
+  cloningTemplate.value = template
+  cloneDialog.value = true
+}
+
+const onTemplateCloned = () => {
+  // Refresh templates in case the clone affects current product
+  loadTemplates()
+}
+
 const confirmDelete = (template) => {
   deletingTemplate.value = template
   deleteDialog.value = true
@@ -795,6 +842,16 @@ onUnmounted(() => {
   off('template:exported', handleTemplateExported)
   off('setup:agents_downloaded', handleAgentsDownloaded)
 })
+
+// Refresh templates when active product changes
+watch(
+  activeProductId,
+  (newId, oldId) => {
+    if (newId !== oldId) {
+      loadTemplates(newId ? { product_id: newId } : {})
+    }
+  },
+)
 
 // Handover 0335: Watch for export events from parent (UserSettings.vue)
 watch(

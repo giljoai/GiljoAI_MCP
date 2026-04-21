@@ -88,7 +88,7 @@ export function getDefaultTenantKey() {
 
 export const API_CONFIG = {
   REST_API: {
-    baseURL: import.meta.env.VITE_API_URL || DEFAULT_BASE_URL,
+    baseURL: import.meta.env.DEV ? (import.meta.env.VITE_API_URL || '') : DEFAULT_BASE_URL,
     timeout: 30000,
     headers: {
       'Content-Type': 'application/json',

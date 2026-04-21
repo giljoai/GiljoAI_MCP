@@ -129,6 +129,71 @@
             {{ connectionText }}
           </v-tooltip>
 
+          <!-- Log Download (CE only) -->
+          <v-menu
+            v-if="giljoMode === 'ce'"
+            v-model="logMenuOpen"
+            :close-on-content-click="false"
+            location="right"
+            offset="8"
+            @update:model-value="onLogMenuToggle"
+          >
+            <template v-slot:activator="{ props: logMenuProps }">
+              <v-tooltip location="right">
+                <template v-slot:activator="{ props: tipProps }">
+                  <div
+                    v-bind="{ ...logMenuProps, ...tipProps }"
+                    class="nav-orb nav-orb--logs"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Download server logs"
+                  >
+                    <v-icon icon="mdi-file-document-outline" size="18" />
+                  </div>
+                </template>
+                Server logs
+              </v-tooltip>
+            </template>
+
+            <v-card class="smooth-border log-download-menu" min-width="240">
+              <v-list density="compact">
+                <v-list-item
+                  prepend-icon="mdi-download"
+                  title="Download Current Log"
+                  @click="downloadCurrentLog"
+                />
+
+                <v-divider class="my-1" />
+
+                <v-list-subheader class="log-menu-subheader">Archives</v-list-subheader>
+
+                <template v-if="logArchivesLoading">
+                  <v-list-item>
+                    <v-progress-linear indeterminate color="primary" class="my-2" />
+                  </v-list-item>
+                </template>
+
+                <template v-else-if="logArchives.length === 0">
+                  <v-list-item disabled title="No archives available" />
+                </template>
+
+                <template v-else>
+                  <v-list-item
+                    v-for="archive in logArchives"
+                    :key="archive.filename"
+                    @click="downloadArchive(archive.filename)"
+                  >
+                    <v-list-item-title>{{ formatArchiveDate(archive.date) }}</v-list-item-title>
+                    <v-list-item-subtitle class="log-archive-size">{{ archive.size_kb }} KB</v-list-item-subtitle>
+                    <template v-slot:prepend>
+                      <v-icon size="18">mdi-file-clock-outline</v-icon>
+                    </template>
+                  </v-list-item>
+                </template>
+              </v-list>
+            </v-card>
+          </v-menu>
+
           <!-- User Avatar -->
           <v-menu :close-on-content-click="true" location="right" offset="8">
             <template v-slot:activator="{ props: menuProps }">
@@ -302,7 +367,7 @@ import { useWebSocketStore } from '@/stores/websocket'
 import { useToast } from '@/composables/useToast'
 import configService from '@/services/configService'
 import setupService from '@/services/setupService'
-import api from '@/services/api'
+import api, { apiClient } from '@/services/api'
 import NotificationDropdown from '@/components/navigation/NotificationDropdown.vue'
 import { defineAsyncComponent } from 'vue'
 const ConnectionDebugDialog = defineAsyncComponent(() => import('@/components/navigation/ConnectionDebugDialog.vue'))
@@ -346,6 +411,42 @@ const profileDialog = ref(false)
 const aboutDialog = ref(false)
 const showConnectionDebug = ref(false)
 const licenseStatus = ref('Licensed')
+
+// Log download state
+const logMenuOpen = ref(false)
+const logArchives = ref([])
+const logArchivesLoading = ref(false)
+
+async function onLogMenuToggle(open) {
+  if (open) {
+    logArchivesLoading.value = true
+    try {
+      const response = await apiClient.get('/api/download/logs/archives')
+      logArchives.value = response.data || []
+    } catch {
+      logArchives.value = []
+      showToast({ message: 'Failed to load log archives', type: 'error' })
+    } finally {
+      logArchivesLoading.value = false
+    }
+  }
+}
+
+function downloadCurrentLog() {
+  window.open('/api/download/logs/current', '_blank')
+  logMenuOpen.value = false
+}
+
+function downloadArchive(filename) {
+  window.open(`/api/download/logs/archive/${encodeURIComponent(filename)}`, '_blank')
+  logMenuOpen.value = false
+}
+
+function formatArchiveDate(dateStr) {
+  if (!dateStr) return 'Unknown'
+  const date = new Date(`${dateStr}T00:00:00`)
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
 // Edition state
 const edition = ref('')
@@ -751,6 +852,16 @@ watch(
   }
 }
 
+// Logs: muted color, same orb style
+.nav-orb--logs {
+  background: rgba(136, 149, 168, 0.15);
+  color: var(--text-muted);
+
+  &:hover {
+    background: rgba(136, 149, 168, 0.25);
+  }
+}
+
 // Avatar: brand yellow background, dark initials
 .nav-orb--avatar {
   background: rgba($color-brand-yellow, 0.15);
@@ -783,6 +894,24 @@ watch(
 
 .about-link {
   color: $color-brand-yellow;
+}
+
+// ─── LOG DOWNLOAD MENU ───
+.log-download-menu {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.log-menu-subheader {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.log-archive-size {
+  color: var(--text-muted);
+  font-size: 0.75rem;
 }
 
 // ─── MOBILE FAB ───

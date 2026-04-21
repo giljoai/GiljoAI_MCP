@@ -179,7 +179,7 @@ class ConfigManager:
 
             # Bind address derived from install-time network choice (localhost=127.0.0.1/HTTP, LAN/WAN=0.0.0.0/HTTPS via mkcert)
             bind_address = self.settings.get("bind", "127.0.0.1")
-            api_url_host = "localhost"  # Default for frontend connections
+            api_url_host = self.settings.get("external_host", "localhost")
             ssl_enabled = self.settings.get("ssl_enabled", False)
             http_proto = "https" if ssl_enabled else "http"
             ws_proto = "wss" if ssl_enabled else "ws"

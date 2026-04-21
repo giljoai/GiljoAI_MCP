@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/services/api'
+import { useProductStore } from '@/stores/products'
 
 export const useProjectStore = defineStore('projects', () => {
   // State
@@ -24,7 +25,12 @@ export const useProjectStore = defineStore('projects', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.projects.list()
+      const productStore = useProductStore()
+      const params = {}
+      if (productStore.currentProductId) {
+        params.product_id = productStore.currentProductId
+      }
+      const response = await api.projects.list(params)
       projects.value = response.data
     } catch (err) {
       error.value = err.message
@@ -38,7 +44,12 @@ export const useProjectStore = defineStore('projects', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.projects.fetchDeleted()
+      const productStore = useProductStore()
+      const params = {}
+      if (productStore.currentProductId) {
+        params.product_id = productStore.currentProductId
+      }
+      const response = await api.projects.fetchDeleted(params)
       deletedProjects.value = response.data
     } catch (err) {
       error.value = err.message
@@ -274,7 +285,12 @@ export const useProjectStore = defineStore('projects', () => {
     loading.value = true
     error.value = null
     try {
-      await api.projects.purgeAllDeleted()
+      const productStore = useProductStore()
+      const params = {}
+      if (productStore.currentProductId) {
+        params.product_id = productStore.currentProductId
+      }
+      await api.projects.purgeAllDeleted(params)
       deletedProjects.value = []
       await fetchDeletedProjects()
     } catch (err) {

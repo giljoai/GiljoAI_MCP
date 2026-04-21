@@ -10,6 +10,7 @@ Adds production-grade security headers to all responses.
 
 Created in Handover 0129c - Security Hardening & OWASP Compliance
 Updated in Handover 1007 - Hash-Based CSP Implementation
+Updated: Dynamic CSP connect-src includes external_host when configured
 """
 
 import logging
@@ -85,6 +86,20 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         self.hsts_max_age = hsts_max_age
         self.is_dev = is_development_mode()
 
+        # Read external_host and port from config for dynamic CSP connect-src
+        self.external_host = None
+        self.api_port = None
+        self.ssl_enabled = False
+        try:
+            from giljo_mcp.config_manager import get_config
+
+            config = get_config()
+            self.external_host = config.get_nested("services.external_host", default=None)
+            self.api_port = config.get_nested("services.api.port", default=config.server.api_port)
+            self.ssl_enabled = config.get_nested("features.ssl_enabled", default=False)
+        except (ImportError, AttributeError, KeyError, TypeError):
+            logger.debug("Config not available for CSP — using defaults")
+
         mode_str = "DEVELOPMENT" if self.is_dev else "PRODUCTION"
         logger.info(f"SecurityHeadersMiddleware initialized in {mode_str} mode")
         logger.info(f"HSTS max-age: {hsts_max_age}s")
@@ -116,13 +131,21 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if self.is_dev:
             script_src += " 'unsafe-eval'"  # Vue HMR needs eval in dev
 
+        # Build dynamic connect-src including external_host for defense-in-depth
+        connect_src = "'self' ws: wss:"
+        if self.external_host and self.external_host not in ("localhost", "127.0.0.1"):
+            protocol = "https" if self.ssl_enabled else "http"
+            ws_protocol = "wss" if self.ssl_enabled else "ws"
+            connect_src += f" {protocol}://{self.external_host}:{self.api_port}"
+            connect_src += f" {ws_protocol}://{self.external_host}:{self.api_port}"
+
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             f"script-src {script_src}; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: https:; "
             "font-src 'self' data:; "
-            "connect-src 'self' ws: wss:; "  # WebSocket connections
+            f"connect-src {connect_src}; "
             "frame-ancestors 'none'; "  # No embedding
             "base-uri 'self'; "
             "form-action 'self'"
