@@ -270,7 +270,9 @@ async def update_product(
     # model_dump already converts nested Pydantic models to dicts
     update_data = updates.model_dump(exclude_unset=True)
 
-    product = await service.update_product(product_id, **update_data)
+    # force=True: user is intentionally saving from the UI — always allow overwrites.
+    # The overwrite guard (WI-2) is for MCP tool agents, not dashboard users.
+    product = await service.update_product(product_id, force=True, **update_data)
 
     # Get statistics for the updated product
     stats = await service.memory.get_product_statistics(str(product.id))

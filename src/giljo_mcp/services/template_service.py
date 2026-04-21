@@ -1054,7 +1054,7 @@ class TemplateService:
                     success_criteria=src.success_criteria or [],
                     tool=src.tool,
                     version=src.version,
-                    is_active=src.is_active,
+                    is_active=False,  # Seeded/cloned agents start disabled — user enables what they need
                     is_default=src.is_default,
                     tags=src.tags or [],
                     created_at=current_time,
