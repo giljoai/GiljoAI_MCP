@@ -54,7 +54,7 @@ describe('SetupStep3Commands', () => {
     it('renders heading text', async () => {
       const wrapper = mountStep3()
       await flushPromises()
-      expect(wrapper.text()).toContain('Install Skills and Agents')
+      expect(wrapper.text()).toContain('Install Skills')
     })
 
     it('renders giljo_setup command', async () => {
@@ -90,51 +90,15 @@ describe('SetupStep3Commands', () => {
   // Mini-checklist
   // -------------------------------------------------------------------
   describe('Mini-checklist', () => {
-    it('starts with both checkmarks unchecked', async () => {
+    it('starts with checklist unchecked', async () => {
       const wrapper = mountStep3()
       await flushPromises()
       const items = wrapper.findAll('.checklist-item')
-      expect(items).toHaveLength(2)
-      expect(wrapper.text()).toContain('Skills downloaded')
-      expect(wrapper.text()).toContain('Agents downloaded')
+      expect(items).toHaveLength(1)
       expect(wrapper.findAll('.checklist-text--done')).toHaveLength(0)
     })
 
-    it('flips skills checkmark on setup:commands_installed WebSocket event', async () => {
-      const wrapper = mountStep3()
-      await flushPromises()
-
-      const onCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:commands_installed',
-      )
-      expect(onCall).toBeTruthy()
-
-      onCall[1]({ tool_name: 'claude_code' })
-      await flushPromises()
-
-      const doneItems = wrapper.findAll('.checklist-text--done')
-      expect(doneItems).toHaveLength(1)
-      expect(doneItems[0].text()).toBe('Skills downloaded')
-    })
-
-    it('flips agents checkmark on setup:agents_downloaded WebSocket event', async () => {
-      const wrapper = mountStep3()
-      await flushPromises()
-
-      const onCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:agents_downloaded',
-      )
-      expect(onCall).toBeTruthy()
-
-      onCall[1]({ agent_count: 3 })
-      await flushPromises()
-
-      const doneItems = wrapper.findAll('.checklist-text--done')
-      expect(doneItems).toHaveLength(1)
-      expect(doneItems[0].text()).toBe('Agents downloaded')
-    })
-
-    it('marks both checkmarks when setup:bootstrap_complete fires', async () => {
+    it('flips checkmark on setup:bootstrap_complete WebSocket event', async () => {
       const wrapper = mountStep3()
       await flushPromises()
 
@@ -146,78 +110,48 @@ describe('SetupStep3Commands', () => {
       onCall[1]({})
       await flushPromises()
 
-      expect(wrapper.findAll('.checklist-text--done')).toHaveLength(2)
-    })
-
-    it('marks both checkmarks when both individual events fire', async () => {
-      const wrapper = mountStep3()
-      await flushPromises()
-
-      const cmdCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:commands_installed',
-      )
-      const agentCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:agents_downloaded',
-      )
-
-      cmdCall[1]({ tool_name: 'claude_code' })
-      agentCall[1]({ agent_count: 3 })
-      await flushPromises()
-
-      expect(wrapper.findAll('.checklist-text--done')).toHaveLength(2)
+      expect(wrapper.findAll('.checklist-text--done')).toHaveLength(1)
     })
   })
 
   // -------------------------------------------------------------------
-  // Post-install agent command display
+  // Post-install agent command display (shown after skills are installed)
   // -------------------------------------------------------------------
   describe('Post-install agent command', () => {
-    it('does not show agent command before agents are downloaded', async () => {
-      const wrapper = mountStep3()
-      await flushPromises()
-      expect(wrapper.text()).not.toContain('/gil_get_agents')
-    })
-
-    it('shows /gil_get_agents for claude_code after agents are downloaded', async () => {
+    it('shows /gil_get_agents for claude_code after setup completes', async () => {
       const wrapper = mountStep3()
       await flushPromises()
 
-      const agentCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:agents_downloaded',
-      )
-      agentCall[1]({ agent_count: 3 })
+      const onCall = mockWsOn.mock.calls.find((c) => c[0] === 'setup:bootstrap_complete')
+      onCall[1]({})
       await flushPromises()
 
       expect(wrapper.text()).toContain('/gil_get_agents')
     })
 
-    it('shows $gil-get-agents for codex_cli after agents are downloaded', async () => {
+    it('shows $gil-get-agents for codex_cli after setup completes', async () => {
       const wrapper = mountStep3({
         selectedTools: ['codex_cli'],
         connectedTools: ['codex_cli'],
       })
       await flushPromises()
 
-      const agentCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:agents_downloaded',
-      )
-      agentCall[1]({ agent_count: 3 })
+      const onCall = mockWsOn.mock.calls.find((c) => c[0] === 'setup:bootstrap_complete')
+      onCall[1]({})
       await flushPromises()
 
       expect(wrapper.text()).toContain('$gil-get-agents')
     })
 
-    it('shows /gil_get_agents for gemini_cli after agents are downloaded', async () => {
+    it('shows /gil_get_agents for gemini_cli after setup completes', async () => {
       const wrapper = mountStep3({
         selectedTools: ['gemini_cli'],
         connectedTools: ['gemini_cli'],
       })
       await flushPromises()
 
-      const agentCall = mockWsOn.mock.calls.find(
-        (call) => call[0] === 'setup:agents_downloaded',
-      )
-      agentCall[1]({ agent_count: 3 })
+      const onCall = mockWsOn.mock.calls.find((c) => c[0] === 'setup:bootstrap_complete')
+      onCall[1]({})
       await flushPromises()
 
       expect(wrapper.text()).toContain('/gil_get_agents')
@@ -303,11 +237,11 @@ describe('SetupStep3Commands', () => {
   // previouslyCompleted prop
   // -------------------------------------------------------------------
   describe('previouslyCompleted prop', () => {
-    it('pre-fills both checkmarks when previouslyCompleted is true', async () => {
+    it('pre-fills checkmark when previouslyCompleted is true', async () => {
       const wrapper = mountStep3({ previouslyCompleted: true })
       await flushPromises()
 
-      expect(wrapper.findAll('.checklist-text--done')).toHaveLength(2)
+      expect(wrapper.findAll('.checklist-text--done')).toHaveLength(1)
     })
 
     it('emits can-proceed true immediately when previouslyCompleted is true', async () => {
@@ -394,22 +328,21 @@ describe('SetupStep3Commands', () => {
   // WebSocket cleanup
   // -------------------------------------------------------------------
   describe('Cleanup', () => {
-    it('subscribes to all three WebSocket events on mount', async () => {
+    it('subscribes to WebSocket events on mount', async () => {
       mountStep3()
       await flushPromises()
 
       const eventTypes = mockWsOn.mock.calls.map((c) => c[0])
       expect(eventTypes).toContain('setup:commands_installed')
-      expect(eventTypes).toContain('setup:agents_downloaded')
       expect(eventTypes).toContain('setup:bootstrap_complete')
     })
 
-    it('unsubscribes from all WebSocket events on unmount', async () => {
+    it('unsubscribes from WebSocket events on unmount', async () => {
       const wrapper = mountStep3()
       await flushPromises()
 
       wrapper.unmount()
-      expect(mockUnsub).toHaveBeenCalledTimes(3)
+      expect(mockUnsub).toHaveBeenCalledTimes(2)
     })
   })
 })

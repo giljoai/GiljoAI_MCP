@@ -451,7 +451,7 @@ class ToolAccessor:
 
                     product_svc = ProductService(
                         db_manager=self.db_manager,
-                        tenant_manager=self.tenant_manager,
+                        tenant_key=tenant_key,
                     )
                     active_product = await product_svc.get_active_product()
                     if active_product:
