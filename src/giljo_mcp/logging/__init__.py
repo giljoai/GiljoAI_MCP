@@ -28,7 +28,7 @@ Environment Variables:
 import logging
 import os
 import sys
-from logging.handlers import TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional
 
@@ -49,11 +49,12 @@ class _LoggingState:
 
 
 def _setup_file_handler(level: int) -> None:
-    """Add a TimedRotatingFileHandler to the root logger.
+    """Add a RotatingFileHandler to the root logger.
 
-    Writes human-readable log lines to logs/giljo_mcp.log with daily
-    rotation at midnight, keeping the current file plus 2 archives
-    (48 hours of history).
+    Writes human-readable log lines to logs/giljo_mcp.log with size-based
+    rotation (10MB per file, 5 backups = 60MB max). Uses size-based rotation
+    instead of time-based to avoid Windows file-locking issues (WinError 32)
+    where TimedRotatingFileHandler cannot rename open files.
     """
     # Determine project root (3 levels up from this file: src/giljo_mcp/logging/)
     project_root = Path(__file__).resolve().parent.parent.parent.parent
@@ -62,10 +63,10 @@ def _setup_file_handler(level: int) -> None:
 
     log_file = logs_dir / "giljo_mcp.log"
 
-    handler = TimedRotatingFileHandler(
+    handler = RotatingFileHandler(
         filename=str(log_file),
-        when="midnight",
-        backupCount=2,
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5,
         encoding="utf-8",
     )
     handler.setLevel(level)
