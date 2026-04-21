@@ -263,15 +263,17 @@ class TemplateRepository:
         tenant_key: str,
         role: str | None = None,
         is_active: bool | None = None,
+        product_id: str | None = None,
     ) -> list[AgentTemplate]:
         """
-        List templates with optional role and active status filters.
+        List templates with optional filters.
 
         Args:
             session: Active database session
             tenant_key: Tenant key for isolation
             role: Optional role filter
             is_active: Optional active status filter
+            product_id: Optional product filter (exact match, not OR NULL)
 
         Returns:
             List of AgentTemplate ORM instances
@@ -281,6 +283,8 @@ class TemplateRepository:
             query = query.where(AgentTemplate.role == role)
         if is_active is not None:
             query = query.where(AgentTemplate.is_active == is_active)
+        if product_id:
+            query = query.where(AgentTemplate.product_id == product_id)
         result = await session.execute(query)
         return list(result.scalars().all())
 

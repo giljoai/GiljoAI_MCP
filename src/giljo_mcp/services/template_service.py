@@ -553,6 +553,7 @@ class TemplateService:
         tenant_key: str,
         role: Optional[str] = None,
         is_active: Optional[bool] = None,
+        product_id: Optional[str] = None,
     ) -> list[AgentTemplate]:
         """
         List templates with optional filters.
@@ -562,16 +563,12 @@ class TemplateService:
             tenant_key: Tenant key for isolation (REQUIRED)
             role: Filter by role (optional)
             is_active: Filter by active status (optional)
+            product_id: Filter by product (optional)
 
         Returns:
             List of AgentTemplate ORM objects
-
-        Example:
-            >>> templates = await service.list_templates_with_filters(
-            ...     session, "tenant-1", role="orchestrator", is_active=True
-            ... )
         """
-        return await self._repo.list_with_filters(session, tenant_key, role, is_active)
+        return await self._repo.list_with_filters(session, tenant_key, role, is_active, product_id)
 
     async def check_template_name_exists(
         self,

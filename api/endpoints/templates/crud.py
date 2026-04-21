@@ -153,16 +153,19 @@ async def list_templates(
     template_service: TemplateService = Depends(get_template_service),
     role: Optional[str] = Query(None, description="Filter by role"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    product_id: Optional[str] = Query(None, description="Filter by product ID"),
 ) -> list[TemplateResponse]:
     """
-    List all templates for the current tenant.
+    List templates for the current tenant, optionally scoped to a product.
 
     Migrated to TemplateService - Handover 1011 Phase 2.
     """
-    logger.debug("User %s listing templates", sanitize(current_user.username))
+    logger.debug(
+        "User %s listing templates (product=%s)", sanitize(current_user.username), sanitize(product_id or "all")
+    )
 
     templates = await template_service.list_templates_with_filters(
-        session, current_user.tenant_key, role=role, is_active=is_active
+        session, current_user.tenant_key, role=role, is_active=is_active, product_id=product_id
     )
 
     return [_convert_to_response(t) for t in templates]
