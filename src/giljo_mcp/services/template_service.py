@@ -553,22 +553,20 @@ class TemplateService:
         tenant_key: str,
         role: Optional[str] = None,
         is_active: Optional[bool] = None,
-        product_id: Optional[str] = None,
     ) -> list[AgentTemplate]:
         """
-        List templates with optional filters.
+        List templates for a tenant with optional filters.
 
         Args:
             session: Database session
             tenant_key: Tenant key for isolation (REQUIRED)
             role: Filter by role (optional)
             is_active: Filter by active status (optional)
-            product_id: Filter by product (optional)
 
         Returns:
             List of AgentTemplate ORM objects
         """
-        return await self._repo.list_with_filters(session, tenant_key, role, is_active, product_id)
+        return await self._repo.list_with_filters(session, tenant_key, role, is_active)
 
     async def check_template_name_exists(
         self,
@@ -586,11 +584,6 @@ class TemplateService:
 
         Returns:
             True if name exists, False otherwise
-
-        Example:
-            >>> exists = await service.check_template_name_exists(
-            ...     session, "tenant-1", "my-analyzer"
-            ... )
         """
         return await self._repo.check_name_exists(session, tenant_key, name)
 
@@ -599,7 +592,6 @@ class TemplateService:
         session: AsyncSession,
         tenant_key: str,
         role: str,
-        product_id: Optional[str] = None,
     ) -> list[AgentTemplate]:
         """
         Get all default templates for a specific role.
@@ -608,17 +600,16 @@ class TemplateService:
             session: Database session
             tenant_key: Tenant key for isolation (REQUIRED)
             role: Role to filter by
-            product_id: Optional product filter
 
         Returns:
             List of default AgentTemplate ORM objects for the role
 
         Example:
             >>> defaults = await service.get_default_templates_by_role(
-            ...     session, "tenant-1", "orchestrator", "product-1"
+            ...     session, "tenant-1", "orchestrator"
             ... )
         """
-        return await self._repo.get_defaults_by_role(session, tenant_key, role, product_id)
+        return await self._repo.get_defaults_by_role(session, tenant_key, role)
 
     async def get_active_user_managed_count(
         self,
@@ -626,7 +617,7 @@ class TemplateService:
         tenant_key: str,
     ) -> int:
         """
-        Get count of active user-managed templates (excludes system-managed roles).
+        Get count of active user-managed templates for a tenant.
 
         Args:
             session: Database session
@@ -634,10 +625,6 @@ class TemplateService:
 
         Returns:
             Count of active user-managed templates
-
-        Example:
-            >>> count = await service.get_active_user_managed_count(session, "tenant-1")
-            >>> print(f"Active: {count}/{USER_MANAGED_AGENT_LIMIT}")
         """
         return await self._repo.count_active_user_managed(session, tenant_key)
 
@@ -970,214 +957,3 @@ class TemplateService:
             The refreshed AgentTemplate after commit.
         """
         return await self._repo.commit_and_refresh_template(session, template)
-
-    # ============================================================================
-    # Product Scoping (Handover: setup-split)
-    # ============================================================================
-
-    async def clone_templates_to_product(
-        self,
-        source_product_id: Optional[str],
-        target_product_id: str,
-        tenant_key: Optional[str] = None,
-        seed_mode: bool = False,
-    ) -> int:
-        """
-        Clone templates from one product (or tenant-level) to another product.
-
-        Copies all active templates from source_product_id to target_product_id.
-        Skips templates that already exist on the target (by name + version).
-
-        Args:
-            source_product_id: Source product UUID, or None for tenant-level templates.
-            target_product_id: Target product UUID (required).
-            tenant_key: Tenant key for isolation.
-            seed_mode: If True, cloned agents are enabled (for new product seeding).
-                      If False, cloned agents are disabled (for user-initiated clones).
-
-        Returns:
-            Number of templates cloned.
-
-        Raises:
-            ValidationError: If target_product_id is missing or no tenant context.
-        """
-        from datetime import datetime, timezone
-
-        if not target_product_id:
-            raise ValidationError(
-                message="target_product_id is required",
-                context={"operation": "clone_templates_to_product"},
-            )
-
-        if not tenant_key:
-            tenant_key = self.tenant_manager.get_current_tenant()
-        if not tenant_key:
-            raise ValidationError(
-                message="No tenant context available",
-                context={"operation": "clone_templates_to_product"},
-            )
-
-        async with self._get_session() as session:
-            # Fetch source templates
-            source_templates = await self._repo.get_active_by_product(session, tenant_key, source_product_id)
-
-            if not source_templates:
-                self._logger.info("No source templates to clone")
-                return 0
-
-            # Check existing on target to avoid duplicates
-            existing_keys = await self._repo.get_existing_name_versions(session, tenant_key, target_product_id)
-
-            cloned_count = 0
-            current_time = datetime.now(timezone.utc)
-
-            for src in source_templates:
-                if (src.name, src.version) in existing_keys:
-                    continue
-
-                clone = AgentTemplate(
-                    id=str(uuid4()),
-                    tenant_key=tenant_key,
-                    product_id=target_product_id,
-                    name=src.name,
-                    category=src.category,
-                    role=src.role,
-                    cli_tool=src.cli_tool,
-                    background_color=src.background_color,
-                    description=src.description,
-                    system_instructions=src.system_instructions,
-                    user_instructions=src.user_instructions,
-                    model=src.model,
-                    tools=src.tools,
-                    variables=src.variables or [],
-                    behavioral_rules=src.behavioral_rules or [],
-                    success_criteria=src.success_criteria or [],
-                    tool=src.tool,
-                    version=src.version,
-                    is_active=seed_mode,  # seed_mode=True: new product gets enabled agents; False: user-initiated clone
-                    is_default=src.is_default,
-                    tags=src.tags or [],
-                    created_at=current_time,
-                )
-                session.add(clone)
-                cloned_count += 1
-
-            if cloned_count > 0:
-                await self._repo.commit(session)
-
-            self._logger.info(
-                "Cloned %d template(s) to product %s for tenant %s",
-                cloned_count,
-                target_product_id,
-                tenant_key,
-            )
-            return cloned_count
-
-    async def seed_product_defaults(
-        self,
-        product_id: str,
-        tenant_key: str,
-    ) -> int:
-        """
-        Seed agent templates for a product. Three paths:
-
-        1. Product already has templates → do nothing (idempotent)
-        2. Orphan templates exist (product_id=NULL) → adopt them to this product
-           (fallback for edge cases; main orphan migration runs at startup)
-        3. No orphans → clone from system defaults (enabled, ready to use)
-
-        Args:
-            product_id: Product UUID to seed templates for.
-            tenant_key: Tenant key for isolation.
-
-        Returns:
-            Number of templates seeded/adopted (0 if product already has templates).
-        """
-        async with self._get_session() as session:
-            # Check if product already has templates
-            existing_count = await self._repo.count_by_product(session, tenant_key, product_id)
-
-            if existing_count > 0:
-                self._logger.info(
-                    "Product %s already has %d templates, skipping seed",
-                    product_id,
-                    existing_count,
-                )
-                return 0
-
-            # Path 2: Adopt orphan templates (active AND inactive) from this tenant
-            orphans = await self._repo.get_orphans(session, tenant_key)
-            if orphans:
-                adopted = 0
-                for template in orphans:
-                    template.product_id = product_id
-                    adopted += 1
-                await self._repo.commit(session)
-                self._logger.info(
-                    "Adopted %d orphan template(s) to product %s",
-                    adopted,
-                    product_id,
-                )
-                return adopted
-
-        # Path 3: No orphans — seed from code-defined defaults (fresh install)
-        return await self._seed_from_code_defaults(product_id, tenant_key)
-
-    async def _seed_from_code_defaults(self, product_id: str, tenant_key: str) -> int:
-        """Seed a product with factory-default templates from code (not DB).
-
-        Source of truth is _get_default_templates_v103() in template_seeder.py.
-        These can never be accidentally deleted or mutated by users.
-        """
-        from datetime import datetime, timezone
-        from uuid import uuid4
-
-        from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
-        from giljo_mcp.template_seeder import _get_default_templates_v103, _get_mcp_bootstrap_section
-
-        defaults = _get_default_templates_v103()
-        bootstrap = _get_mcp_bootstrap_section()
-        current_time = datetime.now(timezone.utc)
-        seeded = 0
-
-        async with self._get_session() as session:
-            for tpl in defaults:
-                if tpl["role"] in SYSTEM_MANAGED_ROLES:
-                    continue
-
-                template = AgentTemplate(
-                    id=str(uuid4()),
-                    tenant_key=tenant_key,
-                    product_id=product_id,
-                    name=tpl["name"],
-                    category="role",
-                    role=tpl["role"],
-                    cli_tool=tpl["cli_tool"],
-                    background_color=tpl["background_color"],
-                    description=tpl["description"],
-                    system_instructions=bootstrap,
-                    user_instructions=tpl["user_instructions"],
-                    model=tpl.get("model", "sonnet"),
-                    tools=tpl.get("tools"),
-                    variables=[],
-                    behavioral_rules=tpl.get("behavioral_rules", []),
-                    success_criteria=tpl.get("success_criteria", []),
-                    tool=tpl["cli_tool"],
-                    version=tpl.get("version", "1.0.0"),
-                    is_active=True,  # New product gets enabled agents
-                    is_default=True,
-                    tags=["default"],
-                    created_at=current_time,
-                )
-                session.add(template)
-                seeded += 1
-
-            if seeded > 0:
-                await self._repo.commit(session)
-
-            self._logger.info(
-                "Seeded %d default template(s) from code for product %s",
-                seeded,
-                product_id,
-            )
-            return seeded

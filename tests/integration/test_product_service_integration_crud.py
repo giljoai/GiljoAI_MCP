@@ -51,6 +51,7 @@ class TestProductCRUDWorkflows:
             product_id=product_id,
             description="Updated description",
             tech_stack={"programming_languages": "Python 3.12", "backend_frameworks": "FastAPI"},
+            force=True,
         )
         assert update_result.description == "Updated description"
 

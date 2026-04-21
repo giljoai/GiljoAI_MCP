@@ -33,7 +33,7 @@ from .base import Base, generate_uuid
 class AgentTemplate(Base):
     """
     Agent Template model - stores reusable agent mission templates.
-    Templates are scoped by tenant_key/product_id for multi-tenant isolation.
+    Templates are scoped by tenant_key for multi-tenant isolation.
     Supports variable substitution and runtime augmentation.
     """
 
@@ -48,7 +48,7 @@ class AgentTemplate(Base):
         index=True,
         comment="Organization for org-level templates (Handover 0424)",
     )
-    product_id = Column(String(36), nullable=True)  # Product-level scope
+    product_id = Column(String(36), nullable=True)
 
     # Template identification
     name = Column(String(100), nullable=False)  # e.g., "orchestrator", "analyzer"
@@ -114,10 +114,9 @@ class AgentTemplate(Base):
     usage_stats = relationship("TemplateUsageStats", back_populates="template", cascade="all, delete-orphan")
 
     __table_args__ = (
-        UniqueConstraint("product_id", "name", "version", name="uq_template_product_name_version"),
+        UniqueConstraint("tenant_key", "name", "version", name="uq_template_tenant_name_version"),
         Index("idx_template_tenant", "tenant_key"),
         Index("idx_template_org_id", "org_id"),
-        Index("idx_template_product", "product_id"),
         Index("idx_template_category", "category"),
         Index("idx_template_role", "role"),
         Index("idx_template_active", "is_active"),
@@ -129,16 +128,21 @@ class AgentTemplate(Base):
         """
         Check if template may be stale (modified after last export).
 
-        Returns True if template has been updated after the last export,
-        indicating the exported CLI version may be outdated.
+        Three states:
+        - Never exported (last_exported_at is NULL) → True (stale)
+        - Exported after last change → False (up to date)
+        - Changed after last export → True (may be outdated)
 
-        Returns:
-            bool: True if updated_at > last_exported_at, False otherwise
+        Falls back to created_at when updated_at is NULL (freshly seeded).
         """
-        if self.updated_at is None or self.last_exported_at is None:
-            return False
+        if self.last_exported_at is None:
+            return True  # Never exported — always stale
 
-        return self.updated_at > self.last_exported_at
+        modified_at = self.updated_at or self.created_at
+        if modified_at is None:
+            return True  # No timestamp at all — assume stale
+
+        return modified_at > self.last_exported_at
 
     def __repr__(self) -> str:
         return f"<AgentTemplate(id={self.id}, name='{self.name}', category='{self.category}')>"

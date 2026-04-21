@@ -263,17 +263,15 @@ class TemplateRepository:
         tenant_key: str,
         role: str | None = None,
         is_active: bool | None = None,
-        product_id: str | None = None,
     ) -> list[AgentTemplate]:
         """
-        List templates with optional filters.
+        List templates for a tenant with optional filters.
 
         Args:
             session: Active database session
             tenant_key: Tenant key for isolation
             role: Optional role filter
             is_active: Optional active status filter
-            product_id: Optional product filter (exact match, not OR NULL)
 
         Returns:
             List of AgentTemplate ORM instances
@@ -283,8 +281,6 @@ class TemplateRepository:
             query = query.where(AgentTemplate.role == role)
         if is_active is not None:
             query = query.where(AgentTemplate.is_active == is_active)
-        if product_id:
-            query = query.where(AgentTemplate.product_id == product_id)
         result = await session.execute(query)
         return list(result.scalars().all())
 
@@ -305,16 +301,17 @@ class TemplateRepository:
         Returns:
             True if name exists
         """
-        stmt = select(AgentTemplate).where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.name == name))
+        stmt = select(func.count(AgentTemplate.id)).where(
+            and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.name == name)
+        )
         result = await session.execute(stmt)
-        return result.scalar_one_or_none() is not None
+        return result.scalar() > 0
 
     async def get_defaults_by_role(
         self,
         session: AsyncSession,
         tenant_key: str,
         role: str,
-        product_id: str | None = None,
     ) -> list[AgentTemplate]:
         """
         Get all default templates for a specific role.
@@ -323,19 +320,17 @@ class TemplateRepository:
             session: Active database session
             tenant_key: Tenant key for isolation
             role: Role to filter by
-            product_id: Optional product filter
 
         Returns:
             List of default AgentTemplate ORM instances
         """
-        filters = [
-            AgentTemplate.tenant_key == tenant_key,
-            AgentTemplate.role == role,
-            AgentTemplate.is_default,
-        ]
-        if product_id:
-            filters.append(AgentTemplate.product_id == product_id)
-        stmt = select(AgentTemplate).where(and_(*filters))
+        stmt = select(AgentTemplate).where(
+            and_(
+                AgentTemplate.tenant_key == tenant_key,
+                AgentTemplate.role == role,
+                AgentTemplate.is_default,
+            )
+        )
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
@@ -345,7 +340,7 @@ class TemplateRepository:
         tenant_key: str,
     ) -> int:
         """
-        Count active user-managed templates (excludes system roles).
+        Count active user-managed templates for a tenant (excludes system roles).
 
         Args:
             session: Active database session
@@ -363,69 +358,6 @@ class TemplateRepository:
         )
         result = await session.execute(stmt)
         return result.scalar()
-
-    async def get_active_by_product(
-        self,
-        session: AsyncSession,
-        tenant_key: str,
-        product_id: str | None,
-    ) -> list[AgentTemplate]:
-        """Get active templates for a specific product (or tenant-level if product_id is None)."""
-        filters = [AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active]
-        if product_id:
-            filters.append(AgentTemplate.product_id == product_id)
-        else:
-            filters.append(AgentTemplate.product_id.is_(None))
-        stmt = select(AgentTemplate).where(and_(*filters))
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
-
-    async def get_orphans(
-        self,
-        session: AsyncSession,
-        tenant_key: str,
-    ) -> list[AgentTemplate]:
-        """Get ALL orphan templates (product_id=NULL) regardless of is_active state."""
-        stmt = select(AgentTemplate).where(
-            and_(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.product_id.is_(None),
-            )
-        )
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
-
-    async def count_by_product(
-        self,
-        session: AsyncSession,
-        tenant_key: str,
-        product_id: str,
-    ) -> int:
-        """Count templates for a specific product."""
-        stmt = select(func.count(AgentTemplate.id)).where(
-            and_(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.product_id == product_id,
-            )
-        )
-        result = await session.execute(stmt)
-        return result.scalar()
-
-    async def get_existing_name_versions(
-        self,
-        session: AsyncSession,
-        tenant_key: str,
-        product_id: str,
-    ) -> set[tuple[str, str]]:
-        """Get set of (name, version) tuples for existing templates on a product."""
-        stmt = select(AgentTemplate.name, AgentTemplate.version).where(
-            and_(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.product_id == product_id,
-            )
-        )
-        result = await session.execute(stmt)
-        return {(row.name, row.version) for row in result}
 
     async def get_template_role(
         self,

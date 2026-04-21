@@ -97,11 +97,11 @@ def render_claude_agent(template: AgentTemplate) -> str:
     Rules per 0102a:
     - Frontmatter includes name, description, model (omit tools to inherit all)
     - Description fallback: "Subagent for <role>"
-    - Model default: 'sonnet' if blank; allow 'inherit' if explicitly set
+    - Model default: 'opus' if blank; allow 'inherit' if explicitly set
     """
     description = template.description or (f"Subagent for {template.role}" if template.role else "Subagent")
-    # Respect explicit 'inherit'; otherwise default to sonnet when blank
-    model_value = (template.model or "sonnet").strip()
+    # Respect explicit 'inherit'; otherwise default to opus when blank
+    model_value = (template.model or "opus").strip()
 
     frontmatter = {
         "name": template.name,
@@ -109,9 +109,14 @@ def render_claude_agent(template: AgentTemplate) -> str:
         "model": model_value,
     }
 
-    # Include color field if template has background_color (maps to Claude Code named colors)
-    if hasattr(template, "background_color") and template.background_color:
-        claude_color = hex_to_claude_color(template.background_color)
+    # Include color field — use background_color from DB, fall back to role-based color
+    bg_color = getattr(template, "background_color", None) or None
+    if not bg_color and template.role:
+        from .template_validation import get_role_color
+
+        bg_color = get_role_color(template.role)
+    if bg_color:
+        claude_color = hex_to_claude_color(bg_color)
         if claude_color:
             frontmatter["color"] = claude_color
 
@@ -349,8 +354,8 @@ CODEX_TOML_FORMAT_REFERENCE = """\
 #
 # [agents.gil-implementer]
 # config_file = "agents/gil-implementer.toml"
-# model = "gpt-5.3-codex"
-# model_reasoning_effort = "medium"
+# model = "gpt-5.4"
+# model_reasoning_effort = "high"
 # nickname_candidates = ["gil-implementer"]
 #
 # Multiple agents can be defined in the same config.toml file.

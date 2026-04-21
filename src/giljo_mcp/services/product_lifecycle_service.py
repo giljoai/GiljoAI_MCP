@@ -181,15 +181,31 @@ class ProductLifecycleService:
 
                 self._logger.info(f"Activated product {product_id} (deactivated {len(products_to_deactivate)} others)")
 
-                # Seed default agent templates if this product has none
+                # Auto-assign all active tenant templates to the newly activated product.
+                # This ensures every product starts with the full agent roster.
+                # Uses its own session via the assignment repository (not the lifecycle session).
                 try:
-                    await self._seed_default_templates(product_id)
-                except (OSError, ValueError, RuntimeError, BaseGiljoError):
-                    # Template seeding is best-effort -- do not fail activation
+                    from giljo_mcp.repositories.product_agent_assignment_repository import (
+                        ProductAgentAssignmentRepository,
+                    )
+
+                    assignment_repo = ProductAgentAssignmentRepository()
+                    new_assignments = await assignment_repo.bulk_assign_all_templates(
+                        session, product_id, self.tenant_key
+                    )
+                    if new_assignments:
+                        await session.commit()
+                        self._logger.info(
+                            "Auto-assigned %d templates to product %s on activation",
+                            len(new_assignments),
+                            product_id,
+                        )
+                except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
+                    # Non-fatal: product activation succeeded, assignment is best-effort
                     self._logger.warning(
-                        "Failed to seed default templates for product %s (non-fatal)",
+                        "Failed to auto-assign templates on product activation (product_id=%s): %s",
                         product_id,
-                        exc_info=True,
+                        exc,
                     )
 
                 return product
@@ -202,41 +218,6 @@ class ProductLifecycleService:
                 message=f"Failed to activate product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
-
-    async def _seed_default_templates(self, product_id: str) -> int:
-        """
-        Seed default agent templates for a newly activated product.
-
-        Clones tenant-level templates to the product if it has zero templates.
-        Idempotent -- safe to call on repeated activations.
-
-        Args:
-            product_id: Product UUID to seed templates for.
-
-        Returns:
-            Number of templates seeded.
-        """
-        from giljo_mcp.services.template_service import TemplateService
-        from giljo_mcp.tenant import TenantManager
-
-        tenant_manager = TenantManager()
-        tenant_manager.set_current_tenant(self.tenant_key)
-
-        template_svc = TemplateService(
-            db_manager=self.db_manager,
-            tenant_manager=tenant_manager,
-        )
-        seeded = await template_svc.seed_product_defaults(
-            product_id=product_id,
-            tenant_key=self.tenant_key,
-        )
-        if seeded > 0:
-            self._logger.info(
-                "Seeded %d default template(s) for product %s",
-                seeded,
-                product_id,
-            )
-        return seeded
 
     async def deactivate_product(self, product_id: str) -> Product:
         """

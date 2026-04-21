@@ -131,16 +131,12 @@ class TestCreateTemplateInjectsCanonicalBootstrap:
 
         mock_template_service.add_and_commit_template = AsyncMock(side_effect=_capture_add_and_commit)
 
-        with patch(
-            "api.endpoints.templates.crud.get_tenant_and_product_from_user",
-            return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
-        ):
-            await create_template(
-                template=payload,
-                current_user=user,
-                session=session,
-                template_service=mock_template_service,
-            )
+        await create_template(
+            template=payload,
+            current_user=user,
+            session=session,
+            template_service=mock_template_service,
+        )
 
         assert captured_template is not None, "Template should have been persisted via service"
         assert captured_template.system_instructions == canonical, (
@@ -180,16 +176,12 @@ class TestCreateTemplateInjectsCanonicalBootstrap:
 
         mock_template_service.add_and_commit_template = AsyncMock(side_effect=_capture_add_and_commit)
 
-        with patch(
-            "api.endpoints.templates.crud.get_tenant_and_product_from_user",
-            return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
-        ):
-            await create_template(
-                template=payload,
-                current_user=user,
-                session=session,
-                template_service=mock_template_service,
-            )
+        await create_template(
+            template=payload,
+            current_user=user,
+            session=session,
+            template_service=mock_template_service,
+        )
 
         bootstrap = captured_template.system_instructions
         assert "health_check" in bootstrap
@@ -241,16 +233,12 @@ class TestCreateTemplateStoresUserInstructions:
 
         mock_template_service.add_and_commit_template = AsyncMock(side_effect=_capture_add_and_commit)
 
-        with patch(
-            "api.endpoints.templates.crud.get_tenant_and_product_from_user",
-            return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
-        ):
-            await create_template(
-                template=payload,
-                current_user=user,
-                session=session,
-                template_service=mock_template_service,
-            )
+        await create_template(
+            template=payload,
+            current_user=user,
+            session=session,
+            template_service=mock_template_service,
+        )
 
         assert captured_template is not None
         assert captured_template.user_instructions == custom_role_description
@@ -286,16 +274,12 @@ class TestCreateTemplateStoresUserInstructions:
 
         mock_template_service.add_and_commit_template = AsyncMock(side_effect=_capture_add_and_commit)
 
-        with patch(
-            "api.endpoints.templates.crud.get_tenant_and_product_from_user",
-            return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
-        ):
-            await create_template(
-                template=payload,
-                current_user=user,
-                session=session,
-                template_service=mock_template_service,
-            )
+        await create_template(
+            template=payload,
+            current_user=user,
+            session=session,
+            template_service=mock_template_service,
+        )
 
         assert captured_template is not None
         assert captured_template.user_instructions == ""
@@ -332,13 +316,7 @@ class TestUpdateTemplateRejectsSystemInstructions:
             system_instructions="Attempt to override bootstrap",
         )
 
-        with (
-            patch(
-                "api.endpoints.templates.crud.get_tenant_and_product_from_user",
-                return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
-            ),
-            pytest.raises(HTTPException) as exc_info,
-        ):
+        with pytest.raises(HTTPException) as exc_info:
             await update_template(
                 template_id="tmpl-001",
                 updates=payload,
@@ -375,13 +353,7 @@ class TestUpdateTemplateRejectsSystemInstructions:
             system_instructions=canonical,
         )
 
-        with (
-            patch(
-                "api.endpoints.templates.crud.get_tenant_and_product_from_user",
-                return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
-            ),
-            pytest.raises(HTTPException) as exc_info,
-        ):
+        with pytest.raises(HTTPException) as exc_info:
             await update_template(
                 template_id="tmpl-002",
                 updates=payload,
@@ -428,15 +400,7 @@ class TestUpdateTemplateAcceptsUserInstructions:
             user_instructions=new_instructions,
         )
 
-        with (
-            patch(
-                "api.endpoints.templates.crud.get_tenant_and_product_from_user",
-                return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
-            ),
-            patch(
-                "api.endpoints.templates.crud._convert_to_response",
-            ) as mock_convert,
-        ):
+        with patch("api.endpoints.templates.crud._convert_to_response") as mock_convert:
             mock_convert.return_value = Mock()
 
             await update_template(
@@ -474,15 +438,7 @@ class TestUpdateTemplateAcceptsUserInstructions:
             user_instructions="Brand new instructions",
         )
 
-        with (
-            patch(
-                "api.endpoints.templates.crud.get_tenant_and_product_from_user",
-                return_value={"tenant_key": user.tenant_key, "product_id": "prod-001"},
-            ),
-            patch(
-                "api.endpoints.templates.crud._convert_to_response",
-            ) as mock_convert,
-        ):
+        with patch("api.endpoints.templates.crud._convert_to_response") as mock_convert:
             mock_convert.return_value = Mock()
 
             await update_template(

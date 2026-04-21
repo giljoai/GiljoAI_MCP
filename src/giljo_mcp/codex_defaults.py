@@ -5,5 +5,5 @@
 
 """Shared Codex CLI defaults for GiljoAI generated setup artifacts."""
 
-CODEX_DEFAULT_MODEL = "gpt-5.3-codex"
-CODEX_DEFAULT_REASONING_EFFORT = "medium"
+CODEX_DEFAULT_MODEL = "gpt-5.4"
+CODEX_DEFAULT_REASONING_EFFORT = "high"

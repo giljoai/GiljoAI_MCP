@@ -279,19 +279,16 @@ class FileStaging:
         platform: str = "claude_code",
     ) -> tuple[Path | None, str]:
         """
-        Stage slash commands/skills as a ZIP for first-time setup.
+        Stage slash commands AND agent templates in a single ZIP (Handover 0907).
 
-        Creates a ZIP containing only slash commands (skills for Codex CLI),
-        structured so it extracts directly into the platform's home directory
-        root (~/.claude/, ~/.gemini/, ~/.codex/).
-
-        Agent templates are NOT included -- use /gil_get_agents to install
-        product-scoped agent templates separately.
+        Creates a combined ZIP structured so it extracts directly into the
+        platform's home directory root (~/.claude/, ~/.gemini/, ~/.codex/).
+        Agent templates are binary content — no LLM processing on the client.
 
         Args:
             staging_path: Pre-created staging directory
             tenant_key: Tenant identifier
-            db_session: Optional DB session override (unused, kept for API compat)
+            db_session: Optional DB session override
             platform: Target CLI platform (claude_code, gemini_cli, codex_cli)
 
         Returns:
@@ -302,29 +299,78 @@ class FileStaging:
         if platform not in _VALID_PLATFORMS:
             raise ValueError(f"Unknown platform '{platform}'. Must be one of: {', '.join(_VALID_PLATFORMS)}")
 
+        session = db_session or self.db_session
+
         try:
             staging_path.mkdir(parents=True, exist_ok=True)
             zip_path = staging_path / "giljo_setup.zip"
 
-            # --- Slash commands only ---
+            # --- Slash commands ---
             slash_templates = get_all_templates(platform=platform)
+
+            # Map slash command filenames into platform directory structure
             slash_dir = "skills" if platform == "codex_cli" else "commands"
+
+            # --- Agent templates (if DB session available) ---
+            agent_entries: list[tuple[str, str]] = []
+            selected_templates: list = []
+
+            if session:
+                from datetime import datetime, timezone
+
+                from .template_renderer import select_templates_for_packaging
+                from .tools.agent_template_assembler import AgentTemplateAssembler
+
+                result = await session.execute(
+                    select(AgentTemplate).where(
+                        AgentTemplate.tenant_key == tenant_key,
+                        AgentTemplate.is_active,
+                    )
+                )
+                all_active = result.scalars().all()
+
+                if all_active:
+                    selected_templates = select_templates_for_packaging(all_active, max_count=8)
+                    assembler = AgentTemplateAssembler()
+                    export_data = assembler.assemble(selected_templates, platform)
+
+                    if platform == "codex_cli":
+                        agent_entries = _codex_agents_to_toml(export_data["agents"])
+                    else:
+                        for agent in export_data["agents"]:
+                            agent_entries.append(
+                                (
+                                    f"agents/{agent['filename']}",
+                                    agent["content"],
+                                )
+                            )
 
             # --- Build ZIP ---
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 for filename, content in slash_templates.items():
                     zf.writestr(f"{slash_dir}/{filename}", content)
+                for zip_name, content in agent_entries:
+                    zf.writestr(zip_name, content)
 
-            total = len(slash_templates)
-            logger.info(f"Staged skills-only setup ZIP: {zip_path} ({total} files for {platform})")
+            # Update export timestamps
+            if selected_templates and session:
+                export_timestamp = datetime.now(timezone.utc)
+                for t in selected_templates:
+                    t.last_exported_at = export_timestamp
+                await session.commit()
+
+            total = len(slash_templates) + len(agent_entries)
+            logger.info(f"Staged combined setup ZIP: {zip_path} ({total} files for {platform})")
             return (
                 zip_path,
-                f"Successfully staged {total} skill files for {platform}",
+                f"Successfully staged {total} files ({len(slash_templates)} commands, {len(agent_entries)} agents)",
             )
 
         except (OSError, ValueError, RuntimeError) as e:
-            msg = f"Error staging setup ZIP: {e}"
+            msg = f"Error staging combined setup ZIP: {e}"
             logger.exception(msg)
+            if session:
+                await session.rollback()
             if isinstance(e, ValueError):
                 raise
             return (None, msg)

@@ -93,13 +93,13 @@ class TestStageCombinedSetup:
             # Slash commands in commands/ directory
             assert "commands/gil_get_agents.md" in names
             assert "commands/gil_add.md" in names
-            # Agent templates are NOT included (split: use /gil_get_agents)
+            # Agent templates are included in combined setup
             agent_files = [n for n in names if n.startswith("agents/")]
-            assert len(agent_files) == 0
+            assert len(agent_files) == 2
 
     @pytest.mark.asyncio
     async def test_gemini_cli_zip_structure(self, staging_dir, mock_session):
-        """Gemini CLI ZIP contains commands/*.toml only (no agent templates)."""
+        """Gemini CLI ZIP contains commands/*.toml and agents/*.md."""
         staging = FileStaging(db_session=mock_session)
 
         zip_path, _ = await staging.stage_combined_setup(
@@ -115,13 +115,13 @@ class TestStageCombinedSetup:
             # Slash commands as TOML
             assert "commands/gil_get_agents.toml" in names
             assert "commands/gil_add.toml" in names
-            # No agent templates
+            # Agent templates included
             agent_files = [n for n in names if n.startswith("agents/")]
-            assert len(agent_files) == 0
+            assert len(agent_files) == 2
 
     @pytest.mark.asyncio
     async def test_codex_cli_zip_structure(self, staging_dir, mock_session):
-        """Codex CLI ZIP contains skills/*/SKILL.md only (no agent templates)."""
+        """Codex CLI ZIP contains skills/*/SKILL.md and agents/*.toml."""
         staging = FileStaging(db_session=mock_session)
 
         zip_path, _ = await staging.stage_combined_setup(
@@ -137,9 +137,9 @@ class TestStageCombinedSetup:
             # Skills (Codex's slash command format)
             assert "skills/gil-get-agents/SKILL.md" in names
             assert "skills/gil-add/SKILL.md" in names
-            # No agent templates
+            # Agent templates as TOML
             agent_files = [n for n in names if n.startswith("agents/")]
-            assert len(agent_files) == 0
+            assert len(agent_files) == 2
 
     @pytest.mark.asyncio
     async def test_codex_agent_toml_content(self, staging_dir, mock_session):
@@ -160,9 +160,9 @@ class TestStageCombinedSetup:
                 assert "name =" in content
                 assert "description =" in content
                 assert "developer_instructions" in content
-                assert 'model = "gpt-5.3-codex"' in content
-                assert 'model_reasoning_effort = "medium"' in content
-                assert "gpt-5.2-codex" not in content
+                assert 'model = "gpt-5.4"' in content
+                assert 'model_reasoning_effort = "high"' in content
+                assert "gpt-5.3-codex" not in content
 
     @pytest.mark.asyncio
     async def test_zip_filename(self, staging_dir, mock_session):
@@ -232,13 +232,13 @@ class TestStageCombinedSetup:
             # Slash commands as plain MD reference
             cmd_files = [n for n in names if n.startswith("commands/")]
             assert len(cmd_files) >= 2
-            # No agent templates in generic ZIP
+            # Agent templates included in generic ZIP
             agent_files = [n for n in names if n.startswith("agents/")]
-            assert len(agent_files) == 0
+            assert len(agent_files) == 2
 
     @pytest.mark.asyncio
     async def test_updates_last_exported_at(self, staging_dir, mock_session, templates):
-        """Skills-only setup does not update agent template timestamps."""
+        """Combined setup updates agent template timestamps."""
         staging = FileStaging(db_session=mock_session)
 
         await staging.stage_combined_setup(
@@ -247,8 +247,8 @@ class TestStageCombinedSetup:
             platform="claude_code",
         )
 
-        # Commit should NOT be called -- no agent templates in skills-only ZIP
-        mock_session.commit.assert_not_awaited()
-        # Templates should NOT have timestamps set
+        # Commit should be called to persist export timestamps
+        mock_session.commit.assert_awaited_once()
+        # Templates should have timestamps set
         for t in templates:
-            assert t.last_exported_at is None
+            assert t.last_exported_at is not None

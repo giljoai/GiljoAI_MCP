@@ -44,8 +44,10 @@ async def test_get_template_by_id_wrong_tenant(db_session, template_service, oth
 
 
 @pytest.mark.asyncio
-async def test_list_templates_with_filters_no_filters(db_session, template_service, test_tenant_key, sample_template):
-    """Test listing templates without filters"""
+async def test_list_templates_with_filters_no_filters(
+    db_session, template_service, test_tenant_key, test_product, sample_template
+):
+    """Test listing templates for a tenant without optional filters"""
     results = await template_service.list_templates_with_filters(db_session, test_tenant_key)
 
     assert len(results) >= 1
@@ -132,9 +134,7 @@ async def test_get_default_templates_by_role(db_session, template_service, test_
     db_session.add(default_template)
     await db_session.commit()
 
-    results = await template_service.get_default_templates_by_role(
-        db_session, test_tenant_key, "orchestrator", test_product.id
-    )
+    results = await template_service.get_default_templates_by_role(db_session, test_tenant_key, "orchestrator")
 
     assert len(results) >= 1
     assert all(t.is_default is True for t in results)
@@ -142,7 +142,9 @@ async def test_get_default_templates_by_role(db_session, template_service, test_
 
 
 @pytest.mark.asyncio
-async def test_get_active_user_managed_count(db_session, template_service, test_tenant_key, sample_template):
+async def test_get_active_user_managed_count(
+    db_session, template_service, test_tenant_key, test_product, sample_template
+):
     """Test counting active user-managed templates"""
     count = await template_service.get_active_user_managed_count(db_session, test_tenant_key)
 

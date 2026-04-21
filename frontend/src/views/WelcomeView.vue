@@ -46,6 +46,14 @@
         <div class="team-header">
           <div class="section-label mb-0">Your Team</div>
           <div class="d-flex align-center ga-2">
+            <v-tooltip v-if="hasStaleAgents" location="bottom" max-width="300">
+              <template v-slot:activator="{ props }">
+                <span v-bind="props" class="stale-agents-warning">
+                  <v-icon size="14">mdi-alert</v-icon> Re-export agents
+                </span>
+              </template>
+              <span>Agent templates have changed since your last export. Run <code>/gil_get_agents</code> in your project folder to update your local agent files.</span>
+            </v-tooltip>
             <span class="team-slots smooth-border">{{ activeTemplates.length + 1 }} / {{ totalSlots }} slots</span>
             <router-link to="/settings?tab=agents" class="team-manage">
               <v-icon size="14">mdi-cog</v-icon> Manage
@@ -314,6 +322,7 @@ const activeTemplates = computed(() =>
 )
 
 const emptySlots = computed(() => Math.max(0, totalSlots.value - activeTemplates.value.length - 1))
+const hasStaleAgents = computed(() => templates.value.some(t => t.is_active && t.may_be_stale))
 
 function tintedBg(hex) {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -584,13 +593,12 @@ onMounted(async () => {
     await projectStore.fetchProjects()
   } catch { /* ignore */ }
 
-  // Fetch templates
+  // Fetch templates (tenant-scoped — no product_id)
   try {
     const response = await api.templates.list()
     templates.value = response.data || []
   } catch { /* ignore */ }
 
-  // Fetch active count for total slots
   try {
     const response = await api.templates.activeCount()
     if (response.data?.max_slots) {
@@ -831,6 +839,16 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
+}
+
+.stale-agents-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #EDBA4A;
+  cursor: help;
 }
 
 .team-slots {

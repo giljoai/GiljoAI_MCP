@@ -72,11 +72,6 @@ def _is_system_managed_role(role: Optional[str]) -> bool:
     return bool(role and role in SYSTEM_MANAGED_ROLES)
 
 
-def get_tenant_and_product_from_user(user: User) -> dict:
-    """Extract tenant_key and product_id from authenticated user"""
-    return {"tenant_key": user.tenant_key, "product_id": getattr(user, "active_product_id", None)}
-
-
 def _convert_to_response(template: AgentTemplate) -> TemplateResponse:
     """Convert ORM model to response schema"""
     # Merge system and user instructions for backward compatibility
@@ -84,12 +79,7 @@ def _convert_to_response(template: AgentTemplate) -> TemplateResponse:
     if template.user_instructions:
         merged_content = f"{merged_content}\n\n{template.user_instructions}"
 
-    # Handover 0335: Compute may_be_stale flag
-    may_be_stale = (
-        template.updated_at is not None
-        and template.last_exported_at is not None
-        and template.updated_at > template.last_exported_at
-    )
+    may_be_stale = template.may_be_stale
 
     return TemplateResponse(
         id=template.id,
@@ -153,19 +143,12 @@ async def list_templates(
     template_service: TemplateService = Depends(get_template_service),
     role: Optional[str] = Query(None, description="Filter by role"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    product_id: Optional[str] = Query(None, description="Filter by product ID"),
 ) -> list[TemplateResponse]:
     """
-    List templates for the current tenant, optionally scoped to a product.
-
-    Migrated to TemplateService - Handover 1011 Phase 2.
+    List templates for the current tenant with optional filters.
     """
-    logger.debug(
-        "User %s listing templates (product=%s)", sanitize(current_user.username), sanitize(product_id or "all")
-    )
-
     templates = await template_service.list_templates_with_filters(
-        session, current_user.tenant_key, role=role, is_active=is_active, product_id=product_id
+        session, current_user.tenant_key, role=role, is_active=is_active
     )
 
     return [_convert_to_response(t) for t in templates]
@@ -184,22 +167,25 @@ async def create_template(
     NOTE: This endpoint currently uses direct DB access for complex validation logic.
     Future work: Extract validation, materialization, and WebSocket logic to TemplateService.
     """
-    context = get_tenant_and_product_from_user(current_user)
+    tenant_key = current_user.tenant_key
 
-    # Generate name from role + suffix
-    if template.custom_suffix:
-        generated_name = slugify_name(template.role, template.custom_suffix)
-    else:
-        generated_name = template.name or template.role
+    # Generate name from role + suffix (always slugify for safety)
+    raw_name = template.name or template.role or ""
+    generated_name = slugify_name(template.role or raw_name, template.custom_suffix)
 
-    # Validate name format
-    if not re.match(r"^[a-z0-9]+(-[a-z0-9]+)*$", generated_name):
+    if not generated_name or not re.match(r"^[a-z0-9]+(-[a-z0-9]+)*$", generated_name):
         raise HTTPException(status_code=400, detail="Name must use lowercase letters, numbers, and hyphens only")
     if len(generated_name) > 100:
         raise HTTPException(status_code=400, detail="Name must be 100 characters or less")
 
-    if await template_service.check_template_name_exists(session, context["tenant_key"], generated_name):
-        raise HTTPException(status_code=400, detail=f"Agent name '{generated_name}' already exists")
+    # Auto-suffix if name already taken for this tenant
+    base_name = generated_name
+    counter = 2
+    while await template_service.check_template_name_exists(session, tenant_key, generated_name):
+        generated_name = f"{base_name}-{counter}"
+        counter += 1
+        if counter > 20:
+            raise HTTPException(status_code=400, detail=f"Too many agents named '{base_name}' — use a custom suffix")
 
     # Inject canonical MCP bootstrap — ignore whatever the frontend sends
     canonical_bootstrap = _get_mcp_bootstrap_section()
@@ -220,17 +206,14 @@ async def create_template(
     variables = re.findall(r"\{(\w+)\}", template.user_instructions or "")
 
     if template.is_default and template.role:
-        existing_defaults = await template_service.get_default_templates_by_role(
-            session, context["tenant_key"], template.role, context.get("product_id")
-        )
+        existing_defaults = await template_service.get_default_templates_by_role(session, tenant_key, template.role)
         for existing in existing_defaults:
             existing.is_default = False
 
     # Create new template
     new_template = AgentTemplate(
         id=str(uuid4()),
-        tenant_key=context["tenant_key"],
-        product_id=context["product_id"],
+        tenant_key=tenant_key,
         name=generated_name,
         category=template.category or "role",
         role=template.role,
@@ -254,7 +237,7 @@ async def create_template(
 
     await template_service.add_and_commit_template(session, new_template)
 
-    logger.info("Created template %s for tenant %s", new_template.id, sanitize(context["tenant_key"]))
+    logger.info("Created template %s for tenant %s", new_template.id, sanitize(tenant_key))
 
     return _convert_to_response(new_template)
 
@@ -272,9 +255,9 @@ async def update_template(
 
     NOTE: Currently uses direct DB access. Future work: Use TemplateService.update_template().
     """
-    context = get_tenant_and_product_from_user(current_user)
+    tenant_key = current_user.tenant_key
 
-    template = await template_service.get_template_by_id(session, template_id, context["tenant_key"])
+    template = await template_service.get_template_by_id(session, template_id, tenant_key)
 
     if not template:
         if await template_service.check_cross_tenant_template_exists(session, template_id):
@@ -310,7 +293,7 @@ async def update_template(
         if new_is_active != bool(template.is_active) and not _is_system_managed_role(template.role):
             is_valid, error_msg = await template_service.validate_active_agent_limit(
                 session=session,
-                tenant_key=context["tenant_key"],
+                tenant_key=tenant_key,
                 template_id=template.id,
                 new_is_active=new_is_active,
                 role=template.role,
@@ -355,9 +338,9 @@ async def delete_template(
     """
 
     try:
-        context = get_tenant_and_product_from_user(current_user)
+        tenant_key = current_user.tenant_key
 
-        template = await template_service.get_template_by_id(session, template_id, context["tenant_key"])
+        template = await template_service.get_template_by_id(session, template_id, tenant_key)
 
         if not template:
             raise HTTPException(status_code=404, detail="Template not found")
@@ -367,7 +350,7 @@ async def delete_template(
 
         template_name = template.name
 
-        deleted = await template_service.hard_delete_template(session, template_id, context["tenant_key"])
+        deleted = await template_service.hard_delete_template(session, template_id, tenant_key)
 
         if not deleted:
             raise HTTPException(status_code=500, detail="Failed to delete template")
@@ -391,13 +374,9 @@ async def get_active_count(
     template_service: TemplateService = Depends(get_template_service),
 ) -> dict:
     """
-    Get count of active user-managed templates.
-
-    Migrated to TemplateService - Handover 1011 Phase 2.
+    Get count of active user-managed templates for the current tenant.
     """
-    context = get_tenant_and_product_from_user(current_user)
-
-    count = await template_service.get_active_user_managed_count(session, context["tenant_key"])
+    count = await template_service.get_active_user_managed_count(session, current_user.tenant_key)
 
     return {
         "active_count": count,

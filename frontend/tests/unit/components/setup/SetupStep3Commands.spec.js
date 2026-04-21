@@ -94,7 +94,7 @@ describe('SetupStep3Commands', () => {
       const wrapper = mountStep3()
       await flushPromises()
       const items = wrapper.findAll('.checklist-item')
-      expect(items).toHaveLength(1)
+      expect(items).toHaveLength(2)
       expect(wrapper.findAll('.checklist-text--done')).toHaveLength(0)
     })
 
@@ -110,12 +110,12 @@ describe('SetupStep3Commands', () => {
       onCall[1]({})
       await flushPromises()
 
-      expect(wrapper.findAll('.checklist-text--done')).toHaveLength(1)
+      expect(wrapper.findAll('.checklist-text--done')).toHaveLength(2)
     })
   })
 
   // -------------------------------------------------------------------
-  // Post-install agent command display (shown after skills are installed)
+  // Post-install agent command display (shown after agents are installed)
   // -------------------------------------------------------------------
   describe('Post-install agent command', () => {
     it('shows /gil_get_agents for claude_code after setup completes', async () => {
@@ -241,7 +241,7 @@ describe('SetupStep3Commands', () => {
       const wrapper = mountStep3({ previouslyCompleted: true })
       await flushPromises()
 
-      expect(wrapper.findAll('.checklist-text--done')).toHaveLength(1)
+      expect(wrapper.findAll('.checklist-text--done')).toHaveLength(2)
     })
 
     it('emits can-proceed true immediately when previouslyCompleted is true', async () => {
@@ -334,6 +334,7 @@ describe('SetupStep3Commands', () => {
 
       const eventTypes = mockWsOn.mock.calls.map((c) => c[0])
       expect(eventTypes).toContain('setup:commands_installed')
+      expect(eventTypes).toContain('setup:agents_downloaded')
       expect(eventTypes).toContain('setup:bootstrap_complete')
     })
 
@@ -342,7 +343,7 @@ describe('SetupStep3Commands', () => {
       await flushPromises()
 
       wrapper.unmount()
-      expect(mockUnsub).toHaveBeenCalledTimes(2)
+      expect(mockUnsub).toHaveBeenCalledTimes(3)
     })
   })
 })

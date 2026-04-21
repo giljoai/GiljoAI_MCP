@@ -20,9 +20,12 @@ def slugify_name(role: str, suffix: Optional[str] = None) -> str:
         Slugified name (e.g., 'orchestrator-amazing-guy')
     """
     if suffix:
-        # Convert to lowercase and replace spaces/underscores with hyphens
-        suffix_clean = re.sub(r"[^a-z0-9-]", "", suffix.lower().replace("_", "-").replace(" ", "-"))
-        return f"{role}-{suffix_clean}"
+        # Convert to lowercase, replace spaces/underscores with hyphens, strip leading/trailing hyphens
+        suffix_clean = re.sub(r"[^a-z0-9-]", "", suffix.lower().replace("_", "-").replace(" ", "-")).strip("-")
+        # Collapse consecutive hyphens
+        suffix_clean = re.sub(r"-{2,}", "-", suffix_clean)
+        if suffix_clean:
+            return f"{role}-{suffix_clean}"
     return role
 
 

@@ -98,8 +98,8 @@ class TestCodexSafetyProtocol:
 
     def test_codex_uses_supported_default_model(self):
         """Codex get_agents skill uses the supported default model in examples."""
-        assert "gpt-5.3-codex" in GIL_GET_AGENTS_CODEX_SKILL_MD
-        assert "gpt-5.2-codex" not in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert "gpt-5.4" in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert "gpt-5.3-codex" not in GIL_GET_AGENTS_CODEX_SKILL_MD
 
 
 class TestBootstrapTemplateIntegration:

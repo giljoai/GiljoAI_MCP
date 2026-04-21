@@ -93,14 +93,14 @@ class TestRenderClaudeAgent:
         assert frontmatter["description"] == "Subagent for reviewer"
 
     def test_default_model(self):
-        """Test model defaults to 'sonnet' when not provided."""
+        """Test model defaults to 'opus' when not provided."""
         template = AgentTemplate(
             name="implementer",
             role="implementer",
             cli_tool="claude",
             description="Implementer agent",
             system_instructions="Implement features following TDD.",
-            model=None,  # Should default to sonnet
+            model=None,  # Should default to opus
         )
 
         result = render_claude_agent(template)
@@ -108,10 +108,10 @@ class TestRenderClaudeAgent:
         yaml_section = result.split("---\n")[1]
         frontmatter = yaml.safe_load(yaml_section)
 
-        assert frontmatter["model"] == "sonnet"
+        assert frontmatter["model"] == "opus"
 
     def test_default_model_empty_string(self):
-        """Test model defaults to sonnet when empty string provided."""
+        """Test model defaults to opus when empty string provided."""
         template = AgentTemplate(
             name="analyzer",
             role="analyzer",
@@ -126,7 +126,7 @@ class TestRenderClaudeAgent:
         yaml_section = result.split("---\n")[1]
         frontmatter = yaml.safe_load(yaml_section)
 
-        assert frontmatter["model"] == "sonnet"
+        assert frontmatter["model"] == "opus"
 
     def test_custom_model_opus(self):
         """Test custom model 'opus' is preserved."""

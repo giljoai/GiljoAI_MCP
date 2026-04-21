@@ -548,13 +548,10 @@ async def generate_download_token(
 )
 async def list_agent_templates(
     platform: str,
-    product_id: str = "",
     ctx: Context = None,
 ) -> dict:
     """Export agent templates for target CLI platform."""
     kwargs = {"platform": platform}
-    if product_id:
-        kwargs["product_id"] = product_id
     result = await _call_tool(ctx, "list_agent_templates", kwargs)
 
     # Handover 0855b: Emit setup:agents_downloaded when CLI fetches templates via MCP
@@ -582,24 +579,6 @@ async def list_agent_templates(
         logger.warning(f"setup:agents_downloaded emission failed: {type(e).__name__}: {e}")
 
     return result
-
-
-@mcp.tool(
-    description=(
-        "Clone agent templates from one product (or tenant-level defaults) to another product. "
-        "Skips templates that already exist on the target by name+version."
-    ),
-)
-async def clone_templates_to_product(
-    target_product_id: str,
-    source_product_id: str = "",
-    ctx: Context = None,
-) -> dict:
-    """Clone agent templates between products."""
-    kwargs = {"target_product_id": target_product_id}
-    if source_product_id:
-        kwargs["source_product_id"] = source_product_id
-    return await _call_tool(ctx, "clone_templates_to_product", kwargs)
 
 
 # ---------------------------------------------------------------------------

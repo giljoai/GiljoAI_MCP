@@ -143,75 +143,36 @@ class TemplateCache:
 
         return template
 
-    async def _query_cascade(self, role: str, tenant_key: str, product_id: Optional[str]) -> Optional[AgentTemplate]:
+    async def _query_cascade(
+        self, role: str, tenant_key: str, product_id: Optional[str] = None
+    ) -> Optional[AgentTemplate]:
         """
         Database cascade query with priority resolution.
 
-        Priority order:
-        1. Product-specific: tenant_key + product_id + role
-        2. Tenant-specific: tenant_key + role (product_id=NULL)
-        3. System default: tenant_key="system" + role + is_default=TRUE
-        4. Return None (caller falls back to legacy templates)
-
-        Args:
-            role: Agent role
-            tenant_key: Tenant identifier
-            product_id: Optional product ID
-
-        Returns:
-            AgentTemplate or None
+        Priority: tenant-specific -> system default -> None.
+        Templates are tenant-scoped (product_id parameter ignored, kept for signature compat).
         """
         async with self.db.get_session_async() as session:
-            # Priority 1: Product-specific template
-            if product_id:
-                template = await self._query_product_template(session, role, tenant_key, product_id)
-                if template:
-                    logger.info(
-                        f"Template resolved (product-specific): {role} (tenant={tenant_key}, product={product_id})"
-                    )
-                    return template
-
-            # Priority 2: Tenant-specific template
-            template = await self._query_tenant_template(session, role, tenant_key)
+            # 1. Tenant-specific template
+            stmt = select(AgentTemplate).where(
+                AgentTemplate.tenant_key == tenant_key,
+                AgentTemplate.role == role,
+                AgentTemplate.is_active,
+            )
+            result = await session.execute(stmt)
+            template = result.scalar_one_or_none()
             if template:
-                logger.info(f"Template resolved (tenant-specific): {role} (tenant={tenant_key})")
+                logger.info(f"Template resolved (tenant): {role} (tenant={tenant_key})")
                 return template
 
-            # Priority 3: System default template
+            # 2. System default template
             template = await self._query_system_template(session, role)
             if template:
                 logger.info(f"Template resolved (system default): {role}")
                 return template
 
-            # Priority 4: Return None (caller uses legacy fallback)
-            logger.debug(f"No database template found for role='{role}', tenant='{tenant_key}', product='{product_id}'")
+            logger.debug(f"No database template found for role='{role}', tenant='{tenant_key}'")
             return None
-
-    async def _query_product_template(
-        self, session: AsyncSession, role: str, tenant_key: str, product_id: str
-    ) -> Optional[AgentTemplate]:
-        """Query product-specific template"""
-        stmt = select(AgentTemplate).where(
-            AgentTemplate.tenant_key == tenant_key,
-            AgentTemplate.product_id == product_id,
-            AgentTemplate.role == role,
-            AgentTemplate.is_active,
-        )
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def _query_tenant_template(
-        self, session: AsyncSession, role: str, tenant_key: str
-    ) -> Optional[AgentTemplate]:
-        """Query tenant-specific template (product_id=NULL)"""
-        stmt = select(AgentTemplate).where(
-            AgentTemplate.tenant_key == tenant_key,
-            AgentTemplate.product_id.is_(None),
-            AgentTemplate.role == role,
-            AgentTemplate.is_active,
-        )
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none()
 
     async def _query_system_template(self, session: AsyncSession, role: str) -> Optional[AgentTemplate]:
         """Query system default template"""

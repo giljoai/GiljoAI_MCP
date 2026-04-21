@@ -148,6 +148,7 @@ class TestConfigDataPersistence:
         update_result = await service.update_product(
             product_id=product_id,
             tech_stack={"programming_languages": "Python 3.12", "backend_frameworks": "FastAPI"},
+            force=True,
         )
         assert isinstance(update_result, Product)
 
