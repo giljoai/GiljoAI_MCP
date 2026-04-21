@@ -108,68 +108,32 @@ def _build_service_with_product(mock_db_manager, product):
 
 
 class TestActiveProductGuard:
-    """update_product() must raise ValidationError when product.is_active is False."""
+    """Active product guard was removed — inactive products can be edited freely.
+
+    The guard was removed because it blocked legitimate workflows:
+    - Users editing products from the dashboard
+    - Vision doc analysis on non-active products
+    - Product setup before activation
+
+    Tenant isolation (tenant_key) provides the actual security boundary.
+    Overwrite confirmation (force flag) provides data protection.
+    """
 
     @pytest.mark.asyncio
-    async def test_update_inactive_product_raises_validation_error(self, mock_db_manager, inactive_product):
-        """Calling update_product() on an inactive product raises ValidationError."""
+    async def test_update_inactive_product_succeeds(self, mock_db_manager, inactive_product):
+        """Updating an inactive product should succeed (guard removed)."""
         service = _build_service_with_product(mock_db_manager, inactive_product)
 
-        with pytest.raises(ValidationError) as exc_info:
-            await service.update_product("inactive-product-id", name="New Name")
-
-        assert "not the active product" in exc_info.value.message.lower()
-
-    @pytest.mark.asyncio
-    async def test_update_inactive_product_error_message_mentions_switch(self, mock_db_manager, inactive_product):
-        """Error message for inactive product includes guidance to switch products."""
-        service = _build_service_with_product(mock_db_manager, inactive_product)
-
-        with pytest.raises(ValidationError) as exc_info:
-            await service.update_product("inactive-product-id", description="new desc")
-
-        assert "switch" in exc_info.value.message.lower()
-
-    @pytest.mark.asyncio
-    async def test_update_inactive_product_error_includes_product_id_in_context(
-        self, mock_db_manager, inactive_product
-    ):
-        """ValidationError context must contain the product_id for debugging."""
-        service = _build_service_with_product(mock_db_manager, inactive_product)
-
-        with pytest.raises(ValidationError) as exc_info:
-            await service.update_product("inactive-product-id", name="x")
-
-        assert exc_info.value.context is not None
-        assert "product_id" in exc_info.value.context
-
-    @pytest.mark.asyncio
-    async def test_update_active_product_succeeds_without_raising(self, mock_db_manager, active_product):
-        """update_product() on an active product with no config fields completes normally."""
-        service = _build_service_with_product(mock_db_manager, active_product)
-
-        # Should not raise
-        result = await service.update_product("active-product-id", name="Updated Name")
+        result = await service.update_product("inactive-product-id", name="New Name")
         assert result is not None
 
     @pytest.mark.asyncio
-    async def test_active_guard_checked_before_overwrite_guard(self, mock_db_manager, inactive_product):
-        """
-        When product is inactive AND has tech_stack, inactive guard fires first.
-        This verifies the ordering in the implementation.
-        """
-        inactive_product.tech_stack = MagicMock()  # Would trigger overwrite guard too
-        service = _build_service_with_product(mock_db_manager, inactive_product)
+    async def test_update_active_product_succeeds(self, mock_db_manager, active_product):
+        """update_product() on an active product completes normally."""
+        service = _build_service_with_product(mock_db_manager, active_product)
 
-        with pytest.raises(ValidationError) as exc_info:
-            await service.update_product(
-                "inactive-product-id",
-                tech_stack={"language": "Python"},
-                force=False,
-            )
-
-        # The "not active" message should fire, not the "already populated" one
-        assert "not the active product" in exc_info.value.message.lower()
+        result = await service.update_product("active-product-id", name="Updated Name")
+        assert result is not None
 
 
 # ============================================================================
