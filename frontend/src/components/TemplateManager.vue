@@ -590,7 +590,7 @@ const handleToggleActive = async (template, newValue) => {
   } catch (error) {
     const errorMsg = error.response?.data?.detail || 'Failed to update agent'
     showToast({ message: errorMsg, type: 'error' })
-    await loadTemplates()
+    await reloadTemplates()
   }
 }
 
@@ -681,7 +681,8 @@ const saveTemplate = async () => {
       await api.templates.create(data)
     }
 
-    await loadTemplates()
+    await reloadTemplates()
+    await loadActiveCount()
     showToast({ message: 'Template saved', type: 'success' })
     closeEditDialog()
   } catch (error) {
@@ -705,7 +706,7 @@ const openCloneDialog = (template) => {
 
 const onTemplateCloned = () => {
   // Refresh templates in case the clone affects current product
-  loadTemplates()
+  reloadTemplates()
 }
 
 const confirmDelete = (template) => {
@@ -717,7 +718,8 @@ const deleteTemplate = async () => {
   deleting.value = true
   try {
     await api.templates.delete(deletingTemplate.value.id)
-    await loadTemplates()
+    await reloadTemplates()
+    await loadActiveCount()
     deleteDialog.value = false
     deletingTemplate.value = null
   } catch (error) {
@@ -743,7 +745,7 @@ const resetTemplate = async () => {
   resetting.value = true
   try {
     await api.templates.reset(resettingTemplate.value.id)
-    await loadTemplates()
+    await reloadTemplates()
     resetDialog.value = false
     resettingTemplate.value = null
   } catch (error) {
@@ -808,9 +810,15 @@ async function loadCloseoutMode() {
   }
 }
 
+// Always scope template list to active product
+const reloadTemplates = () => {
+  const pid = activeProductId.value
+  return loadTemplates(pid ? { product_id: pid } : {})
+}
+
 // Lifecycle
 onMounted(() => {
-  loadTemplates()
+  reloadTemplates()
   loadActiveCount()
   loadCloseoutMode()
   on('template:exported', handleTemplateExported)
@@ -827,7 +835,7 @@ watch(
   activeProductId,
   (newId, oldId) => {
     if (newId !== oldId) {
-      loadTemplates(newId ? { product_id: newId } : {})
+      reloadTemplates()
     }
   },
 )
