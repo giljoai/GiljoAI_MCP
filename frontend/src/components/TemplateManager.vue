@@ -366,38 +366,22 @@
                 />
               </v-col>
 
-              <!-- Preview (collapsible, Handover 0814) -->
-              <v-col v-if="previewContent" cols="12">
-                <v-expansion-panels variant="accordion">
-                  <v-expansion-panel>
-                    <v-expansion-panel-title>
-                      <div class="d-flex align-center">
-                        <v-icon start size="small" color="primary">mdi-eye</v-icon>
-                        <span class="font-weight-medium">Template Preview</span>
-                        <span class="text-caption text-muted-a11y ml-2">(includes orchestration protocols)</span>
-                      </div>
-                    </v-expansion-panel-title>
-                    <v-expansion-panel-text>
-                      <v-card variant="flat" class="preview-card smooth-border">
-                        <pre class="preview-content">{{ previewContent }}</pre>
-                      </v-card>
-                    </v-expansion-panel-text>
-                  </v-expansion-panel>
-                </v-expansion-panels>
-              </v-col>
             </v-row>
           </v-container>
         </v-card-text>
 
         <div class="dlg-footer">
           <v-spacer />
-          <v-btn v-if="templateSaved" variant="text" @click="closeEditDialog">Close</v-btn>
-          <template v-else>
-            <v-btn variant="text" @click="closeEditDialog">Cancel</v-btn>
-            <v-btn color="primary" variant="flat" :loading="saving" @click="saveTemplateAndPreview">
-              Save and Generate Preview
-            </v-btn>
-          </template>
+          <v-btn variant="text" @click="closeEditDialog">Cancel</v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="saving"
+            :disabled="!hasChanges"
+            @click="saveTemplate"
+          >
+            Save
+          </v-btn>
         </div>
       </v-card>
     </v-dialog>
@@ -520,7 +504,6 @@ const filterStatus = ref(null)
 const {
   templates,
   loading,
-  previewContent,
   editingTemplate,
   filteredTemplates,
   generatedName,
@@ -536,8 +519,20 @@ const {
 // HITL closeout mode
 const closeoutModeHitl = ref(true)
 
+// Dirty tracking: snapshot original state on dialog open
+const originalSnapshot = ref(null)
+const TRACKED_FIELDS = ['role', 'custom_suffix', 'description', 'user_instructions', 'model', 'tools', 'cli_tool']
+const hasChanges = computed(() => {
+  if (!originalSnapshot.value) {
+    // Create mode: require at least a role
+    return !!editingTemplate.value.role
+  }
+  return TRACKED_FIELDS.some(
+    (f) => (editingTemplate.value[f] ?? '') !== (originalSnapshot.value[f] ?? ''),
+  )
+})
+
 // Dialog loading states
-const templateSaved = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 const resetting = ref(false)
@@ -601,12 +596,12 @@ const handleToggleActive = async (template, newValue) => {
 
 const openCreateDialog = () => {
   resetEditingTemplate()
-  previewContent.value = ''
+  originalSnapshot.value = null
   editDialog.value = true
 }
 
-const editTemplate = async (template) => {
-  editingTemplate.value = {
+const editTemplate = (template) => {
+  const normalized = {
     ...template,
     user_instructions: template.user_instructions || '',
     cli_tool: template.cli_tool || 'claude',
@@ -615,17 +610,9 @@ const editTemplate = async (template) => {
     model: template.model || 'sonnet',
     tools: template.tools || null,
   }
-  previewContent.value = ''
+  editingTemplate.value = { ...normalized }
+  originalSnapshot.value = { ...normalized }
   editDialog.value = true
-
-  if (template.id) {
-    try {
-      const previewResponse = await api.templates.preview(template.id, {})
-      previewContent.value = previewResponse.data.preview
-    } catch (error) {
-      console.error('Failed to load preview:', error)
-    }
-  }
 }
 
 const duplicateTemplate = (template) => {
@@ -640,14 +627,13 @@ const duplicateTemplate = (template) => {
     model: template.model || 'sonnet',
     tools: template.tools || null,
   }
-  previewContent.value = ''
+  originalSnapshot.value = null
   editDialog.value = true
 }
 
 const closeEditDialog = () => {
   editDialog.value = false
-  previewContent.value = ''
-  templateSaved.value = false
+  originalSnapshot.value = null
   resetEditingTemplate()
 }
 
@@ -656,8 +642,7 @@ const onRoleChange = (newRole) => {
   editingTemplate.value.background_color = getCategoryColor(newRole)
 }
 
-// Handover 0103: Save template and generate preview
-const saveTemplateAndPreview = async () => {
+const saveTemplate = async () => {
   saving.value = true
   try {
     const data = {
@@ -677,8 +662,6 @@ const saveTemplateAndPreview = async () => {
       is_default: editingTemplate.value.is_default || false,
     }
 
-    let templateId = editingTemplate.value.id
-
     if (editingTemplate.value.id) {
       await api.templates.update(editingTemplate.value.id, {
         name: data.name,
@@ -695,18 +678,14 @@ const saveTemplateAndPreview = async () => {
         is_default: data.is_default,
       })
     } else {
-      const response = await api.templates.create(data)
-      templateId = response.data.id
+      await api.templates.create(data)
     }
 
-    const previewResponse = await api.templates.preview(templateId, {})
-    previewContent.value = previewResponse.data.preview
-    templateSaved.value = true
     await loadTemplates()
-    showToast({ message: 'Template saved and preview generated', type: 'success' })
+    showToast({ message: 'Template saved', type: 'success' })
+    closeEditDialog()
   } catch (error) {
     console.error('Failed to save template:', error)
-    previewContent.value = ''
     const detail = error.response?.data?.detail || 'Failed to save template. Check your connection and try again.'
     const isNameCollision = error.response?.status === 400 && /already exists|unique/i.test(detail)
     showToast({
@@ -971,26 +950,6 @@ watch(
     }
   }
 
-}
-
-// Handover 0814: Preview styling (harmonized with AgentDetailsModal)
-// Outside .template-manager — v-dialog teleports to <body>, so nested selectors don't reach it
-:deep(.preview-card) {
-  max-height: 500px;
-  overflow-y: auto;
-  background-color: rgb(var(--v-theme-surface-variant));
-
-  pre.preview-content {
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 12px;
-    line-height: 1.6;
-    padding: 16px;
-    margin: 0;
-    white-space: pre-wrap !important;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    color: rgb(var(--v-theme-on-surface-variant));
-  }
 }
 
 // Custom toggle colors: green when ON, faded blue when OFF
