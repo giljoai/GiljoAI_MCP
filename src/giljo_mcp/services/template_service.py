@@ -973,3 +973,138 @@ class TemplateService:
             The refreshed AgentTemplate after commit.
         """
         return await self._repo.commit_and_refresh_template(session, template)
+
+    # ============================================================================
+    # Product Scoping (Handover: setup-split)
+    # ============================================================================
+
+    async def clone_templates_to_product(
+        self,
+        source_product_id: Optional[str],
+        target_product_id: str,
+        tenant_key: Optional[str] = None,
+    ) -> int:
+        """
+        Clone templates from one product (or tenant-level) to another product.
+
+        Copies all active templates from source_product_id to target_product_id.
+        Skips templates that already exist on the target (by name + version).
+
+        Args:
+            source_product_id: Source product UUID, or None for tenant-level templates.
+            target_product_id: Target product UUID (required).
+            tenant_key: Tenant key for isolation.
+
+        Returns:
+            Number of templates cloned.
+
+        Raises:
+            ValidationError: If target_product_id is missing or no tenant context.
+        """
+        from datetime import datetime, timezone
+
+        if not target_product_id:
+            raise ValidationError(
+                message="target_product_id is required",
+                context={"operation": "clone_templates_to_product"},
+            )
+
+        if not tenant_key:
+            tenant_key = self.tenant_manager.get_current_tenant()
+        if not tenant_key:
+            raise ValidationError(
+                message="No tenant context available",
+                context={"operation": "clone_templates_to_product"},
+            )
+
+        async with self._get_session() as session:
+            # Fetch source templates
+            source_templates = await self._repo.get_active_by_product(session, tenant_key, source_product_id)
+
+            if not source_templates:
+                self._logger.info("No source templates to clone")
+                return 0
+
+            # Check existing on target to avoid duplicates
+            existing_keys = await self._repo.get_existing_name_versions(session, tenant_key, target_product_id)
+
+            cloned_count = 0
+            current_time = datetime.now(timezone.utc)
+
+            for src in source_templates:
+                if (src.name, src.version) in existing_keys:
+                    continue
+
+                clone = AgentTemplate(
+                    id=str(uuid4()),
+                    tenant_key=tenant_key,
+                    product_id=target_product_id,
+                    name=src.name,
+                    category=src.category,
+                    role=src.role,
+                    cli_tool=src.cli_tool,
+                    background_color=src.background_color,
+                    description=src.description,
+                    system_instructions=src.system_instructions,
+                    user_instructions=src.user_instructions,
+                    model=src.model,
+                    tools=src.tools,
+                    variables=src.variables or [],
+                    behavioral_rules=src.behavioral_rules or [],
+                    success_criteria=src.success_criteria or [],
+                    tool=src.tool,
+                    version=src.version,
+                    is_active=src.is_active,
+                    is_default=src.is_default,
+                    tags=src.tags or [],
+                    created_at=current_time,
+                )
+                session.add(clone)
+                cloned_count += 1
+
+            if cloned_count > 0:
+                await self._repo.commit(session)
+
+            self._logger.info(
+                "Cloned %d template(s) to product %s for tenant %s",
+                cloned_count,
+                target_product_id,
+                tenant_key,
+            )
+            return cloned_count
+
+    async def seed_product_defaults(
+        self,
+        product_id: str,
+        tenant_key: str,
+    ) -> int:
+        """
+        Seed default agent templates for a product from tenant-level templates.
+
+        Only seeds if the product has zero templates. Idempotent.
+
+        Args:
+            product_id: Product UUID to seed templates for.
+            tenant_key: Tenant key for isolation.
+
+        Returns:
+            Number of templates seeded (0 if product already has templates).
+        """
+        async with self._get_session() as session:
+            # Check if product already has templates
+            existing_count = await self._repo.count_by_product(session, tenant_key, product_id)
+
+            if existing_count > 0:
+                self._logger.info(
+                    "Product %s already has %d templates, skipping seed",
+                    product_id,
+                    existing_count,
+                )
+                return 0
+
+        # Clone from tenant-level (product_id=None) to this product
+        return await self.clone_templates_to_product(
+            source_product_id=None,
+            target_product_id=product_id,
+            tenant_key=tenant_key,
+        )

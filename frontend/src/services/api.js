@@ -277,7 +277,7 @@ export const api = {
     create: (data) => apiClient.post('/api/v1/projects/', data),
     update: (id, data) => apiClient.patch(`/api/v1/projects/${id}`, data),
     delete: (id) => apiClient.delete(`/api/v1/projects/${id}`),
-    fetchDeleted: () => apiClient.get('/api/v1/projects/deleted'),
+    fetchDeleted: (params) => apiClient.get('/api/v1/projects/deleted', { params }),
     // Taxonomy helpers (Handover 0440b)
     getNextSeries: (typeId) =>
       apiClient.get('/api/v1/projects/next-series', { params: { type_id: typeId } }),
@@ -301,7 +301,7 @@ export const api = {
     cancel: (id) => apiClient.post(`/api/v1/projects/${id}/cancel`),
     restore: (id) => apiClient.post(`/api/v1/projects/${id}/restore`),
     purgeDeleted: (id) => apiClient.delete(`/api/v1/projects/${id}/purge`),
-    purgeAllDeleted: () => apiClient.delete('/api/v1/projects/deleted'),
+    purgeAllDeleted: (params) => apiClient.delete('/api/v1/projects/deleted', { params }),
     // Completed projects are resumed via the continue-working endpoint
     restoreCompleted: (id) => apiClient.post(`/api/v1/projects/${id}/continue-working`),
     // Handover 0108: Staging cancellation
@@ -417,6 +417,11 @@ export const api = {
       apiClient.delete('/api/v1/user/settings/cookie-domains', { data: { domain } }),
   },
 
+  // Health Check (includes skills_version)
+  health: {
+    check: () => apiClient.get('/health'),
+  },
+
   // Setup Status
   setup: {
     status: () => apiClient.get('/api/setup/status'),
@@ -439,6 +444,8 @@ export const api = {
     preview: (id, data = {}) => apiClient.post(`/api/v1/templates/${id}/preview/`, data),
     reset: (id) => apiClient.post(`/api/v1/templates/${id}/reset/`),
     activeCount: () => apiClient.get('/api/v1/templates/stats/active-count'),
+    cloneToProduct: (templateId, targetProductId) =>
+      apiClient.post(`/api/v1/templates/${templateId}/clone`, { target_product_id: targetProductId }),
   },
 
   // Authentication (JWT via httpOnly cookies)

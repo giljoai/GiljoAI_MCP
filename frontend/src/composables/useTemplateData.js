@@ -103,10 +103,10 @@ export function useTemplateData(search, filterCategory, filterStatus) {
 
   const userAgentLimit = computed(() => activeStats.value.userLimit ?? 7)
 
-  const loadTemplates = async () => {
+  const loadTemplates = async (params = {}) => {
     loading.value = true
     try {
-      const response = await api.templates.list()
+      const response = await api.templates.list(params)
       templates.value = (response.data || []).filter((t) => !t.is_system_role)
     } catch (error) {
       console.error('Failed to load templates:', error)

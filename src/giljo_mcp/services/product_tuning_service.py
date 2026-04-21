@@ -469,6 +469,7 @@ class ProductTuningService:
         product_id: str,
         proposals: list[dict[str, Any]],
         overall_summary: str | None = None,
+        force: bool = False,
     ) -> dict[str, Any]:
         """
         Apply agent-approved tuning proposals directly to product fields.
@@ -494,7 +495,7 @@ class ProductTuningService:
 
         if update_kwargs:
             product_service = ProductService(self.db_manager, self.tenant_key)
-            await product_service.update_product(product_id, **update_kwargs)
+            await product_service.update_product(product_id, force=force, **update_kwargs)
 
         # Stamp tuning metadata
         async with self._get_session() as session:

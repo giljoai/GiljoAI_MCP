@@ -14,6 +14,10 @@ This module provides platform-specific command templates:
 Also provides bootstrap prompt templates for one-time CLI onboarding.
 """
 
+# Semver for the skills/commands package. Bumped when slash command templates change.
+# Referenced by health_check so the frontend can compare installed vs available.
+SKILLS_VERSION = "1.1.8"
+
 # =============================================================================
 # CLAUDE CODE TEMPLATES
 # =============================================================================
@@ -29,22 +33,23 @@ You are the GiljoAI agent template installer for Claude Code. Be fast and effici
 ## Procedure
 
 1. Call `mcp__giljo_mcp__list_agent_templates` with `platform="claude_code"`
+   (Templates are automatically scoped to the active product on the server.)
 2. Show a compact summary table (role, name, one-line description)
-3. Ask BOTH questions in a single AskUserQuestion call (2 questions):
-   - Question 1 — "Which model should agents use?"
+3. Ask ONE question in AskUserQuestion:
+   - "Which model should agents use?"
      Options: ["sonnet (recommended)", "opus (maximum capability)", "haiku (fast, cost-effective)", "Let me pick per agent"]
-   - Question 2 — "Where should agents be installed?"
-     Options: ["Project agents (.claude/agents/) — this project only", "User agents (~/.claude/agents/) — available everywhere"]
 4. If user picked "Let me pick per agent": ask for ALL agents in batched AskUserQuestion calls (up to 4 questions per call, one per agent). Use header field for agent name.
 5. Install using a SINGLE Bash call that:
-   a. Creates the target directory if needed
+   a. Creates `.claude/agents/` in the project root if needed
    b. Backs up existing .md files (rename to .md.bak.YYYYMMDD_HHMMSS)
    c. Writes ALL agent files using a heredoc loop or sequential cat commands
    The Bash call MUST write all files in one invocation — do NOT use separate tool calls per file.
+   ALWAYS install to `.claude/agents/` (project-level) — never user-level.
 6. Report what was installed in a table and remind user to restart Claude Code.
 
 ## Critical Rules
 
+- ALWAYS install to `.claude/agents/` (project root) — agents are project-scoped
 - ALWAYS use Bash (cat > file << 'EOF') for writing files — NEVER use the Write tool (it requires pre-reading files and fails on overwrites)
 - All file operations in ONE Bash call — backup + write all agents together
 - AskUserQuestion for all user choices — never open-ended questions
@@ -109,6 +114,7 @@ You are the GiljoAI agent template installer for Gemini CLI.
 ## Your Job
 
 1. Call the GiljoAI MCP tool `list_agent_templates` with `platform="gemini_cli"`
+   (Templates are automatically scoped to the active product on the server.)
 2. The response includes structured agent data for each active agent template.
 3. Show a summary table of all agents (role, name, description).
 4. Ask the user how they want to assign models using `ask_user` with numbered options:
@@ -148,16 +154,9 @@ You are the GiljoAI agent template installer for Gemini CLI.
    If the settings file cannot be read or contains no model list, fall back to presenting
    these common models: gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash.
 
-5. Ask install location using `ask_user` with numbered options:
-
-   ```
-   Where should agents be installed?
-   1. User agents (~/.gemini/agents/) — available everywhere (recommended)
-   2. Project agents (.gemini/agents/) — this project only
-   ```
-
-   NOTE: If the user picks project agents, remind them to run `/permissions trust` in
-   Gemini CLI for the project folder.
+5. Agents are ALWAYS installed to `.gemini/agents/` (project root).
+   Tell the user: "Agents will be installed to .gemini/agents/ (project-level)."
+   Remind: "Ensure `security.folderTrust.enabled` is set if using Gemini folder trust gates."
 
 6. If the target directory has existing agent `.md` files, back them up:
    rename `*.md` to `*.md.bak.YYYYMMDD_HHMMSS`
@@ -244,6 +243,7 @@ If agents don't appear after restart:
 - Do NOT modify agent names, descriptions, or body content from the server
 - Do NOT modify GiljoAI protocol sections
 - User-configurable fields: model selection, max_turns (default 50)
+- ALWAYS install to `.gemini/agents/` (project root) — agents are project-scoped
 - ALWAYS ensure experimental.enableAgents is set in settings.json
 - Use run_shell_command tool for file operations (cross-platform)
 - Unix paths work on ALL platforms
@@ -301,9 +301,14 @@ description: "Download and install GiljoAI agent templates from the MCP server i
 
 You are the GiljoAI agent template installer for Codex CLI.
 
+## Important: Workspace Trust
+
+Codex requires workspace trust. Run this from a trusted directory or agents will be silently skipped.
+
 ## Your Job
 
 1. Call the GiljoAI MCP tool `list_agent_templates` with platform="codex_cli"
+   (Templates are automatically scoped to the active product on the server.)
 2. The response includes structured agent data for each active agent template.
 3. Show a summary table of all agents (role, name, description).
 4. Use `request_user_input` to ask how models should be assigned:
@@ -557,7 +562,7 @@ description: "Add a task or project to the GiljoAI dashboard"
 # BOOTSTRAP PROMPT TEMPLATES
 # =============================================================================
 
-BOOTSTRAP_CLAUDE_CODE = """Install the GiljoAI CLI integration. This is a one-time setup.
+BOOTSTRAP_CLAUDE_CODE = """Install the GiljoAI CLI skills. This is a one-time setup.
 
 Step 1 — Install slash commands:
 Download: {SLASH_COMMANDS_URL}
@@ -566,15 +571,16 @@ Delete the downloaded zip.
 
 Adapt all commands for the OS you are running on.
 After installation, tell the user:
+Skills installed to user-level (~/.claude/commands/).
 Two commands are now available:
-- /gil_get_agents — install/update GiljoAI agent templates
+- /gil_get_agents — pull agent templates for your active product
 - /gil_add — add tasks and projects from the CLI (try /gil_add --help)
 
-Restart Claude Code, then run /gil_get_agents to install agent templates.
+Restart Claude Code, then run /gil_get_agents to pull agent templates for your product.
 Note: Download link expires in 15 minutes.
 """
 
-BOOTSTRAP_GEMINI_CLI = """Install the GiljoAI CLI integration. This is a one-time setup.
+BOOTSTRAP_GEMINI_CLI = """Install the GiljoAI CLI skills. This is a one-time setup.
 
 Step 1 — Install custom commands:
 Download: {SLASH_COMMANDS_URL}
@@ -583,15 +589,16 @@ Delete the downloaded zip.
 
 Adapt all commands for the OS you are running on.
 After installation, tell the user:
+Skills installed to user-level (~/.gemini/commands/).
 Two commands are now available:
-- /gil_get_agents — install/update GiljoAI agent templates
+- /gil_get_agents — pull agent templates for your active product
 - /gil_add — add tasks and projects from the CLI (try /gil_add --help)
 
-Restart Gemini CLI, then run /gil_get_agents to install agent templates.
+Restart Gemini CLI, then run /gil_get_agents to pull agent templates for your product.
 Note: Download link expires in 15 minutes.
 """
 
-BOOTSTRAP_CODEX_CLI = """Install the GiljoAI CLI integration. This is a one-time setup.
+BOOTSTRAP_CODEX_CLI = """Install the GiljoAI CLI skills. This is a one-time setup.
 
 Step 1 — Install skills:
 Download: {SKILLS_URL}
@@ -617,18 +624,19 @@ Prefer your built-in write_file tool if available.
 
 Adapt all commands for the OS you are running on.
 After installation, tell the user:
+Skills installed to user-level (~/.codex/skills/).
 Two skills are now available:
-- $gil-get-agents — install/update GiljoAI agent templates
+- $gil-get-agents — pull agent templates for your active product
 - $gil-add — add tasks and projects from the CLI (try $gil-add --help)
 
-Restart Codex CLI, then run $gil-get-agents to install agent templates.
+Restart Codex CLI, then run $gil-get-agents to pull agent templates for your product.
 Note: Download link expires in 15 minutes.
 """
 
 BOOTSTRAP_GENERIC = """Your CLI platform was not auto-detected. Visit your GiljoAI server's
-Settings → Integrations page to download generic agent templates and
-slash command reference files. Install them according to your tool's
-documentation.
+Settings -> Integrations page to download skill reference files.
+Install them according to your tool's documentation, then use the
+get-agents command to pull product-scoped agent templates.
 """
 
 # =============================================================================
