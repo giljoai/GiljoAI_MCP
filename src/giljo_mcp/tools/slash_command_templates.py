@@ -25,37 +25,66 @@ SKILLS_VERSION = "1.1.8"
 GIL_GET_AGENTS_MD = """---
 name: gil_get_agents
 description: Download and install GiljoAI agent templates from the MCP server
-allowed-tools: mcp__giljo_mcp__*, Bash, AskUserQuestion
+allowed-tools: Bash, AskUserQuestion
 ---
 
 You are the GiljoAI agent template installer for Claude Code. Be fast and efficient.
 
 ## Procedure
 
-1. Call `mcp__giljo_mcp__list_agent_templates` with `platform="claude_code"`
-   (Templates are automatically scoped to the active product on the server.)
-2. Show a compact summary table (role, name, one-line description)
-3. Ask ONE question in AskUserQuestion:
+1. Ask user via AskUserQuestion (2 questions in one call):
    - "Which model should agents use?"
-     Options: ["sonnet (recommended)", "opus (maximum capability)", "haiku (fast, cost-effective)", "Let me pick per agent"]
-4. If user picked "Let me pick per agent": ask for ALL agents in batched AskUserQuestion calls (up to 4 questions per call, one per agent). Use header field for agent name.
-5. Install using a SINGLE Bash call that:
-   a. Creates `.claude/agents/` in the project root if needed
-   b. Backs up existing .md files (rename to .md.bak.YYYYMMDD_HHMMSS)
-   c. Writes ALL agent files using a heredoc loop or sequential cat commands
-   The Bash call MUST write all files in one invocation — do NOT use separate tool calls per file.
-   ALWAYS install to `.claude/agents/` (project-level) — never user-level.
-6. Report what was installed in a table and remind user to restart Claude Code.
+     Options: ["opus (recommended)", "sonnet (balanced)", "haiku (fast)", "Let me pick per agent"]
+   - "Install scope?"
+     Options: ["Project (.claude/agents/)", "User (~/.claude/agents/)"]
+2. If "Let me pick per agent": download ZIP first (step 3) to inspect filenames, then ask
+   per-agent model via batched AskUserQuestion calls (up to 4 questions per call, one per agent).
+3. Download the agent template ZIP, extract, patch model, and clean up in a SINGLE Bash call:
+   ```bash
+   # Derive SERVER_URL from MCP connection (strip path, keep protocol://host:port)
+   SERVER_URL="<MCP_SERVER_URL>"
+   TARGET_DIR="<project_or_user_agents_dir>"
+   MODEL="<chosen_model>"
+   TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+   # Backup existing .md files
+   for f in "$TARGET_DIR"/*.md; do
+     [ -f "$f" ] && mv "$f" "${f}.bak.${TIMESTAMP}"
+   done
+
+   # Download + extract
+   curl -H "X-API-Key: $GILJO_API_KEY" \
+     "${SERVER_URL}/api/download/agent-templates.zip?platform=claude_code&active_only=true" \
+     -o /tmp/giljo_agents.zip --fail --silent --show-error
+   mkdir -p "$TARGET_DIR"
+   unzip -o /tmp/giljo_agents.zip -d "$TARGET_DIR"
+
+   # Patch model frontmatter
+   sed -i "s/^model: .*/model: $MODEL/" "$TARGET_DIR"/*.md
+
+   # Remove bundled install scripts (not needed in agents dir)
+   rm -f "$TARGET_DIR/install.sh" "$TARGET_DIR/install.ps1"
+
+   # Cleanup
+   rm -f /tmp/giljo_agents.zip
+   ```
+   If user chose "per agent" models, run one sed per agent file instead of the glob sed.
+4. Report a table of installed agents and remind user to restart Claude Code.
+
+## Deriving SERVER_URL
+
+The MCP server connection URL is available from your environment. Strip the path component
+and keep `protocol://host:port`. For example, if the MCP endpoint is
+`https://10.1.0.101:7272/mcp/sse`, use `https://10.1.0.101:7272`.
 
 ## Critical Rules
 
-- ALWAYS install to `.claude/agents/` (project root) — agents are project-scoped
-- ALWAYS use Bash (cat > file << 'EOF') for writing files — NEVER use the Write tool (it requires pre-reading files and fails on overwrites)
-- All file operations in ONE Bash call — backup + write all agents together
-- AskUserQuestion for all user choices — never open-ended questions
+- Use Bash for ALL file operations -- one Bash call for steps 3 (download + extract + patch + cleanup)
+- AskUserQuestion for all user choices -- never open-ended questions
+- Do NOT call `list_agent_templates` MCP tool -- use the ZIP download endpoint instead
 - Do NOT modify agent name, description, body content, or protocol sections
 - The ONLY user-configurable field is the `model` frontmatter value
-- Colors are pre-assigned by the server — do not change them
+- Colors are pre-assigned by the server -- do not change them
 - Unix paths work on ALL platforms (Git Bash on Windows)
 - Target: complete the entire install in under 60 seconds and under 5 tool calls total
 """
@@ -113,122 +142,92 @@ You are the GiljoAI agent template installer for Gemini CLI.
 
 ## Your Job
 
-1. Call the GiljoAI MCP tool `list_agent_templates` with `platform="gemini_cli"`
-   (Templates are automatically scoped to the active product on the server.)
-2. The response includes structured agent data for each active agent template.
-3. Show a summary table of all agents (role, name, description).
-4. Ask the user how they want to assign models using `ask_user` with numbered options:
+1. Ask the user how they want to assign models using `ask_user` with numbered options:
 
    ```
    How would you like to assign models to agents?
-   1. Use the default model (gemini-2.5-pro) for all agents
-   2. Choose a model for each agent individually
+   1. Use the default model (gemini-3-pro-preview) for all agents
+   2. Use gemini-2.5-flash for all agents
+   3. Inherit model from parent session
+   4. Choose a model for each agent individually
    ```
 
-   **If the user picks 1 (default for all):**
-   Proceed using `gemini-2.5-pro` as the model for every agent.
+   **If the user picks 1, 2, or 3:** Proceed with that model for every agent.
 
-   **If the user picks 2 (per-agent selection):**
-   First, discover the models available to the user by reading their Gemini settings file.
-   The file location is platform-dependent:
-   - **Windows:** `C:\\Users\\<username>\\.gemini\\settings.json`
-   - **Linux:** `~/.gemini/settings.json`
-   - **macOS:** `~/.gemini/settings.json`
+   **If the user picks 4 (per-agent selection):**
+   Download the ZIP first (step 3) to inspect filenames, then ask per-agent model
+   using `ask_user` with numbered options showing agent name and model list.
+   Fall back to these common models if discovery fails: gemini-3-pro-preview,
+   gemini-2.5-flash, gemini-2.0-flash.
 
-   Read `~/.gemini/settings.json` (the `~` path works cross-platform in Gemini CLI).
-   Extract the available model identifiers from the settings.
-
-   Present the discovered models as a numbered list using `ask_user`, e.g.:
-   ```
-   Available models:
-   1. gemini-2.5-pro
-   2. gemini-2.5-flash
-   3. gemini-2.0-flash
-   ...
-   ```
-
-   Then walk through each agent one at a time. For each agent, use `ask_user` with numbered
-   options showing the agent role/name and the model list. Let the user click/type just a number.
-   Continue until every agent has a model assigned.
-
-   If the settings file cannot be read or contains no model list, fall back to presenting
-   these common models: gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash.
-
-5. Agents are ALWAYS installed to `.gemini/agents/` (project root).
-   Tell the user: "Agents will be installed to .gemini/agents/ (project-level)."
+2. Tell the user: "Agents will be installed to .gemini/agents/ (project-level)."
    Remind: "Ensure `security.folderTrust.enabled` is set if using Gemini folder trust gates."
 
-6. If the target directory has existing agent `.md` files, back them up:
-   rename `*.md` to `*.md.bak.YYYYMMDD_HHMMSS`
-7. Write each agent file with the user's model selection applied to the `model` frontmatter field
-8. **Enable experimental agents flag** (MANDATORY):
-   Read the user's `.gemini/settings.json` (project-level or `~/.gemini/settings.json` for user-level).
-   If `experimental.enableAgents` is not already set to `true`, add it:
-   ```json
-   { "experimental": { "enableAgents": true } }
+3. Download the agent template ZIP, extract, patch, and clean up using `run_shell_command`:
+   ```bash
+   SERVER_URL="<MCP_SERVER_URL>"
+   TARGET_DIR=".gemini/agents"
+   MODEL="<chosen_model>"
+   TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+   # Backup existing .md files
+   for f in "$TARGET_DIR"/*.md; do
+     [ -f "$f" ] && mv "$f" "${f}.bak.${TIMESTAMP}"
+   done
+
+   # Download + extract
+   curl -H "X-API-Key: $GILJO_API_KEY" \
+     "${SERVER_URL}/api/download/agent-templates.zip?platform=gemini_cli&active_only=true" \
+     -o /tmp/giljo_agents.zip --fail --silent --show-error
+   mkdir -p "$TARGET_DIR"
+   unzip -o /tmp/giljo_agents.zip -d "$TARGET_DIR"
+
+   # Patch model frontmatter
+   sed -i "s/^model: .*/model: $MODEL/" "$TARGET_DIR"/*.md
+
+   # Remove bundled install scripts
+   rm -f "$TARGET_DIR/install.sh" "$TARGET_DIR/install.ps1"
+
+   # Cleanup
+   rm -f /tmp/giljo_agents.zip
    ```
-   Merge with existing settings — do NOT overwrite MCP server configs or other settings.
-   IMPORTANT — Windows BOM trap: Use your built-in write_file tool if available.
-   If you must use PowerShell, use this exact command (the $false prevents BOM):
+   If user chose per-agent models, run one sed per agent file instead of the glob sed.
+
+4. **Enable experimental agents flag** (MANDATORY):
+   Read the user's `.gemini/settings.json` (project-level or `~/.gemini/settings.json` for user-level).
+   If `experimental.enableAgents` is not already set to `true`, merge it in:
+   ```bash
+   python3 -c "
+   import json, pathlib
+   p = pathlib.Path.home() / '.gemini' / 'settings.json'
+   d = json.loads(p.read_text()) if p.exists() else {}
+   d.setdefault('experimental', {})['enableAgents'] = True
+   p.write_text(json.dumps(d, indent=2))
+   "
+   ```
+   Merge with existing settings -- do NOT overwrite MCP server configs or other settings.
+   IMPORTANT -- Windows BOM trap: Use the python3 one-liner above (BOM-safe) or your built-in
+   write_file tool. If you must use PowerShell, use this exact command (the $false prevents BOM):
    ```powershell
    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
    [System.IO.File]::WriteAllText($path, $json, $utf8NoBom)
    ```
    Do NOT use Set-Content, Out-File, or [System.Text.Encoding]::UTF8 (all add BOM).
    Show the diff before writing. This flag is required for custom agents to load.
-9. Instruct the user to restart Gemini CLI
+
+5. Show a summary table of installed agents and instruct the user to restart Gemini CLI.
+
+## Deriving SERVER_URL
+
+The MCP server connection URL is available from your environment. Strip the path component
+and keep `protocol://host:port`. For example, if the MCP endpoint is
+`https://10.1.0.101:7272/mcp/sse`, use `https://10.1.0.101:7272`.
 
 ## IMPORTANT: Use `ask_user` for All User Choices
 
 Gemini CLI supports the `ask_user` tool which presents structured options the user can select
 by clicking or typing a number. You MUST use `ask_user` for every user choice (model assignment,
-install location, confirmations). Never ask open-ended questions — always present numbered menus.
-
-## Gemini Agent Format Reference
-
-Each agent is a `.md` file with YAML frontmatter. The server provides the body content.
-You write the frontmatter + body to disk. Example:
-
-```yaml
----
-name: analyzer
-description: Deep code analysis specialist
-kind: local
-model: inherit
-max_turns: 50
-tools:
-  - run_shell_command
-  - read_file
-  - write_file
-  - glob
-  - grep_search
-  - list_directory
-  - read_many_files
-  - mcp_giljo_mcp_health_check
-  - mcp_giljo_mcp_get_agent_mission
-  - mcp_giljo_mcp_send_message
-  - mcp_giljo_mcp_receive_messages
-  - mcp_giljo_mcp_report_progress
-  - mcp_giljo_mcp_complete_job
-  - mcp_giljo_mcp_set_agent_status
-  - mcp_giljo_mcp_create_task
-  - mcp_giljo_mcp_get_workflow_status
-  - mcp_giljo_mcp_fetch_context
-  - mcp_giljo_mcp_reactivate_job
-  - mcp_giljo_mcp_dismiss_reactivation
-  - mcp_giljo_mcp_spawn_job
-  - mcp_giljo_mcp_get_agent_result
-  - mcp_giljo_mcp_write_360_memory
-  - mcp_giljo_mcp_close_project_and_update_memory
----
-```
-
-CRITICAL format rules:
-- `kind` MUST be `local` (not `agent`) — matches Gemini built-in agent format
-- Tool names: `run_shell_command` (NOT `shell`), `grep_search` (NOT `search`)
-- MCP tools: list each tool literally — Gemini CLI does NOT support wildcards
-- `model: inherit` uses the parent session's model; `/gil_get_agents` rewrites this to user's choice
-- Colors are NOT supported — omit any color fields
+install location, confirmations). Never ask open-ended questions -- always present numbered menus.
 
 ## Troubleshooting
 
@@ -240,10 +239,11 @@ If agents don't appear after restart:
 
 ## Rules
 
+- Do NOT call `list_agent_templates` MCP tool -- use the ZIP download endpoint instead
 - Do NOT modify agent names, descriptions, or body content from the server
 - Do NOT modify GiljoAI protocol sections
 - User-configurable fields: model selection, max_turns (default 50)
-- ALWAYS install to `.gemini/agents/` (project root) — agents are project-scoped
+- ALWAYS install to `.gemini/agents/` (project root) -- agents are project-scoped
 - ALWAYS ensure experimental.enableAgents is set in settings.json
 - Use run_shell_command tool for file operations (cross-platform)
 - Unix paths work on ALL platforms
@@ -307,95 +307,94 @@ Codex requires workspace trust. Run this from a trusted directory or agents will
 
 ## Your Job
 
-1. Call the GiljoAI MCP tool `list_agent_templates` with platform="codex_cli"
-   (Templates are automatically scoped to the active product on the server.)
-2. The response includes structured agent data for each active agent template.
-3. Show a summary table of all agents (role, name, description).
-4. Use `request_user_input` to ask how models should be assigned:
-
-   ```json
-   {
-     "questions": [{
-       "header": "Model Assignment",
-       "id": "model_mode",
-       "question": "How would you like to assign models to your GiljoAI agents?",
-       "options": [
-         {
-           "label": "Default model for all agents (Recommended)",
-           "description": "Use gpt-5.3-codex for every agent — fastest setup."
-         },
-         {
-           "label": "Choose a model per agent",
-           "description": "Pick from your available models for each agent individually."
-         }
-       ]
-     }]
-   }
-   ```
-
-   **If the user picks "Default model for all agents":**
-   Proceed using `gpt-5.3-codex` for every agent. Use `request_user_input` to ask reasoning effort:
-
-   ```json
-   {
-     "questions": [{
-       "header": "Reasoning Effort",
-       "id": "reasoning_effort",
-       "question": "What reasoning effort level for all agents?",
-       "options": [
-         {"label": "Low", "description": "Fastest responses, less thorough."},
-         {"label": "Medium (Recommended)", "description": "Balanced speed and quality."},
-         {"label": "High", "description": "Most thorough, slower responses."}
-       ]
-     }]
-   }
-   ```
-
-   **If the user picks "Choose a model per agent":**
-   First, discover available models by running this command:
-   ```powershell
-   (Get-Content -Raw "$HOME\\.codex\\models_cache.json" | ConvertFrom-Json).models | Where-Object visibility -eq 'list' | Select-Object -ExpandProperty slug
-   ```
-   Collect the returned model slugs. Then for EACH agent, use `request_user_input` with
-   the available models as options. You can batch up to 3 questions per call (Codex limit).
-   For example, for the first 2 agents:
+1. Use `request_user_input` to ask model and reasoning effort:
 
    ```json
    {
      "questions": [
        {
-         "header": "gil-analyzer — Model",
-         "id": "model_analyzer",
-         "question": "Which model for the Analyzer agent?",
+         "header": "Model Assignment",
+         "id": "model_mode",
+         "question": "How would you like to assign models to your GiljoAI agents?",
          "options": [
-           {"label": "gpt-5.3-codex", "description": "Default Codex model"},
-           {"label": "o3", "description": "Reasoning-optimized model"},
-           {"label": "gpt-5.4", "description": "Latest GPT model"}
+           {
+             "label": "Default model for all agents (Recommended)",
+             "description": "Use gpt-5.4 for every agent -- fastest setup."
+           },
+           {
+             "label": "Choose a model per agent",
+             "description": "Pick from your available models for each agent individually."
+           }
          ]
        },
        {
-         "header": "gil-implementer — Model",
-         "id": "model_implementer",
-         "question": "Which model for the Implementer agent?",
+         "header": "Reasoning Effort",
+         "id": "reasoning_effort",
+         "question": "What reasoning effort level?",
          "options": [
-           {"label": "gpt-5.3-codex", "description": "Default Codex model"},
-           {"label": "o3", "description": "Reasoning-optimized model"},
-           {"label": "gpt-5.4", "description": "Latest GPT model"}
+           {"label": "Low", "description": "Fastest responses, less thorough."},
+           {"label": "Medium (Recommended)", "description": "Balanced speed and quality."},
+           {"label": "High", "description": "Most thorough, slower responses."}
          ]
        }
      ]
    }
    ```
 
-   Build the options dynamically from the models_cache.json output. Show up to 3 models as
-   options (the client auto-adds an "Other" free-text option for unlisted models).
-   After model selection, ask reasoning effort per agent using the same batched pattern.
+   **If the user picks "Default model for all agents":**
+   Proceed using `gpt-5.4` for every agent with the chosen reasoning effort.
 
-5. Read the user's existing ~/.codex/config.toml to understand current state
-6. For each agent, create a .toml file in ~/.codex/agents/ using the EXACT format below
-7. Merge [agents.*] entries into config.toml — show a diff before writing
-8. Ensure [features] section has multi_agent = true AND default_mode_request_user_input = true
-9. Instruct the user to restart Codex CLI
+   **If the user picks "Choose a model per agent":**
+   Download the ZIP first (step 2) to inspect filenames, then discover available models:
+   ```powershell
+   (Get-Content -Raw "$HOME\\.codex\\models_cache.json" | ConvertFrom-Json).models | Where-Object visibility -eq 'list' | Select-Object -ExpandProperty slug
+   ```
+   Then for EACH agent, use `request_user_input` with the available models as options.
+   You can batch up to 3 questions per call (Codex limit). Build options dynamically from
+   models_cache.json output. After model selection, ask reasoning effort per agent.
+
+2. Download the agent template ZIP and extract to ~/.codex/agents/:
+   ```bash
+   SERVER_URL="<MCP_SERVER_URL>"
+   TARGET_DIR="$HOME/.codex/agents"
+   MODEL="<chosen_model>"
+   EFFORT="<chosen_effort>"
+   TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+   # Backup existing .toml agent files
+   for f in "$TARGET_DIR"/*.toml; do
+     [ -f "$f" ] && mv "$f" "${f}.bak.${TIMESTAMP}"
+   done
+
+   # Download + extract
+   curl -H "X-API-Key: $GILJO_API_KEY" \
+     "${SERVER_URL}/api/download/agent-templates.zip?platform=codex_cli&active_only=true" \
+     -o /tmp/giljo_agents.zip --fail --silent --show-error
+   mkdir -p "$TARGET_DIR"
+   unzip -o /tmp/giljo_agents.zip -d "$TARGET_DIR"
+
+   # Patch model and reasoning effort in .toml files
+   sed -i "s/^model = .*/model = \\"$MODEL\\"/" "$TARGET_DIR"/*.toml
+   sed -i "s/^model_reasoning_effort = .*/model_reasoning_effort = \\"$EFFORT\\"/" "$TARGET_DIR"/*.toml
+
+   # Remove bundled install scripts
+   rm -f "$TARGET_DIR/install.sh" "$TARGET_DIR/install.ps1"
+
+   # Cleanup
+   rm -f /tmp/giljo_agents.zip
+   ```
+   If user chose per-agent models, run one sed per agent file instead of the glob sed.
+
+3. Read the user's existing ~/.codex/config.toml to understand current state
+4. Merge [agents.*] entries into config.toml -- show a diff before writing
+5. Ensure [features] section has multi_agent = true AND default_mode_request_user_input = true
+6. Show summary table of installed agents and instruct the user to restart Codex CLI
+
+## Deriving SERVER_URL
+
+The MCP server connection URL is available from your environment. Strip the path component
+and keep `protocol://host:port`. For example, if the MCP endpoint is
+`https://10.1.0.101:7272/mcp/sse`, use `https://10.1.0.101:7272`.
 
 ## IMPORTANT: Use `request_user_input` for All User Choices
 
@@ -408,29 +407,28 @@ and restart Codex CLI.
 Rules for `request_user_input`:
 - Send 1 to 3 questions per call (Codex limit)
 - Each question needs: header, id, question, and options (2-3 options)
-- The client auto-adds an "Other" free-text option — do NOT add one yourself
-- NEVER ask choices via plain text — always use `request_user_input`
+- The client auto-adds an "Other" free-text option -- do NOT add one yourself
+- NEVER ask choices via plain text -- always use `request_user_input`
 
 ## CRITICAL: Agent Naming Convention
 
 All GiljoAI agent names MUST use the `gil-` prefix to avoid collisions with Codex CLI built-in roles.
 
-The server returns role names like `analyzer`, `implementer`, etc. You MUST prefix them:
-- `analyzer` -> `gil-analyzer`
-- `implementer` -> `gil-implementer`
-- `reviewer` -> `gil-reviewer`
-- `tester` -> `gil-tester`
-- `documenter` -> `gil-documenter`
-- `{role}-{suffix}` -> `gil-{role}-{suffix}`
+The ZIP contains files already named with the `gil-` prefix. Verify after extraction that
+all .toml files in ~/.codex/agents/ use the `gil-` prefix. If any do not, rename them:
+- `analyzer.toml` -> `gil-analyzer.toml`
+- `implementer.toml` -> `gil-implementer.toml`
+- etc.
 
 **Why:** Codex CLI has built-in roles (analyzer, documenter, etc.) that shadow custom roles with the same name. Without the `gil-` prefix, spawn_agent uses the built-in role definition and ignores your custom TOML developer_instructions entirely. This was verified on Codex CLI v0.116.0 on 2026-03-22.
 
 ## Rules
+- Do NOT call `list_agent_templates` MCP tool -- use the ZIP download endpoint instead
 - Do NOT modify agent descriptions or developer_instructions content from the server
 - Do NOT modify GiljoAI protocol sections within developer_instructions
 - ALWAYS apply the `gil-` prefix to all agent names
 - User-configurable: model, model_reasoning_effort, nickname_candidates
-- ALWAYS show config.toml diff before writing — this file affects the user's entire Codex setup
+- ALWAYS show config.toml diff before writing -- this file affects the user's entire Codex setup
 - If config.toml has existing [agents.*] entries, preserve non-GiljoAI entries
 - Create ~/.codex/agents/ directory if it does not exist
 
@@ -438,8 +436,7 @@ The server returns role names like `analyzer`, `implementer`, etc. You MUST pref
 
 ### Per-Agent File: ~/.codex/agents/gil-{role}.toml
 
-Each agent gets its own .toml file. The file can override any session config key.
-Required fields for GiljoAI agents:
+The ZIP extracts .toml files with the correct format. Each agent file contains:
 
 ```toml
 # ~/.codex/agents/gil-implementer.toml
@@ -447,26 +444,26 @@ name = "gil-implementer"
 description = "Implementation specialist for writing production-grade code"
 nickname_candidates = ["gil-implementer"]
 developer_instructions = \"\"\"
-[The developer_instructions content from the server response goes here VERBATIM]
+[The developer_instructions content goes here VERBATIM]
 \"\"\"
 ```
 
 Valid fields in agent .toml files (all optional, inherit from parent session if omitted):
-- name — string, MUST match the [agents.{name}] key in config.toml
-- description — string, from server response
-- nickname_candidates — array of strings, use the gil-prefixed name
-- developer_instructions — multi-line string (use triple quotes)
-- model — string, e.g. "gpt-5.3-codex", "gpt-5.4", "o3"
-- model_reasoning_effort — "low", "medium", "high", "xhigh"
-- sandbox_mode — "read-only", "workspace-write", "danger-full-access"
-- approval_policy — "on-request", "unless-allow-listed", "never"
+- name -- string, MUST match the [agents.{name}] key in config.toml
+- description -- string, from server response
+- nickname_candidates -- array of strings, use the gil-prefixed name
+- developer_instructions -- multi-line string (use triple quotes)
+- model -- string, e.g. "gpt-5.4", "o3"
+- model_reasoning_effort -- "low", "medium", "high", "xhigh"
+- sandbox_mode -- "read-only", "workspace-write", "danger-full-access"
+- approval_policy -- "on-request", "unless-allow-listed", "never"
 
 Do NOT add fields not in this list. Codex rejects unknown fields.
 
 ### Config.toml Registration: ~/.codex/config.toml
 
 CRITICAL: `config_file` paths are RELATIVE to the directory where config.toml lives (~/.codex/).
-Use `"agents/gil-{role}.toml"` — NOT `"~/.codex/agents/..."` (tilde is treated as a literal directory name and will fail).
+Use `"agents/gil-{role}.toml"` -- NOT `"~/.codex/agents/..."` (tilde is treated as a literal directory name and will fail).
 
 Each agent must be registered in config.toml under [agents.gil-{name}]:
 
@@ -480,16 +477,16 @@ max_depth = 1
 
 [agents.gil-analyzer]
 config_file = "agents/gil-analyzer.toml"
-model = "gpt-5.3-codex"
+model = "gpt-5.4"
 model_reasoning_effort = "medium"
 nickname_candidates = ["gil-analyzer"]
 ```
 
 Required fields per [agents.gil-{name}]:
-- config_file — string, RELATIVE path: "agents/gil-{name}.toml" (NOT absolute, NOT ~/)
-- model — string, user's chosen model
-- model_reasoning_effort — string, user's chosen effort level
-- nickname_candidates — array of strings, display names
+- config_file -- string, RELATIVE path: "agents/gil-{name}.toml" (NOT absolute, NOT ~/)
+- model -- string, user's chosen model
+- model_reasoning_effort -- string, user's chosen effort level
+- nickname_candidates -- array of strings, display names
 
 ### Merge Rules for config.toml
 
@@ -513,7 +510,7 @@ Expected answer (proves custom template is loaded):
 1. mcp__giljo_mcp__health_check()
 2. mcp__giljo_mcp__get_agent_mission(job_id="...", tenant_key="...")
 
-If the agent does NOT mention these GiljoAI MCP calls, the custom template is not being loaded — troubleshoot the config_file path and agent name.
+If the agent does NOT mention these GiljoAI MCP calls, the custom template is not being loaded -- troubleshoot the config_file path and agent name.
 """
 
 GIL_ADD_CODEX_SKILL_MD = """---
@@ -573,10 +570,10 @@ Adapt all commands for the OS you are running on.
 After installation, tell the user:
 Skills installed to user-level (~/.claude/commands/).
 Two commands are now available:
-- /gil_get_agents — pull agent templates for your active product
+- /gil_get_agents — pull agent templates from the server
 - /gil_add — add tasks and projects from the CLI (try /gil_add --help)
 
-Restart Claude Code, then run /gil_get_agents to pull agent templates for your product.
+Restart Claude Code, then run /gil_get_agents to pull agent templates from the server.
 Note: Download link expires in 15 minutes.
 """
 
@@ -591,10 +588,10 @@ Adapt all commands for the OS you are running on.
 After installation, tell the user:
 Skills installed to user-level (~/.gemini/commands/).
 Two commands are now available:
-- /gil_get_agents — pull agent templates for your active product
+- /gil_get_agents — pull agent templates from the server
 - /gil_add — add tasks and projects from the CLI (try /gil_add --help)
 
-Restart Gemini CLI, then run /gil_get_agents to pull agent templates for your product.
+Restart Gemini CLI, then run /gil_get_agents to pull agent templates from the server.
 Note: Download link expires in 15 minutes.
 """
 
@@ -626,17 +623,17 @@ Adapt all commands for the OS you are running on.
 After installation, tell the user:
 Skills installed to user-level (~/.codex/skills/).
 Two skills are now available:
-- $gil-get-agents — pull agent templates for your active product
+- $gil-get-agents — pull agent templates from the server
 - $gil-add — add tasks and projects from the CLI (try $gil-add --help)
 
-Restart Codex CLI, then run $gil-get-agents to pull agent templates for your product.
+Restart Codex CLI, then run $gil-get-agents to pull agent templates from the server.
 Note: Download link expires in 15 minutes.
 """
 
 BOOTSTRAP_GENERIC = """Your CLI platform was not auto-detected. Visit your GiljoAI server's
 Settings -> Integrations page to download skill reference files.
 Install them according to your tool's documentation, then use the
-get-agents command to pull product-scoped agent templates.
+get-agents command to pull agent templates.
 """
 
 # =============================================================================

@@ -109,6 +109,11 @@ from .organizations import (
     OrgMembership,
 )
 
+# Product Agent Assignment (junction table for per-product template toggle)
+from .product_agent_assignment import (
+    ProductAgentAssignment,
+)
+
 # Product Memory models (Handover 0390a)
 from .product_memory_entry import (
     ProductMemoryEntry,
@@ -179,6 +184,8 @@ __all__ = [
     "Organization",
     # Products
     "Product",
+    # Product Agent Assignment
+    "ProductAgentAssignment",
     "ProductArchitecture",
     # Product Memory (Handover 0390a)
     "ProductMemoryEntry",
