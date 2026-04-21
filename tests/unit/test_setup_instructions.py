@@ -32,16 +32,16 @@ def test_codex_cli_instructions_contain_download_url():
     assert "~/.codex/" in result
 
 
-def test_codex_cli_instructions_skills_only():
-    """Codex setup instructions only install skills, not agent template config."""
+def test_codex_cli_instructions_include_agents():
+    """Codex setup instructions include agent template registration step."""
     result = build_setup_instructions("codex_cli", "https://example.com/download/test")
 
-    # Skills-only: no agent template registration step
-    assert "model = 'gpt-5.3-codex'" not in result
-    assert "agents/gil-" not in result
+    # Agent registration step restored with premium model
+    assert "model = 'gpt-5.4'" in result
+    assert "agents/gil-" in result
     # Should mention skills and $gil-get-agents
     assert "$gil-get-agents" in result
-    assert "skills" in result.lower()
+    assert "Register agent templates" in result
 
 
 def test_generic_instructions_contain_download_url():

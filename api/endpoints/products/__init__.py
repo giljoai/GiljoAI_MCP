@@ -22,7 +22,7 @@ All routers use /api/v1/products prefix and Products tag.
 
 from fastapi import APIRouter
 
-from . import crud, git_integration, lifecycle, memory, tuning, vision
+from . import agent_assignments, crud, git_integration, lifecycle, memory, tuning, vision
 
 
 # Create main router for products module
@@ -38,5 +38,6 @@ router.include_router(vision.router)
 router.include_router(git_integration.router)  # NEW - Handover 013B
 router.include_router(memory.router)  # NEW - Handover 0490
 router.include_router(tuning.router)  # NEW - Handover 0831
+router.include_router(agent_assignments.router)  # Per-product agent toggle
 
 __all__ = ["router"]

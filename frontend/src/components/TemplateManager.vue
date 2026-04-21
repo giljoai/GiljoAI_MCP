@@ -24,17 +24,6 @@
       >
         {{ totalActiveAgents }} / {{ totalCapacity }}
       </v-chip>
-      <v-chip
-        v-if="activeProduct"
-        size="small"
-        variant="tonal"
-        color="primary"
-        prepend-icon="mdi-package-variant"
-        class="ml-3"
-        data-testid="template-product-indicator"
-      >
-        {{ activeProduct.name }}
-      </v-chip>
     </div>
 
     <!-- HITL Closeout Toggle -->
@@ -234,12 +223,6 @@
                   prepend-icon="mdi-content-copy"
                   title="Duplicate"
                   @click="duplicateTemplate(item)"
-                ></v-list-item>
-                <v-list-item
-                  v-if="productStore.products.length > 1"
-                  prepend-icon="mdi-package-variant"
-                  title="Clone to Product"
-                  @click="openCloneDialog(item)"
                 ></v-list-item>
                 <v-list-item
                   prepend-icon="mdi-refresh"
@@ -451,15 +434,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Clone to Product Dialog -->
-    <CloneToProductDialog
-      v-model="cloneDialog"
-      :template="cloningTemplate"
-      :products="productStore.products"
-      :current-product-id="activeProductId"
-      @cloned="onTemplateCloned"
-    />
-
     </v-card>
   </div>
 </template>
@@ -468,29 +442,16 @@
 import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue'
 import api from '@/services/api'
 import { format } from 'date-fns'
-import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
-import { useProductStore } from '@/stores/products'
 import { useToast } from '@/composables/useToast'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
 import { hexToRgba } from '@/utils/colorUtils'
 import { useTemplateData } from '@/composables/useTemplateData'
-import CloneToProductDialog from '@/components/CloneToProductDialog.vue'
 
 // Handover 0335: WebSocket setup for real-time export status updates
-const { on, off } = useWebSocketV2()
 const userStore = useUserStore()
-const productStore = useProductStore()
 const { showToast } = useToast()
 const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
-
-// Product scope
-const activeProduct = computed(() => productStore.activeProduct)
-const activeProductId = computed(() => activeProduct.value?.id || null)
-
-// Clone dialog
-const cloneDialog = ref(false)
-const cloningTemplate = ref(null)
 
 // Handover 0335: Inject template export event from parent (UserSettings.vue)
 const templateExportEvent = inject('templateExportEvent', ref(null))
@@ -580,7 +541,7 @@ const handleToggleActive = async (template, newValue) => {
   try {
     await api.templates.update(template.id, { is_active: newValue })
     template.is_active = newValue
-    await loadActiveCount()
+    await reloadActiveCount()
     if (newValue) {
       showToast({ message: 'Agent activated - re-export required', type: 'warning' })
     } else {
@@ -601,11 +562,16 @@ const openCreateDialog = () => {
 }
 
 const editTemplate = (template) => {
+  // Extract suffix from name: "implementer-backend" with role "implementer" → suffix "backend"
+  const role = template.role || ''
+  const name = template.name || ''
+  const extractedSuffix = name.startsWith(`${role}-`) ? name.slice(role.length + 1) : ''
+
   const normalized = {
     ...template,
     user_instructions: template.user_instructions || '',
     cli_tool: template.cli_tool || 'claude',
-    custom_suffix: '',
+    custom_suffix: extractedSuffix,
     background_color: template.background_color || '',
     model: template.model || 'sonnet',
     tools: template.tools || null,
@@ -682,7 +648,7 @@ const saveTemplate = async () => {
     }
 
     await reloadTemplates()
-    await loadActiveCount()
+    await reloadActiveCount()
     showToast({ message: 'Template saved', type: 'success' })
     closeEditDialog()
   } catch (error) {
@@ -699,16 +665,6 @@ const saveTemplate = async () => {
   }
 }
 
-const openCloneDialog = (template) => {
-  cloningTemplate.value = template
-  cloneDialog.value = true
-}
-
-const onTemplateCloned = () => {
-  // Refresh templates in case the clone affects current product
-  reloadTemplates()
-}
-
 const confirmDelete = (template) => {
   deletingTemplate.value = template
   deleteDialog.value = true
@@ -719,7 +675,7 @@ const deleteTemplate = async () => {
   try {
     await api.templates.delete(deletingTemplate.value.id)
     await reloadTemplates()
-    await loadActiveCount()
+    await reloadActiveCount()
     deleteDialog.value = false
     deletingTemplate.value = null
   } catch (error) {
@@ -810,35 +766,27 @@ async function loadCloseoutMode() {
   }
 }
 
-// Always scope template list to active product
-const reloadTemplates = () => {
-  const pid = activeProductId.value
-  return loadTemplates(pid ? { product_id: pid } : {})
-}
+// Tenant-scoped template queries (no product_id)
+const reloadTemplates = () => loadTemplates()
+const reloadActiveCount = () => loadActiveCount()
+
+// Window event wrappers (event router dispatches as CustomEvent, not WS store)
+const onAgentsDownloaded = (e) => handleAgentsDownloaded(e.detail)
+const onTemplateExported = (e) => handleTemplateExported(e.detail)
 
 // Lifecycle
 onMounted(() => {
   reloadTemplates()
-  loadActiveCount()
+  reloadActiveCount()
   loadCloseoutMode()
-  on('template:exported', handleTemplateExported)
-  on('setup:agents_downloaded', handleAgentsDownloaded)
+  window.addEventListener('template:exported', onTemplateExported)
+  window.addEventListener('setup:agents_downloaded', onAgentsDownloaded)
 })
 
 onUnmounted(() => {
-  off('template:exported', handleTemplateExported)
-  off('setup:agents_downloaded', handleAgentsDownloaded)
+  window.removeEventListener('template:exported', onTemplateExported)
+  window.removeEventListener('setup:agents_downloaded', onAgentsDownloaded)
 })
-
-// Refresh templates when active product changes
-watch(
-  activeProductId,
-  (newId, oldId) => {
-    if (newId !== oldId) {
-      reloadTemplates()
-    }
-  },
-)
 
 // Handover 0335: Watch for export events from parent (UserSettings.vue)
 watch(

@@ -110,9 +110,9 @@ class TestCodexTemplates:
 
     def test_codex_get_agents_uses_supported_default_model(self):
         """Codex skill defaults to the supported GiljoAI Codex model."""
-        assert "gpt-5.3-codex" in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert "gpt-5.4" in GIL_GET_AGENTS_CODEX_SKILL_MD
         assert "gpt-5.2-codex" not in GIL_GET_AGENTS_CODEX_SKILL_MD
-        assert 'model = "gpt-5.3-codex"' in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert 'model = "gpt-5.4"' in GIL_GET_AGENTS_CODEX_SKILL_MD
         assert 'model_reasoning_effort = "medium"' in GIL_GET_AGENTS_CODEX_SKILL_MD
 
     def test_codex_gil_add_has_same_modes_as_claude(self):
@@ -157,6 +157,39 @@ class TestProjectTypeParameter:
             ("Codex", GIL_ADD_CODEX_SKILL_MD),
         ]:
             assert "optional" in template.lower(), f"{name} template should mention project_type is optional"
+
+
+class TestDownloadAndExtractPattern:
+    """Tests that skill templates use download-and-extract instead of list_agent_templates."""
+
+    def test_claude_template_does_not_instruct_list_agent_templates(self):
+        """Claude skill must not instruct calling list_agent_templates (only mention as 'do NOT call')."""
+        # The template may reference list_agent_templates in a "do NOT call" warning,
+        # but must not contain an instruction to actually call it.
+        assert "Call `mcp__giljo_mcp__list_agent_templates`" not in GIL_GET_AGENTS_MD
+        assert "Call `list_agent_templates`" not in GIL_GET_AGENTS_MD
+
+    def test_gemini_template_does_not_instruct_list_agent_templates(self):
+        """Gemini skill must not instruct calling list_agent_templates."""
+        assert "Call the GiljoAI MCP tool `list_agent_templates`" not in GIL_GET_AGENTS_GEMINI_TOML
+        assert "Call `list_agent_templates`" not in GIL_GET_AGENTS_GEMINI_TOML
+
+    def test_codex_template_does_not_instruct_list_agent_templates(self):
+        """Codex skill must not instruct calling list_agent_templates."""
+        assert "Call the GiljoAI MCP tool `list_agent_templates`" not in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert "Call `list_agent_templates`" not in GIL_GET_AGENTS_CODEX_SKILL_MD
+
+    def test_claude_template_uses_zip_download(self):
+        """Claude skill references the ZIP download endpoint."""
+        assert "agent-templates.zip" in GIL_GET_AGENTS_MD
+
+    def test_gemini_template_uses_zip_download(self):
+        """Gemini skill references the ZIP download endpoint."""
+        assert "agent-templates.zip" in GIL_GET_AGENTS_GEMINI_TOML
+
+    def test_codex_template_uses_zip_download(self):
+        """Codex skill references the ZIP download endpoint."""
+        assert "agent-templates.zip" in GIL_GET_AGENTS_CODEX_SKILL_MD
 
 
 class TestBootstrapTemplates:
