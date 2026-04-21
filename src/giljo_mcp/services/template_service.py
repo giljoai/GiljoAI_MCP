@@ -983,6 +983,7 @@ class TemplateService:
         source_product_id: Optional[str],
         target_product_id: str,
         tenant_key: Optional[str] = None,
+        seed_mode: bool = False,
     ) -> int:
         """
         Clone templates from one product (or tenant-level) to another product.
@@ -994,6 +995,8 @@ class TemplateService:
             source_product_id: Source product UUID, or None for tenant-level templates.
             target_product_id: Target product UUID (required).
             tenant_key: Tenant key for isolation.
+            seed_mode: If True, cloned agents are enabled (for new product seeding).
+                      If False, cloned agents are disabled (for user-initiated clones).
 
         Returns:
             Number of templates cloned.
@@ -1054,7 +1057,7 @@ class TemplateService:
                     success_criteria=src.success_criteria or [],
                     tool=src.tool,
                     version=src.version,
-                    is_active=False,  # Seeded/cloned agents start disabled — user enables what they need
+                    is_active=seed_mode,  # seed_mode=True: new product gets enabled agents; False: user-initiated clone
                     is_default=src.is_default,
                     tags=src.tags or [],
                     created_at=current_time,
@@ -1079,16 +1082,21 @@ class TemplateService:
         tenant_key: str,
     ) -> int:
         """
-        Seed default agent templates for a product from tenant-level templates.
+        Seed agent templates for a product. Three paths:
 
-        Only seeds if the product has zero templates. Idempotent.
+        1. Product already has templates → do nothing (idempotent)
+        2. Orphan templates exist (product_id=NULL) → adopt them to this product
+        3. No orphans → clone from system defaults (enabled, ready to use)
+
+        Path 2 handles the upgrade scenario: existing customer had agents before
+        product-scoping was added. Their agents get assigned to the first product.
 
         Args:
             product_id: Product UUID to seed templates for.
             tenant_key: Tenant key for isolation.
 
         Returns:
-            Number of templates seeded (0 if product already has templates).
+            Number of templates seeded/adopted (0 if product already has templates).
         """
         async with self._get_session() as session:
             # Check if product already has templates
@@ -1102,9 +1110,25 @@ class TemplateService:
                 )
                 return 0
 
-        # Clone from tenant-level (product_id=None) to this product
+            # Path 2: Adopt orphan templates (product_id=NULL) from this tenant
+            orphans = await self._repo.get_active_by_product(session, tenant_key, None)
+            if orphans:
+                adopted = 0
+                for template in orphans:
+                    template.product_id = product_id
+                    adopted += 1
+                await self._repo.commit(session)
+                self._logger.info(
+                    "Adopted %d orphan template(s) to product %s",
+                    adopted,
+                    product_id,
+                )
+                return adopted
+
+        # Path 3: No orphans — clone from system defaults (enabled for immediate use)
         return await self.clone_templates_to_product(
             source_product_id=None,
             target_product_id=product_id,
             tenant_key=tenant_key,
+            seed_mode=True,
         )
