@@ -336,6 +336,16 @@ class UnifiedInstaller:
         try:
             setup_only = self.settings.get("setup_only", False)
 
+            _logger.info(
+                "Installation run started | Python %s.%s.%s | Platform: %s %s | setup_only=%s",
+                sys.version_info.major,
+                sys.version_info.minor,
+                sys.version_info.micro,
+                platform.system(),
+                platform.release(),
+                setup_only,
+            )
+
             # Step 1: Welcome screen
             self.welcome_screen()
             result["steps"].append("welcome_shown")
@@ -345,15 +355,28 @@ class UnifiedInstaller:
                 self._print_header("Installation Configuration")
                 self.ask_installation_questions()
                 result["steps"].append("configuration_gathered")
+                _logger.info(
+                    "User configuration gathered | network_mode=%s | bind=%s | api_port=%s",
+                    self.settings.get("network_mode", "unknown"),
+                    self.settings.get("bind", "unknown"),
+                    self.settings.get("api_port", "unknown"),
+                )
 
             if not setup_only:
                 # Step 2: Check Python version
                 self._print_header("Checking Python Version")
                 if not self.check_python_version():
                     self._print_error("Python version check failed")
+                    _logger.error("Python version check FAILED (requires 3.10+)")
                     result["error"] = "Python 3.10+ required"
                     return result
                 result["steps"].append("python_verified")
+                _logger.info(
+                    "Python version OK: %s.%s.%s",
+                    sys.version_info.major,
+                    sys.version_info.minor,
+                    sys.version_info.micro,
+                )
 
                 # Step 3: Discover PostgreSQL
                 self._print_header("Discovering PostgreSQL")
@@ -361,26 +384,36 @@ class UnifiedInstaller:
                 if not pg_result["found"]:
                     self._print_error("PostgreSQL not found")
                     self._print_postgresql_install_guide()
+                    _logger.error("PostgreSQL discovery FAILED")
                     result["error"] = "PostgreSQL 18 required"
                     return result
                 result["steps"].append("postgresql_found")
+                _logger.info(
+                    "PostgreSQL discovered: version=%s path=%s",
+                    pg_result.get("version", "unknown"),
+                    _sanitize_log(str(pg_result.get("path", "unknown"))),
+                )
 
                 # Step 3.5: Discover Node.js (soft requirement for frontend)
                 self._print_header("Discovering Node.js")
                 node_result = self.discover_nodejs()
                 if node_result["found"]:
                     result["steps"].append("nodejs_found")
+                    _logger.info("Node.js discovered: version=%s", node_result.get("version", "unknown"))
                 else:
                     self._print_warning("Continuing without Node.js - frontend will be unavailable")
+                    _logger.warning("Node.js NOT found — frontend will be unavailable")
 
                 # Step 4: Install dependencies
                 self._print_header("Installing Dependencies")
                 dep_result = self.install_dependencies()
                 if not dep_result["success"]:
                     self._print_error("Dependency installation failed")
+                    _logger.error("Dependency installation FAILED: %s", dep_result.get("error", "Unknown"))
                     result["error"] = dep_result.get("error", "Unknown error")
                     return result
                 result["steps"].append("dependencies_installed")
+                _logger.info("Dependencies installed successfully")
 
             # Step 5: Generate configs (MUST happen before database setup!)
             # Table creation in step 6 needs .env file with DATABASE_URL
@@ -388,9 +421,11 @@ class UnifiedInstaller:
             config_result = self.generate_configs()
             if not config_result["success"]:
                 self._print_error("Configuration generation failed")
+                _logger.error("Config generation FAILED: %s", "; ".join(config_result.get("errors", ["Unknown"])))
                 result["error"] = "; ".join(config_result.get("errors", ["Unknown error"]))
                 return result
             result["steps"].append("configs_generated")
+            _logger.info("Configuration files generated (config.yaml)")
 
             # Step 6: Setup database (create DB, roles, tables, admin user, setup_state)
             self._print_header("Setting Up Database")
@@ -402,6 +437,7 @@ class UnifiedInstaller:
             self.database_credentials = db_result.get("credentials", {})
             result["steps"].append("database_created")
             result["steps"].append("tables_created")  # Added by inline table creation
+            _logger.info("Database setup completed successfully")
 
             # Step 6.5: Run Alembic migrations (CRITICAL - applies constraints & backfills)
             self._print_header("Applying Database Migrations")
@@ -413,6 +449,10 @@ class UnifiedInstaller:
                 # For fresh installs, migration failure is CRITICAL
                 if is_fresh_install and migration_result.get("migrations_applied", []):
                     self._print_error("Migration failed on fresh install - this is a critical error")
+                    _logger.error(
+                        "Migration FAILED on fresh install: %s",
+                        _sanitize_log(str(migration_result.get("error", "Unknown"))),
+                    )
                     result["error"] = migration_result.get("error", "Unknown migration error")
                     return result
 
@@ -420,6 +460,12 @@ class UnifiedInstaller:
                 self._print_warning("Database migration encountered issues")
                 self._print_warning(f"Error: {migration_result.get('error', 'Unknown error')}")
                 self._print_info("Continuing installation - manual migration may be required")
+                _logger.warning(
+                    "Migration issues (non-fatal): %s",
+                    _sanitize_log(str(migration_result.get("error", "Unknown"))),
+                )
+            else:
+                _logger.info("Database migrations applied successfully")
             result["steps"].append("migrations_applied")
 
             # Demo data seeding happens inside setup_database() — no duplicate call here
@@ -430,9 +476,17 @@ class UnifiedInstaller:
                 frontend_result = self.install_frontend_dependencies()
                 if not frontend_result["success"] and not frontend_result.get("skipped", False):
                     self._print_error("Frontend dependency installation failed")
+                    _logger.error(
+                        "Frontend dependency install FAILED: %s",
+                        frontend_result.get("error", "Unknown"),
+                    )
                     result["error"] = frontend_result.get("error", "Frontend dependencies failed")
                     return result
                 result["steps"].append("frontend_dependencies_installed")
+                _logger.info(
+                    "Frontend dependencies: %s",
+                    "installed" if frontend_result["success"] else "skipped",
+                )
 
                 # Step 7.1: Production / Development mode prompt
                 if frontend_result["success"] and not frontend_result.get("skipped", False):
@@ -455,17 +509,23 @@ class UnifiedInstaller:
             # Success
             result["success"] = True
             self._print_success_summary()
+            _logger.info("=" * 60)
+            _logger.info("Installation status: SUCCESS")
+            _logger.info("Steps completed: %s", ", ".join(result["steps"]))
+            _logger.info("=" * 60)
 
             return result
 
         except KeyboardInterrupt:
             self._print_warning("\nInstallation cancelled by user")
             result["error"] = "User cancelled"
+            _logger.warning("Installation CANCELLED by user (KeyboardInterrupt)")
             return result
 
         except Exception as e:
             self._print_error(f"Installation failed: {e}")
             result["error"] = str(e)
+            _logger.error("Installation status: FAILED | Error: %s", _sanitize_log(str(e)))
             return result
 
     def welcome_screen(self) -> None:
@@ -1972,15 +2032,22 @@ class UnifiedInstaller:
 
             if env_result["success"]:
                 self._print_success("Configuration updated with database credentials")
+                # Log keys written to .env (NEVER values)
+                _logger.info(
+                    ".env regenerated with keys: %s",
+                    ", ".join(sorted(k for k in config_settings if config_settings[k] is not None)),
+                )
             else:
                 self._print_error("Failed to update configuration")
                 for error in env_result.get("errors", []):
                     self._print_error(f"  • {error}")
+                _logger.error(".env regeneration FAILED: %s", "; ".join(env_result.get("errors", [])))
 
             return env_result
 
         except Exception as e:
             self._print_error(f"Credential update failed: {e}")
+            _logger.error("Credential update exception: %s", _sanitize_log(str(e)))
             return {"success": False, "errors": [str(e)]}
 
     def _ensure_logs_dir(self) -> Path:

@@ -97,6 +97,7 @@ async def submit_tuning_review(
     tenant_key: str,
     proposals: list[dict[str, Any]],
     overall_summary: str | None = None,
+    force: bool = False,
     db_manager: DatabaseManager | None = None,
     websocket_manager: Any = None,
 ) -> dict[str, Any]:
@@ -135,4 +136,5 @@ async def submit_tuning_review(
         product_id=product_id,
         proposals=proposals,
         overall_summary=overall_summary,
+        force=force,
     )

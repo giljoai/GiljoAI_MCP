@@ -360,6 +360,54 @@ class TemplateRepository:
         result = await session.execute(stmt)
         return result.scalar()
 
+    async def get_active_by_product(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str | None,
+    ) -> list[AgentTemplate]:
+        """Get active templates for a specific product (or tenant-level if product_id is None)."""
+        filters = [AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active]
+        if product_id:
+            filters.append(AgentTemplate.product_id == product_id)
+        else:
+            filters.append(AgentTemplate.product_id.is_(None))
+        stmt = select(AgentTemplate).where(and_(*filters))
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def count_by_product(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str,
+    ) -> int:
+        """Count templates for a specific product."""
+        stmt = select(func.count(AgentTemplate.id)).where(
+            and_(
+                AgentTemplate.tenant_key == tenant_key,
+                AgentTemplate.product_id == product_id,
+            )
+        )
+        result = await session.execute(stmt)
+        return result.scalar()
+
+    async def get_existing_name_versions(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str,
+    ) -> set[tuple[str, str]]:
+        """Get set of (name, version) tuples for existing templates on a product."""
+        stmt = select(AgentTemplate.name, AgentTemplate.version).where(
+            and_(
+                AgentTemplate.tenant_key == tenant_key,
+                AgentTemplate.product_id == product_id,
+            )
+        )
+        result = await session.execute(stmt)
+        return {(row.name, row.version) for row in result}
+
     async def get_template_role(
         self,
         session: AsyncSession,

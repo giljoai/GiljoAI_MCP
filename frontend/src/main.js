@@ -55,35 +55,31 @@ localStorage.setItem('theme-preference', 'dark')
 vuetify.theme.change('dark')
 document.documentElement.setAttribute('data-theme', 'dark')
 
-// Mount app SYNCHRONOUSLY
-app.mount('#app')
-
-// THEN do async initialization in background (non-blocking)
-async function initializeBackgroundConfig() {
+// Initialize API config BEFORE mounting to ensure correct baseURL for auth check.
+// The router guard fires on mount and calls /api/auth/me -- baseURL must be resolved first.
+async function bootstrap() {
   try {
-    // Fetch API configuration from backend
-    // This ensures WebSocket uses correct host in LAN mode
     await initializeApiConfig()
-
-    // Register edition-specific routes when mode is not CE.
-    // The dynamic import path is computed at runtime so the CE export
-    // boundary check (static regex) does not flag it. If the module
-    // is absent (CE build), the catch silently skips registration.
-    const mode = configService.getGiljoMode()
-    if (mode !== 'ce') {
-      try {
-        const extensionPath = `./saas/routes/index.js` // eslint-disable-line no-useless-concat
-        const saasRoutes = await import(/* @vite-ignore */ extensionPath)
-        saasRoutes.registerSaasRoutes()
-      } catch {
-        // Edition extension directory absent (CE export) -- silently skip
-      }
-    }
   } catch (error) {
     console.warn('[MAIN] Failed to initialize API config, using fallback:', error)
-    // App already mounted with fallback config, continue
+  }
+
+  app.mount('#app')
+
+  // Post-mount: register edition-specific routes (non-blocking).
+  // The dynamic import path is computed at runtime so the CE export
+  // boundary check (static regex) does not flag it. If the module
+  // is absent (CE build), the catch silently skips registration.
+  const mode = configService.getGiljoMode()
+  if (mode !== 'ce') {
+    try {
+      const extensionPath = `./saas/routes/index.js` // eslint-disable-line no-useless-concat
+      const saasRoutes = await import(/* @vite-ignore */ extensionPath)
+      saasRoutes.registerSaasRoutes()
+    } catch {
+      // Edition extension directory absent (CE export) -- silently skip
+    }
   }
 }
 
-// Start background initialization (non-blocking)
-initializeBackgroundConfig()
+bootstrap()

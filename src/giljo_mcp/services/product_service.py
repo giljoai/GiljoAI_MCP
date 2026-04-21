@@ -338,12 +338,13 @@ class ProductService:
                 message=f"Failed to list products: {e!s}", context={"tenant_key": self.tenant_key}
             ) from e
 
-    async def update_product(self, product_id: str, **updates) -> Product:
+    async def update_product(self, product_id: str, force: bool = False, **updates) -> Product:
         """
         Update a product.
 
         Args:
             product_id: Product UUID
+            force: If True, allow overwriting populated JSONB fields (tech_stack, architecture, test_config)
             **updates: Fields to update (name, description, project_path, tech_stack, architecture,
                 test_config, core_features, product_memory, target_platforms, etc.)
 
@@ -352,7 +353,8 @@ class ProductService:
 
         Raises:
             ResourceNotFoundError: If product not found
-            ValidationError: If target_platforms invalid
+            ValidationError: If product is not active, target_platforms invalid, or JSONB fields
+                already populated without force=True
             BaseGiljoError: If database operation fails
         """
         try:
@@ -369,11 +371,36 @@ class ProductService:
                         message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
+                # WI-1: Active Product Guard — only the active product can be written to
+                if not product.is_active:
+                    raise ValidationError(
+                        message=f"Target product {product_id} is not the active product. Switch products first.",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key},
+                    )
+
                 # Handover 0840i: Handle normalized config fields
                 tech_stack = updates.pop("tech_stack", None)
                 architecture_data = updates.pop("architecture", None)
                 test_config = updates.pop("test_config", None)
                 core_features = updates.pop("core_features", None)
+
+                # WI-2: Overwrite Confirmation — prevent accidental overwrites of populated JSONB fields
+                if not force:
+                    populated_fields = []
+                    if tech_stack and isinstance(tech_stack, dict) and product.tech_stack is not None:
+                        populated_fields.append("tech_stack")
+                    if architecture_data and isinstance(architecture_data, dict) and product.architecture is not None:
+                        populated_fields.append("architecture")
+                    if test_config and isinstance(test_config, dict) and product.test_config is not None:
+                        populated_fields.append("test_config")
+                    if populated_fields:
+                        raise ValidationError(
+                            message=(
+                                f"Fields already populated: {', '.join(populated_fields)}. "
+                                "Pass force=True to overwrite."
+                            ),
+                            context={"populated_fields": populated_fields, "product_id": product_id},
+                        )
 
                 if core_features is not None:
                     product.core_features = core_features

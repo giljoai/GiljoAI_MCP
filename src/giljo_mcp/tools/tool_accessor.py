@@ -413,18 +413,25 @@ class ToolAccessor:
             logger.exception("Failed to stage bootstrap setup")
             raise
 
-    async def list_agent_templates(self, tenant_key: str, platform: str) -> dict[str, Any]:
+    async def list_agent_templates(
+        self, tenant_key: str, platform: str, product_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Export agent templates formatted for the target CLI platform.
 
         Returns pre-assembled files (Claude Code, Gemini CLI) or structured
         data (Codex CLI) ready for the calling agent to install locally.
 
+        If product_id is not provided, resolves the tenant's active product and
+        filters templates to that product. Templates with product_id=None (tenant-level)
+        are included as fallbacks when no product-specific templates exist.
+
         Handover 0836a: Multi-platform agent template export.
 
         Args:
             tenant_key: Tenant identifier for multi-tenant isolation.
-            platform: Target platform — 'claude_code', 'codex_cli', or 'gemini_cli'.
+            platform: Target platform -- 'claude_code', 'codex_cli', or 'gemini_cli'.
+            product_id: Optional product UUID to filter templates by.
 
         Returns:
             Dict with platform, agents list, install_paths, template_count, format_version.
@@ -437,20 +444,54 @@ class ToolAccessor:
 
         try:
             async with self.get_session_async() as session:
-                stmt = (
-                    select(AgentTemplate)
-                    .where(
-                        AgentTemplate.tenant_key == tenant_key,
-                        AgentTemplate.is_active,
+                # Resolve product_id from active product if not provided
+                resolved_product_id = product_id
+                if not resolved_product_id:
+                    from giljo_mcp.services.product_service import ProductService
+
+                    product_svc = ProductService(
+                        db_manager=self.db_manager,
+                        tenant_manager=self.tenant_manager,
                     )
-                    .order_by(AgentTemplate.name)
-                )
+                    active_product = await product_svc.get_active_product()
+                    if active_product:
+                        resolved_product_id = str(active_product.id)
+
+                # Build query with product_id filter
+                base_filters = [
+                    AgentTemplate.tenant_key == tenant_key,
+                    AgentTemplate.is_active,
+                ]
+
+                if resolved_product_id:
+                    # Product-scoped: get templates for this product + tenant-level fallbacks
+                    from sqlalchemy import or_
+
+                    base_filters.append(
+                        or_(
+                            AgentTemplate.product_id == resolved_product_id,
+                            AgentTemplate.product_id.is_(None),
+                        )
+                    )
+
+                stmt = select(AgentTemplate).where(*base_filters).order_by(AgentTemplate.name)
 
                 result = await session.execute(stmt)
                 all_active = result.scalars().all()
 
                 if not all_active:
                     raise ValidationError(f"No active templates found for tenant: {tenant_key}")
+
+                # If we have product-specific templates, prefer them over tenant-level
+                if resolved_product_id:
+                    product_templates = [t for t in all_active if t.product_id == resolved_product_id]
+                    if product_templates:
+                        # Use product-specific templates, filling gaps with tenant-level
+                        product_roles = {t.role for t in product_templates}
+                        fallback_templates = [
+                            t for t in all_active if t.product_id is None and t.role not in product_roles
+                        ]
+                        all_active = product_templates + fallback_templates
 
                 selected = select_templates_for_packaging(all_active, max_count=8)
 
@@ -473,6 +514,47 @@ class ToolAccessor:
         except Exception:  # Broad catch: tool boundary, logs and re-raises
             logger.exception("Failed to export agent templates")
             raise
+
+    async def clone_templates_to_product(
+        self,
+        target_product_id: str,
+        tenant_key: str,
+        source_product_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Clone agent templates from one product (or tenant-level) to another.
+
+        Args:
+            target_product_id: Target product UUID (required).
+            tenant_key: Tenant isolation key.
+            source_product_id: Source product UUID, or None for tenant-level.
+
+        Returns:
+            Dict with cloned_count and target_product_id.
+        """
+        if not target_product_id or not isinstance(target_product_id, str):
+            raise ValidationError("target_product_id is required and must be a string")
+        if len(target_product_id) > 36:
+            raise ValidationError("target_product_id exceeds maximum length (36)")
+        if source_product_id is not None and (not isinstance(source_product_id, str) or len(source_product_id) > 36):
+            raise ValidationError("source_product_id must be a string of max length 36")
+
+        from giljo_mcp.services.template_service import TemplateService
+
+        template_svc = TemplateService(
+            db_manager=self.db_manager,
+            tenant_manager=self.tenant_manager,
+        )
+        cloned_count = await template_svc.clone_templates_to_product(
+            source_product_id=source_product_id,
+            target_product_id=target_product_id,
+            tenant_key=tenant_key,
+        )
+        return {
+            "cloned_count": cloned_count,
+            "target_product_id": target_product_id,
+            "source_product_id": source_product_id,
+        }
 
     async def get_orchestrator_instructions(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """Delegate to MissionService (sprint 002f: collapsed via OrchestrationService)."""
@@ -723,6 +805,7 @@ class ToolAccessor:
         tenant_key: str,
         proposals: list[dict[str, Any]],
         overall_summary: str | None = None,
+        force: bool = False,
     ) -> dict[str, Any]:
         """
         Submit product context tuning proposals after comparing current
@@ -733,6 +816,7 @@ class ToolAccessor:
             tenant_key: Tenant isolation key
             proposals: Per-section proposals with drift_detected, evidence, proposed_value
             overall_summary: High-level drift assessment
+            force: If True, allow overwriting populated JSONB fields
 
         Returns:
             Success response with review_id
@@ -744,6 +828,7 @@ class ToolAccessor:
             tenant_key=tenant_key,
             proposals=proposals,
             overall_summary=overall_summary,
+            force=force,
             db_manager=self.db_manager,
             websocket_manager=self._websocket_manager,
         )
@@ -771,6 +856,7 @@ class ToolAccessor:
         self,
         product_id: str,
         tenant_key: str,
+        force: bool = False,
         **fields: Any,
     ) -> dict[str, Any]:
         """Write product fields from vision document analysis (Handover 0842c)."""
@@ -781,6 +867,7 @@ class ToolAccessor:
             tenant_key=tenant_key,
             db_manager=self.db_manager,
             websocket_manager=self._websocket_manager,
+            force=force,
             **fields,
         )
 
