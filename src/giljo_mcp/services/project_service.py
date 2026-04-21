@@ -401,6 +401,7 @@ class ProjectService:
         status: str | None = None,
         tenant_key: str | None = None,
         include_cancelled: bool = False,
+        product_id: str | None = None,
     ) -> list[ProjectListItem]:
         """
         List all projects with optional filters.
@@ -426,7 +427,7 @@ class ProjectService:
                 raise ValidationError(message="No tenant context available", context={"operation": "list_projects"})
 
             async with self.db_manager.get_tenant_session_async(tenant_key) as session:
-                projects = await self._repo.list_projects(session, tenant_key, status, include_cancelled)
+                projects = await self._repo.list_projects(session, tenant_key, status, include_cancelled, product_id)
 
                 # For list view, we include basic metrics
                 # (agent_count and message_count would require additional queries)

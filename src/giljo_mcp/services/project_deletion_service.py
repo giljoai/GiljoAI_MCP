@@ -324,12 +324,16 @@ class ProjectDeletionService:
         await self._repo.delete_entity(session, project)
         return project_info
 
-    async def purge_all_deleted_projects(self) -> ProjectPurgeResult:
+    async def purge_all_deleted_projects(self, product_id: str | None = None) -> ProjectPurgeResult:
         """
-        Nuclear delete all soft-deleted projects for the current tenant.
+        Nuclear delete all soft-deleted projects for the current tenant,
+        optionally scoped to a product.
 
         Uses nuclear_delete_project for each project to ensure complete removal.
         Called when user clicks "Delete All" button in deleted projects modal.
+
+        Args:
+            product_id: Optional product ID to scope purge
 
         Returns:
             Purge result dictionary with purged_count and project details list
@@ -342,7 +346,7 @@ class ProjectDeletionService:
             raise ValidationError(message="No tenant context available", context={})
 
         async with self._get_session() as session:
-            deleted_projects = await self._repo.get_deleted_projects(session, tenant_key)
+            deleted_projects = await self._repo.get_deleted_projects(session, tenant_key, product_id)
 
             if not deleted_projects:
                 return ProjectPurgeResult(purged_count=0, projects=[])

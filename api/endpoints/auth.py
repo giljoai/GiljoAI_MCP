@@ -425,8 +425,9 @@ async def refresh_token(
         raise HTTPException(status_code=401, detail="Token expired beyond grace period")
 
     user_id = payload.get("sub")
+    tenant_key = payload.get("tenant_key")
     result = await db.execute(
-        select(User).where(User.id == user_id, User.is_active == True)  # noqa: E712
+        select(User).where(User.id == user_id, User.tenant_key == tenant_key, User.is_active == True)  # noqa: E712
     )
     user = result.scalar_one_or_none()
     if not user:

@@ -338,8 +338,9 @@ body {
     0 16px 48px rgba(0, 0, 0, 0.5) !important;
 }
 
-// Global: warm glow on primary action button hover
+// Global: warm glow + color shift on primary action button hover
 .v-btn.bg-primary:hover {
+  background-color: $color-brand-yellow-hover !important;
   box-shadow: 0 0 16px rgba($color-brand-yellow, 0.25) !important;
 }
 

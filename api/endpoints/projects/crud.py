@@ -116,25 +116,32 @@ async def create_project(
 @router.get("/", response_model=list[ProjectResponse])
 async def list_projects(
     status_filter: str | None = None,
+    product_id: str | None = None,
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
 ) -> list[ProjectResponse]:
     """
-    List all projects for current tenant.
+    List all projects for current tenant, optionally scoped to a product.
 
     Args:
         status_filter: Optional status filter
+        product_id: Optional product ID to scope results
         current_user: Authenticated user (from dependency)
         project_service: Project service (from dependency)
 
     Returns:
         List of ProjectResponse objects
     """
-    logger.debug("User %s listing projects (status=%s)", sanitize(current_user.username), sanitize(str(status_filter)))
+    logger.debug(
+        "User %s listing projects (status=%s, product=%s)",
+        sanitize(current_user.username),
+        sanitize(str(status_filter)),
+        sanitize(str(product_id)),
+    )
 
     # List projects via ProjectService (raises exceptions on error)
     projects = await project_service.list_projects(
-        status=status_filter, tenant_key=current_user.tenant_key, include_cancelled=True
+        status=status_filter, tenant_key=current_user.tenant_key, include_cancelled=True, product_id=product_id
     )
 
     logger.info(f"Found {len(projects)} projects for tenant {current_user.tenant_key}")
@@ -171,6 +178,7 @@ async def list_projects(
 
 @router.get("/deleted", response_model=list[ProjectResponse])
 async def get_deleted_projects(
+    product_id: str | None = None,
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
 ) -> list[ProjectResponse]:
@@ -181,6 +189,7 @@ async def get_deleted_projects(
     These projects can be recovered within 10 days of deletion.
 
     Args:
+        product_id: Optional product ID to scope results
         current_user: Authenticated user (from dependency)
         project_service: Project service (from dependency)
 
@@ -190,11 +199,13 @@ async def get_deleted_projects(
     Raises:
         HTTPException 500: Failed to list deleted projects
     """
-    logger.debug(f"User {current_user.username} listing deleted projects")
+    logger.debug(f"User {current_user.username} listing deleted projects (product={product_id})")
 
     # List deleted projects via ProjectService (raises exceptions on error)
     # SECURITY: Explicit tenant_key prevents cross-tenant data leak
-    projects = await project_service.list_projects(status="deleted", tenant_key=current_user.tenant_key)
+    projects = await project_service.list_projects(
+        status="deleted", tenant_key=current_user.tenant_key, product_id=product_id
+    )
 
     logger.info(f"Found {len(projects)} deleted projects for tenant {current_user.tenant_key}")
 
