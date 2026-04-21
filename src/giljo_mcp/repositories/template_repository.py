@@ -376,6 +376,21 @@ class TemplateRepository:
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_orphans(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+    ) -> list[AgentTemplate]:
+        """Get ALL orphan templates (product_id=NULL) regardless of is_active state."""
+        stmt = select(AgentTemplate).where(
+            and_(
+                AgentTemplate.tenant_key == tenant_key,
+                AgentTemplate.product_id.is_(None),
+            )
+        )
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
     async def count_by_product(
         self,
         session: AsyncSession,
