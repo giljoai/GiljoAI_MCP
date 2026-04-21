@@ -5,7 +5,7 @@
  *
  * Covers:
  *   Group 1 — duplicateTemplate() sets correct initial state for duplication
- *   Group 2 — saveTemplateAndPreview() error handling: name-collision 400 vs generic errors
+ *   Group 2 — saveTemplate() error handling: name-collision 400 vs generic errors
  *
  * TDD: tests describe BEHAVIOR (what the component does to the user),
  * not implementation details.
@@ -149,10 +149,10 @@ describe('duplicateTemplate()', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Group 2: saveTemplateAndPreview() error handling
+// Group 2: saveTemplate() error handling
 // ---------------------------------------------------------------------------
 
-describe('saveTemplateAndPreview() error handling', () => {
+describe('saveTemplate() error handling', () => {
   let wrapper
   let api
 
@@ -177,7 +177,7 @@ describe('saveTemplateAndPreview() error handling', () => {
       },
     })
 
-    await wrapper.vm.saveTemplateAndPreview()
+    await wrapper.vm.saveTemplate()
 
     expect(mockShowToast).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -195,7 +195,7 @@ describe('saveTemplateAndPreview() error handling', () => {
       },
     })
 
-    await wrapper.vm.saveTemplateAndPreview()
+    await wrapper.vm.saveTemplate()
 
     expect(mockShowToast).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -213,7 +213,7 @@ describe('saveTemplateAndPreview() error handling', () => {
       },
     })
 
-    await wrapper.vm.saveTemplateAndPreview()
+    await wrapper.vm.saveTemplate()
 
     expect(mockShowToast).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -231,7 +231,7 @@ describe('saveTemplateAndPreview() error handling', () => {
       },
     })
 
-    await wrapper.vm.saveTemplateAndPreview()
+    await wrapper.vm.saveTemplate()
 
     expect(mockShowToast).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -244,7 +244,7 @@ describe('saveTemplateAndPreview() error handling', () => {
   it('shows generic error toast when error has no response (network failure)', async () => {
     api.templates.create.mockRejectedValueOnce(new Error('Network Error'))
 
-    await wrapper.vm.saveTemplateAndPreview()
+    await wrapper.vm.saveTemplate()
 
     expect(mockShowToast).toHaveBeenCalledWith(
       expect.objectContaining({

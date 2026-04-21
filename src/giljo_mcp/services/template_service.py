@@ -1086,10 +1086,8 @@ class TemplateService:
 
         1. Product already has templates → do nothing (idempotent)
         2. Orphan templates exist (product_id=NULL) → adopt them to this product
+           (fallback for edge cases; main orphan migration runs at startup)
         3. No orphans → clone from system defaults (enabled, ready to use)
-
-        Path 2 handles the upgrade scenario: existing customer had agents before
-        product-scoping was added. Their agents get assigned to the first product.
 
         Args:
             product_id: Product UUID to seed templates for.
@@ -1110,8 +1108,8 @@ class TemplateService:
                 )
                 return 0
 
-            # Path 2: Adopt orphan templates (product_id=NULL) from this tenant
-            orphans = await self._repo.get_active_by_product(session, tenant_key, None)
+            # Path 2: Adopt orphan templates (active AND inactive) from this tenant
+            orphans = await self._repo.get_orphans(session, tenant_key)
             if orphans:
                 adopted = 0
                 for template in orphans:
@@ -1125,7 +1123,7 @@ class TemplateService:
                 )
                 return adopted
 
-        # Path 3: No orphans — seed from code-defined defaults (always available)
+        # Path 3: No orphans — seed from code-defined defaults (fresh install)
         return await self._seed_from_code_defaults(product_id, tenant_key)
 
     async def _seed_from_code_defaults(self, product_id: str, tenant_key: str) -> int:
