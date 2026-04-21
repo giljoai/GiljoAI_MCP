@@ -1125,10 +1125,64 @@ class TemplateService:
                 )
                 return adopted
 
-        # Path 3: No orphans — clone from system defaults (enabled for immediate use)
-        return await self.clone_templates_to_product(
-            source_product_id=None,
-            target_product_id=product_id,
-            tenant_key=tenant_key,
-            seed_mode=True,
-        )
+        # Path 3: No orphans — seed from code-defined defaults (always available)
+        return await self._seed_from_code_defaults(product_id, tenant_key)
+
+    async def _seed_from_code_defaults(self, product_id: str, tenant_key: str) -> int:
+        """Seed a product with factory-default templates from code (not DB).
+
+        Source of truth is _get_default_templates_v103() in template_seeder.py.
+        These can never be accidentally deleted or mutated by users.
+        """
+        from datetime import datetime, timezone
+        from uuid import uuid4
+
+        from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
+        from giljo_mcp.template_seeder import _get_default_templates_v103, _get_mcp_bootstrap_section
+
+        defaults = _get_default_templates_v103()
+        bootstrap = _get_mcp_bootstrap_section()
+        current_time = datetime.now(timezone.utc)
+        seeded = 0
+
+        async with self._get_session() as session:
+            for tpl in defaults:
+                if tpl["role"] in SYSTEM_MANAGED_ROLES:
+                    continue
+
+                template = AgentTemplate(
+                    id=str(uuid4()),
+                    tenant_key=tenant_key,
+                    product_id=product_id,
+                    name=tpl["name"],
+                    category="role",
+                    role=tpl["role"],
+                    cli_tool=tpl["cli_tool"],
+                    background_color=tpl["background_color"],
+                    description=tpl["description"],
+                    system_instructions=bootstrap,
+                    user_instructions=tpl["user_instructions"],
+                    model=tpl.get("model", "sonnet"),
+                    tools=tpl.get("tools"),
+                    variables=[],
+                    behavioral_rules=tpl.get("behavioral_rules", []),
+                    success_criteria=tpl.get("success_criteria", []),
+                    tool=tpl["cli_tool"],
+                    version=tpl.get("version", "1.0.0"),
+                    is_active=True,  # New product gets enabled agents
+                    is_default=True,
+                    tags=["default"],
+                    created_at=current_time,
+                )
+                session.add(template)
+                seeded += 1
+
+            if seeded > 0:
+                await self._repo.commit(session)
+
+            self._logger.info(
+                "Seeded %d default template(s) from code for product %s",
+                seeded,
+                product_id,
+            )
+            return seeded

@@ -1,6 +1,6 @@
 <template>
   <div class="step-commands">
-    <p class="step-heading">Install Skills and Agents</p>
+    <p class="step-heading">Install Skills</p>
 
     <!-- Tool tabs (only if multiple connected tools) -->
     <div v-if="tools.length > 1" class="tool-tabs" role="tablist">
@@ -29,7 +29,7 @@
           <code class="setup-command">giljo_setup</code>
         </div>
         <p class="instruction-hint">
-          This installs slash commands and agent templates automatically
+          This installs slash commands for your AI tool
         </p>
       </div>
 
@@ -48,24 +48,17 @@
           </span>
         </div>
 
-        <div class="checklist-item">
-          <v-icon
-            size="20"
-            :color="toolStatus[activeToolId]?.agents ? COLOR_SUCCESS : COLOR_MUTED"
-          >
-            {{ toolStatus[activeToolId]?.agents ? 'mdi-check-circle' : 'mdi-checkbox-blank-circle-outline' }}
-          </v-icon>
-          <span :class="['checklist-text', { 'checklist-text--done': toolStatus[activeToolId]?.agents }]">
-            Agents downloaded
-          </span>
-        </div>
         </div>
       </div>
 
       <Transition name="fade-slide">
-        <p v-if="toolStatus[activeToolId]?.agents" class="instruction-hint" style="text-align: center;">
-          Run <code class="inline-code">{{ getAgentCommand(activeToolId) }}</code> in the future to refresh agent templates
-        </p>
+        <div v-if="toolStatus[activeToolId]?.commands" class="agent-install-note">
+          <p class="agent-note-heading">Next: Install agent templates</p>
+          <p class="agent-note-text">
+            After setup completes, <strong>restart your CLI tool</strong> and run:
+          </p>
+          <code class="inline-code agent-note-command">{{ getAgentCommand(activeToolId) }}</code>
+        </div>
       </Transition>
 
       <!-- Manual setup pointer -->
@@ -145,7 +138,6 @@ const activeToolId = ref(props.connectedTools[0] || 'claude_code')
 const toolStatus = reactive(
   Object.fromEntries(props.connectedTools.map((id) => [id, {
     commands: props.previouslyCompleted,
-    agents: props.previouslyCompleted,
   }])),
 )
 
@@ -180,7 +172,6 @@ watch(installedTools, (val) => {
 
 // WebSocket subscriptions
 let unsubCommands = null
-let unsubAgents = null
 
 function handleCommandsInstalled(payload) {
   const toolName = payload?.tool_name
@@ -199,20 +190,11 @@ function handleCommandsInstalled(payload) {
   }
 }
 
-function handleAgentsDownloaded() {
-  for (const id of props.connectedTools) {
-    if (toolStatus[id]) {
-      toolStatus[id].agents = true
-    }
-  }
-}
-
 function handleBootstrapComplete() {
-  // giljo_setup installs both commands and agents in one shot
+  // giljo_setup installs slash commands only; agents are a separate step
   for (const id of props.connectedTools) {
     if (toolStatus[id]) {
       toolStatus[id].commands = true
-      toolStatus[id].agents = true
     }
   }
 }
@@ -221,13 +203,11 @@ let unsubBootstrap = null
 
 onMounted(() => {
   unsubCommands = wsStore.on('setup:commands_installed', handleCommandsInstalled)
-  unsubAgents = wsStore.on('setup:agents_downloaded', handleAgentsDownloaded)
   unsubBootstrap = wsStore.on('setup:bootstrap_complete', handleBootstrapComplete)
 })
 
 onUnmounted(() => {
   if (unsubCommands) unsubCommands()
-  if (unsubAgents) unsubAgents()
   if (unsubBootstrap) unsubBootstrap()
 })
 </script>
@@ -392,12 +372,34 @@ onUnmounted(() => {
   transition: color 250ms ease-out;
 }
 
-.agent-refresh-tip {
-  width: 100%;
-  margin-top: 6px;
-  margin-left: 30px;
+/* Agent install note (shown after skills download) */
+.agent-install-note {
+  text-align: center;
+  margin-top: 4px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: rgba($color-brand-yellow, 0.06);
+  border-radius: $border-radius-default;
+}
+
+.agent-note-heading {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: $color-text-primary;
+  margin-bottom: 6px;
+}
+
+.agent-note-text {
   font-size: 0.8125rem;
-  color: $color-brand-yellow;
+  color: $lightest-blue;
+  margin-bottom: 8px;
+}
+
+.agent-note-command {
+  display: inline-block;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 4px 14px;
 }
 
 .checklist-text--done {
