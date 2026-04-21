@@ -3031,13 +3031,10 @@ except Exception as e:
 
         Returns True if password was set successfully.
         """
-        # Use psycopg2 adapt() for safe SQL literal quoting (prevents SQL injection via password).
-        # This is executed via subprocess/psql (not a DB cursor), so we need a rendered string.
-        # adapt().getquoted() is psycopg2's canonical literal-escaping for this use case.
-        from psycopg2.extensions import adapt
-
-        safe_password_literal = adapt(password).getquoted().decode("utf-8")
-        safe_sql = f"ALTER USER postgres PASSWORD {safe_password_literal};"
+        # Escape single quotes in password for SQL literal (double them per SQL standard).
+        # This runs via subprocess/psql before psycopg2 is available in the venv.
+        escaped = password.replace("'", "''")
+        safe_sql = f"ALTER USER postgres PASSWORD '{escaped}';"
 
         system = platform.system()
         try:
