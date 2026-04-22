@@ -10,6 +10,7 @@
  */
 
 import { API_CONFIG } from '@/config/api'
+import configService from '@/services/configService'
 
 class SetupService {
   constructor() {
@@ -69,25 +70,40 @@ class SetupService {
           is_fresh_install: data.is_fresh_install,
           total_users_count: data.total_users_count,
           requires_admin_creation: data.requires_admin_creation,
+          show_public_landing: data.show_public_landing || false,
+          route_signal: data.route_signal,
+          mode: data.mode,
         }
         this._statusCache = result
         this._statusCacheTime = Date.now()
         return result
       } else {
         console.warn('[SETUP_SERVICE] Setup status endpoint failed:', response.status)
-        return {
-          is_fresh_install: true,
-          total_users_count: 0,
-          requires_admin_creation: true,
-        }
+        return this._fallbackStatus()
       }
     } catch (error) {
       console.warn('[SETUP_SERVICE] Status check failed:', error)
-      return {
-        is_fresh_install: true,
-        total_users_count: 0,
-        requires_admin_creation: true,
-      }
+      return this._fallbackStatus()
+    }
+  }
+
+  /**
+   * Mode-aware fallback when /api/setup/status is unreachable.
+   *
+   * In demo/saas mode we must NEVER default to is_fresh_install: true --
+   * that would race an anonymous visitor into the CE CreateAdminAccount
+   * wizard during a transient network error. Instead fall back to
+   * "public landing" semantics.
+   */
+  _fallbackStatus() {
+    let mode = 'ce'
+    try { mode = configService.getGiljoMode() } catch { /* config not loaded */ }
+    const isPublicLandingMode = mode !== 'ce'
+    return {
+      is_fresh_install: !isPublicLandingMode,
+      total_users_count: 0,
+      requires_admin_creation: !isPublicLandingMode,
+      show_public_landing: isPublicLandingMode,
     }
   }
 

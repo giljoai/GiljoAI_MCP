@@ -171,7 +171,7 @@ Each view corresponds to a top-level page in the application:
 - `McpIntegration.vue`: MCP connection setup and API key management.
 - `SystemSettings.vue`, `UserSettings.vue`, `OrganizationSettings.vue`: Settings pages.
 - `Users.vue`: User management (admin only).
-- `Login.vue`, `CreateAdminAccount.vue`, `WelcomeView.vue`: Authentication and onboarding.
+- `Login.vue`, `CreateAdminAccount.vue`, `WelcomeView.vue`: Authentication and onboarding. `CreateAdminAccount.vue` is active only when `GILJO_MODE=ce` (CE fresh-install flow).
 
 ### Components
 

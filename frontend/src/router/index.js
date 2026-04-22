@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import setupService from '@/services/setupService'
+import configService from '@/services/configService'
 import { useUserStore } from '@/stores/user'
 
 // Route definitions - views will be implemented after analyzer results
@@ -269,17 +270,54 @@ const router = createRouter({
 // CE router never imports from saas/ -- Deletion Test holds.
 
 // Navigation guard (Handover 0034 - simplified fresh install detection)
+// IMP-0011: demo/saas modes route fresh-install visitors to the public
+// /demo-landing page (provided by saas/routes) instead of the CE
+// CreateAdminAccount wizard. CE behavior is unchanged.
 router.beforeEach(async (to, from, next) => {
   // Set page title
   document.title = `${to.meta.title || 'GiljoAI'} - GiljoAI MCP`
 
-  // PRIORITY 1: Fresh install detection (check BEFORE auth for all routes except /welcome)
-  if (to.path !== '/welcome' && to.path !== '/login') {
+  // Mode-aware signals (CE sees mode === 'ce', demo/saas see their mode).
+  // configService.getGiljoMode() returns 'ce' as a safe default until config
+  // loads, so CE's fresh-install behavior is preserved.
+  const mode = (() => {
+    try { return configService.getGiljoMode() } catch { return 'ce' }
+  })()
+  const isPublicLandingMode = mode !== 'ce'
+
+  // PRIORITY 1: Fresh install / landing detection
+  // Skip for the landing targets themselves and for /login to avoid loops.
+  if (
+    to.path !== '/welcome' &&
+    to.path !== '/login' &&
+    to.path !== '/demo-landing' &&
+    to.path !== '/register' &&
+    to.path !== '/reset-password'
+  ) {
     try {
       const setupState = await setupService.checkEnhancedStatus()
 
-      if (setupState.is_fresh_install) {
-        // Fresh install (0 users) - redirect to create admin account
+      // Backend emits route_signal ∈ {'create_admin', 'login', 'public_landing'}
+      // in addition to the legacy is_fresh_install/show_public_landing booleans.
+      // Prefer route_signal when present; fall back to booleans + mode.
+      const signal = setupState.route_signal
+      if (signal === 'public_landing') {
+        next('/demo-landing')
+        return
+      }
+      if (signal === 'create_admin') {
+        next('/welcome')
+        return
+      }
+      // Legacy / belt-and-suspenders path (no route_signal yet or transient error).
+      // In demo/saas we NEVER want the CreateAdminAccount wizard to be visible.
+      if (isPublicLandingMode && (setupState.show_public_landing || setupState.is_fresh_install)) {
+        next('/demo-landing')
+        return
+      }
+
+      if (!isPublicLandingMode && setupState.is_fresh_install) {
+        // CE fresh install (0 users) - redirect to create admin account
         next('/welcome')
         return
       }
@@ -290,8 +328,14 @@ router.beforeEach(async (to, from, next) => {
 
   // PRIORITY 2: Auth routes (layout: 'auth') - allow access without authentication
   if (to.meta.layout === 'auth') {
-    // Security check: Block /welcome if users exist (attack prevention)
+    // Security check: Block /welcome if users exist OR if we're in demo/saas mode
+    // (demo/saas must never expose the admin-bootstrap UI publicly).
     if (to.path === '/welcome') {
+      if (isPublicLandingMode) {
+        console.warn('[SECURITY] Blocking /welcome in demo/saas mode - admin bootstrap is CLI-only')
+        next('/demo-landing')
+        return
+      }
       try {
         const setupState = await setupService.checkEnhancedStatus()
         if (!setupState.is_fresh_install) {

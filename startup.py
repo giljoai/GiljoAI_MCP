@@ -638,6 +638,40 @@ def _get_network_mode() -> str:
     return "localhost"
 
 
+def get_deployment_context() -> str:
+    """Read top-level `deployment_context` from config.yaml.
+
+    Returns one of: 'localhost' (default), 'lan', 'demo', 'saas-production'.
+    Controls browser auto-open host and status banner content.
+    """
+    try:
+        import yaml
+
+        config_path = Path.cwd() / "config.yaml"
+        if config_path.exists():
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+            return config.get("deployment_context", "localhost")
+    except Exception:
+        pass
+    return "localhost"
+
+
+def _get_external_host() -> str:
+    """Read services.external_host from config.yaml. Empty string if absent."""
+    try:
+        import yaml
+
+        config_path = Path.cwd() / "config.yaml"
+        if config_path.exists():
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+            return config.get("services", {}).get("external_host", "") or ""
+    except Exception:
+        pass
+    return ""
+
+
 def get_ssl_enabled() -> bool:
     """
     Check if SSL is enabled in config.yaml.
@@ -1392,13 +1426,28 @@ def run_startup(
 
     print_header("Opening Browser")
 
-    # Determine the correct host for browser URLs
-    # Use the configured external_host/network IP when not in localhost mode
-    server_host = get_network_ip() or "localhost"
+    # Determine the correct host for browser URLs based on deployment_context.
+    # - localhost / lan: current behavior (network IP if configured, else localhost)
+    # - demo: operator is on the host; auto-open always uses 127.0.0.1 (Cloudflare
+    #         Tunnel fronts the public URL, not the loopback bind)
+    # - saas-production: no desktop browser; auto-open is suppressed entirely
+    deployment_context = get_deployment_context()
+    external_host = _get_external_host()
+    network_host = get_network_ip() or "localhost"
 
-    if no_browser:
-        print_info("Login to your server to begin setup!")
-        print_success(f"Setup URL: {http_proto}://{server_host}:{browser_port}/setup")
+    if deployment_context == "demo":
+        server_host = "127.0.0.1"
+    else:
+        server_host = network_host
+
+    suppress_browser = deployment_context == "saas-production"
+
+    if no_browser or suppress_browser:
+        if suppress_browser:
+            print_info("saas-production mode: browser auto-open disabled (operator mode)")
+        else:
+            print_info("Login to your server to begin setup!")
+            print_success(f"Setup URL: {http_proto}://{server_host}:{browser_port}/setup")
 
         print_header("Welcome to GiljoAI MCP! -Gil")
     else:
@@ -1423,6 +1472,13 @@ def run_startup(
         print_success(f"Frontend (Production): {http_proto}://{server_host}:{api_port}")
     elif frontend_process:
         print_success(f"Frontend (Dev): {http_proto}://{server_host}:{frontend_port}")
+
+    # Deployment-context-aware banner extras
+    if deployment_context == "demo" and external_host:
+        # Cloudflare Tunnel terminates TLS; public scheme is always https.
+        print_success(f"Public URL (via Cloudflare Tunnel): https://{external_host}")
+    elif deployment_context == "saas-production":
+        print_info("saas-production mode: operator console only (no auto-open)")
 
     print_info("\nPress Ctrl+C to stop all services")
 
