@@ -133,8 +133,14 @@ class AgentTemplate(Base):
         - Exported after last change → False (up to date)
         - Changed after last export → True (may be outdated)
 
+        Disabled templates are never flagged as stale — the flag only matters
+        when the agent is active and its outdated state is actionable.
+
         Falls back to created_at when updated_at is NULL (freshly seeded).
         """
+        if not self.is_active:
+            return False  # Disabled agents don't show staleness
+
         if self.last_exported_at is None:
             return True  # Never exported — always stale
 

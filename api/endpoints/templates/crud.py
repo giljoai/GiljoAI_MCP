@@ -315,7 +315,27 @@ async def update_template(
 
     logger.info("Updated template %s", sanitize(template_id))
 
-    return _convert_to_response(template)
+    response = _convert_to_response(template)
+
+    # Broadcast template update via EventBus for real-time UI refresh
+    try:
+        from api.app_state import state
+
+        if getattr(state, "event_bus", None):
+            await state.event_bus.publish(
+                "template:updated",
+                {
+                    "tenant_key": tenant_key,
+                    "template_id": template.id,
+                    "is_active": template.is_active,
+                    "may_be_stale": template.may_be_stale,
+                    "updated_fields": list(update_data.keys()),
+                },
+            )
+    except Exception as pub_err:  # noqa: BLE001 - fire-and-forget WS event
+        logger.warning("Failed to publish template update event: %s", sanitize(str(pub_err)))
+
+    return response
 
 
 @router.delete("/{template_id}")

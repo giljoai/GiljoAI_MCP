@@ -132,7 +132,7 @@
             </template>
             <template v-else>
               <v-chip
-                v-if="item.may_be_stale"
+                v-if="item.may_be_stale && item.is_active"
                 size="small"
                 color="warning"
                 prepend-icon="mdi-alert"
@@ -726,6 +726,18 @@ const handleTemplateExported = (data) => {
   })
 }
 
+// Handle real-time template updates via WebSocket (enable/disable, field changes)
+const handleTemplateUpdated = (data) => {
+  if (!data?.template_id) return
+  const template = templates.value.find((t) => t.id === data.template_id)
+  if (template) {
+    if (data.is_active !== undefined) template.is_active = data.is_active
+    if (data.may_be_stale !== undefined) template.may_be_stale = data.may_be_stale
+    // Refresh active count when is_active changes
+    if (data.updated_fields?.includes('is_active')) reloadActiveCount()
+  }
+}
+
 // Handle agent template downloads via MCP (/gil_get_agents) — clear staleness flags
 const handleAgentsDownloaded = () => {
   const now = new Date().toISOString()
@@ -773,6 +785,7 @@ const reloadActiveCount = () => loadActiveCount()
 // Window event wrappers (event router dispatches as CustomEvent, not WS store)
 const onAgentsDownloaded = (e) => handleAgentsDownloaded(e.detail)
 const onTemplateExported = (e) => handleTemplateExported(e.detail)
+const onTemplateUpdated = (e) => handleTemplateUpdated(e.detail)
 
 // Lifecycle
 onMounted(() => {
@@ -781,11 +794,13 @@ onMounted(() => {
   loadCloseoutMode()
   window.addEventListener('template:exported', onTemplateExported)
   window.addEventListener('setup:agents_downloaded', onAgentsDownloaded)
+  window.addEventListener('template:updated', onTemplateUpdated)
 })
 
 onUnmounted(() => {
   window.removeEventListener('template:exported', onTemplateExported)
   window.removeEventListener('setup:agents_downloaded', onAgentsDownloaded)
+  window.removeEventListener('template:updated', onTemplateUpdated)
 })
 
 // Handover 0335: Watch for export events from parent (UserSettings.vue)
