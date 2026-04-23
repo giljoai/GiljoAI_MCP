@@ -85,6 +85,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
+import { getApiBaseUrl } from '@/composables/useApiUrl'
 
 const router = useRouter()
 const retrying = ref(false)
@@ -97,7 +98,7 @@ let autoRetryInterval = null
 let autoRetryCountdown = null
 
 const serverUrl = computed(() => {
-  return import.meta.env.VITE_API_BASE_URL || window.location.origin
+  return getApiBaseUrl() || window.location.origin
 })
 
 const retryConnection = async () => {

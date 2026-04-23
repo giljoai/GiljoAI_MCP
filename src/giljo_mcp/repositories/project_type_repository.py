@@ -211,18 +211,20 @@ class ProjectTypeRepository:
         session: AsyncSession,
         tenant_key: str,
         type_id: str,
+        product_id: str | None = None,
     ) -> int:
-        """Get the next available series number for a project type.
+        """Get the next available series number for a project type within a product.
 
         Returns max(series_number) + 1, or 1 if no projects exist.
         """
-        result = await session.execute(
-            select(func.max(Project.series_number)).where(
-                Project.project_type_id == type_id,
-                Project.tenant_key == tenant_key,
-                Project.deleted_at.is_(None),
-            )
+        query = select(func.max(Project.series_number)).where(
+            Project.project_type_id == type_id,
+            Project.tenant_key == tenant_key,
+            Project.deleted_at.is_(None),
         )
+        if product_id is not None:
+            query = query.where(Project.product_id == product_id)
+        result = await session.execute(query)
         max_num = result.scalar()
         return (max_num or 0) + 1
 
@@ -231,13 +233,14 @@ class ProjectTypeRepository:
         session: AsyncSession,
         tenant_key: str,
         type_id: str,
+        product_id: str | None = None,
     ) -> set[int]:
-        """Get all used series numbers for a project type.
+        """Get all used series numbers for a project type within a product.
 
         Returns:
             Set of used series numbers.
         """
-        result = await session.execute(
+        query = (
             select(Project.series_number)
             .where(
                 Project.project_type_id == type_id,
@@ -247,6 +250,9 @@ class ProjectTypeRepository:
             )
             .order_by(Project.series_number)
         )
+        if product_id is not None:
+            query = query.where(Project.product_id == product_id)
+        result = await session.execute(query)
         return set(result.scalars().all())
 
     async def check_series_available(
@@ -257,8 +263,9 @@ class ProjectTypeRepository:
         series_number: int,
         subseries: str | None = None,
         exclude_project_id: str | None = None,
+        product_id: str | None = None,
     ) -> bool:
-        """Check if a series number combination is available.
+        """Check if a series number combination is available within a product.
 
         Returns:
             True if available, False if already taken.
@@ -268,6 +275,8 @@ class ProjectTypeRepository:
             Project.series_number == series_number,
             Project.deleted_at.is_(None),
         )
+        if product_id is not None:
+            query = query.where(Project.product_id == product_id)
         if type_id:
             query = query.where(Project.project_type_id == type_id)
         else:
@@ -282,7 +291,7 @@ class ProjectTypeRepository:
             query = query.where(Project.id != exclude_project_id)
 
         result = await session.execute(query)
-        return result.scalar_one_or_none() is None
+        return result.first() is None
 
     async def get_used_subseries(
         self,
@@ -291,8 +300,9 @@ class ProjectTypeRepository:
         type_id: str | None,
         series_number: int,
         exclude_project_id: str | None = None,
+        product_id: str | None = None,
     ) -> list[str]:
-        """Get all used subseries letters for a type + series_number combination.
+        """Get all used subseries letters for a type + series_number within a product.
 
         Returns:
             Sorted list of used subseries letters.
@@ -303,6 +313,8 @@ class ProjectTypeRepository:
             Project.subseries.isnot(None),
             Project.deleted_at.is_(None),
         )
+        if product_id is not None:
+            query = query.where(Project.product_id == product_id)
         if type_id:
             query = query.where(Project.project_type_id == type_id)
         else:

@@ -50,6 +50,25 @@ async function silentRefresh() {
 async function handleAuthFailure(error) {
   const { default: router } = await import('@/router')
 
+  // Route-meta-aware: honor the target route's `meta.requiresAuth`. Public
+  // routes (SaaS /demo-landing, /register, /reset-password; CE /welcome,
+  // /login, /server-down) all declare `requiresAuth: false` and must never
+  // be redirected to /login on a background 401 (e.g. a pre-auth GET
+  // /api/auth/me fired by DefaultLayout during initial bootstrap before
+  // the router has settled on the real route).
+  //
+  // We resolve against window.location.pathname because router.currentRoute
+  // still points at START_LOCATION during the very first navigation, when
+  // this race fires. The URL bar is the authoritative signal at that point.
+  try {
+    const resolved = router.resolve(window.location.pathname + window.location.search)
+    if (resolved?.meta?.requiresAuth === false) {
+      return Promise.reject(error)
+    }
+  } catch {
+    // Resolution failed -- fall through to legacy path-based handling.
+  }
+
   try {
     const { default: setupService } = await import('@/services/setupService')
     const setupData = await setupService.checkEnhancedStatus()

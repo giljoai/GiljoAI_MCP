@@ -1081,9 +1081,9 @@ class ProjectService:
                     context={"operation": "update_project_metadata"},
                 )
 
-        if description is not None and len(description) > 10000:
+        if description is not None and len(description) > 20000:
             raise ValidationError(
-                f"Description exceeds 10000 character limit (got {len(description)}).",
+                f"Description exceeds 20000 character limit (got {len(description)}).",
                 context={"operation": "update_project_metadata"},
             )
 
@@ -1145,6 +1145,26 @@ class ProjectService:
                 f"subseries must be a single lowercase letter (a-z), got '{subseries}'.",
                 context={"operation": "update_project_metadata"},
             )
+
+        # Duplicate taxonomy check when any taxonomy field changes
+        if any(v is not None for v in (project_type, series_number, subseries)):
+            check_type_id = project_type if project_type is not None else project.project_type_id
+            check_series = series_number if series_number is not None else project.series_number
+            check_subseries = subseries if subseries is not None else project.subseries
+            async with self.db_manager.session() as session:
+                is_dup = await self._repo.check_duplicate_taxonomy(
+                    session,
+                    effective_tenant_key,
+                    project.product_id,
+                    check_type_id,
+                    check_series,
+                    check_subseries,
+                )
+            if is_dup:
+                raise AlreadyExistsError(
+                    message="Taxonomy combination already in use. Please choose a different series number or suffix.",
+                    context={"project_id": project_id},
+                )
 
         updates: dict[str, Any] = {}
         if name is not None:

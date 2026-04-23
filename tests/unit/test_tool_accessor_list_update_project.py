@@ -477,13 +477,13 @@ class TestUpdateProjectMetadataBehavior:
 
     @pytest.mark.asyncio
     async def test_rejects_description_exceeding_max_length(self):
-        """Description over 10000 chars should be rejected."""
+        """Description over 20000 chars should be rejected."""
         accessor = _make_accessor()
 
-        with pytest.raises(Exception, match=r"[Dd]escription.*10000|too long|exceed"):
+        with pytest.raises(Exception, match=r"[Dd]escription.*20000|too long|exceed"):
             await accessor.update_project_metadata(
                 project_id="proj-001",
-                description="Y" * 10001,
+                description="Y" * 20001,
                 tenant_key="tenant-test",
             )
 

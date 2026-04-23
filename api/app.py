@@ -241,7 +241,7 @@ async def lifespan(app: FastAPI):
             import importlib
 
             _reaper_mod = importlib.import_module("giljo_mcp.saas.trial.reaper")
-            _trial_reaper_task = await _reaper_mod.start_trial_reaper(state.db_manager.engine)
+            _trial_reaper_task = await _reaper_mod.start_trial_reaper(state.db_manager.AsyncSessionLocal)
             logger.info("Trial reaper background task started")
         except Exception as e:
             logger.warning("Optional startup phase [trial_reaper] failed: %s — running without trial reaper", e)

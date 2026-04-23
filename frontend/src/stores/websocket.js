@@ -16,6 +16,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { API_CONFIG } from '@/config/api'
+import { getWsBaseUrl } from '@/composables/useApiUrl'
 import { useToast } from '@/composables/useToast'
 import { useNotificationStore } from '@/stores/notifications'
 import { normalizeWebsocketPayload } from '@/utils/normalizeWebsocketPayload'
@@ -125,9 +126,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
         // Option 3: Use relative WebSocket URLs - derive from current location
         // This ensures WebSocket connects to the same host the user is accessing
         // Security note: Auth is enforced server-side via JWT, not by hostname
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-        const wsPort = API_CONFIG.WEBSOCKET?.port || parseInt(window.location.port) || 7272
-        const baseUrl = `${wsProtocol}//${window.location.hostname}:${wsPort}`
+        // Use the central resolver so demo (Cloudflare Tunnel), CE prod
+        // (same-origin FastAPI) and dev (Vite proxy) all build the right URL
+        // without ever concatenating hostname + VITE_API_PORT.
+        const baseUrl = getWsBaseUrl() || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
         const wsUrl = new URL(`${baseUrl}/ws/${clientId.value}`)
 
         // Add auth parameters if provided
