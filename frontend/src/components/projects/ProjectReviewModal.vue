@@ -56,7 +56,25 @@
         <template v-if="projectData && !loading">
           <!-- Section 1: Project Overview -->
           <div class="mb-6">
-            <h3 class="text-h6 mb-2">Overview</h3>
+            <div class="d-flex align-center mb-2">
+              <h3 class="text-h6">Overview</h3>
+              <v-tooltip v-if="projectData.description" location="top">
+                <template #activator="{ props: tp }">
+                  <v-btn
+                    v-bind="tp"
+                    icon
+                    variant="text"
+                    size="x-small"
+                    class="ml-1"
+                    :color="copiedField === 'description' ? 'success' : undefined"
+                    @click="copyField(projectData.description, 'description')"
+                  >
+                    <v-icon size="14">mdi-content-copy</v-icon>
+                  </v-btn>
+                </template>
+                <span>{{ copiedField === 'description' ? 'Copied!' : 'Copy description' }}</span>
+              </v-tooltip>
+            </div>
             <v-chip :color="statusColor" :style="statusTextStyle" variant="flat" size="small" class="mr-2">{{ projectData.status }}</v-chip>
             <span class="text-caption text-muted-a11y">
               Created {{ formatDateTime(projectData.created_at) }}
@@ -67,7 +85,25 @@
 
           <!-- Section 2: Mission -->
           <div class="mb-6">
-            <h3 class="text-h6 mb-2">Mission</h3>
+            <div class="d-flex align-center mb-2">
+              <h3 class="text-h6">Mission</h3>
+              <v-tooltip v-if="missionText" location="top">
+                <template #activator="{ props: tp }">
+                  <v-btn
+                    v-bind="tp"
+                    icon
+                    variant="text"
+                    size="x-small"
+                    class="ml-1"
+                    :color="copiedField === 'mission' ? 'success' : undefined"
+                    @click="copyField(missionText, 'mission')"
+                  >
+                    <v-icon size="14">mdi-content-copy</v-icon>
+                  </v-btn>
+                </template>
+                <span>{{ copiedField === 'mission' ? 'Copied!' : 'Copy mission' }}</span>
+              </v-tooltip>
+            </div>
             <v-card variant="flat" class="pa-3 smooth-border">
               <pre v-if="missionText" class="text-body-2 text-pre-wrap">{{ missionText }}</pre>
               <p v-else class="text-caption text-muted-a11y">No data</p>
@@ -212,13 +248,29 @@
             <v-expansion-panels v-else variant="accordion">
               <v-expansion-panel v-for="(entry, i) in memoryEntries" :key="i" :value="i">
                 <v-expansion-panel-title>
-                  <div class="d-flex align-center w-100">
-                    <v-icon icon="mdi-book-open-page-variant" class="mr-2" size="small" />
-                    <span class="font-weight-medium">
+                  <div class="d-flex align-center w-100 memory-title-row">
+                    <v-icon icon="mdi-book-open-page-variant" class="mr-2 flex-shrink-0" size="small" />
+                    <span class="font-weight-medium memory-title-text">
                       #{{ entry.sequence ?? i + 1 }} - {{ entry.project_name || 'Memory Entry' }}
                     </span>
                     <v-spacer />
-                    <span v-if="entry.timestamp" class="text-caption text-muted-a11y">{{ formatDateTime(entry.timestamp) }}</span>
+                    <span v-if="entry.timestamp" class="text-caption text-muted-a11y flex-shrink-0 ml-2">{{ formatDateTime(entry.timestamp) }}</span>
+                    <v-tooltip location="top">
+                      <template #activator="{ props: tp }">
+                        <v-btn
+                          v-bind="tp"
+                          icon
+                          variant="text"
+                          size="x-small"
+                          class="ml-1 flex-shrink-0"
+                          :color="copiedField === `memory-${i}` ? 'success' : undefined"
+                          @click.stop="copyMemoryEntry(entry, i)"
+                        >
+                          <v-icon size="14">mdi-content-copy</v-icon>
+                        </v-btn>
+                      </template>
+                      <span>{{ copiedField === `memory-${i}` ? 'Copied!' : 'Copy memory entry' }}</span>
+                    </v-tooltip>
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
@@ -310,6 +362,25 @@ defineEmits(['close'])
 const { mobile } = useDisplay()
 const isMobile = computed(() => mobile.value)
 const { copy: clipboardCopy, copied } = useClipboard()
+
+const copiedField = ref(null)
+let copiedTimer = null
+
+function copyField(text, field) {
+  if (!text) return
+  clipboardCopy(text)
+  copiedField.value = field
+  clearTimeout(copiedTimer)
+  copiedTimer = setTimeout(() => { copiedField.value = null }, 2000)
+}
+
+function copyMemoryEntry(entry, i) {
+  const parts = []
+  if (entry.summary) parts.push(`Summary:\n${entry.summary}`)
+  if (entry.key_outcomes?.length) parts.push(`Key Outcomes:\n${entry.key_outcomes.map((o) => `- ${o}`).join('\n')}`)
+  if (entry.decisions_made?.length) parts.push(`Decisions Made:\n${entry.decisions_made.map((d) => `- ${d}`).join('\n')}`)
+  copyField(parts.join('\n\n') || JSON.stringify(entry, null, 2), `memory-${i}`)
+}
 
 const loading = ref(false)
 const error = ref(null)
@@ -559,6 +630,16 @@ function truncate(text, maxLen) {
   font-size: 0.8rem;
   color: $color-brand-yellow;
   min-width: 80px;
+}
+.memory-title-row {
+  overflow: visible;
+}
+.memory-title-text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  min-width: 0;
+  word-break: break-word;
 }
 
 </style>

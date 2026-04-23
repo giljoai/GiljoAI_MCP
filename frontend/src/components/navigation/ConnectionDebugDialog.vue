@@ -111,6 +111,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useWebSocketStore } from '@/stores/websocket'
+import { getWsBaseUrl } from '@/composables/useApiUrl'
 
 const model = defineModel({ type: Boolean, default: false })
 
@@ -146,8 +147,10 @@ const clientId = computed(() => wsStore.clientId)
 const connectionState = computed(() => wsStore.connectionStatus)
 
 const wsUrl = computed(() => {
-  const wsProto = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  const baseUrl = import.meta.env.VITE_WS_URL || `${wsProto}://${window.location.hostname}:${window.location.port || 7272}`
+  const baseUrl =
+    import.meta.env.VITE_WS_URL ||
+    getWsBaseUrl() ||
+    `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
   return `${baseUrl}/ws/${clientId.value || '{client_id}'}`
 })
 

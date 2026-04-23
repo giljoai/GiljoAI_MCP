@@ -51,11 +51,28 @@ class AgentTemplateMetadata(BaseModel):
 
 
 class GitCommitEntry(BaseModel):
-    """Single git commit in product_memory_entries.git_commits."""
+    """Single git commit in product_memory_entries.git_commits.
+
+    SAAS-009b: ``files_changed`` / ``lines_added`` are optional. Missing values
+    are normalized to ``0`` so downstream arithmetic never encounters ``None``.
+    """
+
+    model_config = ConfigDict(extra="ignore")
 
     sha: str
     message: str
     author: str | None = None
+    date: str | None = None
+    files_changed: int = 0
+    lines_added: int = 0
+
+    @field_validator("files_changed", "lines_added", mode="before")
+    @classmethod
+    def _none_to_zero(cls, v: int | None) -> int:
+        """Normalize missing/None optional integer counts to 0 (SAAS-009b bug 2)."""
+        if v is None:
+            return 0
+        return v
 
 
 class MemoryEntryMetrics(BaseModel):

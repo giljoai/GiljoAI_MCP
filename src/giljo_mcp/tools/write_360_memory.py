@@ -562,7 +562,10 @@ async def write_360_memory(
             except Exception:  # noqa: BLE001, S110
                 pass  # Settings read failure is not a blocker
 
-            if git_integration_enabled and not git_commits:
+            # SAAS-009b Bug 1: Only enforce the GIT_COMMITS_REQUIRED gate for
+            # project_completion entries. Session handovers and handover closeouts
+            # document in-flight work and may legitimately have no commits yet.
+            if git_integration_enabled and not git_commits and entry_type == "project_completion":
                 return {
                     "success": False,
                     "error": "GIT_COMMITS_REQUIRED",

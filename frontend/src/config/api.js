@@ -1,14 +1,15 @@
 // API Configuration for GiljoAI MCP Dashboard
-// Dynamically configured from environment or config file
+//
+// URL composition is centralised in @/composables/useApiUrl. This module
+// derives its defaults from the resolver and keeps runtime-updatable config
+// objects for legacy callers. Never reconstruct URLs from hostname + port
+// here — that was the demo.giljo.ai bug (VITE_API_PORT being appended to
+// an absolute URL served through Cloudflare Tunnel).
 import configService from '@/services/configService'
+import { getApiBaseUrl, getWsBaseUrl } from '@/composables/useApiUrl'
 
-// Initial fallback configuration (used before backend config is fetched)
-// CRITICAL: Use window.API_BASE_URL first (set in index.html) for production mode
-const API_PORT = import.meta.env.VITE_API_PORT || window.API_PORT || window.location.port || '7272'
-const API_HOST = import.meta.env.VITE_API_HOST || window.API_HOST || window.location.hostname
-const DEFAULT_PROTOCOL = window.location.protocol === 'https:' ? 'https' : 'http'
-const DEFAULT_BASE_URL =
-  window.API_BASE_URL || (import.meta.env.DEV ? '' : `${DEFAULT_PROTOCOL}://${API_HOST}:${API_PORT}`)
+const DEFAULT_BASE_URL = getApiBaseUrl()
+const DEFAULT_WS_URL = import.meta.env.VITE_WS_URL || getWsBaseUrl()
 
 // Configuration object that will be updated after fetching from backend
 let runtimeConfig = null
@@ -30,23 +31,26 @@ export async function initializeApiConfig() {
       security: backendConfig.security,
     }
 
-    // Choose baseURL strategy
-    // - Dev: use same-origin + Vite proxy to avoid CORS
-    // - Prod: use explicit host:port from backend
-    const devMode = import.meta.env.DEV === true
-    const apiProtocol = runtimeConfig.api?.protocol || DEFAULT_PROTOCOL
-    const newBaseURL = devMode ? '' : `${apiProtocol}://${runtimeConfig.api.host}:${runtimeConfig.api.port}`
+    // Prefer the resolver's base URL (handles demo / CE / dev uniformly).
+    // Backend-provided host:port is only used as a fallback when the resolver
+    // returns an empty string (dev mode with no VITE_API_URL / window override).
+    const resolvedBase = getApiBaseUrl()
+    const apiProtocol =
+      runtimeConfig.api?.protocol || (typeof window !== 'undefined' && window.location?.protocol === 'https:' ? 'https' : 'http')
+    const backendBase =
+      runtimeConfig.api?.host && runtimeConfig.api?.port
+        ? `${apiProtocol}://${runtimeConfig.api.host}:${runtimeConfig.api.port}`
+        : ''
+    const newBaseURL = resolvedBase || backendBase
 
     // Update API and WebSocket config
     API_CONFIG.REST_API.baseURL = newBaseURL
-    API_CONFIG.WEBSOCKET.url = runtimeConfig.websocket.url
+    API_CONFIG.WEBSOCKET.url = runtimeConfig.websocket?.url || getWsBaseUrl() || DEFAULT_WS_URL
 
     // Update default tenant key header from backend config
     if (runtimeConfig.security?.default_tenant_key) {
       API_CONFIG.REST_API.headers['X-Tenant-Key'] = runtimeConfig.security.default_tenant_key
     }
-    // Extract port from websocket URL or use API port
-    API_CONFIG.WEBSOCKET.port = runtimeConfig.api?.port || parseInt(API_PORT, 10)
 
     // Update axios instance baseURL (created before config was fetched)
     // Import dynamically to avoid circular dependency
@@ -74,7 +78,7 @@ export function getRuntimeConfig() {
  * @returns {string} Current API base URL
  */
 export function getApiBaseURL() {
-  return window.API_BASE_URL || API_CONFIG.REST_API.baseURL
+  return window.API_BASE_URL || API_CONFIG.REST_API.baseURL || getApiBaseUrl()
 }
 
 /**
@@ -88,7 +92,7 @@ export function getDefaultTenantKey() {
 
 export const API_CONFIG = {
   REST_API: {
-    baseURL: import.meta.env.DEV ? (import.meta.env.VITE_API_URL || '') : DEFAULT_BASE_URL,
+    baseURL: DEFAULT_BASE_URL,
     timeout: 30000,
     headers: {
       'Content-Type': 'application/json',
@@ -96,9 +100,7 @@ export const API_CONFIG = {
     },
   },
   WEBSOCKET: {
-    url: import.meta.env.VITE_WS_URL ||
-      (window.location.protocol === 'https:' ? `wss://${API_HOST}:${API_PORT}` : `ws://${API_HOST}:${API_PORT}`),
-    port: parseInt(API_PORT, 10),
+    url: DEFAULT_WS_URL,
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 30000,

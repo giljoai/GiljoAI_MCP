@@ -37,14 +37,16 @@ You are the GiljoAI agent template installer for Claude Code. Be fast and effici
      Options: ["opus (recommended)", "sonnet (balanced)", "haiku (fast)", "Let me pick per agent"]
    - "Install scope?"
      Options: ["Project (.claude/agents/)", "User (~/.claude/agents/)"]
-2. If "Let me pick per agent": download ZIP first (step 3) to inspect filenames, then ask
+2. If "Let me pick per agent": download ZIP first (steps 3-4) to inspect filenames, then ask
    per-agent model via batched AskUserQuestion calls (up to 4 questions per call, one per agent).
-3. Download the agent template ZIP, extract, patch model, and clean up in a SINGLE Bash call:
+3. Call `mcp__giljo_mcp__generate_download_token(content_type="agent_templates", platform="claude_code")`.
+   This returns `{"download_url": "...", "expires_at": "...", "one_time_use": true}`.
+   The URL is pre-signed and tied to your authenticated MCP session — no API key needed.
+4. Download, extract, patch model, and clean up in a SINGLE Bash call:
    ```bash
-   # Derive SERVER_URL from MCP connection (strip path, keep protocol://host:port)
-   SERVER_URL="<MCP_SERVER_URL>"
    TARGET_DIR="<project_or_user_agents_dir>"
    MODEL="<chosen_model>"
+   DOWNLOAD_URL="<download_url from step 3>"
    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
    # Backup existing .md files
@@ -52,10 +54,8 @@ You are the GiljoAI agent template installer for Claude Code. Be fast and effici
      [ -f "$f" ] && mv "$f" "${f}.bak.${TIMESTAMP}"
    done
 
-   # Download + extract
-   curl -H "X-API-Key: $GILJO_API_KEY" \
-     "${SERVER_URL}/api/download/agent-templates.zip?platform=claude_code&active_only=true" \
-     -o /tmp/giljo_agents.zip --fail --silent --show-error
+   # Download (URL is pre-signed, no auth header needed)
+   curl -k -s --fail --show-error "$DOWNLOAD_URL" -o /tmp/giljo_agents.zip
    mkdir -p "$TARGET_DIR"
    unzip -o /tmp/giljo_agents.zip -d "$TARGET_DIR"
 
@@ -69,19 +69,18 @@ You are the GiljoAI agent template installer for Claude Code. Be fast and effici
    rm -f /tmp/giljo_agents.zip
    ```
    If user chose "per agent" models, run one sed per agent file instead of the glob sed.
-4. Report a table of installed agents and remind user to restart Claude Code.
-
-## Deriving SERVER_URL
-
-The MCP server connection URL is available from your environment. Strip the path component
-and keep `protocol://host:port`. For example, if the MCP endpoint is
-`https://10.1.0.101:7272/mcp/sse`, use `https://10.1.0.101:7272`.
+5. Report a table of installed agents and remind user to restart Claude Code.
 
 ## Critical Rules
 
-- Use Bash for ALL file operations -- one Bash call for steps 3 (download + extract + patch + cleanup)
+- Always call `generate_download_token` first — it returns a pre-signed URL scoped to your
+  tenant. Do NOT hit `/api/download/agent-templates.zip` directly with `X-API-Key` headers;
+  that path queries system defaults when unauthenticated and returns 404 for tenant users.
+- The download URL expires in 15 minutes and is one-time-use. If the curl fails with an
+  expired/used token, generate a fresh token and retry.
+- Use Bash for ALL file operations -- one Bash call for step 4 (backup + download + extract + patch + cleanup)
 - AskUserQuestion for all user choices -- never open-ended questions
-- Do NOT call `list_agent_templates` MCP tool -- use the ZIP download endpoint instead
+- Do NOT call `list_agent_templates` MCP tool -- use `generate_download_token` + ZIP download instead
 - Do NOT modify agent name, description, body content, or protocol sections
 - The ONLY user-configurable field is the `model` frontmatter value
 - Colors are pre-assigned by the server -- do not change them
@@ -163,11 +162,14 @@ You are the GiljoAI agent template installer for Gemini CLI.
 2. Tell the user: "Agents will be installed to .gemini/agents/ (project-level)."
    Remind: "Ensure `security.folderTrust.enabled` is set if using Gemini folder trust gates."
 
-3. Download the agent template ZIP, extract, patch, and clean up using `run_shell_command`:
+3. Call `mcp__giljo_mcp__generate_download_token(content_type="agent_templates", platform="gemini_cli")`.
+   This returns `{"download_url": "...", "expires_at": "...", "one_time_use": true}`.
+   The URL is pre-signed and tied to your authenticated MCP session — no API key needed.
+4. Download, extract, patch, and clean up using `run_shell_command`:
    ```bash
-   SERVER_URL="<MCP_SERVER_URL>"
    TARGET_DIR=".gemini/agents"
    MODEL="<chosen_model>"
+   DOWNLOAD_URL="<download_url from step 3>"
    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
    # Backup existing .md files
@@ -175,10 +177,8 @@ You are the GiljoAI agent template installer for Gemini CLI.
      [ -f "$f" ] && mv "$f" "${f}.bak.${TIMESTAMP}"
    done
 
-   # Download + extract
-   curl -H "X-API-Key: $GILJO_API_KEY" \
-     "${SERVER_URL}/api/download/agent-templates.zip?platform=gemini_cli&active_only=true" \
-     -o /tmp/giljo_agents.zip --fail --silent --show-error
+   # Download (URL is pre-signed, no auth header needed)
+   curl -k -s --fail --show-error "$DOWNLOAD_URL" -o /tmp/giljo_agents.zip
    mkdir -p "$TARGET_DIR"
    unzip -o /tmp/giljo_agents.zip -d "$TARGET_DIR"
 
@@ -192,8 +192,10 @@ You are the GiljoAI agent template installer for Gemini CLI.
    rm -f /tmp/giljo_agents.zip
    ```
    If user chose per-agent models, run one sed per agent file instead of the glob sed.
+   Token expires in 15 minutes and is one-time-use; if curl fails with expired/used token,
+   generate a fresh token and retry.
 
-4. **Enable experimental agents flag** (MANDATORY):
+5. **Enable experimental agents flag** (MANDATORY):
    Read the user's `.gemini/settings.json` (project-level or `~/.gemini/settings.json` for user-level).
    If `experimental.enableAgents` is not already set to `true`, merge it in:
    ```bash
@@ -215,13 +217,7 @@ You are the GiljoAI agent template installer for Gemini CLI.
    Do NOT use Set-Content, Out-File, or [System.Text.Encoding]::UTF8 (all add BOM).
    Show the diff before writing. This flag is required for custom agents to load.
 
-5. Show a summary table of installed agents and instruct the user to restart Gemini CLI.
-
-## Deriving SERVER_URL
-
-The MCP server connection URL is available from your environment. Strip the path component
-and keep `protocol://host:port`. For example, if the MCP endpoint is
-`https://10.1.0.101:7272/mcp/sse`, use `https://10.1.0.101:7272`.
+6. Show a summary table of installed agents and instruct the user to restart Gemini CLI.
 
 ## IMPORTANT: Use `ask_user` for All User Choices
 
@@ -239,7 +235,7 @@ If agents don't appear after restart:
 
 ## Rules
 
-- Do NOT call `list_agent_templates` MCP tool -- use the ZIP download endpoint instead
+- Do NOT call `list_agent_templates` MCP tool -- use `generate_download_token` + ZIP download instead
 - Do NOT modify agent names, descriptions, or body content from the server
 - Do NOT modify GiljoAI protocol sections
 - User-configurable fields: model selection, max_turns (default 50)
@@ -353,12 +349,15 @@ Codex requires workspace trust. Run this from a trusted directory or agents will
    You can batch up to 3 questions per call (Codex limit). Build options dynamically from
    models_cache.json output. After model selection, ask reasoning effort per agent.
 
-2. Download the agent template ZIP and extract to ~/.codex/agents/:
+2. Call `mcp__giljo_mcp__generate_download_token(content_type="agent_templates", platform="codex_cli")`.
+   This returns `{"download_url": "...", "expires_at": "...", "one_time_use": true}`.
+   The URL is pre-signed and tied to your authenticated MCP session — no API key needed.
+3. Download the agent template ZIP and extract to ~/.codex/agents/:
    ```bash
-   SERVER_URL="<MCP_SERVER_URL>"
    TARGET_DIR="$HOME/.codex/agents"
    MODEL="<chosen_model>"
    EFFORT="<chosen_effort>"
+   DOWNLOAD_URL="<download_url from step 2>"
    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
    # Backup existing .toml agent files
@@ -366,10 +365,8 @@ Codex requires workspace trust. Run this from a trusted directory or agents will
      [ -f "$f" ] && mv "$f" "${f}.bak.${TIMESTAMP}"
    done
 
-   # Download + extract
-   curl -H "X-API-Key: $GILJO_API_KEY" \
-     "${SERVER_URL}/api/download/agent-templates.zip?platform=codex_cli&active_only=true" \
-     -o /tmp/giljo_agents.zip --fail --silent --show-error
+   # Download (URL is pre-signed, no auth header needed)
+   curl -k -s --fail --show-error "$DOWNLOAD_URL" -o /tmp/giljo_agents.zip
    mkdir -p "$TARGET_DIR"
    unzip -o /tmp/giljo_agents.zip -d "$TARGET_DIR"
 
@@ -384,17 +381,13 @@ Codex requires workspace trust. Run this from a trusted directory or agents will
    rm -f /tmp/giljo_agents.zip
    ```
    If user chose per-agent models, run one sed per agent file instead of the glob sed.
+   Token expires in 15 minutes and is one-time-use; if curl fails with expired/used token,
+   generate a fresh token and retry.
 
-3. Read the user's existing ~/.codex/config.toml to understand current state
-4. Merge [agents.*] entries into config.toml -- show a diff before writing
-5. Ensure [features] section has multi_agent = true AND default_mode_request_user_input = true
-6. Show summary table of installed agents and instruct the user to restart Codex CLI
-
-## Deriving SERVER_URL
-
-The MCP server connection URL is available from your environment. Strip the path component
-and keep `protocol://host:port`. For example, if the MCP endpoint is
-`https://10.1.0.101:7272/mcp/sse`, use `https://10.1.0.101:7272`.
+4. Read the user's existing ~/.codex/config.toml to understand current state
+5. Merge [agents.*] entries into config.toml -- show a diff before writing
+6. Ensure [features] section has multi_agent = true AND default_mode_request_user_input = true
+7. Show summary table of installed agents and instruct the user to restart Codex CLI
 
 ## IMPORTANT: Use `request_user_input` for All User Choices
 
@@ -423,7 +416,7 @@ all .toml files in ~/.codex/agents/ use the `gil-` prefix. If any do not, rename
 **Why:** Codex CLI has built-in roles (analyzer, documenter, etc.) that shadow custom roles with the same name. Without the `gil-` prefix, spawn_agent uses the built-in role definition and ignores your custom TOML developer_instructions entirely. This was verified on Codex CLI v0.116.0 on 2026-03-22.
 
 ## Rules
-- Do NOT call `list_agent_templates` MCP tool -- use the ZIP download endpoint instead
+- Do NOT call `list_agent_templates` MCP tool -- use `generate_download_token` + ZIP download instead
 - Do NOT modify agent descriptions or developer_instructions content from the server
 - Do NOT modify GiljoAI protocol sections within developer_instructions
 - ALWAYS apply the `gil-` prefix to all agent names

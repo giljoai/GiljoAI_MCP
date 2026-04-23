@@ -272,21 +272,59 @@
           </v-alert>
 
           <div class="mb-3">
-            <div class="text-subtitle-2 mb-2">Install on the client machine:</div>
+            <div class="text-subtitle-2 mb-2">1. Install the root CA in the system trust store:</div>
             <div class="pa-3 bg-grey-darken-4 rounded text-body-2">
               <code class="d-block mb-1"><strong>Windows:</strong> certutil -addstore -f "ROOT" %USERPROFILE%\Downloads\rootCA.pem</code>
               <code class="d-block mb-1"><strong>macOS:</strong> sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/Downloads/rootCA.pem</code>
               <code class="d-block mb-1"><strong>Linux:</strong> sudo cp ~/Downloads/rootCA.pem /usr/local/share/ca-certificates/giljoai.crt &amp;&amp; sudo update-ca-certificates</code>
             </div>
+            <p class="text-caption mt-2 mb-0">
+              <strong>Linux troubleshooting:</strong> if <code>update-ca-certificates</code> reports
+              <code>0 added</code> or <code>openssl verify</code> still fails, stale symlinks from a
+              previous install are blocking the refresh. Clear them and rebuild the bundle:
+            </p>
+            <div class="pa-3 bg-grey-darken-4 rounded text-body-2 mt-1">
+              <code class="d-block">sudo rm -f /etc/ssl/certs/giljoai.pem /etc/ssl/certs/*.0 &amp;&amp; sudo update-ca-certificates --fresh</code>
+            </div>
           </div>
 
           <div class="mb-3">
-            <div class="text-subtitle-2 mb-2">Then trust the certificate in Node.js (for AI coding tools):</div>
+            <div class="text-subtitle-2 mb-2">2. Trust the certificate in Node.js (for AI coding tools like Claude Code):</div>
             <div class="pa-3 bg-grey-darken-4 rounded text-body-2">
               <code class="d-block mb-1"><strong>Windows (PowerShell):</strong> $env:NODE_OPTIONS = "--use-system-ca"; [System.Environment]::SetEnvironmentVariable('NODE_OPTIONS', '--use-system-ca', 'User')</code>
               <code class="d-block"><strong>Linux/macOS:</strong> mkdir -p ~/.giljo &amp;&amp; cp ~/Downloads/rootCA.pem ~/.giljo/rootCA.pem &amp;&amp; echo 'export NODE_EXTRA_CA_CERTS="$HOME/.giljo/rootCA.pem"' >> ~/.bashrc &amp;&amp; export NODE_EXTRA_CA_CERTS="$HOME/.giljo/rootCA.pem"</code>
             </div>
+            <p class="text-caption mt-2 mb-0">
+              Node ignores the system CA store, so this env var is required even after step 1.
+              On zsh, replace <code>~/.bashrc</code> with <code>~/.zshrc</code>.
+            </p>
           </div>
+
+          <div class="mb-3">
+            <div class="text-subtitle-2 mb-2">3. Trust in browsers (Linux only &mdash; Chrome/Firefox use their own store):</div>
+            <div class="pa-3 bg-grey-darken-4 rounded text-body-2">
+              <code class="d-block mb-1"><strong>Chrome/Edge/Chromium:</strong> sudo apt install -y libnss3-tools &amp;&amp; certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "GiljoAI Root" -i ~/Downloads/rootCA.pem</code>
+              <code class="d-block"><strong>Firefox:</strong> Settings &rarr; Privacy &amp; Security &rarr; View Certificates &rarr; Authorities &rarr; Import &rarr; select rootCA.pem &rarr; check "Trust this CA to identify websites"</code>
+            </div>
+            <p class="text-caption mt-2 mb-0">
+              Not needed on Windows or macOS &mdash; their browsers use the system store from step 1.
+            </p>
+          </div>
+
+          <div class="mb-3">
+            <div class="text-subtitle-2 mb-2">4. Trust in Python (optional &mdash; for scripts using requests/httpx):</div>
+            <div class="pa-3 bg-grey-darken-4 rounded text-body-2">
+              <code class="d-block mb-1"><strong>Linux/macOS:</strong> echo 'export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt' >> ~/.bashrc &amp;&amp; echo 'export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt' >> ~/.bashrc</code>
+              <code class="d-block"><strong>Windows (PowerShell):</strong> [System.Environment]::SetEnvironmentVariable('REQUESTS_CA_BUNDLE', "$env:USERPROFILE\Downloads\rootCA.pem", 'User')</code>
+            </div>
+          </div>
+
+          <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+            <strong>Verify it worked:</strong>
+            <code class="d-block mt-1">openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt ~/Downloads/rootCA.pem</code>
+            should return <code>OK</code>. Then restart any running terminals, browsers, and dev
+            servers (including <code>cloudflared</code>) so they re-read the trust store.
+          </v-alert>
         </template>
 
         <!-- CORS Origins Management -->

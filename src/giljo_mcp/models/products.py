@@ -173,6 +173,11 @@ class Product(Base):
     # Handover 0390a: 360 Memory Entries
     memory_entries = relationship("ProductMemoryEntry", back_populates="product", cascade="all, delete-orphan")
 
+    # Agent assignments (junction table)
+    agent_assignments = relationship(
+        "ProductAgentAssignment", back_populates="product", cascade="all, delete-orphan", passive_deletes=True
+    )
+
     # Handover 0840c: Normalized config tables (1:1)
     tech_stack = relationship("ProductTechStack", back_populates="product", uselist=False, cascade="all, delete-orphan")
     architecture = relationship(

@@ -367,6 +367,7 @@ import { useWebSocketStore } from '@/stores/websocket'
 import { useToast } from '@/composables/useToast'
 import configService from '@/services/configService'
 import setupService from '@/services/setupService'
+import { getApiBaseUrl } from '@/composables/useApiUrl'
 import api, { apiClient } from '@/services/api'
 import NotificationDropdown from '@/components/navigation/NotificationDropdown.vue'
 import { defineAsyncComponent } from 'vue'
@@ -478,12 +479,8 @@ async function handleResetPassword() {
     const email = props.currentUser?.email
     if (!email) return
 
-    let baseUrl = ''
-    if (!import.meta.env.DEV && configService.config) {
-      const { host, port } = configService.config.api
-      const protocol = configService.config.api?.protocol || (window.location.protocol === 'https:' ? 'https' : 'http')
-      baseUrl = `${protocol}://${host}:${port}`
-    }
+    // Same-origin resolver — see RegisterView.vue for rationale.
+    const baseUrl = getApiBaseUrl()
 
     await axios.post(`${baseUrl}/api/saas/password-reset/request`, { email })
     showToast({ message: 'Password reset email sent. Check your inbox.', type: 'success' })

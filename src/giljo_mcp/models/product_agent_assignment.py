@@ -59,7 +59,7 @@ class ProductAgentAssignment(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
-    product = relationship("Product", backref="agent_assignments")
+    product = relationship("Product", back_populates="agent_assignments")
     template = relationship("AgentTemplate", backref="product_assignments")
 
     __table_args__ = (

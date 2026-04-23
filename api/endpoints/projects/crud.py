@@ -304,15 +304,19 @@ async def next_series_number(
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
 ):
-    """Get the next available series number for a project type.
-
-    Handover 0440a: Taxonomy series number helper.
-    """
-
+    """Get the next available series number for a project type (scoped to active product)."""
     from api.endpoints.project_types.crud_ops import get_next_series_number
+    from giljo_mcp.services.product_service import ProductService
+
+    product_service = ProductService(
+        db_manager=project_service.db_manager,
+        tenant_key=current_user.tenant_key,
+    )
+    active_product = await product_service.get_active_product()
+    product_id = str(active_product.id) if active_product else None
 
     async with project_service.db_manager.get_session_async() as session:
-        next_num = await get_next_series_number(session, current_user.tenant_key, type_id)
+        next_num = await get_next_series_number(session, current_user.tenant_key, type_id, product_id)
     return {"next_series_number": next_num}
 
 
@@ -323,14 +327,19 @@ async def available_series_numbers(
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
 ):
-    """Get available series numbers (gaps + next) for a project type.
-
-    Handover 0440a: Taxonomy series number helper.
-    """
+    """Get available series numbers (gaps + next) for a project type (scoped to active product)."""
     from api.endpoints.project_types.crud_ops import get_available_series_numbers
+    from giljo_mcp.services.product_service import ProductService
+
+    product_service = ProductService(
+        db_manager=project_service.db_manager,
+        tenant_key=current_user.tenant_key,
+    )
+    active_product = await product_service.get_active_product()
+    product_id = str(active_product.id) if active_product else None
 
     async with project_service.db_manager.get_session_async() as session:
-        available = await get_available_series_numbers(session, current_user.tenant_key, type_id, limit)
+        available = await get_available_series_numbers(session, current_user.tenant_key, type_id, limit, product_id)
     return {"available_series_numbers": available}
 
 
@@ -343,11 +352,16 @@ async def check_series_number(
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
 ):
-    """Check if a specific series number is available for a project type.
-
-    Handover 0440c: Real-time series validation for inline taxonomy input.
-    """
+    """Check if a specific series number is available (scoped to active product)."""
     from api.endpoints.project_types.crud_ops import check_series_available
+    from giljo_mcp.services.product_service import ProductService
+
+    product_service = ProductService(
+        db_manager=project_service.db_manager,
+        tenant_key=current_user.tenant_key,
+    )
+    active_product = await product_service.get_active_product()
+    product_id = str(active_product.id) if active_product else None
 
     async with project_service.db_manager.get_session_async() as session:
         result = await check_series_available(
@@ -357,6 +371,7 @@ async def check_series_number(
             series_number,
             subseries,
             exclude_project_id,
+            product_id,
         )
     return result
 
@@ -369,11 +384,16 @@ async def used_subseries(
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
 ):
-    """Get subseries letters already used for a type + series_number.
-
-    Handover 0440c: Smart suffix dropdown filtering.
-    """
+    """Get subseries letters already used for a type + series_number (scoped to active product)."""
     from api.endpoints.project_types.crud_ops import get_used_subseries
+    from giljo_mcp.services.product_service import ProductService
+
+    product_service = ProductService(
+        db_manager=project_service.db_manager,
+        tenant_key=current_user.tenant_key,
+    )
+    active_product = await product_service.get_active_product()
+    product_id = str(active_product.id) if active_product else None
 
     async with project_service.db_manager.get_session_async() as session:
         result = await get_used_subseries(
@@ -382,6 +402,7 @@ async def used_subseries(
             type_id,
             series_number,
             exclude_project_id,
+            product_id,
         )
     return result
 

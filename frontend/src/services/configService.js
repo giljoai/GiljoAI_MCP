@@ -8,6 +8,8 @@
  * localhost but needs to connect to the API via the actual LAN IP.
  */
 
+import { getApiBaseUrl, getWsBaseUrl } from '@/composables/useApiUrl'
+
 class ConfigService {
   constructor() {
     this.config = null
@@ -49,18 +51,12 @@ class ConfigService {
    */
   async _doFetch() {
     try {
-      // Determine backend URL for config endpoint
-      // Dev: use relative URL so Vite proxy handles CORS
-      // Prod: direct to configured API host:port
-      let configUrl
-      if (import.meta.env.DEV) {
-        configUrl = '/api/v1/config/frontend'
-      } else {
-        const currentHost = window.location.hostname
-        const apiPort = import.meta.env.VITE_API_PORT || window.API_PORT || window.location.port || '7272'
-        const protocol = window.location.protocol === 'https:' ? 'https' : 'http'
-        configUrl = `${protocol}://${currentHost}:${apiPort}/api/v1/config/frontend`
-      }
+      // Determine backend URL for config endpoint.
+      // Dev: resolver returns '' so we use a relative URL and let Vite proxy.
+      // Prod/demo: resolver gives us the correct absolute base (VITE_API_URL,
+      // window.API_BASE_URL, or same-origin). Never compose hostname + port.
+      const base = getApiBaseUrl()
+      const configUrl = base ? `${base}/api/v1/config/frontend` : '/api/v1/config/frontend'
 
       this.log(`Fetching config from ${configUrl}`)
 
@@ -85,8 +81,14 @@ class ConfigService {
         const config = await response.json()
         this.log('Config fetched successfully', config)
 
-        // Validate response structure
-        if (!config.api || !config.api.host || !config.api.port) {
+        // Validate response structure.
+        // Only `api.port` is required — `api.host` may legitimately be empty
+        // when external_host is unconfigured or when the deployment relies on
+        // same-origin (window.location.host) for the API base URL. The URL
+        // resolver in @/composables/useApiUrl handles host derivation; this
+        // service's job is to surface giljo_mode + websocket info, not to
+        // gate on an informational host string.
+        if (!config.api || !config.api.port) {
           throw new Error('Invalid config response structure')
         }
 
@@ -98,17 +100,24 @@ class ConfigService {
     } catch (error) {
       this.log('Failed to fetch config from backend', error)
 
-      // Fallback to window.location.hostname
-      const fallbackHost = window.location.hostname
-      const fallbackPort = parseInt(import.meta.env.VITE_API_PORT || window.API_PORT || window.location.port || '7272', 10)
-
+      // Fallback: derive everything from the central URL resolver so we
+      // never produce `hostname:VITE_API_PORT` for deployments that sit
+      // behind a reverse proxy (Cloudflare Tunnel, SaaS).
+      const fallbackBase = getApiBaseUrl() || window.location.origin
+      const fallbackWs = getWsBaseUrl() || fallbackBase.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:')
+      const fallbackUrl = new URL(fallbackBase)
       const fallbackConfig = {
         api: {
-          host: fallbackHost,
-          port: fallbackPort,
+          host: fallbackUrl.hostname,
+          port: fallbackUrl.port
+            ? parseInt(fallbackUrl.port, 10)
+            : fallbackUrl.protocol === 'https:'
+              ? 443
+              : 80,
+          protocol: fallbackUrl.protocol.replace(':', ''),
         },
         websocket: {
-          url: `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${fallbackHost}:${fallbackPort}`,
+          url: fallbackWs,
         },
         mode: 'unknown',
         security: {

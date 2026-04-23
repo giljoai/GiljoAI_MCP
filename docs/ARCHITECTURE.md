@@ -1,6 +1,6 @@
 # GiljoAI MCP: Architecture
 
-*Last updated: 2026-04-06*
+*Last updated: 2026-04-22*
 
 This document describes the technical architecture of GiljoAI MCP for developers
 working on or integrating with the platform.
@@ -171,7 +171,7 @@ Each view corresponds to a top-level page in the application:
 - `McpIntegration.vue`: MCP connection setup and API key management.
 - `SystemSettings.vue`, `UserSettings.vue`, `OrganizationSettings.vue`: Settings pages.
 - `Users.vue`: User management (admin only).
-- `Login.vue`, `CreateAdminAccount.vue`, `WelcomeView.vue`: Authentication and onboarding.
+- `Login.vue`, `CreateAdminAccount.vue`, `WelcomeView.vue`: Authentication and onboarding. `CreateAdminAccount.vue` is active only when `GILJO_MODE=ce` (CE fresh-install flow).
 
 ### Components
 
@@ -279,6 +279,90 @@ Isolation is enforced at three levels:
 
 CE uses `tenant_key` as the isolation unit. SaaS adds Organization-level grouping
 on top of this foundation.
+
+---
+
+## Trust Model
+
+GiljoAI MCP is a **passive coordination server**. This is a deliberate architectural
+choice that shapes the entire security posture and should not be eroded without
+explicit review.
+
+### What the server does
+
+- Stores structured project, agent, and memory state in PostgreSQL.
+- Serves that state to MCP clients (AI coding tools) over HTTP/SSE.
+- Serves the Vue dashboard and a small REST surface for operator workflows.
+- Emits real-time events to the browser via `pg_notify` + WebSocket.
+- Sends transactional email for registration and password reset (Resend).
+
+### What the server does NOT do
+
+- **No LLM inference.** The server never calls Anthropic, OpenAI, Google, or any
+  other LLM provider. No embeddings, no summarization, no agent reasoning happens
+  server-side.
+- **No arbitrary code execution on user content.** Uploaded vision docs and text
+  fields are stored and served as bytes; they are never interpreted, rendered
+  as templates, evaluated, or passed to any shell.
+- **No outbound HTTP driven by user content.** The server initiates no fetches
+  to URLs supplied by users. There is no SSRF surface via user-stored data.
+- **No client-side code proxied through the server.** The frontend talks directly
+  to its own origin; the server does not proxy third-party JavaScript.
+
+### Where the LLM actually runs
+
+AI reasoning runs on the **user's own machine** via their MCP client (Claude Code,
+Codex CLI, Gemini CLI, or any MCP-compatible tool). The user's own API key pays
+for tokens. The server sees only structured tool calls and their structured
+results — never raw model prompts or completions.
+
+### Blast-radius implications
+
+Because the server does not execute user content:
+
+- **Prompt injection is a user-local attack.** If a user plants malicious
+  instructions inside their own product description or a vision document, their
+  own local agent is the one that reads those instructions. Any consequence falls
+  on the machine running the agent, using the API key attached to that machine.
+- **Compromised client agents still authenticate as their user.** A prompt-injected
+  local agent can make authenticated API calls within the user's tenant. The
+  impact is bounded by tenant isolation (see *Multi-Tenant Isolation* above) and
+  request rate limits (see `api/middleware/rate_limiter.py`, 300 req/min default).
+- **Cross-tenant leakage is not reachable from user content.** The repository
+  layer filters every query by `tenant_key`. An agent cannot read another
+  tenant's data even if its prompt is hijacked.
+
+### The one place trust crosses tenants
+
+Super-admin views (the platform operator's cross-tenant surfaces) render user
+content from multiple tenants inside a single trusted browser session. This is
+the only place where content from tenant A can reach the DOM of operator B. All
+user-content rendering paths must route through the shared DOMPurify sanitizer
+to prevent stored-XSS against the operator. See `SEC-0003` (admin-view XSS
+hardening) for the active enforcement.
+
+### Non-goals
+
+These are intentionally **not** part of the trust model:
+
+- Defending a user's local machine against their own prompt-injected content.
+- Scanning uploaded content for prompt-injection attempts.
+- Sandboxing the user's local agent.
+- Running LLM inference on behalf of users (this would fundamentally change the
+  security posture and require re-evaluation of every claim above).
+
+### Consequences for future changes
+
+If any future feature requires the server to call an LLM — embeddings for search,
+server-side summarization, agent reasoning in CI, etc. — it must be called out
+explicitly in a handover and must include:
+
+1. A re-evaluation of the blast-radius claims above.
+2. An explicit opt-in surface (no implicit server-side LLM calls).
+3. A budget/quota mechanism so customers don't inherit surprise LLM costs.
+
+Silent addition of `anthropic`, `openai`, or similar SDK imports on the server
+path is an architectural regression, not a feature.
 
 ---
 
