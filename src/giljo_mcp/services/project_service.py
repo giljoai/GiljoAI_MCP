@@ -1081,9 +1081,9 @@ class ProjectService:
                     context={"operation": "update_project_metadata"},
                 )
 
-        if description is not None and len(description) > 10000:
+        if description is not None and len(description) > 20000:
             raise ValidationError(
-                f"Description exceeds 10000 character limit (got {len(description)}).",
+                f"Description exceeds 20000 character limit (got {len(description)}).",
                 context={"operation": "update_project_metadata"},
             )
 

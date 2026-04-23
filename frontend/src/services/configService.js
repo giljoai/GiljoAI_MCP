@@ -81,8 +81,14 @@ class ConfigService {
         const config = await response.json()
         this.log('Config fetched successfully', config)
 
-        // Validate response structure
-        if (!config.api || !config.api.host || !config.api.port) {
+        // Validate response structure.
+        // Only `api.port` is required — `api.host` may legitimately be empty
+        // when external_host is unconfigured or when the deployment relies on
+        // same-origin (window.location.host) for the API base URL. The URL
+        // resolver in @/composables/useApiUrl handles host derivation; this
+        // service's job is to surface giljo_mode + websocket info, not to
+        // gate on an informational host string.
+        if (!config.api || !config.api.port) {
           throw new Error('Invalid config response structure')
         }
 

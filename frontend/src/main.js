@@ -37,13 +37,18 @@ const vuetify = createVuetify({
 })
 
 // Create Vue app SYNCHRONOUSLY (before async operations)
-// This ensures router guard executes for initial navigation (Handover 0034 fix)
 const app = createApp(App)
 
-// Register router IMMEDIATELY (synchronously)
-// CRITICAL: Router must be registered before any async operations
-// so that router.beforeEach guard can intercept initial navigation
-app.use(router)
+// pinia + vuetify can install before bootstrap (no navigation side-effects).
+// Router install is DEFERRED into bootstrap() so SaaS routes can be added
+// BEFORE Vue Router resolves the initial location. Vue Router 4's docs:
+// "Adding a new route to a router that is already navigating will have no
+// effect on the current navigation." If we app.use(router) here, the initial
+// navigation to e.g. /welcome begins resolving immediately and any addRoute
+// in bootstrap fires too late — the new SaaS routes aren't in the matcher
+// when the beforeEach guard redirects to /demo-landing, so the redirect
+// falls into the NotFound catch-all and bounces to /login. Discovered
+// 2026-04-21 demo go-live.
 app.use(pinia)
 app.use(vuetify)
 
@@ -64,22 +69,48 @@ async function bootstrap() {
     console.warn('[MAIN] Failed to initialize API config, using fallback:', error)
   }
 
-  app.mount('#app')
-
-  // Post-mount: register edition-specific routes (non-blocking).
-  // The dynamic import path is computed at runtime so the CE export
-  // boundary check (static regex) does not flag it. If the module
-  // is absent (CE build), the catch silently skips registration.
-  const mode = configService.getGiljoMode()
-  if (mode !== 'ce') {
+  // Register edition-specific routes BEFORE mount.
+  //
+  // The router.beforeEach guard fires synchronously on the initial navigation
+  // triggered by app.mount(). For demo/saas mode that guard may redirect to
+  // SaaS-only routes like /demo-landing. The routes must already exist when
+  // the guard fires, so registration happens here, not after mount.
+  //
+  // CE-export safety via import.meta.glob:
+  //   - In private/SaaS builds, Vite finds @/saas/routes/index.js and bundles
+  //     it (plus its transitive Vue component imports) into a lazy chunk.
+  //   - In CE builds, the export pipeline removes the saas/ directory before
+  //     `npm run build` runs. Vite's static glob scan finds zero matches and
+  //     the loader map is empty — registration silently no-ops, no errors.
+  //
+  // This replaces an earlier @vite-ignore + runtime-URL-fetch pattern that
+  // looked safe in dev (Vite dev server serves source files) but broke in
+  // production builds, where the SPA fallback returned index.html for the
+  // missing path with Content-Type: text/html, which the browser refuses to
+  // execute as a JS module. The result was that SaaS routes never registered
+  // and /demo-landing fell through to /login. Discovered live 2026-04-21.
+  // Pick the loader by value, not by key — Vite's glob result key format
+  // varies by config (could be '/src/saas/...' or '@/saas/...'). Iterating
+  // values is robust. Pattern matches at most one file (a literal path).
+  const saasRouteLoaders = import.meta.glob('@/saas/routes/index.js')
+  const [saasRoutesLoader] = Object.values(saasRouteLoaders)
+  if (saasRoutesLoader && configService.getGiljoMode() !== 'ce') {
     try {
-      const extensionPath = `./saas/routes/index.js` // eslint-disable-line no-useless-concat
-      const saasRoutes = await import(/* @vite-ignore */ extensionPath)
+      const saasRoutes = await saasRoutesLoader()
       saasRoutes.registerSaasRoutes()
-    } catch {
-      // Edition extension directory absent (CE export) -- silently skip
+    } catch (error) {
+      console.warn('[MAIN] SaaS routes failed to register:', error)
     }
   }
+
+  // Install the router AFTER all routes (CE static + SaaS dynamic) are
+  // registered. This is what makes the initial navigation resolve against
+  // the complete route table — including /demo-landing — instead of
+  // triggering navigation against a partial table and then having addRoute
+  // be a no-op for the in-flight nav.
+  app.use(router)
+
+  app.mount('#app')
 }
 
 bootstrap()

@@ -277,10 +277,25 @@ router.beforeEach(async (to, from, next) => {
   // Set page title
   document.title = `${to.meta.title || 'GiljoAI'} - GiljoAI MCP`
 
-  // Mode-aware signals (CE sees mode === 'ce', demo/saas see their mode).
-  // configService.getGiljoMode() returns 'ce' as a safe default until config
-  // loads, so CE's fresh-install behavior is preserved.
+  // Fetch setupState ONCE at guard entry — single source of truth for both
+  // mode resolution and route_signal. setupService caches with a 2s TTL so
+  // subsequent reads in the same navigation are free.
+  //
+  // Why setupState is authoritative for `mode`: configService.getGiljoMode()
+  // depends on an async fetch of /api/v1/config/frontend that may not have
+  // resolved by the time this guard fires on first paint, in which case it
+  // returns the 'ce' default. /api/setup/status returns `mode` synchronously
+  // alongside route_signal — using it removes the race that previously caused
+  // demo deployments to fall through to the CE branch and block /welcome.
+  let setupState = null
+  try {
+    setupState = await setupService.checkEnhancedStatus()
+  } catch {
+    // Network error — proceed with configService fallback below
+  }
+
   const mode = (() => {
+    if (setupState?.mode) return setupState.mode
     try { return configService.getGiljoMode() } catch { return 'ce' }
   })()
   const isPublicLandingMode = mode !== 'ce'
@@ -288,41 +303,36 @@ router.beforeEach(async (to, from, next) => {
   // PRIORITY 1: Fresh install / landing detection
   // Skip for the landing targets themselves and for /login to avoid loops.
   if (
+    setupState &&
     to.path !== '/welcome' &&
     to.path !== '/login' &&
     to.path !== '/demo-landing' &&
     to.path !== '/register' &&
     to.path !== '/reset-password'
   ) {
-    try {
-      const setupState = await setupService.checkEnhancedStatus()
+    // Backend emits route_signal ∈ {'create_admin', 'login', 'public_landing'}
+    // in addition to the legacy is_fresh_install/show_public_landing booleans.
+    // Prefer route_signal when present; fall back to booleans + mode.
+    const signal = setupState.route_signal
+    if (signal === 'public_landing') {
+      next('/demo-landing')
+      return
+    }
+    if (signal === 'create_admin') {
+      next('/welcome')
+      return
+    }
+    // Legacy / belt-and-suspenders path (no route_signal yet or transient error).
+    // In demo/saas we NEVER want the CreateAdminAccount wizard to be visible.
+    if (isPublicLandingMode && (setupState.show_public_landing || setupState.is_fresh_install)) {
+      next('/demo-landing')
+      return
+    }
 
-      // Backend emits route_signal ∈ {'create_admin', 'login', 'public_landing'}
-      // in addition to the legacy is_fresh_install/show_public_landing booleans.
-      // Prefer route_signal when present; fall back to booleans + mode.
-      const signal = setupState.route_signal
-      if (signal === 'public_landing') {
-        next('/demo-landing')
-        return
-      }
-      if (signal === 'create_admin') {
-        next('/welcome')
-        return
-      }
-      // Legacy / belt-and-suspenders path (no route_signal yet or transient error).
-      // In demo/saas we NEVER want the CreateAdminAccount wizard to be visible.
-      if (isPublicLandingMode && (setupState.show_public_landing || setupState.is_fresh_install)) {
-        next('/demo-landing')
-        return
-      }
-
-      if (!isPublicLandingMode && setupState.is_fresh_install) {
-        // CE fresh install (0 users) - redirect to create admin account
-        next('/welcome')
-        return
-      }
-    } catch {
-      // Network error - continue (will fail at auth check if needed)
+    if (!isPublicLandingMode && setupState.is_fresh_install) {
+      // CE fresh install (0 users) - redirect to create admin account
+      next('/welcome')
+      return
     }
   }
 
@@ -336,20 +346,18 @@ router.beforeEach(async (to, from, next) => {
         next('/demo-landing')
         return
       }
-      try {
-        const setupState = await setupService.checkEnhancedStatus()
-        if (!setupState.is_fresh_install) {
-          // Users exist - block welcome page access
-          console.warn(
-            '[SECURITY] Blocking /welcome access - users exist (total:',
-            setupState.total_users_count,
-            ')',
-          )
-          next('/login')
-          return
-        }
-      } catch {
-        // On error, allow access (conservative for fresh installs)
+      // CE: block /welcome only when users genuinely exist. Defense-in-depth:
+      // require BOTH !is_fresh_install AND total_users_count > 0 so the legacy
+      // 'is_fresh_install: false in demo mode means no users' bug can never
+      // resurface (the demo case is handled above by isPublicLandingMode).
+      if (setupState && !setupState.is_fresh_install && (setupState.total_users_count ?? 0) > 0) {
+        console.warn(
+          '[SECURITY] Blocking /welcome access - users exist (total:',
+          setupState.total_users_count,
+          ')',
+        )
+        next('/login')
+        return
       }
     }
 
