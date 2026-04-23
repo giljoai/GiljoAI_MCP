@@ -120,20 +120,29 @@ onMounted(async () => {
     const mode = configService.getGiljoMode()
     if (mode !== 'ce') {
       try {
-        // Dynamic imports use @vite-ignore so CE static analysis skips them.
-        const bannerPath = `@/saas/components/TrialBanner.vue`
-        const overlayPath = `@/saas/components/TrialExpiredOverlay.vue`
-        const guardPath = `@/saas/composables/useTrialGuard`
-        const [bannerMod, overlayMod, guardMod] = await Promise.all([
-          import(/* @vite-ignore */ bannerPath),
-          import(/* @vite-ignore */ overlayPath),
-          import(/* @vite-ignore */ guardPath),
-        ])
-        TrialBannerComponent.value = bannerMod.default
-        TrialExpiredOverlayComponent.value = overlayMod.default
-        guardMod.installTrialGuardInterceptor()
-      } catch {
-        // SaaS directory absent (CE export) -- silently skip
+        // Vite-aware lazy load via import.meta.glob (CE export safe).
+        // CE builds have saas/ stripped → glob returns empty → silently skip.
+        // SaaS/private builds → Vite bundles each into a lazy chunk.
+        // Replaces an earlier @vite-ignore + runtime-URL pattern that 404'd
+        // into the SPA fallback in production builds and broke trial UI.
+        const bannerLoaders = import.meta.glob('@/saas/components/TrialBanner.vue')
+        const overlayLoaders = import.meta.glob('@/saas/components/TrialExpiredOverlay.vue')
+        const guardLoaders = import.meta.glob('@/saas/composables/useTrialGuard.js')
+        const [bannerLoader] = Object.values(bannerLoaders)
+        const [overlayLoader] = Object.values(overlayLoaders)
+        const [guardLoader] = Object.values(guardLoaders)
+        if (bannerLoader && overlayLoader && guardLoader) {
+          const [bannerMod, overlayMod, guardMod] = await Promise.all([
+            bannerLoader(),
+            overlayLoader(),
+            guardLoader(),
+          ])
+          TrialBannerComponent.value = bannerMod.default
+          TrialExpiredOverlayComponent.value = overlayMod.default
+          guardMod.installTrialGuardInterceptor()
+        }
+      } catch (error) {
+        console.warn('[DefaultLayout] SaaS trial UI failed to load:', error)
       }
     }
   }

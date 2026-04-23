@@ -415,14 +415,23 @@ onMounted(async () => {
     // Default to CE on config failure
   }
 
-  // Dynamically load SaaS ForgotPasswordEmail when not CE (Deletion Test safe)
+  // Dynamically load SaaS ForgotPasswordEmail when not CE.
+  // Uses import.meta.glob (Vite-aware) so the component bundles into a chunk
+  // for SaaS/private builds and is silently absent in CE builds where the
+  // saas/ directory has been stripped by the export pipeline. The earlier
+  // @vite-ignore + runtime-URL approach failed in production builds because
+  // the unbundled .vue file 404'd into the SPA fallback (text/html), which
+  // the browser refused to evaluate as a module script.
   if (giljoMode.value !== 'ce') {
-    try {
-      const componentPath = `../saas/components/ForgotPasswordEmail.vue`
-      const mod = await import(/* @vite-ignore */ componentPath)
-      forgotPasswordEmailComponent.value = mod.default
-    } catch {
-      // SaaS component absent (CE export) -- silently skip
+    const forgotEmailLoaders = import.meta.glob('@/saas/components/ForgotPasswordEmail.vue')
+    const [loader] = Object.values(forgotEmailLoaders)
+    if (loader) {
+      try {
+        const mod = await loader()
+        forgotPasswordEmailComponent.value = mod.default
+      } catch (error) {
+        console.warn('[Login] ForgotPasswordEmail failed to load:', error)
+      }
     }
   }
 

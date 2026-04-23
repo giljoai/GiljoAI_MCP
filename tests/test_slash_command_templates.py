@@ -179,17 +179,28 @@ class TestDownloadAndExtractPattern:
         assert "Call the GiljoAI MCP tool `list_agent_templates`" not in GIL_GET_AGENTS_CODEX_SKILL_MD
         assert "Call `list_agent_templates`" not in GIL_GET_AGENTS_CODEX_SKILL_MD
 
-    def test_claude_template_uses_zip_download(self):
-        """Claude skill references the ZIP download endpoint."""
-        assert "agent-templates.zip" in GIL_GET_AGENTS_MD
+    def test_claude_template_uses_signed_download_token(self):
+        """Claude skill calls generate_download_token for a pre-signed URL."""
+        assert "generate_download_token" in GIL_GET_AGENTS_MD
+        assert 'content_type="agent_templates"' in GIL_GET_AGENTS_MD
 
-    def test_gemini_template_uses_zip_download(self):
-        """Gemini skill references the ZIP download endpoint."""
-        assert "agent-templates.zip" in GIL_GET_AGENTS_GEMINI_TOML
+    def test_gemini_template_uses_signed_download_token(self):
+        """Gemini skill calls generate_download_token for a pre-signed URL."""
+        assert "generate_download_token" in GIL_GET_AGENTS_GEMINI_TOML
+        assert 'content_type="agent_templates"' in GIL_GET_AGENTS_GEMINI_TOML
 
-    def test_codex_template_uses_zip_download(self):
-        """Codex skill references the ZIP download endpoint."""
-        assert "agent-templates.zip" in GIL_GET_AGENTS_CODEX_SKILL_MD
+    def test_codex_template_uses_signed_download_token(self):
+        """Codex skill calls generate_download_token for a pre-signed URL."""
+        assert "generate_download_token" in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert 'content_type="agent_templates"' in GIL_GET_AGENTS_CODEX_SKILL_MD
+
+    def test_templates_do_not_use_raw_api_key_auth(self):
+        """Templates must not instruct using X-API-Key/GILJO_API_KEY — token endpoint only."""
+        for tmpl in (GIL_GET_AGENTS_GEMINI_TOML, GIL_GET_AGENTS_CODEX_SKILL_MD):
+            assert "$GILJO_API_KEY" not in tmpl
+            assert "X-API-Key" not in tmpl
+        # Claude template keeps one literal `X-API-Key` inside a "do NOT do this" warning.
+        assert GIL_GET_AGENTS_MD.count("X-API-Key") <= 1
 
 
 class TestBootstrapTemplates:
