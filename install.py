@@ -112,6 +112,7 @@ init(autoreset=True)
 _log_path = Path.cwd() / "install.log"
 _logger = logging.getLogger("giljoai_install")
 _logger.setLevel(logging.DEBUG)
+_logger.propagate = False
 _file_handler = logging.FileHandler(_log_path, mode="a", encoding="utf-8")
 _file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 _logger.addHandler(_file_handler)

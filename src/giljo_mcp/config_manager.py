@@ -141,7 +141,7 @@ class LoggingConfig:
         log_level = getattr(logging, self.level.upper(), logging.INFO)
 
         # Configure file handler with rotation
-        from logging.handlers import RotatingFileHandler
+        from giljo_mcp.logging import _SafeRotatingFileHandler
 
         # Parse max_size (e.g., "10MB" -> 10485760)
         size_str = self.max_size.upper()
@@ -152,7 +152,7 @@ class LoggingConfig:
         else:
             max_bytes = int(size_str)
 
-        handler = RotatingFileHandler(self.file, maxBytes=max_bytes, backupCount=self.max_files)
+        handler = _SafeRotatingFileHandler(self.file, maxBytes=max_bytes, backupCount=self.max_files)
 
         formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
