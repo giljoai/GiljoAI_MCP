@@ -12,7 +12,8 @@
         <span
           >Each active agent template consumes context tokens during orchestration. The 8-slot limit
           keeps prompt budgets manageable. 1 slot is reserved for the Orchestrator (managed in Admin
-          Settings), leaving 7 for your custom agents.</span
+          Settings), leaving 7 for your custom agents. Run /gil_get_agents in your CLI tool to
+          install or update templates.</span
         >
       </v-tooltip>
       <v-chip
@@ -25,6 +26,18 @@
         {{ totalActiveAgents }} / {{ totalCapacity }}
       </v-chip>
     </div>
+
+    <!-- Stale templates banner -->
+    <v-alert
+      v-if="hasStaleTemplates"
+      type="warning"
+      variant="tonal"
+      density="compact"
+      class="mb-4"
+      icon="mdi-alert-circle-outline"
+    >
+      You need to update the agent templates, please run <strong>/gil_get_agents</strong> in your CLI tool.
+    </v-alert>
 
     <!-- HITL Closeout Toggle -->
     <div class="hitl-toggle-bar">
@@ -130,6 +143,11 @@
             <template v-if="item._system">
               <span class="text-caption text-muted-a11y">System managed</span>
             </template>
+            <template v-else-if="item.user_managed_export">
+              <v-chip size="small" color="info" variant="tonal" prepend-icon="mdi-account-check">
+                User Managed
+              </v-chip>
+            </template>
             <template v-else>
               <v-chip
                 v-if="item.may_be_stale && item.is_active"
@@ -152,15 +170,13 @@
                   </span>
                 </template>
                 <span v-if="item.may_be_stale">
-                  This template was modified after the last export. Re-export to your AI coding agents to get the
-                  latest version.
+                  This template was modified after the last export. Run /gil_get_agents in your CLI tool to update.
                 </span>
                 <span v-else-if="item.last_exported_at">
                   Last exported: {{ formatDate(item.last_exported_at) }}
                 </span>
                 <span v-else>
-                  This template has never been exported to your AI coding agents. Use the export feature to make it
-                  available.
+                  This template has never been exported. Run /gil_get_agents in your CLI tool to install it.
                 </span>
               </v-tooltip>
             </template>
@@ -228,6 +244,12 @@
                   prepend-icon="mdi-refresh"
                   title="Reset to Default"
                   @click="confirmReset(item)"
+                ></v-list-item>
+                <v-list-item
+                  v-if="item.may_be_stale && !item.user_managed_export"
+                  prepend-icon="mdi-account-check"
+                  title="Mark as User Managed"
+                  @click="markUserManaged(item)"
                 ></v-list-item>
                 <v-divider class="my-1" />
                 <v-list-item
@@ -493,6 +515,8 @@ const hasChanges = computed(() => {
   )
 })
 
+const hasStaleTemplates = computed(() => templates.value.some((t) => t.may_be_stale && !t.user_managed_export))
+
 // Dialog loading states
 const saving = ref(false)
 const deleting = ref(false)
@@ -738,12 +762,25 @@ const handleTemplateUpdated = (data) => {
   }
 }
 
+const markUserManaged = async (template) => {
+  try {
+    await api.templates.update(template.id, { user_managed_export: true })
+    template.user_managed_export = true
+    template.may_be_stale = false
+    showToast({ message: 'Template marked as user managed', type: 'success' })
+  } catch (error) {
+    console.error('Failed to mark template:', error)
+    showToast({ message: 'Failed to update template', type: 'error' })
+  }
+}
+
 // Handle agent template downloads via MCP (/gil_get_agents) — clear staleness flags
 const handleAgentsDownloaded = () => {
   const now = new Date().toISOString()
   templates.value.forEach((template) => {
     template.last_exported_at = now
     template.may_be_stale = false
+    template.user_managed_export = false
   })
 }
 

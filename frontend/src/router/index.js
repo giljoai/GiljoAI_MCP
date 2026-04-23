@@ -321,6 +321,12 @@ router.beforeEach(async (to, from, next) => {
     // reported 2026-04-22 on the demo server).
     const signal = setupState.route_signal
     const userStoreEarly = useUserStore()
+    // On page refresh the Pinia store is empty, but the httpOnly JWT cookie
+    // may still be valid. Attempt a lightweight /auth/me fetch so we don't
+    // bounce authenticated users back to the landing page.
+    if (!userStoreEarly.currentUser) {
+      try { await userStoreEarly.fetchCurrentUser() } catch { /* not logged in */ }
+    }
     const isAuthenticated = !!userStoreEarly.currentUser
     if (signal === 'public_landing' && !isAuthenticated) {
       next('/demo-landing')

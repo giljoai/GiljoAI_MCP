@@ -260,10 +260,10 @@
                 <v-list-item-title>Reset Password</v-list-item-title>
               </v-list-item>
 
-              <v-divider v-if="currentUser && currentUser.role === 'admin' && giljoMode === 'ce'" />
+              <v-divider v-if="currentUser && currentUser.role === 'admin'" />
 
               <v-list-item
-                v-if="currentUser && currentUser.role === 'admin' && giljoMode === 'ce'"
+                v-if="currentUser && currentUser.role === 'admin'"
                 :to="{ name: 'SystemSettings' }"
               >
                 <template v-slot:prepend>

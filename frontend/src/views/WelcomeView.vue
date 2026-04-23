@@ -237,11 +237,13 @@ async function handleStepComplete({ step, data }) {
     })
     showSetupOverlay.value = false
 
-    // After first-time setup, show the "How to Use" guide automatically
+    // After first-time setup, show the "How to Use" guide automatically.
+    // Delay must exceed the 1200ms checkmarks animation in SetupWizardOverlay
+    // which emits dismiss + update:modelValue(false) on its own timer.
     if (!forceSetupMode.value) {
       setTimeout(() => {
         showSetupOverlay.value = true
-      }, 400)
+      }, 1600)
     } else if (data.route) {
       router.push(data.route)
     }

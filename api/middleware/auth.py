@@ -180,6 +180,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/oauth/token",  # OAuth token exchange (public, PKCE-protected)
             "/api/oauth/.well-known/oauth-authorization-server",  # OAuth server metadata
             "/api/version/",  # Version check (installers need this before auth exists)
+            "/api/saas/register",  # SaaS self-serve registration (public, pre-auth)
+            "/api/saas/password-reset/",  # SaaS password reset (public, pre-auth)
         ]
         # Always allow token download path (token is the auth)
         if path.startswith("/api/download/temp") or "/api/download/temp/" in path:

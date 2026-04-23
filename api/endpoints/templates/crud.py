@@ -59,6 +59,7 @@ _ALLOWED_TEMPLATE_UPDATE_FIELDS: frozenset[str] = frozenset(
         "is_default",
         "tags",
         "meta_data",
+        "user_managed_export",
     }
 )
 router = APIRouter()
@@ -104,6 +105,7 @@ def _convert_to_response(template: AgentTemplate) -> TemplateResponse:
         # Handover 0335: Export tracking fields
         last_exported_at=template.last_exported_at,
         may_be_stale=may_be_stale,
+        user_managed_export=template.user_managed_export or False,
         category=template.category,
         variables=template.variables or [],
         version=template.version or "1.0.0",
@@ -306,6 +308,11 @@ async def update_template(
     metadata_only_fields = {"is_active"}
     is_metadata_only = set(update_data.keys()).issubset(metadata_only_fields)
     previous_updated_at = template.updated_at
+
+    # Clear user_managed_export when content fields change (re-triggers staleness)
+    _CONTENT_FIELDS = {"user_instructions", "role", "model", "tools", "description", "cli_tool"}
+    if update_data.keys() & _CONTENT_FIELDS and "user_managed_export" not in update_data:
+        template.user_managed_export = False
 
     for field, value in update_data.items():
         if field == "user_instructions" and value:

@@ -72,6 +72,7 @@ class TemplateUpdate(BaseModel):
     tags: Optional[list[str]] = None
     is_default: Optional[bool] = None
     is_active: Optional[bool] = None
+    user_managed_export: Optional[bool] = None
 
     @field_validator("user_instructions")
     @classmethod
@@ -108,6 +109,7 @@ class TemplateResponse(BaseModel):
     # Export tracking (Handover 0335)
     last_exported_at: Optional[datetime] = Field(default=None, description="Timestamp of last export to CLI")
     may_be_stale: bool = Field(default=False, description="True if template modified after last export")
+    user_managed_export: bool = Field(default=False, description="User dismissed staleness manually")
     # Legacy fields
     category: Optional[str] = None
     variables: list[str] = []

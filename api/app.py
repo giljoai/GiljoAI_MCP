@@ -422,9 +422,11 @@ def _configure_middleware(app: FastAPI) -> None:
             "/health",
             "/api/health",
             "/api/metrics",
+            "/api/saas/register",  # SaaS self-serve registration (pre-auth, no CSRF cookie yet)
         ],
         exempt_prefixes=[
             "/api/auth/",  # Auth endpoints (login, register, refresh — no CSRF cookie yet)
+            "/api/saas/password-reset/",  # SaaS password reset (pre-auth)
             "/api/oauth/token",  # OAuth token exchange (external MCP clients, PKCE-protected)
             "/api/oauth/.well-known/",  # OAuth metadata (public GET)
             "/api/setup/",  # Setup wizard (runs before auth is configured)

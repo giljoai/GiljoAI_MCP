@@ -280,6 +280,11 @@ Isolation is enforced at three levels:
 CE uses `tenant_key` as the isolation unit. SaaS adds Organization-level grouping
 on top of this foundation.
 
+For the architecture-level rules that endpoints must follow when handling tenant
+data (admin-gate vs. tenant-scope, the role/mode orthogonality invariant, the
+property-A/property-B regression discipline), see
+[`docs/architecture/tenant_scoping_rules.md`](architecture/tenant_scoping_rules.md).
+
 ---
 
 ## Trust Model

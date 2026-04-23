@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SEC-0005 Tenant-Scoping Hardening
+
+### Security
+- **Orchestrator prompt is now tenant-scoped.** Previously stored as a global singleton (`Configuration.tenant_key=NULL`), meaning any admin on any tenant overwrote the shared row. Now stored per-tenant. The admin "Prompts" settings tab applies to your tenant only.
+- **Orchestrator prompt override is now wired into live sessions.** The edited prompt is injected into `_build_orchestrator_response()` at runtime for the correct tenant. Previously the override was stored but not applied.
+- **Removed `/api/v1/users/?include_all_tenants=true` cross-tenant enumeration.** Admin users could previously list users across other tenants.
+
+### Added
+- `tests/security/test_tenant_required.py` — regression class asserting property B ("tenant-scoped endpoints refuse to serve when no tenant in scope"). Complements the existing 61 property-A tests.
+- `tests/test_system_prompt_service.py` — full coverage for `SystemPromptService` including property-C runtime-injection tests.
+- `docs/architecture/tenant_scoping_rules.md` — codifies tenant-scoping rules for future endpoint reviews.
+- `# TENANT-LEVEL` and `# SERVER-LEVEL: <reason>` comment markers on all 24 admin-gated endpoints (SEC-0005c sweep).
+
+### Changed
+- Tenant-isolation status updated from "complete" to "mostly complete; SEC-0005 closing Configuration-singleton class" in the SaaS strategy and readiness reference docs.
+
+### Migration
+- Alembic migration `<rev>_scope_orchestrator_prompt_per_tenant.py` drops the existing `(tenant_key IS NULL, key='system.orchestrator_prompt')` row. Content is logged to server logs before deletion (recoverable). On CE installs (1 tenant) the override is copied to that tenant's row to preserve work. On SaaS/demo installs (2+ tenants) the content is logged but NOT copied — that would leak tenant A's text to tenant B.
+
 ## [1.1.6] - 2026-04-17
 
 ### Added

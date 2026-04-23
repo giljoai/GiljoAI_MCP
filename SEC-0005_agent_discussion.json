@@ -16,33 +16,45 @@
     },
     "sub_projects_final": {
       "SEC-0005a": {
-        "id": "a7cd693b-c41c-4a63-9a45-07310b6d3180",
+        "id": "920fbbad-df2e-42ec-81ca-ec05cf81b4b0",
+        "alias_short": "BTCCEY",
+        "product_id": "571459f3-9d16-4a4b-b1c8-c64c2558e478",
         "name_final": "Tenant-Scope User List + GILJO_MODE-Gated Admin Menu Split + Demo-Mode Band-aid Removal",
         "scope_final": "Fix cross-tenant user-list leak via tenant_key scoping. Split admin settings tabs by GILJO_MODE. Add require_ce_mode dependency. Remove demo-mode blanket admin-menu hide. No role changes. No migration. Zero super_admin. Parallel with SEC-0005b.",
         "parallelizable_with": "SEC-0005b"
       },
       "SEC-0005b": {
-        "id": "f5d76dbb-d9a5-4d36-8827-dfac2586ec03",
-        "alias_short": "DAITWS",
+        "id": "07ed778f-74c9-4676-b910-1d0f5fcb525c",
+        "alias_short": "O9RNN3",
+        "product_id": "571459f3-9d16-4a4b-b1c8-c64c2558e478",
         "name_final": "Orchestrator Prompt — Tenant-Scope + Wire-up into Live Sessions",
         "scope_final": "Tenant-scope SystemPromptService, wire override into _build_orchestrator_response (Option A — feature becomes real), migration with log-before-delete + CE-vs-SaaS branch, property A/B/C tests, frontend copy update. Parallel with SEC-0005a.",
         "parallelizable_with": "SEC-0005a"
       },
       "SEC-0005c": {
-        "id": "e997feba-4014-4964-a4cf-d2058c66d814",
-        "alias_short": "2SP9DA",
+        "id": "d07e4928-5fdd-4c79-a60d-4960390f0058",
+        "alias_short": "SNP0B0",
+        "product_id": "571459f3-9d16-4a4b-b1c8-c64c2558e478",
         "name_final": "Systemic Tenant-Scoping Hardening — Sweep, Regression Class, Architecture Doc, Briefing Corrections",
         "scope_final": "Sweep all admin-gated endpoints into two lanes (tenant-level / server-level). TestTenantRequired regression class for property B on tenant-level. TestCeModeRequired regression class on server-level. docs/architecture/tenant_scoping_rules.md with five rules including the two-orthogonal-axes invariant. Four documentation corrections.",
         "depends_on": "SEC-0005a AND SEC-0005b must be completed before starting"
       },
       "INF-0002": {
-        "id": "e68a5dbf-e573-400f-8cb2-eda2f28758e0",
-        "alias_short": "UQHRA6",
+        "id": "5db43142-5ef3-46ba-a7f3-64b65cefb120",
+        "alias_short": "QKTMQM",
+        "product_id": "571459f3-9d16-4a4b-b1c8-c64c2558e478",
         "name_final": "Ops Panel — Standalone Admin Web UI for Demo/SaaS Operations",
         "scope_final": "Standalone FastAPI + Jinja2 web app at an obscure path. Basic auth + IP restriction. Reads product DB but never touches product router. Tenants table, trial management, server health, quick actions (extend trial / soft-lock / delete tenant). Complete isolation from product codebase.",
         "parallelizable_with": "SEC-0005a, SEC-0005b, SEC-0005c — zero file overlap"
+      },
+      "SEC-5007_cancelled": {
+        "id": "1a0691ee-3758-49de-85ed-19e691c15e92",
+        "name": "Cross-Tenant Admin Leak — Separate Platform-Admin from Tenant-Admin in Demo/SaaS",
+        "status": "cancelled (2026-04-22)",
+        "reason": "The super_admin-in-product approach was rejected in favor of the three-role / two-axes model + external ops panel (INF-0002). Kept in MCP as a historical artifact of the abandoned approach."
       }
     },
+    "project_recreation_note": "All four projects were originally created on a different MCP product (aad1e314-4229-4a65-958b-813968bcdb03) because the wrong server was loaded during the initial session. On 2026-04-23 they were recreated verbatim on the correct product (571459f3-9d16-4a4b-b1c8-c64c2558e478). The IDs listed above are the correct ones. Project migration reference: handovers/Project migration.md.",
     "empowerment": "Each sub-project explicitly authorizes its implementation agent to use /gil_add or mcp__giljo_mcp__update_project to modify downstream sibling projects if work reveals unexpected findings. Changes must be documented in a handover doc under handovers/, not carried silently.",
     "shared_artifacts": "handovers/SEC-0005_package/ — README.md (overview), migration_draft.py (for SEC-0005b), test_tenant_required_skeleton.py (for SEC-0005c), tenant_scoping_rules_draft.md (for SEC-0005c, needs Rule 5 added), doc_correction_diffs.md (for SEC-0005c)."
   },
