@@ -301,6 +301,12 @@ async def update_template(
             if not is_valid:
                 raise HTTPException(status_code=409, detail=error_msg)
 
+    # Metadata-only updates (e.g. is_active toggle) should not bump updated_at,
+    # otherwise the staleness check falsely triggers after enable/disable.
+    metadata_only_fields = {"is_active"}
+    is_metadata_only = set(update_data.keys()).issubset(metadata_only_fields)
+    previous_updated_at = template.updated_at
+
     for field, value in update_data.items():
         if field == "user_instructions" and value:
             template.user_instructions = value
@@ -312,6 +318,16 @@ async def update_template(
         template.background_color = get_role_color(template.role)
 
     await template_service.commit_and_refresh_template(session, template)
+
+    # Restore updated_at when only metadata changed — use raw SQL to bypass onupdate
+    if is_metadata_only and previous_updated_at is not None:
+        from sqlalchemy import update
+
+        await session.execute(
+            update(AgentTemplate).where(AgentTemplate.id == template.id).values(updated_at=previous_updated_at)
+        )
+        await session.commit()
+        await session.refresh(template)
 
     logger.info("Updated template %s", sanitize(template_id))
 
