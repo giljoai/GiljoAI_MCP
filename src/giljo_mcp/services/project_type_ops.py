@@ -229,39 +229,21 @@ async def get_project_count_for_type(session: AsyncSession, tenant_key: str, typ
     return await _repo.get_project_count_for_type(session, tenant_key, type_id)
 
 
-async def get_next_series_number(session: AsyncSession, tenant_key: str, type_id: str) -> int:
-    """Get the next available series number for a project type.
+async def get_next_series_number(
+    session: AsyncSession, tenant_key: str, type_id: str, product_id: str | None = None
+) -> int:
+    """Get the next available series number for a project type within a product.
 
     Returns max(series_number) + 1, or 1 if no projects exist for this type.
-
-    Args:
-        session: Async database session
-        tenant_key: Tenant identifier for isolation
-        type_id: Project type ID
-
-    Returns:
-        Next available series number (1-based)
     """
-    return await _repo.get_next_series_number(session, tenant_key, type_id)
+    return await _repo.get_next_series_number(session, tenant_key, type_id, product_id)
 
 
 async def get_available_series_numbers(
-    session: AsyncSession, tenant_key: str, type_id: str, limit: int = 5
+    session: AsyncSession, tenant_key: str, type_id: str, limit: int = 5, product_id: str | None = None
 ) -> list[int]:
-    """Get available series numbers, prioritizing gaps in the sequence.
-
-    Returns gap numbers first, then continues after the highest used number.
-
-    Args:
-        session: Async database session
-        tenant_key: Tenant identifier for isolation
-        type_id: Project type ID
-        limit: Maximum number of suggestions to return
-
-    Returns:
-        List of available series numbers, gaps first
-    """
-    used_numbers = await _repo.get_used_series_numbers(session, tenant_key, type_id)
+    """Get available series numbers within a product, prioritizing gaps."""
+    used_numbers = await _repo.get_used_series_numbers(session, tenant_key, type_id, product_id)
 
     if not used_numbers:
         return list(range(1, limit + 1))
@@ -269,14 +251,12 @@ async def get_available_series_numbers(
     max_used = max(used_numbers)
     available: list[int] = []
 
-    # Find gaps in the sequence first
     for num in range(1, max_used + 1):
         if num not in used_numbers:
             available.append(num)
             if len(available) >= limit:
                 return available
 
-    # Fill remaining with numbers after max
     next_num = max_used + 1
     while len(available) < limit:
         available.append(next_num)
@@ -292,22 +272,11 @@ async def check_series_available(
     series_number: int,
     subseries: Optional[str] = None,
     exclude_project_id: Optional[str] = None,
+    product_id: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Check if a specific series number combination is available.
-
-    Args:
-        session: Async database session
-        tenant_key: Tenant identifier for isolation
-        type_id: Project type ID (None checks untyped projects)
-        series_number: The series number to check
-        subseries: Optional subseries letter (a-z)
-        exclude_project_id: Exclude this project ID (for edit mode)
-
-    Returns:
-        {"available": bool}
-    """
+    """Check if a specific series number combination is available within a product."""
     available = await _repo.check_series_available(
-        session, tenant_key, type_id, series_number, subseries, exclude_project_id
+        session, tenant_key, type_id, series_number, subseries, exclude_project_id, product_id
     )
     return {"available": available}
 
@@ -318,18 +287,8 @@ async def get_used_subseries(
     type_id: Optional[str],
     series_number: int,
     exclude_project_id: Optional[str] = None,
+    product_id: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Get all subseries letters already used for a type + series_number combo.
-
-    Args:
-        session: Async database session
-        tenant_key: Tenant identifier for isolation
-        type_id: Project type ID (None checks untyped projects)
-        series_number: The series number to check
-        exclude_project_id: Exclude this project ID (for edit mode)
-
-    Returns:
-        {"used_subseries": list[str]}
-    """
-    used = await _repo.get_used_subseries(session, tenant_key, type_id, series_number, exclude_project_id)
+    """Get all subseries letters already used for a type + series_number within a product."""
+    used = await _repo.get_used_subseries(session, tenant_key, type_id, series_number, exclude_project_id, product_id)
     return {"used_subseries": used}

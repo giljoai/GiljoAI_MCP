@@ -846,6 +846,25 @@ async def create_first_admin_user(
     client_ip = request.client.host
     logger.info(f"[SETUP] Admin creation attempt from IP: {sanitize(client_ip)}")
 
+    # IMP-0011: Gate the unauthenticated admin-creation endpoint to CE mode.
+    # In demo/saas modes this endpoint must refuse -- operators bootstrap the
+    # admin user out-of-band via `python -m giljo_mcp.saas.cli.admin_bootstrap`.
+    from api.app_state import GILJO_MODE
+
+    if GILJO_MODE != "ce":
+        logger.warning(
+            "[SETUP] /auth/create-first-admin refused in mode=%s from IP=%s",
+            GILJO_MODE,
+            sanitize(client_ip),
+        )
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Admin bootstrap is disabled in this deployment mode. "
+                "Operators must create the first admin via the CLI bootstrap tool."
+            ),
+        )
+
     # CRITICAL SECURITY FIX (Handover 0034): Acquire lock to prevent race condition
     # Without this lock, multiple concurrent requests could all check user_count == 0
     # simultaneously and create multiple admin accounts
