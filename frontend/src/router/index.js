@@ -313,8 +313,16 @@ router.beforeEach(async (to, from, next) => {
     // Backend emits route_signal ∈ {'create_admin', 'login', 'public_landing'}
     // in addition to the legacy is_fresh_install/show_public_landing booleans.
     // Prefer route_signal when present; fall back to booleans + mode.
+    //
+    // IMPORTANT: `public_landing` is the signal for anonymous first-paint on
+    // demo/saas deployments -- it routes unauthenticated visitors to the
+    // marketing landing. It must NOT apply to authenticated users, otherwise
+    // every post-login navigation bounces back to /demo-landing (see loop
+    // reported 2026-04-22 on the demo server).
     const signal = setupState.route_signal
-    if (signal === 'public_landing') {
+    const userStoreEarly = useUserStore()
+    const isAuthenticated = !!userStoreEarly.currentUser
+    if (signal === 'public_landing' && !isAuthenticated) {
       next('/demo-landing')
       return
     }
@@ -324,7 +332,11 @@ router.beforeEach(async (to, from, next) => {
     }
     // Legacy / belt-and-suspenders path (no route_signal yet or transient error).
     // In demo/saas we NEVER want the CreateAdminAccount wizard to be visible.
-    if (isPublicLandingMode && (setupState.show_public_landing || setupState.is_fresh_install)) {
+    if (
+      isPublicLandingMode &&
+      !isAuthenticated &&
+      (setupState.show_public_landing || setupState.is_fresh_install)
+    ) {
       next('/demo-landing')
       return
     }
