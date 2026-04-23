@@ -3,43 +3,50 @@
 # See LICENSE in the project root for terms.
 # [CE] Community Edition — source-available, single-user use only.
 
-"""Unified baseline migration for v3.6 schema
+"""Unified baseline migration for v3.7 schema
 
-Revision ID: baseline_v36
+Revision ID: baseline_v37
 Revises: None
-Create Date: 2026-04-10
+Create Date: 2026-04-23
 
-This is a consolidated baseline migration that creates EXACTLY the schema
-matching the current SQLAlchemy models. Squashed from baseline_v35 + 5 incrementals:
+Consolidated baseline squashed from baseline_v36 + 16 incrementals:
 
-  baseline_v35 - Full schema (39 tables)
-  0950b - Add 'idle' and 'sleeping' to agent_executions status constraint
-  0960 - Convert auto_checkin_interval default from 60 (seconds) to 10 (minutes)
-  0435b - Add 'closed' to agent_executions status constraint
-  0435d - Add requires_action column to messages
-  bee93 - Merge head (0435d + 0960)
+  baseline_v36 - Full schema (39 tables)
+  rename_type_only - Data: rename depth 'type_only' to 'basic' (no DDL)
+  add_last_activity_at - Add last_activity_at to agent_executions
+  add_hidden_to_projects - Add hidden column to projects
+  bbdc55534128 - Add org_setup_complete to organizations
+  9f1f46a46029 - Data: rename old MCP tool names in agent_templates (no DDL)
+  a3c7e1f9d024 - Drop 4 orphan tables (discovery_config, git_configs, optimization_rules, optimization_metrics)
+  2c7b0f717e1d - Add product_id to taxonomy unique index
+  fk_templates_product - Add FK on agent_templates.product_id (then reverted)
+  revert_product_templates - Revert to tenant-scoped templates (swap unique constraint, drop FK/index)
+  add_user_managed_export - Add user_managed_export to agent_templates
+  create_product_agent_assignments - New junction table
+  fix_taxonomy_nulls_not_distinct - NULLS NOT DISTINCT on taxonomy index
+  9254a70aef1d - Data: scope orchestrator prompt per-tenant (no DDL)
+  50520bba0d1d - Merge head
+  b0b658095851 - Merge head
 
-Tables created (39 total):
-  1. organizations           21. configurations
-  2. users                   22. discovery_config
-  3. org_memberships         23. git_configs
-  4. api_keys                24. git_commits
-  5. api_key_ip_log          25. setup_state
-  6. products                26. settings
-  7. project_types           27. optimization_rules
-  8. projects                28. optimization_metrics
-  9. mcp_sessions            29. download_tokens
- 10. tasks                   30. api_metrics
- 11. messages                31. oauth_authorization_codes
- 12. vision_documents        32. message_recipients
- 13. mcp_context_index       33. message_acknowledgments
- 14. product_memory_entries   34. message_completions
- 15. agent_templates         35. user_field_priorities
- 16. template_archives       36. vision_document_summaries
- 17. template_usage_stats    37. product_tech_stacks
- 18. agent_jobs              38. product_architectures
- 19. agent_executions        39. product_test_configs
- 20. agent_todo_items
+Tables created (36 total):
+  1. organizations           19. agent_executions
+  2. users                   20. agent_todo_items
+  3. org_memberships         21. configurations
+  4. api_keys                22. git_commits
+  5. api_key_ip_log          23. setup_state
+  6. products                24. settings
+  7. project_types           25. download_tokens
+  8. projects                26. api_metrics
+  9. mcp_sessions            27. oauth_authorization_codes
+ 10. tasks                   28. message_recipients
+ 11. messages                29. message_acknowledgments
+ 12. vision_documents        30. message_completions
+ 13. mcp_context_index       31. user_field_priorities
+ 14. product_memory_entries   32. vision_document_summaries
+ 15. agent_templates         33. product_tech_stacks
+ 16. template_archives       34. product_architectures
+ 17. template_usage_stats    35. product_test_configs
+ 18. agent_jobs              36. product_agent_assignments
 
 """
 
@@ -52,7 +59,7 @@ from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
-revision: str = "baseline_v36"
+revision: str = "baseline_v37"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -72,6 +79,7 @@ def upgrade() -> None:
         sa.Column("slug", sa.String(length=255), nullable=False),
         sa.Column("settings", postgresql.JSONB(astext_type=sa.Text()), server_default="{}", nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true"),
+        sa.Column("org_setup_complete", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
@@ -508,6 +516,13 @@ def upgrade() -> None:
         sa.Column("early_termination", sa.Boolean(), server_default=sa.text("false"), nullable=True),
         sa.Column("auto_checkin_enabled", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("auto_checkin_interval", sa.Integer(), nullable=False, server_default="10"),
+        sa.Column(
+            "hidden",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.text("false"),
+            comment="Whether project is hidden from default list view",
+        ),
         sa.ForeignKeyConstraint(["product_id"], ["products.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["project_type_id"], ["project_types.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
@@ -536,11 +551,12 @@ def upgrade() -> None:
         postgresql_where=sa.text("status = 'active'"),
     )
     op.create_index(op.f("ix_projects_alias"), "projects", ["alias"], unique=True)
-    # v3.4: partial unique index replacing uq_project_taxonomy constraint (0845a)
+    # Partial unique index: one active taxonomy per product (NULLS NOT DISTINCT requires PG15+)
     op.execute(
         sa.text(
             "CREATE UNIQUE INDEX uq_project_taxonomy_active "
-            "ON projects (tenant_key, project_type_id, series_number, subseries) "
+            "ON projects (tenant_key, product_id, project_type_id, series_number, subseries) "
+            "NULLS NOT DISTINCT "
             "WHERE deleted_at IS NULL"
         )
     )
@@ -1015,13 +1031,13 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_by", sa.String(length=100), nullable=True),
+        sa.Column("user_managed_export", sa.Boolean(), nullable=False, server_default="false"),
         sa.ForeignKeyConstraint(["org_id"], ["organizations.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("product_id", "name", "version", name="uq_template_product_name_version"),
+        sa.UniqueConstraint("tenant_key", "name", "version", name="uq_template_tenant_name_version"),
     )
     op.create_index("idx_template_tenant", "agent_templates", ["tenant_key"], unique=False)
     op.create_index("idx_template_org_id", "agent_templates", ["org_id"], unique=False)
-    op.create_index("idx_template_product", "agent_templates", ["product_id"], unique=False)
     op.create_index("idx_template_category", "agent_templates", ["category"], unique=False)
     op.create_index("idx_template_role", "agent_templates", ["role"], unique=False)
     op.create_index("idx_template_active", "agent_templates", ["is_active"], unique=False)
@@ -1245,6 +1261,12 @@ def upgrade() -> None:
             comment="Number of times this agent has been reactivated after completion",
         ),
         sa.Column("agent_name", sa.String(length=255), nullable=True, comment="Human-readable display name for UI"),
+        sa.Column(
+            "last_activity_at",
+            sa.DateTime(timezone=True),
+            nullable=True,
+            comment="Heartbeat timestamp for agent activity tracking",
+        ),
         sa.CheckConstraint(
             "status IN ('waiting', 'working', 'blocked', 'complete', 'closed', 'silent', 'decommissioned', 'idle', 'sleeping')",
             name="ck_agent_execution_status",
@@ -1322,72 +1344,8 @@ def upgrade() -> None:
     op.create_index("idx_config_category", "configurations", ["category"], unique=False)
 
     # =========================================================================
-    # 22. discovery_config (FK -> projects)
-    #     v3.4: settings changed from JSON to JSONB (0840e)
     # =========================================================================
-    op.create_table(
-        "discovery_config",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("tenant_key", sa.String(length=36), nullable=False),
-        sa.Column("project_id", sa.String(length=36), nullable=False),
-        sa.Column("path_key", sa.String(length=50), nullable=False),
-        sa.Column("path_value", sa.Text(), nullable=False),
-        sa.Column("priority", sa.Integer(), nullable=True),
-        sa.Column("enabled", sa.Boolean(), nullable=True),
-        sa.Column("settings", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("project_id", "path_key", name="uq_discovery_path"),
-    )
-    op.create_index("idx_discovery_tenant", "discovery_config", ["tenant_key"], unique=False)
-    op.create_index("idx_discovery_project", "discovery_config", ["project_id"], unique=False)
-
-    # =========================================================================
-    # 23. git_configs (no FK - product_id is logical ref only)
-    #     v3.4: removed meta_data (0840a)
-    #     v3.4: webhook_events, ignore_patterns, git_config_options changed JSON->JSONB (0840e)
-    # =========================================================================
-    op.create_table(
-        "git_configs",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("tenant_key", sa.String(length=36), nullable=False),
-        sa.Column("product_id", sa.String(length=36), nullable=False),
-        sa.Column("repo_url", sa.String(length=500), nullable=False),
-        sa.Column("branch", sa.String(length=100), nullable=True),
-        sa.Column("remote_name", sa.String(length=50), nullable=True),
-        sa.Column("auth_method", sa.String(length=20), nullable=False),
-        sa.Column("username", sa.String(length=100), nullable=True),
-        sa.Column("password_encrypted", sa.Text(), nullable=True),
-        sa.Column("ssh_key_path", sa.String(length=500), nullable=True),
-        sa.Column("ssh_key_encrypted", sa.Text(), nullable=True),
-        sa.Column("auto_commit", sa.Boolean(), nullable=True),
-        sa.Column("auto_push", sa.Boolean(), nullable=True),
-        sa.Column("commit_message_template", sa.Text(), nullable=True),
-        sa.Column("webhook_url", sa.String(length=500), nullable=True),
-        sa.Column("webhook_secret", sa.String(length=255), nullable=True),
-        sa.Column("webhook_events", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column("ignore_patterns", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column("git_config_options", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column("is_active", sa.Boolean(), nullable=True),
-        sa.Column("last_commit_hash", sa.String(length=40), nullable=True),
-        sa.Column("last_push_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("last_error", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True),
-        sa.CheckConstraint("auth_method IN ('https', 'ssh', 'token')", name="ck_git_config_auth_method"),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("product_id", name="uq_git_config_product"),
-    )
-    op.create_index("idx_git_config_tenant", "git_configs", ["tenant_key"], unique=False)
-    op.create_index("idx_git_config_product", "git_configs", ["product_id"], unique=False)
-    op.create_index("idx_git_config_active", "git_configs", ["is_active"], unique=False)
-    op.create_index("idx_git_config_auth", "git_configs", ["auth_method"], unique=False)
-
-    # =========================================================================
-    # 24. git_commits (FK -> projects)
+    # 22. git_commits (FK -> projects)
     #     v3.4: removed meta_data (0840a)
     #     v3.4: files_changed, webhook_response changed JSON->JSONB (0840e)
     # =========================================================================
@@ -1560,65 +1518,8 @@ def upgrade() -> None:
     op.create_index(op.f("ix_settings_tenant_key"), "settings", ["tenant_key"], unique=False)
 
     # =========================================================================
-    # 27. optimization_rules (no FK)
     # =========================================================================
-    op.create_table(
-        "optimization_rules",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("tenant_key", sa.String(length=36), nullable=False),
-        sa.Column("operation_type", sa.String(length=50), nullable=False),
-        sa.Column("max_answer_chars", sa.Integer(), nullable=False),
-        sa.Column("prefer_symbolic", sa.Boolean(), nullable=False),
-        sa.Column("guidance", sa.Text(), nullable=False),
-        sa.Column("context_filter", sa.String(length=100), nullable=True),
-        sa.Column("is_active", sa.Boolean(), nullable=False),
-        sa.Column("priority", sa.Integer(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
-        sa.CheckConstraint(
-            "operation_type IN ('file_read', 'symbol_search', 'symbol_replace', 'pattern_search', 'directory_list')",
-            name="ck_optimization_rule_operation_type",
-        ),
-        sa.CheckConstraint("max_answer_chars > 0", name="ck_optimization_rule_max_chars"),
-        sa.CheckConstraint("priority >= 0", name="ck_optimization_rule_priority"),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index("idx_optimization_rule_tenant", "optimization_rules", ["tenant_key"], unique=False)
-    op.create_index("idx_optimization_rule_type", "optimization_rules", ["operation_type"], unique=False)
-    op.create_index("idx_optimization_rule_active", "optimization_rules", ["is_active"], unique=False)
-    op.create_index(op.f("ix_optimization_rules_tenant_key"), "optimization_rules", ["tenant_key"], unique=False)
-
-    # =========================================================================
-    # 28. optimization_metrics (no FK)
-    #     v3.4: removed meta_data (0840a)
-    # =========================================================================
-    op.create_table(
-        "optimization_metrics",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("tenant_key", sa.String(length=36), nullable=False),
-        sa.Column("operation_type", sa.String(length=50), nullable=False),
-        sa.Column("params_size", sa.Integer(), nullable=False),
-        sa.Column("result_size", sa.Integer(), nullable=False),
-        sa.Column("optimized", sa.Boolean(), nullable=False),
-        sa.Column("tokens_saved", sa.Integer(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.CheckConstraint(
-            "operation_type IN ('file_read', 'symbol_search', 'symbol_replace', 'pattern_search', 'directory_list')",
-            name="ck_optimization_metric_operation_type",
-        ),
-        sa.CheckConstraint("params_size >= 0", name="ck_optimization_metric_params_size"),
-        sa.CheckConstraint("result_size >= 0", name="ck_optimization_metric_result_size"),
-        sa.CheckConstraint("tokens_saved >= 0", name="ck_optimization_metric_tokens_saved"),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index("idx_optimization_metric_tenant", "optimization_metrics", ["tenant_key"], unique=False)
-    op.create_index("idx_optimization_metric_type", "optimization_metrics", ["operation_type"], unique=False)
-    op.create_index("idx_optimization_metric_date", "optimization_metrics", ["created_at"], unique=False)
-    op.create_index("idx_optimization_metric_optimized", "optimization_metrics", ["optimized"], unique=False)
-    op.create_index(op.f("ix_optimization_metrics_tenant_key"), "optimization_metrics", ["tenant_key"], unique=False)
-
-    # =========================================================================
-    # 29. download_tokens (no FK)
+    # 25. download_tokens (no FK)
     #     v3.4: removed meta_data (0840e), added filename (0840e)
     # =========================================================================
     op.create_table(
@@ -1876,11 +1777,42 @@ def upgrade() -> None:
     op.create_index("idx_product_test_configs_product", "product_test_configs", ["product_id"])
     op.create_index("idx_product_test_configs_tenant", "product_test_configs", ["tenant_key"])
 
+    # =========================================================================
+    # 36. product_agent_assignments (FK -> products, agent_templates)
+    # =========================================================================
+    op.create_table(
+        "product_agent_assignments",
+        sa.Column("id", sa.String(36), nullable=False),
+        sa.Column(
+            "product_id",
+            sa.String(36),
+            sa.ForeignKey("products.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "template_id",
+            sa.String(36),
+            sa.ForeignKey("agent_templates.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
+        sa.Column("tenant_key", sa.String(36), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("product_id", "template_id", name="uq_product_template_assignment"),
+    )
+    op.create_index("idx_assignment_tenant", "product_agent_assignments", ["tenant_key"])
+    op.create_index("idx_assignment_product", "product_agent_assignments", ["product_id"])
+    op.create_index("idx_assignment_template", "product_agent_assignments", ["template_id"])
+    op.create_index("idx_assignment_active", "product_agent_assignments", ["is_active"])
+
 
 def downgrade() -> None:
-    """Downgrade schema - drop all 39 tables in reverse FK order."""
+    """Downgrade schema - drop all 36 tables in reverse FK order."""
 
-    # New tables added in v3.4 (drop first - they depend on base tables)
+    # New tables (drop first - they depend on base tables)
+    op.drop_table("product_agent_assignments")
     op.drop_table("product_test_configs")
     op.drop_table("product_architectures")
     op.drop_table("product_tech_stacks")
@@ -1890,17 +1822,13 @@ def downgrade() -> None:
     op.drop_table("message_acknowledgments")
     op.drop_table("message_recipients")
 
-    # Original tables in reverse FK order (same as v33)
+    # Original tables in reverse FK order
     op.drop_table("oauth_authorization_codes")
     op.drop_table("api_metrics")
     op.drop_table("download_tokens")
-    op.drop_table("optimization_metrics")
-    op.drop_table("optimization_rules")
     op.drop_table("settings")
     op.drop_table("setup_state")
     op.drop_table("git_commits")
-    op.drop_table("git_configs")
-    op.drop_table("discovery_config")
     op.drop_table("configurations")
     op.drop_table("agent_todo_items")
     op.drop_table("agent_executions")

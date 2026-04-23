@@ -1138,7 +1138,7 @@ def install_requirements() -> bool:
 
 
 def _check_and_stamp_migration_version() -> None:
-    """Detect old migration revisions and stamp to baseline_v36.
+    """Detect old migration revisions and stamp to baseline_v37.
 
     After a CE export squash, the old revision IDs no longer exist as files.
     This bridges existing databases to the new baseline so alembic upgrade head works.
@@ -1157,27 +1157,14 @@ def _check_and_stamp_migration_version() -> None:
             result = session.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
             current = result.scalar()
 
-            if not current or current == "baseline_v36":
+            if not current or current == "baseline_v37":
                 return
 
-            known_old = {
-                "baseline_v33",
-                "baseline_v34",
-                "baseline_v35",
-                "0855a_setup_state",
-                "0904_auto_checkin",
-                "0950b_exec_status",
-                "0960_checkin_min",
-                "0435b_closed_status",
-                "0435d_requires_action",
-                "bee938301ffa",
-            }
-
-            if current in known_old or current not in known_old:
-                print_info(f"Stamping migration: {current} -> baseline_v36")
-                session.execute(text("UPDATE alembic_version SET version_num = 'baseline_v36'"))
-                session.commit()
-                print_success("Migration version updated to baseline_v36")
+            # Any revision that is not baseline_v37 needs stamping forward
+            print_info(f"Stamping migration: {current} -> baseline_v37")
+            session.execute(text("UPDATE alembic_version SET version_num = 'baseline_v37'"))
+            session.commit()
+            print_success("Migration version updated to baseline_v37")
 
     except Exception as e:
         print_warning(f"Migration version check skipped: {e}")
