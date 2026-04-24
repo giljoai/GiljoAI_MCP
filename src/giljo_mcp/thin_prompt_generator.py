@@ -34,7 +34,6 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from giljo_mcp.config_manager import get_config
 from giljo_mcp.models import Project
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.prompts.claude_prompt_builder import ClaudePromptBuilder
@@ -46,19 +45,6 @@ from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
-
-
-def _get_ssl_protocol() -> str:
-    """Get HTTP protocol based on SSL configuration in config.yaml.
-
-    Returns:
-        "https" if ssl_enabled is True in config.yaml, "http" otherwise.
-    """
-    try:
-        return "https" if get_config().get_nested("features.ssl_enabled", default=False) else "http"
-    except (OSError, ValueError):
-        pass
-    return "http"
 
 
 def build_continuation_prompt(

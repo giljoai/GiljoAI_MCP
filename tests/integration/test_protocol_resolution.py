@@ -188,22 +188,6 @@ class TestConfigurationEndpointProtocol:
 
 
 # ---------------------------------------------------------------------------
-# Test: thin_prompt_generator._get_ssl_protocol()
-# ---------------------------------------------------------------------------
-
-
-class TestThinPromptGeneratorProtocol:
-    """Test that thin_prompt_generator reads ssl_enabled correctly."""
-
-    def test_returns_https_when_ssl_enabled(self, ssl_config):
-        with patch("giljo_mcp.thin_prompt_generator.get_config", return_value=ssl_config):
-            from giljo_mcp.thin_prompt_generator import _get_ssl_protocol
-
-            result = _get_ssl_protocol()
-        assert result == "https"
-
-
-# ---------------------------------------------------------------------------
 # Test: No http:// or ws:// URLs when ssl_enabled=true (comprehensive)
 # ---------------------------------------------------------------------------
 
