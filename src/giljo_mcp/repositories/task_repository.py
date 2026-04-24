@@ -242,6 +242,7 @@ class TaskRepository:
         self,
         session: AsyncSession,
         product_id: str,
+        tenant_key: str,
     ) -> Project | None:
         """
         Get the active project for a product.
@@ -249,11 +250,18 @@ class TaskRepository:
         Args:
             session: Active database session
             product_id: Product UUID
+            tenant_key: Tenant key for isolation
 
         Returns:
             Project ORM instance or None
         """
-        stmt = select(Project).where(and_(Project.product_id == product_id, Project.status == "active"))
+        stmt = select(Project).where(
+            and_(
+                Project.product_id == product_id,
+                Project.status == "active",
+                Project.tenant_key == tenant_key,
+            )
+        )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
