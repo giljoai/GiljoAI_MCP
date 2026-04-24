@@ -240,6 +240,9 @@ DEPLOYMENT_CONTEXT=localhost
 GILJO_API_HOST={bind_address}
 SERVICE_BIND={bind_address}
 
+# Public URL for MCP tool download links (agents use this to reach the server)
+GILJO_PUBLIC_URL={http_proto}://{api_url_host}:{api_port}
+
 # =============================================================================
 # FRONTEND CONFIGURATION
 # =============================================================================

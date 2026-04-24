@@ -1166,6 +1166,48 @@ def install_requirements() -> bool:
         return False
 
 
+def _patch_env_from_config() -> None:
+    """Check .env for missing variables and patch them from config.yaml.
+
+    Runs once per startup. Reads config.yaml to derive values that the
+    installer should have written but didn't (e.g., GILJO_PUBLIC_URL on
+    LAN/WAN installs before this fix shipped). Appends missing entries
+    to .env so they persist across restarts.
+    """
+    env_path = Path.cwd() / ".env"
+    if not env_path.exists():
+        return
+
+    try:
+        env_text = env_path.read_text(encoding="utf-8")
+    except OSError:
+        return
+
+    patches: list[str] = []
+
+    # --- GILJO_PUBLIC_URL: required for MCP tool download links on LAN/WAN ---
+    if "GILJO_PUBLIC_URL" not in env_text:
+        external_host = _get_external_host()
+        if external_host and external_host != "localhost":
+            ssl_enabled = get_ssl_enabled()
+            api_port, _ = get_config_ports()
+            proto = "https" if ssl_enabled else "http"
+            public_url = f"{proto}://{external_host}:{api_port}"
+            patches.append(f"GILJO_PUBLIC_URL={public_url}")
+            os.environ["GILJO_PUBLIC_URL"] = public_url
+            print_info(f"Patched .env: GILJO_PUBLIC_URL={public_url}")
+
+    if patches:
+        try:
+            with open(env_path, "a", encoding="utf-8") as f:
+                f.write("\n# Auto-patched by startup.py\n")
+                for patch in patches:
+                    f.write(f"{patch}\n")
+            print_success(f"Added {len(patches)} missing variable(s) to .env")
+        except OSError as e:
+            print_warning(f"Could not patch .env: {e}")
+
+
 def _check_and_stamp_migration_version() -> None:
     """Detect old migration revisions and stamp to baseline_v37.
 
@@ -1398,6 +1440,9 @@ def run_startup(
     except Exception as e:
         print_warning(f"Failed to download NLTK data: {e}")
         print_info("Vision document summarization may not work properly")
+
+    # Step 2.9: Patch .env with missing variables derived from config.yaml
+    _patch_env_from_config()
 
     # Step 3: Run database migrations
     if not no_migrations:
