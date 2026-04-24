@@ -24,6 +24,7 @@ Author: GiljoAI Development Team
 """
 
 import logging
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -70,8 +71,8 @@ def build_continuation_prompt(
     """Build a continuation prompt for orchestrator session refresh.
 
     Canonical prompt builder for all handover paths (REST endpoint, slash command,
-    ThinClientPromptGenerator). Reads MCP URL from config including external_host
-    for public IP deployments.
+    ThinClientPromptGenerator). Reads MCP URL from GILJO_PUBLIC_URL env-var
+    (INF-5012b) with http://localhost:7272 as the CE-localhost fallback.
 
     Args:
         project_id: Project UUID
@@ -83,12 +84,11 @@ def build_continuation_prompt(
     Returns:
         Continuation prompt string
     """
-    config = get_config()
-    mcp_host = config.get_nested("services.external_host") or config.server.api_host
-
-    mcp_port = config.server.api_port
-    mcp_proto = _get_ssl_protocol()
-    mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}/mcp"
+    # INF-5012b: prefer GILJO_PUBLIC_URL (demo/cloud deploys) over reading
+    # the server's bind address from config, which produces ":7272" URLs
+    # when the server is fronted by a reverse proxy.
+    public_base = os.environ.get("GILJO_PUBLIC_URL", "http://localhost:7272").rstrip("/")
+    mcp_url = f"{public_base}/mcp"
 
     project_display = f' "{project_name}"' if project_name else ""
     product_param = product_id if product_id else "<fetch from project>"
@@ -596,14 +596,19 @@ class ThinClientPromptGenerator:
         project_result = await self.db.execute(project_stmt)
         return project_result.scalar_one_or_none()
 
-    def _get_external_host(self) -> str:
-        """Get external MCP server host from config."""
-        config = get_config()
-        return config.get_nested("services.external_host") or config.server.api_host
+    def _get_public_base_url(self) -> str:
+        """Get the public MCP server base URL (INF-5012b).
 
-    def _get_protocol(self) -> str:
-        """Get HTTP protocol based on SSL configuration."""
-        return _get_ssl_protocol()
+        Prefers GILJO_PUBLIC_URL (set on demo/cloud deployments where the
+        server is fronted by a reverse proxy such as Cloudflare Tunnel).
+        Falls back to http://localhost:7272 for vanilla CE installs.
+
+        Note: this is used from MCP tool call context where no FastAPI
+        Request is available; when a Request is in scope, callers should
+        use giljo_mcp.http.url_resolver.get_public_base_url(request)
+        instead (honors X-Forwarded-* headers per request).
+        """
+        return os.environ.get("GILJO_PUBLIC_URL", "http://localhost:7272").rstrip("/")
 
     async def generate_staging_prompt(self, orchestrator_id: str, project_id: str, agent_id: str = None) -> str:
         """Generate thin-client orchestrator staging prompt (Handover 0415).
@@ -649,11 +654,7 @@ class ThinClientPromptGenerator:
             exec_result = await self.db.execute(exec_stmt)
             execution = exec_result.scalars().first()
 
-        config = get_config()
-        mcp_host = self._get_external_host()
-        mcp_port = config.server.api_port
-        mcp_proto = self._get_protocol()
-        mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}"
+        mcp_url = self._get_public_base_url()
 
         return self._staging_builder.build_staging_prompt(
             project=project,

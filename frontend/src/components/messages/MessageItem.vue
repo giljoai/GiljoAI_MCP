@@ -45,6 +45,11 @@
           </div>
 
           <!-- Message Content with Markdown -->
+          <!-- SEC-0003: renderedContent is produced by useSanitizeMarkdown
+               (hardened DOMPurify allow-list); user-supplied message body
+               flows through marked() then sanitizeMarkdown before reaching
+               the DOM. Fallback branch routes through sanitizeHtml.
+               v-html is sanctioned for this file in eslint.config.js. -->
           <div class="message-content text-body-2" data-testid="message-content" v-html="renderedContent" />
 
           <!-- Actions -->
@@ -62,8 +67,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
+import { useSanitizeMarkdown, sanitizeHtml } from '@/composables/useSanitizeMarkdown'
 import { hexToRgba } from '@/utils/colorUtils'
 import { getAgentColor } from '@/config/agentColors'
 import { getStatusColor } from '@/utils/statusConfig'
@@ -203,12 +207,15 @@ const relativeTime = computed(() => {
   return formatDate(timestamp)
 })
 
-// Markdown rendering
+// Markdown rendering (SEC-0003: sanctioned v-html via useSanitizeMarkdown)
+const { sanitizeMarkdown } = useSanitizeMarkdown()
 const renderedContent = computed(() => {
   try {
-    return DOMPurify.sanitize(marked(props.message.content))
+    return sanitizeMarkdown(props.message.content)
   } catch {
-    return DOMPurify.sanitize(props.message.content)
+    // If marked() throws on malformed input, fall back to sanitizing the raw
+    // string as HTML -- still hardened, just skips markdown parsing.
+    return sanitizeHtml(props.message.content)
   }
 })
 

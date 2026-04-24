@@ -63,14 +63,14 @@
             <v-form ref="loginForm" @submit.prevent="handleLogin">
               <v-text-field
                 v-model="username"
-                label="Username"
+                label="Email or username"
                 prepend-inner-icon="mdi-account"
                 variant="outlined"
                 :rules="[rules.username]"
                 :disabled="loading"
                 autofocus
                 autocomplete="username"
-                aria-label="Username"
+                aria-label="Email or username"
                 @keyup.enter="handleLogin"
                 @input="error = ''"
               />
@@ -225,7 +225,7 @@ const error = ref('')
 
 // Validation rules
 const rules = {
-  username: (value) => !!value || 'Username is required',
+  username: (value) => !!value || 'Email or username is required',
   password: (value) => !!value || 'Password is required',
 }
 
@@ -300,11 +300,11 @@ async function handleLogin() {
   try {
     const loginSuccess = await userStore.login(username.value, password.value)
     if (!loginSuccess) {
-      error.value = 'Invalid username or password.'
+      error.value = 'Invalid credentials.'
     }
   } catch (err) {
     if (err.response?.status === 401) {
-      error.value = 'Invalid username or password.'
+      error.value = 'Invalid credentials.'
     } else if (err.response?.status === 429) {
       error.value = 'Too many login attempts. Please try again later.'
     } else if (err.code === 'ERR_NETWORK' || !err.response) {

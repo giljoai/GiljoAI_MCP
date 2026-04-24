@@ -10,6 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Launcher now branches browser auto-open URL on deployment_context (demo/saas-production → /demo-landing, CE first-run → /welcome, else dashboard). Removes reliance on frontend route_signal bounce. Closes IMP-0011 Phase 2.
 
+## [Unreleased] — 2026-04-24 — SEC-0003 Admin-View XSS Hardening
+
+### Security
+- **Single sanctioned sanitization pipeline for all `v-html` sinks in the Vue admin frontend.** Every user- or backend-influenced string that lands in `v-html` now passes through `useSanitizeMarkdown()` / `sanitizeHtml()`, backed by a hardened DOMPurify config with explicit `ALLOWED_TAGS` / `ALLOWED_ATTR` allow-lists, `ALLOW_DATA_ATTR=false`, and a URI-scheme allow-list that blocks `javascript:` and `data:`. Commits `382e233e`, `0302d44b`.
+- **Double-decode class bug fixed in `DatabaseConnection.formatTestResultMessage`.** Backend-supplied `message` and `suggestions[]` are HTML-escaped before concatenation, then the combined HTML is sanitized — closing a re-parse path where a crafted suggestion string could inject markup. Commit `b4c25b05`.
+- **Heading-id injection fixed in `UserGuideView` marked renderer.** The custom heading renderer now slugifies the id (restricted to `[a-z0-9-]`) and HTML-escapes the heading body before interpolation, so a heading of `<script>alert(1)</script>` can no longer smuggle a raw tag into rendered HTML. Commit `70dc17c9`.
+- **`vue/no-v-html` bumped from `warn` to `error`** with a narrow file-glob override listing only the 4 audited sites, so every v-html is now a deliberate, commented escape hatch — not an accidental one. Commits `b95a6264`, `4d81c54c`.
+
+### Added
+- `frontend/src/composables/useSanitizeMarkdown.js` — sanctioned composable exposing `sanitizeMarkdown()` and `sanitizeHtml()` over the hardened DOMPurify config. 12 unit tests in `useSanitizeMarkdown.spec.js`.
+- `frontend/src/utils/escapeHtml.js` — shared `escapeHtml()` + `slugify()` helpers used by the fixes above. 9 unit tests in `escapeHtml.spec.js`, including the `<script>alert(1)</script>` heading vector.
+- Ops-panel `| safe` / `Markup(` / `autoescape false` grep sanity check — verdict CLEAN, appendix in `handovers/SEC-0003_xss_hardening.md` (commit `3aedd621`).
+
+### Changed
+- Migrated 6 `v-html` call sites to the sanctioned pipeline: `MessageItem.vue:209`, `BroadcastPanel.vue:280`, `UserGuideView.vue:148` (+ search snippet at `:216` and heading renderer at `:136-148`), and `DatabaseConnection.vue:315-339`.
+- `frontend/eslint.config.js`: `vue/no-v-html: error` at line 81; per-file override block at lines 102-120 sanctions the 4 audited files with a comment explaining review requirements for any additions. Inline `eslint-disable-next-line` comments do NOT suppress `vue/no-v-html` under `eslint-plugin-vue@9.20` + ESLint v9 flat config (fixed in eslint-plugin-vue `>=9.25`); dependency not bumped — out of scope for a security patch.
+- Test state: 2278/2278 passing (21 composable/util unit tests from implementer + 24 payload/integration tests from tester), lint 0 errors, frontend build clean.
+
 ## [Unreleased] — 2026-04-24 — SEC-0001 Vision-Document Upload Guardrails
 
 ### Security

@@ -68,7 +68,8 @@
             <v-form ref="loginForm" @submit.prevent="handleLogin">
               <v-text-field
                 v-model="username"
-                label="Username"
+                label="Email or username"
+                placeholder="Enter email or username"
                 prepend-inner-icon="mdi-account"
                 variant="outlined"
                 :rules="[rules.username]"
@@ -234,7 +235,7 @@ const loginForm = ref(null)
 
 // Validation rules
 const rules = {
-  username: (value) => !!value || 'Username is required',
+  username: (value) => !!value || 'Email or username is required',
   password: (value) => !!value || 'Password is required',
 }
 
@@ -331,7 +332,7 @@ async function handleLogin() {
         router.push('/welcome')
         return
       } else {
-        error.value = 'Invalid username or password'
+        error.value = 'Invalid credentials'
       }
     } else if (err.response?.status === 403) {
       const detail = err.response?.data?.detail || ''

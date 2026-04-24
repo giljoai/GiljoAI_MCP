@@ -552,7 +552,7 @@ class ProductTuningService:
 
             # Get last tuned sequence
             tuning_state = product.tuning_state or {}
-            last_tuned_seq = tuning_state.get("last_tuned_at_sequence", 0)
+            last_tuned_seq = tuning_state.get("last_tuned_at_sequence") or 0
 
             projects_since = max(current_sequence - last_tuned_seq, 0)
 

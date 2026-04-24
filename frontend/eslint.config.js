@@ -78,7 +78,7 @@ export default [
     rules: {
       ...pluginVue.configs['vue3-recommended'].rules,
       'vue/multi-word-component-names': 'off',
-      'vue/no-v-html': 'warn',
+      'vue/no-v-html': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-debugger': 'error',
       'no-unused-vars': [
@@ -95,6 +95,25 @@ export default [
     },
     plugins: {
       vue: pluginVue,
+    },
+  },
+  {
+    // SEC-0003: these files intentionally use v-html and are audited to route
+    // every value through the hardened useSanitizeMarkdown / sanitizeHtml
+    // pipeline (see per-site justification comments in each file). The
+    // vue/no-v-html rule is disabled here rather than via inline
+    // `<!-- eslint-disable-next-line -->` comments because eslint-plugin-vue
+    // v9.20 under ESLint flat config does not honour HTML-comment directives
+    // (fixed in eslint-plugin-vue >=9.25). Keep this list MINIMAL -- any new
+    // v-html site requires a separate reviewed entry.
+    files: [
+      'src/components/DatabaseConnection.vue',
+      'src/components/messages/BroadcastPanel.vue',
+      'src/components/messages/MessageItem.vue',
+      'src/views/UserGuideView.vue',
+    ],
+    rules: {
+      'vue/no-v-html': 'off',
     },
   },
   {

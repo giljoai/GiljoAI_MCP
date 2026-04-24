@@ -281,23 +281,28 @@ const activeNormalizedId = computed(() => normalizeToolId(activeToolId.value))
 // the UI falls back to window.location.* so it renders immediately.
 const backendConfig = ref(null)
 
-// Server config — before backendConfig loads, default to window.location.*.
-// After backendConfig loads, mirror its host/port so the editable fields show
-// the real backend values (important on proxied deployments where window.location
-// differs from the backend identity).
+// Server config — editable fields mirror backendConfig once loaded (important
+// for proxied deployments where window.location differs from backend identity).
+// On reverse-proxy deployments api.port=null — mirrored as empty so the port
+// field doesn't show a stale 7272.
 const serverHostname = ref(window.location.hostname)
 const serverPort = ref(window.location.port || '7272')
 const editingServer = ref(false)
 
-// serverUrl computed: when backendConfig is available, delegate to the new
-// signature so proxied deployments (Cloudflare/nginx) drop the internal port.
-// When the user has manually edited hostname/port, respect the edit by falling
-// back to the legacy string-based signature.
+// serverUrl: always use the object-signature of buildServerUrl so an empty
+// port correctly omits ':port' instead of falling back to 7272.
 const serverUrl = computed(() => {
   if (backendConfig.value && !editingServer.value) {
     return buildServerUrl(backendConfig.value)
   }
-  return buildServerUrl(serverHostname.value, serverPort.value)
+  const browserProtocol = window.location.protocol === 'https:' ? 'https' : 'http'
+  const protocol = backendConfig.value?.protocol || browserProtocol
+  const trimmedPort = String(serverPort.value || '').trim()
+  return buildServerUrl({
+    host: serverHostname.value,
+    port: trimmedPort === '' ? null : trimmedPort,
+    protocol,
+  })
 })
 
 // Platform
@@ -447,9 +452,9 @@ async function loadBackendConfig() {
     if (cfg.api.host) {
       serverHostname.value = cfg.api.host
     }
-    if (cfg.api.port != null) {
-      serverPort.value = String(cfg.api.port)
-    }
+    // port may be null on reverse-proxy deployments (std 443/80) — mirror as
+    // empty so the edit UI doesn't show a stale 7272 (INF-5012b).
+    serverPort.value = cfg.api.port != null ? String(cfg.api.port) : ''
   } catch (e) {
     // Keep window.location.* fallback — harmless on CE localhost/LAN.
     console.warn('[SetupStep2] Failed to fetch backend config:', e)

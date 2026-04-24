@@ -580,7 +580,7 @@ async def generate_download_token(
 
     Returns:
         {
-            "download_url": "https://server:7272/api/download/temp/{token}/file.zip",
+            "download_url": "https://demo.giljo.ai/api/download/temp/{token}/file.zip",
             "expires_at": "2025-11-04T10:45:00Z",
             "content_type": "slash_commands",
             "one_time_use": true

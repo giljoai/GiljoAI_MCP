@@ -643,38 +643,48 @@ async def toggle_ssl(
 
 @router.get("/frontend")
 async def get_frontend_configuration(request: Request):
-    """Get frontend-specific configuration (host, port, websocket URL, security flags)."""
+    """Get frontend-specific configuration (host, port, websocket URL, security flags).
+
+    Response shape (INF-5012b): api.host/port/protocol derive from
+    request.base_url (honors X-Forwarded-* via uvicorn proxy_headers), matching
+    the pattern websocket.url already uses. api.port is int | null — null when
+    implicit on a reverse proxy (standard 443/80), otherwise numeric (e.g. 7272
+    for CE localhost). Frontend must branch on null to omit the ":port" segment.
+    """
+    from urllib.parse import urlparse
+
     from api.app_state import GILJO_MODE, state
 
     if not state.config:
         raise HTTPException(status_code=503, detail="Configuration manager not available")
 
-    # Extract frontend-needed configuration via ConfigManager
-    api_port = state.config.get_nested("services.api.port", 7272)
+    # Extract non-URL frontend configuration via ConfigManager
     api_keys_required = state.config.get_nested("features.api_keys_required", default=False)
-    frontend_host = state.config.get_nested("services.external_host", "localhost")
     ssl_enabled = state.config.get_nested("features.ssl_enabled", default=False)
 
-    # Build WebSocket URL from the request's public base URL (INF-5012).
-    # Delegates to X-Forwarded-Host / X-Forwarded-Proto so Cloudflare Tunnel,
-    # customer nginx, and mkcert LAN deployments all upgrade to the right wss:// host.
+    # Derive api.host/port/protocol from the request's public base URL (INF-5012b).
+    # Honors X-Forwarded-Host / X-Forwarded-Proto via uvicorn proxy_headers so
+    # Cloudflare Tunnel, customer nginx, and mkcert LAN deployments all emit
+    # the user-facing URL rather than the server's bind address.
     base = str(request.base_url).rstrip("/")
+    parsed = urlparse(base)
+    api_host = parsed.hostname or "localhost"
+    api_port = parsed.port  # None when implicit (standard 443/80 through proxy)
+    api_protocol = parsed.scheme or ("https" if ssl_enabled else "http")
+
     ws_url = base.replace("https://", "wss://", 1).replace("http://", "ws://", 1)
     ws_protocol = "wss" if ws_url.startswith("wss://") else "ws"
 
     # Resolve default tenant key from config for frontend use
     default_tenant_key = state.config.tenant.default_tenant_key or ""
 
-    # v3.0 Unified Architecture: No 'mode' field in response
-    api_protocol = "https" if ssl_enabled else "http"
-
     # Detect remote client: compare request IP against local addresses and server's own host
-    is_remote_client = _is_remote_client(request, frontend_host)
+    is_remote_client = _is_remote_client(request, api_host)
 
     return {
         "api": {
-            "host": frontend_host,  # Frontend connection host (external_host from config)
-            "port": api_port,
+            "host": api_host,  # Public host derived from request.base_url
+            "port": api_port,  # None when implicit (standard 443/80)
             "protocol": api_protocol,
             "ssl_enabled": ssl_enabled,
             "is_remote_client": is_remote_client,

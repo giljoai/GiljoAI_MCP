@@ -248,7 +248,7 @@ async def _check_and_emit_tuning_staleness(
                     "metadata": {"product_id": str(product.id), "product_name": product.name},
                 },
             )
-    except (RuntimeError, ValueError, KeyError, OSError) as staleness_err:
+    except (RuntimeError, ValueError, KeyError, OSError, TypeError) as staleness_err:
         logger.debug(f"Tuning staleness check skipped: {staleness_err}")
 
 

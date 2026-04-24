@@ -81,6 +81,23 @@ These are intentionally **not** in scope, and will not silently appear:
   claim above and would trigger a full architectural review and customer
   notification).
 
+## XSS hardening
+
+Every user-controlled string the admin dashboard renders as HTML passes through a
+single sanctioned sanitization pipeline (`useSanitizeMarkdown()` /
+`sanitizeHtml()`). The underlying DOMPurify configuration is explicit, not
+defaulted: an allow-list of tags and attributes, no data URIs, no inline event
+handlers, and a restricted URI-scheme allow-list that blocks `javascript:`.
+ESLint's `vue/no-v-html` rule is set to `error`, with a narrow per-file override
+that sanctions only the four audited render sites; every `v-html` line carries
+its own justification comment. The result is that introducing a new raw-HTML
+sink is a deliberate, reviewed act — not an accidental one.
+
+The operator ops panel is Flask + Jinja2 and relies on Jinja2's default
+auto-escape for all tenant-sourced content; a grep sanity check of
+`| safe`, `Markup(`, and `autoescape false` returned zero tenant-controlled
+findings as of 2026-04-24.
+
 ## See also
 
 - [`docs/ARCHITECTURE.md`](ARCHITECTURE.md#trust-model--security-posture)
