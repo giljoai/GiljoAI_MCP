@@ -188,6 +188,25 @@ class MessageConfig:
 
 
 @dataclass
+class UploadConfig:
+    """File upload guardrails (SEC-0001 Phase 2).
+
+    Governs the vision-document upload endpoints. Two layers of size
+    enforcement live in the endpoints (Content-Length pre-check + streaming
+    byte counter); both read ``max_upload_bytes`` from here. The allowlist
+    and sniff window are exposed for test overrides and future tuning.
+    """
+
+    #: Hard cap on upload body size in bytes. 5 MiB.
+    max_upload_bytes: int = 5_242_880
+    #: Extensions accepted by both upload endpoints. Kept in sync with
+    #: ``giljo_mcp.security.upload_guard.TEXT_EXTENSIONS``.
+    allowed_extensions: tuple[str, ...] = (".txt", ".md", ".markdown")
+    #: Byte-sniff window size for text-content detection.
+    sniff_bytes: int = 8192
+
+
+@dataclass
 class TenantConfig:
     """Multi-tenant configuration settings."""
 
@@ -249,6 +268,7 @@ class ConfigManager:
         self.session = SessionConfig()
         self.agent = AgentConfig()
         self.message = MessageConfig()
+        self.upload = UploadConfig()
         self.tenant = TenantConfig()
         self.features = FeatureFlags()
 
@@ -460,6 +480,15 @@ class ConfigManager:
                 self.message.max_retries = msg.get("retry_attempts", self.message.max_retries)
                 self.message.retry_delay = msg.get("retry_delay", self.message.retry_delay)
 
+            # Upload configuration (SEC-0001 Phase 2)
+            if "upload" in data:
+                up = data["upload"]
+                self.upload.max_upload_bytes = int(up.get("max_bytes", self.upload.max_upload_bytes))
+                self.upload.sniff_bytes = int(up.get("sniff_bytes", self.upload.sniff_bytes))
+                exts = up.get("allowed_extensions")
+                if exts is not None:
+                    self.upload.allowed_extensions = tuple(exts)
+
             # Tenant configuration
             if "tenant" in data:
                 tn = data["tenant"]
@@ -548,6 +577,13 @@ class ConfigManager:
 
         if val := os.getenv("ENABLE_WEBSOCKET"):
             self.features.enable_websockets = val.lower() in ("true", "1", "yes")
+
+        # Upload settings (SEC-0001 Phase 2)
+        if max_upload := os.getenv("GILJO_MAX_UPLOAD_BYTES"):
+            try:
+                self.upload.max_upload_bytes = int(max_upload)
+            except ValueError:
+                logger.warning("Invalid GILJO_MAX_UPLOAD_BYTES=%r; keeping default", max_upload)
 
     def validate(self):
         """Validate configuration for correctness and consistency."""
@@ -690,6 +726,11 @@ class ConfigManager:
                 "batch_size": self.message.batch_size,
                 "retry_attempts": self.message.max_retries,
                 "retry_delay": self.message.retry_delay,
+            },
+            "upload": {
+                "max_bytes": self.upload.max_upload_bytes,
+                "allowed_extensions": list(self.upload.allowed_extensions),
+                "sniff_bytes": self.upload.sniff_bytes,
             },
             "tenant": {
                 "enabled": self.tenant.enable_multi_tenant,

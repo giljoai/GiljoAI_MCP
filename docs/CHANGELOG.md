@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-04-24 — IMP-0011 Phase 2 Mode-Aware Auto-Open URL
+
+### Changed
+- Launcher now branches browser auto-open URL on deployment_context (demo/saas-production → /demo-landing, CE first-run → /welcome, else dashboard). Removes reliance on frontend route_signal bounce. Closes IMP-0011 Phase 2.
+
+## [Unreleased] — 2026-04-24 — SEC-0001 Vision-Document Upload Guardrails
+
+### Security
+- **Hard-enforced TXT/MD-only on vision document uploads.** Both upload endpoints (`POST /api/vision-documents/` at `api/endpoints/vision_documents.py` and `POST /api/v1/products/{product_id}/vision` at `api/endpoints/products/vision.py`) now run the full guard chain: `Content-Length` pre-check → filename sanitization → extension allowlist → streaming byte-counter → 8 KiB byte-sniff → strict UTF-8 decode. Endpoint B was orphaned from the UI but publicly routable, so it was hardened identically.
+- **Reject spoofed binary uploads with 415.** A file named `*.txt` whose bytes are PDF, PNG, ZIP, JPEG, ELF, GZIP, JPEG-XL, or UTF-16 is rejected via byte-sniff; the client-supplied `Content-Type` is not trusted.
+- **Reject oversize uploads with 413 before the body is consumed.** `Content-Length` is checked before reading; a second streaming counter catches requests that lack or lie about the header.
+- **Filename sanitization.** Rejects directory separators, absolute paths, NUL, C0 control chars, Unicode bidi/RTL overrides, leading dots, Windows reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9`), and anything over 255 UTF-8 bytes after NFC normalization.
+
+### Added
+- `src/giljo_mcp/security/upload_guard.py` (227 LOC) — pure helper module providing `sanitize_upload_filename`, `is_text_content`, `enforce_text_content`, and the typed exception hierarchy (`UploadFilenameError`, `UploadContentError`, `UploadSizeError`, all subclassing `ValueError`). Commit `b11714aa`.
+- `UploadConfig` dataclass in `src/giljo_mcp/config_manager.py` — default `max_upload_bytes = 5 MiB`, `allowed_extensions = (.txt, .md, .markdown)`, `sniff_bytes = 8192`. YAML key `upload.max_bytes` and env var `GILJO_MAX_UPLOAD_BYTES` override the default. Commit `6f8c4921`.
+- Error codes `UPLOAD_FILENAME_INVALID` (400), `UPLOAD_TYPE_NOT_ALLOWED` (415), `UPLOAD_CONTENT_NOT_TEXT` (415), `UPLOAD_TOO_LARGE` (413). Response shape is top-level `{error_code, message, context, timestamp}`; `api/exception_handlers.py` lifts structured dict detail from `HTTPException` to the response top level so the frontend `parseErrorResponse` picks it up. Commit `1d6c4f9d`.
+- Frontend pre-check at `frontend/src/utils/uploadValidation.js` (`MAX_UPLOAD_BYTES = 5 * 1024 * 1024`, `ALLOWED_UPLOAD_EXTENSIONS = [.txt, .md, .markdown]`) so rejected files never fire an axios POST. Four `UPLOAD_*` friendly-copy fallbacks + defensive `detail` unwrap in `frontend/src/utils/errorMessages.js`. ProductForm hint "TXT or MD, max 5 MB". Commit `2ff89224`.
+- `docs/security/SEC-0001_upload_guardrails.md` — security-posture reference doc for the upload boundary.
+- Test coverage: 89 backend (72 unit in `tests/security/test_upload_guard.py` + 17 integration in `tests/api/test_sec_0001_upload_endpoints.py`) + 31 frontend (`uploadValidation.spec.js`, `errorMessages.spec.js`, `ProductsView.upload-error-surface.spec.js`) = 120 SEC-0001 tests.
+
+### Changed
+- Size cap lowered from 10 MB to 5 MB for vision document uploads. Endpoint A was previously unbounded; Endpoint B was previously 10 MB; the frontend `ProductsView` cap drops from 10 MB to 5 MB to match the backend `UploadConfig`.
+- Removed the permissive UTF-8 → latin-1 fallback at `vision_documents.py:279`. Invalid UTF-8 now returns 415 `UPLOAD_CONTENT_NOT_TEXT` instead of silently decoding arbitrary bytes into the DB as "text". Endpoint B's Handover 0508 400 `UnicodeDecodeError` handler is replaced by the same 415.
+- Frontend upload catch branch swaps the hardcoded HTTP-status switch for `parseErrorResponse`, so the server `message` renders verbatim in the toast.
+
+## [Unreleased] — 2026-04-24 — SEC-0002 Passive-Server Trust Model
+
+### Security
+- **Passive-server property formally audited.** Grep-verified that no LLM SDK (`anthropic`, `openai`, `cohere`, `mistralai`, `replicate`, `together`, `google.generativeai`, `google.genai`) is imported anywhere in `src/giljo_mcp/`, `api/`, or `ops_panel/`. Zero LLM API-key environment variables referenced in server code. `vision_summarizer` confirmed as Sumy-based (classical LSA, CPU-only, not an LLM).
+- **Outbound HTTP classified.** Every outbound call in audited server code hits a hardcoded `api.github.com` host and is operator-, admin-, or startup-initiated. No path flows end-user-prompt content into URL, query, body, or headers.
+- **Rate-limit threat model made explicit.** `api/middleware/rate_limiter.py` `RateLimitMiddleware` documented: sliding-window per-IP, 300 req/min default (`API_RATE_LIMIT` env override), registered at `api/app.py:407`, in-memory `defaultdict(deque)` per process. Covers single-IP spam; does NOT cover distributed abuse or per-tenant quotas (per-tenant quotas tracked as roadmap item SAAS-018).
+
+### Added
+- `docs/security/SEC-0002_passive_server_audit.md` — grep-evidence audit backing the passive-server claim (commit `a932f4b2`).
+- `docs/ARCHITECTURE.md` **Trust Model / Security Posture** section — formal passive-server definition, Server DOES / DOES NOT lists, blast-radius implications, rate-limit threat model, explicit non-goals, cross-references.
+- `docs/SECURITY_POSTURE.md` — standalone plain-English summary for product, sales, and customer security reviews (liftable into marketing copy).
+- LLM-SDK import guard rail (ruff `flake8-tidy-imports.banned-api` in `pyproject.toml`) — blocks accidental reintroduction of LLM SDK imports on the server path as a hard CI gate. Configuration spec lives in the SEC-0002 audit artifact §Deliverable E.
+
+### Changed
+- `docs/ARCHITECTURE.md` Trust Model section rewritten from narrative claim to audit-anchored claim, with explicit cross-references to SEC-0003 (admin-view XSS), SEC-0004 (classic web-stack RCE audit, 2026-Q2), and SEC-0005a/b/c (tenant-scoping rules at `docs/architecture/tenant_scoping_rules.md`).
+
 ## [Unreleased] — SEC-0005 Tenant-Scoping Hardening
 
 ### Security

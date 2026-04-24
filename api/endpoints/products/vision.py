@@ -3,7 +3,7 @@
 # See LICENSE in the project root for terms.
 # [CE] Community Edition — source-available, single-user use only.
 
-# ruff: noqa: B904, N806, UP006, PERF401
+# ruff: noqa: B904, UP006, PERF401
 """
 Product Vision Document Endpoints - Handover 0503
 
@@ -12,23 +12,32 @@ Handles vision document upload and retrieval operations using ProductService.
 Handover 0503: Consolidated vision endpoints, updated paths, added proper response schemas.
 Handover 0126: Initial implementation with direct database access.
 Handover 0731d: Updated for typed ProductService returns (VisionUploadResult instead of dict).
+SEC-0001 Phase 2: Upload guardrails (size cap, extension allowlist, filename
+    sanitization, strict UTF-8 + byte-sniff, structured error codes).
 """
 
 import logging
 from typing import List  # noqa: UP035
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_tenant_key
 from api.schemas.vision_document import VisionDocumentResponse
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.config_manager import get_config
 from giljo_mcp.exceptions import (
     AuthorizationError,
     ResourceNotFoundError,
     ValidationError,
 )
 from giljo_mcp.models import User
+from giljo_mcp.security.upload_guard import (
+    UploadContentError,
+    UploadFilenameError,
+    enforce_text_content,
+    sanitize_upload_filename,
+)
 from giljo_mcp.services.product_vision_service import ProductVisionService
 from giljo_mcp.utils.log_sanitizer import sanitize
 
@@ -40,9 +49,43 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _raise_too_large(max_bytes: int) -> None:
+    """Raise the shared structured 413 for oversize uploads (SEC-0001)."""
+    raise HTTPException(
+        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        detail={
+            "error_code": "UPLOAD_TOO_LARGE",
+            "message": f"File is too large. Maximum size is {max_bytes // 1024 // 1024} MB.",
+            "max_bytes": max_bytes,
+        },
+    )
+
+
+async def _read_upload_capped(upload: UploadFile, max_bytes: int) -> bytes:
+    """Stream the upload body, aborting if it exceeds ``max_bytes``.
+
+    FastAPI's ``UploadFile`` does not cap size on its own, so we read in
+    64 KB chunks and track a running total. Used by both upload endpoints
+    as the Layer-2 size guard.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    chunk_size = 65536
+    while True:
+        chunk = await upload.read(chunk_size)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            _raise_too_large(max_bytes)
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @router.post("/{product_id}/vision", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def upload_vision_document(
     product_id: str,
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
@@ -52,50 +95,93 @@ async def upload_vision_document(
     """
     Upload vision document for product with automatic chunking.
 
-    Accepts markdown/text files up to 10MB. Documents are automatically
-    chunked at 25K tokens using semantic boundaries (headers, paragraphs).
+    Accepts .txt/.md/.markdown files up to the configured upload cap
+    (``UploadConfig.max_upload_bytes`` -- 5 MB default, SEC-0001). Documents
+    are automatically chunked at 25K tokens using semantic boundaries
+    (headers, paragraphs).
 
     Handover 0503: Updated path from /upload-vision to /vision (canonical endpoint).
     Handover 0500: Implemented vision upload with intelligent chunking.
+    SEC-0001 Phase 2: Extension allowlist + filename sanitization + byte-sniff
+        + strict UTF-8 + two-layer size cap + structured error codes.
     """
+    upload_cfg = get_config().upload
+    max_bytes = upload_cfg.max_upload_bytes
+
+    # Layer 1 size guard: Content-Length pre-check (fast reject before body read).
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > max_bytes:
+        _raise_too_large(max_bytes)
+
+    # Filename sanitization (raw attacker input -- convert to 400 on failure).
+    try:
+        safe_filename = sanitize_upload_filename(file.filename)
+    except UploadFilenameError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error_code": "UPLOAD_FILENAME_INVALID",
+                "message": "Filename contains invalid characters or is too long.",
+                "reason": str(exc),
+            },
+        )
+
     logger.info(
         "User %s uploading vision document '%s' for product %s",
         sanitize(current_user.username),
-        sanitize(file.filename),
+        sanitize(safe_filename),
         sanitize(product_id),
     )
 
-    # Validate file size (10MB limit)
-    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-    file.file.seek(0, 2)  # Seek to end
-    file_size = file.file.tell()
-    file.file.seek(0)  # Reset to beginning
-
-    if file_size > MAX_FILE_SIZE:
+    # Extension allowlist -- 415 (type not supported), not 400.
+    ext_lower = safe_filename.lower()
+    if not any(ext_lower.endswith(ext) for ext in upload_cfg.allowed_extensions):
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB",
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail={
+                "error_code": "UPLOAD_TYPE_NOT_ALLOWED",
+                "message": "Only .txt and .md files are accepted.",
+                "allowed_extensions": list(upload_cfg.allowed_extensions),
+            },
         )
 
-    # Validate file type (markdown/text)
-    allowed_extensions = [".md", ".txt", ".markdown"]
-    if not any(file.filename.lower().endswith(ext) for ext in allowed_extensions):
+    # Layer 2 size guard: streaming read with running byte counter.
+    content = await _read_upload_capped(file, max_bytes)
+
+    # Byte-sniff: reject binary payloads that spoof a .txt/.md extension.
+    try:
+        enforce_text_content(content, sniff_bytes=upload_cfg.sniff_bytes)
+    except UploadContentError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid file type. Allowed: {', '.join(allowed_extensions)}",
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail={
+                "error_code": "UPLOAD_CONTENT_NOT_TEXT",
+                "message": "File does not look like plain text. Please upload a .txt or .md file.",
+                "reason": str(exc),
+            },
+        )
+
+    # Strict UTF-8 decode. ``enforce_text_content`` already verified decode
+    # succeeds; the defensive try/except converts any pathological race into
+    # the same structured 415.
+    try:
+        content_str = content.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail={
+                "error_code": "UPLOAD_CONTENT_NOT_TEXT",
+                "message": "File must be valid UTF-8 encoded text.",
+            },
         )
 
     try:
-        # Read file content
-        content = await file.read()
-        content_str = content.decode("utf-8")
-
         # Upload via ProductVisionService (Handover 0950i: extracted from ProductService)
         # Handover 0731d: returns VisionUploadResult Pydantic model
         result = await vision_service.upload_vision_document(
             product_id=product_id,
             content=content_str,
-            filename=file.filename,
+            filename=safe_filename,
             auto_chunk=True,
             max_tokens=25000,
         )
@@ -116,15 +202,13 @@ async def upload_vision_document(
             "total_tokens": result.total_tokens,
         }
 
-    except UnicodeDecodeError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be valid UTF-8 encoded text")
     except ValueError as e:
         # Handover 0508: Catch validation errors from ProductService
         error_msg = str(e).lower()
         if "already exists" in error_msg or "duplicate" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"A vision document named '{file.filename}' already exists for this product. Please rename your file and try again.",
+                detail=f"A vision document named '{safe_filename}' already exists for this product. Please rename your file and try again.",
             )
         logger.warning("Vision upload validation error: %s", e)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid upload request.")
@@ -137,7 +221,7 @@ async def upload_vision_document(
         if "unique" in error_str or "duplicate" in error_str or "uq_vision_doc" in error_str:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"A vision document named '{file.filename}' already exists for this product. Please rename your file and try again.",
+                detail=f"A vision document named '{safe_filename}' already exists for this product. Please rename your file and try again.",
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -63,8 +63,8 @@
       <button
         class="product-filter-chevron"
         :class="{ 'product-filter-chevron--hidden': !canScrollLeft }"
-        @click="scrollFilterLeft"
         aria-label="Scroll filters left"
+        @click="scrollFilterLeft"
       >
         <v-icon size="18">mdi-chevron-left</v-icon>
       </button>
@@ -89,8 +89,8 @@
       <button
         class="product-filter-chevron"
         :class="{ 'product-filter-chevron--hidden': !canScrollRight }"
-        @click="scrollFilterRight"
         aria-label="Scroll filters right"
+        @click="scrollFilterRight"
       >
         <v-icon size="18">mdi-chevron-right</v-icon>
       </button>

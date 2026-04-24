@@ -92,7 +92,7 @@
       </aside>
 
       <!-- Content area -->
-      <main class="guide-content" ref="contentRef">
+      <main ref="contentRef" class="guide-content">
         <div
           class="guide-prose"
           v-html="renderedMarkdown"
@@ -180,7 +180,7 @@ const searchableSections = computed(() => {
         text: '',
       }
     } else if (currentSection) {
-      currentSection.text += line + '\n'
+      currentSection.text += `${line  }\n`
     }
   }
   if (currentSection) sections.push(currentSection)

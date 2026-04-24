@@ -1,6 +1,6 @@
 {
   "_comment": "Registry of all Alembic revision IDs ever shipped. update.py uses this to stamp old revisions to the current head when baselines are squashed. A pre-commit hook validates this file is updated when baselines change.",
-  "current_head": "baseline_v37",
+  "current_head": "ce_0001_add_org_status",
   "current_baseline": "baseline_v37",
   "known_revisions": [
     "baseline_v33",
@@ -52,6 +52,8 @@
     "add_hidden_to_projects",
     "bbdc55534128",
     "9f1f46a46029",
-    "baseline_v37"
+    "baseline_v37",
+    "ce_0001_add_org_status",
+    "saas_005_add_ops_actions_log"
   ]
 }

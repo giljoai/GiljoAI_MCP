@@ -1016,6 +1016,35 @@ def open_browser(url: str, delay: int = 3) -> None:
         print_info(f"Please manually open: {url}")
 
 
+def _choose_browser_target(deployment_context: str, is_first_run: bool) -> str | None:
+    """Pure helper: pick the auto-open route based on deployment_context.
+
+    Branch order is load-bearing — demo/saas must win over the CE first-run and
+    dashboard fallbacks, so demo installs never flash `/welcome` before the
+    frontend `route_signal` bounce.
+
+    Args:
+        deployment_context: Value from config.yaml top-level `deployment_context`
+            (one of 'localhost', 'lan', 'demo', 'saas-production').
+        is_first_run: True when the CE first-run wizard has not yet completed.
+
+    Returns:
+        - "/demo-landing" for demo deployments.
+        - `None` for saas-production (signals the caller to suppress auto-open).
+        - "/welcome" for CE first-run (localhost / lan).
+        - "" (dashboard root) for any other CE launch.
+
+    No side effects; safe to call from tests.
+    """
+    if deployment_context == "saas-production":
+        return None
+    if deployment_context == "demo":
+        return "/demo-landing"
+    if is_first_run:
+        return "/welcome"
+    return ""
+
+
 def check_dependencies() -> bool:
     """
     Check all required dependencies.
@@ -1508,16 +1537,22 @@ def run_startup(
 
         print_header("Welcome to GiljoAI MCP! -Gil")
     else:
-        if is_first_run:
-            target_route = "/welcome"
-            setup_url = f"{http_proto}://{server_host}:{browser_port}{target_route}"
-            print_info("First-run detected - opening welcome setup screen...")
-
-            open_browser(setup_url, delay=2)
+        # Branch order (demo/saas → CE first-run → dashboard) lives in the pure
+        # helper above so tests and production share one source of truth.
+        # saas-production returns None defensively; `suppress_browser` above
+        # already short-circuits that mode.
+        target_route = _choose_browser_target(deployment_context, is_first_run)
+        if target_route is None:
+            print_info("saas-production mode: browser auto-open disabled (operator mode)")
         else:
-            dashboard_url = f"{http_proto}://{server_host}:{browser_port}"
-            print_info("Opening dashboard...")
-            open_browser(dashboard_url, delay=2)
+            auto_open_url = f"{http_proto}://{server_host}:{browser_port}{target_route}"
+            if target_route == "/demo-landing":
+                print_info(f"{deployment_context} mode detected - opening demo landing page...")
+            elif target_route == "/welcome":
+                print_info("First-run detected - opening welcome setup screen...")
+            else:
+                print_info("Opening dashboard...")
+            open_browser(auto_open_url, delay=2)
 
     # Step 10: Display status
     mode_label = "PRODUCTION" if production_mode else "DEVELOPMENT"
