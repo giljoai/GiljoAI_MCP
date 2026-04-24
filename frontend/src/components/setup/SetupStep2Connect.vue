@@ -230,6 +230,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 const COLOR_MUTED = '#8f97b7' // $color-scrollbar-thumb-hover-background (lightest-blue)
 const COLOR_SUCCESS = '#6bcf7f' // $gradient-brand-end
 import api from '@/services/api'
+import configService from '@/services/configService'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -237,7 +238,7 @@ import {
   normalizeToolId,
   detectPlatform,
   buildServerUrl,
-  isHttps,
+  isBackendHttps,
   generateConfigForTool,
   generateCodexEnvVar,
   getCertTrustCommand,
@@ -275,11 +276,29 @@ const tools = computed(() =>
 const activeToolId = ref(props.selectedTools[0] || 'claude_code')
 const activeNormalizedId = computed(() => normalizeToolId(activeToolId.value))
 
-// Server config
+// Backend config (INF-5012) — fetched from GET /api/v1/config/frontend on mount.
+// Populated asynchronously; stays null until the fetch resolves, in which case
+// the UI falls back to window.location.* so it renders immediately.
+const backendConfig = ref(null)
+
+// Server config — before backendConfig loads, default to window.location.*.
+// After backendConfig loads, mirror its host/port so the editable fields show
+// the real backend values (important on proxied deployments where window.location
+// differs from the backend identity).
 const serverHostname = ref(window.location.hostname)
 const serverPort = ref(window.location.port || '7272')
 const editingServer = ref(false)
-const serverUrl = computed(() => buildServerUrl(serverHostname.value, serverPort.value))
+
+// serverUrl computed: when backendConfig is available, delegate to the new
+// signature so proxied deployments (Cloudflare/nginx) drop the internal port.
+// When the user has manually edited hostname/port, respect the edit by falling
+// back to the legacy string-based signature.
+const serverUrl = computed(() => {
+  if (backendConfig.value && !editingServer.value) {
+    return buildServerUrl(backendConfig.value)
+  }
+  return buildServerUrl(serverHostname.value, serverPort.value)
+})
 
 // Platform
 const platform = ref(detectPlatform())
@@ -305,7 +324,10 @@ const envVarText = computed(() =>
 
 const certCommand = computed(() => getCertTrustCommand(platform.value))
 
-const needsCertTrust = computed(() => isHttps())
+// Cert-trust UI fires only when the backend itself serves TLS (mkcert / self-signed).
+// NOT when HTTPS is terminated by a reverse proxy (Cloudflare Tunnel, nginx) —
+// those deployments have a trusted public CA, so no cert-trust step is needed.
+const needsCertTrust = computed(() => isBackendHttps(backendConfig.value))
 
 // Copy state
 const copiedField = ref(null)
@@ -415,8 +437,28 @@ watch(connectedTools, (val) => {
   emit('step-data', { connectedTools: val })
 }, { deep: true })
 
+async function loadBackendConfig() {
+  try {
+    const cfg = await configService.fetchConfig()
+    if (!cfg?.api) return
+    backendConfig.value = cfg.api
+    // Mirror real backend host/port into the editable fields so the user sees
+    // the actual backend identity (not window.location, which may be the proxy).
+    if (cfg.api.host) {
+      serverHostname.value = cfg.api.host
+    }
+    if (cfg.api.port != null) {
+      serverPort.value = String(cfg.api.port)
+    }
+  } catch (e) {
+    // Keep window.location.* fallback — harmless on CE localhost/LAN.
+    console.warn('[SetupStep2] Failed to fetch backend config:', e)
+  }
+}
+
 onMounted(() => {
   checkExistingKey()
+  loadBackendConfig()
   wsUnsub = wsStore.on('setup:tool_connected', handleToolConnected)
 })
 

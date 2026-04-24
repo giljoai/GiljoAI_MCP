@@ -655,9 +655,12 @@ async def get_frontend_configuration(request: Request):
     frontend_host = state.config.get_nested("services.external_host", "localhost")
     ssl_enabled = state.config.get_nested("features.ssl_enabled", default=False)
 
-    # Build WebSocket URL (use ws:// for http, wss:// for https)
-    ws_protocol = "wss" if ssl_enabled else "ws"
-    ws_url = f"{ws_protocol}://{frontend_host}:{api_port}"
+    # Build WebSocket URL from the request's public base URL (INF-5012).
+    # Delegates to X-Forwarded-Host / X-Forwarded-Proto so Cloudflare Tunnel,
+    # customer nginx, and mkcert LAN deployments all upgrade to the right wss:// host.
+    base = str(request.base_url).rstrip("/")
+    ws_url = base.replace("https://", "wss://", 1).replace("http://", "ws://", 1)
+    ws_protocol = "wss" if ws_url.startswith("wss://") else "ws"
 
     # Resolve default tenant key from config for frontend use
     default_tenant_key = state.config.tenant.default_tenant_key or ""
