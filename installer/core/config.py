@@ -174,6 +174,7 @@ class ConfigManager:
             # Get configuration values with correct defaults
             pg_host = self.settings.get("pg_host", "localhost")  # ALWAYS localhost
             pg_port = self.settings.get("pg_port", 5432)
+            db_name = self.settings.get("db_name", "giljo_mcp")
             api_port = self.settings.get("api_port", 7272)
             frontend_port = self.settings.get("dashboard_port", 7274)
 
@@ -208,7 +209,7 @@ DB_PORT={pg_port}
 # =============================================================================
 # PostgreSQL specific configuration
 POSTGRES_HOST={pg_host}
-POSTGRES_DB=giljo_mcp
+POSTGRES_DB={db_name}
 POSTGRES_USER=giljo_user
 POSTGRES_PASSWORD={user_password}
 
@@ -222,12 +223,12 @@ PG_SUPERUSER_PASSWORD={self.settings.get("pg_password", "")}
 # Generic database configuration (for application compatibility)
 DB_TYPE=postgresql
 DB_HOST={pg_host}
-DB_NAME=giljo_mcp
+DB_NAME={db_name}
 DB_USER=giljo_user
 DB_PASSWORD={user_password}
 
 # Full database URL (optional - app will use this if present)
-DATABASE_URL=postgresql://giljo_user:{user_password}@{pg_host}:{pg_port}/giljo_mcp
+DATABASE_URL=postgresql://giljo_user:{user_password}@{pg_host}:{pg_port}/{db_name}
 
 # =============================================================================
 # SERVER CONFIGURATION (v3.0)
@@ -238,6 +239,9 @@ DEPLOYMENT_CONTEXT=localhost
 # API Host (bind address derived from install-time network choice)
 GILJO_API_HOST={bind_address}
 SERVICE_BIND={bind_address}
+
+# Public URL for MCP tool download links (agents use this to reach the server)
+GILJO_PUBLIC_URL={http_proto}://{api_url_host}:{api_port}
 
 # =============================================================================
 # FRONTEND CONFIGURATION

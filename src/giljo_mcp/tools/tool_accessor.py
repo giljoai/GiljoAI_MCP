@@ -11,6 +11,7 @@ Provides direct access to MCP tool functions for API endpoints
 from __future__ import annotations
 
 import logging
+import os
 from typing import TYPE_CHECKING, Any
 
 
@@ -331,14 +332,10 @@ class ToolAccessor:
                 # Mark ready and build URL
                 await token_manager.mark_ready(token)
 
-                # Get server URL from config (same approach as downloads.py)
-                from giljo_mcp.config_manager import get_config
-
-                config = get_config()
-                host = config.get_nested("services.external_host", "localhost")
-                port = config.server.api_port
-                protocol = "https" if config.get_nested("features.ssl_enabled", default=False) else "http"
-                server_url = f"{protocol}://{host}:{port}"
+                # MCP tool context has no FastAPI request, so we can't use
+                # request.base_url here. Fall back to GILJO_PUBLIC_URL env var
+                # (set in .env.demo / SaaS deploys). CE default covers localhost.
+                server_url = os.environ.get("GILJO_PUBLIC_URL", "http://localhost:7272")
                 download_url = f"{server_url}/api/download/temp/{token}/{filename}"
 
                 token_data = await token_manager.get_token_info(token, tenant_key)
@@ -389,13 +386,10 @@ class ToolAccessor:
 
                 await token_manager.mark_ready(token)
 
-                from giljo_mcp.config_manager import get_config
-
-                config = get_config()
-                host = config.get_nested("services.external_host", "localhost")
-                port = config.server.api_port
-                protocol = "https" if config.get_nested("features.ssl_enabled", default=False) else "http"
-                server_url = f"{protocol}://{host}:{port}"
+                # MCP tool context has no FastAPI request, so we can't use
+                # request.base_url here. Fall back to GILJO_PUBLIC_URL env var
+                # (set in .env.demo / SaaS deploys). CE default covers localhost.
+                server_url = os.environ.get("GILJO_PUBLIC_URL", "http://localhost:7272")
                 download_url = f"{server_url}/api/download/temp/{token}/{filename}"
 
                 # Build natural-language install prompt the LLM will execute

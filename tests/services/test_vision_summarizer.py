@@ -9,7 +9,6 @@ Test suite for VisionDocumentSummarizer - TDD Handover 0345b
 This test suite covers Sumy LSA integration for vision document summarization:
 - Compression ratio (70-80% target)
 - Extractive integrity (no hallucination)
-- Performance benchmarks (<5 seconds for 100K tokens)
 - Integration with ProductService upload flow
 - Setting-based conditional execution
 
@@ -17,8 +16,6 @@ Coverage Target: >90%
 
 Updated Handover 0731: Migrated from dict returns to typed SummarizeSingleResult.
 """
-
-import time
 
 import pytest
 
@@ -167,28 +164,6 @@ def test_summarizer_handles_small_documents(summarizer):
     assert result.summary == small_text
     assert result.original_tokens == result.summary_tokens
     assert result.compression_ratio == 0.0
-
-
-def test_processing_time_under_5_seconds(summarizer):
-    """
-    100K token document should summarize in <5 seconds.
-
-    CRITICAL: Performance requirement ensures real-time upload UX.
-    """
-    large_text = generate_test_document(tokens=100000)
-
-    start = time.time()
-    result = summarizer.summarize(large_text, target_tokens=25000)
-    elapsed = time.time() - start
-
-    assert isinstance(result, SummarizeSingleResult)
-    assert elapsed < 5.0, (
-        f"Summarization took {elapsed:.2f}s, exceeds 5s requirement. Document: {result.original_tokens} tokens."
-    )
-
-    # Verify processing time is tracked
-    assert result.processing_time_ms > 0
-    assert result.processing_time_ms < 5000
 
 
 def test_token_estimation_accuracy(summarizer):

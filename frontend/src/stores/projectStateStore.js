@@ -79,7 +79,9 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
   }
 
   function setStagingComplete(projectId, complete = true) {
-    upsertProjectState(projectId, { stagingComplete: Boolean(complete) })
+    const patch = { stagingComplete: Boolean(complete) }
+    if (complete) patch.isStaging = false
+    upsertProjectState(projectId, patch)
   }
 
   function setMission(projectId, mission) {

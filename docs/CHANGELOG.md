@@ -5,6 +5,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-04-24 — IMP-0011 Phase 2 Mode-Aware Auto-Open URL
+
+### Changed
+- Launcher now branches browser auto-open URL on deployment_context (demo/saas-production → /demo-landing, CE first-run → /welcome, else dashboard). Removes reliance on frontend route_signal bounce. Closes IMP-0011 Phase 2.
+
+## [Unreleased] — 2026-04-24 — SEC-0003 Admin-View XSS Hardening
+
+### Security
+- **Single sanctioned sanitization pipeline for all `v-html` sinks in the Vue admin frontend.** Every user- or backend-influenced string that lands in `v-html` now passes through `useSanitizeMarkdown()` / `sanitizeHtml()`, backed by a hardened DOMPurify config with explicit `ALLOWED_TAGS` / `ALLOWED_ATTR` allow-lists, `ALLOW_DATA_ATTR=false`, and a URI-scheme allow-list that blocks `javascript:` and `data:`. Commits `382e233e`, `0302d44b`.
+- **Double-decode class bug fixed in `DatabaseConnection.formatTestResultMessage`.** Backend-supplied `message` and `suggestions[]` are HTML-escaped before concatenation, then the combined HTML is sanitized — closing a re-parse path where a crafted suggestion string could inject markup. Commit `b4c25b05`.
+- **Heading-id injection fixed in `UserGuideView` marked renderer.** The custom heading renderer now slugifies the id (restricted to `[a-z0-9-]`) and HTML-escapes the heading body before interpolation, so a heading of `<script>alert(1)</script>` can no longer smuggle a raw tag into rendered HTML. Commit `70dc17c9`.
+- **`vue/no-v-html` bumped from `warn` to `error`** with a narrow file-glob override listing only the 4 audited sites, so every v-html is now a deliberate, commented escape hatch — not an accidental one. Commits `b95a6264`, `4d81c54c`.
+
+### Added
+- `frontend/src/composables/useSanitizeMarkdown.js` — sanctioned composable exposing `sanitizeMarkdown()` and `sanitizeHtml()` over the hardened DOMPurify config. 12 unit tests in `useSanitizeMarkdown.spec.js`.
+- `frontend/src/utils/escapeHtml.js` — shared `escapeHtml()` + `slugify()` helpers used by the fixes above. 9 unit tests in `escapeHtml.spec.js`, including the `<script>alert(1)</script>` heading vector.
+- Ops-panel `| safe` / `Markup(` / `autoescape false` grep sanity check — verdict CLEAN, appendix in `handovers/SEC-0003_xss_hardening.md` (commit `3aedd621`).
+
+### Changed
+- Migrated 6 `v-html` call sites to the sanctioned pipeline: `MessageItem.vue:209`, `BroadcastPanel.vue:280`, `UserGuideView.vue:148` (+ search snippet at `:216` and heading renderer at `:136-148`), and `DatabaseConnection.vue:315-339`.
+- `frontend/eslint.config.js`: `vue/no-v-html: error` at line 81; per-file override block at lines 102-120 sanctions the 4 audited files with a comment explaining review requirements for any additions. Inline `eslint-disable-next-line` comments do NOT suppress `vue/no-v-html` under `eslint-plugin-vue@9.20` + ESLint v9 flat config (fixed in eslint-plugin-vue `>=9.25`); dependency not bumped — out of scope for a security patch.
+- Test state: 2278/2278 passing (21 composable/util unit tests from implementer + 24 payload/integration tests from tester), lint 0 errors, frontend build clean.
+
+## [Unreleased] — 2026-04-24 — SEC-0001 Vision-Document Upload Guardrails
+
+### Security
+- **Hard-enforced TXT/MD-only on vision document uploads.** Both upload endpoints (`POST /api/vision-documents/` at `api/endpoints/vision_documents.py` and `POST /api/v1/products/{product_id}/vision` at `api/endpoints/products/vision.py`) now run the full guard chain: `Content-Length` pre-check → filename sanitization → extension allowlist → streaming byte-counter → 8 KiB byte-sniff → strict UTF-8 decode. Endpoint B was orphaned from the UI but publicly routable, so it was hardened identically.
+- **Reject spoofed binary uploads with 415.** A file named `*.txt` whose bytes are PDF, PNG, ZIP, JPEG, ELF, GZIP, JPEG-XL, or UTF-16 is rejected via byte-sniff; the client-supplied `Content-Type` is not trusted.
+- **Reject oversize uploads with 413 before the body is consumed.** `Content-Length` is checked before reading; a second streaming counter catches requests that lack or lie about the header.
+- **Filename sanitization.** Rejects directory separators, absolute paths, NUL, C0 control chars, Unicode bidi/RTL overrides, leading dots, Windows reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9`), and anything over 255 UTF-8 bytes after NFC normalization.
+
+### Added
+- `src/giljo_mcp/security/upload_guard.py` (227 LOC) — pure helper module providing `sanitize_upload_filename`, `is_text_content`, `enforce_text_content`, and the typed exception hierarchy (`UploadFilenameError`, `UploadContentError`, `UploadSizeError`, all subclassing `ValueError`). Commit `b11714aa`.
+- `UploadConfig` dataclass in `src/giljo_mcp/config_manager.py` — default `max_upload_bytes = 5 MiB`, `allowed_extensions = (.txt, .md, .markdown)`, `sniff_bytes = 8192`. YAML key `upload.max_bytes` and env var `GILJO_MAX_UPLOAD_BYTES` override the default. Commit `6f8c4921`.
+- Error codes `UPLOAD_FILENAME_INVALID` (400), `UPLOAD_TYPE_NOT_ALLOWED` (415), `UPLOAD_CONTENT_NOT_TEXT` (415), `UPLOAD_TOO_LARGE` (413). Response shape is top-level `{error_code, message, context, timestamp}`; `api/exception_handlers.py` lifts structured dict detail from `HTTPException` to the response top level so the frontend `parseErrorResponse` picks it up. Commit `1d6c4f9d`.
+- Frontend pre-check at `frontend/src/utils/uploadValidation.js` (`MAX_UPLOAD_BYTES = 5 * 1024 * 1024`, `ALLOWED_UPLOAD_EXTENSIONS = [.txt, .md, .markdown]`) so rejected files never fire an axios POST. Four `UPLOAD_*` friendly-copy fallbacks + defensive `detail` unwrap in `frontend/src/utils/errorMessages.js`. ProductForm hint "TXT or MD, max 5 MB". Commit `2ff89224`.
+- `docs/security/SEC-0001_upload_guardrails.md` — security-posture reference doc for the upload boundary.
+- Test coverage: 89 backend (72 unit in `tests/security/test_upload_guard.py` + 17 integration in `tests/api/test_sec_0001_upload_endpoints.py`) + 31 frontend (`uploadValidation.spec.js`, `errorMessages.spec.js`, `ProductsView.upload-error-surface.spec.js`) = 120 SEC-0001 tests.
+
+### Changed
+- Size cap lowered from 10 MB to 5 MB for vision document uploads. Endpoint A was previously unbounded; Endpoint B was previously 10 MB; the frontend `ProductsView` cap drops from 10 MB to 5 MB to match the backend `UploadConfig`.
+- Removed the permissive UTF-8 → latin-1 fallback at `vision_documents.py:279`. Invalid UTF-8 now returns 415 `UPLOAD_CONTENT_NOT_TEXT` instead of silently decoding arbitrary bytes into the DB as "text". Endpoint B's Handover 0508 400 `UnicodeDecodeError` handler is replaced by the same 415.
+- Frontend upload catch branch swaps the hardcoded HTTP-status switch for `parseErrorResponse`, so the server `message` renders verbatim in the toast.
+
+## [Unreleased] — 2026-04-24 — SEC-0002 Passive-Server Trust Model
+
+### Security
+- **Passive-server property formally audited.** Grep-verified that no LLM SDK (`anthropic`, `openai`, `cohere`, `mistralai`, `replicate`, `together`, `google.generativeai`, `google.genai`) is imported anywhere in `src/giljo_mcp/`, `api/`, or `ops_panel/`. Zero LLM API-key environment variables referenced in server code. `vision_summarizer` confirmed as Sumy-based (classical LSA, CPU-only, not an LLM).
+- **Outbound HTTP classified.** Every outbound call in audited server code hits a hardcoded `api.github.com` host and is operator-, admin-, or startup-initiated. No path flows end-user-prompt content into URL, query, body, or headers.
+- **Rate-limit threat model made explicit.** `api/middleware/rate_limiter.py` `RateLimitMiddleware` documented: sliding-window per-IP, 300 req/min default (`API_RATE_LIMIT` env override), registered at `api/app.py:407`, in-memory `defaultdict(deque)` per process. Covers single-IP spam; does NOT cover distributed abuse or per-tenant quotas (per-tenant quotas tracked as roadmap item SAAS-018).
+
+### Added
+- `docs/security/SEC-0002_passive_server_audit.md` — grep-evidence audit backing the passive-server claim (commit `a932f4b2`).
+- `docs/ARCHITECTURE.md` **Trust Model / Security Posture** section — formal passive-server definition, Server DOES / DOES NOT lists, blast-radius implications, rate-limit threat model, explicit non-goals, cross-references.
+- `docs/SECURITY_POSTURE.md` — standalone plain-English summary for product, sales, and customer security reviews (liftable into marketing copy).
+- LLM-SDK import guard rail (ruff `flake8-tidy-imports.banned-api` in `pyproject.toml`) — blocks accidental reintroduction of LLM SDK imports on the server path as a hard CI gate. Configuration spec lives in the SEC-0002 audit artifact §Deliverable E.
+
+### Changed
+- `docs/ARCHITECTURE.md` Trust Model section rewritten from narrative claim to audit-anchored claim, with explicit cross-references to SEC-0003 (admin-view XSS), SEC-0004 (classic web-stack RCE audit, 2026-Q2), and SEC-0005a/b/c (tenant-scoping rules at `docs/architecture/tenant_scoping_rules.md`).
+
+## [Unreleased] — SEC-0005 Tenant-Scoping Hardening
+
+### Security
+- **Orchestrator prompt is now tenant-scoped.** Previously stored as a global singleton (`Configuration.tenant_key=NULL`), meaning any admin on any tenant overwrote the shared row. Now stored per-tenant. The admin "Prompts" settings tab applies to your tenant only.
+- **Orchestrator prompt override is now wired into live sessions.** The edited prompt is injected into `_build_orchestrator_response()` at runtime for the correct tenant. Previously the override was stored but not applied.
+- **Removed `/api/v1/users/?include_all_tenants=true` cross-tenant enumeration.** Admin users could previously list users across other tenants.
+
+### Added
+- `tests/security/test_tenant_required.py` — regression class asserting property B ("tenant-scoped endpoints refuse to serve when no tenant in scope"). Complements the existing 61 property-A tests.
+- `tests/test_system_prompt_service.py` — full coverage for `SystemPromptService` including property-C runtime-injection tests.
+- `docs/architecture/tenant_scoping_rules.md` — codifies tenant-scoping rules for future endpoint reviews.
+- `# TENANT-LEVEL` and `# SERVER-LEVEL: <reason>` comment markers on all 24 admin-gated endpoints (SEC-0005c sweep).
+
+### Changed
+- Tenant-isolation status updated from "complete" to "mostly complete; SEC-0005 closing Configuration-singleton class" in the SaaS strategy and readiness reference docs.
+
+### Migration
+- Alembic migration `<rev>_scope_orchestrator_prompt_per_tenant.py` drops the existing `(tenant_key IS NULL, key='system.orchestrator_prompt')` row. Content is logged to server logs before deletion (recoverable). On CE installs (1 tenant) the override is copied to that tenant's row to preserve work. On SaaS/demo installs (2+ tenants) the content is logged but NOT copied — that would leak tenant A's text to tenant B.
+
 ## [1.1.6] - 2026-04-17
 
 ### Added

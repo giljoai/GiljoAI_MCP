@@ -234,6 +234,81 @@ describe('User Store', () => {
       expect(store.currentUser).toBeNull()
       expect(store.isAuthenticated).toBe(false)
     })
+
+    // Regression tests for route-guard-bypass fix (demo.giljo.ai 2026-04-24)
+    // After logout, NO auth-related reactive state may remain that could
+    // cause router.beforeEach to treat the user as authenticated.
+    describe('full state reset (route-guard bypass regression)', () => {
+      it('should fully clear user, org, and authentication state on logout', async () => {
+        const store = useUserStore()
+        store.currentUser = {
+          id: 'user-1',
+          username: 'testuser',
+          role: 'admin',
+          tenant_key: 'tk-123',
+          setup_complete: true,
+        }
+        store.orgId = 'org-123'
+        store.orgName = 'Test Org'
+        store.orgRole = 'owner'
+
+        api.auth.logout.mockResolvedValue({ data: { success: true } })
+
+        await store.logout()
+
+        // Every auth-relevant field must be null after logout --
+        // nothing the router guard could interpret as "still logged in".
+        expect(store.currentUser).toBeNull()
+        expect(store.orgId).toBeNull()
+        expect(store.orgName).toBeNull()
+        expect(store.orgRole).toBeNull()
+        expect(store.isAuthenticated).toBe(false)
+        expect(store.isAdmin).toBe(false)
+        expect(store.currentOrg).toBeNull()
+      })
+
+      it('should clear state even if the logout endpoint throws', async () => {
+        const store = useUserStore()
+        store.currentUser = { id: 'u1', username: 'x', role: 'user' }
+        store.orgId = 'org-9'
+        store.orgName = 'Nine'
+        store.orgRole = 'member'
+
+        api.auth.logout.mockRejectedValue(new Error('Backend down'))
+
+        await store.logout()
+
+        expect(store.currentUser).toBeNull()
+        expect(store.orgId).toBeNull()
+        expect(store.orgName).toBeNull()
+        expect(store.orgRole).toBeNull()
+        expect(store.isAuthenticated).toBe(false)
+      })
+
+      it('should invalidate the API client tenant key on logout', async () => {
+        const { setTenantKey } = await import('@/services/api')
+        const store = useUserStore()
+        store.currentUser = { id: 'u1', username: 'x', role: 'user', tenant_key: 'tk-xyz' }
+
+        api.auth.logout.mockResolvedValue({ data: { success: true } })
+
+        await store.logout()
+
+        // setTenantKey must be called with null so subsequent requests
+        // don't reuse the logged-out user's tenant header.
+        expect(setTenantKey).toHaveBeenCalledWith(null)
+      })
+
+      it('should clear remembered_username from localStorage on logout', async () => {
+        const store = useUserStore()
+        store.currentUser = { id: 'u1', username: 'x', role: 'user' }
+        api.auth.logout.mockResolvedValue({ data: { success: true } })
+
+        await store.logout()
+
+        expect(window.localStorage.removeItem).toHaveBeenCalledWith('remembered_username')
+      })
+    })
   })
 
   describe('Role-based Access Control', () => {

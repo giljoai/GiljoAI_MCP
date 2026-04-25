@@ -36,23 +36,89 @@ export function detectPlatform() {
 }
 
 /**
- * Build server URL from current page location.
- * @param {string} [hostname] - Override hostname (defaults to window.location.hostname)
- * @param {string} [port]     - Override port (defaults to '7272')
- * @returns {string} e.g. "https://192.168.1.5:7272"
+ * Build the server URL that AI coding tools will connect to.
+ *
+ * Preferred usage (INF-5012): pass `backendConfig` from GET /api/v1/config/frontend
+ * so we honor reverse-proxy deployments (Cloudflare Tunnel, nginx) where the
+ * public URL has no explicit port.
+ *
+ * Heuristic:
+ *  1. If `backendConfig` is provided and `window.location.hostname === backendConfig.host`,
+ *     the browser is already on the correct public host — return `window.location.origin`.
+ *     This produces the right scheme + host + (omitted) port for proxied deployments.
+ *  2. If `backendConfig` is provided but browser is on a different host (out-of-band
+ *     config rendering), compose `protocol://host[:port]`, omitting the port when it is
+ *     the implicit default for the protocol (443 for https, 80 for http).
+ *  3. Fallback (no backendConfig): legacy behavior — window.location.hostname +
+ *     (window.location.port || '7272'). Kept for backward compat with callers that
+ *     do not yet pass config.
+ *
+ * @param {string|object} [hostnameOrConfig]
+ *        Legacy: hostname string. New: backendConfig object `{host, port, protocol, ssl_enabled}`.
+ * @param {string} [port]  - Legacy port override (ignored when first arg is an object).
+ * @returns {string} e.g. "https://demo.giljo.ai" or "http://localhost:7272"
  */
-export function buildServerUrl(hostname, port) {
-  const h = hostname || window.location.hostname
+export function buildServerUrl(hostnameOrConfig, port) {
+  // Path 1+2: backendConfig object passed in.
+  if (hostnameOrConfig && typeof hostnameOrConfig === 'object') {
+    const cfg = hostnameOrConfig
+    const protocol = cfg.protocol || (window.location.protocol === 'https:' ? 'https' : 'http')
+    const host = cfg.host || window.location.hostname
+    const cfgPort = cfg.port
+
+    // Browser is already on the target host — trust window.location.origin.
+    // This automatically omits the port for proxy-fronted deployments where the
+    // backend's internal port differs from the public-facing port.
+    if (host && window.location.hostname === host) {
+      return window.location.origin
+    }
+
+    // Out-of-band composition: omit implicit default ports.
+    const isImplicitHttps = protocol === 'https' && Number(cfgPort) === 443
+    const isImplicitHttp = protocol === 'http' && Number(cfgPort) === 80
+    if (!cfgPort || isImplicitHttps || isImplicitHttp) {
+      return `${protocol}://${host}`
+    }
+    return `${protocol}://${host}:${cfgPort}`
+  }
+
+  // Path 3: legacy string-based signature.
+  const h = hostnameOrConfig || window.location.hostname
   const p = port || window.location.port || '7272'
   const protocol = window.location.protocol === 'https:' ? 'https' : 'http'
   return `${protocol}://${h}:${p}`
 }
 
 /**
- * @returns {boolean} true if current page is served over HTTPS
+ * True if the browser page is served over HTTPS.
+ * Note: HTTPS from the browser's perspective may be terminated by Cloudflare or
+ * nginx — it does NOT imply the backend itself speaks TLS.
+ * @returns {boolean}
+ */
+export function isBrowserHttps() {
+  return window.location.protocol === 'https:'
+}
+
+/**
+ * True when the backend serves its own TLS (mkcert / self-signed on LAN).
+ * This is what triggers the cert-trust UI step — Node.js tools need to trust
+ * the backend's CA.
+ * Cloudflare/nginx-proxied deployments report ssl_enabled=false even though the
+ * public URL is https, because their TLS is terminated by the proxy, not the backend.
+ * @param {object} [backendConfig] - `{ssl_enabled: bool, ...}` from GET /api/v1/config/frontend
+ * @returns {boolean}
+ */
+export function isBackendHttps(backendConfig) {
+  return backendConfig?.ssl_enabled === true
+}
+
+/**
+ * @deprecated Use `isBrowserHttps()` or `isBackendHttps(backendConfig)` instead.
+ * Retained as an alias for callers that haven't migrated yet.
+ * @returns {boolean}
  */
 export function isHttps() {
-  return window.location.protocol === 'https:'
+  return isBrowserHttps()
 }
 
 // ─── Config generation per tool ───────────────────────────────────

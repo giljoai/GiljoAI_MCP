@@ -10,6 +10,7 @@ Builds staging-phase prompts and mission regeneration logic.
 """
 
 import logging
+import os
 from typing import Any
 
 from giljo_mcp.config_manager import get_config
@@ -54,10 +55,10 @@ class StagingPromptBuilder:
             Thin prompt with MCP tool references
         """
         config = get_config()
-        mcp_host = config.get_nested("services.external_host") or config.server.api_host
-        mcp_port = config.server.api_port
-        mcp_proto = "https" if config.get_nested("features.ssl_enabled", default=False) else "http"
-        mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}"
+        # INF-5012b: prefer GILJO_PUBLIC_URL (set by demo/cloud deploys) over
+        # reading the server's bind address from config, which produces ":7272"
+        # URLs when the server is fronted by a reverse proxy.
+        mcp_url = os.environ.get("GILJO_PUBLIC_URL", "http://localhost:7272")
 
         api_key_configured = bool(config.server.api_key)
         auth_note = "(authenticated)" if api_key_configured else "(check config.yaml for API key)"

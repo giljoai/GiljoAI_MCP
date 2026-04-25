@@ -244,7 +244,7 @@ To refresh agent templates later:
 - Claude Code and Gemini CLI: `/gil_get_agents`
 - Codex CLI: `$gil-get-agents`
 
-For manual setup, go to Settings > Integrations in the dashboard.
+For manual setup, go to Tools > Connect in the dashboard.
 
 ### Step 4: Launch
 
