@@ -76,8 +76,7 @@ def section(title):
 def find_postgres_packages():
     """Find all PostgreSQL-related packages in any state (installed, config-remaining, etc.)."""
     result = subprocess.run(
-        "dpkg -l 2>/dev/null | grep -i postgres | awk '{print $2}'",
-        shell=True, capture_output=True, text=True
+        "dpkg -l 2>/dev/null | grep -i postgres | awk '{print $2}'", shell=True, capture_output=True, text=True
     )
     if result.stdout.strip():
         return result.stdout.strip().splitlines()
@@ -174,8 +173,7 @@ def remove_mkcert():
     nssdb = HOME / ".pki" / "nssdb"
     if nssdb.exists():
         result = subprocess.run(
-            f'certutil -d sql:{nssdb} -L 2>/dev/null | grep mkcert',
-            shell=True, capture_output=True, text=True
+            f"certutil -d sql:{nssdb} -L 2>/dev/null | grep mkcert", shell=True, capture_output=True, text=True
         )
         if result.returncode == 0:
             for line in result.stdout.strip().splitlines():
@@ -198,8 +196,7 @@ def remove_mkcert():
     mkcert_pkgs = []
     for pkg in ["mkcert", "libnss3-tools"]:
         result = subprocess.run(
-            f"dpkg -l {pkg} 2>/dev/null | grep -E '^(ii|rc)'",
-            shell=True, capture_output=True, text=True
+            f"dpkg -l {pkg} 2>/dev/null | grep -E '^(ii|rc)'", shell=True, capture_output=True, text=True
         )
         if result.returncode == 0:
             mkcert_pkgs.append(pkg)
@@ -305,13 +302,15 @@ def verify():
         ("mkcert binary", shutil.which("mkcert")),
         ("~/.giljo-mcp", (HOME / ".giljo-mcp").exists()),
         ("~/.local/share/mkcert", (HOME / ".local" / "share" / "mkcert").exists()),
-        ("NODE_OPTIONS in .bashrc", "NODE_OPTIONS" in (HOME / ".bashrc").read_text() if (HOME / ".bashrc").exists() else False),
+        (
+            "NODE_OPTIONS in .bashrc",
+            "NODE_OPTIONS" in (HOME / ".bashrc").read_text() if (HOME / ".bashrc").exists() else False,
+        ),
     ]
 
     # Check PostgreSQL packages -- only flag actually installed (ii), not config remnants (rc)
     pg_check = subprocess.run(
-        "dpkg -l 2>/dev/null | grep -i postgres | grep '^ii'",
-        shell=True, capture_output=True, text=True
+        "dpkg -l 2>/dev/null | grep -i postgres | grep '^ii'", shell=True, capture_output=True, text=True
     )
     checks.append(("PostgreSQL packages", bool(pg_check.stdout.strip())))
 
@@ -336,19 +335,16 @@ def verify():
 def main():
     global DRY_RUN
 
-    parser = argparse.ArgumentParser(
-        description="Remove all GiljoAI MCP traces from this Linux system."
-    )
-    parser.add_argument(
-        "--force", action="store_true",
-        help="Actually perform the removal (default is dry-run)"
-    )
+    parser = argparse.ArgumentParser(description="Remove all GiljoAI MCP traces from this Linux system.")
+    parser.add_argument("--force", action="store_true", help="Actually perform the removal (default is dry-run)")
     args = parser.parse_args()
     DRY_RUN = not args.force
 
     print("=" * 60)
     print("  GiljoAI MCP - Linux System Reset")
-    print(f"  Mode: {'LIVE -- changes will be applied' if args.force else 'DRY RUN -- no changes (use --force to apply)'}")
+    print(
+        f"  Mode: {'LIVE -- changes will be applied' if args.force else 'DRY RUN -- no changes (use --force to apply)'}"
+    )
     print("=" * 60)
 
     if args.force:

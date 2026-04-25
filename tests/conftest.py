@@ -9,6 +9,7 @@ Provides test fixtures and database setup
 """
 
 import asyncio
+import contextlib
 import os
 import sys
 from pathlib import Path
@@ -86,16 +87,13 @@ def event_loop():
     loop = policy.new_event_loop()
     yield loop
     # Cleanup pending tasks before closing
-    try:
+    with contextlib.suppress(Exception):
         pending = asyncio.all_tasks(loop)
         for task in pending:
             task.cancel()
         if pending:
             loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-    except Exception:
-        pass
-    finally:
-        loop.close()
+    loop.close()
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)

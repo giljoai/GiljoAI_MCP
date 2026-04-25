@@ -22,6 +22,7 @@ Usage:
 Requires: Python 3.10+ (uses no external packages)
 """
 
+import contextlib
 import os
 import platform
 import shutil
@@ -85,10 +86,13 @@ def rmtree_safe(path: Path, dry_run: bool) -> bool:
         try:
             subprocess.run(
                 [
-                    "powershell", "-Command",
+                    "powershell",
+                    "-Command",
                     f"Remove-Item '{path}' -Recurse -Force -Confirm:$false",
                 ],
-                check=True, capture_output=True, timeout=30,
+                check=True,
+                capture_output=True,
+                timeout=30,
             )
             ok(f"Removed (elevated): {path}")
             return True
@@ -190,14 +194,19 @@ def clean_mkcert(dry_run: bool) -> int:
                 try:
                     subprocess.run(
                         [
-                            "powershell", "-Command",
-                            "Start-Process powershell -Verb RunAs -ArgumentList "
-                            "'-Command', "
-                            f"\"Remove-Item '{choco_lib}' -Recurse -Force -ErrorAction SilentlyContinue; "
-                            f"Remove-Item '{choco_bin}' -Force -ErrorAction SilentlyContinue\" "
-                            "-Wait",
+                            "powershell",
+                            "-Command",
+                            (
+                                "Start-Process powershell -Verb RunAs -ArgumentList "
+                                "'-Command', "
+                                f"\"Remove-Item '{choco_lib}' -Recurse -Force -ErrorAction SilentlyContinue; "
+                                f"Remove-Item '{choco_bin}' -Force -ErrorAction SilentlyContinue\" "
+                                "-Wait"
+                            ),
                         ],
-                        check=False, capture_output=True, timeout=30,
+                        check=False,
+                        capture_output=True,
+                        timeout=30,
                     )
                     ok("Chocolatey mkcert remnants removed")
                     count += 1
@@ -206,16 +215,19 @@ def clean_mkcert(dry_run: bool) -> int:
 
     # Step 4: Remove mkcert cert from Windows cert store (if -uninstall missed it)
     if not dry_run:
-        try:
-            run_quiet([
-                "powershell", "-Command",
-                "Get-ChildItem Cert:\\CurrentUser\\Root "  # noqa: ISC001
-                "| Where-Object { $_.Subject -like '*mkcert*' } "
-                "| Remove-Item -Force",
-            ])
+        with contextlib.suppress(Exception):
+            run_quiet(
+                [
+                    "powershell",
+                    "-Command",
+                    (
+                        "Get-ChildItem Cert:\\CurrentUser\\Root "
+                        "| Where-Object { $_.Subject -like '*mkcert*' } "
+                        "| Remove-Item -Force"
+                    ),
+                ]
+            )
             # No output = success or nothing to remove
-        except Exception:
-            pass
 
     if count == 0:
         warn("mkcert not installed — nothing to clean")
@@ -226,19 +238,25 @@ def clean_node_options(dry_run: bool) -> int:
     """Remove NODE_OPTIONS=--use-system-ca from persistent User environment."""
     header("NODE_OPTIONS environment variable")
     try:
-        result = run_quiet([
-            "powershell", "-Command",
-            "[System.Environment]::GetEnvironmentVariable('NODE_OPTIONS', 'User')",
-        ])
+        result = run_quiet(
+            [
+                "powershell",
+                "-Command",
+                "[System.Environment]::GetEnvironmentVariable('NODE_OPTIONS', 'User')",
+            ]
+        )
         current = result.stdout.strip()
         if current:
             if dry_run:
                 info(f"Would remove NODE_OPTIONS={current}")
             else:
-                run_quiet([
-                    "powershell", "-Command",
-                    "[System.Environment]::SetEnvironmentVariable('NODE_OPTIONS', $null, 'User')",
-                ])
+                run_quiet(
+                    [
+                        "powershell",
+                        "-Command",
+                        "[System.Environment]::SetEnvironmentVariable('NODE_OPTIONS', $null, 'User')",
+                    ]
+                )
                 ok(f"Removed NODE_OPTIONS={current}")
             return 1
         else:
@@ -268,7 +286,7 @@ def clean_postgresql(dry_run: bool) -> int:
                     ok(f"Service {svc} stopped and deleted")
                 count += 1
         except Exception:
-            pass
+            continue
 
     # Remove installation directory
     pg_base = Path(r"C:\Program Files\PostgreSQL")
@@ -279,12 +297,17 @@ def clean_postgresql(dry_run: bool) -> int:
             try:
                 subprocess.run(
                     [
-                        "powershell", "-Command",
-                        f"Start-Process powershell -Verb RunAs -ArgumentList "
-                        f"'-Command', \"Remove-Item '{pg_base}' -Recurse -Force -Confirm:`$false\" "
-                        f"-Wait",
+                        "powershell",
+                        "-Command",
+                        (
+                            f"Start-Process powershell -Verb RunAs -ArgumentList "
+                            f"'-Command', \"Remove-Item '{pg_base}' -Recurse -Force -Confirm:`$false\" "
+                            f"-Wait"
+                        ),
                     ],
-                    check=True, capture_output=True, timeout=60,
+                    check=True,
+                    capture_output=True,
+                    timeout=60,
                 )
                 ok(f"Removed: {pg_base}")
                 count += 1
@@ -292,23 +315,27 @@ def clean_postgresql(dry_run: bool) -> int:
                 fail(f"Could not remove {pg_base} (needs admin)")
 
     # Remove registry keys
-    try:
-        check = run_quiet([
-            "powershell", "-Command",
-            "Test-Path 'HKLM:\\SOFTWARE\\PostgreSQL'",
-        ])
+    with contextlib.suppress(Exception):
+        check = run_quiet(
+            [
+                "powershell",
+                "-Command",
+                "Test-Path 'HKLM:\\SOFTWARE\\PostgreSQL'",
+            ]
+        )
         if "True" in check.stdout:
             if dry_run:
                 info("Would remove HKLM:\\SOFTWARE\\PostgreSQL registry keys")
             else:
-                run_quiet([
-                    "powershell", "-Command",
-                    "Remove-Item 'HKLM:\\SOFTWARE\\PostgreSQL' -Recurse -Force -ErrorAction SilentlyContinue",
-                ])
+                run_quiet(
+                    [
+                        "powershell",
+                        "-Command",
+                        "Remove-Item 'HKLM:\\SOFTWARE\\PostgreSQL' -Recurse -Force -ErrorAction SilentlyContinue",
+                    ]
+                )
                 ok("PostgreSQL registry keys removed")
             count += 1
-    except Exception:
-        pass
 
     # Remove temp files
     temp = Path(os.getenv("LOCALAPPDATA", "")) / "Temp"
@@ -560,39 +587,36 @@ def verify_clean() -> None:
     ]
 
     # NODE_OPTIONS
-    try:
-        r = run_quiet([
-            "powershell", "-Command",
-            "[System.Environment]::GetEnvironmentVariable('NODE_OPTIONS', 'User')",
-        ])
+    with contextlib.suppress(Exception):
+        r = run_quiet(
+            [
+                "powershell",
+                "-Command",
+                "[System.Environment]::GetEnvironmentVariable('NODE_OPTIONS', 'User')",
+            ]
+        )
         checks.append(("NODE_OPTIONS", bool(r.stdout.strip())))
-    except Exception:
-        pass
 
     # mkcert in cert store
-    try:
-        r = run_quiet([
-            "powershell", "-Command",
-            "(Get-ChildItem Cert:\\CurrentUser\\Root "  # noqa: ISC001
-            "| Where-Object { $_.Subject -like '*mkcert*' }).Count",
-        ])
+    with contextlib.suppress(Exception):
+        r = run_quiet(
+            [
+                "powershell",
+                "-Command",
+                ("(Get-ChildItem Cert:\\CurrentUser\\Root | Where-Object { $_.Subject -like '*mkcert*' }).Count"),
+            ]
+        )
         checks.append(("mkcert in cert store", int(r.stdout.strip() or "0") > 0))
-    except Exception:
-        pass
 
     # VC++ 2022
-    try:
+    with contextlib.suppress(Exception):
         r = run_quiet(["winget", "list", "--id", "Microsoft.VCRedist.2015+.x64"], timeout=30)
         checks.append(("VC++ 2022 x64", "Microsoft.VCRedist.2015+.x64" in r.stdout))
-    except Exception:
-        pass
 
     # PG registry
-    try:
+    with contextlib.suppress(Exception):
         r = run_quiet(["powershell", "-Command", "Test-Path 'HKLM:\\SOFTWARE\\PostgreSQL'"])
         checks.append(("PostgreSQL registry", "True" in r.stdout))
-    except Exception:
-        pass
 
     for label, found in checks:
         if found:

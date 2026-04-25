@@ -635,7 +635,7 @@ def _get_network_mode() -> str:
                 config = yaml.safe_load(f)
             return config.get("security", {}).get("network", {}).get("mode", "localhost")
     except Exception:
-        pass
+        return "localhost"
     return "localhost"
 
 
@@ -654,7 +654,7 @@ def get_deployment_context() -> str:
                 config = yaml.safe_load(f)
             return config.get("deployment_context", "localhost")
     except Exception:
-        pass
+        return "localhost"
     return "localhost"
 
 
@@ -669,7 +669,7 @@ def _get_external_host() -> str:
                 config = yaml.safe_load(f)
             return config.get("services", {}).get("external_host", "") or ""
     except Exception:
-        pass
+        return ""
     return ""
 
 
@@ -695,7 +695,7 @@ def get_ssl_enabled() -> bool:
             return bool(config.get("features", {}).get("ssl_enabled", False))
 
     except Exception:
-        pass
+        return False
 
     return False
 

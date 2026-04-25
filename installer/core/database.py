@@ -821,7 +821,7 @@ echo ""
                 conn.close()
                 return True
             except Exception:
-                pass
+                self.logger.debug("Connection test to %s failed", self.db_name)
 
         return False
 
