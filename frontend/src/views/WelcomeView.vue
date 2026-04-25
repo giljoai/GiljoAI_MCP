@@ -237,11 +237,13 @@ async function handleStepComplete({ step, data }) {
     })
     showSetupOverlay.value = false
 
-    // After first-time setup, show the "How to Use" guide automatically
+    // After first-time setup, show the "How to Use" guide automatically.
+    // Delay must exceed the 1200ms checkmarks animation in SetupWizardOverlay
+    // which emits dismiss + update:modelValue(false) on its own timer.
     if (!forceSetupMode.value) {
       setTimeout(() => {
         showSetupOverlay.value = true
-      }, 400)
+      }, 1600)
     } else if (data.route) {
       router.push(data.route)
     }
@@ -585,6 +587,37 @@ const fullGreeting = computed(() => {
 })
 
 onMounted(async () => {
+  // Overlay-first: open the requested overlay before any heavy data fetches so
+  // the user never sees an empty Welcome shell flash. Only the config fetch is
+  // awaited up front, because the cert-modal gate depends on ssl_enabled +
+  // is_remote_client. Everything else loads invisibly behind the overlay.
+  try {
+    await configService.fetchConfig()
+  } catch { /* config may fail on first load — cert modal just won't show */ }
+
+  // Open "How to Use" guide when directed from UserSettings
+  if (route.query.openGuide === 'true') {
+    showSetupOverlay.value = true
+    router.replace({ path: '/home' })
+  // Auto-launch overlay on first login or when directed from UserSettings
+  } else if (route.query.openSetup === 'true' || !setupComplete.value) {
+    forceSetupMode.value = route.query.openSetup === 'true'
+    setupStep.value = Math.min(setupStepCompleted.value, 3)
+
+    // Gate: show cert modal first for remote HTTPS clients, then open setup after
+    if (shouldShowCertModal()) {
+      pendingSetupOpen.value = true
+      showCertModal.value = true
+    } else {
+      showSetupOverlay.value = true
+    }
+
+    if (route.query.openSetup) {
+      router.replace({ path: '/home' })
+    }
+  }
+
+  // Background data loads — overlay is already up, so any latency is invisible.
   try {
     await productStore.fetchProducts()
   } catch { /* ignore */ }
@@ -620,34 +653,6 @@ onMounted(async () => {
     appVersion.value = response.data?.version || ''
   } catch {
     appVersion.value = ''
-  }
-
-  // Ensure frontend config is loaded before cert modal check (needs ssl_enabled + is_remote_client)
-  try {
-    await configService.fetchConfig()
-  } catch { /* config may fail on first load — cert modal just won't show */ }
-
-  // Open "How to Use" guide when directed from UserSettings
-  if (route.query.openGuide === 'true') {
-    showSetupOverlay.value = true
-    router.replace({ path: '/', query: {} })
-  // Auto-launch overlay on first login or when directed from UserSettings
-  } else if (route.query.openSetup === 'true' || !setupComplete.value) {
-    forceSetupMode.value = route.query.openSetup === 'true'
-    setupStep.value = Math.min(setupStepCompleted.value, 3)
-
-    // Gate: show cert modal first for remote HTTPS clients, then open setup after
-    if (shouldShowCertModal()) {
-      pendingSetupOpen.value = true
-      showCertModal.value = true
-    } else {
-      showSetupOverlay.value = true
-    }
-
-    // Clean up query param so refresh doesn't re-trigger
-    if (route.query.openSetup) {
-      router.replace({ path: '/', query: {} })
-    }
   }
 })
 </script>

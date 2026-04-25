@@ -14,6 +14,7 @@ import zipfile
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+import tomllib
 
 from giljo_mcp.file_staging import FileStaging
 
@@ -40,6 +41,35 @@ def _make_template(name: str, role: str, description: str = "") -> MagicMock:
     t.updated_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
     t.last_exported_at = None
     return t
+
+
+def _make_template_with_duplicate_bootstrap() -> MagicMock:
+    """Create a template matching legacy rows with duplicated MCP startup prose."""
+    bootstrap = """## GiljoAI MCP Agent
+
+You are part of a GiljoAI MCP orchestration system. MCP tools are available as native
+tool calls prefixed `mcp__giljo_mcp__*` in your tool list.
+
+Your job credentials (`job_id`, `tenant_key`) are provided in your spawn prompt —
+either pasted by the user or injected by the orchestrator. Use them exactly as given.
+
+### STARTUP (MANDATORY)
+1. Call `mcp__giljo_mcp__health_check()` to verify MCP connectivity
+2. Call `mcp__giljo_mcp__get_agent_mission(job_id="<your_job_id>", tenant_key="<your_tenant_key>")` to receive:
+   - Your full operating protocols (`full_protocol`)
+   - Your work order and team context (`mission`)
+3. Follow `full_protocol` for all lifecycle behavior
+
+Do not begin work until you have received and read your mission and protocols."""
+
+    template = _make_template("Tester", "tester")
+    template.system_instructions = bootstrap
+    template.user_instructions = (
+        f"{bootstrap}\n\n"
+        "You are the testing specialist for GiljoAI MCP.   \n"
+        "Run pytest and Vitest before reporting completion.      \n"
+    )
+    return template
 
 
 @pytest.fixture
@@ -163,6 +193,35 @@ class TestStageCombinedSetup:
                 assert 'model = "gpt-5.4"' in content
                 assert 'model_reasoning_effort = "high"' in content
                 assert "gpt-5.3-codex" not in content
+                parsed = tomllib.loads(content)
+                assert parsed["name"]
+                assert parsed["developer_instructions"]
+
+    @pytest.mark.asyncio
+    async def test_codex_agent_toml_dedupes_legacy_bootstrap(self, staging_dir):
+        """Codex TOML removes legacy duplicated MCP startup blocks from role prose."""
+        session = AsyncMock()
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [_make_template_with_duplicate_bootstrap()]
+        session.execute = AsyncMock(return_value=result)
+        session.commit = AsyncMock()
+
+        staging = FileStaging(db_session=session)
+
+        zip_path, _ = await staging.stage_combined_setup(
+            staging_dir,
+            "test-tenant",
+            platform="codex_cli",
+        )
+
+        with zipfile.ZipFile(zip_path) as zf:
+            content = zf.read("agents/gil-tester.toml").decode("utf-8")
+
+        parsed = tomllib.loads(content)
+        instructions = parsed["developer_instructions"]
+        assert instructions.count("You are part of a GiljoAI MCP orchestration system") == 1
+        assert "You are the testing specialist for GiljoAI MCP." in instructions
+        assert all(line == line.rstrip() for line in instructions.splitlines())
 
     @pytest.mark.asyncio
     async def test_zip_filename(self, staging_dir, mock_session):

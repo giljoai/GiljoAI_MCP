@@ -81,14 +81,14 @@ class ConfigService {
         const config = await response.json()
         this.log('Config fetched successfully', config)
 
-        // Validate response structure.
-        // Only `api.port` is required — `api.host` may legitimately be empty
-        // when external_host is unconfigured or when the deployment relies on
-        // same-origin (window.location.host) for the API base URL. The URL
-        // resolver in @/composables/useApiUrl handles host derivation; this
-        // service's job is to surface giljo_mode + websocket info, not to
-        // gate on an informational host string.
-        if (!config.api || !config.api.port) {
+        // Validate response structure. Neither host nor port is strictly
+        // required: on Cloudflare/nginx-fronted deployments the backend returns
+        // port=null (the public URL has no explicit port), and host may be
+        // absent when the deployment relies on same-origin. Gate only on the
+        // presence of the `api` object — the URL resolver in
+        // @/composables/useApiUrl handles missing host/port by falling back to
+        // window.location.
+        if (!config.api) {
           throw new Error('Invalid config response structure')
         }
 

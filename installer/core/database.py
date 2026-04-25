@@ -409,11 +409,18 @@ class DatabaseInstaller:
                 else:
                     result["errors"].append("Database not found after script execution")
             else:
-                # In batch mode, assume success but note manual step required
-                result["success"] = True
-                result["manual_step_required"] = True
-                result["script_path"] = str(script_path)
-                result["credentials_file"] = str(self.credentials_file)
+                # In batch mode, verify DB was created rather than assuming success
+                if self.verify_database_exists():
+                    result["success"] = True
+                    result["credentials"] = {"owner_password": self.owner_password, "user_password": self.user_password}
+                    result["credentials_file"] = str(self.credentials_file)
+                else:
+                    result["success"] = False
+                    result["manual_step_required"] = True
+                    result["script_path"] = str(script_path)
+                    result["errors"].append(
+                        "Database was not created. Run the generated script manually, then re-run the installer."
+                    )
 
             return result
 

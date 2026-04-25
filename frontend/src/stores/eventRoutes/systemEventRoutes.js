@@ -120,6 +120,13 @@ export const SYSTEM_EVENT_ROUTES = {
     },
   },
 
+  // Template updates (enable/disable, field changes) — dispatch to TemplateManager
+  'template:updated': {
+    handler: async (payload) => {
+      dispatchWindowEvent('template:updated', payload)
+    },
+  },
+
   // Agent setup: update local skills version when agents are downloaded
   'setup:agents_downloaded': {
     handler: async (payload) => {

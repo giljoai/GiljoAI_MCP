@@ -56,6 +56,7 @@ class WebSocketEventListener:
         await self.event_bus.subscribe("project:mission_updated", self.handle_mission_updated)
         await self.event_bus.subscribe("agent:created", self.handle_agent_created)
         await self.event_bus.subscribe("product:status:changed", self.handle_product_status_changed)
+        await self.event_bus.subscribe("template:updated", self.handle_template_updated)
 
         self.logger.info(
             "WebSocket event listener started",
@@ -64,6 +65,7 @@ class WebSocketEventListener:
                     "project:mission_updated",
                     "agent:created",
                     "product:status:changed",
+                    "template:updated",
                 ],
             },
         )
@@ -155,6 +157,50 @@ class WebSocketEventListener:
         except Exception as e:  # Broad catch: event listener resilience, prevents crash
             self.logger.error(
                 f"Error handling mission update event: {e}",
+                extra={"error": str(e)},
+                exc_info=True,
+            )
+
+    async def handle_template_updated(self, data: dict[str, Any]) -> None:
+        """
+        Handle template:updated event.
+
+        Broadcasts template updates (enable/disable, field changes) tenant-scoped.
+
+        Args:
+            data: { tenant_key: str, template_id: str, is_active: bool, may_be_stale: bool, updated_fields: list }
+        """
+        try:
+            tenant_key = data.get("tenant_key")
+            template_id = data.get("template_id")
+
+            if not tenant_key or not template_id:
+                self.logger.error(
+                    "Missing required fields for template update",
+                    extra={"data": data},
+                )
+                return
+
+            event = EventFactory.tenant_envelope(
+                event_type="template:updated",
+                tenant_key=tenant_key,
+                data={
+                    "template_id": template_id,
+                    "is_active": data.get("is_active"),
+                    "may_be_stale": data.get("may_be_stale"),
+                    "updated_fields": data.get("updated_fields", []),
+                },
+            )
+
+            sent_count = await self.ws_manager.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
+            self.logger.info(
+                f"Template update broadcasted to {sent_count} client(s)",
+                extra={"template_id": template_id, "tenant_key": tenant_key, "sent_count": sent_count},
+            )
+
+        except Exception as e:  # Broad catch: event listener resilience, prevents crash
+            self.logger.error(
+                f"Error handling template update event: {e}",
                 extra={"error": str(e)},
                 exc_info=True,
             )

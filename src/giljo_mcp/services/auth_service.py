@@ -148,15 +148,25 @@ class AuthService:
             raise BaseGiljoError(message=f"Authentication failed: {e!s}", context={"username": username}) from e
 
     async def _authenticate_user_impl(self, session: AsyncSession, username: str, password: str) -> AuthResult:
-        """Implementation that uses provided session."""
-        # Find user by username
+        """Implementation that uses provided session.
+
+        AUTH-EMAIL dual-lookup (handover af53e62b): the ``username`` parameter
+        is treated as an opaque identifier — username lookup is attempted
+        first; on miss, email lookup (case-insensitive) is attempted. A generic
+        ``AuthenticationError`` is raised for both misses (no leakage of which
+        lookup failed). Wire-level parameter name preserved for API
+        compatibility.
+        """
+        # Find user by username first, then fall back to email (dual-lookup)
         user = await self._repo.get_user_by_username(session, username)
+        if user is None:
+            user = await self._repo.get_user_by_email(session, username)
 
         # Verify user exists and password matches
         if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8")):
             self._logger.warning(
-                f"Authentication failed for username: {username}",
-                extra={"username": username, "reason": "invalid_credentials"},
+                f"Authentication failed for identifier: {username}",
+                extra={"identifier": username, "reason": "invalid_credentials"},
             )
             raise AuthenticationError(message="Invalid credentials", context={"username": username})
 
