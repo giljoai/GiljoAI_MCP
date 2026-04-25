@@ -379,14 +379,14 @@ DELIBERATELY EXCLUDED (do NOT request additions in passing):
 
 ── REJECTION ERROR SHAPE ───────────────────────────────────────────────────
 When a write is rejected, you receive a structured error:
-  {
+  {{
         "error":       "validation_failed",
     "field":       "summary",
     "actual_size": 1843,
     "max_size":    500,
     "guidance":    "Trim to 2-3 sentence headline of what changed and why.
                     Detail belongs in commit messages."
-  }
+  }}
 For tag failures the payload also carries `invalid_tag` and `allowed`
 (the full sorted vocabulary) so you do not need a second round-trip.
 Read the guidance and re-trim. Do NOT retry with the same payload.
@@ -427,18 +427,33 @@ COMPLETION PROTOCOL (After ALL agents finish their work):
         if not git_integration_enabled
         else '''
 ── STEP 0: Git Commit (Git Integration Enabled) ───────────────────────────
-Before calling close_project_and_update_memory: verify all changes are committed.
-If git integration is enabled, git_commits must contain at least one entry or the
-call will be rejected with GIT_COMMITS_REQUIRED.
+Before calling close_project_and_update_memory: verify the project_path is a git
+repository AND all changes are committed.
 
-Steps:
-1. Run `git status` in the project directory to review pending changes
-2. Stage deliverables: `git add` relevant files (never `git add -A`)
-3. Commit with a descriptive message: `git commit -m "<summary of project work>"`
-4. Record the commit SHA (from git log --oneline -1) for the git_commits parameter
+First, check whether the project_path is a git repo:
+  cd <project_path> && git rev-parse --is-inside-work-tree
 
-Pass the commit SHA(s) in the git_commits list when calling close_project_and_update_memory.
-Skipping this step WILL cause closeout to fail — commit first, then close.
+If the command succeeds (prints "true"), proceed:
+  1. Run `git status` to review pending changes
+  2. Stage deliverables: `git add` relevant files (never `git add -A`)
+  3. Commit with a descriptive message: `git commit -m "<summary of project work>"`
+  4. Record the commit SHA (from `git log --oneline -1`) for the git_commits parameter
+
+If the command FAILS (project_path is not a git repo), STOP and ASK the user:
+  "Git integration is enabled in your settings, but this project path
+  (<project_path>) is not a git repository. Would you like me to run
+  `git init` here so future closeouts can capture commit history, OR
+  proceed without git for this project?"
+
+  - User says "init it": run `git init && git add . && git commit -m "<msg>"`,
+    then proceed with the SHA in git_commits.
+  - User says "skip git for this project" (or similar): pass an empty list
+    `git_commits=[]` to close_project_and_update_memory. The server will
+    accept it with a git_warning in the response (logged for visibility);
+    the closeout succeeds.
+
+Do NOT silently skip git on your own — ask the user. It is their machine,
+their folder, their decision.
 ────────────────────────────────────────────────────────────────────────────
 '''
     }
@@ -458,11 +473,23 @@ Call: close_project_and_update_memory(
           project_id='{project_id}',
           summary='2-3 paragraph mission accomplishment overview',
           key_outcomes=['Achievement 1', 'Achievement 2', ...],
-          decisions_made=['Decision 1 + rationale', ...],
-          git_commits=[...]
+          decisions_made=['Decision 1 + rationale', ...]{
+        ''',
+          git_commits=[...]'''
+        if git_integration_enabled
+        else ""
+    }
       )
 Note: tenant_key auto-injected by server from API key session
-
+{
+        ""
+        if git_integration_enabled
+        else '''
+Git integration is OFF for this product (user toggle in Connect Settings).
+Do NOT pass git_commits — omit the parameter entirely.
+Do NOT run `git log` or `git status`. The closeout will succeed without commit history.
+'''
+    }
 CRITICAL: Auto-generate content from your knowledge.
           Never ask user to fill placeholders.
 

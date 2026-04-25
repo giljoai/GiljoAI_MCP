@@ -266,7 +266,7 @@
               <!-- Reset Password (SaaS/demo only) - gated so CE bundle never exposes it. -->
               <v-list-item
                 v-if="giljoMode !== 'ce'"
-                @click="handleResetPassword"
+                @click="showResetPasswordConfirm = true"
               >
                 <template v-slot:prepend>
                   <v-icon>mdi-lock-reset</v-icon>
@@ -335,6 +335,26 @@
         </v-card>
       </v-dialog>
 
+      <!-- Reset Password Confirmation -->
+      <BaseDialog
+        v-model="showResetPasswordConfirm"
+        type="warning"
+        title="Reset Password?"
+        icon="mdi-lock-reset"
+        confirm-label="Send Reset Email"
+        :loading="resetPasswordLoading"
+        @confirm="confirmResetPassword"
+        @cancel="showResetPasswordConfirm = false"
+      >
+        <p class="text-body-1 mb-2">
+          Send a password reset email to
+          <strong>{{ currentUser?.email || 'your account' }}</strong>?
+        </p>
+        <p class="text-body-2 text-muted-a11y">
+          You'll receive a link to choose a new password. Your current password will keep working until you complete the reset.
+        </p>
+      </BaseDialog>
+
       <!-- Connection Debug Panel (from ConnectionStatus) -->
       <ConnectionDebugDialog v-model="showConnectionDebug" />
     </template>
@@ -370,6 +390,7 @@ import NotificationDropdown from '@/components/navigation/NotificationDropdown.v
 import { defineAsyncComponent } from 'vue'
 const ConnectionDebugDialog = defineAsyncComponent(() => import('@/components/navigation/ConnectionDebugDialog.vue'))
 import RoleBadge from '@/components/common/RoleBadge.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 
 const props = defineProps({
   modelValue: {
@@ -469,19 +490,29 @@ const editionFooterLabel = computed(() => {
 })
 
 // Reset password (SaaS/demo mode)
-async function handleResetPassword() {
+const showResetPasswordConfirm = ref(false)
+const resetPasswordLoading = ref(false)
+
+async function confirmResetPassword() {
+  resetPasswordLoading.value = true
   try {
     const email = props.currentUser?.email
-    if (!email) return
+    if (!email) {
+      showResetPasswordConfirm.value = false
+      return
+    }
 
     // Same-origin resolver — see RegisterView.vue for rationale.
     const baseUrl = getApiBaseUrl()
 
     await axios.post(`${baseUrl}/api/saas/password-reset/request`, { email })
     showToast({ message: 'Password reset email sent. Check your inbox.', type: 'success' })
+    showResetPasswordConfirm.value = false
   } catch (err) {
     const detail = err?.response?.data?.detail
     showToast({ message: detail || 'Unable to send reset email. Please try again later.', type: 'error' })
+  } finally {
+    resetPasswordLoading.value = false
   }
 }
 

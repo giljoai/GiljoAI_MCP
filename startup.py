@@ -100,7 +100,8 @@ def ensure_project_virtualenv() -> None:
         return
 
 
-ensure_project_virtualenv()
+if "pytest" not in sys.modules:
+    ensure_project_virtualenv()
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)

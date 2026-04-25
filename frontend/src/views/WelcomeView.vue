@@ -632,7 +632,9 @@ onMounted(async () => {
   // Open "How to Use" guide when directed from UserSettings
   if (route.query.openGuide === 'true') {
     showSetupOverlay.value = true
-    router.replace({ path: '/', query: {} })
+    // Scrub query from URL without triggering router (DefaultLayout keys
+    // <router-view> on fullPath, so router.replace would remount and close the modal).
+    window.history.replaceState({}, '', '/home')
   // Auto-launch overlay on first login or when directed from UserSettings
   } else if (route.query.openSetup === 'true' || !setupComplete.value) {
     forceSetupMode.value = route.query.openSetup === 'true'
@@ -646,9 +648,9 @@ onMounted(async () => {
       showSetupOverlay.value = true
     }
 
-    // Clean up query param so refresh doesn't re-trigger
+    // Scrub query from URL without triggering router remount (see openGuide branch above).
     if (route.query.openSetup) {
-      router.replace({ path: '/', query: {} })
+      window.history.replaceState({}, '', '/home')
     }
   }
 })

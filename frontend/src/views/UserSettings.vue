@@ -75,7 +75,7 @@
           <div
             class="startup-card smooth-border"
             style="--card-accent: var(--color-accent-primary)"
-            @click="router.push({ path: '/', query: { openSetup: 'true' } })"
+            @click="router.push({ path: '/home', query: { openSetup: 'true' } })"
           >
             <div class="startup-card-icon" style="background: rgba(255,195,0,0.1); color: var(--color-accent-primary)">
               <v-icon size="20">mdi-rocket-launch</v-icon>
@@ -86,7 +86,7 @@
           <div
             class="startup-card smooth-border"
             style="--card-accent: var(--agent-documenter-primary)"
-            @click="router.push({ path: '/', query: { openGuide: 'true' } })"
+            @click="router.push({ path: '/home', query: { openGuide: 'true' } })"
           >
             <div class="startup-card-icon" style="background: rgba(94,196,142,0.12); color: var(--agent-documenter-primary)">
               <v-icon size="20">mdi-book-open-variant</v-icon>
@@ -95,6 +95,7 @@
             <div class="startup-card-desc">Understand products, projects, agents, memory, and slash commands.</div>
           </div>
           <div
+            v-if="isCe"
             class="startup-card smooth-border"
             style="--card-accent: #6DB3E4"
             @click="showCertModal = true"
@@ -235,6 +236,7 @@ import SerenaIntegrationCard from '@/components/settings/integrations/SerenaInte
 import GitIntegrationCard from '@/components/settings/integrations/GitIntegrationCard.vue'
 import setupService from '@/services/setupService'
 import CertTrustModal from '@/components/setup/CertTrustModal.vue'
+import configService from '@/services/configService'
 // Stores and Theme
 const settingsStore = useSettingsStore()
 const router = useRouter()
@@ -253,6 +255,7 @@ function normalizeTab(tab) {
   if (tab === 'integrations' || tab === 'api-keys') return 'connect'
   return tab
 }
+const isCe = ref(configService.getGiljoMode() === 'ce')
 const showCertModal = ref(false)
 const serenaEnabled = ref(false)
 const toggling = ref(false)

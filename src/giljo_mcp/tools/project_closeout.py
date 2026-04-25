@@ -175,15 +175,22 @@ async def _resolve_git_commits(
     product_memory: dict[str, Any],
     git_commits: list[dict[str, Any]] | None,
     project: Any,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], str | None]:
     """Resolve git commits from agent input, GitHub API, or empty default.
 
     Validates agent-supplied commits, falls back to GitHub API in SaaS mode,
-    or returns an empty list in CE mode. Raises ValidationError when git
-    integration is enabled but no commits are provided.
+    or returns an empty list in CE mode.
+
+    When git integration is enabled but the agent supplies no commits, the
+    closeout still succeeds — a warning is logged and returned for surfacing
+    in the response. This preserves the user's git preference as a strong
+    recommendation while letting agents close projects in non-git directories
+    after asking the user (per ch5 protocol guidance).
 
     Returns:
-        Validated list of git commit dicts (possibly empty).
+        (commits, warning) — commits is always a validated list (possibly empty);
+        warning is a human-readable string when git was enabled but no commits
+        were provided, otherwise None.
     """
     git_integration_enabled = False
     try:
@@ -195,15 +202,18 @@ async def _resolve_git_commits(
     except Exception:  # noqa: BLE001, S110
         pass  # Settings read failure is not a blocker
 
+    git_warning: str | None = None
     if git_integration_enabled and not git_commits:
-        raise ValidationError(
-            message=(
-                "Git integration is enabled. Provide at least one commit before closing the project. "
-                "Recovery: run 'git status' to check for uncommitted changes, then "
-                "'git add <files> && git commit -m \"<message>\"' to create a commit. "
-                "Use the resulting commit SHA in the git_commits parameter and retry."
-            ),
-            context={"project_id": project_id, "error_code": "GIT_COMMITS_REQUIRED"},
+        git_warning = (
+            "Git integration is enabled in user settings, but no commits were provided "
+            "for this closeout. Project closed without commit history. If the project "
+            "directory is a git repo, the agent should have committed and passed git_commits; "
+            "if not a git repo, ask the user whether to git init future projects."
+        )
+        logger.warning(
+            "git_commits_missing_with_integration_enabled project_id=%s tenant_key=%s",
+            project_id,
+            tenant_key,
         )
 
     if git_commits is not None:
@@ -233,7 +243,7 @@ async def _resolve_git_commits(
     if git_commits is None:
         git_commits = []
 
-    return git_commits
+    return git_commits, git_warning
 
 
 async def close_project_and_update_memory(
@@ -353,7 +363,7 @@ async def close_project_and_update_memory(
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
-            git_commits = await _resolve_git_commits(
+            git_commits, git_warning = await _resolve_git_commits(
                 session=active_session,
                 project_id=project_id,
                 tenant_key=tenant_key,
@@ -427,12 +437,15 @@ async def close_project_and_update_memory(
                 data={"entry": entry.to_dict()},
             )
 
-            return {
+            response: dict[str, Any] = {
                 "entry_id": str(entry.id),
                 "sequence_number": sequence_number,
                 "git_commits_count": len(git_commits),
                 "message": "Project closed and 360 Memory updated successfully",
             }
+            if git_warning:
+                response["git_warning"] = git_warning
+            return response
 
     except Exception as exc:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to close project and update memory", extra={"error": str(exc)})
