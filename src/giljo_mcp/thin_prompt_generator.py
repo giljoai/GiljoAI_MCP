@@ -659,8 +659,7 @@ class ThinClientPromptGenerator:
                 AgentExecution.agent_id == agent_id,
                 AgentExecution.tenant_key == self.tenant_key,
             )
-            exec_result = await self.db.execute(exec_stmt)
-            execution = exec_result.scalars().first()
+            await self.db.execute(exec_stmt)
 
         mcp_url = self._get_public_base_url()
 
