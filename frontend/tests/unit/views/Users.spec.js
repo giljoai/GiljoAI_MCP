@@ -91,7 +91,6 @@ describe('Users.vue - Standalone Users Management Page', () => {
 
     it('has v-container as root element for proper layout', () => {
       // The component uses v-container (UserManager uses fluid internally)
-      const html = wrapper.html()
       // v-container renders as a div in test environment without full Vuetify
       expect(wrapper.find('div').exists()).toBe(true)
     })
@@ -141,8 +140,6 @@ describe('Users.vue - Standalone Users Management Page', () => {
     })
 
     it('passes through user management functionality to UserManager', async () => {
-      const userManager = wrapper.findComponent(UserManager)
-
       // Wait for UserManager to load users
       await wrapper.vm.$nextTick()
       await new Promise((resolve) => setTimeout(resolve, 100))
@@ -153,7 +150,6 @@ describe('Users.vue - Standalone Users Management Page', () => {
 
     it('maintains responsive design for mobile devices', () => {
       // Check that container exists in HTML
-      const html = wrapper.html()
       // v-container renders as a div in test environment without full Vuetify
       expect(wrapper.find('div').exists()).toBe(true)
     })
@@ -162,14 +158,12 @@ describe('Users.vue - Standalone Users Management Page', () => {
   describe('Responsive Design', () => {
     it('uses container for proper layout', () => {
       // UserManager component uses fluid container internally
-      const html = wrapper.html()
       // v-container renders as a div in test environment without full Vuetify
       expect(wrapper.find('div').exists()).toBe(true)
     })
 
     it('page layout adapts to different screen sizes', () => {
       // Verify that layout classes allow responsive behavior (UserManager handles this)
-      const html = wrapper.html()
       // v-container renders as a div in test environment without full Vuetify
       expect(wrapper.find('div').exists()).toBe(true)
     })
@@ -249,7 +243,6 @@ describe('Users.vue - Standalone Users Management Page', () => {
 
     it('has proper semantic HTML structure', () => {
       expect(wrapper.find('h1').exists()).toBe(true)
-      const html = wrapper.html()
       // v-container renders as a div in test environment without full Vuetify
       expect(wrapper.find('div').exists()).toBe(true)
     })
@@ -262,7 +255,6 @@ describe('Users.vue - Standalone Users Management Page', () => {
     })
 
     it('uses responsive design that works across devices', () => {
-      const html = wrapper.html()
       // v-container renders as a div in test environment without full Vuetify
       expect(wrapper.find('div').exists()).toBe(true)
     })

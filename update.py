@@ -13,6 +13,7 @@ Usage:
 Does NOT touch config.yaml, agent templates, SSL certificates, or seed data.
 """
 
+import contextlib
 import os
 import subprocess
 import sys
@@ -168,12 +169,11 @@ def _stamp_bridge(db_url: str, current: str, head: str) -> bool:
         script = ScriptDirectory.from_config(alembic_cfg)
 
         # Try to get the revision object -- if it exists in the chain, no stamp needed
-        try:
+        with contextlib.suppress(Exception):
             script.get_revision(current)
             return False  # Revision exists in chain, normal upgrade will work
-        except Exception:
-            info(f"Revision {current} not in chain -- will stamp to head")
 
+        info(f"Revision {current} not in chain -- will stamp to head")
         info(f"Bridging old revision {current} -> {head} (baseline was squashed)")
 
         proc = subprocess.run(

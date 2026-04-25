@@ -590,9 +590,7 @@ class ThinClientPromptGenerator:
             .where(and_(Product.id == project.product_id, Product.tenant_key == self.tenant_key))
         )
         product_result = await self.db.execute(product_stmt)
-        product = product_result.scalar_one_or_none()
-
-        return product
+        return product_result.scalar_one_or_none()
 
     async def _fetch_project(self, project_id: str) -> Any | None:
         """Fetch project by ID."""

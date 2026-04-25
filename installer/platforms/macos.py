@@ -13,6 +13,7 @@ Handles macOS-specific installation operations including:
 - npm command execution with shell=False
 """
 
+import contextlib
 import platform
 import subprocess
 import sys
@@ -275,7 +276,7 @@ class MacOSPlatformHandler(PlatformHandler):
         Returns:
             List of IPv4 address strings
         """
-        try:
+        with contextlib.suppress(Exception):
             import psutil
 
             ips = []
@@ -289,13 +290,7 @@ class MacOSPlatformHandler(PlatformHandler):
 
             return sorted(set(ips))  # Deduplicate and sort
 
-        except ImportError:
-            # Fallback if psutil not available
-            return []
-
-        except Exception:
-            # Graceful failure
-            return []
+        return []
 
     def welcome_screen(self) -> None:
         """

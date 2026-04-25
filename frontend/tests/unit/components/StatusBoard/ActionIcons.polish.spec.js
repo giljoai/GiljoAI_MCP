@@ -202,7 +202,6 @@ describe('ActionIcons.vue - Visual Polish & Hover States (Phase 4)', () => {
         }
       });
 
-      const badge = wrapper.find('[data-test="messages-badge"]');
       // Badge may or may not exist depending on template rendering
       // but unread_count should be accessible
       expect(wrapper.props('job').unread_count).toBe(3);

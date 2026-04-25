@@ -82,6 +82,8 @@ def _bootstrap_dependencies():
 _bootstrap_dependencies()
 
 # Standard library imports
+import atexit
+import contextlib
 import io
 import logging
 import os
@@ -133,6 +135,8 @@ def _sanitize_log(text: str) -> str:
 # TTY-aware input — reads from /dev/tty when stdin is piped (curl | bash)
 # ---------------------------------------------------------------------------
 _tty_file: Optional[io.TextIOWrapper] = None
+_tty_stack = contextlib.ExitStack()
+atexit.register(_tty_stack.close)
 
 
 def _get_tty() -> Optional[io.TextIOWrapper]:
@@ -143,10 +147,7 @@ def _get_tty() -> Optional[io.TextIOWrapper]:
     if sys.stdin.isatty():
         return None  # stdin is fine, no override needed
     try:
-        _tty_file = open("/dev/tty", "r")  # noqa: SIM115
-        import atexit
-
-        atexit.register(lambda: _tty_file.close() if _tty_file else None)
+        _tty_file = _tty_stack.enter_context(open("/dev/tty", "r"))  # noqa: SIM115
         return _tty_file
     except OSError:
         return None
@@ -222,41 +223,38 @@ def getpass_with_asterisks(prompt: str = "Password: ") -> str:
         import termios
         import tty
 
-        if sys.stdin.isatty():
-            tty_fd_owner = None
-            tty_stream = sys.stdin
-        else:
-            tty_fd_owner = open("/dev/tty", "r")
-            tty_stream = tty_fd_owner
+        with contextlib.ExitStack() as stack:
+            if sys.stdin.isatty():
+                tty_stream = sys.stdin
+            else:
+                tty_stream = stack.enter_context(open("/dev/tty", "r"))  # noqa: SIM115
 
-        fd = tty_stream.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(fd)
-            while True:
-                char = tty_stream.read(1)
-                # Enter key
-                if char in ("\r", "\n"):
-                    # Raw mode: \n only moves down, need \r to return to column 0
-                    sys.stdout.write("\r\n")
-                    sys.stdout.flush()
-                    break
-                # Backspace (DEL or BS)
-                if char in ("\x7f", "\x08"):
-                    if password:
-                        password.pop()
-                        print("\b \b", end="", flush=True)
-                # Ctrl+C
-                elif char == "\x03":
-                    raise KeyboardInterrupt
-                # Regular character
-                else:
-                    password.append(char)
-                    print("*", end="", flush=True)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-            if tty_fd_owner is not None:
-                tty_fd_owner.close()
+            fd = tty_stream.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(fd)
+                while True:
+                    char = tty_stream.read(1)
+                    # Enter key
+                    if char in ("\r", "\n"):
+                        # Raw mode: \n only moves down, need \r to return to column 0
+                        sys.stdout.write("\r\n")
+                        sys.stdout.flush()
+                        break
+                    # Backspace (DEL or BS)
+                    if char in ("\x7f", "\x08"):
+                        if password:
+                            password.pop()
+                            print("\b \b", end="", flush=True)
+                    # Ctrl+C
+                    elif char == "\x03":
+                        raise KeyboardInterrupt
+                    # Regular character
+                    else:
+                        password.append(char)
+                        print("*", end="", flush=True)
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
     return "".join(password)
 
@@ -1002,7 +1000,8 @@ class UnifiedInstaller:
         npm_path = shutil.which("npm")
 
         if node_path and npm_path:
-            try:
+            node_version = "unknown"
+            with contextlib.suppress(Exception):
                 version_proc = subprocess.run(
                     ["node", "--version"],
                     capture_output=True,
@@ -1010,8 +1009,6 @@ class UnifiedInstaller:
                     timeout=10,
                 )
                 node_version = version_proc.stdout.strip()
-            except Exception:
-                node_version = "unknown"
 
             self._print_success(f"Node.js detected: {node_path} ({node_version})")
             self._print_success(f"npm detected: {npm_path}")
@@ -1100,7 +1097,8 @@ class UnifiedInstaller:
         npm_path = shutil.which("npm")
 
         if node_path and npm_path:
-            try:
+            node_version = "unknown"
+            with contextlib.suppress(Exception):
                 version_proc = subprocess.run(
                     ["node", "--version"],
                     capture_output=True,
@@ -1108,8 +1106,6 @@ class UnifiedInstaller:
                     timeout=10,
                 )
                 node_version = version_proc.stdout.strip()
-            except Exception:
-                node_version = "unknown"
 
             self._print_success(f"Node.js detected: {node_path} ({node_version})")
             self._print_success(f"npm detected: {npm_path}")
@@ -2958,13 +2954,11 @@ class UnifiedInstaller:
 
     def _is_port_available(self, port: int, host: str = "127.0.0.1") -> bool:
         """Check if port is available"""
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(1)
-                result = sock.connect_ex((host, port))
-                return result != 0
-        except Exception:
-            return False
+        with contextlib.suppress(Exception), socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(1)
+            result = sock.connect_ex((host, port))
+            return result != 0
+        return False
 
     def _find_available_port(self, start_port: int, max_attempts: int = 10) -> Optional[int]:
         """Find available port starting from start_port"""

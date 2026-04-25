@@ -14,6 +14,7 @@ Handles Linux-specific installation operations including:
 - Distribution-specific guides (Ubuntu, Fedora, etc.)
 """
 
+import contextlib
 import platform
 import subprocess
 import sys
@@ -108,10 +109,9 @@ class LinuxPlatformHandler(PlatformHandler):
         Returns:
             Dictionary with distribution info (ID, VERSION_ID, NAME)
         """
-        try:
+        with contextlib.suppress(Exception):
             return platform.freedesktop_os_release()
-        except Exception:
-            return {"ID": "unknown", "VERSION_ID": "", "NAME": "Linux"}
+        return {"ID": "unknown", "VERSION_ID": "", "NAME": "Linux"}
 
     def get_postgresql_install_guide(self, recommended_version: int = 18) -> str:
         """
@@ -355,7 +355,7 @@ Categories=Development;
         Returns:
             List of IPv4 address strings
         """
-        try:
+        with contextlib.suppress(Exception):
             import psutil
 
             ips = []
@@ -369,13 +369,7 @@ Categories=Development;
 
             return sorted(set(ips))  # Deduplicate and sort
 
-        except ImportError:
-            # Fallback if psutil not available
-            return []
-
-        except Exception:
-            # Graceful failure
-            return []
+        return []
 
     def welcome_screen(self) -> None:
         """
