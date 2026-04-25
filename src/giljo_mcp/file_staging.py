@@ -243,9 +243,7 @@ class FileStaging:
             # Create ZIP file with platform-appropriate content
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 if platform == "codex_cli":
-                    import json
-
-                    zf.writestr("agents.json", json.dumps(export_data, indent=2))
+                    zf.writestr("agents.json", json_dumps(export_data, indent=2))
                 else:
                     for agent in export_data["agents"]:
                         zf.writestr(agent["filename"], agent["content"])

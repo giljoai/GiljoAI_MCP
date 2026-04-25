@@ -40,7 +40,7 @@ describe('ForgotPasswordPin.vue -- identifier field accepts email or username (A
   }
 
   it('uses "Email or username" as the identifier field label', async () => {
-    const wrapper = mountDialog()
+    mountDialog()
     await flushPromises()
 
     // v-dialog teleports; read from document

@@ -104,8 +104,9 @@
             </template>
           </v-alert>
 
-          <!-- HTTPS: Node.js cert trust warning (Claude Code + Gemini are Node.js-based) -->
-          <template v-if="(selectedTool === 'gemini' || selectedTool === 'claude' || selectedTool === 'codex') && isHttps">
+          <!-- HTTPS: Node.js cert trust warning (Claude Code + Gemini are Node.js-based)
+               CE only — demo/saas use Cloudflare-issued certs that Node already trusts. -->
+          <template v-if="(selectedTool === 'gemini' || selectedTool === 'claude' || selectedTool === 'codex') && isHttps && isCe">
             <v-radio-group v-model="certPlatform" inline hide-details class="platform-radios mb-2">
               <v-radio label="PowerShell" value="windows" density="compact" />
               <v-radio label="Linux / macOS / Git Bash" value="unix" density="compact" />
@@ -183,6 +184,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import api from '@/services/api'
+import configService from '@/services/configService'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import {
@@ -240,6 +242,7 @@ const selectedToolName = computed(
 )
 
 const isHttps = computed(() => window.location.protocol === 'https:')
+const isCe = computed(() => configService.getGiljoMode() === 'ce')
 
 const certTrustCommandWindows = CERT_TRUST_WINDOWS
 const certTrustCommandUnix = CERT_TRUST_UNIX
