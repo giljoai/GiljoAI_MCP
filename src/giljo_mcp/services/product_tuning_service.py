@@ -530,8 +530,10 @@ class ProductTuningService:
         # Stamp tuning metadata
         async with self._get_session() as session:
             product = await self._get_product(session, product_id)
+            current_sequence = await self._memory_repo.get_next_sequence(session, product_id, self.tenant_key) - 1
             tuning_state = product.tuning_state or {}
             tuning_state["last_tuned_at"] = datetime.now(timezone.utc).isoformat()
+            tuning_state["last_tuned_at_sequence"] = current_sequence
             product.tuning_state = validate_tuning_state(tuning_state)
 
             await self._product_repo.commit(session)
