@@ -116,12 +116,6 @@ test.describe('Implement Tab Workflow (Job Implementation)', () => {
       )
 
       // Should be one of: green (Healthy), yellow (Stale), red (Critical)
-      const validColors = [
-        'rgb(76, 175, 80)',   // green
-        'rgb(255, 235, 59)',  // yellow
-        'rgb(244, 67, 54)'    // red
-      ]
-
       // Allow some flexibility in color matching due to browser differences
       expect(chipColor).toBeTruthy()
     }
@@ -145,10 +139,6 @@ test.describe('Implement Tab Workflow (Job Implementation)', () => {
       // Test first row
       const firstRow = rows.first()
       const statusText = await firstRow.locator('.status-cell').textContent()
-
-      // Verify action buttons are present
-      const actionButtons = firstRow.locator('[data-testid="action-button"]')
-      const buttonCount = await actionButtons.count()
 
       if (statusText?.includes('Waiting.')) {
         // Should show play/launch button for waiting agents

@@ -26,6 +26,7 @@ Cross-platform: Works on Windows, Linux, and macOS
 """
 
 import atexit
+import contextlib
 import os
 import platform
 import shutil
@@ -39,6 +40,12 @@ from typing import IO, Optional, Tuple
 
 import click
 from colorama import Fore, Style, init
+
+
+# ExitStack for managing log file handles that must outlive the function scope
+# (passed to subprocess.Popen). Registered with atexit so handles close on exit.
+_log_file_stack = contextlib.ExitStack()
+atexit.register(_log_file_stack.close)
 
 
 # ---------------------------------------------------------------------------
@@ -451,12 +458,11 @@ def seed_default_settings() -> bool:
         from sqlalchemy import create_engine, text
 
         # Read config.yaml values for migration (defaults if missing)
-        try:
+        config = {}
+        with contextlib.suppress(Exception):
             from src.giljo_mcp._config_io import read_config
 
             config = read_config()
-        except Exception:
-            config = {}
 
         features = config.get("features", {})
         security_cfg = config.get("security", {})
@@ -568,13 +574,11 @@ def is_port_available(port: int, host: str = "127.0.0.1") -> bool:
     Returns:
         True if port is available, False otherwise
     """
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.settimeout(1)
-            result = sock.connect_ex((host, port))
-            return result != 0  # Non-zero means port is available
-    except Exception:
-        return False
+    with contextlib.suppress(Exception), socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(1)
+        result = sock.connect_ex((host, port))
+        return result != 0  # Non-zero means port is available
+    return False
 
 
 def find_available_port(preferred_port: int, max_attempts: int = 10) -> Optional[int]:
@@ -626,7 +630,7 @@ def get_config_ports() -> Tuple[int, int]:
 
 def _get_network_mode() -> str:
     """Read security.network.mode from config.yaml. Returns 'localhost' if not set."""
-    try:
+    with contextlib.suppress(Exception):
         import yaml
 
         config_path = Path.cwd() / "config.yaml"
@@ -634,8 +638,6 @@ def _get_network_mode() -> str:
             with open(config_path) as f:
                 config = yaml.safe_load(f)
             return config.get("security", {}).get("network", {}).get("mode", "localhost")
-    except Exception:
-        return "localhost"
     return "localhost"
 
 
@@ -645,7 +647,7 @@ def get_deployment_context() -> str:
     Returns one of: 'localhost' (default), 'lan', 'demo', 'saas-production'.
     Controls browser auto-open host and status banner content.
     """
-    try:
+    with contextlib.suppress(Exception):
         import yaml
 
         config_path = Path.cwd() / "config.yaml"
@@ -653,14 +655,12 @@ def get_deployment_context() -> str:
             with open(config_path) as f:
                 config = yaml.safe_load(f)
             return config.get("deployment_context", "localhost")
-    except Exception:
-        return "localhost"
     return "localhost"
 
 
 def _get_external_host() -> str:
     """Read services.external_host from config.yaml. Empty string if absent."""
-    try:
+    with contextlib.suppress(Exception):
         import yaml
 
         config_path = Path.cwd() / "config.yaml"
@@ -668,8 +668,6 @@ def _get_external_host() -> str:
             with open(config_path) as f:
                 config = yaml.safe_load(f)
             return config.get("services", {}).get("external_host", "") or ""
-    except Exception:
-        return ""
     return ""
 
 
@@ -683,7 +681,7 @@ def get_ssl_enabled() -> bool:
     """
     if _get_network_mode() == "localhost":
         return False
-    try:
+    with contextlib.suppress(Exception):
         import yaml
 
         config_path = Path.cwd() / "config.yaml"
@@ -693,9 +691,6 @@ def get_ssl_enabled() -> bool:
                 config = yaml.safe_load(f)
 
             return bool(config.get("features", {}).get("ssl_enabled", False))
-
-    except Exception:
-        return False
 
     return False
 
@@ -849,10 +844,12 @@ def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             # Background mode: hide output for quiet startup
             logs_dir = Path.cwd() / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
-            api_stdout: IO[str] = open(logs_dir / "api_stdout.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
-            api_stderr: IO[str] = open(logs_dir / "api_stderr.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
-            atexit.register(api_stdout.close)
-            atexit.register(api_stderr.close)
+            api_stdout: IO[str] = _log_file_stack.enter_context(
+                open(logs_dir / "api_stdout.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            )
+            api_stderr: IO[str] = _log_file_stack.enter_context(
+                open(logs_dir / "api_stderr.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            )
             popen_kwargs["stdout"] = api_stdout
             popen_kwargs["stderr"] = api_stderr
 
@@ -929,10 +926,12 @@ def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             # Background mode: hide output for quiet startup
             logs_dir = Path.cwd() / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
-            fe_stdout: IO[str] = open(logs_dir / "frontend_stdout.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
-            fe_stderr: IO[str] = open(logs_dir / "frontend_stderr.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
-            atexit.register(fe_stdout.close)
-            atexit.register(fe_stderr.close)
+            fe_stdout: IO[str] = _log_file_stack.enter_context(
+                open(logs_dir / "frontend_stdout.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            )
+            fe_stderr: IO[str] = _log_file_stack.enter_context(
+                open(logs_dir / "frontend_stderr.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            )
             popen_kwargs["stdout"] = fe_stdout
             popen_kwargs["stderr"] = fe_stderr
 
@@ -1314,7 +1313,7 @@ def _heal_schema_to_v37(session) -> None:
 
 def _get_database_url() -> Optional[str]:
     """Build database URL from environment (same source as check_database_connectivity)."""
-    try:
+    with contextlib.suppress(Exception):
         from dotenv import load_dotenv
 
         load_dotenv()
@@ -1333,8 +1332,7 @@ def _get_database_url() -> Optional[str]:
         if not db_password:
             return None
         return f"postgresql://{db_user}:{quote_plus(db_password)}@{db_host}:{db_port}/{db_name}"
-    except Exception:
-        return None
+    return None
 
 
 def run_database_migrations() -> bool:

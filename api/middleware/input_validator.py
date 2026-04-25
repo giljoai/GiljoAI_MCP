@@ -120,8 +120,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         # Note: Request body validation happens in endpoints via Pydantic models
         # This middleware provides an additional safety layer for query/path params
 
-        response = await call_next(request)
-        return response
+        return await call_next(request)
 
     def _is_safe(self, value: str) -> bool:
         """
@@ -195,20 +194,16 @@ class RequestSanitizer:
         if not isinstance(value, str):
             return value
 
-        # Remove leading/trailing whitespace
-        value = value.strip()
-
-        # Escape HTML special characters to prevent XSS
-        value = (
-            value.replace("&", "&amp;")  # Must be first
+        # Remove leading/trailing whitespace, then escape HTML special characters
+        return (
+            value.strip()
+            .replace("&", "&amp;")  # Must be first
             .replace("<", "&lt;")
             .replace(">", "&gt;")
             .replace('"', "&quot;")
             .replace("'", "&#x27;")
             .replace("/", "&#x2F;")
         )
-
-        return value
 
     @staticmethod
     def sanitize_dict(data: dict) -> dict:

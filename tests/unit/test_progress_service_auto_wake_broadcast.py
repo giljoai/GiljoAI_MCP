@@ -72,12 +72,11 @@ def _make_service_with_ws(ws_manager):
     tenant_manager = Mock()
     tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
-    service = ProgressService(
+    return ProgressService(
         db_manager=db_manager,
         tenant_manager=tenant_manager,
         websocket_manager=ws_manager,
     )
-    return service
 
 
 def _extract_broadcast_call_data(ws_manager):

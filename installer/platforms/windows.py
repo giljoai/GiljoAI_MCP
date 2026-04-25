@@ -13,6 +13,7 @@ Handles Windows-specific installation operations including:
 - npm command execution with shell=True
 """
 
+import contextlib
 import platform
 import subprocess
 import sys
@@ -324,7 +325,7 @@ class WindowsPlatformHandler(PlatformHandler):
         Returns:
             List of IPv4 address strings
         """
-        try:
+        with contextlib.suppress(Exception):
             import psutil
 
             ips = []
@@ -338,13 +339,7 @@ class WindowsPlatformHandler(PlatformHandler):
 
             return sorted(set(ips))  # Deduplicate and sort
 
-        except ImportError:
-            # Fallback if psutil not available
-            return []
-
-        except Exception:
-            # Graceful failure
-            return []
+        return []
 
     def welcome_screen(self) -> None:
         """

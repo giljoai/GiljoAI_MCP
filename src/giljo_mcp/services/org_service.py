@@ -692,5 +692,4 @@ class OrgService:
         slug = name.lower()
         slug = re.sub(r"[^a-z0-9\s-]", "", slug)  # Remove special chars
         slug = re.sub(r"[\s_-]+", "-", slug)  # Replace spaces with hyphens
-        slug = slug.strip("-")
-        return slug
+        return slug.strip("-")

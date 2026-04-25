@@ -142,7 +142,6 @@ describe('WebSocket Integration - Composable API', () => {
 
   it('on() registers handler that receives events dispatched by store', async () => {
     const wrapper = mount(EventTrackingComponent)
-    const store = useWebSocketStore()
 
     // The component registered a handler for 'test:event'
     // Simulate a message by calling the store's on() with the same type and invoking
@@ -209,8 +208,6 @@ describe('WebSocket Integration - Multi-Tenant Isolation', () => {
     const wrapperB = mount(MultiTenantComponent, {
       props: { tenantKey: 'tenant-b' },
     })
-
-    const store = useWebSocketStore()
 
     // Register handlers and manually dispatch to simulate message delivery
     // The composable registers handlers via store.on(), which stores them
@@ -304,7 +301,7 @@ describe('WebSocket Integration - Error Handling', () => {
   })
 
   it('on() returns a cleanup function', () => {
-    const wrapper = mount(EventTrackingComponent)
+    mount(EventTrackingComponent)
     const store = useWebSocketStore()
 
     const cleanup = store.on('test:type', () => {})

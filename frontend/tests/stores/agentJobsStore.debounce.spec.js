@@ -188,10 +188,6 @@ describe('agentJobsStore - Phase 2: Debounced store updates', () => {
 
     // Capture initial Map reference
     const mapAfterSeed = store.jobsById.value
-    let changeCount = 0
-
-    // Track Map reference changes by checking after each timer tick
-    const checkRef = store.jobsById.value
 
     // Act: fire 3 rapid progress updates
     store.handleProgressUpdate({

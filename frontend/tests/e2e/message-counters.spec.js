@@ -21,11 +21,6 @@
 import { test, expect } from '@playwright/test'
 import {
   loginAsPatrik,
-  waitForWebSocketEvent,
-  waitForAgentStatus,
-  getAgentCard,
-  createTestProject,
-  spawnTestAgents
 } from './helpers'
 
 test.describe('Message Counter Functionality', () => {

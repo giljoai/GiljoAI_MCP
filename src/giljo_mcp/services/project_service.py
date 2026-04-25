@@ -431,7 +431,7 @@ class ProjectService:
 
                 # For list view, we include basic metrics
                 # (agent_count and message_count would require additional queries)
-                project_list = [
+                return [
                     ProjectListItem(
                         id=str(project.id),
                         name=project.name,
@@ -456,8 +456,6 @@ class ProjectService:
                     )
                     for project in projects
                 ]
-
-                return project_list
 
         except ValidationError:
             # Re-raise our custom exceptions

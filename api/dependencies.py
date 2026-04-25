@@ -55,14 +55,12 @@ async def get_tenant_key(request: Request) -> str:
         setup_mode = getattr(state.api_state.config, "setup_mode", False)
         if setup_mode:
             # In setup mode, use environment variable or proper default tenant key
-            default_tenant = _get_default_tenant_key()
-            return default_tenant
+            return _get_default_tenant_key()
 
     # For OPTIONS requests (CORS preflight), return default tenant without validation
     # OPTIONS requests should not fail due to missing tenant context
     if request.method == "OPTIONS":
-        default_tenant = _get_default_tenant_key()
-        return default_tenant
+        return _get_default_tenant_key()
 
     # Get from request state (set by middleware)
     tenant_key = getattr(request.state, "tenant_key", None)

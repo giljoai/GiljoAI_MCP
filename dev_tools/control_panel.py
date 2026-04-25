@@ -986,7 +986,7 @@ class GiljoDevControlPanel:
                     giljo_ports[conn.laddr.port] = conn.pid
         except (psutil.AccessDenied, AttributeError):
             # Fallback to platform-specific CLI
-            try:
+            with contextlib.suppress(Exception):
                 system = platform.system()
                 if system == "Windows":
                     result = subprocess.run(["netstat", "-ano"], check=False, capture_output=True, text=True, timeout=5)
@@ -1024,8 +1024,6 @@ class GiljoDevControlPanel:
                                                 giljo_ports[port] = pid
                                     except (ValueError, IndexError):
                                         pass
-            except Exception:
-                return giljo_ports
 
         return giljo_ports
 
@@ -1072,7 +1070,7 @@ class GiljoDevControlPanel:
                                     pids_to_kill.add(pid)
 
                     for pid in pids_to_kill:
-                        try:
+                        with contextlib.suppress(Exception):
                             subprocess.run(
                                 ["taskkill", "/F", "/T", "/PID", pid],
                                 check=False,
@@ -1080,8 +1078,6 @@ class GiljoDevControlPanel:
                                 timeout=5,
                             )
                             pids_killed.add(pid)
-                        except Exception:
-                            continue
                 else:
                     try:
                         result = subprocess.run(
@@ -1089,11 +1085,9 @@ class GiljoDevControlPanel:
                         )
                         for pid in result.stdout.strip().split():
                             if pid:
-                                try:
+                                with contextlib.suppress(Exception):
                                     subprocess.run(["kill", "-9", pid], check=False, capture_output=True, timeout=5)
                                     pids_killed.add(pid)
-                                except Exception:
-                                    continue
                     except FileNotFoundError:
                         try:
                             subprocess.run(["fuser", "-k", f"{port}/tcp"], check=False, capture_output=True, timeout=5)
@@ -2929,11 +2923,9 @@ pg_restore -l {backup_file.name} | head -20
             # Recursively delete all __pycache__ directories
             pycache_count = 0
             for pycache in self.project_root.rglob("__pycache__"):
-                try:
+                with contextlib.suppress(Exception):
                     shutil.rmtree(pycache, ignore_errors=True)
                     pycache_count += 1
-                except Exception:
-                    continue
 
             if pycache_count > 0:
                 deleted.append(f"Python bytecode cache ({pycache_count} directories)")
@@ -2947,11 +2939,9 @@ pg_restore -l {backup_file.name} | head -20
 
             coverage_count = 0
             for cov_file in self.project_root.glob(".coverage.*"):
-                try:
+                with contextlib.suppress(Exception):
                     cov_file.unlink()
                     coverage_count += 1
-                except Exception:
-                    continue
 
             if coverage_count > 0:
                 deleted.append(f"Coverage parallel files ({coverage_count} files)")
@@ -3159,12 +3149,10 @@ pg_restore -l {backup_file.name} | head -20
             retried = []
             for target in retry_targets:
                 if target.exists():
-                    try:
+                    with contextlib.suppress(Exception):
                         shutil.rmtree(target)
                         if not target.exists():
                             retried.append(str(target.name))
-                    except Exception:
-                        continue  # Already reported in earlier step
 
             if retried:
                 deleted.append(f"Retry pass cleaned: {', '.join(retried)}")
@@ -3240,13 +3228,11 @@ pg_restore -l {backup_file.name} | head -20
                 ]
                 for rc_file in rc_files:
                     if rc_file.exists():
-                        try:
+                        with contextlib.suppress(Exception):
                             original = rc_file.read_text()
                             cleaned = "\n".join(line for line in original.splitlines() if var_name not in line)
                             if cleaned != original:
                                 rc_file.write_text(cleaned + "\n")
-                        except Exception:
-                            continue
 
             cleared.append(f"{var_name} {'(was set)' if had_value else '(not set)'}")
         return cleared
@@ -3275,12 +3261,11 @@ pg_restore -l {backup_file.name} | head -20
         if reason:
             prompt = f"{reason}\n\n{prompt}"
 
-        password = simpledialog.askstring(
+        return simpledialog.askstring(
             "Sudo Password Required",
             prompt,
             show="*",
-        )
-        return password  # None if cancelled
+        )  # None if cancelled
 
     def _remove_mkcert_root_ca_from_client(self):
         """Remove the mkcert root CA from the OS trust store on this machine.
@@ -3346,7 +3331,7 @@ pg_restore -l {backup_file.name} | head -20
         elif system == "Darwin":
             mkcert_path = shutil.which("mkcert")
             if mkcert_path:
-                try:
+                with contextlib.suppress(Exception):
                     result = subprocess.run(
                         [mkcert_path, "-CAROOT"],
                         capture_output=True,
@@ -3371,8 +3356,6 @@ pg_restore -l {backup_file.name} | head -20
                                     check=False,
                                 )
                                 removed.append("mkcert root CA (macOS System keychain)")
-                except Exception:
-                    return removed
 
         return removed
 
@@ -4180,27 +4163,21 @@ pg_restore -l {backup_file.name} | head -20
 
             # Remove __pycache__ directories
             for cache_dir in self.project_root.rglob("__pycache__"):
-                try:
+                with contextlib.suppress(Exception):
                     shutil.rmtree(cache_dir)
                     removed_count += 1
-                except Exception:
-                    continue
 
             # Remove .pyc files
             for pyc_file in self.project_root.rglob("*.pyc"):
-                try:
+                with contextlib.suppress(Exception):
                     pyc_file.unlink()
                     removed_count += 1
-                except Exception:
-                    continue
 
             # Remove .pyo files
             for pyo_file in self.project_root.rglob("*.pyo"):
-                try:
+                with contextlib.suppress(Exception):
                     pyo_file.unlink()
                     removed_count += 1
-                except Exception:
-                    continue
 
             self.update_status_message(f"Python cache cleared ({removed_count} items)")
             messagebox.showinfo("Success", f"Python cache cleared!\n\nRemoved {removed_count} cache items.")

@@ -63,7 +63,7 @@ class StagingPromptBuilder:
         api_key_configured = bool(config.server.api_key)
         auth_note = "(authenticated)" if api_key_configured else "(check config.yaml for API key)"
 
-        prompt = f"""I am Orchestrator for GiljoAI Project "{project.name}".
+        return f"""I am Orchestrator for GiljoAI Project "{project.name}".
 
 IDENTITY:
 - Orchestrator Agent ID: {agent_id}
@@ -126,8 +126,6 @@ Logs: ~/.giljo_mcp/logs/mcp_adapter.log
 Begin by verifying MCP connection, then fetch complete context, and CREATE the mission plan.
 """
 
-        return prompt
-
     def build_staging_prompt(
         self,
         project: Any,
@@ -150,7 +148,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         Returns:
             Thin staging prompt (~113 tokens)
         """
-        prompt = f"""You are the ORCHESTRATOR for project "{project.name}"
+        return f"""You are the ORCHESTRATOR for project "{project.name}"
 
 YOUR IDENTITY (use these in all MCP calls):
   YOUR Agent ID: {agent_id}
@@ -166,8 +164,6 @@ START NOW:
 2. Fetch instructions: mcp__giljo_mcp__get_orchestrator_instructions(job_id='{orchestrator_id}')
    → Response includes orchestrator_protocol (5-chapter workflow) AND orchestrator_identity (behavioral guidance)
 """
-
-        return prompt
 
     def regenerate_mission(
         self, product: Product, project: Project, field_toggles: dict[str, bool], user_id: str | None

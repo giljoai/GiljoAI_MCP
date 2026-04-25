@@ -247,14 +247,6 @@ describe('ActionIcons.vue', () => {
     });
 
     it('attempts to copy continuation prompt to clipboard on successful handover', async () => {
-      const continuationPrompt = 'test continuation prompt';
-      const mockPost = vi.fn().mockResolvedValue({
-        data: {
-          success: true,
-          continuation_prompt: continuationPrompt
-        }
-      });
-
       // We need to properly mock the api module that gets imported
       // For this test, we'll verify the component emits the expected event
       const wrapper = createWrapper({

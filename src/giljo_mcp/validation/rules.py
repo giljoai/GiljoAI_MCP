@@ -245,13 +245,8 @@ class InjectionDetectionRule(ValidationRule):
         - Triple backtick code blocks (```...```)
         - Inline code blocks (`...`)
         """
-        # Remove triple backtick blocks
-        content = re.sub(r"```[\s\S]*?```", "", content)
-
-        # Remove inline code
-        content = re.sub(r"`[^`]+`", "", content)
-
-        return content
+        # Remove triple backtick blocks, then inline code
+        return re.sub(r"`[^`]+`", "", re.sub(r"```[\s\S]*?```", "", content))
 
 
 class ToolUsageBestPracticesRule(ValidationRule):

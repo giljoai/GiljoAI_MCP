@@ -162,8 +162,7 @@ class AuthManager:
     def validate_jwt_token(self, token: str) -> Optional[dict[str, Any]]:
         """Validate JWT token for WAN mode"""
         try:
-            payload = jwt.decode(token, self.jwt_secret, algorithms=["HS256"])
-            return payload
+            return jwt.decode(token, self.jwt_secret, algorithms=["HS256"])
         except jwt.ExpiredSignatureError:
             logger.warning("JWT token expired")
             return None

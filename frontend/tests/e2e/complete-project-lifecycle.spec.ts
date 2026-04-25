@@ -6,7 +6,6 @@ import {
   cleanupTestData,
   waitForWebSocketEvent,
   waitForAgentStatus,
-  waitForMultipleAgentsComplete,
   navigateToProject,
   navigateToTab,
   navigateToSettings,

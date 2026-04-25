@@ -16,6 +16,7 @@ This module provides comprehensive PostgreSQL setup capabilities:
 - Cross-platform compatibility (Windows, Linux, macOS)
 """
 
+import contextlib
 import logging
 import os
 import platform
@@ -810,7 +811,7 @@ echo ""
 
         # Try to connect if psycopg2 available
         if psycopg2:
-            try:
+            with contextlib.suppress(Exception):
                 conn = psycopg2.connect(
                     host=self.host,
                     port=self.port,
@@ -820,8 +821,7 @@ echo ""
                 )
                 conn.close()
                 return True
-            except Exception:
-                self.logger.debug("Connection test to %s failed", self.db_name)
+            self.logger.debug("Connection test to %s failed", self.db_name)
 
         return False
 
@@ -1160,14 +1160,13 @@ After installation, return here and run the installer again
 
 def check_postgresql_connection(host: str, port: int, timeout: int = 5) -> bool:
     """Check if PostgreSQL is accessible on given host:port"""
-    try:
+    with contextlib.suppress(Exception):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(timeout)
         result = sock.connect_ex((host, port))
         sock.close()
         return result == 0
-    except Exception:
-        return False
+    return False
 
 
 def detect_postgresql_cli() -> Optional[str]:
