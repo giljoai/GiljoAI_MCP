@@ -36,11 +36,11 @@ from giljo_mcp.models.products import Product
 from giljo_mcp.models.projects import Project
 from giljo_mcp.schemas.jsonb_validators import validate_git_commits
 from giljo_mcp.services.dto import MemoryEntryCreateParams
-from giljo_mcp.services.product_memory_service import ProductMemoryService
+from giljo_mcp.services.product_memory_service import (
+    ProductMemoryService,
+    validate_memory_entry_write,
+)
 from giljo_mcp.tools._memory_helpers import (
-    MAX_DECISIONS_MADE,
-    MAX_KEY_OUTCOMES,
-    MAX_SUMMARY_LENGTH,
     _fetch_github_commits,
     _get_git_config,
     emit_websocket_event,
@@ -49,29 +49,27 @@ from giljo_mcp.tools._memory_helpers import (
 
 logger = logging.getLogger(__name__)
 
-# Tags validation limits
-MAX_TAGS = 10
-MAX_TAG_LENGTH = 200
-
 # Statuses to skip during verification (they don't block closeout)
 # Handover 0435b: 'closed' agents are already final-accepted
 SKIP_STATUSES = {"decommissioned", "closed"}
 
+# INF-WriteShape: the production write path validates via
+# product_memory_service.validate_memory_entry_write() (strict caps + tag
+# vocabulary). The MAX_TAGS / MAX_TAG_LENGTH / _validate_tags() symbols below
+# are retained ONLY as a legacy helper surface that pre-existing tests still
+# import. Production code does NOT call _validate_tags() any more.
+MAX_TAGS = 10
+MAX_TAG_LENGTH = 200
+
 
 def _validate_tags(tags: list[str] | None) -> list[str]:
-    """Validate tags input from untrusted agent sources.
+    """Legacy helper: kept for test backward compatibility.
 
-    BE-5022f: Now applies shared strip_tag_punctuation() for boundary punctuation
-    stripping in addition to the original validation constraints.
-
-    Args:
-        tags: List of tag strings, or None.
-
-    Returns:
-        Validated and sanitized list of tags (empty list if None).
-
-    Raises:
-        ValidationError: If tags fail validation constraints.
+    Production write path now uses
+    ``product_memory_service.validate_memory_entry_write`` (single validated
+    write boundary, strict caps + tag vocabulary). This helper preserves the
+    pre-INF-WriteShape behavior (lenient cleanup) so that existing tests
+    pinning that surface continue to pass.
     """
     from giljo_mcp.utils.tag_utils import strip_tag_punctuation
 
@@ -248,7 +246,7 @@ async def _check_and_emit_tuning_staleness(
                     "metadata": {"product_id": str(product.id), "product_name": product.name},
                 },
             )
-    except (RuntimeError, ValueError, KeyError, OSError) as staleness_err:
+    except (RuntimeError, ValueError, KeyError, OSError, TypeError) as staleness_err:
         logger.debug(f"Tuning staleness check skipped: {staleness_err}")
 
 
@@ -454,18 +452,27 @@ async def write_360_memory(
     Args:
         project_id: UUID of the project
         tenant_key: Tenant isolation key
-        summary: 2-3 paragraph summary of work accomplished
-        key_outcomes: 3-5 specific achievements
-        decisions_made: 3-5 architectural/design decisions
+        summary: 2-3 sentence HEADLINE of what changed and why -- max 500 chars.
+            Detail belongs in commit messages, not here.
+        key_outcomes: <= 5 specific achievements, each <= 200 chars.
+        decisions_made: <= 5 architectural/design decisions, each <= 250 chars.
         entry_type: Type of entry ("project_completion", "handover_closeout", or "session_handover")
         author_job_id: Job ID of agent writing entry (optional)
         git_commits: Agent-supplied commits from local git log. When provided,
             skips the GitHub API fetch entirely (passive server model).
+        tags: <= 8 tags, each <= 30 chars matching ``^[a-z0-9-]+$``,
+            OR ``action_required:<title>`` for items that must persist
+            beyond the depth window.
         db_manager: Database manager (dependency injection)
         session: Optional existing session
 
     Returns:
         Success/error dictionary with sequence number and entry_id
+
+    Raises:
+        MemoryEntryWriteValidationError: structured rejection when caps are
+            exceeded -- contains ``error``, ``field``, ``actual_size``,
+            ``max_size``, ``guidance``.
     """
     if not project_id:
         raise ValidationError("project_id is required")
@@ -476,28 +483,28 @@ async def write_360_memory(
     if db_manager is None:
         raise ValidationError("db_manager is required")
 
-    # Validate tags (untrusted agent input)
-    validated_tags = _validate_tags(tags)
-
-    if len(summary) > MAX_SUMMARY_LENGTH:
-        raise ValidationError(f"Summary too long (max {MAX_SUMMARY_LENGTH} characters)")
-
     key_outcomes = key_outcomes or []
     decisions_made = decisions_made or []
 
-    if len(key_outcomes) > MAX_KEY_OUTCOMES:
-        logger.warning(
-            f"Truncating key_outcomes from {len(key_outcomes)} to {MAX_KEY_OUTCOMES}",
-            extra={"project_id": project_id},
-        )
-        key_outcomes = key_outcomes[:MAX_KEY_OUTCOMES]
-
-    if len(decisions_made) > MAX_DECISIONS_MADE:
-        logger.warning(
-            f"Truncating decisions_made from {len(decisions_made)} to {MAX_DECISIONS_MADE}",
-            extra={"project_id": project_id},
-        )
-        decisions_made = decisions_made[:MAX_DECISIONS_MADE]
+    # INF-WriteShape: single validated write boundary -- shared with
+    # close_project_and_update_memory. Caps:
+    #   summary <= 500, key_outcomes <= 5x200, decisions_made <= 5x250,
+    #   deliverables <= 10x150, tags <= 8x30 (^[a-z0-9-]+$ or action_required:<title>)
+    # Raises MemoryEntryWriteValidationError (structured rejection) on failure;
+    # the caller-level except clause filters and re-raises so MCP surfaces it.
+    validated = validate_memory_entry_write(
+        {
+            "summary": summary,
+            "key_outcomes": key_outcomes,
+            "decisions_made": decisions_made,
+            "deliverables": [],
+            "tags": tags or [],
+        }
+    )
+    summary = validated.summary
+    key_outcomes = validated.key_outcomes
+    decisions_made = validated.decisions_made
+    validated_tags = validated.tags
 
     # Normalize common aliases to canonical values
     entry_type_aliases = {"project_closeout": "project_completion"}

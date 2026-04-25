@@ -130,3 +130,135 @@ async def test_write_360_memory_commit_without_optional_fields_succeeds(
 
     assert result.get("entry_id") is not None
     assert result.get("git_commits_count") == 1
+
+
+# ---- SAAS-009b extended regression coverage (Test A / B / C from bug 2026-04-24) ----
+
+
+@pytest.mark.asyncio
+async def test_write_360_memory_minimal_commit_only_required_fields_succeeds(
+    db_session, test_tenant_key, test_product, linked_project
+):
+    """Test A: commits with ONLY sha/message/author (no date, no counts) must not raise."""
+    mock_db_manager = MagicMock()
+
+    with patch(
+        "giljo_mcp.tools.write_360_memory._check_and_emit_tuning_staleness",
+        new_callable=AsyncMock,
+    ):
+        result = await write_360_memory(
+            project_id=str(linked_project.id),
+            tenant_key=test_tenant_key,
+            summary="Minimal-commit regression",
+            key_outcomes=["Outcome A"],
+            decisions_made=["Decision A"],
+            entry_type="session_handover",
+            git_commits=[{"sha": "abc123", "message": "x", "author": "y"}],
+            db_manager=mock_db_manager,
+            session=db_session,
+        )
+
+    assert result.get("entry_id") is not None
+    assert result.get("git_commits_count") == 1
+
+
+@pytest.mark.asyncio
+async def test_write_360_memory_mixed_populated_and_omitted_optional_fields(
+    db_session, test_tenant_key, test_product, linked_project
+):
+    """Test B: mixed commits (some populated, some omitted) — omitted contribute 0."""
+    mock_db_manager = MagicMock()
+
+    commits = [
+        {
+            "sha": "aaa111",
+            "message": "fully populated",
+            "author": "alice",
+            "date": "2026-04-22T10:00:00-04:00",
+            "files_changed": 3,
+            "lines_added": 42,
+        },
+        {
+            "sha": "bbb222",
+            "message": "no stats",
+            "author": "bob",
+            # no date, no files_changed, no lines_added
+        },
+        {
+            "sha": "ccc333",
+            "message": "partial stats",
+            "author": "carol",
+            "files_changed": 1,
+            # no lines_added, no date
+        },
+    ]
+
+    with patch(
+        "giljo_mcp.tools.write_360_memory._check_and_emit_tuning_staleness",
+        new_callable=AsyncMock,
+    ):
+        result = await write_360_memory(
+            project_id=str(linked_project.id),
+            tenant_key=test_tenant_key,
+            summary="Mixed-commit regression",
+            key_outcomes=["Outcome A"],
+            decisions_made=["Decision A"],
+            entry_type="session_handover",
+            git_commits=commits,
+            db_manager=mock_db_manager,
+            session=db_session,
+        )
+
+    assert result.get("entry_id") is not None
+    assert result.get("git_commits_count") == 3
+
+    # Confirm aggregate-safe normalization: omitted fields contribute 0, not None.
+    normalized = validate_git_commits(commits)
+    assert sum(c["files_changed"] for c in normalized) == 4
+    assert sum(c["lines_added"] for c in normalized) == 42
+
+
+@pytest.mark.asyncio
+async def test_write_360_memory_all_optional_fields_populated_succeeds(
+    db_session, test_tenant_key, test_product, linked_project
+):
+    """Test C: all optional fields present — Call 2 from the 2026-04-24 bug report."""
+    mock_db_manager = MagicMock()
+
+    commits = [
+        {
+            "sha": "141374a7a4f4adc2c631a565cd782dc99e98acb9",
+            "message": "fix: remove psycopg2 import from install.py",
+            "author": "GiljoAi",
+            "date": "2026-04-21T14:04:39-04:00",
+            "files_changed": 2,
+            "lines_added": 17,
+        },
+        {
+            "sha": "deadbeefcafef00d",
+            "message": "test: add coverage",
+            "author": "GiljoAi",
+            "date": "2026-04-22T09:15:00-04:00",
+            "files_changed": 1,
+            "lines_added": 5,
+        },
+    ]
+
+    with patch(
+        "giljo_mcp.tools.write_360_memory._check_and_emit_tuning_staleness",
+        new_callable=AsyncMock,
+    ):
+        result = await write_360_memory(
+            project_id=str(linked_project.id),
+            tenant_key=test_tenant_key,
+            summary="All-optional-fields regression",
+            key_outcomes=["Outcome A"],
+            decisions_made=["Decision A"],
+            entry_type="session_handover",
+            git_commits=commits,
+            db_manager=mock_db_manager,
+            session=db_session,
+        )
+
+    assert result.get("entry_id") is not None
+    assert result.get("git_commits_count") == 2

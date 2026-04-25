@@ -1,0 +1,311 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the GiljoAI Community License v1.1.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition -- source-available, single-user use only.
+
+"""
+SEC-0005b verification tests (tester agent).
+
+Complements the implementer's tests in test_sec0005b_system_prompt_tenant_scope.py
+with the three properties from the verification work order:
+
+- Property A: Tenant isolation of orchestrator prompt override.
+  Tenant A's override is invisible to tenant B, and tenant A's reset does not
+  disturb tenant B's state.
+
+- Property B: tenant_key is required.
+  Service raises ValueError for empty/None tenant_key on get/update/reset.
+  The HTTP endpoint returns 400 when current_user.tenant_key is None.
+
+- Property C: Runtime injection correctness.
+  _build_orchestrator_response injects the tenant's override into
+  response["orchestrator_identity"] when present, and falls back to the default
+  content for other tenants.
+"""
+
+from __future__ import annotations
+
+from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock
+
+import pytest
+from fastapi import HTTPException
+
+from giljo_mcp.services.mission_orchestration_service import MissionOrchestrationService
+from giljo_mcp.system_prompts.service import SystemPromptService
+from giljo_mcp.template_seeder import get_orchestrator_identity_content
+
+
+# ---------------------------------------------------------------------------
+# Property A: Tenant isolation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestPropertyATenantIsolation:
+    """Tenant A's override must not affect tenant B."""
+
+    async def test_tenant_b_sees_default_when_only_tenant_a_has_override(self, db_manager, db_session):
+        service = SystemPromptService(db_manager=db_manager)
+        tenant_a = "tk_sec5b_verify_iso_a"
+        tenant_b = "tk_sec5b_verify_iso_b"
+
+        await service.update_orchestrator_prompt(
+            tenant_key=tenant_a,
+            content="Tenant A custom prompt",
+            updated_by="admin@a",
+            session=db_session,
+        )
+        await db_session.commit()
+
+        a_result = await service.get_orchestrator_prompt(tenant_key=tenant_a, session=db_session)
+        b_result = await service.get_orchestrator_prompt(tenant_key=tenant_b, session=db_session)
+
+        assert a_result.is_override is True
+        assert a_result.content == "Tenant A custom prompt"
+        assert b_result.is_override is False
+        # Tenant B must NEVER see tenant A's content.
+        assert "Tenant A custom prompt" not in b_result.content
+
+    async def test_tenant_a_reset_does_not_touch_tenant_b(self, db_manager, db_session):
+        service = SystemPromptService(db_manager=db_manager)
+        tenant_a = "tk_sec5b_verify_reset_a"
+        tenant_b = "tk_sec5b_verify_reset_b"
+
+        await service.update_orchestrator_prompt(
+            tenant_key=tenant_a,
+            content="A override",
+            updated_by="admin@a",
+            session=db_session,
+        )
+        # Tenant B has no override at all; its state is the default.
+        await db_session.commit()
+
+        # Snapshot B's default BEFORE reset.
+        b_before = await service.get_orchestrator_prompt(tenant_key=tenant_b, session=db_session)
+
+        # Reset A.
+        await service.reset_orchestrator_prompt(tenant_key=tenant_a, session=db_session)
+        await db_session.commit()
+
+        # A returns to default.
+        a_after = await service.get_orchestrator_prompt(tenant_key=tenant_a, session=db_session)
+        # B is untouched -- still default, byte-identical to the pre-reset snapshot.
+        b_after = await service.get_orchestrator_prompt(tenant_key=tenant_b, session=db_session)
+
+        assert a_after.is_override is False
+        assert b_after.is_override is False
+        assert b_before.content == b_after.content
+
+
+# ---------------------------------------------------------------------------
+# Property B: tenant_key required
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestPropertyBTenantRequired:
+    """get/update/reset raise ValueError when tenant_key missing, endpoint returns 400."""
+
+    async def test_get_empty_string_raises(self, db_manager, db_session):
+        service = SystemPromptService(db_manager=db_manager)
+        with pytest.raises(ValueError, match="tenant_key"):
+            await service.get_orchestrator_prompt(tenant_key="", session=db_session)
+
+    async def test_get_none_raises(self, db_manager, db_session):
+        service = SystemPromptService(db_manager=db_manager)
+        with pytest.raises(ValueError, match="tenant_key"):
+            # Type-ignore: intentionally passing None to verify runtime guard.
+            await service.get_orchestrator_prompt(tenant_key=None, session=db_session)  # type: ignore[arg-type]
+
+    async def test_update_none_raises(self, db_manager, db_session):
+        service = SystemPromptService(db_manager=db_manager)
+        with pytest.raises(ValueError, match="tenant_key"):
+            await service.update_orchestrator_prompt(
+                tenant_key=None,  # type: ignore[arg-type]
+                content="x",
+                updated_by="admin@test",
+                session=db_session,
+            )
+
+    async def test_reset_none_raises(self, db_manager, db_session):
+        service = SystemPromptService(db_manager=db_manager)
+        with pytest.raises(ValueError, match="tenant_key"):
+            await service.reset_orchestrator_prompt(
+                tenant_key=None,
+                session=db_session,  # type: ignore[arg-type]
+            )
+
+    async def test_endpoint_get_returns_400_when_user_has_no_tenant(self):
+        """GET /orchestrator-prompt returns HTTP 400 when current_user.tenant_key is None."""
+        from unittest.mock import patch
+
+        from api.endpoints.system_prompts import get_orchestrator_prompt
+
+        tenantless_admin = SimpleNamespace(
+            id="ghost",
+            username="ghost_admin",
+            email="ghost@example.com",
+            role="admin",
+            tenant_key=None,
+        )
+
+        # Service must be available so the 400 tenant-guard is the one that fires.
+        with patch("api.app_state.state") as mock_state:
+            mock_state.system_prompt_service = Mock()
+            with pytest.raises(HTTPException) as exc_info:
+                await get_orchestrator_prompt(current_user=tenantless_admin)
+        assert exc_info.value.status_code == 400
+        assert "tenant_key" in exc_info.value.detail
+
+    async def test_endpoint_update_returns_400_when_user_has_no_tenant(self):
+        """PUT /orchestrator-prompt returns HTTP 400 when current_user.tenant_key is None."""
+        from unittest.mock import patch
+
+        from api.endpoints.system_prompts import (
+            OrchestratorPromptUpdateRequest,
+            update_orchestrator_prompt,
+        )
+
+        tenantless_admin = SimpleNamespace(
+            id="ghost",
+            username="ghost_admin",
+            email="ghost@example.com",
+            role="admin",
+            tenant_key="",  # whitespace/empty variant
+        )
+        payload = OrchestratorPromptUpdateRequest(content="some prompt")
+
+        with patch("api.app_state.state") as mock_state:
+            mock_state.system_prompt_service = Mock()
+            with pytest.raises(HTTPException) as exc_info:
+                await update_orchestrator_prompt(payload=payload, current_user=tenantless_admin)
+        assert exc_info.value.status_code == 400
+
+    async def test_endpoint_reset_returns_400_when_user_has_no_tenant(self):
+        """POST /orchestrator-prompt/reset returns HTTP 400 when tenant_key is None."""
+        from unittest.mock import patch
+
+        from api.endpoints.system_prompts import reset_orchestrator_prompt
+
+        tenantless_admin = SimpleNamespace(
+            id="ghost",
+            username="ghost_admin",
+            email="ghost@example.com",
+            role="admin",
+            tenant_key=None,
+        )
+
+        with patch("api.app_state.state") as mock_state:
+            mock_state.system_prompt_service = Mock()
+            with pytest.raises(HTTPException) as exc_info:
+                await reset_orchestrator_prompt(current_user=tenantless_admin)
+        assert exc_info.value.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Property C: Runtime injection correctness in _build_orchestrator_response
+# ---------------------------------------------------------------------------
+
+
+def _make_mission_service():
+    """Build a MissionOrchestrationService with mocked deps (no DB needed)."""
+    db_manager = Mock()
+    tenant_manager = Mock()
+    return MissionOrchestrationService(
+        db_manager=db_manager,
+        tenant_manager=tenant_manager,
+    )
+
+
+def _make_ctx(override_content: str | None):
+    """
+    Build the minimum ctx dict that _build_orchestrator_response consumes.
+
+    Keys observed from the service implementation:
+      execution, agent_job, project, product, metadata, field_toggles,
+      depth_config, templates, category_metadata, integrations,
+      orchestrator_prompt_override.
+    """
+    execution = MagicMock()
+    execution.agent_id = "agent-001"
+    execution.status = "working"
+
+    agent_job = MagicMock()
+    agent_job.mission = "Test mission"
+
+    project = MagicMock()
+    project.id = "project-001"
+    project.name = "Test Project"
+    project.description = "Test description"
+    project.execution_mode = "multi_terminal"
+    project.auto_checkin_enabled = False
+    project.auto_checkin_interval = 10
+
+    product = MagicMock()
+    product.id = "product-001"
+    product.project_path = "/tmp/test"
+
+    return {
+        "execution": execution,
+        "agent_job": agent_job,
+        "project": project,
+        "product": product,
+        "metadata": {},
+        "field_toggles": {},
+        "depth_config": {},
+        "templates": [],
+        "category_metadata": {},
+        "integrations": {
+            "serena_mcp": {"use_in_prompts": False},
+            "git_integration": {"enabled": False},
+        },
+        "orchestrator_prompt_override": override_content,
+    }
+
+
+class TestPropertyCRuntimeInjection:
+    """_build_orchestrator_response must wire the tenant's override into the response."""
+
+    def test_override_present_is_injected_into_orchestrator_identity(self):
+        """When ctx carries a tenant override, response['orchestrator_identity'] is that override."""
+        service = _make_mission_service()
+        tenant_a_override = "Custom A prompt -- tenant A specific behavior"
+        ctx = _make_ctx(override_content=tenant_a_override)
+
+        response = service._build_orchestrator_response(ctx, job_id="job-A", tenant_key="tk_tenant_A")
+
+        assert response["orchestrator_identity"] == tenant_a_override
+        assert "Custom A prompt" in response["orchestrator_identity"]
+
+    def test_no_override_falls_back_to_default_identity(self):
+        """When ctx has no override, response['orchestrator_identity'] is the default content."""
+        service = _make_mission_service()
+        ctx = _make_ctx(override_content=None)
+
+        response = service._build_orchestrator_response(ctx, job_id="job-B", tenant_key="tk_tenant_B")
+
+        default_content = get_orchestrator_identity_content()
+        assert response["orchestrator_identity"] == default_content
+
+    def test_tenant_b_does_not_receive_tenant_a_override(self):
+        """
+        Simulates the critical cross-tenant case: tenant A has a custom prompt,
+        tenant B is built in the same process. Because the ctx is the per-call
+        tenant-scoped lookup, tenant B's response MUST NOT contain A's string.
+        """
+        service = _make_mission_service()
+        tenant_a_override = "Custom A prompt -- SECRET A"
+
+        # Tenant A call -- ctx carries A's override.
+        ctx_a = _make_ctx(override_content=tenant_a_override)
+        response_a = service._build_orchestrator_response(ctx_a, job_id="job-A", tenant_key="tk_tenant_A")
+
+        # Tenant B call -- ctx has no override (A's override is invisible to B).
+        ctx_b = _make_ctx(override_content=None)
+        response_b = service._build_orchestrator_response(ctx_b, job_id="job-B", tenant_key="tk_tenant_B")
+
+        assert response_a["orchestrator_identity"] == tenant_a_override
+        # Critical invariant: tenant B's response must not leak tenant A's custom content.
+        assert "SECRET A" not in response_b["orchestrator_identity"]
+        assert response_b["orchestrator_identity"] == get_orchestrator_identity_content()

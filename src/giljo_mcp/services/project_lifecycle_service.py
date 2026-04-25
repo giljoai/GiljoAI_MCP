@@ -476,6 +476,7 @@ class ProjectLifecycleService:
                 tenant_key=tenant_key,
                 db_manager=self.db_manager,
                 session=session,
+                force=True,
             )
             memory_updated = True
             sequence_number = mcp_result.get("sequence_number", 0)

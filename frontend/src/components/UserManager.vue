@@ -100,7 +100,33 @@
               <v-list-item-title>Change Password &amp; PIN</v-list-item-title>
             </v-list-item>
             <v-divider />
-            <v-list-item :disabled="item.id === currentUser?.id" @click="toggleUserStatus(item)">
+            <!--
+              SAAS-022: When the row is the current user, the Deactivate option is
+              disabled. Wrap it in a tooltip pointing the user to the proper
+              self-service flow (Settings → Account → Danger Zone).
+            -->
+            <v-tooltip
+              v-if="item.id === currentUser?.id"
+              location="start"
+              max-width="260"
+            >
+              <template #activator="{ props: tooltipProps }">
+                <div v-bind="tooltipProps" data-test="deactivate-self-tooltip-anchor">
+                  <v-list-item disabled>
+                    <template v-slot:prepend>
+                      <v-icon>{{ item.is_active ? 'mdi-account-off' : 'mdi-account-check' }}</v-icon>
+                    </template>
+                    <v-list-item-title>
+                      {{ item.is_active ? 'Deactivate' : 'Activate' }}
+                    </v-list-item-title>
+                  </v-list-item>
+                </div>
+              </template>
+              <span>
+                To delete your own account, use Settings → Account → Danger Zone.
+              </span>
+            </v-tooltip>
+            <v-list-item v-else @click="toggleUserStatus(item)">
               <template v-slot:prepend>
                 <v-icon>{{ item.is_active ? 'mdi-account-off' : 'mdi-account-check' }}</v-icon>
               </template>

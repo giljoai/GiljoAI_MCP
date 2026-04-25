@@ -1,6 +1,6 @@
 # GiljoAI MCP: Architecture
 
-*Last updated: 2026-04-22*
+*Last updated: 2026-04-24*
 
 This document describes the technical architecture of GiljoAI MCP for developers
 working on or integrating with the platform.
@@ -280,89 +280,218 @@ Isolation is enforced at three levels:
 CE uses `tenant_key` as the isolation unit. SaaS adds Organization-level grouping
 on top of this foundation.
 
+For the architecture-level rules that endpoints must follow when handling tenant
+data (admin-gate vs. tenant-scope, the role/mode orthogonality invariant, the
+property-A/property-B regression discipline), see
+[`docs/architecture/tenant_scoping_rules.md`](architecture/tenant_scoping_rules.md).
+
 ---
 
-## Trust Model
+## Trust Model / Security Posture
 
-GiljoAI MCP is a **passive coordination server**. This is a deliberate architectural
-choice that shapes the entire security posture and should not be eroded without
-explicit review.
+<a id="trust-model-pitch"></a>
 
-### What the server does
+GiljoAI MCP is a **passive coordination server**. AI reasoning happens on the
+user's own machine with the user's own API keys; the GiljoAI server never runs
+LLM inference, never executes user content as code, and never initiates
+outbound calls carrying user content. A prompt-injection attack embedded in
+user content therefore degenerates to a user-local attack — the attacker
+attacks their own machine. There is no AI-specific server-side attack surface
+to pivot from. This property is formally audited and grep-verified; see
+[`docs/security/SEC-0002_passive_server_audit.md`](security/SEC-0002_passive_server_audit.md)
+for the evidence.
 
-- Stores structured project, agent, and memory state in PostgreSQL.
-- Serves that state to MCP clients (AI coding tools) over HTTP/SSE.
-- Serves the Vue dashboard and a small REST surface for operator workflows.
-- Emits real-time events to the browser via `pg_notify` + WebSocket.
-- Sends transactional email for registration and password reset (Resend).
+For a non-engineer summary of this posture suitable for customer security
+reviews, see [`docs/SECURITY_POSTURE.md`](SECURITY_POSTURE.md).
 
-### What the server does NOT do
+### Passive-Server Property — definition
 
-- **No LLM inference.** The server never calls Anthropic, OpenAI, Google, or any
-  other LLM provider. No embeddings, no summarization, no agent reasoning happens
-  server-side.
-- **No arbitrary code execution on user content.** Uploaded vision docs and text
-  fields are stored and served as bytes; they are never interpreted, rendered
-  as templates, evaluated, or passed to any shell.
-- **No outbound HTTP driven by user content.** The server initiates no fetches
-  to URLs supplied by users. There is no SSRF surface via user-stored data.
-- **No client-side code proxied through the server.** The frontend talks directly
-  to its own origin; the server does not proxy third-party JavaScript.
+Three concrete, code-verifiable claims:
 
-### Where the LLM actually runs
+1. **No LLM inference server-side.** No import of `anthropic`, `openai`,
+   `cohere`, `mistralai`, `replicate`, `together`, `google.generativeai`, or
+   `google.genai` anywhere in `src/giljo_mcp/`, `api/`, or `ops_panel/`. No LLM
+   API-key environment variables referenced. The `vision_summarizer` service
+   uses Sumy (classical Latent Semantic Analysis, CPU-only); it is not an LLM.
+   Enforced going forward by a ruff `flake8-tidy-imports.banned-api` gate in
+   `pyproject.toml` that blocks any future LLM SDK import as a hard CI failure
+   (landed as SEC-0002 Phase 3).
+2. **No arbitrary code execution on user content.** Zero `eval()`, `exec()`,
+   `pickle.load` on user-reachable paths, `yaml.load` (only `yaml.safe_load`),
+   `subprocess(shell=True)`, `os.system`, or `os.popen` invocations in server
+   code. Cross-reference: classic web-stack RCE audit SEC-0004 (2026-Q2),
+   zero UNSAFE findings.
+3. **No outbound HTTP initiated by user content.** Every outbound call in
+   audited server code is operator-, admin-, or startup-initiated and hits a
+   hardcoded `api.github.com` host. The enumerated sites span three modules:
+   - `src/giljo_mcp/services/version_service.py` — GitHub release polling
+     (hardcoded constant URL); two call sites in the same module.
+   - `src/giljo_mcp/tools/_memory_helpers.py::_fetch_github_commits` — closeout
+     commit fetch using admin-configured `product_memory['git_integration']`
+     repo owner / name; no end-user-prompt content in URL, query, body, or
+     headers.
+   - `api/startup/update_checker.py` — 6-hour release-check loop (hardcoded
+     constant URL).
 
-AI reasoning runs on the **user's own machine** via their MCP client (Claude Code,
-Codex CLI, Gemini CLI, or any MCP-compatible tool). The user's own API key pays
-for tokens. The server sees only structured tool calls and their structured
-results — never raw model prompts or completions.
+### LLM locality
+
+Inference runs on the user's own machine via their MCP-compatible client
+(Claude Code, Codex CLI, Gemini CLI, or any other MCP tool). Tokens are paid
+from the user's own API key. The server sees only structured tool calls and
+their structured results — never raw model prompts, completions, embeddings,
+or reasoning traces. "Your code and prompts never leave your machine for AI
+processing" is literally true at the code level, not a marketing claim.
+
+### Server DOES / DOES NOT (on user-submitted content)
+
+User-submitted content means prompts, MCP tool arguments, uploaded vision
+documents, and user-authored text fields (product descriptions, project
+notes, messages).
+
+**The server DOES:**
+
+- Persist user content to PostgreSQL, tenant-scoped via `tenant_key` on every
+  insert. No cross-tenant writes.
+- Return user content in API responses, tenant-scoped at the repository layer
+  and gated by `AuthMiddleware` (`api/app.py:396`).
+- Route user content via WebSocket NOTIFY/LISTEN to tenant-subscribed clients
+  only. A client receives events only for tenants it is authenticated for.
+- Log user content through `log_sanitizer` (redacted/escaped so it cannot
+  inject log lines or leak unsanitized into aggregated dashboards).
+- Serve user-authored markdown back to the frontend as HTML sanitized via
+  DOMPurify.
+- Store structured git metadata (commit SHAs and messages) returned by
+  GitHub — only when an admin has explicitly configured
+  `product_memory['git_integration']` with an access token. The server reads
+  from GitHub; it does not write user prompts to GitHub.
+
+**The server does NOT:**
+
+- Run user content through an LLM for summarization, reasoning, embedding, or
+  classification. No LLM SDK is installed, imported, or loaded.
+- Execute user content as code (no `eval`, no `exec`, no shell, no
+  `pickle.load`, no `yaml.load` on user input).
+- Initiate outbound HTTP with user content in URL, query, body, or headers.
+  All four outbound sites use a hardcoded `api.github.com` host; only
+  admin-configured strings or server-generated timestamps cross the wire.
+- Execute JavaScript from user content on the server (no Node, no V8, no
+  interpreter in the server process).
+- Forward user content to any third-party AI provider, analytics service, or
+  telemetry sink.
+- Spawn subprocesses from user content. The only `subprocess.run` sites in
+  `api/` are admin-only (`openssl` cert generation, `mkcert -CAROOT`
+  inspection), argv-form with hardcoded or admin-scoped arguments. Agent
+  spawning is client-side — the operator's local CLI spawns workers; the
+  server returns only prompt templates.
+- Write user content to disk as an executable or loadable file. Upload
+  handling sanitizes filenames before any disk I/O (SEC-0001).
 
 ### Blast-radius implications
 
-Because the server does not execute user content:
+- **Prompt injection in user content is a user-local attack.** A malicious
+  string inside a user's own product description or vision document is read by
+  the user's own local agent. Any consequence lands on the machine running the
+  agent, billed to the API key attached to that machine. No server-side
+  pivot exists.
+- **Compromised client agents still authenticate as their user.** A
+  prompt-injected local agent can make authenticated API calls within its own
+  tenant. Impact is bounded by tenant isolation and per-IP rate limiting
+  (below).
+- **Cross-tenant leakage is not reachable from user content.** Every
+  repository query filters by `tenant_key`. An agent cannot read another
+  tenant's data even if its prompt is hijacked. The architecture-level rules
+  that guarantee this invariant are codified in
+  [`docs/architecture/tenant_scoping_rules.md`](architecture/tenant_scoping_rules.md)
+  (Rules 1–5, shipped SEC-0005a/b/c).
 
-- **Prompt injection is a user-local attack.** If a user plants malicious
-  instructions inside their own product description or a vision document, their
-  own local agent is the one that reads those instructions. Any consequence falls
-  on the machine running the agent, using the API key attached to that machine.
-- **Compromised client agents still authenticate as their user.** A prompt-injected
-  local agent can make authenticated API calls within the user's tenant. The
-  impact is bounded by tenant isolation (see *Multi-Tenant Isolation* above) and
-  request rate limits (see `api/middleware/rate_limiter.py`, 300 req/min default).
-- **Cross-tenant leakage is not reachable from user content.** The repository
-  layer filters every query by `tenant_key`. An agent cannot read another
-  tenant's data even if its prompt is hijacked.
+### Rate-limit threat model
 
-### The one place trust crosses tenants
+Spam from a single compromised client is bounded by per-IP rate limiting:
 
-Super-admin views (the platform operator's cross-tenant surfaces) render user
-content from multiple tenants inside a single trusted browser session. This is
-the only place where content from tenant A can reach the DOM of operator B. All
-user-content rendering paths must route through the shared DOMPurify sanitizer
-to prevent stored-XSS against the operator. See `SEC-0003` (admin-view XSS
-hardening) for the active enforcement.
+- **Implementation:** `api/middleware/rate_limiter.py`, class
+  `RateLimitMiddleware`. Sliding-window algorithm, 60-second window,
+  `defaultdict(deque)` of request timestamps keyed by client IP.
+- **Default limit:** 300 requests / minute / client IP, overridable via the
+  `API_RATE_LIMIT` environment variable.
+- **Registration:** `api/app.py:407`, conditional on
+  `DISABLE_RATE_LIMIT != "true"`.
+- **IP extraction order:** `X-Forwarded-For` first element → `X-Real-IP` →
+  `request.client.host` → literal `"unknown"`. **Deployment constraint:**
+  never expose this server without a trusted reverse proxy terminating
+  `X-Forwarded-For`; the current `demo.giljo.ai` deployment sits behind
+  Cloudflare Tunnel which sets these headers reliably.
+- **Response on limit exceeded:** HTTP 429 with `Retry-After`,
+  `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`
+  headers.
 
-### Non-goals
+**What it DOES cover:** single-IP flood from a compromised or misbehaving
+client agent; trivial single-source DoS; rate-limit signalling so
+well-behaved clients can self-pace.
 
-These are intentionally **not** part of the trust model:
+**What it does NOT cover:**
 
-- Defending a user's local machine against their own prompt-injected content.
-- Scanning uploaded content for prompt-injection attempts.
-- Sandboxing the user's local agent.
-- Running LLM inference on behalf of users (this would fundamentally change the
-  security posture and require re-evaluation of every claim above).
+- **Distributed attack across many source IPs** — each new IP gets its own
+  budget.
+- **Per-tenant write quotas** — there is no tenant-level counter. A noisy
+  compromised client CANNOT affect other tenants' data (tenant isolation
+  holds), only its own tenant's write budget. Per-tenant quotas are tracked
+  as roadmap item SAAS-018.
+- **Multi-worker / multi-replica sharing** — storage is per-process, so the
+  effective limit across N workers is `N × 300 / min`. The current demo
+  runs as a single process; any future scale-up must move the limiter to
+  a shared store.
+- **Expensive-endpoint weighting** — every endpoint counts equally.
+
+### Cross-tenant rendering in operator views
+
+Super-admin and ops-panel views render user content from multiple tenants
+inside a single trusted browser session. This is the only place where
+content from tenant A can reach the DOM of operator B. All user-content
+rendering paths must route through the shared DOMPurify sanitizer. See
+SEC-0003 (admin-view XSS hardening) for the active enforcement.
+
+### Explicit non-goals
+
+- Defending the user's local machine against their own prompt-injected
+  content. The user owns their machine.
+- Sandboxing the user's local agent. Out of scope; the agent is a
+  client-side tool under the user's control.
+- Scanning uploaded content for prompt-injection attempts. False-positive
+  prone; not aligned with the threat model.
+- Running LLM inference on behalf of users. Doing so would invalidate every
+  passive-server claim above and require a fresh architectural review.
+
+### Cross-references
+
+- [`docs/security/SEC-0002_passive_server_audit.md`](security/SEC-0002_passive_server_audit.md)
+  — the grep-evidence audit backing every claim in this section.
+- [`docs/architecture/tenant_scoping_rules.md`](architecture/tenant_scoping_rules.md)
+  — tenant-isolation invariants (SEC-0005a/b/c).
+- SEC-0004 classic web-stack grep audit (2026-Q2) — zero UNSAFE findings on
+  `eval`, `exec`, `pickle`, `yaml.load`, `shell=True`, `os.system`,
+  `os.popen`.
+- SEC-0003 admin-view XSS hardening — DOMPurify routing for cross-tenant
+  rendering.
 
 ### Consequences for future changes
 
-If any future feature requires the server to call an LLM — embeddings for search,
-server-side summarization, agent reasoning in CI, etc. — it must be called out
-explicitly in a handover and must include:
+If any future feature requires the server to call an LLM — server-side
+summarization, search embeddings, agent reasoning in CI, anything — it must
+be called out explicitly in a handover and must include:
 
 1. A re-evaluation of the blast-radius claims above.
 2. An explicit opt-in surface (no implicit server-side LLM calls).
-3. A budget/quota mechanism so customers don't inherit surprise LLM costs.
+3. A budget and quota mechanism so customers do not inherit surprise LLM
+   costs.
+4. A refresh of
+   [`docs/security/SEC-0002_passive_server_audit.md`](security/SEC-0002_passive_server_audit.md)
+   and [`docs/SECURITY_POSTURE.md`](SECURITY_POSTURE.md) to match the new
+   reality.
 
-Silent addition of `anthropic`, `openai`, or similar SDK imports on the server
-path is an architectural regression, not a feature.
+Silent addition of `anthropic`, `openai`, or any LLM SDK import on the server
+path is an architectural regression, not a feature. The ruff banned-api gate
+will block the import; reviewers will block the PR; this document will block
+the concept.
 
 ---
 

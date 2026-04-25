@@ -62,6 +62,58 @@ class AuthRepository:
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_user_by_email(self, session: AsyncSession, email: str) -> User | None:
+        """
+        Get user by email (cross-tenant, used for login).
+
+        Case-insensitive lookup. Email has a global UNIQUE constraint
+        (``User.email`` column, ``src/giljo_mcp/models/auth.py``), so at most
+        one user matches for a given email across all tenants. Mirrors the
+        ``get_user_by_username`` login-boundary pattern (see module docstring):
+        no tenant_key filter because the tenant is unknown until after
+        authentication succeeds.
+
+        Part of AUTH-EMAIL dual-lookup (handover af53e62b,
+        ``handovers/AUTH_EMAIL_USERNAME_DECISION.md``).
+
+        Args:
+            session: Active database session
+            email: Email address to look up (case-insensitive)
+
+        Returns:
+            User ORM instance or None
+        """
+        stmt = select(User).where(func.lower(User.email) == email.lower())
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_user_by_username_or_email(self, session: AsyncSession, identifier: str) -> User | None:
+        """
+        Resolve a user by username OR email (dual-lookup).
+
+        Mirrors the Phase 1 login-boundary pattern shipped in
+        ``AuthService.authenticate_user`` (commit 42842d18, handover
+        af53e62b): username lookup runs first; on miss, a case-insensitive
+        email lookup is attempted. Same cross-tenant semantics as the
+        component helpers (see module docstring): tenant_key is intentionally
+        omitted because the tenant is unknown at the login boundary, and
+        ``User.email`` + ``User.username`` carry global UNIQUE constraints.
+
+        Used by PIN recovery and first-login endpoints so that users can
+        supply either identifier on the wire. Phase 4 (AUTH-EMAIL).
+
+        Args:
+            session: Active database session
+            identifier: Username or email address
+
+        Returns:
+            User ORM instance or None
+        """
+        user = await self.get_user_by_username(session, identifier)
+        if user is None:
+            user = await self.get_user_by_email(session, identifier)
+        return user
+
     async def get_user_by_id(self, session: AsyncSession, user_id: str) -> User | None:
         """
         Get user by ID (cross-tenant, used for last-login updates).

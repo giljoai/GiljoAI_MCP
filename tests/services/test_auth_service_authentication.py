@@ -146,6 +146,102 @@ class TestAuthenticateUser:
 
         assert "inactive" in str(exc_info.value).lower()
 
+    # ------------------------------------------------------------------
+    # AUTH-EMAIL dual-lookup (handover af53e62b)
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_authenticate_user_by_username_succeeds(self, auth_service, auth_user_with_password):
+        """AUTH-EMAIL: existing username login path is preserved."""
+        user, password = auth_user_with_password
+
+        result = await auth_service.authenticate_user(user.username, password)
+
+        assert isinstance(result, AuthResult)
+        assert result.user_id == user.id
+        assert result.username == user.username
+
+    @pytest.mark.asyncio
+    async def test_authenticate_user_by_email_succeeds(self, auth_service, auth_user_with_password):
+        """AUTH-EMAIL: login resolves the user when the email is passed as identifier."""
+        user, password = auth_user_with_password
+
+        result = await auth_service.authenticate_user(user.email, password)
+
+        assert isinstance(result, AuthResult)
+        assert result.user_id == user.id
+        assert result.email == user.email
+
+    @pytest.mark.asyncio
+    async def test_authenticate_user_by_email_is_case_insensitive(self, auth_service, auth_user_with_password):
+        """AUTH-EMAIL: email match is case-insensitive (users type 'Name@x.com')."""
+        user, password = auth_user_with_password
+
+        result = await auth_service.authenticate_user(user.email.upper(), password)
+
+        assert isinstance(result, AuthResult)
+        assert result.user_id == user.id
+
+    @pytest.mark.asyncio
+    async def test_authenticate_user_unknown_identifier_raises_invalid_credentials(self, auth_service):
+        """AUTH-EMAIL: unknown identifier (no username AND no email match) raises generic error."""
+        with pytest.raises(AuthenticationError) as exc_info:
+            await auth_service.authenticate_user("nobody@nowhere.example", "Password123!")
+
+        # Generic error — MUST NOT leak which lookup (username vs email) failed
+        assert "Invalid credentials" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_authenticate_user_username_match_wins_over_email_match(
+        self, auth_service, db_session, auth_test_org
+    ):
+        """
+        AUTH-EMAIL: if the identifier happens to match User A's username AND
+        User B's email, the username match wins (deterministic first-lookup order).
+        """
+        from datetime import datetime, timezone
+        from uuid import uuid4
+
+        import bcrypt
+
+        from giljo_mcp.models.auth import User
+
+        shared = f"collide_{uuid4().hex[:8]}"
+        pw_username_owner = "UserWins1!"
+        pw_email_owner = "EmailOwner1!"
+
+        user_username_owner = User(
+            id=str(uuid4()),
+            username=shared,  # identifier matches this user's username
+            email=f"{shared}_unrelated@example.com",
+            password_hash=bcrypt.hashpw(pw_username_owner.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+            role="developer",
+            tenant_key=auth_test_org.tenant_key,
+            org_id=auth_test_org.id,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+        )
+        user_email_owner = User(
+            id=str(uuid4()),
+            username=f"other_{uuid4().hex[:8]}",
+            email=shared,  # identifier ALSO matches this user's email
+            password_hash=bcrypt.hashpw(pw_email_owner.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+            role="developer",
+            tenant_key=auth_test_org.tenant_key,
+            org_id=auth_test_org.id,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add_all([user_username_owner, user_email_owner])
+        await db_session.commit()
+
+        # Password of the username-owner wins; password of the email-owner fails.
+        result = await auth_service.authenticate_user(shared, pw_username_owner)
+        assert result.user_id == user_username_owner.id
+
+        with pytest.raises(AuthenticationError):
+            await auth_service.authenticate_user(shared, pw_email_owner)
+
 
 class TestUpdateLastLogin:
     """Tests for update_last_login method"""

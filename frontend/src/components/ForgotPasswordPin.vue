@@ -66,7 +66,7 @@
             <!-- Username -->
             <v-text-field
               v-model="username"
-              label="Username"
+              label="Email or username"
               prepend-inner-icon="mdi-account"
               variant="outlined"
               :rules="[rules.username]"
@@ -74,7 +74,7 @@
               autofocus
               autocomplete="username"
               class="mb-4"
-              aria-label="Enter your username"
+              aria-label="Enter your email or username"
               aria-required="true"
               @input="error = ''"
             />
@@ -262,7 +262,7 @@ const pinForm = ref(null)
 const resetPasswordForm = ref(null)
 // Validation rules
 const rules = {
-  username: (value) => !!value || 'Username is required',
+  username: (value) => !!value || 'Email or username is required',
 }
 
 const pinRules = [
