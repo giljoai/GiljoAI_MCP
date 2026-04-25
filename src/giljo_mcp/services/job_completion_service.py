@@ -125,15 +125,6 @@ class JobCompletionService:
                         warnings=warnings,
                     )
 
-                    if job and getattr(job, "job_type", "") == "orchestrator":
-                        has_memory = await repo.check_360_memory_for_project(session, tenant_key, job.project_id)
-                        if not has_memory:
-                            warnings.append(
-                                "360 memory has not been written for this project. "
-                                "Run write_360_memory() to record project learnings. "
-                                "The job has been completed, but the closeout is incomplete."
-                            )
-
                     await repo.commit(session)
                 else:
                     await self._raise_for_missing_execution(session, job_id, tenant_key)

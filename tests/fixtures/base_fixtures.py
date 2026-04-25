@@ -11,6 +11,7 @@ All tests now use PostgreSQL for consistency with production.
 Test isolation is achieved through transaction rollback.
 """
 
+import contextlib
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
@@ -124,20 +125,15 @@ async def db_manager():
 
     # Tables should already exist from setup script
     # But create them if they don't (idempotent operation)
-    try:
+    with contextlib.suppress(Exception):
         await PostgreSQLTestHelper.create_test_tables(db_mgr)
-    except Exception:
-        pass  # Tables likely already exist
 
     yield db_mgr
 
     # Cleanup - ensure proper async disposal
-    try:
+    with contextlib.suppress(Exception):
         if db_mgr and db_mgr.async_engine:
             await db_mgr.close_async()
-    except Exception:
-        # Ignore cleanup errors - test is done
-        pass
 
 
 @pytest_asyncio.fixture(scope="function")

@@ -697,7 +697,8 @@ async def get_frontend_configuration(request: Request):
             "api_keys_required": api_keys_required,
             "default_tenant_key": default_tenant_key,
         },
-        "edition": state.config.get_nested("edition", "community"),
+        # Edition derives from GILJO_MODE (single source of truth, CLAUDE.md).
+        "edition": {"ce": "community", "demo": "demo", "saas": "saas"}.get(GILJO_MODE, "community"),
         "giljo_mode": GILJO_MODE,
     }
 

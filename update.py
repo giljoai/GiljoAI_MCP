@@ -172,7 +172,7 @@ def _stamp_bridge(db_url: str, current: str, head: str) -> bool:
             script.get_revision(current)
             return False  # Revision exists in chain, normal upgrade will work
         except Exception:
-            pass  # Revision not in chain -- need to stamp
+            info(f"Revision {current} not in chain -- will stamp to head")
 
         info(f"Bridging old revision {current} -> {head} (baseline was squashed)")
 

@@ -161,6 +161,33 @@ Final steps:
 If you call `complete_job()` without meeting these requirements:
 - System will REJECT your completion
 - Response will list specific blockers (unread messages, incomplete TODOs)
+
+#### Phase 4 — ORCHESTRATOR ADDENDUM: Closeout sequence
+
+Orchestrators MUST NOT place `write_360_memory(...)` or `close_project_and_update_memory(...)`
+on their TodoWrite list. Those calls execute AFTER `complete_job()` returns success — a
+TodoWrite entry for them would be unmarkable until after `complete_job` runs, and the
+COMPLETION_BLOCKED gate would then trap you with an unfinished TODO.
+
+Your final pre-completion TODO should read something like
+"Verify all agents complete and prepare closeout summary." Mark it complete IMMEDIATELY
+BEFORE calling `complete_job()` — the act of calling `complete_job()` IS the start of the
+closeout sequence, not a step that follows it.
+
+Canonical post-completion sequence (mirrors `project_closeout.py` required_sequence):
+
+1. `complete_job(job_id=...)` — orchestrator completes itself FIRST
+2. `write_360_memory(...)` — write the project memory entry
+3. `close_project_and_update_memory(project_id=..., force=False)` — final close after all agents complete
+
+Example ordered calls:
+
+```
+# All agent work verified, all messages read, all pre-closeout TODOs marked complete
+complete_job(job_id="...", result={{"summary": "...", "artifacts": [...]}})  # closeout step 1
+write_360_memory(project_id="...", ...)                                      # closeout step 2 (post-complete_job)
+close_project_and_update_memory(project_id="...", force=False)               # closeout step 3
+```
 {git_commit_block}{gil_add_block}
 ### Phase 5: ERROR HANDLING & BLOCKED STATUS
 
@@ -210,8 +237,11 @@ Your job is to send the orchestrator everything it needs to decide what happens 
    The orchestrator will decide whether to spawn a successor (preserving your
    job_id) or write a handover memory entry itself.
 
-Do NOT write 360 memory on normal completion either — the orchestrator handles
-all memory writes (project closeout, action_required entries, handover entries).
+Workers may write `baseline`, `decision`, `architecture`, and `discovery` entries
+when their mission explicitly assigns them. Workers MUST NOT write `project_completion`,
+`session_handover`, or `action_required` entries — the tool will reject those with
+`ORCHESTRATOR_ONLY_ENTRY_TYPE`. To record those, send a HANDOVER or progress message
+to your orchestrator with the content.
 ---
 **Your Identifiers:**
 - job_id (work order): `{job_id}` - Use for mission, progress, completion

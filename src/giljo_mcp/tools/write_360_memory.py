@@ -34,6 +34,7 @@ from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
 from giljo_mcp.models.products import Product
 from giljo_mcp.models.projects import Project
+from giljo_mcp.repositories.agent_completion_repository import AgentCompletionRepository
 from giljo_mcp.schemas.jsonb_validators import validate_git_commits
 from giljo_mcp.services.dto import MemoryEntryCreateParams
 from giljo_mcp.services.product_memory_service import (
@@ -52,6 +53,14 @@ logger = logging.getLogger(__name__)
 # Statuses to skip during verification (they don't block closeout)
 # Handover 0435b: 'closed' agents are already final-accepted
 SKIP_STATUSES = {"decommissioned", "closed"}
+
+# BE-5028 Fix B: Per-entry-type authorization matrix.
+# Workers may only write background/discovery-style entries when explicitly
+# assigned. Closeout-shaped entries (project_completion, session_handover,
+# action_required) are ORCHESTRATOR-ONLY because they document team-wide state
+# that only the orchestrator can attest to.
+WORKER_ALLOWED_ENTRY_TYPES = frozenset({"baseline", "decision", "architecture", "discovery"})
+ORCHESTRATOR_ONLY_ENTRY_TYPES = frozenset({"project_completion", "session_handover", "action_required"})
 
 # INF-WriteShape: the production write path validates via
 # product_memory_service.validate_memory_entry_write() (strict caps + tag
@@ -530,6 +539,30 @@ async def write_360_memory(
                 project_id=project_id,
                 tenant_key=tenant_key,
             )
+
+            # BE-5028 Fix B: Per-entry-type authorization gate.
+            # Resolve caller's job_type and reject orchestrator-only entry_types
+            # written by non-orchestrator agents. This is an authorship gate;
+            # the CLOSEOUT_BLOCKED readiness check below is a separate
+            # workspace-state gate -- both can fire on the same call.
+            if author_job_id and entry_type in ORCHESTRATOR_ONLY_ENTRY_TYPES:
+                completion_repo = AgentCompletionRepository()
+                caller_job = await completion_repo.get_agent_job_by_job_id(active_session, tenant_key, author_job_id)
+                caller_role = caller_job.job_type if caller_job else "unknown"
+                if caller_role != "orchestrator":
+                    return {
+                        "success": False,
+                        "error": "ORCHESTRATOR_ONLY_ENTRY_TYPE",
+                        "entry_type": entry_type,
+                        "calling_agent_role": caller_role,
+                        "message": (
+                            f"Only orchestrators write {entry_type} entries. "
+                            f"As a worker, you may write: {sorted(WORKER_ALLOWED_ENTRY_TYPES)}. "
+                            f"To record {entry_type} content, send a HANDOVER message to your orchestrator "
+                            f"with the content and let the orchestrator write it."
+                        ),
+                        "allowed_for_workers": sorted(WORKER_ALLOWED_ENTRY_TYPES),
+                    }
 
             # Handover 0431: Pre-closeout verification.
             # Only enforce readiness check for project_completion (not handover_closeout).

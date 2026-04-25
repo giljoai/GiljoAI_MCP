@@ -13,6 +13,7 @@ CRITICAL SAFETY: This module includes guards to prevent accidental production da
 """
 
 import asyncio
+import contextlib
 import re
 from typing import Optional
 
@@ -316,31 +317,21 @@ class TransactionalTestContext:
         """Rollback transaction and close connection."""
         # Close session first
         if self.session:
-            try:
+            with contextlib.suppress(Exception):
                 await self.session.close()
-            except Exception:
-                pass  # Ignore session close errors
-            finally:
-                self.session = None
+            self.session = None
 
         # Then rollback transaction
         if self.transaction:
-            try:
-                # Always rollback - this ensures clean state
+            with contextlib.suppress(Exception):
                 await self.transaction.rollback()
-            except Exception:
-                pass  # Ignore rollback errors
-            finally:
-                self.transaction = None
+            self.transaction = None
 
         # Finally close connection
         if self.connection:
-            try:
+            with contextlib.suppress(Exception):
                 await self.connection.close()
-            except Exception:
-                pass  # Ignore connection close errors
-            finally:
-                self.connection = None
+            self.connection = None
 
 
 async def wait_for_database_ready(max_attempts: int = 30, delay: float = 1.0) -> bool:
