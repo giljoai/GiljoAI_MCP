@@ -513,8 +513,10 @@ class TemplateService:
         if len(active_roles) >= USER_MANAGED_AGENT_LIMIT:
             return (
                 False,
-                f"Maximum {USER_MANAGED_AGENT_LIMIT} active agent roles allowed "
-                f"(currently {len(active_roles)}). Deactivate another role first.",
+                (
+                    f"Maximum {USER_MANAGED_AGENT_LIMIT} active agent roles allowed "
+                    f"(currently {len(active_roles)}). Deactivate another role first."
+                ),
             )
 
         return True, ""

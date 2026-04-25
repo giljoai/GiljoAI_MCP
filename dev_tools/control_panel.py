@@ -23,6 +23,7 @@ Usage:
     python dev_tools/control_panel.py
 """
 
+import contextlib
 import ctypes
 import logging
 import os
@@ -1024,7 +1025,7 @@ class GiljoDevControlPanel:
                                     except (ValueError, IndexError):
                                         pass
             except Exception:
-                pass
+                return giljo_ports
 
         return giljo_ports
 
@@ -1080,7 +1081,7 @@ class GiljoDevControlPanel:
                             )
                             pids_killed.add(pid)
                         except Exception:
-                            pass
+                            continue
                 else:
                     try:
                         result = subprocess.run(
@@ -1092,7 +1093,7 @@ class GiljoDevControlPanel:
                                     subprocess.run(["kill", "-9", pid], check=False, capture_output=True, timeout=5)
                                     pids_killed.add(pid)
                                 except Exception:
-                                    pass
+                                    continue
                     except FileNotFoundError:
                         try:
                             subprocess.run(["fuser", "-k", f"{port}/tcp"], check=False, capture_output=True, timeout=5)
@@ -1247,15 +1248,12 @@ class GiljoDevControlPanel:
         """Background worker for stop_backend."""
         try:
             if self.backend_process and self.backend_process.poll() is None:
-                try:
+                with contextlib.suppress(OSError):
                     self.backend_process.terminate()
                     time.sleep(0.5)
                     if self.backend_process.poll() is None:
                         self.backend_process.kill()
-                except Exception:
-                    pass
-                finally:
-                    self.backend_process = None
+                self.backend_process = None
 
             self._nuclear_kill_port(7272)
             self._nuclear_kill_port(7273)
@@ -1263,7 +1261,7 @@ class GiljoDevControlPanel:
             self.root.after(0, lambda: self.update_status_message("Backend stopped"))
 
         except Exception as e:
-            self.root.after(0, lambda: self.update_status_message(f"Error stopping backend: {e}"))
+            self.root.after(0, lambda err=e: self.update_status_message(f"Error stopping backend: {err}"))
 
     def restart_backend(self):
         """Restart the backend service. Runs stop in background, then starts after port is free."""
@@ -1427,15 +1425,12 @@ class GiljoDevControlPanel:
         try:
             # First try to stop tracked process if exists
             if self.frontend_process and self.frontend_process.poll() is None:
-                try:
+                with contextlib.suppress(OSError):
                     self.frontend_process.terminate()
                     time.sleep(1)
                     if self.frontend_process.poll() is None:
                         self.frontend_process.kill()
-                except Exception:
-                    pass
-                finally:
-                    self.frontend_process = None
+                self.frontend_process = None
 
             # NUCLEAR: Kill everything on port 7274
             self._nuclear_kill_port(7274)
@@ -1471,15 +1466,12 @@ class GiljoDevControlPanel:
             for attr in ("backend_process", "frontend_process"):
                 proc = getattr(self, attr, None)
                 if proc and proc.poll() is None:
-                    try:
+                    with contextlib.suppress(OSError):
                         proc.terminate()
                         time.sleep(0.3)
                         if proc.poll() is None:
                             proc.kill()
-                    except Exception:
-                        pass
-                    finally:
-                        setattr(self, attr, None)
+                    setattr(self, attr, None)
 
             giljo_ports = self._find_all_giljo_ports()
 
@@ -1516,8 +1508,8 @@ class GiljoDevControlPanel:
                 self.root.after(0, lambda: messagebox.showinfo("No Services", "No processes found on ports 7200-7299"))
 
         except Exception as e:
-            self.root.after(0, lambda: self.update_status_message(f"Error stopping services: {e}"))
-            self.root.after(0, lambda: messagebox.showerror("Error", f"Failed to stop all services:\n{e}"))
+            self.root.after(0, lambda err=e: self.update_status_message(f"Error stopping services: {err}"))
+            self.root.after(0, lambda err=e: messagebox.showerror("Error", f"Failed to stop all services:\n{err}"))
 
     # Database Management Methods
 
@@ -1551,14 +1543,12 @@ class GiljoDevControlPanel:
             # 2. Legacy fallback: .env
             env_file = self.project_root / ".env"
             if env_file.exists():
-                try:
+                with contextlib.suppress(Exception):
                     for line in env_file.read_text().splitlines():
                         line = line.strip()
                         if line.startswith("PG_SUPERUSER_PASSWORD="):
                             password = line.split("=", 1)[1].strip().strip("'\"")
                             break
-                except Exception:
-                    pass
 
         if not password:
             # 3. Prompt and persist
@@ -2943,7 +2933,7 @@ pg_restore -l {backup_file.name} | head -20
                     shutil.rmtree(pycache, ignore_errors=True)
                     pycache_count += 1
                 except Exception:
-                    pass
+                    continue
 
             if pycache_count > 0:
                 deleted.append(f"Python bytecode cache ({pycache_count} directories)")
@@ -2951,11 +2941,9 @@ pg_restore -l {backup_file.name} | head -20
             # Delete .coverage and .coverage.* files
             coverage_file = self.project_root / ".coverage"
             if coverage_file.exists():
-                try:
+                with contextlib.suppress(Exception):
                     coverage_file.unlink()
                     deleted.append("Coverage data file")
-                except Exception:
-                    pass
 
             coverage_count = 0
             for cov_file in self.project_root.glob(".coverage.*"):
@@ -2963,7 +2951,7 @@ pg_restore -l {backup_file.name} | head -20
                     cov_file.unlink()
                     coverage_count += 1
                 except Exception:
-                    pass
+                    continue
 
             if coverage_count > 0:
                 deleted.append(f"Coverage parallel files ({coverage_count} files)")
@@ -3093,7 +3081,7 @@ pg_restore -l {backup_file.name} | head -20
             if mkcert_path:
                 # Resolve CAROOT before -uninstall so we know what to delete
                 caroot_dir = None
-                try:
+                with contextlib.suppress(Exception):
                     caroot_result = subprocess.run(
                         [mkcert_path, "-CAROOT"],
                         capture_output=True,
@@ -3103,8 +3091,6 @@ pg_restore -l {backup_file.name} | head -20
                     )
                     if caroot_result.stdout.strip():
                         caroot_dir = Path(caroot_result.stdout.strip())
-                except Exception:
-                    pass
 
                 try:
                     subprocess.run(
@@ -3178,7 +3164,7 @@ pg_restore -l {backup_file.name} | head -20
                         if not target.exists():
                             retried.append(str(target.name))
                     except Exception:
-                        pass  # Already reported in earlier step
+                        continue  # Already reported in earlier step
 
             if retried:
                 deleted.append(f"Retry pass cleaned: {', '.join(retried)}")
@@ -3232,7 +3218,7 @@ pg_restore -l {backup_file.name} | head -20
             os.environ.pop(var_name, None)
 
             if platform.system() == "Windows":
-                try:
+                with contextlib.suppress(Exception):
                     subprocess.run(
                         [
                             "powershell",
@@ -3244,8 +3230,6 @@ pg_restore -l {backup_file.name} | head -20
                         timeout=10,
                         check=False,
                     )
-                except Exception:
-                    pass
             else:
                 # Linux/macOS: remove from shell rc files
                 home = Path.home()
@@ -3262,7 +3246,7 @@ pg_restore -l {backup_file.name} | head -20
                             if cleaned != original:
                                 rc_file.write_text(cleaned + "\n")
                         except Exception:
-                            pass
+                            continue
 
             cleared.append(f"{var_name} {'(was set)' if had_value else '(not set)'}")
         return cleared
@@ -3313,7 +3297,7 @@ pg_restore -l {backup_file.name} | head -20
             # Find the mkcert root CA subject to remove it
             mkcert_path = shutil.which("mkcert")
             if mkcert_path:
-                try:
+                with contextlib.suppress(Exception):
                     result = subprocess.run(
                         [mkcert_path, "-CAROOT"],
                         capture_output=True,
@@ -3333,8 +3317,6 @@ pg_restore -l {backup_file.name} | head -20
                                 check=False,
                             )
                             removed.append("mkcert root CA (Windows cert store)")
-                except Exception:
-                    pass
         elif system == "Linux":
             giljo_cert = Path("/usr/local/share/ca-certificates/giljoai.crt")
             if giljo_cert.exists():
@@ -3343,7 +3325,7 @@ pg_restore -l {backup_file.name} | head -20
                     "Removing the mkcert root CA from the system\ntrust store requires elevated privileges."
                 )
                 if sudo_pw is not None:
-                    try:
+                    with contextlib.suppress(Exception):
                         subprocess.run(
                             ["sudo", "-S", "rm", "-f", str(giljo_cert)],
                             input=sudo_pw + "\n",
@@ -3361,8 +3343,6 @@ pg_restore -l {backup_file.name} | head -20
                             check=False,
                         )
                         removed.append("mkcert root CA (Linux ca-certificates)")
-                    except Exception:
-                        pass
         elif system == "Darwin":
             mkcert_path = shutil.which("mkcert")
             if mkcert_path:
@@ -3392,7 +3372,7 @@ pg_restore -l {backup_file.name} | head -20
                                 )
                                 removed.append("mkcert root CA (macOS System keychain)")
                 except Exception:
-                    pass
+                    return removed
 
         return removed
 
@@ -3520,14 +3500,13 @@ pg_restore -l {backup_file.name} | head -20
         elif platform.system() == "Windows":
             # Check user certificate store (CurrentUser\Root)
             try:
+                ps_cmd = (
+                    "Get-ChildItem Cert:\\CurrentUser\\Root | "
+                    "Where-Object { $_.Subject -like '*mkcert*' } | "
+                    "Select-Object -ExpandProperty Thumbprint"
+                )
                 result = subprocess.run(
-                    [
-                        "powershell",
-                        "-Command",
-                        "Get-ChildItem Cert:\\CurrentUser\\Root | "
-                        "Where-Object { $_.Subject -like '*mkcert*' } | "
-                        "Select-Object -ExpandProperty Thumbprint",
-                    ],
+                    ["powershell", "-Command", ps_cmd],
                     capture_output=True,
                     text=True,
                     timeout=15,
@@ -3540,14 +3519,13 @@ pg_restore -l {backup_file.name} | head -20
 
             # Check machine certificate store (LocalMachine\Root)
             try:
+                ps_cmd = (
+                    "Get-ChildItem Cert:\\LocalMachine\\Root | "
+                    "Where-Object { $_.Subject -like '*mkcert*' } | "
+                    "Select-Object -ExpandProperty Thumbprint"
+                )
                 result = subprocess.run(
-                    [
-                        "powershell",
-                        "-Command",
-                        "Get-ChildItem Cert:\\LocalMachine\\Root | "
-                        "Where-Object { $_.Subject -like '*mkcert*' } | "
-                        "Select-Object -ExpandProperty Thumbprint",
-                    ],
+                    ["powershell", "-Command", ps_cmd],
                     capture_output=True,
                     text=True,
                     timeout=15,
@@ -3792,14 +3770,13 @@ pg_restore -l {backup_file.name} | head -20
                         text=True,
                         timeout=30,
                     )
+                    verify_cmd = (
+                        f"Get-ChildItem Cert:\\LocalMachine\\Root "
+                        f"| Where-Object {{ $_.Thumbprint -eq '{thumbprint}' }} "
+                        f"| Measure-Object | Select-Object -ExpandProperty Count"
+                    )
                     verify = subprocess.run(
-                        [
-                            "powershell",
-                            "-Command",
-                            f"Get-ChildItem Cert:\\LocalMachine\\Root "
-                            f"| Where-Object {{ $_.Thumbprint -eq '{thumbprint}' }} "
-                            f"| Measure-Object | Select-Object -ExpandProperty Count",
-                        ],
+                        ["powershell", "-Command", verify_cmd],
                         capture_output=True,
                         text=True,
                         timeout=10,
@@ -4207,7 +4184,7 @@ pg_restore -l {backup_file.name} | head -20
                     shutil.rmtree(cache_dir)
                     removed_count += 1
                 except Exception:
-                    pass
+                    continue
 
             # Remove .pyc files
             for pyc_file in self.project_root.rglob("*.pyc"):
@@ -4215,7 +4192,7 @@ pg_restore -l {backup_file.name} | head -20
                     pyc_file.unlink()
                     removed_count += 1
                 except Exception:
-                    pass
+                    continue
 
             # Remove .pyo files
             for pyo_file in self.project_root.rglob("*.pyo"):
@@ -4223,7 +4200,7 @@ pg_restore -l {backup_file.name} | head -20
                     pyo_file.unlink()
                     removed_count += 1
                 except Exception:
-                    pass
+                    continue
 
             self.update_status_message(f"Python cache cleared ({removed_count} items)")
             messagebox.showinfo("Success", f"Python cache cleared!\n\nRemoved {removed_count} cache items.")
