@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.app_state import GILJO_MODE
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from giljo_mcp.config_manager import get_config
+from giljo_mcp.http.url_resolver import get_public_base_url
 from giljo_mcp.models import AgentTemplate, User
 from giljo_mcp.tools.slash_command_templates import get_all_templates
 from giljo_mcp.utils.log_sanitizer import mask_token, sanitize
@@ -36,32 +36,6 @@ router = APIRouter(prefix="/api/download", tags=["downloads"])
 
 
 # Helper Functions
-
-
-def get_server_url(request=None) -> str:
-    """
-    Get server URL from configuration, using external_host for public access.
-
-    Args:
-        request: Optional request object to detect HTTPS
-
-    Returns:
-        Server URL (e.g., "https://10.1.0.164:7272" or "http://10.1.0.164:7272")
-    """
-    try:
-        config = get_config()
-        host = config.get_nested("services.external_host", "localhost")
-        port = config.server.api_port
-
-        # Check ssl_enabled first, then fall back to proxy header detection
-        ssl_enabled = config.get_nested("features.ssl_enabled", default=False)
-        proxy_https = request and request.headers.get("x-forwarded-proto") == "https"
-        scheme = "https" if (ssl_enabled or proxy_https) else "http"
-
-        return f"{scheme}://{host}:{port}"
-    except (OSError, ValueError, KeyError) as e:
-        logger.warning("Failed to get server URL from config: %s", sanitize(str(e)))
-        return "http://localhost:7272"
 
 
 def create_zip_archive(files: dict[str, str]) -> bytes:
@@ -142,7 +116,7 @@ async def download_slash_commands(
     templates = get_all_templates(platform=platform)
 
     # Add install scripts with server URL rendered
-    server_url = get_server_url(request)
+    server_url = get_public_base_url(request)
 
     # Read install scripts from templates
     sh_script_path = Path(__file__).parent.parent.parent / "installer" / "templates" / "install_slash_commands.sh"
@@ -314,7 +288,7 @@ async def download_agent_templates(
             files[agent["filename"]] = agent["content"]
 
     # Add install scripts with server URL rendered
-    server_url = get_server_url(request)
+    server_url = get_public_base_url(request)
 
     # Read install scripts from templates
     sh_script_path = Path(__file__).parent.parent.parent / "installer" / "templates" / "install_agent_templates.sh"
@@ -429,7 +403,7 @@ async def download_install_script(
     logger.info("Generating install script (public): extension=%s, type=%s", sanitize(extension), sanitize(script_type))
 
     # Get server URL
-    server_url = get_server_url(request)
+    server_url = get_public_base_url(request)
 
     # Get template path
     template_dir = Path(__file__).parent.parent.parent / "installer" / "templates"
@@ -557,7 +531,7 @@ async def get_bootstrap_prompt(
     await token_manager.mark_ready(token)
 
     # 4) Build download URL
-    server_url = get_server_url(request)
+    server_url = get_public_base_url(request)
     download_url = f"{server_url}/api/download/temp/{token}/{filename}"
 
     # 5) Render the template with the download URL
@@ -606,7 +580,7 @@ async def generate_download_token(
 
     Returns:
         {
-            "download_url": "https://server:7272/api/download/temp/{token}/file.zip",
+            "download_url": "https://demo.giljo.ai/api/download/temp/{token}/file.zip",
             "expires_at": "2025-11-04T10:45:00Z",
             "content_type": "slash_commands",
             "one_time_use": true
@@ -688,7 +662,7 @@ async def generate_download_token(
     await token_manager.mark_ready(token)
 
     # 4) Build download URL and return
-    server_url = get_server_url(request)
+    server_url = get_public_base_url(request)
     download_url = f"{server_url}/api/download/temp/{token}/{filename}"
 
     token_data = await token_manager.get_token_info(token, tenant_key)

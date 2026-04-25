@@ -124,7 +124,7 @@ Ground yourself in the actual codebase before making any judgments.{project_path
 3. Entry point:    Read the first 60 lines of the main backend file to see imports, config, and patterns
 4. Tests:          Run the test discovery command (e.g., `pytest --co -q`) to list tests without executing
 5. Git history:    Run `git log --oneline -15` to see recent changes
-6. Project memory: Call `fetch_context(categories=["memory_360"], product_id="{product_id}")` to get recent project closeout summaries — these describe what was built, decisions made, and outcomes
+6. Project memory: Call `fetch_context(categories=["memory_360"], product_id="{product_id}", depth_config={{"memory_360": {{"shape": "full"}}}})` to get recent project closeout bodies — these describe what was built, decisions made, and outcomes (full shape required since headlines-only would drop the very content this prompt needs)
 
 If you cannot run terminal commands (e.g., web-based agent), skip steps 1-5 and rely on project memory from step 6.
 
@@ -446,7 +446,37 @@ class ProductTuningService:
             elif mapping["type"] == "relation":
                 relation_name = mapping["relation"]
                 if isinstance(value, dict):
-                    update_kwargs[relation_name] = value
+                    # Filter to only known fields defined in the mapping
+                    known_fields = mapping.get("fields", {})
+                    if known_fields:
+                        filtered = {k: v for k, v in value.items() if k in known_fields}
+                        if filtered:
+                            update_kwargs[relation_name] = filtered
+                        else:
+                            self._logger.warning(
+                                "Skipping relation section '%s': no recognized fields in dict (known: %s)",
+                                section,
+                                list(known_fields.keys()),
+                            )
+                            continue
+                    else:
+                        update_kwargs[relation_name] = value
+                elif isinstance(value, str):
+                    # Agent sent a flat string for a structured relation.
+                    # Try to use it as a single-field update if there's only one field,
+                    # otherwise reject with guidance on the sub-section keys.
+                    known_fields = list(mapping.get("fields", {}).keys())
+                    if len(known_fields) == 1:
+                        update_kwargs[relation_name] = {known_fields[0]: value}
+                    else:
+                        self._logger.warning(
+                            "Skipping relation section '%s': got plain string but section has %d fields. "
+                            "Use sub-section keys instead: %s",
+                            section,
+                            len(known_fields),
+                            [f"{section}.{f}" for f in known_fields],
+                        )
+                        continue
                 else:
                     self._logger.warning(
                         "Skipping relation section '%s': expected dict, got %s",
@@ -518,11 +548,23 @@ class ProductTuningService:
             f"Applied {len(sections_applied)} tuning updates for product {product_id}: {sections_applied}"
         )
 
-        return {
+        # Report skipped sections so agents know why their update didn't apply
+        all_drift_sections = [p.get("section") for p in proposals if p.get("drift_detected")]
+        skipped = [s for s in all_drift_sections if s and s not in sections_applied]
+
+        result = {
             "success": True,
             "applied_count": len(sections_applied),
             "sections_applied": sections_applied,
         }
+        if skipped:
+            result["sections_skipped"] = skipped
+            result["hint"] = (
+                "Some sections were skipped. For structured sections like tech_stack or architecture, "
+                "use sub-section keys (e.g., 'tech_stack.infrastructure', 'architecture.coding_conventions') "
+                "or pass proposed_value as a dict with field names as keys."
+            )
+        return result
 
     async def check_tuning_staleness(self, product_id: str, user_id: str) -> dict[str, Any]:
         """
@@ -552,7 +594,7 @@ class ProductTuningService:
 
             # Get last tuned sequence
             tuning_state = product.tuning_state or {}
-            last_tuned_seq = tuning_state.get("last_tuned_at_sequence", 0)
+            last_tuned_seq = tuning_state.get("last_tuned_at_sequence") or 0
 
             projects_since = max(current_sequence - last_tuned_seq, 0)
 

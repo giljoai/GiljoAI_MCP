@@ -112,6 +112,7 @@ init(autoreset=True)
 _log_path = Path.cwd() / "install.log"
 _logger = logging.getLogger("giljoai_install")
 _logger.setLevel(logging.DEBUG)
+_logger.propagate = False
 _file_handler = logging.FileHandler(_log_path, mode="a", encoding="utf-8")
 _file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 _logger.addHandler(_file_handler)
@@ -1740,7 +1741,24 @@ class UnifiedInstaller:
 
             self._print_info(f"Loaded DATABASE_URL from .env: {db_url.split('@')[0]}@...")
 
-            # STEP 5: Run Alembic migrations to create schema (REPLACES create_all())
+            # STEP 5: Verify database exists before running migrations
+            db_name = self.settings.get("db_name", "giljo_mcp")
+            self._print_info(f"Verifying database '{db_name}' exists...")
+            try:
+                import psycopg2
+
+                verify_conn = psycopg2.connect(db_url)
+                verify_conn.close()
+                self._print_success(f"Database '{db_name}' is reachable")
+            except Exception as verify_err:
+                self._print_error(f"Database '{db_name}' is not reachable: {verify_err}")
+                self._print_error("The database may not have been created. Create it manually:")
+                self._print_info(f'  sudo -u postgres psql -c "CREATE DATABASE {db_name} OWNER giljo_owner;"')
+                result["success"] = False
+                result["errors"] = [f"Database '{db_name}' does not exist or is not reachable"]
+                return result
+
+            # STEP 6: Run Alembic migrations to create schema
             self._print_info("Running database migrations to create schema...")
             migration_result = self.run_database_migrations()
 
@@ -2012,6 +2030,7 @@ class UnifiedInstaller:
                 "pg_host": self.settings.get("pg_host", "localhost"),
                 "pg_port": self.settings.get("pg_port", 5432),
                 "pg_password": self.settings.get("pg_password"),
+                "db_name": self.settings.get("db_name", "giljo_mcp"),
                 "api_port": self.settings.get("api_port", DEFAULT_API_PORT),
                 "dashboard_port": self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT),
                 "install_dir": str(self.install_dir),

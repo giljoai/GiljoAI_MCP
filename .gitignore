@@ -190,3 +190,6 @@ image.jpg
 frontend/stats.html
 audit/
 BLIND_AUDIT_REPORT.md
+
+# Operator-only quickstart lives on private NAS, not in repo
+handovers/ops_panel_operator_quickstart.md
