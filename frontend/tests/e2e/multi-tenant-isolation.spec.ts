@@ -47,10 +47,10 @@ test.describe('Multi-Tenant Isolation (Security)', () => {
 
       // If User A has projects, verify User B doesn't see them
       if (userAProjectCount > 0) {
-        const firstProjectAText = await userAProjects.first().textContent()
+        await userAProjects.first().textContent()
 
         // Search for User A's project in User B's list
-        const projectsText = await userBProjects.evaluateAll(elements =>
+        await userBProjects.evaluateAll(elements =>
           elements.map(el => el.textContent || '')
         )
 
