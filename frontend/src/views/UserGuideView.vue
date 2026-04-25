@@ -34,6 +34,10 @@
           @click="goToSearchResult(result)"
         >
           <span class="guide-search-result-section">{{ result.section }}</span>
+          <!-- SEC-0003: snippet is built from bundled static markdown with
+               a `<mark>` tag wrapped around the user's search query; the
+               final string is hardened via sanitizeHtml in searchResults.
+               v-html sanctioned via eslint.config.js file override. -->
           <span class="guide-search-result-snippet" v-html="result.snippet" />
         </button>
       </div>
@@ -70,6 +74,10 @@
             @click="goToSearchResult(result)"
           >
             <span class="guide-search-result-section">{{ result.section }}</span>
+            <!-- SEC-0003: snippet is built from bundled static markdown with
+                 a `<mark>` tag wrapped around the user's search query; the
+                 final string is hardened via sanitizeHtml in searchResults.
+                 v-html sanctioned via eslint.config.js file override. -->
             <span class="guide-search-result-snippet" v-html="result.snippet" />
           </button>
         </div>
@@ -92,11 +100,14 @@
       </aside>
 
       <!-- Content area -->
-      <main class="guide-content" ref="contentRef">
-        <div
-          class="guide-prose"
-          v-html="renderedMarkdown"
-        />
+      <main ref="contentRef" class="guide-content">
+        <!-- SEC-0003: renderedMarkdown is produced from bundled static
+             markdown (docs/*.md imported at build-time), run through
+             marked.parse() with the custom heading renderer (which
+             HTML-escapes heading text and slugifies the id), and finally
+             hardened via sanitizeHtml.
+             v-html sanctioned via eslint.config.js file override. -->
+        <div class="guide-prose" v-html="renderedMarkdown" />
       </main>
     </div>
   </div>
@@ -107,7 +118,8 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { marked } from 'marked'
-import DOMPurify from 'dompurify'
+import { sanitizeHtml } from '@/composables/useSanitizeMarkdown'
+import { escapeHtml, slugify } from '@/utils/escapeHtml'
 import overviewMd from '../../../docs/PRODUCT_OVERVIEW.md?raw'
 import gettingStartedMd from '../../../docs/GETTING_STARTED.md?raw'
 import userGuideMd from '../../../docs/USER_GUIDE.md?raw'
@@ -130,22 +142,33 @@ const combinedMarkdown = computed(() => {
   return parts.join('\n\n---\n\n')
 })
 
-// Configure marked with anchor IDs on h2 headings via marked.use() (v5+ API)
+// Configure marked with anchor IDs on h2 headings via marked.use() (v5+ API).
+// SEC-0003 widening: `text` is interpolated directly into the returned HTML,
+// so we HTML-escape it before interpolation. `anchor` is produced by
+// `slugify()` which restricts output to [a-z0-9-] -- safe in an id attribute.
+// Defence-in-depth: sanitizeHtml further cleans the marked output downstream.
 marked.use({
   renderer: {
     heading({ text, depth }) {
+      const safeText = escapeHtml(text)
       if (depth === 2) {
-        const anchor = headingToAnchor(text)
-        return `<h2 id="${anchor}">${text}</h2>\n`
+        const anchor = slugify(text)
+        return `<h2 id="${anchor}">${safeText}</h2>\n`
       }
-      return `<h${depth}>${text}</h${depth}>\n`
+      return `<h${depth}>${safeText}</h${depth}>\n`
     },
   },
 })
 
+// SEC-0003: hardened sanitization. `marked.parse()` is called directly (not
+// via the useSanitizeMarkdown composable) because the custom heading renderer
+// configured via `marked.use()` above must apply; we then funnel the output
+// through the composable's sanitizeHtml for the hardened cleanup step.
+// HARDENED_CONFIG covers every tag this guide emits (headings, lists,
+// code/pre, blockquote, tables, links, images) so no overrides are needed.
 const renderedMarkdown = computed(() => {
   const html = marked.parse(combinedMarkdown.value)
-  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
+  return sanitizeHtml(html)
 })
 
 // Build TOC from ## headings
@@ -156,7 +179,7 @@ const tocEntries = computed(() => {
     const match = line.match(/^## (.+)$/)
     if (match) {
       const text = match[1].trim()
-      entries.push({ text, anchor: headingToAnchor(text) })
+      entries.push({ text, anchor: slugify(text) })
     }
   }
   return entries
@@ -176,11 +199,11 @@ const searchableSections = computed(() => {
       if (currentSection) sections.push(currentSection)
       currentSection = {
         title: match[1].trim(),
-        anchor: headingToAnchor(match[1].trim()),
+        anchor: slugify(match[1].trim()),
         text: '',
       }
     } else if (currentSection) {
-      currentSection.text += line + '\n'
+      currentSection.text += `${line  }\n`
     }
   }
   if (currentSection) sections.push(currentSection)
@@ -206,10 +229,14 @@ const searchResults = computed(() => {
       const start = Math.max(0, idx - 30)
       const end = Math.min(plainText.length, idx + q.length + 50)
       const raw = (start > 0 ? '...' : '') + plainText.slice(start, end) + (end < plainText.length ? '...' : '')
-      snippet = raw.replace(
+      // SEC-0003: route through sanitizeHtml for consistency -- data flows
+      // from bundled static markdown + user-typed `searchQuery`, the latter
+      // is regex-escaped for the pattern but the capture group ($1) lands
+      // in the output verbatim, so we harden before v-html binding.
+      snippet = sanitizeHtml(raw.replace(
         new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'),
         '<mark>$1</mark>'
-      )
+      ))
     }
 
     results.push({
@@ -227,15 +254,6 @@ function goToSearchResult(result) {
 }
 
 // ─── TOC HELPERS ───
-
-function headingToAnchor(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-}
 
 function scrollToAnchor(anchor) {
   const el = document.getElementById(anchor)

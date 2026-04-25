@@ -62,9 +62,10 @@ def _build_worker_protocol_body(
 
     All parameters are injected via f-string; no side effects.
     """
-    return (
-        protocol_framing
-        + rf"""## Agent Lifecycle Protocol (5 Phases)
+
+    # ruff's S608 detector matches the `from_agent=` token in example send_message calls
+    # within the f-string body. Suppressed at function level rather than per-line.
+    body = rf"""## Agent Lifecycle Protocol (5 Phases)
 
 ### Phase 1: STARTUP (BEFORE ANY WORK)
 0. **ENVIRONMENT DETECTION**:
@@ -190,16 +191,27 @@ If you receive context indicating you are resuming a previously completed job:
 
 ## Handover on Context Exhaustion
 
-If you run out of context before completing:
+If you run out of context before completing, **DO NOT write 360 memory**.
+Memory writes are orchestrator-only — both for normal completion and for handovers.
+Your job is to send the orchestrator everything it needs to decide what happens next.
 
-1. Call `write_360_memory(entry_type="handover_closeout")` with progress summary:
-   - summary: Brief overview of work completed so far
-   - key_outcomes: What you accomplished before running out of context
-   - decisions_made: Key decisions and rationale for successor
-2. Notify orchestrator via `send_message(to_agents=["<orchestrator-agent-id-uuid>"], ...)` about context exhaustion (use UUID from YOUR TEAM table)
-3. Call `complete_job()` to mark yourself complete
+1. Send a HANDOVER message to the orchestrator (use the orchestrator's agent_id UUID
+   listed in YOUR TEAM table at the top of your mission):
+   - `mcp__giljo_mcp__send_message(to_agents=["<orchestrator-agent-id-uuid>"],`
+     `content="HANDOVER: Context exhausted. COMPLETED: <what you finished>.`
+     `IN-PROGRESS: <what was active and the stopping point>. NEXT-STEPS:`
+     `<what a successor needs to do>. BLOCKERS: <any known blockers>.",`
+     `from_agent="{executor_id}", project_id="...", message_type="direct",`
+     `requires_action=true)`
+2. Set yourself BLOCKED so the orchestrator knows you're waiting:
+   - `mcp__giljo_mcp__set_agent_status(job_id="{job_id}", status="blocked",`
+     `reason="BLOCKED: context exhausted, handover sent to orchestrator")`
+3. STOP. Do NOT call `complete_job()` and do NOT call `write_360_memory()`.
+   The orchestrator will decide whether to spawn a successor (preserving your
+   job_id) or write a handover memory entry itself.
 
-Do NOT write 360 memory on normal completion - orchestrator handles that.
+Do NOT write 360 memory on normal completion either — the orchestrator handles
+all memory writes (project closeout, action_required entries, handover entries).
 ---
 **Your Identifiers:**
 - job_id (work order): `{job_id}` - Use for mission, progress, completion
@@ -233,8 +245,8 @@ If your mission references undefined entities, has unclear dependencies, or ambi
 
 **CRITICAL: MCP tools are NATIVE tool calls. Use them like Read/Write/Bash.**
 **Do NOT use curl, HTTP, or SDK calls.**
-"""
-    )
+"""  # noqa: S608 — prose protocol template, not SQL
+    return protocol_framing + body
 
 
 def _generate_agent_protocol(

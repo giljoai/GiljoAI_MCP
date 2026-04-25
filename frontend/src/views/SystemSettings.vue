@@ -5,6 +5,7 @@
     <p class="text-subtitle-1 mb-4 settings-subtitle">Configure server and system-wide settings (Admin only)</p>
 
     <!-- Settings Pills -->
+    <!-- Order: Identity, Prompts (admin governance group), then server-plumbing tabs (CE only). -->
     <div class="pill-toggle-row">
       <button
         class="pill-toggle smooth-border"
@@ -17,35 +18,42 @@
       </button>
       <button
         class="pill-toggle smooth-border"
+        :class="{ 'pill-toggle--active': activeTab === 'prompts' }"
+        data-test="prompts-tab"
+        @click="activeTab = 'prompts'"
+      >
+        <v-icon size="16" class="pill-toggle-icon">mdi-file-document-edit</v-icon>
+        Prompts
+      </button>
+      <button
+        v-if="isCeMode"
+        class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'network' }"
+        data-test="network-tab"
         @click="activeTab = 'network'"
       >
         <v-icon size="16" class="pill-toggle-icon">mdi-network-outline</v-icon>
         Network
       </button>
       <button
+        v-if="isCeMode"
         class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'database' }"
+        data-test="database-tab"
         @click="activeTab = 'database'"
       >
         <v-icon size="16" class="pill-toggle-icon">mdi-database</v-icon>
         Database
       </button>
       <button
+        v-if="isCeMode"
         class="pill-toggle smooth-border"
         :class="{ 'pill-toggle--active': activeTab === 'security' }"
+        data-test="security-tab"
         @click="activeTab = 'security'"
       >
         <v-icon size="16" class="pill-toggle-icon">mdi-shield-lock</v-icon>
         Security
-      </button>
-      <button
-        class="pill-toggle smooth-border"
-        :class="{ 'pill-toggle--active': activeTab === 'prompts' }"
-        @click="activeTab = 'prompts'"
-      >
-        <v-icon size="16" class="pill-toggle-icon">mdi-file-document-edit</v-icon>
-        Prompts
       </button>
     </div>
 
@@ -57,8 +65,13 @@
         <IdentityTab />
       </v-window-item>
 
+      <!-- Prompts (Orchestrator System Prompt) - moved next to Identity in FE-0023. -->
+      <v-window-item value="prompts">
+        <SystemPromptTab />
+      </v-window-item>
+
       <!-- Network Settings -->
-      <v-window-item value="network">
+      <v-window-item v-if="isCeMode" value="network">
         <NetworkSettingsTab
           :config="networkSettings"
           :cors-origins="corsOrigins"
@@ -70,7 +83,7 @@
       </v-window-item>
 
       <!-- Database Settings -->
-      <v-window-item value="database">
+      <v-window-item v-if="isCeMode" value="database">
         <DatabaseConnection
           :readonly="true"
           :show-title="true"
@@ -92,7 +105,7 @@
       </v-window-item>
 
       <!-- Security Settings -->
-      <v-window-item value="security">
+      <v-window-item v-if="isCeMode" value="security">
         <SecuritySettingsTab
           :cookie-domains="cookieDomains"
           :loading="loading.security"
@@ -104,10 +117,6 @@
         />
       </v-window-item>
 
-      <!-- Prompts (Orchestrator System Prompt) - Renamed from "System" in Handover 0434 -->
-      <v-window-item value="prompts">
-        <SystemPromptTab />
-      </v-window-item>
     </v-window>
     </div>
 
@@ -115,10 +124,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { getApiBaseURL } from '@/config/api'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import configService from '@/services/configService'
 
 // Components
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
@@ -128,9 +138,14 @@ import SecuritySettingsTab from '@/components/settings/tabs/SecuritySettingsTab.
 import SystemPromptTab from '@/components/settings/tabs/SystemPromptTab.vue'
 
 const { showToast } = useToast()
+const giljoMode = ref('ce')
+const isCeMode = computed(() => giljoMode.value === 'ce')
 
 // State
 const activeTab = ref('identity')
+
+// Valid tab values when the user is restricted to product-admin tabs
+const PRODUCT_ADMIN_TABS = ['identity', 'prompts']
 
 // Loading states
 const loading = ref({
@@ -310,14 +325,22 @@ function clearSecurityFeedback() {
 
 // Lifecycle
 onMounted(async () => {
-  // Load database settings from config on mount
-  await loadDatabaseSettings()
+  // Resolve mode from config service so isCeMode is accurate before gating tabs
+  await configService.fetchConfig()
+  giljoMode.value = configService.getGiljoMode()
 
-  // Load network settings from config on mount
-  await loadNetworkSettings()
+  // If the active tab is server-admin-only but we're not in CE mode,
+  // fall back to the default product-admin tab
+  if (!isCeMode.value && !PRODUCT_ADMIN_TABS.includes(activeTab.value)) {
+    activeTab.value = 'identity'
+  }
 
-  // Load cookie domains
-  await loadCookieDomains()
+  // Only load server-admin config in CE mode -- other modes have no server tabs
+  if (isCeMode.value) {
+    await loadDatabaseSettings()
+    await loadNetworkSettings()
+    await loadCookieDomains()
+  }
 })
 </script>
 

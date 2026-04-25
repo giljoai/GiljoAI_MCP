@@ -13,6 +13,7 @@ Called by the user's AI coding agent during vision document analysis workflow.
 """
 
 import logging
+import re
 from contextlib import asynccontextmanager
 from decimal import Decimal
 from typing import Any
@@ -288,6 +289,7 @@ async def update_product_fields(
             )
 
     fields_written: list[str] = []
+    fields_skipped: list[dict[str, str]] = []
 
     async with _session_scope(db_manager, _test_session) as session:
         stmt = (
@@ -372,6 +374,8 @@ async def update_product_fields(
             kwargs["test_config"] = merged_tc
 
         # -- Route writes through ProductService (the validated single write path) --
+        # Track skipped fields explicitly so the agent can see what didn't write
+        # and why (instead of having to diff fields_written against their input).
         if kwargs:
             from giljo_mcp.services.product_service import ProductService
 
@@ -380,7 +384,39 @@ async def update_product_fields(
                 tenant_key=tenant_key,
                 test_session=_test_session,
             )
-            await product_service.update_product(product_id, force=force, **kwargs)
+            try:
+                await product_service.update_product(product_id, force=force, **kwargs)
+            except ValidationError as exc:
+                # Overwrite-protection error: surface as structured skip rather than raise.
+                # ProductService raises with context={"populated_fields": [...]} when
+                # JSONB blocks (tech_stack/architecture/test_config) are populated and
+                # force=False. Other ValidationError causes still propagate.
+                populated = (exc.context or {}).get("populated_fields") if hasattr(exc, "context") else None
+                if not populated:
+                    raise
+                # Roll back fields_written: any field belonging to a skipped block didn't write.
+                block_field_map = {
+                    "tech_stack": _TECH_STACK_FIELDS,
+                    "architecture": _ARCHITECTURE_FIELDS,
+                    "test_config": _TEST_CONFIG_FIELDS,
+                }
+                for block in populated:
+                    block_fields = block_field_map.get(block, set())
+                    for field_name in list(fields_written):
+                        if field_name in block_fields:
+                            fields_written.remove(field_name)
+                            fields_skipped.append(
+                                {
+                                    "field": field_name,
+                                    "reason": f"{block} already populated",
+                                    "hint": "Pass force=True to overwrite.",
+                                }
+                            )
+                # Re-attempt with the skipped blocks stripped out, so non-conflicting
+                # fields (other blocks + direct product fields) still write.
+                safe_kwargs = {k: v for k, v in kwargs.items() if k not in populated}
+                if safe_kwargs:
+                    await product_service.update_product(product_id, force=force, **safe_kwargs)
 
         # -- Summaries (written via VisionDocumentRepository, not ProductService) --
         await _write_summaries(product, tenant_key, session, fields, fields_written, db_manager)
@@ -404,7 +440,54 @@ async def update_product_fields(
         "success": True,
         "fields_written": len(fields_written),
         "fields": fields_written,
+        "fields_skipped": fields_skipped,
     }
+
+
+# Truncates at the FIRST occurrence of any tool-call structural token. We
+# observed in production (834e8133) that agents sometimes leak a full
+# `<parameter name="...">...</parameter>` block from a sibling tool call into
+# the middle of a string field, not just at the tail. Truncating at the first
+# occurrence eliminates both tail-only and middle-embedded pollution.
+#
+# Tradeoff: a legitimate summary that genuinely contains the literal text
+# `</invoke>` or `<parameter name=` will be cut off there. Acceptable for vision
+# summaries (prose about a product); risky for fields that intentionally store
+# tool-call examples. Used only in vision_analysis._write_summaries today.
+_TOOL_CALL_MARKUP_RE = re.compile(
+    r"</(?:invoke|parameter|summary_\d+|antml:[a-z_]+)>|<parameter\s+name=",
+    re.IGNORECASE,
+)
+
+
+def _strip_tool_call_markup(text: str | None, *, field_name: str = "") -> str | None:
+    """Sanitize agent-supplied string fields by truncating at the first
+    occurrence of any tool-call structural token (e.g. </invoke>,
+    </summary_66>, </parameter>, <parameter name=).
+
+    LLM agents occasionally leak these tokens into string parameter values --
+    sometimes only at the tail (cleanest case), sometimes a full sibling
+    parameter block embedded mid-field (observed in DB row 834e8133).
+    Truncating at the first occurrence eliminates both shapes.
+
+    Logs a WARNING when sanitization fires so we can monitor leak frequency.
+    Field name is included in the warning so we can grep for which field
+    surfaces are most exposed.
+    """
+    if text is None:
+        return None
+    match = _TOOL_CALL_MARKUP_RE.search(text)
+    if match is None:
+        return text
+    cleaned = text[: match.start()].rstrip()
+    logger.warning(
+        "stripped tool-call markup from %s at offset %d (was %d chars, now %d)",
+        field_name or "<unknown>",
+        match.start(),
+        len(text),
+        len(cleaned),
+    )
+    return cleaned
 
 
 async def _write_summaries(
@@ -416,8 +499,9 @@ async def _write_summaries(
     db_manager: DatabaseManager,
 ) -> None:
     """Write summary_33 and summary_66 to vision_document_summaries table."""
-    summary_33 = fields.get("summary_33")
-    summary_66 = fields.get("summary_66")
+    # Sanitize before storage: strip trailing tool-call markup leaked from agents.
+    summary_33 = _strip_tool_call_markup(fields.get("summary_33"), field_name="summary_33")
+    summary_66 = _strip_tool_call_markup(fields.get("summary_66"), field_name="summary_66")
 
     if not summary_33 and not summary_66:
         return

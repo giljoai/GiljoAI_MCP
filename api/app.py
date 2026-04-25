@@ -247,6 +247,19 @@ async def lifespan(app: FastAPI):
             logger.warning("Optional startup phase [trial_reaper] failed: %s — running without trial reaper", e)
             state.degraded_services.append("trial_reaper")
 
+    # Phase 10: Deletion reaper (SaaS only — SAAS-022)
+    _deletion_reaper_task = None
+    if GILJO_MODE == "saas":
+        try:
+            import importlib as _il
+
+            _del_reaper_mod = _il.import_module("giljo_mcp.saas.deletion.reaper")
+            _deletion_reaper_task = await _del_reaper_mod.start_deletion_reaper(state.db_manager.AsyncSessionLocal)
+            logger.info("Deletion reaper background task started")
+        except Exception as e:
+            logger.warning("Optional startup phase [deletion_reaper] failed: %s — running without deletion reaper", e)
+            state.degraded_services.append("deletion_reaper")
+
     # Mark startup complete
     state.startup_complete = True
     app.state.startup_complete = True
@@ -265,6 +278,12 @@ async def lifespan(app: FastAPI):
         with suppress(asyncio.CancelledError):
             await _trial_reaper_task
         logger.info("Trial reaper stopped")
+
+    if _deletion_reaper_task is not None:
+        _deletion_reaper_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await _deletion_reaper_task
+        logger.info("Deletion reaper stopped")
 
     if "mcp_session_manager" not in state.degraded_services:
         await stop_mcp_session_manager()
@@ -422,9 +441,13 @@ def _configure_middleware(app: FastAPI) -> None:
             "/health",
             "/api/health",
             "/api/metrics",
+            "/api/saas/register",  # SaaS self-serve registration (pre-auth, no CSRF cookie yet)
         ],
         exempt_prefixes=[
             "/api/auth/",  # Auth endpoints (login, register, refresh — no CSRF cookie yet)
+            "/api/saas/password-reset/",  # SaaS password reset (pre-auth)
+            "/api/saas/account/confirm-deletion",  # Account deletion confirm (token-auth, SAAS-022)
+            "/api/saas/account/cancel-deletion",  # Account deletion cancel (token-auth, SAAS-022)
             "/api/oauth/token",  # OAuth token exchange (external MCP clients, PKCE-protected)
             "/api/oauth/.well-known/",  # OAuth metadata (public GET)
             "/api/setup/",  # Setup wizard (runs before auth is configured)

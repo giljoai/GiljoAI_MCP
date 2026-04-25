@@ -35,6 +35,7 @@ import logging
 import re
 import shutil
 import zipfile
+from json import dumps as json_dumps
 from pathlib import Path
 
 from sqlalchemy import select
@@ -46,6 +47,11 @@ from .tools.slash_command_templates import get_all_templates
 
 
 logger = logging.getLogger(__name__)
+
+
+def _toml_string(value: object) -> str:
+    """Render a TOML basic string using JSON-compatible escaping."""
+    return json_dumps("" if value is None else str(value))
 
 
 def _codex_agents_to_toml(agents: list[dict]) -> list[tuple[str, str]]:
@@ -68,11 +74,12 @@ def _codex_agents_to_toml(agents: list[dict]) -> list[tuple[str, str]]:
         instructions = instructions.replace('"""', '\\"\\"\\"')
 
         toml_content = (
-            f'name = "{slug}"\n'
-            f'description = "{agent.get("description", "")}"\n'
-            f'nickname_candidates = ["{slug}"]\n'
-            f'model = "{agent.get("suggested_model", CODEX_DEFAULT_MODEL)}"\n'
-            f'model_reasoning_effort = "{agent.get("suggested_reasoning_effort", CODEX_DEFAULT_REASONING_EFFORT)}"\n'
+            f"name = {_toml_string(slug)}\n"
+            f"description = {_toml_string(agent.get('description', ''))}\n"
+            f"nickname_candidates = [{_toml_string(slug)}]\n"
+            f"model = {_toml_string(agent.get('suggested_model', CODEX_DEFAULT_MODEL))}\n"
+            f"model_reasoning_effort = "
+            f"{_toml_string(agent.get('suggested_reasoning_effort', CODEX_DEFAULT_REASONING_EFFORT))}\n"
             f'developer_instructions = """\n{instructions}\n"""\n'
         )
         entries.append((f"agents/{slug}.toml", toml_content))

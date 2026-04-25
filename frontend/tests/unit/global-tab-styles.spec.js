@@ -6,12 +6,11 @@
  * Post-refactor notes:
  * - ProductForm uses v-btn-toggle for tab navigation
  * - ProjectTabs uses pill-button toggles (0871c)
- * - UserSettings and SystemSettings use pill-button toggles (0871b)
+ * - SystemSettings uses pill-button toggles (0871b)
  * - global-tabs-window class is used on v-window for tab content
  *
  * Components tested:
  * - ProjectTabs.vue (pill-toggle buttons)
- * - UserSettings.vue (pill-toggle buttons)
  * - SystemSettings.vue (pill-toggle buttons)
  * - ProductForm.vue (v-btn-toggle)
  *
@@ -38,7 +37,6 @@ import { resolve } from 'path'
 
 // Import components to test
 import ProjectTabs from '@/components/projects/ProjectTabs.vue'
-import UserSettings from '@/views/UserSettings.vue'
 import SystemSettings from '@/views/SystemSettings.vue'
 import ProductForm from '@/components/products/ProductForm.vue'
 
@@ -126,33 +124,6 @@ describe('Global Tab Styles', () => {
       const pills = wrapper.findAll('.pill-btn')
       expect(pills.length).toBeGreaterThanOrEqual(2)
       expect(wrapper.find('.tab-pills').exists()).toBe(true)
-    })
-  })
-
-  describe('UserSettings Component', () => {
-    it('uses pill-toggle buttons for tab navigation', async () => {
-      const pinia = createPinia()
-      const wrapper = mount(UserSettings, {
-        global: {
-          plugins: [pinia, vuetify],
-          stubs: globalStubs,
-        },
-      })
-
-      await wrapper.vm.$nextTick()
-
-      const pills = wrapper.findAll('.pill-toggle')
-      expect(pills.length).toBe(6) // 6 pills: Startup, Notifications, Agents, Context, API Keys, Integrations
-      expect(wrapper.find('.pill-toggle-row').exists()).toBe(true)
-    })
-
-    it('uses global-tabs-window class on v-window', () => {
-      // Static source code verification: the UserSettings template
-      // must apply the global-tabs-window class to its v-window element.
-      const srcPath = resolve(__dirname, '../../src/views/UserSettings.vue')
-      const source = readFileSync(srcPath, 'utf-8')
-      expect(source).toContain('global-tabs-window')
-      expect(source).toContain('<v-window')
     })
   })
 
@@ -247,11 +218,10 @@ describe('Global Tab Styles', () => {
       expect(pills.length).toBeGreaterThanOrEqual(2)
     })
 
-    it('UserSettings and SystemSettings use pill-toggle buttons', async () => {
+    it('SystemSettings uses pill-toggle buttons', async () => {
       const pinia = createPinia()
 
       const configs = [
-        { name: 'UserSettings', component: UserSettings, props: {}, expectedPills: 6 },
         { name: 'SystemSettings', component: SystemSettings, props: {}, expectedPills: 5 },
       ]
 

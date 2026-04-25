@@ -30,6 +30,24 @@ from giljo_mcp.repositories.product_memory_repository import ProductMemoryReposi
 from giljo_mcp.schemas.service_responses import CascadeImpact, ProductStatistics
 from giljo_mcp.services.dto import MemoryEntryCreateParams
 
+# INF-WriteShape: shared write-side validator lives in its own module (file
+# size budget). Re-exported here so existing callers can keep importing from
+# ``giljo_mcp.services.product_memory_service``.
+from giljo_mcp.services.memory_entry_write_validator import (  # noqa: F401 -- re-exported for back-compat
+    MEMORY_DECISION_MAX,
+    MEMORY_DECISIONS_COUNT,
+    MEMORY_DELIVERABLE_MAX,
+    MEMORY_DELIVERABLES_COUNT,
+    MEMORY_KEY_OUTCOME_MAX,
+    MEMORY_KEY_OUTCOMES_COUNT,
+    MEMORY_SUMMARY_MAX,
+    MEMORY_TAG_MAX_LEN,
+    MEMORY_TAGS_COUNT,
+    MemoryEntryWriteSchema,
+    MemoryEntryWriteValidationError,
+    validate_memory_entry_write,
+)
+
 
 logger = logging.getLogger(__name__)
 

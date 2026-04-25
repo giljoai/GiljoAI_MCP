@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import setupService from '@/services/setupService'
 import configService from '@/services/configService'
-import { useUserStore } from '@/stores/user'
+import { createAuthGuard } from '@/router/authGuard'
 
 // Route definitions - views will be implemented after analyzer results
 const routes = [
@@ -161,14 +161,15 @@ const routes = [
     },
   },
   {
-    path: '/settings',
-    name: 'UserSettings',
-    component: () => import('@/views/UserSettings.vue'),
+    path: '/tools',
+    name: 'Tools',
+    alias: '/settings', // back-compat: old bookmarks, deep links, and external docs keep resolving
+    component: () => import('@/views/ToolsView.vue'),
     meta: {
       layout: 'default',
-      title: 'My Settings',
-      icon: 'mdi-cog',
-      showInNav: false, // Now in profile menu, not main nav
+      title: 'Tools',
+      icon: 'mdi-tools',
+      showInNav: false,
       requiresAuth: true,
     },
   },
@@ -209,18 +210,40 @@ const routes = [
       requiresAdmin: true,
     },
   },
+  // Account shell with Profile / Billing / Danger sub-tabs (FE-0023).
   {
-    path: '/admin/mcp-integration',
-    name: 'McpIntegration',
-    component: () => import('@/views/McpIntegration.vue'),
+    path: '/account',
+    component: () => import('@/views/account/AccountShell.vue'),
     meta: {
       layout: 'default',
-      title: 'MCP Integration',
-      icon: 'mdi-connection',
-      showInNav: true,
+      title: 'Account',
+      showInNav: false,
       requiresAuth: true,
-      requiresAdmin: true,
     },
+    children: [
+      {
+        path: '',
+        redirect: { name: 'AccountProfile' },
+      },
+      {
+        path: 'profile',
+        name: 'AccountProfile',
+        component: () => import('@/views/account/ProfilePage.vue'),
+        meta: { title: 'Account · Profile', requiresAuth: true },
+      },
+      {
+        path: 'billing',
+        name: 'AccountBilling',
+        component: () => import('@/views/account/BillingPage.vue'),
+        meta: { title: 'Account · Billing', requiresAuth: true },
+      },
+      {
+        path: 'danger',
+        name: 'AccountDanger',
+        component: () => import('@/views/account/DangerPage.vue'),
+        meta: { title: 'Account · Danger Zone', requiresAuth: true },
+      },
+    ],
   },
   // Organization Routes (Handover 0424d)
   {
@@ -269,144 +292,15 @@ const router = createRouter({
 // which calls router.addRoute() after config loads.
 // CE router never imports from saas/ -- Deletion Test holds.
 
-// Navigation guard (Handover 0034 - simplified fresh install detection)
-// IMP-0011: demo/saas modes route fresh-install visitors to the public
-// /demo-landing page (provided by saas/routes) instead of the CE
-// CreateAdminAccount wizard. CE behavior is unchanged.
-router.beforeEach(async (to, from, next) => {
-  // Set page title
-  document.title = `${to.meta.title || 'GiljoAI'} - GiljoAI MCP`
-
-  // Fetch setupState ONCE at guard entry — single source of truth for both
-  // mode resolution and route_signal. setupService caches with a 2s TTL so
-  // subsequent reads in the same navigation are free.
-  //
-  // Why setupState is authoritative for `mode`: configService.getGiljoMode()
-  // depends on an async fetch of /api/v1/config/frontend that may not have
-  // resolved by the time this guard fires on first paint, in which case it
-  // returns the 'ce' default. /api/setup/status returns `mode` synchronously
-  // alongside route_signal — using it removes the race that previously caused
-  // demo deployments to fall through to the CE branch and block /welcome.
-  let setupState = null
-  try {
-    setupState = await setupService.checkEnhancedStatus()
-  } catch {
-    // Network error — proceed with configService fallback below
-  }
-
-  const mode = (() => {
-    if (setupState?.mode) return setupState.mode
-    try { return configService.getGiljoMode() } catch { return 'ce' }
-  })()
-  const isPublicLandingMode = mode !== 'ce'
-
-  // PRIORITY 1: Fresh install / landing detection
-  // Skip for the landing targets themselves and for /login to avoid loops.
-  if (
-    setupState &&
-    to.path !== '/welcome' &&
-    to.path !== '/login' &&
-    to.path !== '/demo-landing' &&
-    to.path !== '/register' &&
-    to.path !== '/reset-password'
-  ) {
-    // Backend emits route_signal ∈ {'create_admin', 'login', 'public_landing'}
-    // in addition to the legacy is_fresh_install/show_public_landing booleans.
-    // Prefer route_signal when present; fall back to booleans + mode.
-    //
-    // IMPORTANT: `public_landing` is the signal for anonymous first-paint on
-    // demo/saas deployments -- it routes unauthenticated visitors to the
-    // marketing landing. It must NOT apply to authenticated users, otherwise
-    // every post-login navigation bounces back to /demo-landing (see loop
-    // reported 2026-04-22 on the demo server).
-    const signal = setupState.route_signal
-    const userStoreEarly = useUserStore()
-    const isAuthenticated = !!userStoreEarly.currentUser
-    if (signal === 'public_landing' && !isAuthenticated) {
-      next('/demo-landing')
-      return
-    }
-    if (signal === 'create_admin') {
-      next('/welcome')
-      return
-    }
-    // Legacy / belt-and-suspenders path (no route_signal yet or transient error).
-    // In demo/saas we NEVER want the CreateAdminAccount wizard to be visible.
-    if (
-      isPublicLandingMode &&
-      !isAuthenticated &&
-      (setupState.show_public_landing || setupState.is_fresh_install)
-    ) {
-      next('/demo-landing')
-      return
-    }
-
-    if (!isPublicLandingMode && setupState.is_fresh_install) {
-      // CE fresh install (0 users) - redirect to create admin account
-      next('/welcome')
-      return
-    }
-  }
-
-  // PRIORITY 2: Auth routes (layout: 'auth') - allow access without authentication
-  if (to.meta.layout === 'auth') {
-    // Security check: Block /welcome if users exist OR if we're in demo/saas mode
-    // (demo/saas must never expose the admin-bootstrap UI publicly).
-    if (to.path === '/welcome') {
-      if (isPublicLandingMode) {
-        console.warn('[SECURITY] Blocking /welcome in demo/saas mode - admin bootstrap is CLI-only')
-        next('/demo-landing')
-        return
-      }
-      // CE: block /welcome only when users genuinely exist. Defense-in-depth:
-      // require BOTH !is_fresh_install AND total_users_count > 0 so the legacy
-      // 'is_fresh_install: false in demo mode means no users' bug can never
-      // resurface (the demo case is handled above by isPublicLandingMode).
-      if (setupState && !setupState.is_fresh_install && (setupState.total_users_count ?? 0) > 0) {
-        console.warn(
-          '[SECURITY] Blocking /welcome access - users exist (total:',
-          setupState.total_users_count,
-          ')',
-        )
-        next('/login')
-        return
-      }
-    }
-
-    // Allow access to auth routes
-    next()
-    return
-  }
-
-  // PRIORITY 3: App routes (layout: 'default') - check authentication
-  const userStore = useUserStore()
-  const requiresAuth = to.meta.requiresAuth !== false
-
-  if (requiresAuth) {
-    try {
-      // Use store's fetchCurrentUser to ensure org fields (orgRole, etc.) are set
-      if (!userStore.currentUser) {
-        const success = await userStore.fetchCurrentUser()
-        if (!success) throw new Error('Auth check failed')
-      }
-    } catch {
-      // Not authenticated, redirect to login
-      next({
-        path: '/login',
-        query: { redirect: to.fullPath },
-      })
-      return
-    }
-  }
-
-  // Check admin role requirement
-  if (to.meta.requiresAdmin && !userStore.isAdmin) {
-    next({ name: 'Dashboard' })
-    return
-  }
-
-  // All checks passed, allow navigation
-  next()
-})
+// Navigation guard (Handover 0034 - simplified fresh install detection;
+// hardened 2026-04-24 to close the route-guard-bypass leak observed on
+// demo.giljo.ai where typing /home in the address bar after logout rendered
+// the protected view. The full guard now lives in ./authGuard.js so it can
+// be unit-tested in isolation -- see tests/unit/router/authGuard.spec.js).
+//
+// Option A: every navigation to a protected route re-verifies the session
+// by calling /api/auth/me via userStore.checkAuth(). On auth failure the
+// store is reset and the user is redirected to /login.
+router.beforeEach(createAuthGuard({ setupService, configService }))
 
 export default router

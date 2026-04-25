@@ -87,6 +87,109 @@ describe('useMcpConfig', () => {
       const expectedPort = window.location.port || '7272'
       expect(result).toContain(`:${expectedPort}`)
     })
+
+    // INF-5012b — reverse-proxy/Cloudflare Tunnel deployments: backend returns
+    // api.port=null when reached on the standard 443/80 port. The composed URL
+    // must omit the ':port' segment.
+    describe('backendConfig object signature (INF-5012b)', () => {
+      it('omits port when cfg.port is null (demo.giljo.ai via Cloudflare)', () => {
+        // Browser is on a different host so we hit the out-of-band branch,
+        // not the window.location.origin shortcut.
+        expect(
+          buildServerUrl({ host: 'demo.giljo.ai', port: null, protocol: 'https' }),
+        ).toBe('https://demo.giljo.ai')
+      })
+
+      it('omits port when cfg.port is undefined', () => {
+        expect(
+          buildServerUrl({ host: 'demo.giljo.ai', protocol: 'https' }),
+        ).toBe('https://demo.giljo.ai')
+      })
+
+      it('omits port when cfg.port is the empty string', () => {
+        expect(
+          buildServerUrl({ host: 'demo.giljo.ai', port: '', protocol: 'https' }),
+        ).toBe('https://demo.giljo.ai')
+      })
+
+      it('omits port when cfg.port is 0', () => {
+        expect(
+          buildServerUrl({ host: 'demo.giljo.ai', port: 0, protocol: 'https' }),
+        ).toBe('https://demo.giljo.ai')
+      })
+
+      it('retains numeric port for CE localhost (port=7272)', () => {
+        expect(
+          buildServerUrl({ host: 'some-other-host.lan', port: 7272, protocol: 'http' }),
+        ).toBe('http://some-other-host.lan:7272')
+      })
+
+      it('omits implicit https port 443', () => {
+        expect(
+          buildServerUrl({ host: 'demo.giljo.ai', port: 443, protocol: 'https' }),
+        ).toBe('https://demo.giljo.ai')
+      })
+
+      it('omits implicit http port 80', () => {
+        expect(
+          buildServerUrl({ host: 'customer.lan', port: 80, protocol: 'http' }),
+        ).toBe('http://customer.lan')
+      })
+
+      it('never renders :null or :undefined literal strings', () => {
+        const nullCase = buildServerUrl({ host: 'demo.giljo.ai', port: null, protocol: 'https' })
+        const undefCase = buildServerUrl({ host: 'demo.giljo.ai', port: undefined, protocol: 'https' })
+        expect(nullCase).not.toContain(':null')
+        expect(nullCase).not.toContain(':undefined')
+        expect(undefCase).not.toContain(':null')
+        expect(undefCase).not.toContain(':undefined')
+      })
+
+      it('returns window.location.origin when browser host matches cfg.host', () => {
+        // jsdom default host is 'localhost' — force a match to verify the shortcut.
+        const result = buildServerUrl({
+          host: window.location.hostname,
+          port: 7272,
+          protocol: 'http',
+        })
+        expect(result).toBe(window.location.origin)
+      })
+    })
+
+    // INF-5012b — downstream command generators must not inherit :null or
+    // :undefined from a missing port.
+    describe('composition with tool generators (INF-5012b)', () => {
+      it('claude command on demo.giljo.ai has no :port', () => {
+        const url = buildServerUrl({ host: 'demo.giljo.ai', port: null, protocol: 'https' })
+        const cmd = generateClaudeConfig(url, 'giljo_abc')
+        expect(cmd).toContain('https://demo.giljo.ai/mcp')
+        expect(cmd).not.toContain(':null')
+        expect(cmd).not.toContain(':undefined')
+        expect(cmd).not.toContain(':7272')
+      })
+
+      it('codex command on demo.giljo.ai has no :port', () => {
+        const url = buildServerUrl({ host: 'demo.giljo.ai', port: null, protocol: 'https' })
+        const cmd = generateCodexConfig(url)
+        expect(cmd).toContain('https://demo.giljo.ai/mcp')
+        expect(cmd).not.toContain(':null')
+        expect(cmd).not.toContain(':undefined')
+      })
+
+      it('gemini command on demo.giljo.ai has no :port', () => {
+        const url = buildServerUrl({ host: 'demo.giljo.ai', port: null, protocol: 'https' })
+        const cmd = generateGeminiConfig(url, 'giljo_abc')
+        expect(cmd).toContain('https://demo.giljo.ai/mcp')
+        expect(cmd).not.toContain(':null')
+        expect(cmd).not.toContain(':undefined')
+      })
+
+      it('claude command on CE localhost retains :7272', () => {
+        const url = buildServerUrl({ host: 'some-other-host.lan', port: 7272, protocol: 'http' })
+        const cmd = generateClaudeConfig(url, 'giljo_abc')
+        expect(cmd).toContain('http://some-other-host.lan:7272/mcp')
+      })
+    })
   })
 
   // ─── generateClaudeConfig ──────────────────────────────────────────

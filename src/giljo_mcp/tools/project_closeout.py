@@ -26,13 +26,13 @@ from giljo_mcp.models.products import Product
 from giljo_mcp.models.projects import Project
 from giljo_mcp.schemas.jsonb_validators import validate_git_commits
 from giljo_mcp.services.dto import MemoryEntryCreateParams
-from giljo_mcp.services.product_memory_service import ProductMemoryService
+from giljo_mcp.services.product_memory_service import (
+    ProductMemoryService,
+    validate_memory_entry_write,
+)
 from giljo_mcp.services.project_closeout_service import ProjectCloseoutService
 from giljo_mcp.tenant import TenantManager
 from giljo_mcp.tools._memory_helpers import (
-    MAX_DECISIONS_MADE,
-    MAX_KEY_OUTCOMES,
-    MAX_SUMMARY_LENGTH,
     _fetch_github_commits,
     _get_git_config,
     emit_websocket_event,
@@ -175,15 +175,22 @@ async def _resolve_git_commits(
     product_memory: dict[str, Any],
     git_commits: list[dict[str, Any]] | None,
     project: Any,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], str | None]:
     """Resolve git commits from agent input, GitHub API, or empty default.
 
     Validates agent-supplied commits, falls back to GitHub API in SaaS mode,
-    or returns an empty list in CE mode. Raises ValidationError when git
-    integration is enabled but no commits are provided.
+    or returns an empty list in CE mode.
+
+    When git integration is enabled but the agent supplies no commits, the
+    closeout still succeeds — a warning is logged and returned for surfacing
+    in the response. This preserves the user's git preference as a strong
+    recommendation while letting agents close projects in non-git directories
+    after asking the user (per ch5 protocol guidance).
 
     Returns:
-        Validated list of git commit dicts (possibly empty).
+        (commits, warning) — commits is always a validated list (possibly empty);
+        warning is a human-readable string when git was enabled but no commits
+        were provided, otherwise None.
     """
     git_integration_enabled = False
     try:
@@ -195,15 +202,18 @@ async def _resolve_git_commits(
     except Exception:  # noqa: BLE001, S110
         pass  # Settings read failure is not a blocker
 
+    git_warning: str | None = None
     if git_integration_enabled and not git_commits:
-        raise ValidationError(
-            message=(
-                "Git integration is enabled. Provide at least one commit before closing the project. "
-                "Recovery: run 'git status' to check for uncommitted changes, then "
-                "'git add <files> && git commit -m \"<message>\"' to create a commit. "
-                "Use the resulting commit SHA in the git_commits parameter and retry."
-            ),
-            context={"project_id": project_id, "error_code": "GIT_COMMITS_REQUIRED"},
+        git_warning = (
+            "Git integration is enabled in user settings, but no commits were provided "
+            "for this closeout. Project closed without commit history. If the project "
+            "directory is a git repo, the agent should have committed and passed git_commits; "
+            "if not a git repo, ask the user whether to git init future projects."
+        )
+        logger.warning(
+            "git_commits_missing_with_integration_enabled project_id=%s tenant_key=%s",
+            project_id,
+            tenant_key,
         )
 
     if git_commits is not None:
@@ -233,7 +243,7 @@ async def _resolve_git_commits(
     if git_commits is None:
         git_commits = []
 
-    return git_commits
+    return git_commits, git_warning
 
 
 async def close_project_and_update_memory(
@@ -259,9 +269,18 @@ async def close_project_and_update_memory(
     When force=True, auto-decommissions any remaining active agents before
     closing, and logs a warning with the affected agents.
 
+    Caps (INF-WriteShape, shared with write_360_memory):
+        summary <= 500 chars (2-3 sentence headline of what changed and why)
+        key_outcomes <= 5 items, each <= 200 chars
+        decisions_made <= 5 items, each <= 250 chars
+
     Args:
         git_commits: Agent-supplied commits from local git log. When provided,
             skips the GitHub API fetch entirely (passive server model).
+
+    Raises:
+        MemoryEntryWriteValidationError: structured rejection when caps are
+            exceeded (single shared validator with write_360_memory).
     """
     if not project_id:
         raise ValidationError("project_id is required")
@@ -272,25 +291,24 @@ async def close_project_and_update_memory(
     if db_manager is None:
         raise ValidationError("db_manager is required")
 
-    if len(summary) > MAX_SUMMARY_LENGTH:
-        raise ValidationError(f"Summary too long (max {MAX_SUMMARY_LENGTH} characters)")
-
     key_outcomes = key_outcomes or []
     decisions_made = decisions_made or []
 
-    if len(key_outcomes) > MAX_KEY_OUTCOMES:
-        logger.warning(
-            f"Truncating key_outcomes from {len(key_outcomes)} to {MAX_KEY_OUTCOMES}",
-            extra={"project_id": project_id},
-        )
-        key_outcomes = key_outcomes[:MAX_KEY_OUTCOMES]
-
-    if len(decisions_made) > MAX_DECISIONS_MADE:
-        logger.warning(
-            f"Truncating decisions_made from {len(decisions_made)} to {MAX_DECISIONS_MADE}",
-            extra={"project_id": project_id},
-        )
-        decisions_made = decisions_made[:MAX_DECISIONS_MADE]
+    # INF-WriteShape: shared validated write boundary (same as write_360_memory).
+    # Validates only the agent-supplied fields here; deliverables + tags are
+    # derived downstream and re-validated when applied.
+    validated = validate_memory_entry_write(
+        {
+            "summary": summary,
+            "key_outcomes": key_outcomes,
+            "decisions_made": decisions_made,
+            "deliverables": [],
+            "tags": [],
+        }
+    )
+    summary = validated.summary
+    key_outcomes = validated.key_outcomes
+    decisions_made = validated.decisions_made
 
     try:
         owns_session = session is None
@@ -345,7 +363,7 @@ async def close_project_and_update_memory(
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
-            git_commits = await _resolve_git_commits(
+            git_commits, git_warning = await _resolve_git_commits(
                 session=active_session,
                 project_id=project_id,
                 tenant_key=tenant_key,
@@ -364,7 +382,13 @@ async def close_project_and_update_memory(
                 session=active_session,
             )
 
-            deliverables = _extract_deliverables(key_outcomes)
+            # Step C double-write fix (analyzer 2026-04-25): _extract_deliverables
+            # was returning a deduplicated copy of key_outcomes -- 89.4% of
+            # historical entries were byte-identical to key_outcomes as a
+            # result. deliverables is a drop-cap field (3x100, full removal
+            # scheduled post-demo); stop synthesizing it from key_outcomes.
+            # TODO(post-demo): remove the deliverables column entirely.
+            deliverables: list[str] = []
             tags = _extract_tags(summary, key_outcomes, decisions_made)
             priority = _derive_priority(project, summary, key_outcomes)
             significance_score = _calculate_significance(project, key_outcomes, git_commits)
@@ -413,12 +437,15 @@ async def close_project_and_update_memory(
                 data={"entry": entry.to_dict()},
             )
 
-            return {
+            response: dict[str, Any] = {
                 "entry_id": str(entry.id),
                 "sequence_number": sequence_number,
                 "git_commits_count": len(git_commits),
                 "message": "Project closed and 360 Memory updated successfully",
             }
+            if git_warning:
+                response["git_warning"] = git_warning
+            return response
 
     except Exception as exc:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to close project and update memory", extra={"error": str(exc)})
@@ -538,18 +565,6 @@ async def _force_decommission_agents(
         tenant_manager=TenantManager(),
     )
     return await svc.decommission_project_agents(session=session, project_id=project_id, tenant_key=tenant_key)
-
-
-def _extract_deliverables(key_outcomes: list[str]) -> list[str]:
-    """Derive deliverables from key outcomes (deduplicated)."""
-    seen = set()
-    deliverables: list[str] = []
-    for outcome in key_outcomes or []:
-        normalized = (outcome or "").strip()
-        if normalized and normalized not in seen:
-            seen.add(normalized)
-            deliverables.append(normalized)
-    return deliverables
 
 
 def _extract_tags(summary: str, key_outcomes: list[str], decisions_made: list[str]) -> list[str]:

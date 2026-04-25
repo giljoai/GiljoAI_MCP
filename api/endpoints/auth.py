@@ -718,6 +718,9 @@ async def revoke_api_key(
 # 0371: Removed duplicate GET /users endpoint - frontend now uses /api/v1/users/
 
 
+# TENANT-LEVEL: per-user tenancy — admin creates new user, AuthService.register_user
+# generates a fresh tenant_key per registrant via TenantManager.generate_tenant_key(username).
+# CE single-user license check at L767 prevents multi-user in CE; demo/SaaS allow it.
 @router.post("/register", response_model=RegisterUserResponse, status_code=status.HTTP_201_CREATED, tags=["auth"])
 async def register_user(
     http_request: Request,

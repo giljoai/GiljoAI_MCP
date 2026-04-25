@@ -15,7 +15,15 @@
         >
           {{ project.taxonomy_alias }}
         </v-chip>
-        <span class="project-name-text">{{ project?.name || 'Loading...' }}</span>
+        <v-tooltip v-if="project?.name && project.name.length > 40" location="bottom">
+          <template #activator="{ props: tooltipProps }">
+            <span v-bind="tooltipProps" class="project-name-text project-name-text--truncated" tabindex="0">
+              {{ project.name.slice(0, 40) + '...' }}
+            </span>
+          </template>
+          <span>{{ project.name }}</span>
+        </v-tooltip>
+        <span v-else class="project-name-text">{{ project?.name || 'Loading...' }}</span>
       </h1>
       <p class="text-body-2 project-id mb-0">
         Project ID: {{ project?.project_id || project?.id || 'N/A' }}
@@ -891,6 +899,10 @@ async function handleLaunchJobs() {
 
   .project-name-text {
     color: rgb(var(--v-theme-primary));
+  }
+
+  .project-name-text--truncated {
+    cursor: help;
   }
 
   .project-badge {

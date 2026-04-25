@@ -57,12 +57,35 @@ def register_exception_handlers(app):
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-        """Handle legacy HTTPException (backward compatibility)."""
+        """Handle legacy HTTPException.
+
+        Back-compat contract: HTTPException raised with a plain string detail
+        produces ``{"error_code": "HTTP_ERROR", "message": "<str>"}``.
+
+        SEC-0001 extension: if ``exc.detail`` is a dict that already carries
+        a machine-readable ``error_code`` (e.g. ``UPLOAD_TOO_LARGE``), lift
+        that code to the response top level so the frontend's
+        ``parseErrorResponse`` (``frontend/src/utils/errorMessages.js:140``)
+        picks it up via its first branch. This matches the shape emitted by
+        ``BaseGiljoError`` exceptions and keeps both paths symmetric.
+        """
+        detail = exc.detail
+        if isinstance(detail, dict) and isinstance(detail.get("error_code"), str):
+            content = {
+                "error_code": detail["error_code"],
+                "message": detail.get("message", ""),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            context = {k: v for k, v in detail.items() if k not in {"error_code", "message"}}
+            if context:
+                content["context"] = context
+            return JSONResponse(status_code=exc.status_code, content=content)
+
         return JSONResponse(
             status_code=exc.status_code,
             content={
                 "error_code": "HTTP_ERROR",
-                "message": exc.detail,
+                "message": detail,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         )

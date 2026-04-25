@@ -94,6 +94,7 @@ class AgentTemplate(Base):
 
     # Export tracking (Handover 0335)
     last_exported_at = Column(DateTime(timezone=True), nullable=True)  # Timestamp of last export to CLI
+    user_managed_export = Column(Boolean, default=False, server_default="false")  # User dismissed staleness manually
 
     # Metadata
     description = Column(Text, nullable=True)
@@ -128,13 +129,22 @@ class AgentTemplate(Base):
         """
         Check if template may be stale (modified after last export).
 
-        Three states:
+        Four states:
+        - User marked as managed → False (user dismissed staleness)
         - Never exported (last_exported_at is NULL) → True (stale)
         - Exported after last change → False (up to date)
         - Changed after last export → True (may be outdated)
 
+        Disabled templates are never flagged as stale — the flag only matters
+        when the agent is active and its outdated state is actionable.
+
         Falls back to created_at when updated_at is NULL (freshly seeded).
         """
+        if not self.is_active:
+            return False  # Disabled agents don't show staleness
+        if self.user_managed_export:
+            return False
+
         if self.last_exported_at is None:
             return True  # Never exported — always stale
 

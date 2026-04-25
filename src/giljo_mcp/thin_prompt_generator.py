@@ -24,6 +24,7 @@ Author: GiljoAI Development Team
 """
 
 import logging
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -33,7 +34,6 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from giljo_mcp.config_manager import get_config
 from giljo_mcp.models import Project
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.prompts.claude_prompt_builder import ClaudePromptBuilder
@@ -47,19 +47,6 @@ from giljo_mcp.utils.log_sanitizer import sanitize
 logger = logging.getLogger(__name__)
 
 
-def _get_ssl_protocol() -> str:
-    """Get HTTP protocol based on SSL configuration in config.yaml.
-
-    Returns:
-        "https" if ssl_enabled is True in config.yaml, "http" otherwise.
-    """
-    try:
-        return "https" if get_config().get_nested("features.ssl_enabled", default=False) else "http"
-    except (OSError, ValueError):
-        pass
-    return "http"
-
-
 def build_continuation_prompt(
     project_id: str,
     agent_id: str,
@@ -70,8 +57,8 @@ def build_continuation_prompt(
     """Build a continuation prompt for orchestrator session refresh.
 
     Canonical prompt builder for all handover paths (REST endpoint, slash command,
-    ThinClientPromptGenerator). Reads MCP URL from config including external_host
-    for public IP deployments.
+    ThinClientPromptGenerator). Reads MCP URL from GILJO_PUBLIC_URL env-var
+    (INF-5012b) with http://localhost:7272 as the CE-localhost fallback.
 
     Args:
         project_id: Project UUID
@@ -83,12 +70,11 @@ def build_continuation_prompt(
     Returns:
         Continuation prompt string
     """
-    config = get_config()
-    mcp_host = config.get_nested("services.external_host") or config.server.api_host
-
-    mcp_port = config.server.api_port
-    mcp_proto = _get_ssl_protocol()
-    mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}/mcp"
+    # INF-5012b: prefer GILJO_PUBLIC_URL (demo/cloud deploys) over reading
+    # the server's bind address from config, which produces ":7272" URLs
+    # when the server is fronted by a reverse proxy.
+    public_base = os.environ.get("GILJO_PUBLIC_URL", "http://localhost:7272").rstrip("/")
+    mcp_url = f"{public_base}/mcp"
 
     project_display = f' "{project_name}"' if project_name else ""
     product_param = product_id if product_id else "<fetch from project>"
@@ -119,10 +105,12 @@ FIRST ACTIONS (DO NOT RE-STAGE):
 3. Read 360 Memory for session context:
    mcp__giljo_mcp__fetch_context(
        product_id="{product_param}",
-       categories=["memory_360"]
+       categories=["memory_360"],
+       depth_config={{"memory_360": {{"shape": "full"}}}}
    )
    -> Look for the most recent "handover_closeout" entry (authored by job {job_id})
    -> Contains: previous progress, current status, next steps
+   -> "full" shape required: handover bodies are needed in full, not headlines.
 
 4. Check messages + retrieve execution plan (can run in parallel):
    mcp__giljo_mcp__receive_messages(agent_id="{agent_id}")
@@ -229,23 +217,43 @@ mcp__giljo_mcp__report_progress(
 
 STEP 4 — Write 360 Memory handover (append-only, previous entries are preserved)
 
+The server enforces hard caps. Compose your handover to fit:
+- summary: max 500 chars (2-3 sentence headline of the session and the handoff context)
+- key_outcomes: max 5 items, each max 200 chars
+- decisions_made: max 5 items, each max 250 chars
+- tags: max 8, from controlled vocabulary (see below). Over-cap fields are REJECTED with
+  a structured error pointing to the limit — do NOT retry with the same payload, re-trim.
+
+Distribute content across fields rather than packing everything into summary. Use
+key_outcomes for COMPLETED WORK items, decisions_made for COORDINATION CONTEXT and
+NEXT-STEPS items. If you have more team-state detail than fits, send a separate message
+to the continuation orchestrator with the overflow rather than busting the cap.
+
+Controlled tag vocabulary (16, pick ≤ 8): feature, bug-fix, refactor, perf, security,
+docs, test, chore, frontend, backend, database, api, infrastructure, ui-ux, integration,
+migration. Use 'chore' if nothing else fits.
+
 mcp__giljo_mcp__write_360_memory(
     project_id="{project_id}",
     entry_type="handover_closeout",
     author_job_id="{job_id}",
-    summary="<Include ALL of the following sections:
-      COMPLETED WORK: <what was accomplished this session>
-      IN-PROGRESS WORK: <what was actively being worked on>
-      TEAM STATE AT HANDOVER:
-        - Agent <name> (job_id: <id>): status=<status>, pending work: <description>
-        - <repeat for each agent>
-      COORDINATION CONTEXT FOR CONTINUATION:
-        - What decisions were you about to make?
-        - What messages were you expecting from agents?
-        - What is the next coordination action the continuation orchestrator should take?
-      BLOCKERS: <any known blockers>>",
-    key_outcomes=["<list each concrete outcome from this session>"],
-    decisions_made=["<list architectural/design decisions and rationale>"]
+    summary="<2-3 sentence headline: what session covered, why handoff is happening,
+              and the most critical thing the continuation orchestrator must know first.
+              Max 500 chars.>",
+    key_outcomes=[
+      "<concrete completed outcome 1, max 200 chars>",
+      "<concrete completed outcome 2>",
+      "<in-progress work + where you stopped>",
+      "<team state highlights — name agents, statuses, pending work>",
+      "<known blockers if any>"
+    ],
+    decisions_made=[
+      "<architectural/design decision + rationale, max 250 chars>",
+      "<next coordination action the continuation orchestrator should take>",
+      "<messages you were expecting from agents>",
+      "<decisions you were about to make>"
+    ],
+    tags=["<pick from the 16-tag vocab above, ≤ 8 total>"]
 )
 {git_closeout_section}
 STEP 5 — Confirm to user
@@ -596,14 +604,19 @@ class ThinClientPromptGenerator:
         project_result = await self.db.execute(project_stmt)
         return project_result.scalar_one_or_none()
 
-    def _get_external_host(self) -> str:
-        """Get external MCP server host from config."""
-        config = get_config()
-        return config.get_nested("services.external_host") or config.server.api_host
+    def _get_public_base_url(self) -> str:
+        """Get the public MCP server base URL (INF-5012b).
 
-    def _get_protocol(self) -> str:
-        """Get HTTP protocol based on SSL configuration."""
-        return _get_ssl_protocol()
+        Prefers GILJO_PUBLIC_URL (set on demo/cloud deployments where the
+        server is fronted by a reverse proxy such as Cloudflare Tunnel).
+        Falls back to http://localhost:7272 for vanilla CE installs.
+
+        Note: this is used from MCP tool call context where no FastAPI
+        Request is available; when a Request is in scope, callers should
+        use giljo_mcp.http.url_resolver.get_public_base_url(request)
+        instead (honors X-Forwarded-* headers per request).
+        """
+        return os.environ.get("GILJO_PUBLIC_URL", "http://localhost:7272").rstrip("/")
 
     async def generate_staging_prompt(self, orchestrator_id: str, project_id: str, agent_id: str = None) -> str:
         """Generate thin-client orchestrator staging prompt (Handover 0415).
@@ -649,11 +662,7 @@ class ThinClientPromptGenerator:
             exec_result = await self.db.execute(exec_stmt)
             execution = exec_result.scalars().first()
 
-        config = get_config()
-        mcp_host = self._get_external_host()
-        mcp_port = config.server.api_port
-        mcp_proto = self._get_protocol()
-        mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}"
+        mcp_url = self._get_public_base_url()
 
         return self._staging_builder.build_staging_prompt(
             project=project,

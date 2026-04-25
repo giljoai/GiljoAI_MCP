@@ -17,13 +17,12 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin, require_ce_mode
 from giljo_mcp.models import User
 from giljo_mcp.services.settings_service import SettingsService
 
 
 logger = logging.getLogger(__name__)
-
 
 router = APIRouter()
 
@@ -104,7 +103,10 @@ async def get_system_configuration(current_user: User = Depends(get_current_acti
 
 @router.get("/key/{key_path}", response_model=ConfigurationResponse)
 async def get_configuration(
-    key_path: str, default: Optional[Any] = None, current_user: User = Depends(get_current_active_user)
+    key_path: str,
+    default: Optional[Any] = None,
+    current_user: User = Depends(get_current_active_user),
+    _ce: None = Depends(require_ce_mode),
 ):
     """Get specific configuration value by key path"""
     from api.app_state import state
@@ -127,8 +129,14 @@ async def get_configuration(
     return ConfigurationResponse(key=key, value=value, source=source, updated_at=datetime.now(timezone.utc))
 
 
+# SERVER-LEVEL: mutates in-memory config.yaml (state.config.set), CE-only
 @router.put("/key/{key_path}")
-async def set_configuration(key_path: str, config: ConfigurationSet, current_user: User = Depends(require_admin)):
+async def set_configuration(
+    key_path: str,
+    config: ConfigurationSet,
+    current_user: User = Depends(require_admin),
+    _ce: None = Depends(require_ce_mode),
+):
     """Set configuration value (runtime only, not persisted)"""
     from api.app_state import state
 
@@ -153,8 +161,13 @@ async def set_configuration(key_path: str, config: ConfigurationSet, current_use
     }
 
 
+# SERVER-LEVEL: bulk mutates in-memory config.yaml (state.config.set), CE-only
 @router.patch("/")
-async def update_configurations(update: ConfigurationUpdate, current_user: User = Depends(require_admin)):
+async def update_configurations(
+    update: ConfigurationUpdate,
+    current_user: User = Depends(require_admin),
+    _ce: None = Depends(require_ce_mode),
+):
     """Update multiple configuration values at once"""
     from api.app_state import state
 
@@ -182,8 +195,12 @@ async def update_configurations(update: ConfigurationUpdate, current_user: User 
     }
 
 
+# SERVER-LEVEL: reloads config.yaml from disk (state.config.reload), CE-only
 @router.post("/reload")
-async def reload_configuration(current_user: User = Depends(require_admin)):
+async def reload_configuration(
+    current_user: User = Depends(require_admin),
+    _ce: None = Depends(require_ce_mode),
+):
     """Reload configuration from files and environment"""
     from api.app_state import state
 
@@ -196,6 +213,7 @@ async def reload_configuration(current_user: User = Depends(require_admin)):
     return SuccessResponse(message="Configuration reloaded successfully")
 
 
+# TENANT-LEVEL
 @router.get("/tenant", response_model=dict[str, Any])
 async def get_tenant_configuration(request: Request, current_user: User = Depends(get_current_active_user)):
     """Get configuration for the authenticated user's tenant"""
@@ -226,6 +244,7 @@ async def get_tenant_configuration(request: Request, current_user: User = Depend
     return tenant_config
 
 
+# TENANT-LEVEL
 @router.put("/tenant")
 async def set_tenant_configuration(
     request: Request,
@@ -257,6 +276,7 @@ async def set_tenant_configuration(
     }
 
 
+# TENANT-LEVEL
 @router.delete("/tenant")
 async def delete_tenant_configuration(request: Request, current_user: User = Depends(require_admin)):
     """Delete all configurations for the authenticated user's tenant.
@@ -306,8 +326,12 @@ class DatabasePasswordUpdate(BaseModel):
     )
 
 
+# SERVER-LEVEL: reads .env file (DB_HOST, DB_PORT, DB_PASSWORD), CE-only
 @router.get("/database", response_model=DatabaseConfigResponse)
-async def get_database_configuration(current_user: User = Depends(require_admin)):
+async def get_database_configuration(
+    current_user: User = Depends(require_admin),
+    _ce: None = Depends(require_ce_mode),
+):
     """Get database configuration (password masked) - reads from .env file"""
     # Read directly from .env file
     from dotenv import dotenv_values
@@ -332,8 +356,13 @@ async def get_database_configuration(current_user: User = Depends(require_admin)
     return DatabaseConfigResponse(host=host, port=port, name=name, user=user, password_masked=password_masked)
 
 
+# SERVER-LEVEL: ALTER USER on PostgreSQL + writes .env DB_PASSWORD, CE-only
 @router.post("/database/password")
-async def update_database_password(update: DatabasePasswordUpdate, current_user: User = Depends(require_admin)):
+async def update_database_password(
+    update: DatabasePasswordUpdate,
+    current_user: User = Depends(require_admin),
+    _ce: None = Depends(require_ce_mode),
+):
     """
     Update database password for giljo_user in both PostgreSQL and .env file
 
@@ -475,10 +504,12 @@ class SSLStatusResponse(BaseModel):
     message: str
 
 
+# SERVER-LEVEL: reads SSL paths from settings (server-global cert/key files), CE-only
 @router.get("/ssl", response_model=SSLStatusResponse)
 async def get_ssl_status(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db_session),
+    _ce: None = Depends(require_ce_mode),
 ):
     """Get current SSL/HTTPS configuration status from database."""
     service = SettingsService(db, current_user.tenant_key)
@@ -500,11 +531,13 @@ async def get_ssl_status(
     )
 
 
+# SERVER-LEVEL: generates server-global SSL certs + writes config.yaml, CE-only
 @router.post("/ssl", response_model=SSLStatusResponse)
 async def toggle_ssl(
     request_body: SSLToggleRequest,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db_session),
+    _ce: None = Depends(require_ce_mode),
 ):
     """Enable or disable SSL/HTTPS. Generates self-signed certificates if none exist."""
     from giljo_mcp._config_io import read_config, write_config
@@ -610,55 +643,48 @@ async def toggle_ssl(
 
 @router.get("/frontend")
 async def get_frontend_configuration(request: Request):
+    """Get frontend-specific configuration (host, port, websocket URL, security flags).
+
+    Response shape (INF-5012b): api.host/port/protocol derive from
+    request.base_url (honors X-Forwarded-* via uvicorn proxy_headers), matching
+    the pattern websocket.url already uses. api.port is int | null — null when
+    implicit on a reverse proxy (standard 443/80), otherwise numeric (e.g. 7272
+    for CE localhost). Frontend must branch on null to omit the ":port" segment.
     """
-    Get frontend-specific configuration.
+    from urllib.parse import urlparse
 
-    v3.0 Unified Architecture:
-    Returns essential configuration for frontend to connect to the API server.
-    Does NOT include deployment mode (removed in v3.0 - unified architecture only).
-
-    Returns:
-        - api.host: The host where the API is accessible (e.g., "192.168.1.100" or "localhost")
-        - api.port: The API port (e.g., 7272)
-        - api.is_remote_client: Whether the requesting client is on a different machine
-        - websocket.url: The full WebSocket URL (e.g., "ws://192.168.1.100:7272")
-        - security.api_keys_required: Whether API keys are required
-
-    This endpoint does NOT expose sensitive data like passwords or API keys.
-
-    Note:
-        Localhost installs bind 127.0.0.1 (HTTP). LAN/WAN installs bind 0.0.0.0 with
-        HTTPS (mkcert). Bind address derived from install-time network choice.
-        The frontend connects via the configured external_host (set during installation).
-    """
     from api.app_state import GILJO_MODE, state
 
     if not state.config:
         raise HTTPException(status_code=503, detail="Configuration manager not available")
 
-    # Extract frontend-needed configuration via ConfigManager
-    api_port = state.config.get_nested("services.api.port", 7272)
+    # Extract non-URL frontend configuration via ConfigManager
     api_keys_required = state.config.get_nested("features.api_keys_required", default=False)
-    frontend_host = state.config.get_nested("services.external_host", "localhost")
     ssl_enabled = state.config.get_nested("features.ssl_enabled", default=False)
 
-    # Build WebSocket URL (use ws:// for http, wss:// for https)
-    ws_protocol = "wss" if ssl_enabled else "ws"
-    ws_url = f"{ws_protocol}://{frontend_host}:{api_port}"
+    # Derive api.host/port/protocol from the request's public base URL (INF-5012b).
+    # Honors X-Forwarded-Host / X-Forwarded-Proto via uvicorn proxy_headers so
+    # Cloudflare Tunnel, customer nginx, and mkcert LAN deployments all emit
+    # the user-facing URL rather than the server's bind address.
+    base = str(request.base_url).rstrip("/")
+    parsed = urlparse(base)
+    api_host = parsed.hostname or "localhost"
+    api_port = parsed.port  # None when implicit (standard 443/80 through proxy)
+    api_protocol = parsed.scheme or ("https" if ssl_enabled else "http")
+
+    ws_url = base.replace("https://", "wss://", 1).replace("http://", "ws://", 1)
+    ws_protocol = "wss" if ws_url.startswith("wss://") else "ws"
 
     # Resolve default tenant key from config for frontend use
     default_tenant_key = state.config.tenant.default_tenant_key or ""
 
-    # v3.0 Unified Architecture: No 'mode' field in response
-    api_protocol = "https" if ssl_enabled else "http"
-
     # Detect remote client: compare request IP against local addresses and server's own host
-    is_remote_client = _is_remote_client(request, frontend_host)
+    is_remote_client = _is_remote_client(request, api_host)
 
     return {
         "api": {
-            "host": frontend_host,  # Frontend connection host (external_host from config)
-            "port": api_port,
+            "host": api_host,  # Public host derived from request.base_url
+            "port": api_port,  # None when implicit (standard 443/80)
             "protocol": api_protocol,
             "ssl_enabled": ssl_enabled,
             "is_remote_client": is_remote_client,
@@ -743,8 +769,12 @@ async def download_root_ca():
         raise HTTPException(status_code=404, detail="mkcert is not installed or CA not found") from exc
 
 
+# SERVER-LEVEL: pings server-global database connection, CE-only
 @router.get("/health/database")
-async def check_database_health(current_user: User = Depends(get_current_active_user)):
+async def check_database_health(
+    current_user: User = Depends(get_current_active_user),
+    _ce: None = Depends(require_ce_mode),
+):
     """Test database connection (requires authentication)"""
     from api.app_state import state
 

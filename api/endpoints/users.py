@@ -294,15 +294,17 @@ def user_to_response(user: User) -> UserResponse:
 # API Endpoints
 
 
+# TENANT-LEVEL
 @router.get("/", response_model=list[UserResponse])
 async def list_users(
     current_user: User = Depends(require_admin), user_service: UserService = Depends(get_user_service)
 ) -> list[UserResponse]:
     """
-    List all users (admin cross-tenant view).
+    List users within the current admin's tenant.
 
-    Requires admin role. Returns all users across all tenants so admins can manage
-    users they created (per-user tenancy means each user has their own tenant_key).
+    Requires admin role. Returns only users whose ``tenant_key`` matches the admin's
+    tenant. Cross-tenant user administration is an ops-panel concern (INF-0002), not a
+    product concern — mode (CE/demo/SaaS) and role are orthogonal (SEC-0005a).
 
     Args:
         current_user: Current authenticated admin user
@@ -312,20 +314,33 @@ async def list_users(
         List of UserResponse objects (passwords excluded)
 
     Raises:
+        HTTPException: 400 if current user has no tenant_key
         AuthorizationError: User is not admin (403)
         BaseGiljoError: Database operation failed (500)
     """
-    logger.debug("Admin %s listing all users (cross-tenant admin view)", sanitize(current_user.username))
+    if not current_user.tenant_key:
+        logger.error("Admin %s has null/empty tenant_key — refusing to list users", sanitize(current_user.username))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current user has no tenant_key; cannot scope user list.",
+        )
 
-    # Admin sees all users across all tenants for user management
-    users = await user_service.list_users(include_all_tenants=True)
+    logger.debug(
+        "Admin %s listing users in tenant %s",
+        sanitize(current_user.username),
+        sanitize(current_user.tenant_key),
+    )
 
-    logger.info("Found %d users (all tenants)", len(users))
+    # Tenant-scoped: admin sees only users in their own tenant (SEC-0005a)
+    users = await user_service.list_users(tenant_key=current_user.tenant_key)
+
+    logger.info("Found %d users in tenant %s", len(users), sanitize(current_user.tenant_key))
 
     # 0731d: UserService returns list[User] ORM objects - use attribute access
     return [user_to_response(user) for user in users]
 
 
+# TENANT-LEVEL
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_data: UserCreate,
@@ -399,12 +414,12 @@ async def get_user(
     """
     logger.debug("User %s retrieving user %s", sanitize(current_user.username), sanitize(str(user_id)))
 
-    # Admin can access users across all tenants for user management
+    # Tenant-scoped lookup: admins can manage users only within their own tenant (SEC-0005a)
     is_admin = current_user.role == "admin"
-    user = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
+    user = await user_service.get_user(str(user_id))
 
     # 0731d: UserService returns User ORM object - use attribute access
-    # Authorization: admin can view any user, non-admin can only view self
+    # Authorization: admin can view any user in tenant, non-admin can only view self
     if not is_admin and str(user.id) != str(current_user.id):
         logger.warning("Non-admin %s tried to view user %s", sanitize(current_user.username), sanitize(user.username))
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot view other users' profiles")
@@ -441,11 +456,11 @@ async def update_user(
     """
     logger.debug("User %s updating user %s", sanitize(current_user.username), sanitize(str(user_id)))
 
-    # Admin can access users across all tenants for user management
+    # Tenant-scoped update: admins can manage users only within their own tenant (SEC-0005a)
     is_admin = current_user.role == "admin"
 
-    # Authorization: admin can update any user, non-admin can only update self
-    user = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
+    # Authorization: admin can update any user in tenant, non-admin can only update self
+    user = await user_service.get_user(str(user_id))
 
     # 0731d: UserService returns User ORM object - use attribute access
     if not is_admin and str(user.id) != str(current_user.id):
@@ -487,13 +502,14 @@ async def update_user(
                 await db.commit()
                 logger.info("Recovery PIN updated for user: %s", sanitize(target_user.username))
 
-    updated_user = await user_service.update_user(str(user_id), include_all_tenants=is_admin, **updates)
+    updated_user = await user_service.update_user(str(user_id), **updates)
 
     logger.info("Updated user: %s", sanitize(user.username))
 
     return user_to_response(updated_user)
 
 
+# TENANT-LEVEL
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: UUID,
@@ -522,6 +538,7 @@ async def delete_user(
     logger.info("Deactivated user: %s", sanitize(str(user_id)))
 
 
+# TENANT-LEVEL
 @router.put("/{user_id}/role", response_model=RoleChangeResponse)
 async def change_user_role(
     user_id: UUID,

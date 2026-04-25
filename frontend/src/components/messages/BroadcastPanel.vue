@@ -76,6 +76,12 @@
 
               <v-window-item value="preview">
                 <v-card variant="tonal" class="pa-4" min-height="200">
+                  <!-- SEC-0003: markdownPreview is produced by
+                       useSanitizeMarkdown (hardened DOMPurify allow-list);
+                       broadcast-author draft message flows through marked()
+                       then sanitizeMarkdown before reaching the DOM.
+                       Fallback branch routes through sanitizeHtml.
+                       v-html sanctioned via eslint.config.js file override. -->
                   <div v-if="messageContent" v-html="markdownPreview" class="markdown-preview" />
                   <div v-else class="text-center text-muted-a11y">
                     <v-icon icon="mdi-text-box-outline" size="48" class="mb-2" />
@@ -194,8 +200,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
+import { useSanitizeMarkdown, sanitizeHtml } from '@/composables/useSanitizeMarkdown'
 import { useToast } from '@/composables/useToast'
 import { useFormatDate } from '@/composables/useFormatDate'
 import api from '@/services/api'
@@ -274,13 +279,16 @@ const canSend = computed(() => {
   return !!(selectedProject.value && messageContent.value.trim() && !sending.value)
 })
 
+// SEC-0003: sanctioned v-html via useSanitizeMarkdown
+const { sanitizeMarkdown } = useSanitizeMarkdown()
 const markdownPreview = computed(() => {
   if (!messageContent.value) return ''
   try {
-    return DOMPurify.sanitize(marked(messageContent.value))
+    return sanitizeMarkdown(messageContent.value)
   } catch (err) {
     console.error('[BroadcastPanel] Markdown parsing error:', err)
-    return DOMPurify.sanitize(messageContent.value)
+    // Fallback path still hardened: sanitize the raw string as HTML.
+    return sanitizeHtml(messageContent.value)
   }
 })
 

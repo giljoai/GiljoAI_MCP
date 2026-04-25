@@ -8,6 +8,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import SetupStep2Connect from '@/components/setup/SetupStep2Connect.vue'
 import api from '@/services/api'
+import configService from '@/services/configService'
 
 // ─── Mock stores ──────────────────────────────────────────────────
 
@@ -26,6 +27,12 @@ vi.mock('@/composables/useClipboard', () => ({
   useClipboard: () => ({
     copy: vi.fn(() => Promise.resolve(true)),
   }),
+}))
+
+vi.mock('@/services/configService', () => ({
+  default: {
+    fetchConfig: vi.fn(),
+  },
 }))
 
 // ─── Mount helper (uses global stubs from setup.js) ──────────────
@@ -54,6 +61,8 @@ describe('SetupStep2Connect', () => {
     // Default: return an active API key
     api.apiKeys.getActive = vi.fn().mockResolvedValue({ data: [{ key_prefix: 'giljo_abc' }] })
     api.apiKeys.create = vi.fn().mockResolvedValue({ data: { api_key: 'giljo_full_key_123' } })
+    // Default: no backend config override (keep window.location.* fallback)
+    configService.fetchConfig.mockResolvedValue(null)
   })
 
   // 1. Renders heading text
@@ -267,5 +276,49 @@ describe('SetupStep2Connect', () => {
     expect(mockWsOn).toHaveBeenCalled()
     wrapper.unmount()
     expect(mockUnsub).toHaveBeenCalled()
+  })
+
+  // 14. INF-5012b: component mirrors null backend port as empty string
+  // (reverse-proxy case where std 443/80 is implicit). Regression guard
+  // against showing a stale 7272 on Cloudflare/nginx deployments.
+  it('mirrors null backend port from configService as empty string (INF-5012b)', async () => {
+    api.apiKeys.getActive.mockResolvedValue({ data: [] })
+    configService.fetchConfig.mockResolvedValue({
+      api: { host: 'demo.giljo.ai', port: null, protocol: 'https' },
+    })
+
+    const wrapper = mountStep2({ selectedTools: ['claude_code'] })
+    await flushPromises()
+
+    // Click generate so the config panel (with server URL) is rendered.
+    const buttons = wrapper.findAll('button')
+    const generateBtn = buttons.find((b) => b.text().includes('Generate API Key'))
+    await generateBtn.trigger('click')
+    await flushPromises()
+
+    // The generated command must reflect the public host with no :7272 port.
+    const text = wrapper.text()
+    expect(text).toContain('demo.giljo.ai')
+    expect(text).not.toContain('demo.giljo.ai:7272')
+  })
+
+  // 15. INF-5012b: component mirrors numeric backend port when host differs
+  // from browser host (proxy-fronted LAN case where backend identity is
+  // reported by configService and composed out-of-band).
+  it('mirrors numeric backend port from configService when host differs (INF-5012b)', async () => {
+    api.apiKeys.getActive.mockResolvedValue({ data: [] })
+    configService.fetchConfig.mockResolvedValue({
+      api: { host: '192.168.1.50', port: 7272, protocol: 'http' },
+    })
+
+    const wrapper = mountStep2({ selectedTools: ['claude_code'] })
+    await flushPromises()
+
+    const buttons = wrapper.findAll('button')
+    const generateBtn = buttons.find((b) => b.text().includes('Generate API Key'))
+    await generateBtn.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('192.168.1.50:7272')
   })
 })

@@ -95,6 +95,7 @@ async def get_general_settings(
     return SettingsResponse(settings=settings)
 
 
+# TENANT-LEVEL
 @router.put(
     "/general",
     response_model=SettingsUpdateResponse,
@@ -131,6 +132,7 @@ async def get_network_settings(
     return SettingsResponse(settings=settings)
 
 
+# TENANT-LEVEL
 @router.put(
     "/network",
     response_model=SettingsUpdateResponse,

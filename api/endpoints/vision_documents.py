@@ -25,7 +25,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import aiofiles
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,8 +37,15 @@ from api.schemas.vision_document import (
     VisionDocumentResponse,
 )
 from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.config_manager import get_config
 from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from giljo_mcp.models import Product, User
+from giljo_mcp.security.upload_guard import (
+    UploadContentError,
+    UploadFilenameError,
+    enforce_text_content,
+    sanitize_upload_filename,
+)
 from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 from giljo_mcp.services.product_vision_service import ProductVisionService
 from giljo_mcp.utils.log_sanitizer import sanitize
@@ -180,8 +187,41 @@ def get_vision_service(tenant_key: str = Depends(get_tenant_key)):
     )
 
 
+def _raise_upload_too_large(max_bytes: int) -> None:
+    """Raise the shared structured 413 for oversize uploads (SEC-0001)."""
+    raise HTTPException(
+        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        detail={
+            "error_code": "UPLOAD_TOO_LARGE",
+            "message": f"File is too large. Maximum size is {max_bytes // 1024 // 1024} MB.",
+            "max_bytes": max_bytes,
+        },
+    )
+
+
+async def _read_upload_capped(upload: UploadFile, max_bytes: int) -> bytes:
+    """Stream the upload body in 64 KB chunks; abort at ``max_bytes``.
+
+    FastAPI's ``UploadFile`` does not cap size on its own; this is the
+    Layer-2 size guard paired with the Content-Length pre-check.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    chunk_size = 65536
+    while True:
+        chunk = await upload.read(chunk_size)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            _raise_upload_too_large(max_bytes)
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @router.post("/", response_model=VisionDocumentResponse, status_code=status.HTTP_201_CREATED)
 async def create_vision_document(
+    request: Request,
     product_id: str = Form(...),
     document_name: str = Form(...),
     document_type: str = Form("vision"),
@@ -250,34 +290,95 @@ async def create_vision_document(
         file_size = None
 
         if vision_file:
-            # File uploaded - save using cross-platform Path handling
-            storage_path = Path("./products") / product_id / "vision"
-            storage_path.mkdir(parents=True, exist_ok=True)  # CROSS-PLATFORM: creates subdirs
+            # SEC-0001 Phase 2: filename sanitization + extension allowlist +
+            # size cap (Layer 1 Content-Length pre-check + Layer 2 streaming
+            # guard) + strict UTF-8 byte-sniff. Raw filename is NEVER trusted.
+            upload_cfg = get_config().upload
+            max_bytes = upload_cfg.max_upload_bytes
 
-            # Resolve both the storage base and the candidate file path to prevent
-            # directory traversal via a crafted filename (CodeQL: py/path-injection)
+            # Layer 1: Content-Length pre-check (fast reject before body read).
+            declared = request.headers.get("content-length")
+            if declared and declared.isdigit() and int(declared) > max_bytes:
+                _raise_upload_too_large(max_bytes)
+
+            # Filename sanitization.
+            try:
+                safe_filename = sanitize_upload_filename(vision_file.filename)
+            except UploadFilenameError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "error_code": "UPLOAD_FILENAME_INVALID",
+                        "message": "Filename contains invalid characters or is too long.",
+                        "reason": str(exc),
+                    },
+                ) from exc
+
+            # Extension allowlist (415 not 400 -- it's an unsupported media type).
+            ext_lower = safe_filename.lower()
+            if not any(ext_lower.endswith(ext) for ext in upload_cfg.allowed_extensions):
+                raise HTTPException(
+                    status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                    detail={
+                        "error_code": "UPLOAD_TYPE_NOT_ALLOWED",
+                        "message": "Only .txt and .md files are accepted.",
+                        "allowed_extensions": list(upload_cfg.allowed_extensions),
+                    },
+                )
+
+            # Cross-platform storage path handling (uses pathlib.Path).
+            storage_path = Path("./products") / product_id / "vision"
+            storage_path.mkdir(parents=True, exist_ok=True)
+
+            # Defense-in-depth: resolve the storage base and verify the candidate
+            # file path stays inside it (CodeQL: py/path-injection). The
+            # sanitizer above already rejects path traversal, but we keep this
+            # check to guard against any future sanitizer regression.
             resolved_base = storage_path.resolve()
-            # Use only the plain filename component -- discard any directory parts
-            safe_filename = Path(vision_file.filename).name
             file_path = storage_path / safe_filename
             if not file_path.resolve().is_relative_to(resolved_base):
                 raise HTTPException(
-                    status_code=400,
-                    detail="Invalid filename: path traversal detected.",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "error_code": "UPLOAD_FILENAME_INVALID",
+                        "message": "Filename resolves outside the storage directory.",
+                    },
                 )
+
+            # Layer 2: streaming reader with running byte counter (aborts at cap).
+            content_bytes = await _read_upload_capped(vision_file, max_bytes)
+
+            # Byte-sniff: reject binary payloads that spoof a .txt/.md extension.
+            try:
+                enforce_text_content(content_bytes, sniff_bytes=upload_cfg.sniff_bytes)
+            except UploadContentError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                    detail={
+                        "error_code": "UPLOAD_CONTENT_NOT_TEXT",
+                        "message": "File does not look like plain text. Please upload a .txt or .md file.",
+                        "reason": str(exc),
+                    },
+                ) from exc
+
+            # Strict UTF-8 decode -- no latin-1 fallback (SEC-0001). The
+            # sniff above guarantees this succeeds; defensive try/except
+            # converts any pathological race into the same structured 415.
+            try:
+                document_content = content_bytes.decode("utf-8", errors="strict")
+            except UnicodeDecodeError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                    detail={
+                        "error_code": "UPLOAD_CONTENT_NOT_TEXT",
+                        "message": "File must be valid UTF-8 encoded text.",
+                    },
+                ) from exc
+
             async with aiofiles.open(file_path, "wb") as f:
-                content_bytes = await vision_file.read()
                 await f.write(content_bytes)
 
-            # Calculate file size from uploaded file
             file_size = len(content_bytes)
-
-            # Try UTF-8 first, fallback to latin-1 for Windows files with special chars (e.g., degree symbol)
-            try:
-                document_content = content_bytes.decode("utf-8")
-            except UnicodeDecodeError:
-                logger.warning("File %s is not UTF-8 encoded, falling back to latin-1", sanitize(vision_file.filename))
-                document_content = content_bytes.decode("latin-1")
             storage_type = "hybrid" if content else "file"
         elif content:
             # Inline content - calculate size from string

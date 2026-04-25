@@ -222,7 +222,9 @@ class TaskConversionService:
 
         # Check for existing active project and deactivate it
         # (only ONE project can be active per product - Handover 0050b)
-        existing_active_project = await self._repo.get_active_project_for_product(session, active_product.id)
+        existing_active_project = await self._repo.get_active_project_for_product(
+            session, active_product.id, tenant_key
+        )
 
         if existing_active_project:
             self._logger.info(

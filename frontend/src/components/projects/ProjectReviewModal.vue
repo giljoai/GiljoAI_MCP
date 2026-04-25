@@ -14,7 +14,16 @@
       <div id="review-modal-title" class="dlg-header">
         <v-icon class="dlg-icon">mdi-eye</v-icon>
         <div class="d-flex flex-column flex-grow-1">
-          <span class="dlg-title">Project Review: <span class="review-project-name">{{ projectData?.name }}</span>
+          <span class="dlg-title">Project Review:
+            <v-chip
+              v-if="projectData?.taxonomy_alias && projectData?.project_type"
+              :color="projectData.project_type.color"
+              size="x-small"
+              variant="flat"
+              class="ml-1 mr-1"
+              :title="projectData.project_type.label"
+            >{{ projectData.taxonomy_alias }}</v-chip>
+            <span class="review-project-name">{{ projectData?.name }}</span>
             <v-chip
               v-if="projectData?.status"
               :color="statusColor"

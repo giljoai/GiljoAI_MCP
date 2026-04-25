@@ -95,12 +95,20 @@ class UserService:
     # CRUD Operations
     # ============================================================================
 
-    async def list_users(self, include_all_tenants: bool = False) -> list[User]:
+    async def list_users(self, include_all_tenants: bool = False, tenant_key: str | None = None) -> list[User]:
         """
-        List all users (tenant-scoped by default).
+        List users scoped to a tenant.
+
+        SEC-0005a: Public callers should pass ``tenant_key`` explicitly to enforce
+        tenant isolation. ``include_all_tenants`` is reserved for internal callers
+        (e.g., the trial reaper) that intentionally perform a cross-tenant sweep and
+        must never be exposed through a public endpoint.
 
         Args:
-            include_all_tenants: If True, list users from all tenants (admin only)
+            include_all_tenants: Internal-only escape hatch. If True, return users
+                across all tenants. Must NOT be set by public endpoints.
+            tenant_key: Explicit tenant filter. When provided, overrides the
+                service-level ``self.tenant_key`` for this query.
 
         Returns:
             List of User ORM model instances
@@ -110,7 +118,7 @@ class UserService:
         """
         try:
             async with self._get_session() as session:
-                return await self._list_users_impl(session, include_all_tenants)
+                return await self._list_users_impl(session, include_all_tenants, tenant_key)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
             raise  # Re-raise without wrapping
@@ -120,12 +128,18 @@ class UserService:
                 message=str(e), context={"operation": "list_users", "tenant_key": self.tenant_key}
             ) from e
 
-    async def _list_users_impl(self, session: AsyncSession, include_all_tenants: bool = False) -> list[User]:
+    async def _list_users_impl(
+        self,
+        session: AsyncSession,
+        include_all_tenants: bool = False,
+        tenant_key: str | None = None,
+    ) -> list[User]:
         """Implementation that uses provided session"""
-        users = await self._repo.list_users(session, self.tenant_key, include_all_tenants)
+        effective_tenant_key = tenant_key if tenant_key is not None else self.tenant_key
+        users = await self._repo.list_users(session, effective_tenant_key, include_all_tenants)
 
         log_msg = f"Found {len(users)} users" + (
-            " (all tenants)" if include_all_tenants else f" for tenant {self.tenant_key}"
+            " (all tenants)" if include_all_tenants else f" for tenant {effective_tenant_key}"
         )
         self._logger.debug(log_msg)
 

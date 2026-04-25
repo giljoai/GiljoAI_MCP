@@ -939,9 +939,18 @@ async def fetch_context(
 )
 async def close_project_and_update_memory(
     project_id: str,
-    summary: Annotated[str, Field(description="Brief summary of project outcome.")],
-    key_outcomes: Annotated[list[str], Field(description="List of key achievements (max 20).")],
-    decisions_made: Annotated[list[str], Field(description="List of key decisions with rationale (max 20).")],
+    summary: Annotated[
+        str,
+        Field(description="Brief 2-3 sentence headline of project outcome. Max 500 chars (server-enforced)."),
+    ],
+    key_outcomes: Annotated[
+        list[str],
+        Field(description="List of key achievements. Max 5 items, each max 200 chars (server-enforced)."),
+    ],
+    decisions_made: Annotated[
+        list[str],
+        Field(description="List of key decisions with rationale. Max 5 items, each max 250 chars (server-enforced)."),
+    ],
     git_commits: Annotated[
         list[dict] | None,
         Field(
@@ -975,9 +984,20 @@ async def close_project_and_update_memory(
 )
 async def write_360_memory(
     project_id: str,
-    summary: Annotated[str, Field(description="Brief summary of what was accomplished or handed over.")],
-    key_outcomes: Annotated[list[str], Field(description="List of key outcomes/achievements (max 20).")],
-    decisions_made: Annotated[list[str], Field(description="List of key decisions with rationale (max 20).")],
+    summary: Annotated[
+        str,
+        Field(
+            description="Brief 2-3 sentence headline of what was accomplished or handed over. Max 500 chars (server-enforced)."
+        ),
+    ],
+    key_outcomes: Annotated[
+        list[str],
+        Field(description="List of key outcomes/achievements. Max 5 items, each max 200 chars (server-enforced)."),
+    ],
+    decisions_made: Annotated[
+        list[str],
+        Field(description="List of key decisions with rationale. Max 5 items, each max 250 chars (server-enforced)."),
+    ],
     entry_type: Annotated[
         str,
         Field(
@@ -996,7 +1016,12 @@ async def write_360_memory(
     tags: Annotated[
         list[str] | None,
         Field(
-            description="Tags for categorization. Use 'action_required:description' for items that must persist beyond depth window."
+            description=(
+                "Tags for categorization. Max 8 tags, each from the controlled 16-tag vocabulary "
+                "(server-enforced): change-type [feature, bug-fix, refactor, perf, security, docs, test, chore], "
+                "domain [frontend, backend, database, api, infrastructure, ui-ux, integration], "
+                "operational [migration]. Use 'action_required:description' prefix for items that must persist beyond depth window."
+            ),
         ),
     ] = None,
     ctx: Context = None,

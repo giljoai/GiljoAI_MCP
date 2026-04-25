@@ -288,6 +288,20 @@ class MissionOrchestrationService:
         except Exception:  # noqa: BLE001
             logger.warning("[INTEGRATIONS] Failed to read settings from DB")
 
+        # SEC-0005b: Fetch tenant-scoped orchestrator prompt override (if any).
+        # Instantiate the service locally to avoid pulling in api.app_state (which
+        # has heavy side effects at import time and breaks service-layer tests).
+        orchestrator_prompt_override: str | None = None
+        try:
+            from giljo_mcp.system_prompts.service import SystemPromptService
+
+            prompt_service = SystemPromptService(db_manager=self.db_manager)
+            prompt_record = await prompt_service.get_orchestrator_prompt(tenant_key=tenant_key, session=session)
+            if prompt_record.is_override:
+                orchestrator_prompt_override = prompt_record.content
+        except Exception:  # noqa: BLE001
+            logger.warning("[SEC-0005b] Failed to read orchestrator prompt override")
+
         return {
             "execution": execution,
             "agent_job": agent_job,
@@ -299,6 +313,7 @@ class MissionOrchestrationService:
             "templates": templates,
             "category_metadata": category_metadata,
             "integrations": integrations,
+            "orchestrator_prompt_override": orchestrator_prompt_override,
         }
 
     async def _build_category_metadata(
@@ -485,9 +500,14 @@ class MissionOrchestrationService:
         response["orchestrator_protocol"] = orchestrator_protocol
 
         # Handover 0431: Inject orchestrator identity/behavioral guidance
+        # SEC-0005b: tenant admin may override the identity content per tenant
         from giljo_mcp.template_seeder import get_orchestrator_identity_content
 
-        response["orchestrator_identity"] = get_orchestrator_identity_content()
+        override_content = ctx.get("orchestrator_prompt_override")
+        if override_content:
+            response["orchestrator_identity"] = override_content
+        else:
+            response["orchestrator_identity"] = get_orchestrator_identity_content()
 
         logger.info(
             "Returning toggle-based orchestrator instructions",

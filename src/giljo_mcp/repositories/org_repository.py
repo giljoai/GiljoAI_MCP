@@ -108,6 +108,27 @@ class OrgRepository:
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def slug_taken_by_other_org(self, session: AsyncSession, slug: str, exclude_org_id: str) -> bool:
+        """
+        Return True if an organization other than ``exclude_org_id`` owns ``slug``.
+
+        The ``slug`` column is globally unique on ``organizations`` (not scoped
+        by tenant), so the uniqueness check here intentionally does not filter
+        by tenant_key. Callers pass ``exclude_org_id`` so an org does not
+        collide with itself on a no-op rename.
+
+        Args:
+            session: Active database session
+            slug: Candidate slug
+            exclude_org_id: Organization to exclude from the collision check
+
+        Returns:
+            True if another organization already uses this slug
+        """
+        stmt = select(Organization.id).where(Organization.slug == slug, Organization.id != exclude_org_id).limit(1)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
     async def commit(self, session: AsyncSession) -> None:
         """
         Commit the current transaction.

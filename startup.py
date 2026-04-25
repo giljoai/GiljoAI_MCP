@@ -100,7 +100,8 @@ def ensure_project_virtualenv() -> None:
         return
 
 
-ensure_project_virtualenv()
+if "pytest" not in sys.modules:
+    ensure_project_virtualenv()
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
@@ -1016,6 +1017,35 @@ def open_browser(url: str, delay: int = 3) -> None:
         print_info(f"Please manually open: {url}")
 
 
+def _choose_browser_target(deployment_context: str, is_first_run: bool) -> str | None:
+    """Pure helper: pick the auto-open route based on deployment_context.
+
+    Branch order is load-bearing — demo/saas must win over the CE first-run and
+    dashboard fallbacks, so demo installs never flash `/welcome` before the
+    frontend `route_signal` bounce.
+
+    Args:
+        deployment_context: Value from config.yaml top-level `deployment_context`
+            (one of 'localhost', 'lan', 'demo', 'saas-production').
+        is_first_run: True when the CE first-run wizard has not yet completed.
+
+    Returns:
+        - "/demo-landing" for demo deployments.
+        - `None` for saas-production (signals the caller to suppress auto-open).
+        - "/welcome" for CE first-run (localhost / lan).
+        - "" (dashboard root) for any other CE launch.
+
+    No side effects; safe to call from tests.
+    """
+    if deployment_context == "saas-production":
+        return None
+    if deployment_context == "demo":
+        return "/demo-landing"
+    if is_first_run:
+        return "/welcome"
+    return ""
+
+
 def check_dependencies() -> bool:
     """
     Check all required dependencies.
@@ -1137,11 +1167,57 @@ def install_requirements() -> bool:
         return False
 
 
+def _patch_env_from_config() -> None:
+    """Check .env for missing variables and patch them from config.yaml.
+
+    Runs once per startup. Reads config.yaml to derive values that the
+    installer should have written but didn't (e.g., GILJO_PUBLIC_URL on
+    LAN/WAN installs before this fix shipped). Appends missing entries
+    to .env so they persist across restarts.
+    """
+    env_path = Path.cwd() / ".env"
+    if not env_path.exists():
+        return
+
+    try:
+        env_text = env_path.read_text(encoding="utf-8")
+    except OSError:
+        return
+
+    patches: list[str] = []
+
+    # --- GILJO_PUBLIC_URL: required for MCP tool download links on LAN/WAN ---
+    if "GILJO_PUBLIC_URL" not in env_text:
+        external_host = _get_external_host()
+        if external_host and external_host != "localhost":
+            ssl_enabled = get_ssl_enabled()
+            api_port, _ = get_config_ports()
+            proto = "https" if ssl_enabled else "http"
+            public_url = f"{proto}://{external_host}:{api_port}"
+            patches.append(f"GILJO_PUBLIC_URL={public_url}")
+            os.environ["GILJO_PUBLIC_URL"] = public_url
+            print_info(f"Patched .env: GILJO_PUBLIC_URL={public_url}")
+
+    if patches:
+        try:
+            with open(env_path, "a", encoding="utf-8") as f:
+                f.write("\n# Auto-patched by startup.py\n")
+                for patch in patches:
+                    f.write(f"{patch}\n")
+            print_success(f"Added {len(patches)} missing variable(s) to .env")
+        except OSError as e:
+            print_warning(f"Could not patch .env: {e}")
+
+
 def _check_and_stamp_migration_version() -> None:
-    """Detect old migration revisions and stamp to baseline_v36.
+    """Detect old migration revisions and stamp to baseline_v37.
 
     After a CE export squash, the old revision IDs no longer exist as files.
     This bridges existing databases to the new baseline so alembic upgrade head works.
+
+    Stamping only updates alembic_version — it does NOT run DDL. So we also
+    apply any missing columns/tables that were added between the old revision
+    and baseline_v37, using IF NOT EXISTS / IF EXISTS for idempotency.
     """
     try:
         from sqlalchemy import text
@@ -1157,30 +1233,83 @@ def _check_and_stamp_migration_version() -> None:
             result = session.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
             current = result.scalar()
 
-            if not current or current == "baseline_v36":
+            if not current or current == "baseline_v37":
+                # Even at baseline_v37, schema may be incomplete if a prior
+                # stamp jumped ahead without DDL. Run the heal pass anyway.
+                _heal_schema_to_v37(session)
                 return
 
-            known_old = {
-                "baseline_v33",
-                "baseline_v34",
-                "baseline_v35",
-                "0855a_setup_state",
-                "0904_auto_checkin",
-                "0950b_exec_status",
-                "0960_checkin_min",
-                "0435b_closed_status",
-                "0435d_requires_action",
-                "bee938301ffa",
-            }
-
-            if current in known_old or current not in known_old:
-                print_info(f"Stamping migration: {current} -> baseline_v36")
-                session.execute(text("UPDATE alembic_version SET version_num = 'baseline_v36'"))
-                session.commit()
-                print_success("Migration version updated to baseline_v36")
+            # Any revision that is not baseline_v37 needs stamping forward
+            print_info(f"Stamping migration: {current} -> baseline_v37")
+            _heal_schema_to_v37(session)
+            session.execute(text("UPDATE alembic_version SET version_num = 'baseline_v37'"))
+            session.commit()
+            print_success("Migration version updated to baseline_v37")
 
     except Exception as e:
         print_warning(f"Migration version check skipped: {e}")
+
+
+def _heal_schema_to_v37(session) -> None:
+    """Apply any DDL that baseline_v37 expects but may be missing.
+
+    Every statement is idempotent (IF NOT EXISTS / IF EXISTS) so it is safe
+    to run on databases that are already fully up-to-date.
+    """
+    from sqlalchemy import text
+
+    heal_statements = [
+        # Columns added between baseline_v36 and baseline_v37
+        "ALTER TABLE agent_templates ADD COLUMN IF NOT EXISTS user_managed_export BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS org_setup_complete BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE projects ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE agent_executions ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ",
+        # Table added in baseline_v37
+        (
+            "CREATE TABLE IF NOT EXISTS product_agent_assignments ("
+            "  id VARCHAR(36) PRIMARY KEY,"
+            "  product_id VARCHAR(36) NOT NULL REFERENCES products(id) ON DELETE CASCADE,"
+            "  template_id VARCHAR(36) NOT NULL REFERENCES agent_templates(id) ON DELETE CASCADE,"
+            "  is_active BOOLEAN NOT NULL DEFAULT true,"
+            "  tenant_key VARCHAR(36) NOT NULL,"
+            "  created_at TIMESTAMPTZ DEFAULT now(),"
+            "  updated_at TIMESTAMPTZ"
+            ")"
+        ),
+        # Indexes and constraints for the new table (IF NOT EXISTS)
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_product_template_assignment ON product_agent_assignments (product_id, template_id)",
+        "CREATE INDEX IF NOT EXISTS idx_assignment_tenant ON product_agent_assignments (tenant_key)",
+        "CREATE INDEX IF NOT EXISTS idx_assignment_product ON product_agent_assignments (product_id)",
+        "CREATE INDEX IF NOT EXISTS idx_assignment_template ON product_agent_assignments (template_id)",
+        "CREATE INDEX IF NOT EXISTS idx_assignment_active ON product_agent_assignments (is_active)",
+        # Orphan tables dropped in baseline_v37
+        "DROP TABLE IF EXISTS discovery_config CASCADE",
+        "DROP TABLE IF EXISTS git_configs CASCADE",
+        "DROP TABLE IF EXISTS optimization_rules CASCADE",
+        "DROP TABLE IF EXISTS optimization_metrics CASCADE",
+        # Unique constraint swap on agent_templates (product-scoped -> tenant-scoped)
+        "ALTER TABLE agent_templates DROP CONSTRAINT IF EXISTS uq_template_product_name_version",
+        "DROP INDEX IF EXISTS idx_template_product",
+    ]
+
+    # Tenant-scoped unique constraint (idempotent via existence check)
+    heal_statements.append(
+        "DO $$ BEGIN "
+        "IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_template_tenant_name_version') THEN "
+        "ALTER TABLE agent_templates ADD CONSTRAINT uq_template_tenant_name_version UNIQUE (tenant_key, name, version); "
+        "END IF; END $$"
+    )
+
+    applied = 0
+    for stmt in heal_statements:
+        try:
+            session.execute(text(stmt))
+            applied += 1
+        except Exception as e:
+            print_warning(f"Schema heal skipped: {e}")
+    session.commit()
+    if applied:
+        print_info(f"Schema heal: {applied}/{len(heal_statements)} statements applied")
 
 
 def _get_database_url() -> Optional[str]:
@@ -1312,6 +1441,9 @@ def run_startup(
     except Exception as e:
         print_warning(f"Failed to download NLTK data: {e}")
         print_info("Vision document summarization may not work properly")
+
+    # Step 2.9: Patch .env with missing variables derived from config.yaml
+    _patch_env_from_config()
 
     # Step 3: Run database migrations
     if not no_migrations:
@@ -1451,16 +1583,22 @@ def run_startup(
 
         print_header("Welcome to GiljoAI MCP! -Gil")
     else:
-        if is_first_run:
-            target_route = "/welcome"
-            setup_url = f"{http_proto}://{server_host}:{browser_port}{target_route}"
-            print_info("First-run detected - opening welcome setup screen...")
-
-            open_browser(setup_url, delay=2)
+        # Branch order (demo/saas → CE first-run → dashboard) lives in the pure
+        # helper above so tests and production share one source of truth.
+        # saas-production returns None defensively; `suppress_browser` above
+        # already short-circuits that mode.
+        target_route = _choose_browser_target(deployment_context, is_first_run)
+        if target_route is None:
+            print_info("saas-production mode: browser auto-open disabled (operator mode)")
         else:
-            dashboard_url = f"{http_proto}://{server_host}:{browser_port}"
-            print_info("Opening dashboard...")
-            open_browser(dashboard_url, delay=2)
+            auto_open_url = f"{http_proto}://{server_host}:{browser_port}{target_route}"
+            if target_route == "/demo-landing":
+                print_info(f"{deployment_context} mode detected - opening demo landing page...")
+            elif target_route == "/welcome":
+                print_info("First-run detected - opening welcome setup screen...")
+            else:
+                print_info("Opening dashboard...")
+            open_browser(auto_open_url, delay=2)
 
     # Step 10: Display status
     mode_label = "PRODUCTION" if production_mode else "DEVELOPMENT"

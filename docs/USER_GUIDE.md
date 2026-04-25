@@ -36,7 +36,7 @@ The page detects your setup state on mount and opens the appropriate overlay:
 - Returning to Home with `?openSetup=true` in the URL: the Setup Wizard opens in re-run mode.
 - Returning to Home with `?openGuide=true` in the URL: the learning guide opens directly.
 
-The learning guide is also accessible any time from User Settings under the Startup tab.
+The learning guide is also accessible any time from Tools, under the Startup tab.
 
 #### Setup Wizard Steps
 
@@ -49,7 +49,7 @@ The wizard has four steps shown in a progress bar:
 | 2 | Install | Install the slash command skills on your machine |
 | 3 | Launch | Confirm setup and get your first bootstrap prompt |
 
-The wizard can be restarted from User Settings.
+The wizard can be restarted from Tools.
 
 ---
 
@@ -103,7 +103,7 @@ If you upload a vision document before filling in context fields, GiljoAI create
 
 ### Context Fields
 
-The product form is organized into four tabs. Fields that are toggled on in User Settings > Context become part of agent context at session start:
+The product form is organized into four tabs. Fields that are toggled on in Tools > Context become part of agent context at session start:
 
 **Product Info tab:**
 - **Description:** What the product does and who it is for.
@@ -247,7 +247,7 @@ The modal is organized into expandable sections:
 
 - **Agent Jobs:** Each agent job is shown as a collapsible card. Expand an agent job to see its assigned mission, todo list, and step progress.
 - **Agent Messages:** The message traffic between agents during the project — useful for understanding why decisions were made.
-- **Git Commits:** Commits recorded during the project (requires git integration to be enabled in My Settings > Integrations).
+- **Git Commits:** Commits recorded during the project (requires git integration to be enabled in Tools > Connect).
 - **360 Memory:** The memory entry written at closeout.
 
 ---
@@ -285,24 +285,25 @@ Tasks can also be created from your CLI tool using `/gil_add add task ...`. The 
 
 ---
 
-## User Settings
+## Tools
 
-Navigate to User Settings via the top navigation. The page title is "My Settings." Six tabs are available:
+Navigate to **Tools** via the left navigation. The page title is "Tools." Five tabs are available:
 
 | Tab | Contents |
 |---|---|
-| **Startup** | Two cards: "Setup Wizard" (reopens the wizard) and "Learning" (reopens the "How to Use" guide) |
-| **Notifications** | Position (top/bottom, left/center/right), display duration slider, and agent silence threshold in minutes |
+| **Connect** | External integrations (git repositories, MCP clients, API keys) that enrich 360 Memory and let coding agents connect to GiljoAI |
 | **Agents** | Agent Template Manager: browse, create, edit, and activate agent templates |
 | **Context** | Context priority configuration: toggle context fields, set depth per source, configure 360 Memory depth and git integration |
-| **API Keys** | Manage API keys for connecting your CLI tools to GiljoAI |
-| **Integrations** | External integrations (git repositories and other sources that enrich 360 Memory) |
+| **Notifications** | Position (top/bottom, left/center/right), display duration slider, and agent silence threshold in minutes |
+| **Startup** | Two cards: "Setup Wizard" (reopens the wizard) and "Learning" (reopens the "How to Use" guide) |
+
+API keys are managed inside the **Connect** tab alongside the integrations they unlock.
 
 ---
 
 ## Admin Settings
 
-Navigate to Admin Settings via the top navigation (admin users only). The page title is "Admin Settings."
+Navigate to **Admin** via the left navigation (admin users only). The page title is "Admin Settings."
 
 Runtime settings (git integration, Serena MCP, SSL mode) are stored in the database. Changes you make here take effect immediately without restarting the server.
 

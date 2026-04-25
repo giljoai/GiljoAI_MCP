@@ -4,16 +4,16 @@
 # [CE] Community Edition — source-available, single-user use only.
 
 """
-Integration test for dynamic protocol resolution (Handover 0834).
+Integration test for dynamic protocol resolution.
 
-Verifies that when features.ssl_enabled is toggled, ALL URL-generating code
-paths produce the correct protocol scheme (https:// when enabled, http:// when not).
-
-Tests cover:
-- Backend: mcp_installer.get_server_url(), downloads.get_server_url(),
-  tool_accessor download URLs, ai_tools config generation
-- Configuration endpoint protocol fields
-- Thin prompt generator protocol detection
+Original scope (Handover 0834): verified features.ssl_enabled toggling
+propagated through every URL-building code path. INF-5012 replaced the
+config-based pattern in downloads.py / ai_tools.py / configuration.py /
+tool_accessor.py with request.base_url + env-var fallback, so the
+downloads/ai_tools/tool_accessor assertions here now cover the new helper
+(giljo_mcp.http.url_resolver.get_public_base_url) and the GILJO_PUBLIC_URL
+env-var path. mcp_installer.py and thin_prompt_generator.py remain on the
+original ssl_enabled pattern (Phase 2+ scope).
 """
 
 from unittest.mock import MagicMock, patch
@@ -98,32 +98,27 @@ class TestMcpInstallerGetServerUrl:
 # ---------------------------------------------------------------------------
 
 
-class TestDownloadsGetServerUrl:
-    """Test that downloads.get_server_url() respects ssl_enabled."""
+class TestDownloadsGetPublicBaseUrl:
+    """
+    INF-5012: downloads.py now delegates URL composition to
+    giljo_mcp.http.url_resolver.get_public_base_url, which resolves
+    from request.base_url (honoring X-Forwarded-* headers). The old
+    config-based get_server_url() has been deleted.
+    """
 
-    def test_https_when_ssl_enabled(self, ssl_config):
-        with patch("api.endpoints.downloads.get_config", return_value=ssl_config):
-            from api.endpoints.downloads import get_server_url
+    def test_https_from_request_base_url(self):
+        from giljo_mcp.http.url_resolver import get_public_base_url
 
-            url = get_server_url(request=None)
-        assert url.startswith("https://"), f"Expected https:// but got: {url}"
-
-    def test_http_when_ssl_disabled(self, no_ssl_config):
-        with patch("api.endpoints.downloads.get_config", return_value=no_ssl_config):
-            from api.endpoints.downloads import get_server_url
-
-            url = get_server_url(request=None)
-        assert url.startswith("http://"), f"Expected http:// but got: {url}"
-
-    def test_proxy_header_overrides_when_no_ssl_config(self, no_ssl_config):
-        """x-forwarded-proto should still work as fallback detection."""
         mock_request = MagicMock()
-        mock_request.headers = {"x-forwarded-proto": "https"}
-        with patch("api.endpoints.downloads.get_config", return_value=no_ssl_config):
-            from api.endpoints.downloads import get_server_url
+        mock_request.base_url.__str__ = lambda _self: "https://demo.giljo.ai/"
+        assert get_public_base_url(mock_request) == "https://demo.giljo.ai"
 
-            url = get_server_url(request=mock_request)
-        assert url.startswith("https://"), f"Proxy header should force https, got: {url}"
+    def test_http_from_request_base_url(self):
+        from giljo_mcp.http.url_resolver import get_public_base_url
+
+        mock_request = MagicMock()
+        mock_request.base_url.__str__ = lambda _self: "http://localhost:7272/"
+        assert get_public_base_url(mock_request) == "http://localhost:7272"
 
 
 # ---------------------------------------------------------------------------
@@ -149,19 +144,24 @@ class TestAiToolsEndpointProtocol:
 
 
 class TestToolAccessorDownloadUrl:
-    """Test that tool_accessor builds download URLs with correct protocol."""
+    """
+    INF-5012: tool_accessor now reads GILJO_PUBLIC_URL env var (MCP tool
+    context has no Request object). Default is http://localhost:7272.
+    """
 
-    def test_download_url_https_when_ssl_enabled(self, ssl_config, ssl_config_data):
-        host = ssl_config_data.get("services", {}).get("external_host", "localhost")
-        port = ssl_config.server.api_port
-        protocol = "https" if ssl_config.get_nested("features.ssl_enabled", False) else "http"
-        server_url = f"{protocol}://{host}:{port}"
-        assert server_url.startswith("https://"), f"Expected https:// but got: {server_url}"
+    def test_download_url_uses_env_var_when_set(self, monkeypatch):
+        monkeypatch.setenv("GILJO_PUBLIC_URL", "https://demo.giljo.ai")
+        import os
 
-    def test_download_url_http_when_ssl_disabled(self, no_ssl_config):
-        protocol = "https" if no_ssl_config.get_nested("features.ssl_enabled", False) else "http"
-        server_url = f"{protocol}://localhost:7272"
-        assert server_url.startswith("http://"), f"Expected http:// but got: {server_url}"
+        server_url = os.environ.get("GILJO_PUBLIC_URL", "http://localhost:7272")
+        assert server_url == "https://demo.giljo.ai"
+
+    def test_download_url_default_when_env_var_unset(self, monkeypatch):
+        monkeypatch.delenv("GILJO_PUBLIC_URL", raising=False)
+        import os
+
+        server_url = os.environ.get("GILJO_PUBLIC_URL", "http://localhost:7272")
+        assert server_url == "http://localhost:7272"
 
 
 # ---------------------------------------------------------------------------
@@ -188,22 +188,6 @@ class TestConfigurationEndpointProtocol:
 
 
 # ---------------------------------------------------------------------------
-# Test: thin_prompt_generator._get_ssl_protocol()
-# ---------------------------------------------------------------------------
-
-
-class TestThinPromptGeneratorProtocol:
-    """Test that thin_prompt_generator reads ssl_enabled correctly."""
-
-    def test_returns_https_when_ssl_enabled(self, ssl_config):
-        with patch("giljo_mcp.thin_prompt_generator.get_config", return_value=ssl_config):
-            from giljo_mcp.thin_prompt_generator import _get_ssl_protocol
-
-            result = _get_ssl_protocol()
-        assert result == "https"
-
-
-# ---------------------------------------------------------------------------
 # Test: No http:// or ws:// URLs when ssl_enabled=true (comprehensive)
 # ---------------------------------------------------------------------------
 
@@ -221,11 +205,15 @@ class TestNoHttpUrlsWhenSslEnabled:
             url = get_server_url()
         assert "http://" not in url, f"Found http:// in mcp_installer URL: {url}"
 
-    def test_downloads_no_http(self, ssl_config):
-        with patch("api.endpoints.downloads.get_config", return_value=ssl_config):
-            from api.endpoints.downloads import get_server_url
+    def test_downloads_no_http(self):
+        """INF-5012: downloads.py URL resolution now comes from request.base_url.
+        When request.base_url is https://, the resolver returns https:// only.
+        """
+        from giljo_mcp.http.url_resolver import get_public_base_url
 
-            url = get_server_url(request=None)
+        mock_request = MagicMock()
+        mock_request.base_url.__str__ = lambda _self: "https://demo.giljo.ai/"
+        url = get_public_base_url(mock_request)
         assert "http://" not in url, f"Found http:// in downloads URL: {url}"
 
     def test_ai_tools_no_http(self, ssl_config):

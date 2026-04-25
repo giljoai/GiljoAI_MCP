@@ -17,12 +17,39 @@ Test Strategy (TDD):
 3. Verify all tests pass (REFACTOR phase)
 
 Updated for exception-based patterns (Handover 0480 series).
+
+CE-only: in demo/saas mode the endpoint is intentionally rejected with 403
+(admin bootstrap is CLI-only). The SaaS-side behavior is covered by
+tests/saas/test_auth_create_first_admin_demo_mode.py.
 """
 
+import os
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+
+
+def _gil_mode() -> str:
+    """Resolve GILJO_MODE the same way app.py does: env var first, else .env at repo root."""
+    val = os.environ.get("GILJO_MODE")
+    if val:
+        return val.lower()
+    try:
+        env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
+        with open(env_path) as f:
+            for line in f:
+                if line.startswith("GILJO_MODE="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'").lower()
+    except OSError:
+        pass
+    return ""
+
+
+_skip_in_saas_demo = pytest.mark.skipif(
+    _gil_mode() in ("demo", "saas"),
+    reason="endpoint refuses public admin bootstrap in demo/saas; SaaS path tested in tests/saas/",
+)
 
 
 @pytest_asyncio.fixture
@@ -50,6 +77,7 @@ async def authed_client_for_first_admin(db_manager, api_client):
     yield api_client
 
 
+@_skip_in_saas_demo
 @pytest.mark.asyncio
 async def test_create_first_admin_accepts_workspace_name(api_client, db_manager):
     """
@@ -123,6 +151,7 @@ async def test_create_first_admin_accepts_workspace_name(api_client, db_manager)
                 assert org.name == f"Acme Corporation {unique_suffix}", f"Expected org name, got '{org.name}'"
 
 
+@_skip_in_saas_demo
 @pytest.mark.asyncio
 async def test_create_first_admin_defaults_workspace_name(api_client, db_manager):
     """

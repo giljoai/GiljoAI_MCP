@@ -149,7 +149,7 @@
 
               <v-file-input
                 v-model="visionFiles"
-                accept=".txt,.md,.markdown"
+                accept=".txt,.md,.markdown,text/plain,text/markdown"
                 label="Choose files"
                 variant="outlined"
                 density="comfortable"
@@ -157,7 +157,7 @@
                 show-size
                 clearable
                 prepend-icon="mdi-folder-open"
-                hint="Upload product file(s), requirements, proposals, specifications (.md, .txt files)"
+                hint="TXT or MD, max 5 MB"
                 persistent-hint
                 :disabled="!productForm.name?.trim()"
                 class="mb-3"

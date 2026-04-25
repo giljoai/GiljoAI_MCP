@@ -47,6 +47,10 @@ class Organization(Base):
     name = Column(String(255), nullable=False)
     slug = Column(String(255), nullable=False, unique=True, index=True)  # FIXED: 100 -> 255 (0424m)
     is_active = Column(Boolean, default=True, nullable=False)
+    status = Column(String(32), nullable=True)  # SAAS-022: Ops panel soft-delete status (ce_0001)
+    deleted_at = Column(
+        DateTime(timezone=True), nullable=True
+    )  # SAAS-022: Timestamp for soft-delete grace period (ce_0002)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True),

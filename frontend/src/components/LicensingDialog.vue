@@ -46,6 +46,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import setupService from '@/services/setupService'
+import configService from '@/services/configService'
 
 const STORAGE_KEY = 'giljo_license_dismissed_at'
 const REMINDER_DAYS = 30
@@ -55,6 +56,11 @@ const userCount = ref(0)
 
 async function checkLicensing() {
   try {
+    // CE-only gate: multi-user warning does not apply to demo/saas deployments,
+    // which are licensed for multi-user use by design.
+    await configService.fetchConfig()
+    if (configService.getGiljoMode() !== 'ce') return
+
     const data = await setupService.checkEnhancedStatus()
     const totalUsers = data.total_users_count || 0
 

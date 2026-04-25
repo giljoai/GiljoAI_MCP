@@ -34,6 +34,53 @@ from .codex_defaults import CODEX_DEFAULT_MODEL, CODEX_DEFAULT_REASONING_EFFORT
 from .models import AgentTemplate
 
 
+_MCP_BOOTSTRAP_MARKER = "You are part of a GiljoAI MCP orchestration system"
+_MCP_BOOTSTRAP_END = "Do not begin work until you have received and read your mission and protocols"
+
+
+def _normalize_instruction_text(text: str) -> str:
+    """Normalize exported prompt text without changing markdown structure."""
+    return "\n".join(line.rstrip() for line in text.strip().splitlines()).strip()
+
+
+def _remove_duplicate_mcp_bootstrap(system_text: str, user_text: str) -> str:
+    """Remove legacy duplicated MCP startup prose from role instructions.
+
+    Handover 0813 moved the startup bootstrap into system_instructions. Some
+    existing template rows still carry an older copy at the start of
+    user_instructions, which produces malformed Codex agent TOML exports.
+    """
+    if _MCP_BOOTSTRAP_MARKER not in system_text or _MCP_BOOTSTRAP_END not in system_text:
+        return user_text
+
+    marker_index = user_text.find(_MCP_BOOTSTRAP_MARKER)
+    if marker_index == -1:
+        return user_text
+
+    prefix = user_text[:marker_index].strip()
+    if prefix and prefix not in {"# GiljoAI MCP Agent", "## GiljoAI MCP Agent"}:
+        return user_text
+
+    end_index = user_text.find(_MCP_BOOTSTRAP_END, marker_index)
+    if end_index == -1:
+        return user_text
+
+    line_end_index = user_text.find("\n", end_index)
+    if line_end_index == -1:
+        return ""
+
+    return user_text[line_end_index + 1 :].lstrip()
+
+
+def _build_role_prose(system_text: str, user_text: str) -> str:
+    """Return role prose safe for export beside the shared MCP bootstrap."""
+    normalized = _normalize_instruction_text(user_text)
+    if not normalized:
+        return ""
+    deduped = _remove_duplicate_mcp_bootstrap(system_text, normalized)
+    return _normalize_instruction_text(deduped)
+
+
 def _slugify_filename(name: str) -> str:
     """Return a safe slug filename (keeps existing slug if already valid)."""
     slug = name.strip().lower().replace(" ", "-")
@@ -134,12 +181,12 @@ def render_claude_agent(template: AgentTemplate) -> str:
     parts: list[str] = []
 
     # Slim bootstrap (system_instructions -- now ~5-10 lines, Handover 0813)
-    bootstrap = (template.system_instructions or "").strip()
+    bootstrap = _normalize_instruction_text(template.system_instructions or "")
     if bootstrap:
         parts.append(bootstrap)
 
     # Role identity prose (user_instructions -- Handover 0813: now included!)
-    role_prose = (template.user_instructions or "").strip()
+    role_prose = _build_role_prose(bootstrap, template.user_instructions or "")
     if role_prose:
         parts.append(f"\n{role_prose}")
 
@@ -196,11 +243,11 @@ def _build_body_parts(template: AgentTemplate) -> list[str]:
     """
     parts: list[str] = []
 
-    bootstrap = (template.system_instructions or "").strip()
+    bootstrap = _normalize_instruction_text(template.system_instructions or "")
     if bootstrap:
         parts.append(bootstrap)
 
-    role_prose = (template.user_instructions or "").strip()
+    role_prose = _build_role_prose(bootstrap, template.user_instructions or "")
     if role_prose:
         parts.append(f"\n{role_prose}")
 

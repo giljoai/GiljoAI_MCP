@@ -304,6 +304,24 @@ async def require_admin(current_user: User = Depends(get_current_active_user)) -
     return current_user
 
 
+async def require_ce_mode() -> None:
+    """
+    Gate an endpoint so it is only exposed when ``GILJO_MODE == "ce"``.
+
+    SEC-0005a: Role and mode are orthogonal axes. Some endpoints (server-level
+    config, DB password rotation, SSL cert upload, etc.) are CE-only and MUST NOT
+    be exposed in demo/SaaS deployments even to admins of their own tenant.
+
+    Raises:
+        HTTPException: 404 when not in CE mode (hide endpoint existence; a 403
+            would acknowledge the route is real).
+    """
+    from api.app_state import GILJO_MODE
+
+    if GILJO_MODE != "ce":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+
 async def get_current_user_optional(
     request: Request,
     access_token: Optional[str] = Cookie(None),

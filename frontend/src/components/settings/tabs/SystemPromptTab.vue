@@ -24,9 +24,12 @@
           so we expose it here for transparency. The protocol layers remain hidden and will continue to
           adapt based on the context you've already defined.
         </p>
-        <p class="mb-0">
+        <p class="mb-3">
           <strong>The philosophy is simple: define your product once, and every agent works from that
           shared understanding, no tedious per-request prompt tuning required.</strong>
+        </p>
+        <p class="mb-0">
+          <strong>Changes to this prompt apply to this tenant only.</strong>
         </p>
       </v-alert>
 
@@ -129,7 +132,7 @@ const promptStatus = computed(() => {
     const actor = promptMetadata.value.updatedBy || 'admin'
     return `Override saved ${timestamp} by ${actor}`
   }
-  return 'Using default system prompt'
+  return 'Using the default orchestrator prompt (you have not saved an override for your tenant)'
 })
 
 // Methods

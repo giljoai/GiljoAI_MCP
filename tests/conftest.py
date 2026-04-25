@@ -25,14 +25,38 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 os.environ.setdefault("DB_PASSWORD", "test-password")
 os.environ.setdefault("JWT_SECRET", "test_secret_key")
 
+# --------------------------------------------------------------------------
+# INF-5012b Part 3: Pin DATABASE_URL to test credentials BEFORE any
+# application module (api.app, api.endpoints.*, src.giljo_mcp.auth.*) is
+# imported by a test. Those modules call load_dotenv() without override,
+# which silently injects the production DATABASE_URL (giljo_user@giljo_mcp)
+# mid-run. The first use survives because db_manager() resolved the URL
+# before that import; on the second function-scoped db_manager fixture
+# the production URL wins, and PostgreSQLTestHelper._config_from_env()
+# reuses giljo_user — which has no privileges on postgres-owned test
+# tables. Result: every test after the first fails with
+#   permission denied for table organizations
+# and a trailing SAWarning: transaction already deassociated from
+# connection.
+#
+# Setting DATABASE_URL here (before app imports) makes the later
+# load_dotenv(override=False) calls no-ops, so the test database URL
+# sticks for the entire session.
+# --------------------------------------------------------------------------
+_existing_db_url = os.environ.get("DATABASE_URL", "")
+if "/giljo_mcp_test" not in _existing_db_url:
+    from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+    os.environ["DATABASE_URL"] = PostgreSQLTestHelper.get_test_db_url()
+
 
 # Import Product model for test_product fixture
-from giljo_mcp.models import Product
-from giljo_mcp.services.project_service import ProjectService
-from giljo_mcp.tenant import TenantManager
+from giljo_mcp.models import Product  # noqa: E402 -- must follow DATABASE_URL setup above
+from giljo_mcp.services.project_service import ProjectService  # noqa: E402
+from giljo_mcp.tenant import TenantManager  # noqa: E402
 
 # Import PostgreSQL test fixtures from base_fixtures
-from tests.fixtures.base_fixtures import (
+from tests.fixtures.base_fixtures import (  # noqa: E402
     db_manager,
     db_session,
     test_project,

@@ -254,7 +254,7 @@ const emit = defineEmits([
 const router = useRouter()
 
 function goToIntegrations() {
-  router.push({ path: '/settings', query: { tab: 'integrations' } })
+  router.push({ path: '/tools', query: { tab: 'connect' } })
 }
 
 /**

@@ -12,12 +12,12 @@ Provides elegant copy-paste configuration system for connecting AI tools
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from giljo_mcp.config_manager import get_config
+from giljo_mcp.http.url_resolver import get_public_base_url
 from giljo_mcp.models import User
 from giljo_mcp.utils.log_sanitizer import sanitize
 
@@ -176,6 +176,7 @@ async def list_supported_tools():
 @router.get("/config-generator/{tool_name}", response_model=AIToolConfigResponse, tags=["ai-tools"])
 async def generate_ai_tool_config(
     tool_name: str,
+    request: Request,
     current_user: User | None = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
 ):
@@ -189,6 +190,7 @@ async def generate_ai_tool_config(
 
     Args:
         tool_name: AI tool identifier (claude, codex, gemini)
+        request: FastAPI request (used to resolve public base URL via X-Forwarded-*)
         current_user: Authenticated user (optional for public access)
         db: Database session
 
@@ -201,18 +203,10 @@ async def generate_ai_tool_config(
     # Normalize tool name
     tool_id = tool_name.lower().strip()
 
-    # Get server configuration
-    config = get_config()
-
-    # Build server URL from configuration
-    # Use external_host if configured, otherwise use api.host
-    host = config.get_nested("services.external_host") or config.get_nested(
-        "services.api.host", default=config.server.api_host
-    )
-    port = config.get_nested("services.api.port", default=config.server.api_port)
-
-    protocol = "https" if config.get_nested("features.ssl_enabled", default=False) else "http"
-    server_url = f"{protocol}://{host}:{port}"
+    # Resolve public base URL from the current request (INF-5012).
+    # This honors X-Forwarded-Host / X-Forwarded-Proto so Cloudflare Tunnel,
+    # customer nginx, and LAN mkcert deployments all get the correct URL.
+    server_url = get_public_base_url(request)
 
     logger.info("Generating config for tool '%s' with server URL: %s", sanitize(tool_id), server_url)
 

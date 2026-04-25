@@ -28,13 +28,29 @@ Environment Variables:
 import logging
 import os
 import sys
-from logging.handlers import RotatingFileHandler
+from logging.handlers import RotatingFileHandler as _BaseRotatingFileHandler
 from pathlib import Path
 from typing import Optional
 
 import structlog
 
 from .error_codes import ErrorCode, get_error_description
+
+
+class _SafeRotatingFileHandler(_BaseRotatingFileHandler):
+    """RotatingFileHandler that survives Windows file-lock errors.
+
+    On Windows, os.rename() fails with PermissionError (WinError 32) when
+    another process (uvicorn worker, log tail) holds the file open. Instead
+    of crashing the request, we skip the rotation attempt — the next emit
+    will retry when the lock may have cleared.
+    """
+
+    def doRollover(self):  # noqa: N802 -- must match parent class name
+        try:  # noqa: SIM105 -- suppress is less clear for override pattern
+            super().doRollover()
+        except PermissionError:
+            pass
 
 
 # Re-export for convenience
@@ -63,7 +79,7 @@ def _setup_file_handler(level: int) -> None:
 
     log_file = logs_dir / "giljo_mcp.log"
 
-    handler = RotatingFileHandler(
+    handler = _SafeRotatingFileHandler(
         filename=str(log_file),
         maxBytes=10 * 1024 * 1024,  # 10MB
         backupCount=5,

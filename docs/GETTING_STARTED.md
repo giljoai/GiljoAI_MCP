@@ -24,9 +24,9 @@ After the Connect step, verify the MCP connection from your CLI tool:
 # You should see "giljo_mcp" listed as Connected
 ```
 
-To add tools later or generate additional API keys: click your avatar (bottom left), open **My Settings**, and go to the **API Keys** tab.
+To add tools later or generate additional API keys: click **Tools** in the left nav and open the **Connect** tab — API keys are managed there.
 
-To rerun the wizard at any time: **My Settings** > **Startup** tab > Setup Wizard.
+To rerun the wizard at any time: **Tools** > **Startup** tab > Setup Wizard.
 
 ---
 
@@ -97,7 +97,7 @@ You can send messages to agents via **Broadcast** (all agents) or direct message
 When work is complete, click **Close Out Project**. The system:
 
 - Captures the orchestrator's summary
-- Records git commits (if git integration is enabled in My Settings > Integrations)
+- Records git commits (if git integration is enabled in Tools > Connect)
 - Writes a **360 Memory** entry: what was built, key decisions, patterns, outcomes
 
 Your next project starts with this accumulated context automatically.
@@ -108,7 +108,7 @@ Your next project starts with this accumulated context automatically.
 
 **Tune product context.** If context fields drift from the actual codebase, use the Tune button on a product card. Select sections to retune, generate a prompt, and paste it into your CLI tool. The agent scans the codebase and updates the fields directly. See the User Guide for details.
 
-**Customize agent templates.** Go to **My Settings > Agents**. Edit role instructions or add specializations. Fetch templates from the CLI:
+**Customize agent templates.** Go to **Tools > Agents**. Edit role instructions or add specializations. Fetch templates from the CLI:
 
 ```
 /gil_get_agents   # Claude Code, Gemini CLI

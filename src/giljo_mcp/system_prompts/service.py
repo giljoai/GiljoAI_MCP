@@ -43,18 +43,20 @@ class SystemPromptService:
         self.db_manager = db_manager
         self._default_orchestrator_prompt: str | None = None
 
-    async def get_orchestrator_prompt(self, session: AsyncSession | None = None) -> PromptRecord:
+    async def get_orchestrator_prompt(self, *, tenant_key: str, session: AsyncSession | None = None) -> PromptRecord:
         """
-        Fetch orchestrator prompt with override metadata.
+        Fetch orchestrator prompt with override metadata for the given tenant.
 
         Falls back to the hard-coded default when no override is present or
         when database access is unavailable.
         """
+        self._require_tenant_key(tenant_key)
+
         if session:
-            override = await self._fetch_override(session)
+            override = await self._fetch_override(session, tenant_key)
         elif self.db_manager:
             async with self.db_manager.get_session_async() as db_session:
-                override = await self._fetch_override(db_session)
+                override = await self._fetch_override(db_session, tenant_key)
         else:
             override = None
 
@@ -74,9 +76,15 @@ class SystemPromptService:
         )
 
     async def update_orchestrator_prompt(
-        self, *, content: str, updated_by: str, session: AsyncSession | None = None
+        self,
+        *,
+        tenant_key: str,
+        content: str,
+        updated_by: str,
+        session: AsyncSession | None = None,
     ) -> PromptRecord:
-        """Persist an administrator override for the orchestrator prompt."""
+        """Persist an administrator override for the orchestrator prompt (per tenant)."""
+        self._require_tenant_key(tenant_key)
         self._ensure_db_manager()
         sanitized_content = content.strip()
         self._validate_content(sanitized_content)
@@ -88,28 +96,34 @@ class SystemPromptService:
         }
 
         if session:
-            await self._upsert_override(session, payload)
-            return await self.get_orchestrator_prompt(session=session)
+            await self._upsert_override(session, tenant_key, payload)
+            return await self.get_orchestrator_prompt(tenant_key=tenant_key, session=session)
 
         async with self.db_manager.get_session_async() as db_session:
-            await self._upsert_override(db_session, payload)
-            return await self.get_orchestrator_prompt(session=db_session)
+            await self._upsert_override(db_session, tenant_key, payload)
+            return await self.get_orchestrator_prompt(tenant_key=tenant_key, session=db_session)
 
-    async def reset_orchestrator_prompt(self, session: AsyncSession | None = None) -> PromptRecord:
-        """Delete any existing override and return the default prompt."""
+    async def reset_orchestrator_prompt(self, *, tenant_key: str, session: AsyncSession | None = None) -> PromptRecord:
+        """Delete any existing override for the tenant and return the default prompt."""
+        self._require_tenant_key(tenant_key)
         self._ensure_db_manager()
 
         if session:
-            await self._delete_override(session)
-            return await self.get_orchestrator_prompt(session=session)
+            await self._delete_override(session, tenant_key)
+            return await self.get_orchestrator_prompt(tenant_key=tenant_key, session=session)
 
         async with self.db_manager.get_session_async() as db_session:
-            await self._delete_override(db_session)
-            return await self.get_orchestrator_prompt(session=db_session)
+            await self._delete_override(db_session, tenant_key)
+            return await self.get_orchestrator_prompt(tenant_key=tenant_key, session=db_session)
 
     def _ensure_db_manager(self) -> None:
         if not self.db_manager:
             raise RuntimeError("Database manager is required for this operation")
+
+    @staticmethod
+    def _require_tenant_key(tenant_key: str) -> None:
+        if not tenant_key or not tenant_key.strip():
+            raise ValueError("tenant_key is required")
 
     @staticmethod
     def _validate_content(content: str) -> None:
@@ -118,9 +132,10 @@ class SystemPromptService:
         if len(content.encode("utf-8")) > MAX_PROMPT_BYTES:
             raise ValueError(f"Prompt content exceeds {MAX_PROMPT_BYTES / 1024:.0f}KB limit")
 
-    async def _fetch_override(self, session: AsyncSession) -> dict | None:
+    async def _fetch_override(self, session: AsyncSession, tenant_key: str) -> dict | None:
         stmt = select(Configuration).where(
-            Configuration.tenant_key.is_(None), Configuration.key == DEFAULT_ORCHESTRATOR_CONFIG_KEY
+            Configuration.tenant_key == tenant_key,
+            Configuration.key == DEFAULT_ORCHESTRATOR_CONFIG_KEY,
         )
         result = await session.execute(stmt)
         record = result.scalar_one_or_none()
@@ -145,9 +160,10 @@ class SystemPromptService:
             "updated_at": updated_at,
         }
 
-    async def _upsert_override(self, session: AsyncSession, payload: dict) -> None:
+    async def _upsert_override(self, session: AsyncSession, tenant_key: str, payload: dict) -> None:
         stmt = select(Configuration).where(
-            Configuration.tenant_key.is_(None), Configuration.key == DEFAULT_ORCHESTRATOR_CONFIG_KEY
+            Configuration.tenant_key == tenant_key,
+            Configuration.key == DEFAULT_ORCHESTRATOR_CONFIG_KEY,
         )
         result = await session.execute(stmt)
         record = result.scalar_one_or_none()
@@ -164,7 +180,7 @@ class SystemPromptService:
         else:
             session.add(
                 Configuration(
-                    tenant_key=None,
+                    tenant_key=tenant_key,
                     project_id=None,
                     key=DEFAULT_ORCHESTRATOR_CONFIG_KEY,
                     value=stored_value,
@@ -173,9 +189,10 @@ class SystemPromptService:
                 )
             )
 
-    async def _delete_override(self, session: AsyncSession) -> None:
+    async def _delete_override(self, session: AsyncSession, tenant_key: str) -> None:
         stmt = delete(Configuration).where(
-            Configuration.tenant_key.is_(None), Configuration.key == DEFAULT_ORCHESTRATOR_CONFIG_KEY
+            Configuration.tenant_key == tenant_key,
+            Configuration.key == DEFAULT_ORCHESTRATOR_CONFIG_KEY,
         )
         await session.execute(stmt)
 

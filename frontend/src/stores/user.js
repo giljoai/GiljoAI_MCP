@@ -96,23 +96,55 @@ export const useUserStore = defineStore('user', () => {
       console.error('[UserStore] Logout endpoint failed:', error)
       // Continue with local cleanup even if API call fails
     } finally {
-      // Always clear local state
+      // Always clear local auth state -- every field the router guard or any
+      // view could read must be reset so a post-logout navigation cannot
+      // render a protected view from stale Pinia state (regression: demo
+      // server 2026-04-24, route-guard-bypass leak).
       currentUser.value = null
       clearOrgFields()
 
-      // Clear tenant key from API client
+      // Cancel any in-flight fetchCurrentUser() dedupe token so the next
+      // navigation fires a fresh /api/auth/me against the now-invalid cookie.
+      _fetchPending = null
+
+      // Clear tenant key from API client so subsequent pre-auth requests
+      // (e.g. /api/setup/status) don't reuse the logged-out user's header.
       setTenantKey(null)
 
       // Clear remember me data
-      localStorage.removeItem('remembered_username')
+      try {
+        localStorage.removeItem('remembered_username')
+      } catch {
+        // localStorage may be unavailable in restricted environments
+      }
 
-      // Clear dependent stores on logout (tenant isolation defense-in-depth)
-      const { useNotificationStore } = await import('@/stores/notifications')
-      useNotificationStore().clearAll()
-      const { useProductStore } = await import('@/stores/products')
-      useProductStore().clearProductData()
-      const { useTaskStore } = await import('@/stores/tasks')
-      useTaskStore().tasks = []
+      // Clear dependent stores on logout (tenant isolation defense-in-depth).
+      // Wrap dynamic imports in try/catch so a bundler or test-env failure
+      // here can never prevent the auth state above from being cleared.
+      try {
+        const { useWebSocketStore } = await import('@/stores/websocket')
+        useWebSocketStore().disconnect()
+      } catch (e) {
+        console.warn('[UserStore] WebSocket disconnect skipped:', e)
+      }
+      try {
+        const { useNotificationStore } = await import('@/stores/notifications')
+        useNotificationStore().clearAll()
+      } catch (e) {
+        console.warn('[UserStore] Notification store cleanup skipped:', e)
+      }
+      try {
+        const { useProductStore } = await import('@/stores/products')
+        useProductStore().clearProductData()
+      } catch (e) {
+        console.warn('[UserStore] Product store cleanup skipped:', e)
+      }
+      try {
+        const { useTaskStore } = await import('@/stores/tasks')
+        useTaskStore().tasks = []
+      } catch (e) {
+        console.warn('[UserStore] Task store cleanup skipped:', e)
+      }
     }
   }
 

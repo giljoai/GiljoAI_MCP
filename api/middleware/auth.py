@@ -14,10 +14,11 @@ moved to the new middleware directory structure in Handover 0129c.
 
 import logging
 import time
+from pathlib import Path
 from typing import Callable, Optional
 
 from fastapi import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from giljo_mcp.logging import ErrorCode
@@ -119,7 +120,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             # Stash token expiry for downstream use and response header
             request.state.token_exp = auth_result.get("exp")
         else:
-            # Auth failed - return 401
+            # Auth failed.
             logger.warning(
                 "authentication_failed error_code=%s path=%s method=%s ip=%s reason=%s",
                 ErrorCode.AUTH_UNAUTHORIZED.value,
@@ -128,6 +129,25 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 request.client.host if request.client else "unknown",
                 auth_result.get("error", "No credentials provided"),
             )
+
+            # SPA fallback: if a browser navigated to an authenticated route
+            # while logged out (bookmark, F5 refresh, address-bar entry), serve
+            # index.html so Vue Router can boot and redirect to /login. Without
+            # this the user sees a raw JSON 401 — terrible UX, looks broken.
+            #
+            # Detection: GET requests where Accept includes text/html and the
+            # path is NOT an API/WebSocket/static path. API callers (axios,
+            # fetch, MCP clients) send Accept: application/json and still get
+            # the canonical 401, preserving the API contract.
+            if (
+                request.method == "GET"
+                and "text/html" in request.headers.get("accept", "")
+                and not _is_api_or_static_path(request.url.path)
+            ):
+                index_html = _resolve_spa_index(request)
+                if index_html is not None:
+                    return FileResponse(str(index_html), status_code=200)
+
             return JSONResponse(
                 status_code=401,
                 content={
@@ -154,7 +174,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if path.endswith(static_extensions) or path.startswith(("/icons/", "/mascot/")):
             return True
         # Vue Router SPA routes — must serve index.html without auth so F5 refresh works
-        if path in {"/login", "/first-login", "/server-down", "/oauth/authorize"}:
+        if path in {
+            "/login",
+            "/first-login",
+            "/server-down",
+            "/oauth/authorize",
+            "/demo-landing",
+            "/register",
+            "/reset-password",
+        }:
             return True
         # Setup wizard routes must be accessible before any user exists
         if path in {"/welcome", "/create-admin"} or path.startswith("/api/setup/"):
@@ -180,8 +208,32 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/oauth/token",  # OAuth token exchange (public, PKCE-protected)
             "/api/oauth/.well-known/oauth-authorization-server",  # OAuth server metadata
             "/api/version/",  # Version check (installers need this before auth exists)
+            "/api/saas/register",  # SaaS self-serve registration (public, pre-auth)
+            "/api/saas/password-reset/",  # SaaS password reset (public, pre-auth)
         ]
         # Always allow token download path (token is the auth)
         if path.startswith("/api/download/temp") or "/api/download/temp/" in path:
             return True
         return any(path.startswith(p) for p in public_paths)
+
+
+# ─── SPA-fallback helpers ──────────────────────────────────────────────────
+# Used by the auth middleware to serve index.html instead of a JSON 401 when
+# a logged-out browser navigates to an authenticated route. Mirrors the
+# 404-handler pattern in api/app.py so behavior stays consistent across the
+# two fallback paths.
+
+_API_PREFIXES = ("/api", "/ws", "/mcp", "/health", "/docs", "/redoc", "/openapi.json", "/assets/")
+
+
+def _is_api_or_static_path(path: str) -> bool:
+    """True if the path is an API route, WebSocket, or built asset (not an SPA route)."""
+    return path.startswith(_API_PREFIXES)
+
+
+def _resolve_spa_index(request: Request) -> Optional[Path]:
+    """Locate the SPA index.html, or None if frontend isn't built."""
+    state = getattr(request.app.state, "config", None)
+    static_path = state.get_nested("paths.static", "frontend/dist") if state else "frontend/dist"
+    index_html = Path(static_path) / "index.html"
+    return index_html if index_html.exists() else None

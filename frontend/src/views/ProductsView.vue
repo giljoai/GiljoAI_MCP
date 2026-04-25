@@ -337,6 +337,8 @@ import { useFormatDate } from '@/composables/useFormatDate'
 import { useProductActivation } from '@/composables/useProductActivation'
 import { useProductSoftDelete } from '@/composables/useProductSoftDelete'
 import api from '@/services/api'
+import { parseErrorResponse } from '@/utils/errorMessages'
+import { validateUploadFiles } from '@/utils/uploadValidation'
 import ActivationWarningDialog from '@/components/products/ActivationWarningDialog.vue'
 import ProductDeleteDialog from '@/components/products/ProductDeleteDialog.vue'
 import ProductDetailsDialog from '@/components/products/ProductDetailsDialog.vue'
@@ -507,27 +509,23 @@ async function removeVisionDocument(doc) {
   }
 }
 
-// Handover 0508: Validate vision files before upload
+// SEC-0001 Phase 2: Client-side pre-check mirrors backend UploadConfig
+// (5 MB cap, .txt/.md/.markdown). This is fail-fast UX only — the backend
+// (api/endpoints/vision_documents.py + upload_guard.py) remains the
+// authoritative security boundary. If the allowlist or cap changes,
+// update `frontend/src/utils/uploadValidation.js` and the
+// `ProductForm.vue` hint text together.
 function validateVisionFiles() {
-  if (!visionFiles.value || visionFiles.value.length === 0) return true
+  const result = validateUploadFiles(visionFiles.value)
+  if (result.valid) return true
 
-  const MAX_FILE_SIZE = 10 * 1024 * 1024
-  const ALLOWED_EXTENSIONS = ['.md', '.txt', '.markdown']
-
-  for (const file of visionFiles.value) {
-    let error = null
-    if (file.size > MAX_FILE_SIZE) {
-      error = `File too large. Maximum size is 10MB (${(file.size / 1024 / 1024).toFixed(1)}MB provided).`
-    } else if (!ALLOWED_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))) {
-      error = `Invalid file type. Please upload .md or .txt files.`
-    }
-    if (error) {
-      showToast({ message: error, type: 'error', timeout: 7000 })
-      return false
-    }
-  }
-
-  return true
+  const firstFailure = result.invalid[0]
+  showToast({
+    message: `${firstFailure.file?.name || 'File'}: ${firstFailure.message}`,
+    type: 'error',
+    timeout: 7000,
+  })
+  return false
 }
 
 
@@ -718,21 +716,21 @@ async function uploadVisionFilesOnAttach(payload) {
       } catch (uploadError) {
         console.error(`Failed to upload ${file.name}:`, uploadError)
 
-        let errorMessage = `Failed to upload ${file.name}`
-        if (uploadError.response) {
-          switch (uploadError.response.status) {
-            case 413:
-              errorMessage = `${file.name}: File too large (max 10MB)`
-              break
-            case 400:
-              errorMessage = `${file.name}: ${uploadError.response.data.detail || 'Invalid file'}`
-              break
-            case 409:
-              errorMessage = `${file.name}: Document already exists. Please rename and try again.`
-              break
-            default:
-              errorMessage = `${file.name}: ${uploadError.response.data.detail || 'Upload failed'}`
-          }
+        // SEC-0001 Phase 2: Surface backend `{error_code, message}` verbatim
+        // via the shared parseErrorResponse helper so upload guardrail
+        // reasons (UPLOAD_TOO_LARGE / UPLOAD_TYPE_NOT_ALLOWED /
+        // UPLOAD_CONTENT_NOT_TEXT / UPLOAD_FILENAME_INVALID) render as
+        // the server phrased them instead of a generic "Upload failed".
+        // 409 keeps its dedicated copy — it's a UX conflict, not a
+        // security rejection.
+        let errorMessage
+        if (uploadError?.response?.status === 409) {
+          errorMessage = `${file.name}: Document already exists. Please rename and try again.`
+        } else if (uploadError?.response) {
+          const parsed = parseErrorResponse(uploadError)
+          errorMessage = `${file.name}: ${parsed.message || 'Upload failed'}`
+        } else {
+          errorMessage = `Failed to upload ${file.name}`
         }
 
         visionUploadError.value = errorMessage

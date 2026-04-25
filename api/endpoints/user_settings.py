@@ -114,6 +114,7 @@ class RemoveCookieDomainRequest(BaseModel):
 # API Endpoints
 
 
+# TENANT-LEVEL
 @router.get("/settings/cookie-domains", response_model=CookieDomainsResponse)
 async def get_cookie_domains(
     current_user: User = Depends(require_admin), db: AsyncSession = Depends(get_db_session)
@@ -144,6 +145,7 @@ async def get_cookie_domains(
     return CookieDomainsResponse(domains=domains)
 
 
+# TENANT-LEVEL
 @router.post("/settings/cookie-domains", response_model=CookieDomainsResponse, status_code=status.HTTP_201_CREATED)
 async def add_cookie_domain(
     request: AddCookieDomainRequest,
@@ -191,6 +193,7 @@ async def add_cookie_domain(
     return CookieDomainsResponse(domains=domains)
 
 
+# TENANT-LEVEL
 @router.delete("/settings/cookie-domains", response_model=CookieDomainsResponse)
 async def remove_cookie_domain(
     request: RemoveCookieDomainRequest,

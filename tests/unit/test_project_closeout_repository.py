@@ -339,8 +339,8 @@ class TestRepositoryIntegration:
             assert len(params.git_commits) == 1
             assert params.git_commits[0]["sha"] == "abc123"
 
-            # Check deliverables (derived from key_outcomes)
-            assert params.deliverables == ["Outcome A", "Outcome B", "Outcome C"]
+            # Check deliverables (deprecated field, always empty)
+            assert params.deliverables == []
 
             # Check metrics
             assert "commits" in params.metrics

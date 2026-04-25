@@ -71,12 +71,15 @@
 
     <!-- Runtime API configuration (before Vue loads) -->
     <script>
-      // Set API base URL based on current hostname and protocol
-      // This runs BEFORE Vite/Vue loads, so it's available to all code
-      const currentHost = window.location.hostname;
-      const apiPort = window.location.port || 7272;
+      // Set API base URL from window.location. Use the explicit port ONLY when
+      // the browser actually has one in the URL — on reverse-proxy deployments
+      // (Cloudflare Tunnel, nginx) the port is implicit (443 / 80) and
+      // window.location.port is "". Falling back to a hardcoded ":7272" was
+      // the demo.giljo.ai bug — it composed https://demo.giljo.ai:7272 which
+      // does not exist publicly and gets blocked by CSP. (INF-5012c)
+      const currentHost = window.location.host; // host = hostname[:port]
       const apiProtocol = window.location.protocol === 'https:' ? 'https' : 'http';
-      window.API_BASE_URL = `${apiProtocol}://${currentHost}:${apiPort}`;
+      window.API_BASE_URL = `${apiProtocol}://${currentHost}`;
       console.log('[Config] Runtime API URL:', window.API_BASE_URL);
     </script>
 
