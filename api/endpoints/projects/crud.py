@@ -364,7 +364,7 @@ async def check_series_number(
     product_id = str(active_product.id) if active_product else None
 
     async with project_service.db_manager.get_session_async() as session:
-        result = await check_series_available(
+        return await check_series_available(
             session,
             current_user.tenant_key,
             type_id,
@@ -373,7 +373,6 @@ async def check_series_number(
             exclude_project_id,
             product_id,
         )
-    return result
 
 
 @router.get("/used-subseries", response_model=UsedSubseriesResponse)
@@ -396,7 +395,7 @@ async def used_subseries(
     product_id = str(active_product.id) if active_product else None
 
     async with project_service.db_manager.get_session_async() as session:
-        result = await get_used_subseries(
+        return await get_used_subseries(
             session,
             current_user.tenant_key,
             type_id,
@@ -404,7 +403,6 @@ async def used_subseries(
             exclude_project_id,
             product_id,
         )
-    return result
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)

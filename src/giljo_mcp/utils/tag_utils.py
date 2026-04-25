@@ -79,9 +79,7 @@ def sanitize_tag(tag: str) -> str:
     Returns:
         Cleaned tag string (may be empty if tag was all punctuation).
     """
-    tag = strip_tag_punctuation(tag)
-    tag = tag[:MAX_TAG_LENGTH]
-    return tag
+    return strip_tag_punctuation(tag)[:MAX_TAG_LENGTH]
 
 
 def clean_tags(tags: list[str] | None) -> list[str]:

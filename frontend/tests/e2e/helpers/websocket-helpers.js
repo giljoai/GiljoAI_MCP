@@ -16,12 +16,7 @@
  * expect(messages).toContainEqual(expect.objectContaining({ event: 'project:mission_updated' }))
  * ```
  */
-export async function captureWebSocketMessages(page, action, options = {}) {
-  const {
-    timeout = 30000,
-    eventFilter = null,
-  } = options
-
+export async function captureWebSocketMessages(page, action, _options = {}) {
   const messages = []
   const startTime = Date.now()
 

@@ -250,12 +250,11 @@ class ProductStatisticsRepository:
         Returns:
             Timestamp of last message or None if no messages
         """
-        result = await session.scalar(
+        return await session.scalar(
             select(func.max(Message.created_at)).where(
                 Message.project_id == project_id, Message.tenant_key == tenant_key
             )
         )
-        return result
 
     # ============================================================================
     # MESSAGE STATISTICS DOMAIN

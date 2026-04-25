@@ -39,7 +39,7 @@ vi.mock('@/services/api', () => ({
   },
 }))
 
-import api from '@/services/api'
+// api is used via vi.mock only (the mock reference is consumed by module resolution)
 
 describe('TasksView - Component Rendering', () => {
   let vuetify

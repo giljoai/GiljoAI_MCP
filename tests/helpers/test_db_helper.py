@@ -162,7 +162,7 @@ class PostgreSQLTestHelper:
         config = env_config if env_config else PostgreSQLTestHelper.DEFAULT_CONFIG.copy()
         config["database"] = database
 
-        url = (
+        return (
             (
                 f"postgresql+asyncpg://{config['username']}:{config['password']}"
                 f"@{config['host']}:{config['port']}/{config['database']}"
@@ -173,8 +173,6 @@ class PostgreSQLTestHelper:
                 f"@{config['host']}:{config['port']}/{config['database']}"
             )
         )
-
-        return url
 
     @staticmethod
     async def ensure_test_database_exists():
@@ -356,9 +354,8 @@ async def wait_for_database_ready(max_attempts: int = 30, delay: float = 1.0) ->
                 await conn.execute(text("SELECT 1"))
             await engine.dispose()
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001
             if attempt < max_attempts - 1:
                 await asyncio.sleep(delay)
-            continue
 
     return False

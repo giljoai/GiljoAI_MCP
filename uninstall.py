@@ -13,6 +13,7 @@ This will remove ALL Python packages installed by GiljoAI and PostgreSQL!
 For development/testing, use devuninstall.py instead.
 """
 
+import contextlib
 import json
 import os
 import shutil
@@ -33,11 +34,8 @@ class GiljoProductionUninstaller:
     def load_manifest(self):
         """Load installation manifest"""
         if self.manifest_path.exists():
-            try:
-                with open(self.manifest_path) as f:
-                    return json.load(f)
-            except Exception:
-                return {}
+            with contextlib.suppress(Exception), open(self.manifest_path) as f:
+                return json.load(f)
         return {}
 
     def log(self, message, level="INFO"):
@@ -103,14 +101,11 @@ class GiljoProductionUninstaller:
         # Also check .env file for password if manifest doesn't have it
         env_file = self.root_path / ".env"
         if env_file.exists() and not pg_info.get("password"):
-            try:
-                with open(env_file) as f:
-                    for line in f:
-                        if line.startswith("DB_PASSWORD="):
-                            password = line.split("=", 1)[1].strip().strip("\"'")
-                            break
-            except Exception:  # noqa: S110
-                pass
+            with contextlib.suppress(Exception), open(env_file) as f:
+                for line in f:
+                    if line.startswith("DB_PASSWORD="):
+                        password = line.split("=", 1)[1].strip().strip("\"'")
+                        break
 
         # Find psql executable
         psql_paths = [

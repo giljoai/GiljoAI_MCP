@@ -35,8 +35,7 @@ from giljo_mcp.tenant import TenantManager
 async def orchestration_service(db_manager: DatabaseManager):
     """Create OrchestrationService with real database."""
     tenant_manager = TenantManager()
-    service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager)
-    return service
+    return OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager)
 
 
 @pytest.fixture

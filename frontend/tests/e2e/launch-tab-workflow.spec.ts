@@ -149,10 +149,6 @@ test.describe('Launch Tab Workflow (Job Staging)', () => {
     const panelsMobile = page.locator('.panel')
     await expect(panelsMobile).toHaveCount(3)
 
-    // Verify mobile layout (may be column flex-direction)
-    const containerFlexMobile = await page.locator('.main-container').evaluate(el =>
-      window.getComputedStyle(el).flexDirection
-    )
     // Mobile may be 'row' or 'column' - just verify panels are still visible
     await expect(panelsMobile.first()).toBeVisible()
   })
@@ -227,7 +223,6 @@ test.describe('Launch Tab Workflow (Job Staging)', () => {
     expect(isFocused).toBe(true)
 
     // Test Enter key activation
-    const focusedBefore = await page.evaluate(() => document.activeElement?.tagName)
     await page.keyboard.press('Enter')
     // Just verify button press didn't cause error
     await page.waitForTimeout(500)

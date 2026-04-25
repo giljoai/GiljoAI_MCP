@@ -21,7 +21,6 @@ import { loginAsDefaultTestUser } from './helpers.ts'
 
 test.describe('Admin Settings - Identity Tab (Handover 0434)', () => {
   const BASE_URL = 'http://localhost:7274'
-  const API_BASE_URL = 'http://localhost:7272'
 
   test.beforeEach(async ({ page }) => {
     /**
@@ -134,7 +133,7 @@ test.describe('Admin Settings - Identity Tab (Handover 0434)', () => {
 
     // Create a new context for non-admin user
     const nonAdminContext = await browser.newContext()
-    const nonAdminPage = await nonAdminContext.newPage()
+    await nonAdminContext.newPage()
 
     try {
       // Try to login as a non-admin user (if available)

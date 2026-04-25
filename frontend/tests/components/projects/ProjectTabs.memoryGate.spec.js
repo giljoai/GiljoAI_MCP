@@ -126,11 +126,6 @@ const projectWithProduct = {
   execution_mode: 'multi_terminal',
 }
 
-const projectWithoutProduct = {
-  ...projectWithProduct,
-  product_id: null,
-}
-
 // -- Helpers --
 
 function createWrapper(projectOverrides = {}) {

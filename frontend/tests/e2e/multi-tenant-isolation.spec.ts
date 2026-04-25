@@ -55,11 +55,8 @@ test.describe('Multi-Tenant Isolation (Security)', () => {
         )
 
         // User B should not see User A's projects (assuming different project names)
-        if (firstProjectAText && firstProjectAText.length > 0) {
-          const foundInB = projectsText.some(text => text.includes(firstProjectAText.split('\n')[0]))
-          // Note: This test assumes projects have unique names per tenant
-          // In practice, projects would have unique IDs for true isolation check
-        }
+        // Note: This test assumes projects have unique names per tenant
+        // In practice, projects would have unique IDs for true isolation check
       }
     } finally {
       // Cleanup
@@ -198,9 +195,6 @@ test.describe('Multi-Tenant Isolation (Security)', () => {
     })
 
     if (loginA.status() === 200) {
-      const responseA = await loginA.json()
-      const tokenA = responseA.access_token
-
       // Try to fetch projects with User A's token
       // If we had User B's project ID, we could test unauthorized access
       // For now, test that the endpoint requires authentication
@@ -254,7 +248,7 @@ test.describe('Multi-Tenant Isolation (Security)', () => {
 
     // Verify user is logged in (projects visible)
     const projectCards = page.locator('[data-testid="project-card"]')
-    const cardCount = await projectCards.count()
+    await projectCards.count()
 
     // Find and click logout button
     const logoutBtn = page.locator('[data-testid="logout-button"]')

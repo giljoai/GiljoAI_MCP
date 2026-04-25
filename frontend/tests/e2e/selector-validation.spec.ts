@@ -21,7 +21,6 @@ import { test, expect, Page } from '@playwright/test'
 // TEST CONFIGURATION
 // ============================================
 
-const API_BASE_URL = 'http://localhost:7272'
 const FRONTEND_URL = 'http://localhost:7274'
 const TEST_USER_EMAIL = 'patrik'
 const TEST_USER_PASSWORD = '***REMOVED***'

@@ -41,8 +41,7 @@ def _reload_app_state_module(monkeypatch, mode_value: str | None = None):
 
     # Remove cached module so reload picks up the new env value
     sys.modules.pop("api.app_state", None)
-    mod = importlib.import_module("api.app_state")
-    return mod
+    return importlib.import_module("api.app_state")
 
 
 # ---------------------------------------------------------------------------

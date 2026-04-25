@@ -230,8 +230,9 @@ class MissionService:
             try:
                 from giljo_mcp.services.settings_service import SettingsService
 
-                settings_svc = SettingsService(session, tenant_key)
-                integrations = await settings_svc.get_settings("integrations")
+                async with self._get_session() as settings_session:
+                    settings_svc = SettingsService(settings_session, tenant_key)
+                    integrations = await settings_svc.get_settings("integrations")
             except Exception:  # noqa: BLE001
                 self._logger.warning("[INTEGRATIONS] Failed to read settings from DB")
 

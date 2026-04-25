@@ -186,13 +186,12 @@ async def orchestration_service(
 
     db_manager.get_session_async = mock_get_session_async
 
-    service = OrchestrationService(
+    return OrchestrationService(
         db_manager=db_manager,
         tenant_manager=tenant_manager,
         test_session=db_session,
         websocket_manager=mock_websocket_manager,
     )
-    return service
 
 
 # ============================================================================
