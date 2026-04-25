@@ -59,6 +59,7 @@ _ALLOWED_TEMPLATE_UPDATE_FIELDS: frozenset[str] = frozenset(
         "is_default",
         "tags",
         "meta_data",
+        "user_managed_export",
     }
 )
 router = APIRouter()
@@ -104,6 +105,7 @@ def _convert_to_response(template: AgentTemplate) -> TemplateResponse:
         # Handover 0335: Export tracking fields
         last_exported_at=template.last_exported_at,
         may_be_stale=may_be_stale,
+        user_managed_export=template.user_managed_export or False,
         category=template.category,
         variables=template.variables or [],
         version=template.version or "1.0.0",
@@ -301,6 +303,17 @@ async def update_template(
             if not is_valid:
                 raise HTTPException(status_code=409, detail=error_msg)
 
+    # Metadata-only updates (e.g. is_active toggle) should not bump updated_at,
+    # otherwise the staleness check falsely triggers after enable/disable.
+    metadata_only_fields = {"is_active"}
+    is_metadata_only = set(update_data.keys()).issubset(metadata_only_fields)
+    previous_updated_at = template.updated_at
+
+    # Clear user_managed_export when content fields change (re-triggers staleness)
+    _CONTENT_FIELDS = {"user_instructions", "role", "model", "tools", "description", "cli_tool"}
+    if update_data.keys() & _CONTENT_FIELDS and "user_managed_export" not in update_data:
+        template.user_managed_export = False
+
     for field, value in update_data.items():
         if field == "user_instructions" and value:
             template.user_instructions = value
@@ -313,9 +326,39 @@ async def update_template(
 
     await template_service.commit_and_refresh_template(session, template)
 
+    # Restore updated_at when only metadata changed — use raw SQL to bypass onupdate
+    if is_metadata_only and previous_updated_at is not None:
+        from sqlalchemy import update
+
+        await session.execute(
+            update(AgentTemplate).where(AgentTemplate.id == template.id).values(updated_at=previous_updated_at)
+        )
+        await session.commit()
+        await session.refresh(template)
+
     logger.info("Updated template %s", sanitize(template_id))
 
-    return _convert_to_response(template)
+    response = _convert_to_response(template)
+
+    # Broadcast template update via EventBus for real-time UI refresh
+    try:
+        from api.app_state import state
+
+        if getattr(state, "event_bus", None):
+            await state.event_bus.publish(
+                "template:updated",
+                {
+                    "tenant_key": tenant_key,
+                    "template_id": template.id,
+                    "is_active": template.is_active,
+                    "may_be_stale": template.may_be_stale,
+                    "updated_fields": list(update_data.keys()),
+                },
+            )
+    except Exception as pub_err:  # noqa: BLE001 - fire-and-forget WS event
+        logger.warning("Failed to publish template update event: %s", sanitize(str(pub_err)))
+
+    return response
 
 
 @router.delete("/{template_id}")

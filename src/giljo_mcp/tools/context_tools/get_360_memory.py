@@ -39,12 +39,136 @@ def estimate_tokens(data: Any) -> int:
     return len(text) // 4
 
 
+# INF-WriteShape: depth modes for response shape (separate from last_n_projects).
+# - "headlines" (default): id, sequence, project_name, type, timestamp,
+#   summary truncated to first 200 chars + ellipsis, tags, truncated:true|false
+# - "full": existing rich shape via to_dict(), truncated:false
+DEPTH_HEADLINES = "headlines"
+DEPTH_FULL = "full"
+SUMMARY_HEADLINE_CAP = 200
+
+# Step C: legacy tag mapping (analyzer-ratified 2026-04-25). Junk legacy tags
+# get mapped to a canonical slug or dropped (mapped to None) on serialization.
+# Reads are tolerant; writes are strict (controlled vocabulary lives in
+# MemoryEntryWriteSchema). Unmapped legacy tags pass through unchanged so
+# pre-existing entries remain readable.
+LEGACY_TAG_MAPPING: dict[str, str | None] = {
+    # Domain -> canonical
+    "frontend": "frontend",
+    "backend": "backend",
+    "service": "backend",
+    "endpoint": "api",
+    "tool": "backend",
+    "agent": "backend",
+    "orchestrator": "backend",
+    "documenter": "backend",
+    "analyzer": "backend",
+    "tools": "backend",
+    "memory": "backend",
+    "protocol": "api",
+    "template": "backend",
+    "database": "database",
+    "migration": "migration",
+    "URL": "infrastructure",
+    "server-side": "backend",
+    "page": "frontend",
+    "users": "backend",
+    "flow": "feature",
+    # Change type -> canonical
+    "added": "feature",
+    "built": "feature",
+    "shipped": "feature",
+    "fixed": "bug-fix",
+    "Fixed": "bug-fix",
+    "removed": "refactor",
+    "eliminated": "refactor",
+    "cleanup": "refactor",
+    "standardization": "refactor",
+    "discipline": "refactor",
+    "audit": "security",
+    "security": "security",
+    "edition": "feature",
+    "writes": "refactor",
+    "complete": "feature",
+    "closed": "chore",
+    "written": "docs",
+    "entry": "docs",
+    "project": "chore",
+    # Pure noise -> drop (None means filter out on read)
+    "from": None,
+    "across": None,
+    "files": None,
+    "commits": None,
+    "with": None,
+    "via": None,
+    "lines": None,
+    "write": None,
+    "direct": None,
+    "giljoai": None,
+    # Edition-specific (deliberately NOT in vocab) -> drop
+    "saas": None,
+    "demo/saas": None,
+    "v1.1.6": None,
+}
+
+
+def _apply_legacy_tag_mapping(raw_tags: list[str]) -> list[str]:
+    """Read-time legacy tag normalization (deduplicated, order-preserving).
+
+    Mapped legacy slugs collapse to the canonical 16-tag vocabulary; ``None``
+    entries are filtered out; unmapped tags pass through unchanged so legacy
+    entries stay readable. The mapping is read-only -- new writes go through
+    MemoryEntryWriteSchema and are rejected if outside the vocabulary.
+    """
+    mapped: list[str] = []
+    seen: set[str] = set()
+    for t in raw_tags or []:
+        if t in LEGACY_TAG_MAPPING:
+            replacement = LEGACY_TAG_MAPPING[t]
+            if replacement is None or replacement in seen:
+                continue
+            seen.add(replacement)
+            mapped.append(replacement)
+        else:
+            if t in seen:
+                continue
+            seen.add(t)
+            mapped.append(t)
+    return mapped
+
+
+def _serialize_headline(entry) -> dict[str, Any]:
+    """INF-WriteShape: minimal entry shape for the headlines-only default."""
+    summary = entry.summary or ""
+    truncated = len(summary) > SUMMARY_HEADLINE_CAP
+    headline_summary = summary[:SUMMARY_HEADLINE_CAP] + "..." if truncated else summary
+    return {
+        "id": str(entry.id),
+        "sequence": entry.sequence,
+        "project_name": entry.project_name,
+        "type": entry.entry_type,
+        "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
+        "summary": headline_summary,
+        "tags": _apply_legacy_tag_mapping(entry.tags or []),
+        "truncated": truncated,
+    }
+
+
+def _serialize_full(entry) -> dict[str, Any]:
+    """INF-WriteShape: full entry shape (existing to_dict() with truncated flag)."""
+    data = entry.to_dict()
+    data["tags"] = _apply_legacy_tag_mapping(data.get("tags") or [])
+    data["truncated"] = False
+    return data
+
+
 async def get_360_memory(
     product_id: str,
     tenant_key: str,
     last_n_projects: int = 3,
     offset: int = 0,
     limit: int = None,
+    depth: str = DEPTH_HEADLINES,
     db_manager: DatabaseManager | None = None,
     session: AsyncSession | None = None,  # For testing only
 ) -> dict[str, Any]:
@@ -125,11 +249,14 @@ async def get_360_memory(
         logger.error("db_manager or session is required operation=get_360_memory")
         raise ValueError("db_manager or session parameter is required")
 
+    if depth not in (DEPTH_HEADLINES, DEPTH_FULL):
+        depth = DEPTH_HEADLINES
+
     if session is not None:
-        return await _get_360_memory_impl(session, product_id, tenant_key, last_n_projects, offset, limit)
+        return await _get_360_memory_impl(session, product_id, tenant_key, last_n_projects, offset, limit, depth)
 
     async with db_manager.get_session_async() as new_session:
-        return await _get_360_memory_impl(new_session, product_id, tenant_key, last_n_projects, offset, limit)
+        return await _get_360_memory_impl(new_session, product_id, tenant_key, last_n_projects, offset, limit, depth)
 
 
 async def _get_360_memory_impl(
@@ -139,6 +266,7 @@ async def _get_360_memory_impl(
     last_n_projects: int,
     offset: int,
     limit: int | None,
+    depth: str,
 ) -> dict[str, Any]:
     """Inner implementation for get_360_memory using a provided session."""
     # Verify product exists for tenant isolation
@@ -198,8 +326,9 @@ async def _get_360_memory_impl(
             },
         }
 
-    # Convert to dicts (matches existing format via to_dict())
-    paginated_history = [entry.to_dict() for entry in entries]
+    # INF-WriteShape: serialize per depth mode (headlines default | full opt-in)
+    serializer = _serialize_full if depth == DEPTH_FULL else _serialize_headline
+    paginated_history = [serializer(entry) for entry in entries]
 
     # Count distinct projects in this page
     returned_project_ids = {e.project_id for e in entries if e.project_id}
@@ -218,7 +347,9 @@ async def _get_360_memory_impl(
     )
     # Deduplicate: exclude entries already in depth-limited results
     extra_tagged = [e for e in tagged_entries if str(e.id) not in depth_entry_ids]
-    action_required_items = [e.to_dict() for e in extra_tagged]
+    # Action-required extras serialize in headline mode regardless of depth
+    # so the count stays bounded; they're a side-channel surfaced for follow-up.
+    action_required_items = [_serialize_headline(e) for e in extra_tagged]
 
     # Calculate token estimate
     total_tokens = estimate_tokens(paginated_history)
@@ -254,6 +385,10 @@ async def _get_360_memory_impl(
         },
     }
 
+    # INF-WriteShape: surface action_required extras DISTINCTLY from
+    # returned_projects (today they were conflated). The count is always
+    # present (even when zero) so consumers can rely on the key.
+    result["metadata"]["action_required_extras"] = len(action_required_items)
     if action_required_items:
         result["action_required_items"] = action_required_items
         result["metadata"]["action_required_count"] = len(action_required_items)

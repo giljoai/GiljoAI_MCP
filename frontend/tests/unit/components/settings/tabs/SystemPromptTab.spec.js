@@ -121,7 +121,14 @@ describe('SystemPromptTab.vue', () => {
       wrapper = mountComponent()
       await flushPromises()
 
-      expect(wrapper.text()).toContain('Using default system prompt')
+      expect(wrapper.text()).toContain('Using the default orchestrator prompt (you have not saved an override for your tenant)')
+    })
+
+    it('displays tenant-scope notice in info alert', async () => {
+      wrapper = mountComponent()
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('Changes to this prompt apply to this tenant only.')
     })
   })
 
@@ -498,11 +505,11 @@ describe('SystemPromptTab.vue', () => {
   })
 
   describe('Status Display', () => {
-    it('shows "Using default system prompt" when not override', async () => {
+    it('shows tenant-scoped default prompt notice when not override', async () => {
       wrapper = mountComponent()
       await flushPromises()
 
-      expect(wrapper.text()).toContain('Using default system prompt')
+      expect(wrapper.text()).toContain('Using the default orchestrator prompt (you have not saved an override for your tenant)')
     })
 
     it('shows override timestamp and actor when is override', async () => {

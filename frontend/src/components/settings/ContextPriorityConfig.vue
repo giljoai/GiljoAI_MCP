@@ -366,7 +366,7 @@ function isContextDisabled(contextKey: string): boolean {
 }
 
 function navigateToIntegrations() {
-  router.push({ name: 'UserSettings', query: { tab: 'integrations' } })
+  router.push({ name: 'Tools', query: { tab: 'connect' } })
 }
 
 // Handover 0408: Sync git_history toggle with git integration state

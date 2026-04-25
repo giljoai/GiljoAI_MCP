@@ -68,7 +68,8 @@
             <v-form ref="loginForm" @submit.prevent="handleLogin">
               <v-text-field
                 v-model="username"
-                label="Username"
+                label="Email or username"
+                placeholder="Enter email or username"
                 prepend-inner-icon="mdi-account"
                 variant="outlined"
                 :rules="[rules.username]"
@@ -187,12 +188,11 @@
 
 <script setup>
 import { ref, computed, onMounted, shallowRef } from 'vue'
-import axios from 'axios'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import ForgotPasswordPin from '@/components/ForgotPasswordPin.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import api from '@/services/api'
+import api, { apiClient } from '@/services/api'
 import { getRuntimeConfig } from '@/config/api'
 import configService from '@/services/configService'
 
@@ -234,7 +234,7 @@ const loginForm = ref(null)
 
 // Validation rules
 const rules = {
-  username: (value) => !!value || 'Username is required',
+  username: (value) => !!value || 'Email or username is required',
   password: (value) => !!value || 'Password is required',
 }
 
@@ -280,11 +280,12 @@ async function handleLogin() {
       return
     }
 
-    // SaaS/demo: check if org setup is needed before proceeding to dashboard
+    // SaaS/demo: check if org setup is needed before proceeding to dashboard.
+    // Use apiClient (not raw axios) so the JWT cookie + X-CSRF-Token are
+    // attached through the Cloudflare Tunnel — same pattern as 61138ad5.
     if (giljoMode.value !== 'ce') {
       try {
-        const baseUrl = configService.getApiBaseUrl()
-        const orgStatus = await axios.get(`${baseUrl}/api/saas/org-setup/status`)
+        const orgStatus = await apiClient.get('/api/saas/org-setup/status')
         if (orgStatus.data?.needs_setup) {
           router.push('/org-setup')
           return
@@ -331,7 +332,7 @@ async function handleLogin() {
         router.push('/welcome')
         return
       } else {
-        error.value = 'Invalid username or password'
+        error.value = 'Invalid credentials'
       }
     } else if (err.response?.status === 403) {
       const detail = err.response?.data?.detail || ''
@@ -464,7 +465,7 @@ onMounted(async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 9999;
+  z-index: 1;
   overflow-y: auto;
 }
 

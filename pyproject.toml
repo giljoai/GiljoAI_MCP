@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "giljo-mcp"
-version = "1.0.0"
+version = "1.1.9"
 description = "GiljoAI MCP Coding Orchestrator - Multi-agent orchestration system"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -97,11 +97,36 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "BLE", "PERF"]
+# TID251 = flake8-tidy-imports banned-api rule (SEC-0002 passive-server guard).
+# We select only TID251 from the TID family to avoid dragging in TID252/TID253,
+# which would flag legitimate relative-import patterns elsewhere in the repo.
+select = ["E", "F", "W", "I", "BLE", "PERF", "TID251"]
 ignore = ["E501", "PERF203", "PERF401"]
 
+# SEC-0002 — Passive-server property: no LLM SDK may be imported in server code.
+# Scope: anywhere ruff walks (src/giljo_mcp/ and api/ are the server surface;
+# tests/ and ops_panel/ are exempted below via per-file-ignores).
+# See docs/security/SEC-0002_passive_server_audit.md (Deliverable E) for
+# rationale, validation recipe, and the trust-model contract this guards.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"anthropic".msg = "Passive-server property (SEC-0002): LLM SDKs must not be imported in server code. See docs/security/SEC-0002_passive_server_audit.md."
+"openai".msg = "Passive-server property (SEC-0002): LLM SDKs must not be imported in server code. See docs/security/SEC-0002_passive_server_audit.md."
+"cohere".msg = "Passive-server property (SEC-0002): LLM SDKs must not be imported in server code. See docs/security/SEC-0002_passive_server_audit.md."
+"mistralai".msg = "Passive-server property (SEC-0002): LLM SDKs must not be imported in server code. See docs/security/SEC-0002_passive_server_audit.md."
+"replicate".msg = "Passive-server property (SEC-0002): LLM SDKs must not be imported in server code. See docs/security/SEC-0002_passive_server_audit.md."
+"together".msg = "Passive-server property (SEC-0002): LLM SDKs must not be imported in server code. See docs/security/SEC-0002_passive_server_audit.md."
+"google.generativeai".msg = "Passive-server property (SEC-0002): LLM SDKs must not be imported in server code. See docs/security/SEC-0002_passive_server_audit.md."
+"google.genai".msg = "Passive-server property (SEC-0002): LLM SDKs must not be imported in server code. See docs/security/SEC-0002_passive_server_audit.md."
+
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["BLE001"]
+# SEC-0002 exemptions: tests/ may stub or mock LLM SDKs for integration tests
+# (none exist today, but the exemption avoids accidentally breaking a future
+# sandboxed test). ops_panel/ is a standalone admin app (see INF-0002 closeout)
+# not loaded into the MCP server process, so the passive-server property does
+# not apply to it. If a future test genuinely imports an LLM SDK, add a
+# targeted per-file-ignores entry with a comment linking SEC-0002.
+"tests/**" = ["BLE001", "TID251"]
+"ops_panel/**" = ["TID251"]
 "backup.py" = ["BLE001"]
 "uninstall.py" = ["BLE001"]
 "install.py" = ["BLE001", "E402"]

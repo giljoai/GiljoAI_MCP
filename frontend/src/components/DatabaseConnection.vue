@@ -119,7 +119,12 @@
         :aria-live="connectionTestResult.success ? 'polite' : 'assertive'"
         data-test="test-result"
       >
-        <div v-html="formatTestResultMessage(connectionTestResult)"></div> <!-- DOMPurify-sanitized -->
+        <!-- SEC-0003: formatTestResultMessage HTML-escapes every
+             backend-supplied field before concatenation and then runs the
+             final string through sanitizeHtml (hardened DOMPurify
+             allow-list) -- no unsanitized content reaches the DOM.
+             v-html sanctioned via eslint.config.js file override. -->
+        <div v-html="formatTestResultMessage(connectionTestResult)"></div>
       </v-alert>
     </v-card-text>
 
@@ -137,7 +142,8 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import api from '@/services/api'
-import DOMPurify from 'dompurify'
+import { sanitizeHtml } from '@/composables/useSanitizeMarkdown'
+import { escapeHtml } from '@/utils/escapeHtml'
 
 /**
  * DatabaseConnection - Reusable database connection testing component
@@ -310,22 +316,30 @@ const clearTestResult = () => {
  * Format test result message with suggestions
  */
 const formatTestResultMessage = (result) => {
+  // SEC-0003 widening: `result.message` and `result.suggestions[]` are
+  // user/backend-controlled strings concatenated INTO an HTML string. Without
+  // pre-escaping, DOMPurify sees attacker-supplied `<` as a real tag
+  // (double-decode class vulnerability) -- the sanitizer then correctly
+  // strips the tag but would still alter the displayed text unpredictably.
+  // We HTML-escape each piece BEFORE concatenation so the sanitizer only
+  // has to verify the static markup shape, then run the final string
+  // through sanitizeHtml as belt-and-suspenders.
   if (result.success) {
-    return DOMPurify.sanitize(result.message)
+    return sanitizeHtml(escapeHtml(result.message))
   }
 
-  let html = `<strong>${result.message}</strong>`
+  let html = `<strong>${escapeHtml(result.message)}</strong>`
 
   if (result.suggestions && result.suggestions.length > 0) {
     html += '<div class="mt-2 text-caption"><strong>Possible causes:</strong></div>'
     html += '<ul class="mt-1 ml-4">'
     result.suggestions.forEach((suggestion) => {
-      html += `<li class="text-caption">${suggestion}</li>`
+      html += `<li class="text-caption">${escapeHtml(suggestion)}</li>`
     })
     html += '</ul>'
   }
 
-  return DOMPurify.sanitize(html)
+  return sanitizeHtml(html)
 }
 
 /**

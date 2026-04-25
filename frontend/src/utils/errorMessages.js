@@ -45,6 +45,13 @@ const ERROR_MESSAGES = {
   'DATABASEMIGRATIONERROR': 'Database migration failed',
   'DATABASEINTEGRITYERROR': 'Database integrity constraint violated',
 
+  // Upload errors (SEC-0001) — fallback copy shown when the backend response
+  // omits `message`. Keep in sync with backend UploadConfig + upload_guard.
+  'UPLOAD_TOO_LARGE': 'File is too large. Maximum size is 5 MB.',
+  'UPLOAD_TYPE_NOT_ALLOWED': 'Only .txt and .md files are accepted.',
+  'UPLOAD_CONTENT_NOT_TEXT': 'File does not look like plain text. Please upload a .txt or .md file.',
+  'UPLOAD_FILENAME_INVALID': 'Filename contains invalid characters or is too long.',
+
   // HTTP errors
   'HTTP_ERROR': 'A server error occurred',
   'INTERNAL_SERVER_ERROR': 'An unexpected error occurred. Please try again',
@@ -142,6 +149,25 @@ export function parseErrorResponse(error) {
       status: error.response.status,
       isStructured: true,
       errors: data.errors || null, // Validation errors
+    }
+  }
+
+  // SEC-0001: Defensive — some endpoints wrap the structured body under
+  // `detail` when using FastAPI's bare HTTPException with a dict detail
+  // (e.g. `raise HTTPException(status_code=413, detail={error_code: "...", message: "..."})`).
+  // The global handler at api/exception_handlers.py:58 preserves this
+  // shape for non-BaseGiljoError exceptions. Unwrap once so the rest of
+  // the app sees a consistent structure.
+  if (error?.response?.data?.detail?.error_code) {
+    const data = error.response.data.detail
+    return {
+      errorCode: data.error_code,
+      message: data.message || getErrorMessage(data.error_code),
+      context: data.context || {},
+      timestamp: data.timestamp,
+      status: error.response.status,
+      isStructured: true,
+      errors: data.errors || null,
     }
   }
 

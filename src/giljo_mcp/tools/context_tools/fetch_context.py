@@ -405,12 +405,91 @@ async def fetch_context(
     if all_errors:
         response["errors"] = all_errors
 
+    # INF-WriteShape: 30K-char hard ceiling with graceful field-drop.
+    response = _apply_response_ceiling(response)
+
     logger.info(
         "fetch_context_completed requested=%s returned=%s error_count=%d",
         list(categories),
         categories_returned,
         len(all_errors),
     )
+
+    return response
+
+
+# INF-WriteShape: 30K-char ceiling -- single safety net when the assembled
+# response would otherwise blow an agent's context budget. Strategy:
+#   1. Iterate categories largest -> smallest by serialized size.
+#   2. Within each, drop the largest droppable field of the largest entry.
+#   3. Mark the affected entry with truncated:true.
+#   4. Loop until under cap or only protected fields remain.
+# Hard floor: NEVER drop required identity fields.
+RESPONSE_CHAR_CEILING = 30_000
+PROTECTED_ENTRY_FIELDS = frozenset({"id", "sequence", "project_name", "type", "timestamp"})
+
+
+def _serialized_size(obj: Any) -> int:
+    import json
+
+    return len(json.dumps(obj))
+
+
+def _apply_response_ceiling(response: dict[str, Any]) -> dict[str, Any]:
+    """Iteratively drop the largest droppable field until response <= cap."""
+    if _serialized_size(response) <= RESPONSE_CHAR_CEILING:
+        return response
+
+    data = response.get("data")
+    if not isinstance(data, dict):
+        return response
+
+    truncation_applied = False
+    # Bound the loop so a degenerate payload can't spin forever.
+    for _ in range(2000):
+        if _serialized_size(response) <= RESPONSE_CHAR_CEILING:
+            break
+
+        # Find largest category by serialized size
+        target_category = None
+        target_size = -1
+        for cat, cat_data in data.items():
+            size = _serialized_size(cat_data)
+            if size > target_size:
+                target_size = size
+                target_category = cat
+
+        if target_category is None:
+            break
+
+        cat_data = data[target_category]
+        if not (isinstance(cat_data, list) and cat_data):
+            # Cannot drop fields out of a non-list category structure safely
+            break
+
+        # Find largest entry in that category
+        largest_idx = max(range(len(cat_data)), key=lambda i: _serialized_size(cat_data[i]))
+        entry = cat_data[largest_idx]
+        if not isinstance(entry, dict):
+            break
+
+        # Find largest droppable field in that entry
+        droppable = [
+            (k, _serialized_size(v)) for k, v in entry.items() if k not in PROTECTED_ENTRY_FIELDS and k != "truncated"
+        ]
+        if not droppable:
+            break
+
+        droppable.sort(key=lambda kv: kv[1], reverse=True)
+        field_to_drop, _ = droppable[0]
+        entry.pop(field_to_drop, None)
+        entry["truncated"] = True
+        truncation_applied = True
+
+    if truncation_applied:
+        meta = response.setdefault("metadata", {})
+        meta["truncation_applied"] = True
+        meta["truncation_reason"] = "30K char ceiling"
 
     return response
 
@@ -470,7 +549,21 @@ async def _fetch_category(
     elif category == "memory_360":
         kwargs["product_id"] = product_id
         kwargs["tenant_key"] = tenant_key
-        if depth:
+        # INF-WriteShape: depth_config["memory_360"] accepts:
+        #   * int N -- last_n_projects = N, headlines shape (default)
+        #   * "full" -- full bodies, last_n_projects from default
+        #   * "headlines" -- explicit headlines (matches default)
+        #   * dict {"last_n_projects": N, "shape": "full"|"headlines"}
+        if isinstance(depth, dict):
+            if "last_n_projects" in depth:
+                kwargs["last_n_projects"] = int(depth["last_n_projects"])
+            shape = depth.get("shape")
+            if shape in ("full", "headlines"):
+                kwargs["depth"] = shape
+        elif isinstance(depth, str):
+            if depth in ("full", "headlines"):
+                kwargs["depth"] = depth
+        elif depth:
             kwargs["last_n_projects"] = int(depth)
 
     elif category == "git_history":
