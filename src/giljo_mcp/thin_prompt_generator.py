@@ -105,10 +105,12 @@ FIRST ACTIONS (DO NOT RE-STAGE):
 3. Read 360 Memory for session context:
    mcp__giljo_mcp__fetch_context(
        product_id="{product_param}",
-       categories=["memory_360"]
+       categories=["memory_360"],
+       depth_config={{"memory_360": {{"shape": "full"}}}}
    )
    -> Look for the most recent "handover_closeout" entry (authored by job {job_id})
    -> Contains: previous progress, current status, next steps
+   -> "full" shape required: handover bodies are needed in full, not headlines.
 
 4. Check messages + retrieve execution plan (can run in parallel):
    mcp__giljo_mcp__receive_messages(agent_id="{agent_id}")
@@ -215,23 +217,43 @@ mcp__giljo_mcp__report_progress(
 
 STEP 4 — Write 360 Memory handover (append-only, previous entries are preserved)
 
+The server enforces hard caps. Compose your handover to fit:
+- summary: max 500 chars (2-3 sentence headline of the session and the handoff context)
+- key_outcomes: max 5 items, each max 200 chars
+- decisions_made: max 5 items, each max 250 chars
+- tags: max 8, from controlled vocabulary (see below). Over-cap fields are REJECTED with
+  a structured error pointing to the limit — do NOT retry with the same payload, re-trim.
+
+Distribute content across fields rather than packing everything into summary. Use
+key_outcomes for COMPLETED WORK items, decisions_made for COORDINATION CONTEXT and
+NEXT-STEPS items. If you have more team-state detail than fits, send a separate message
+to the continuation orchestrator with the overflow rather than busting the cap.
+
+Controlled tag vocabulary (16, pick ≤ 8): feature, bug-fix, refactor, perf, security,
+docs, test, chore, frontend, backend, database, api, infrastructure, ui-ux, integration,
+migration. Use 'chore' if nothing else fits.
+
 mcp__giljo_mcp__write_360_memory(
     project_id="{project_id}",
     entry_type="handover_closeout",
     author_job_id="{job_id}",
-    summary="<Include ALL of the following sections:
-      COMPLETED WORK: <what was accomplished this session>
-      IN-PROGRESS WORK: <what was actively being worked on>
-      TEAM STATE AT HANDOVER:
-        - Agent <name> (job_id: <id>): status=<status>, pending work: <description>
-        - <repeat for each agent>
-      COORDINATION CONTEXT FOR CONTINUATION:
-        - What decisions were you about to make?
-        - What messages were you expecting from agents?
-        - What is the next coordination action the continuation orchestrator should take?
-      BLOCKERS: <any known blockers>>",
-    key_outcomes=["<list each concrete outcome from this session>"],
-    decisions_made=["<list architectural/design decisions and rationale>"]
+    summary="<2-3 sentence headline: what session covered, why handoff is happening,
+              and the most critical thing the continuation orchestrator must know first.
+              Max 500 chars.>",
+    key_outcomes=[
+      "<concrete completed outcome 1, max 200 chars>",
+      "<concrete completed outcome 2>",
+      "<in-progress work + where you stopped>",
+      "<team state highlights — name agents, statuses, pending work>",
+      "<known blockers if any>"
+    ],
+    decisions_made=[
+      "<architectural/design decision + rationale, max 250 chars>",
+      "<next coordination action the continuation orchestrator should take>",
+      "<messages you were expecting from agents>",
+      "<decisions you were about to make>"
+    ],
+    tags=["<pick from the 16-tag vocab above, ≤ 8 total>"]
 )
 {git_closeout_section}
 STEP 5 — Confirm to user

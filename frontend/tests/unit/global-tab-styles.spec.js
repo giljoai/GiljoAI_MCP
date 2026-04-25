@@ -142,7 +142,9 @@ describe('Global Tab Styles', () => {
       await wrapper.vm.$nextTick()
 
       const pills = wrapper.findAll('.pill-toggle')
-      expect(pills.length).toBe(6) // 6 pills: Startup, Notifications, Agents, Context, API Keys, Integrations
+      // FE-0023: 5 pills -- Connect, Agents, Context, Notifications, Startup.
+      // (API Keys folded into Connect as a Credentials section.)
+      expect(pills.length).toBe(5)
       expect(wrapper.find('.pill-toggle-row').exists()).toBe(true)
     })
 
@@ -251,7 +253,8 @@ describe('Global Tab Styles', () => {
       const pinia = createPinia()
 
       const configs = [
-        { name: 'UserSettings', component: UserSettings, props: {}, expectedPills: 6 },
+        // FE-0023: UserSettings reduced from 6 to 5 pills.
+        { name: 'UserSettings', component: UserSettings, props: {}, expectedPills: 5 },
         { name: 'SystemSettings', component: SystemSettings, props: {}, expectedPills: 5 },
       ]
 

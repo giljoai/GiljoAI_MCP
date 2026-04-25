@@ -146,7 +146,7 @@ describe('UserSettings.vue', () => {
       await wrapper.vm.$nextTick()
 
       // Navigate to integrations tab
-      wrapper.vm.activeTab = 'integrations'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
 
       // Check that the McpIntegrationCard stub is rendered
@@ -159,7 +159,7 @@ describe('UserSettings.vue', () => {
       await wrapper.vm.$nextTick()
 
       // Navigate to integrations tab
-      wrapper.vm.activeTab = 'integrations'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
 
       // Check that the SerenaIntegrationCard stub is rendered
@@ -176,7 +176,7 @@ describe('UserSettings.vue', () => {
       await wrapper.vm.$nextTick()
 
       // Navigate to integrations tab
-      wrapper.vm.activeTab = 'integrations'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
 
       // Check that the GitIntegrationCard stub is rendered
@@ -210,7 +210,7 @@ describe('UserSettings.vue', () => {
       await wrapper.vm.$nextTick()
 
       // Navigate to integrations tab
-      wrapper.vm.activeTab = 'integrations'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
 
       // AgentExport replaces the old ClaudeCodeExport + SlashCommandSetup

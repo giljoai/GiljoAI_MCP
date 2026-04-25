@@ -26,13 +26,13 @@ from giljo_mcp.models.products import Product
 from giljo_mcp.models.projects import Project
 from giljo_mcp.schemas.jsonb_validators import validate_git_commits
 from giljo_mcp.services.dto import MemoryEntryCreateParams
-from giljo_mcp.services.product_memory_service import ProductMemoryService
+from giljo_mcp.services.product_memory_service import (
+    ProductMemoryService,
+    validate_memory_entry_write,
+)
 from giljo_mcp.services.project_closeout_service import ProjectCloseoutService
 from giljo_mcp.tenant import TenantManager
 from giljo_mcp.tools._memory_helpers import (
-    MAX_DECISIONS_MADE,
-    MAX_KEY_OUTCOMES,
-    MAX_SUMMARY_LENGTH,
     _fetch_github_commits,
     _get_git_config,
     emit_websocket_event,
@@ -259,9 +259,18 @@ async def close_project_and_update_memory(
     When force=True, auto-decommissions any remaining active agents before
     closing, and logs a warning with the affected agents.
 
+    Caps (INF-WriteShape, shared with write_360_memory):
+        summary <= 500 chars (2-3 sentence headline of what changed and why)
+        key_outcomes <= 5 items, each <= 200 chars
+        decisions_made <= 5 items, each <= 250 chars
+
     Args:
         git_commits: Agent-supplied commits from local git log. When provided,
             skips the GitHub API fetch entirely (passive server model).
+
+    Raises:
+        MemoryEntryWriteValidationError: structured rejection when caps are
+            exceeded (single shared validator with write_360_memory).
     """
     if not project_id:
         raise ValidationError("project_id is required")
@@ -272,25 +281,24 @@ async def close_project_and_update_memory(
     if db_manager is None:
         raise ValidationError("db_manager is required")
 
-    if len(summary) > MAX_SUMMARY_LENGTH:
-        raise ValidationError(f"Summary too long (max {MAX_SUMMARY_LENGTH} characters)")
-
     key_outcomes = key_outcomes or []
     decisions_made = decisions_made or []
 
-    if len(key_outcomes) > MAX_KEY_OUTCOMES:
-        logger.warning(
-            f"Truncating key_outcomes from {len(key_outcomes)} to {MAX_KEY_OUTCOMES}",
-            extra={"project_id": project_id},
-        )
-        key_outcomes = key_outcomes[:MAX_KEY_OUTCOMES]
-
-    if len(decisions_made) > MAX_DECISIONS_MADE:
-        logger.warning(
-            f"Truncating decisions_made from {len(decisions_made)} to {MAX_DECISIONS_MADE}",
-            extra={"project_id": project_id},
-        )
-        decisions_made = decisions_made[:MAX_DECISIONS_MADE]
+    # INF-WriteShape: shared validated write boundary (same as write_360_memory).
+    # Validates only the agent-supplied fields here; deliverables + tags are
+    # derived downstream and re-validated when applied.
+    validated = validate_memory_entry_write(
+        {
+            "summary": summary,
+            "key_outcomes": key_outcomes,
+            "decisions_made": decisions_made,
+            "deliverables": [],
+            "tags": [],
+        }
+    )
+    summary = validated.summary
+    key_outcomes = validated.key_outcomes
+    decisions_made = validated.decisions_made
 
     try:
         owns_session = session is None
@@ -364,7 +372,13 @@ async def close_project_and_update_memory(
                 session=active_session,
             )
 
-            deliverables = _extract_deliverables(key_outcomes)
+            # Step C double-write fix (analyzer 2026-04-25): _extract_deliverables
+            # was returning a deduplicated copy of key_outcomes -- 89.4% of
+            # historical entries were byte-identical to key_outcomes as a
+            # result. deliverables is a drop-cap field (3x100, full removal
+            # scheduled post-demo); stop synthesizing it from key_outcomes.
+            # TODO(post-demo): remove the deliverables column entirely.
+            deliverables: list[str] = []
             tags = _extract_tags(summary, key_outcomes, decisions_made)
             priority = _derive_priority(project, summary, key_outcomes)
             significance_score = _calculate_significance(project, key_outcomes, git_commits)
@@ -538,18 +552,6 @@ async def _force_decommission_agents(
         tenant_manager=TenantManager(),
     )
     return await svc.decommission_project_agents(session=session, project_id=project_id, tenant_key=tenant_key)
-
-
-def _extract_deliverables(key_outcomes: list[str]) -> list[str]:
-    """Derive deliverables from key outcomes (deduplicated)."""
-    seen = set()
-    deliverables: list[str] = []
-    for outcome in key_outcomes or []:
-        normalized = (outcome or "").strip()
-        if normalized and normalized not in seen:
-            seen.add(normalized)
-            deliverables.append(normalized)
-    return deliverables
 
 
 def _extract_tags(summary: str, key_outcomes: list[str], decisions_made: list[str]) -> list[str]:

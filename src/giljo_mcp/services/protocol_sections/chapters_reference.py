@@ -345,6 +345,82 @@ System rejects completion attempts with unread messages or incomplete TODOs.
 
 ────────────────────────────────────────────────────────────────────────────
 
+WRITING 360 MEMORY (HARD CAPS — server-enforced):
+
+When you write 360 memory entries via close_project_and_update_memory()
+or write_360_memory(), the server enforces hard caps. Writes exceeding
+these are REJECTED with structured errors — there is no silent truncation.
+
+Rationale: future-you (or a fresh-session orchestrator) reads these.
+Fat entries crowd out signal and burn tokens at staging. Tight entries
+scale.
+
+── HARD CAPS (server-enforced) ─────────────────────────────────────────────
+- summary:        <= 500 chars (2-3 sentence headline)
+- key_outcomes:   <= 5 items x <= 200 chars each
+- decisions_made: <= 5 items x <= 250 chars each
+- deliverables:   <= 3 items x <= 100 chars each (drop-cap; field deprecated)
+- tags:           <= 8 items, each from CONTROLLED_TAG_VOCABULARY
+
+── CONTROLLED TAG VOCABULARY (16) ──────────────────────────────────────────
+Change type (8): feature, bug-fix, refactor, perf, security, docs, test, chore
+Domain    (7):  frontend, backend, database, api, infrastructure, ui-ux, integration
+Operational(1): migration
+
+Pick 1-3 from change-type AND 1-3 from domain. Use 'migration' for schema
+changes. Anything outside this list is rejected. 'action_required:<title>'
+free-form tags are also accepted (preserved for follow-up task creation).
+
+DELIBERATELY EXCLUDED (do NOT request additions in passing):
+- saas / ce / demo (edition routing belongs in release metadata)
+- deprecation / breaking-change / regression (collapse into refactor / bug-fix)
+- hotfix / rollback (collapse into bug-fix; urgency is write-time signal)
+- version strings, sprint codes (burnable cardinality)
+
+── REJECTION ERROR SHAPE ───────────────────────────────────────────────────
+When a write is rejected, you receive a structured error:
+  {
+        "error":       "validation_failed",
+    "field":       "summary",
+    "actual_size": 1843,
+    "max_size":    500,
+    "guidance":    "Trim to 2-3 sentence headline of what changed and why.
+                    Detail belongs in commit messages."
+  }
+For tag failures the payload also carries `invalid_tag` and `allowed`
+(the full sorted vocabulary) so you do not need a second round-trip.
+Read the guidance and re-trim. Do NOT retry with the same payload.
+
+── WORKED EXAMPLES ─────────────────────────────────────────────────────────
+GOOD (passes validator):
+  summary:        "Fixed 360 memory write TypeError on optional commit
+                   fields. Pydantic GitCommitEntry validator now coerces
+                   None to 0 at the schema boundary."
+  key_outcomes:   ["Validator coerces None->0", "3 regression tests added",
+                   "BE-5025 closed clean"]
+  decisions_made: ["Used schema-boundary coercion vs runtime guards",
+                   "Kept legacy entries unchanged"]
+  deliverables:   []   <- empty is fine; field is deprecated
+  tags:           ["bug-fix", "backend", "test"]
+
+BAD (rejected — summary 1,200 chars, 6 outcomes, junk tags):
+  summary:        "Today I worked on fixing the bug in the write_360_memory
+                   tool which had been causing TypeErrors for several days
+                   and required investigating the call chain through ..."
+                   [continues for 1000+ more chars] -> REJECTED summary>500
+  key_outcomes:   [...6 items...]                  -> REJECTED outcomes>5
+  tags:           ["fixed", "added", "files",
+                   "commits", "saas"]              -> REJECTED unknown tags
+
+ORCHESTRATOR CLOSEOUT PAYLOAD GUIDANCE:
+At closeout your own 360 entry must satisfy these caps. Pick tags from
+the controlled vocabulary that reflect the project's nature -- e.g.
+['refactor', 'perf', 'backend'] for a perf project; ['feature', 'frontend']
+for a UI feature; ['migration', 'database'] for a schema change. Do NOT
+embed sprint names, version numbers, or edition labels in tags.
+
+────────────────────────────────────────────────────────────────────────────
+
 COMPLETION PROTOCOL (After ALL agents finish their work):
 {
         ""

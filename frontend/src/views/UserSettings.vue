@@ -8,20 +8,12 @@
     <div class="pill-toggle-row">
       <button
         class="pill-toggle smooth-border"
-        :class="{ 'pill-toggle--active': activeTab === 'startup' }"
-        data-testid="startup-settings-tab"
-        @click="activeTab = 'startup'"
+        :class="{ 'pill-toggle--active': activeTab === 'connect' }"
+        data-testid="connect-settings-tab"
+        @click="activeTab = 'connect'"
       >
-        <v-icon size="16" class="pill-toggle-icon">mdi-rocket-launch</v-icon>
-        Startup
-      </button>
-      <button
-        class="pill-toggle smooth-border"
-        :class="{ 'pill-toggle--active': activeTab === 'notifications' }"
-        @click="activeTab = 'notifications'"
-      >
-        <v-icon size="16" class="pill-toggle-icon">mdi-bell</v-icon>
-        Notifications
+        <v-icon size="16" class="pill-toggle-icon">mdi-puzzle</v-icon>
+        Connect
       </button>
       <button
         class="pill-toggle smooth-border"
@@ -43,20 +35,20 @@
       </button>
       <button
         class="pill-toggle smooth-border"
-        :class="{ 'pill-toggle--active': activeTab === 'api-keys' }"
-        @click="activeTab = 'api-keys'"
+        :class="{ 'pill-toggle--active': activeTab === 'notifications' }"
+        @click="activeTab = 'notifications'"
       >
-        <v-icon size="16" class="pill-toggle-icon">mdi-key-variant</v-icon>
-        API Keys
+        <v-icon size="16" class="pill-toggle-icon">mdi-bell</v-icon>
+        Notifications
       </button>
       <button
         class="pill-toggle smooth-border"
-        :class="{ 'pill-toggle--active': activeTab === 'integrations' }"
-        data-testid="integrations-settings-tab"
-        @click="activeTab = 'integrations'"
+        :class="{ 'pill-toggle--active': activeTab === 'startup' }"
+        data-testid="startup-settings-tab"
+        @click="activeTab = 'startup'"
       >
-        <v-icon size="16" class="pill-toggle-icon">mdi-puzzle</v-icon>
-        Integrations
+        <v-icon size="16" class="pill-toggle-icon">mdi-rocket-launch</v-icon>
+        Startup
       </button>
     </div>
 
@@ -190,16 +182,10 @@
         </v-card>
       </v-window-item>
 
-      <!-- API Keys -->
-      <v-window-item value="api-keys">
-        <!-- Removed outer card title/subtitle - ApiKeyManager has its own -->
-        <ApiKeyManager />
-      </v-window-item>
-
-      <!-- Integrations -->
-      <v-window-item value="integrations">
+      <!-- Connect (formerly Integrations + API Keys folded in as Credentials) -->
+      <v-window-item value="connect">
         <div class="tab-header mb-4">
-          <h2 class="text-h6">Integrations</h2>
+          <h2 class="text-h6">Connect</h2>
           <p class="text-body-2 text-muted-a11y mt-1">Connect external tools and services to your GiljoAI workspace</p>
         </div>
 
@@ -210,7 +196,7 @@
         </div>
 
         <!-- Tools (2-column grid) -->
-        <div class="tools-grid">
+        <div class="tools-grid mb-5">
           <SerenaIntegrationCard
             :enabled="serenaEnabled"
             :loading="toggling"
@@ -221,6 +207,11 @@
             :loading="togglingGit"
             @update:enabled="toggleGit"
           />
+        </div>
+
+        <!-- Credentials (compact section, formerly the "API Keys" peer tab) -->
+        <div class="credentials-section">
+          <ApiKeyManager />
         </div>
       </v-window-item>
     </v-window>
@@ -253,7 +244,15 @@ const { on, off } = useWebSocketV2()
 const { showToast } = useToast()
 
 // State
-const activeTab = ref('startup')
+const activeTab = ref('connect')
+
+// Map legacy tab values to current ones (keep deep-links working after FE-0023 IA reshuffle).
+function normalizeTab(tab) {
+  if (!tab) return null
+  if (tab === 'general') return 'startup'
+  if (tab === 'integrations' || tab === 'api-keys') return 'connect'
+  return tab
+}
 const showCertModal = ref(false)
 const serenaEnabled = ref(false)
 const toggling = ref(false)
@@ -335,7 +334,8 @@ onMounted(async () => {
   const route = router.currentRoute.value
 
   if (route.query.tab) {
-    activeTab.value = route.query.tab === 'general' ? 'startup' : route.query.tab
+    const normalized = normalizeTab(route.query.tab)
+    if (normalized) activeTab.value = normalized
   }
 
   // Check Serena MCP status
@@ -374,7 +374,8 @@ watch(
   () => router.currentRoute.value.query.tab,
   (tab) => {
     if (!tab) return
-    activeTab.value = tab === 'general' ? 'startup' : tab
+    const normalized = normalizeTab(tab)
+    if (normalized) activeTab.value = normalized
   },
 )
 
@@ -627,6 +628,23 @@ function handleTemplateExportEvent(data) {
 
 .pill-tabs-content {
   padding: 16px 0;
+}
+
+/* Credentials section -- compact API key manager folded under Connect tab */
+.credentials-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  position: relative;
+}
+
+.credentials-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 </style>

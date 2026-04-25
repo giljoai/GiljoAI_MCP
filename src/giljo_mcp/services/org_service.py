@@ -13,10 +13,18 @@ Features:
 - Invite/remove members
 - Role management (owner, admin, member, viewer)
 - Permission checks
+
+Edition note: this module is [CE] because Organization itself is a shared
+model, but ``complete_first_login_setup`` is consumed exclusively by the
+SaaS-only wizard at ``api/saas_endpoints/org_setup.py``. The edition
+boundary is enforced at the router mount (GILJO_MODE gate in
+``api/app.py``), not at module placement.
 """
 
 import logging
 import re
+import secrets
+import string
 from typing import Any, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -31,6 +39,15 @@ from giljo_mcp.exceptions import (
 )
 from giljo_mcp.models.organizations import Organization, OrgMembership
 from giljo_mcp.repositories.org_repository import OrgRepository
+from giljo_mcp.schemas.jsonb_validators import OrganizationSettings
+
+
+# Timezone format guard applied at the service boundary. Matches IANA-style
+# identifiers ("America/New_York", "Europe/Stockholm", "UTC"), plus the
+# historical "Etc/GMT+2" form. Empty string is permitted and treated as "UTC".
+_TIMEZONE_ALLOWED_PATTERN = re.compile(r"^[A-Za-z0-9/_+\-]+$")
+_ORG_NAME_MAX_LENGTH = 100
+_TIMEZONE_MAX_LENGTH = 50
 
 
 logger = logging.getLogger(__name__)
@@ -115,12 +132,16 @@ class OrgService:
                 message="Failed to create organization", context={"name": name, "slug": slug, "error": str(e)}
             ) from e
 
-    async def get_organization(self, org_id: str) -> Organization:
+    async def get_organization(self, org_id: str, tenant_key: str | None = None) -> Organization:
         """
         Get organization by ID (only active orgs).
 
         Args:
             org_id: Organization ID
+            tenant_key: Tenant isolation key. When provided the lookup is
+                tenant-scoped — a row in another tenant returns
+                ResourceNotFoundError, not the foreign row. Pass this
+                whenever the caller is acting on behalf of a specific user.
 
         Returns:
             Organization: Found organization with members
@@ -130,10 +151,13 @@ class OrgService:
             DatabaseError: Database operation failed
         """
         try:
-            org = await self._repo.get_organization_by_id(self.session, org_id)
+            org = await self._repo.get_organization_by_id(self.session, org_id, tenant_key=tenant_key)
 
             if not org:
-                raise ResourceNotFoundError(message="Organization not found", context={"org_id": org_id})
+                raise ResourceNotFoundError(
+                    message="Organization not found",
+                    context={"org_id": org_id, "tenant_key": tenant_key},
+                )
 
             return org
 
@@ -215,6 +239,126 @@ class OrgService:
             await self._repo.rollback(self.session)
             raise DatabaseError(
                 message="Failed to update organization", context={"org_id": org_id, "error": str(e)}
+            ) from e
+
+    async def complete_first_login_setup(
+        self,
+        org_id: str,
+        tenant_key: str,
+        org_name: str,
+        timezone_name: str = "UTC",
+    ) -> Organization:
+        """
+        Complete the first-login org setup wizard (SAAS-007).
+
+        Atomic write path that mutates an organization row created at
+        registration: updates display name, regenerates a unique slug,
+        merges ``timezone`` into the ``settings`` JSONB (preserving
+        existing keys), and flips ``org_setup_complete`` to ``True``.
+
+        This is the single authoritative write entry for the org-setup
+        wizard. The endpoint MUST route through this method — no direct
+        setattr against the ORM from the router layer.
+
+        Args:
+            org_id: Organization UUID to mutate. Looked up with tenant_key.
+            tenant_key: Caller's tenant key. Required for tenant isolation.
+            org_name: Cleaned organization display name.
+            timezone_name: IANA timezone identifier (default "UTC").
+
+        Returns:
+            Organization: Refreshed organization with members loaded.
+
+        Raises:
+            ValidationError: Name or timezone failed validation.
+            ResourceNotFoundError: Org not found for this tenant_key.
+            DatabaseError: Persistence failure.
+        """
+        # --- Input validation (untrusted boundary -> clean 422 upstream) ---
+        clean_name = (org_name or "").strip()
+        if len(clean_name) < 2:
+            raise ValidationError(
+                message="Organization name must be at least 2 non-whitespace characters.",
+                context={"org_name_len": len(clean_name)},
+            )
+        if len(clean_name) > _ORG_NAME_MAX_LENGTH:
+            raise ValidationError(
+                message=f"Organization name exceeds {_ORG_NAME_MAX_LENGTH} characters.",
+                context={"org_name_len": len(clean_name)},
+            )
+
+        clean_tz = (timezone_name or "UTC").strip() or "UTC"
+        if len(clean_tz) > _TIMEZONE_MAX_LENGTH:
+            raise ValidationError(
+                message=f"Timezone exceeds {_TIMEZONE_MAX_LENGTH} characters.",
+                context={"timezone_len": len(clean_tz)},
+            )
+        if not _TIMEZONE_ALLOWED_PATTERN.match(clean_tz):
+            raise ValidationError(
+                message="Invalid timezone format.",
+                context={"timezone": clean_tz},
+            )
+
+        try:
+            # --- Tenant-scoped lookup (enforces isolation at the repo) ---
+            org = await self._repo.get_organization_by_id(self.session, org_id, tenant_key=tenant_key)
+            if org is None:
+                raise ResourceNotFoundError(
+                    message="Organization not found",
+                    context={"org_id": org_id, "tenant_key": tenant_key},
+                )
+
+            # --- Slug regeneration with cross-tenant uniqueness guard ---
+            candidate_slug = self._generate_slug(clean_name)
+            if await self._repo.slug_taken_by_other_org(self.session, candidate_slug, exclude_org_id=org.id):
+                suffix = "".join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6))
+                candidate_slug = f"{candidate_slug}-{suffix}"
+
+            # --- Settings JSONB merge (validate; preserve existing keys) ---
+            current_settings = dict(org.settings) if org.settings else {}
+            current_settings["timezone"] = clean_tz
+            # Validate at the service boundary — raises on invalid input.
+            # Pydantic with extra="allow" would round-trip the dict intact,
+            # but we keep the merged dict itself to avoid any risk of dropping
+            # dynamic keys not declared on OrganizationSettings.
+            OrganizationSettings.model_validate(current_settings)
+            merged_settings = dict(current_settings)
+
+            # --- Field-allowlist write (mirrors post-0962 discipline) ---
+            org.name = clean_name
+            org.slug = candidate_slug
+            org.settings = merged_settings
+            org.org_setup_complete = True
+
+            await self._repo.commit(self.session)
+
+            logger.info(
+                "Org first-login setup complete",
+                extra={
+                    "org_id": org.id,
+                    "tenant_key": tenant_key,
+                    "slug": candidate_slug,
+                },
+            )
+
+            # Re-fetch tenant-scoped with members loaded for the response.
+            refreshed = await self._repo.get_organization_by_id(self.session, org.id, tenant_key=tenant_key)
+            return refreshed or org
+
+        except ResourceNotFoundError:
+            # Read-only pre-mutation path: nothing to roll back, and calling
+            # session.rollback() here corrupts the ambient test transaction
+            # used by integration fixtures. Preserve the session state.
+            raise
+        except (ValidationError, AlreadyExistsError):
+            await self._repo.rollback(self.session)
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("Failed to complete first-login org setup")
+            await self._repo.rollback(self.session)
+            raise DatabaseError(
+                message="Failed to complete first-login org setup",
+                context={"org_id": org_id, "error": str(e)},
             ) from e
 
     async def delete_organization(self, org_id: str) -> None:

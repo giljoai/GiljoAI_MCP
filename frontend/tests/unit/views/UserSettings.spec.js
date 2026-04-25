@@ -9,12 +9,13 @@
  * - API Keys tab (ApiKeyManager component)
  * - Integrations tab (MCP, Serena, Git, Claude Code Export)
  *
- * Post-refactor notes:
- * - Tab names: Startup, Notifications, Agents, Context, API Keys, Integrations (6 tabs)
- * - "Setup" renamed to "Startup", "Appearance" tab removed
+ * Post-refactor notes (FE-0023 IA reshuffle):
+ * - Tab names: Connect, Agents, Context, Notifications, Startup (5 tabs)
+ * - Default tab is 'connect' (formerly 'startup')
+ * - 'Integrations' tab renamed to 'Connect' and ApiKeyManager folded in as a
+ *   compact "Credentials" section (no longer a peer tab named 'API Keys')
  * - Uses v-btn-toggle for tab navigation (not v-tabs)
- * - data-test="startup-settings" (not "general-settings")
- * - data-test="notification-settings", "notification-position-select"
+ * - data-test="startup-settings", "notification-settings", "notification-position-select"
  * - data-test="reset-notification-btn", "save-notification-btn"
  * - Uses useWebSocketV2 composable and setupService
  */
@@ -125,7 +126,7 @@ describe('UserSettings.vue', () => {
   })
 
   describe('Tab Navigation', () => {
-    it('renders all 6 tabs', () => {
+    it('renders all 5 tabs', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, pinia],
@@ -134,15 +135,14 @@ describe('UserSettings.vue', () => {
       })
 
       const text = wrapper.text()
-      expect(text).toContain('Startup')
-      expect(text).toContain('Notifications')
+      expect(text).toContain('Connect')
       expect(text).toContain('Agents')
       expect(text).toContain('Context')
-      expect(text).toContain('API Keys')
-      expect(text).toContain('Integrations')
+      expect(text).toContain('Notifications')
+      expect(text).toContain('Startup')
     })
 
-    it('defaults to Startup tab', () => {
+    it('does NOT render API Keys as a peer tab (folded into Connect as Credentials)', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, pinia],
@@ -150,7 +150,21 @@ describe('UserSettings.vue', () => {
         }
       })
 
-      expect(wrapper.vm.activeTab).toBe('startup')
+      // The pill-toggle row should not include "API Keys" as a stand-alone tab.
+      const pillButtons = wrapper.findAll('.pill-toggle')
+      const labels = pillButtons.map(b => b.text().trim())
+      expect(labels).not.toContain('API Keys')
+    })
+
+    it('defaults to Connect tab', () => {
+      wrapper = mount(UserSettings, {
+        global: {
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
+        }
+      })
+
+      expect(wrapper.vm.activeTab).toBe('connect')
     })
 
     it('does NOT render Database tab', () => {
@@ -301,8 +315,8 @@ describe('UserSettings.vue', () => {
     })
   })
 
-  describe('Integrations Tab Content', () => {
-    it('renders Integrations content', async () => {
+  describe('Connect Tab Content', () => {
+    it('renders Connect content', async () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, pinia],
@@ -310,10 +324,10 @@ describe('UserSettings.vue', () => {
         }
       })
 
-      wrapper.vm.activeTab = 'integrations'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.text()).toContain('Integrations')
+      expect(wrapper.text()).toContain('Connect')
     })
   })
 

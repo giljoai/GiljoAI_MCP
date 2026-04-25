@@ -5,6 +5,7 @@
     <p class="text-subtitle-1 mb-4 settings-subtitle">Configure server and system-wide settings (Admin only)</p>
 
     <!-- Settings Pills -->
+    <!-- Order: Identity, Prompts (admin governance group), then server-plumbing tabs (CE only). -->
     <div class="pill-toggle-row">
       <button
         class="pill-toggle smooth-border"
@@ -14,6 +15,15 @@
       >
         <v-icon size="16" class="pill-toggle-icon">mdi-account-group</v-icon>
         Identity
+      </button>
+      <button
+        class="pill-toggle smooth-border"
+        :class="{ 'pill-toggle--active': activeTab === 'prompts' }"
+        data-test="prompts-tab"
+        @click="activeTab = 'prompts'"
+      >
+        <v-icon size="16" class="pill-toggle-icon">mdi-file-document-edit</v-icon>
+        Prompts
       </button>
       <button
         v-if="isCeMode"
@@ -45,14 +55,6 @@
         <v-icon size="16" class="pill-toggle-icon">mdi-shield-lock</v-icon>
         Security
       </button>
-      <button
-        class="pill-toggle smooth-border"
-        :class="{ 'pill-toggle--active': activeTab === 'prompts' }"
-        @click="activeTab = 'prompts'"
-      >
-        <v-icon size="16" class="pill-toggle-icon">mdi-file-document-edit</v-icon>
-        Prompts
-      </button>
     </div>
 
     <!-- Tab Content -->
@@ -61,6 +63,11 @@
       <!-- Identity (Workspace + Members) - Handover 0434 -->
       <v-window-item value="identity">
         <IdentityTab />
+      </v-window-item>
+
+      <!-- Prompts (Orchestrator System Prompt) - moved next to Identity in FE-0023. -->
+      <v-window-item value="prompts">
+        <SystemPromptTab />
       </v-window-item>
 
       <!-- Network Settings -->
@@ -110,10 +117,6 @@
         />
       </v-window-item>
 
-      <!-- Prompts (Orchestrator System Prompt) - Renamed from "System" in Handover 0434 -->
-      <v-window-item value="prompts">
-        <SystemPromptTab />
-      </v-window-item>
     </v-window>
     </div>
 

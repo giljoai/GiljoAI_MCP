@@ -15,10 +15,10 @@
         >
           {{ project.taxonomy_alias }}
         </v-chip>
-        <v-tooltip v-if="project?.name && project.name.length > 30" location="bottom">
+        <v-tooltip v-if="project?.name && project.name.length > 40" location="bottom">
           <template #activator="{ props: tooltipProps }">
             <span v-bind="tooltipProps" class="project-name-text project-name-text--truncated" tabindex="0">
-              {{ project.name.slice(0, 30) + '...' }}
+              {{ project.name.slice(0, 40) + '...' }}
             </span>
           </template>
           <span>{{ project.name }}</span>
@@ -903,8 +903,6 @@ async function handleLaunchJobs() {
 
   .project-name-text--truncated {
     cursor: help;
-    text-decoration: underline dotted;
-    text-underline-offset: 3px;
   }
 
   .project-badge {

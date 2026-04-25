@@ -206,9 +206,9 @@
             <v-list density="compact" min-width="220">
               <v-list-item
                 v-if="currentUser"
+                :to="{ path: '/account/profile' }"
                 prepend-icon="mdi-account"
                 class="cursor-pointer"
-                @click="profileDialog = true"
               >
                 <v-list-item-title class="font-weight-medium">
                   {{ currentUser.username }}
@@ -235,35 +235,17 @@
 
               <v-divider v-if="currentUser" />
 
-              <v-list-item :to="{ name: 'UserSettings' }">
+              <!-- Account / Profile -->
+              <v-list-item :to="{ path: '/account/profile' }">
                 <template v-slot:prepend>
-                  <v-icon>mdi-cog</v-icon>
+                  <v-icon>mdi-account</v-icon>
                 </template>
-                <v-list-item-title>My Settings</v-list-item-title>
+                <v-list-item-title>Account / Profile</v-list-item-title>
               </v-list-item>
 
-              <v-list-item :to="{ name: 'UserGuide' }">
-                <template v-slot:prepend>
-                  <v-icon>mdi-book-open-variant</v-icon>
-                </template>
-                <v-list-item-title>User Guide</v-list-item-title>
-              </v-list-item>
-
-              <!-- Reset Password (SaaS/demo only) -->
+              <!-- Admin Settings shortcut (admin only) -->
               <v-list-item
-                v-if="giljoMode !== 'ce'"
-                @click="handleResetPassword"
-              >
-                <template v-slot:prepend>
-                  <v-icon>mdi-lock-reset</v-icon>
-                </template>
-                <v-list-item-title>Reset Password</v-list-item-title>
-              </v-list-item>
-
-              <v-divider v-if="currentUser && currentUser.role === 'admin'" />
-
-              <v-list-item
-                v-if="currentUser && currentUser.role === 'admin'"
+                v-if="userStore.isAdmin"
                 :to="{ name: 'SystemSettings' }"
               >
                 <template v-slot:prepend>
@@ -273,6 +255,24 @@
               </v-list-item>
 
               <v-divider />
+
+              <v-list-item :to="{ name: 'UserGuide' }">
+                <template v-slot:prepend>
+                  <v-icon>mdi-book-open-variant</v-icon>
+                </template>
+                <v-list-item-title>User Guide</v-list-item-title>
+              </v-list-item>
+
+              <!-- Reset Password (SaaS/demo only) - gated so CE bundle never exposes it. -->
+              <v-list-item
+                v-if="giljoMode !== 'ce'"
+                @click="handleResetPassword"
+              >
+                <template v-slot:prepend>
+                  <v-icon>mdi-lock-reset</v-icon>
+                </template>
+                <v-list-item-title>Reset Password</v-list-item-title>
+              </v-list-item>
 
               <v-list-item
                 prepend-icon="mdi-information-outline"
@@ -297,9 +297,6 @@
           <span class="edition-label">{{ editionFooterLabel }}</span>
         </div>
       </div>
-
-      <!-- Profile Dialog -->
-      <UserProfileDialog v-if="currentUser" v-model="profileDialog" :user="currentUser" />
 
       <!-- About Dialog -->
       <v-dialog v-model="aboutDialog" max-width="380">
@@ -368,11 +365,10 @@ import { useToast } from '@/composables/useToast'
 import configService from '@/services/configService'
 import setupService from '@/services/setupService'
 import { getApiBaseUrl } from '@/composables/useApiUrl'
-import api, { apiClient } from '@/services/api'
+import { apiClient } from '@/services/api'
 import NotificationDropdown from '@/components/navigation/NotificationDropdown.vue'
 import { defineAsyncComponent } from 'vue'
 const ConnectionDebugDialog = defineAsyncComponent(() => import('@/components/navigation/ConnectionDebugDialog.vue'))
-const UserProfileDialog = defineAsyncComponent(() => import('@/components/UserProfileDialog.vue'))
 import RoleBadge from '@/components/common/RoleBadge.vue'
 
 const props = defineProps({
@@ -408,7 +404,6 @@ const { showToast } = useToast()
 const selected = ref([])
 
 // Dialogs
-const profileDialog = ref(false)
 const aboutDialog = ref(false)
 const showConnectionDebug = ref(false)
 const licenseStatus = ref('Licensed')
@@ -538,16 +533,19 @@ const getRoleColor = (role) => {
 }
 
 // Logout
+// Delegate to the user store's logout() action so every auth-related piece
+// of state is cleared consistently (currentUser, org fields, tenant key,
+// localStorage, dependent stores). Previously this bypassed the store and
+// only cleared currentUser, which left the route guard open to a bypass
+// where typing a URL into the address bar after logout rendered the
+// protected view (demo server 2026-04-24).
 const handleLogout = async () => {
   try {
-    await api.auth.logout()
-    localStorage.removeItem('user')
-    userStore.currentUser = null
-    wsStore.disconnect()
-    router.push('/login')
-  } catch {
-    userStore.currentUser = null
-    localStorage.removeItem('user')
+    await userStore.logout()
+  } finally {
+    // Legacy key — keep the defensive cleanup for older builds.
+    try { localStorage.removeItem('user') } catch { /* noop */ }
+    try { wsStore.disconnect() } catch { /* noop */ }
     router.push('/login')
   }
 }
@@ -569,14 +567,22 @@ const navigationItems = computed(() => {
     ? `/projects/${activeProj.id}?via=jobs`
     : '/launch?via=jobs'
 
-  return [
+  const items = [
     { name: 'Home', path: '/home', title: 'Home', icon: 'mdi-home' },
     { name: 'Dashboard', path: '/Dashboard', title: 'Dashboard', icon: 'mdi-view-dashboard' },
     { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant', attention: !hasProduct.value },
     { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple', attention: hasProduct.value && !hasProject.value },
     { name: 'Jobs', path: jobsPath, title: 'Jobs', customIcon: jobsIcon.value },
     { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
+    // Label change only -- /settings URL stays stable for backwards compat / deep links.
+    { name: 'Tools', path: '/settings', title: 'Tools', icon: 'mdi-tools' },
   ]
+
+  if (userStore.isAdmin) {
+    items.push({ name: 'Admin', path: '/admin/settings', title: 'Admin', icon: 'mdi-shield-crown' })
+  }
+
+  return items
 })
 
 // Route-based selection logic

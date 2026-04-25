@@ -188,12 +188,11 @@
 
 <script setup>
 import { ref, computed, onMounted, shallowRef } from 'vue'
-import axios from 'axios'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import ForgotPasswordPin from '@/components/ForgotPasswordPin.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import api from '@/services/api'
+import api, { apiClient } from '@/services/api'
 import { getRuntimeConfig } from '@/config/api'
 import configService from '@/services/configService'
 
@@ -281,11 +280,12 @@ async function handleLogin() {
       return
     }
 
-    // SaaS/demo: check if org setup is needed before proceeding to dashboard
+    // SaaS/demo: check if org setup is needed before proceeding to dashboard.
+    // Use apiClient (not raw axios) so the JWT cookie + X-CSRF-Token are
+    // attached through the Cloudflare Tunnel — same pattern as 61138ad5.
     if (giljoMode.value !== 'ce') {
       try {
-        const baseUrl = configService.getApiBaseUrl()
-        const orgStatus = await axios.get(`${baseUrl}/api/saas/org-setup/status`)
+        const orgStatus = await apiClient.get('/api/saas/org-setup/status')
         if (orgStatus.data?.needs_setup) {
           router.push('/org-setup')
           return

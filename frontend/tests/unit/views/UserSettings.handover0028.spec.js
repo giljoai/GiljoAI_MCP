@@ -1,14 +1,13 @@
 /**
+/**
  * Test suite for UserSettings.vue - Handover 0028 Enhancements
  *
- * Post-refactor: The UserSettings component was restructured significantly:
- * - Tab system uses v-btn-toggle with values: startup, notifications, agents, context, api-keys, integrations
- * - The old 'api' tab with sub-tabs (api-keys, mcp-config, integrations) was split into
- *   separate top-level tabs: 'api-keys' and 'integrations'
- * - No apiSubTab state exists
- * - No showManualConfigDialog or openManualConfig methods
- * - Serena toggle is delegated to SerenaIntegrationCard sub-component
- * - Default tab is 'startup' (not 'general')
+ * Updated for FE-0023 (Settings IA cleanup):
+ * - Tab values: connect, agents, context, notifications, startup
+ * - 'Integrations' tab renamed to 'Connect'; ApiKeyManager folded into Connect
+ *   as a compact "Credentials" section (no longer a peer tab named 'API Keys')
+ * - Default tab is 'connect'
+ * - Serena toggle still delegated to SerenaIntegrationCard sub-component
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -116,7 +115,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
   })
 
   describe('Tab Presence', () => {
-    it('renders API Keys tab', () => {
+    it('renders Connect tab', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
@@ -124,47 +123,48 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
       })
 
       const html = wrapper.html()
-      expect(html).toContain('API Keys')
+      expect(html).toContain('Connect')
     })
 
-    it('renders Integrations tab', () => {
+    it('does NOT render API Keys as a peer tab (folded into Connect)', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      const html = wrapper.html()
-      expect(html).toContain('Integrations')
+      // No pill-toggle button labelled "API Keys".
+      const pillButtons = wrapper.findAll('.pill-toggle')
+      const labels = pillButtons.map(b => b.text().trim())
+      expect(labels).not.toContain('API Keys')
     })
   })
 
-  describe('API Keys Tab Content', () => {
-    it('renders ApiKeyManager component in API Keys tab', async () => {
+  describe('Connect Tab - Credentials (folded ApiKeyManager)', () => {
+    it('renders ApiKeyManager inside the Connect tab as the Credentials section', async () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      wrapper.vm.activeTab = 'api-keys'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
 
       const apiKeyManager = wrapper.find('[data-test="api-key-manager-mock"]')
       expect(apiKeyManager.exists()).toBe(true)
     })
-
   })
 
-  describe('Integrations Tab - Serena Toggle', () => {
-    it('displays Serena integration section in Integrations tab', async () => {
+  describe('Connect Tab - Serena Toggle', () => {
+    it('displays Serena integration section in Connect tab', async () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      wrapper.vm.activeTab = 'integrations'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
 
       const serenaCard = wrapper.find('[data-test="serena-integration-mock"]')
@@ -194,7 +194,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
         }
       })
 
-      wrapper.vm.activeTab = 'integrations'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
 
       // Toggle Serena
@@ -210,7 +210,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
         }
       })
 
-      wrapper.vm.activeTab = 'integrations'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
 
       expect(wrapper.vm.serenaEnabled).toBe(false)
@@ -228,7 +228,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
         }
       })
 
-      wrapper.vm.activeTab = 'integrations'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
 
       expect(wrapper.vm.toggling).toBe(false)
@@ -242,27 +242,27 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
   })
 
   describe('Tab Navigation State', () => {
-    it('defaults to startup tab on load', () => {
+    it('defaults to connect tab on load', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      expect(wrapper.vm.activeTab).toBe('startup')
+      expect(wrapper.vm.activeTab).toBe('connect')
     })
 
-    it('can switch to integrations tab', async () => {
+    it('can switch to connect tab', async () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      wrapper.vm.activeTab = 'integrations'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.vm.activeTab).toBe('integrations')
+      expect(wrapper.vm.activeTab).toBe('connect')
     })
 
     it('can switch between tabs', async () => {
@@ -272,13 +272,13 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
         }
       })
 
-      wrapper.vm.activeTab = 'api-keys'
+      wrapper.vm.activeTab = 'startup'
       await wrapper.vm.$nextTick()
-      expect(wrapper.vm.activeTab).toBe('api-keys')
+      expect(wrapper.vm.activeTab).toBe('startup')
 
-      wrapper.vm.activeTab = 'integrations'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
-      expect(wrapper.vm.activeTab).toBe('integrations')
+      expect(wrapper.vm.activeTab).toBe('connect')
 
       wrapper.vm.activeTab = 'notifications'
       await wrapper.vm.$nextTick()
@@ -286,8 +286,8 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
     })
   })
 
-  describe('Query Parameter Support', () => {
-    it('opens integrations tab if tab=integrations in query string', async () => {
+  describe('Query Parameter Support (legacy redirects)', () => {
+    it('normalizes legacy tab=integrations to connect', async () => {
       await router.push('/settings?tab=integrations')
       await router.isReady()
 
@@ -301,7 +301,23 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
       await wrapper.vm.$nextTick()
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.vm.activeTab).toBe('integrations')
+      expect(wrapper.vm.activeTab).toBe('connect')
+    })
+
+    it('normalizes legacy tab=api-keys to connect', async () => {
+      await router.push('/settings?tab=api-keys')
+      await router.isReady()
+
+      wrapper = mount(UserSettings, {
+        global: {
+          plugins: [vuetify, router, pinia]
+        }
+      })
+
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.activeTab).toBe('connect')
     })
   })
 
@@ -332,7 +348,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
         }
       })
 
-      wrapper.vm.activeTab = 'integrations'
+      wrapper.vm.activeTab = 'connect'
       await wrapper.vm.$nextTick()
 
       wrapper.vm.serenaEnabled = false
@@ -344,7 +360,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
   })
 
   describe('Accessibility', () => {
-    it('API Keys tab has proper icon and text', () => {
+    it('Connect tab has proper icon and text', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
@@ -352,19 +368,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
       })
 
       const html = wrapper.html()
-      expect(html).toContain('API Keys')
-      expect(html).toContain('mdi-key-variant')
-    })
-
-    it('Integrations tab has proper icon and text', () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      const html = wrapper.html()
-      expect(html).toContain('Integrations')
+      expect(html).toContain('Connect')
       expect(html).toContain('mdi-puzzle')
     })
 
