@@ -978,6 +978,14 @@ class UnifiedInstaller:
             self._print_error(f"Invalid path: {e}")
             return False
 
+    @staticmethod
+    def _get_node_version() -> str:
+        """Get Node.js version string, or 'unknown' on failure."""
+        with contextlib.suppress(Exception):
+            proc = subprocess.run(["node", "--version"], capture_output=True, text=True, timeout=10)
+            return proc.stdout.strip()
+        return "unknown"
+
     def discover_nodejs(self) -> Dict[str, Any]:
         """
         Discover Node.js and npm installation across platforms
@@ -1000,17 +1008,7 @@ class UnifiedInstaller:
         npm_path = shutil.which("npm")
 
         if node_path and npm_path:
-            node_version = "unknown"
-            with contextlib.suppress(Exception):
-                version_proc = subprocess.run(
-                    ["node", "--version"],
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                )
-                node_version = version_proc.stdout.strip()
-
-            self._print_success(f"Node.js detected: {node_path} ({node_version})")
+            self._print_success(f"Node.js detected: {node_path} ({self._get_node_version()})")
             self._print_success(f"npm detected: {npm_path}")
             result["found"] = True
             return result
@@ -1097,17 +1095,7 @@ class UnifiedInstaller:
         npm_path = shutil.which("npm")
 
         if node_path and npm_path:
-            node_version = "unknown"
-            with contextlib.suppress(Exception):
-                version_proc = subprocess.run(
-                    ["node", "--version"],
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                )
-                node_version = version_proc.stdout.strip()
-
-            self._print_success(f"Node.js detected: {node_path} ({node_version})")
+            self._print_success(f"Node.js detected: {node_path} ({self._get_node_version()})")
             self._print_success(f"npm detected: {npm_path}")
             result["found"] = True
             return result
