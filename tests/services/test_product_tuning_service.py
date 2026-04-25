@@ -695,7 +695,14 @@ class TestApplyTuningUpdates:
         session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
-        with patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls:
+        with (
+            patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls,
+            patch(
+                "giljo_mcp.repositories.product_memory_repository.ProductMemoryRepository.get_next_sequence",
+                new_callable=AsyncMock,
+                return_value=1,
+            ),
+        ):
             mock_ps_instance = AsyncMock()
             mock_ps_cls.return_value = mock_ps_instance
 
@@ -725,7 +732,14 @@ class TestApplyTuningUpdates:
 
         no_drift = [{"section": "description", "drift_detected": False, "proposed_value": "x"}]
 
-        with patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls:
+        with (
+            patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls,
+            patch(
+                "giljo_mcp.repositories.product_memory_repository.ProductMemoryRepository.get_next_sequence",
+                new_callable=AsyncMock,
+                return_value=1,
+            ),
+        ):
             result = await service.apply_tuning_updates(
                 product_id=PRODUCT_ID,
                 proposals=no_drift,
@@ -746,7 +760,14 @@ class TestApplyTuningUpdates:
         session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
-        with patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls:
+        with (
+            patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls,
+            patch(
+                "giljo_mcp.repositories.product_memory_repository.ProductMemoryRepository.get_next_sequence",
+                new_callable=AsyncMock,
+                return_value=1,
+            ),
+        ):
             mock_ps_cls.return_value = AsyncMock()
             await service.apply_tuning_updates(
                 product_id=PRODUCT_ID,
@@ -767,7 +788,14 @@ class TestApplyTuningUpdates:
         session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
-        with patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls:
+        with (
+            patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls,
+            patch(
+                "giljo_mcp.repositories.product_memory_repository.ProductMemoryRepository.get_next_sequence",
+                new_callable=AsyncMock,
+                return_value=1,
+            ),
+        ):
             mock_ps_cls.return_value = AsyncMock()
             await service.apply_tuning_updates(
                 product_id=PRODUCT_ID,
@@ -844,7 +872,14 @@ class TestTenantIsolation:
         session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
         session.commit = AsyncMock()
 
-        with patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls:
+        with (
+            patch("giljo_mcp.services.product_service.ProductService") as mock_ps_cls,
+            patch(
+                "giljo_mcp.repositories.product_memory_repository.ProductMemoryRepository.get_next_sequence",
+                new_callable=AsyncMock,
+                return_value=1,
+            ),
+        ):
             mock_ps_instance = AsyncMock()
             mock_ps_cls.return_value = mock_ps_instance
 

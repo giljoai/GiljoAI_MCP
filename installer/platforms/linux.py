@@ -269,8 +269,8 @@ class LinuxPlatformHandler(PlatformHandler):
                     subprocess.run(
                         ["gio", "set", desktop_file, "metadata::trusted", "true"], capture_output=True, timeout=5
                     )
-                except Exception:
-                    pass  # Not critical if gio trust fails
+                except (OSError, subprocess.SubprocessError):
+                    continue  # Not critical if gio trust fails
 
             return {
                 "success": True,
