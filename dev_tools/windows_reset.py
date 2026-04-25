@@ -83,7 +83,7 @@ def rmtree_safe(path: Path, dry_run: bool) -> bool:
         return True
     except PermissionError:
         # Try elevated removal on Windows
-        try:
+        with contextlib.suppress(Exception):
             subprocess.run(
                 [
                     "powershell",
@@ -96,9 +96,8 @@ def rmtree_safe(path: Path, dry_run: bool) -> bool:
             )
             ok(f"Removed (elevated): {path}")
             return True
-        except Exception:
-            fail(f"Permission denied: {path}")
-            return False
+        fail(f"Permission denied: {path}")
+        return False
     except Exception as e:
         fail(f"Error removing {path}: {e}")
         return False
@@ -191,7 +190,8 @@ def clean_mkcert(dry_run: bool) -> int:
             choco_lib = Path(r"C:\ProgramData\chocolatey\lib\mkcert")
             choco_bin = Path(r"C:\ProgramData\chocolatey\bin\mkcert.exe")
             if choco_lib.exists() or choco_bin.exists():
-                try:
+                choco_removed = False
+                with contextlib.suppress(Exception):
                     subprocess.run(
                         [
                             "powershell",
@@ -210,7 +210,8 @@ def clean_mkcert(dry_run: bool) -> int:
                     )
                     ok("Chocolatey mkcert remnants removed")
                     count += 1
-                except Exception:
+                    choco_removed = True
+                if not choco_removed:
                     fail("Could not remove chocolatey mkcert (needs admin)")
 
     # Step 4: Remove mkcert cert from Windows cert store (if -uninstall missed it)
@@ -275,7 +276,7 @@ def clean_postgresql(dry_run: bool) -> int:
     # Check and stop service
     for ver in ["18", "17", "16", "15"]:
         svc = f"postgresql-x64-{ver}"
-        try:
+        with contextlib.suppress(Exception):
             result = run_quiet(["sc", "query", svc])
             if result.returncode == 0:
                 if dry_run:
@@ -285,8 +286,6 @@ def clean_postgresql(dry_run: bool) -> int:
                     run_quiet(["sc", "delete", svc])
                     ok(f"Service {svc} stopped and deleted")
                 count += 1
-        except Exception:
-            continue
 
     # Remove installation directory
     pg_base = Path(r"C:\Program Files\PostgreSQL")
@@ -294,7 +293,8 @@ def clean_postgresql(dry_run: bool) -> int:
         if dry_run:
             info(f"Would remove: {pg_base}")
         else:
-            try:
+            pg_removed = False
+            with contextlib.suppress(Exception):
                 subprocess.run(
                     [
                         "powershell",
@@ -311,7 +311,8 @@ def clean_postgresql(dry_run: bool) -> int:
                 )
                 ok(f"Removed: {pg_base}")
                 count += 1
-            except Exception:
+                pg_removed = True
+            if not pg_removed:
                 fail(f"Could not remove {pg_base} (needs admin)")
 
     # Remove registry keys
@@ -488,7 +489,8 @@ def clean_caches(dry_run: bool) -> int:
     count = 0
 
     # pip cache
-    try:
+    pip_checked = False
+    with contextlib.suppress(Exception):
         result = run_quiet([sys.executable, "-m", "pip", "cache", "info"])
         if "cache size: 0 bytes" not in result.stdout:
             if dry_run:
@@ -499,13 +501,15 @@ def clean_caches(dry_run: bool) -> int:
             count += 1
         else:
             warn("pip cache already empty")
-    except Exception:
+        pip_checked = True
+    if not pip_checked:
         warn("Could not check pip cache")
 
     # npm cache
     npm = shutil.which("npm")
     if npm:
-        try:
+        npm_checked = False
+        with contextlib.suppress(Exception):
             result = run_quiet([npm, "cache", "verify"])
             if "Content verified: 0" not in result.stdout:
                 if dry_run:
@@ -516,7 +520,8 @@ def clean_caches(dry_run: bool) -> int:
                 count += 1
             else:
                 warn("npm cache already empty")
-        except Exception:
+            npm_checked = True
+        if not npm_checked:
             warn("Could not check npm cache")
     else:
         warn("npm not found — skipping")

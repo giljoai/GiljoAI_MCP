@@ -40,13 +40,12 @@ def _make_tool_accessor(tenant_key="tenant-abc"):
     tenant_manager = Mock()
     tenant_manager.get_current_tenant = Mock(return_value=tenant_key)
 
-    tool_accessor = ToolAccessor(
+    return ToolAccessor(
         db_manager=db_manager,
         tenant_manager=tenant_manager,
         websocket_manager=None,
         test_session=None,
     )
-    return tool_accessor
 
 
 class TestToolAccessorCreateTaskSignature:

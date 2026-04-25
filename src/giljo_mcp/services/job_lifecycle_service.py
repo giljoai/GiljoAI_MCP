@@ -470,8 +470,7 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
                 )
 
             # v1.1.6: Auto-suffix display name on collision (replaces AlreadyExistsError)
-            resolved_name = await self._resolve_display_name(session, agent_display_name, tenant_key, project_id)
-            return resolved_name
+            return await self._resolve_display_name(session, agent_display_name, tenant_key, project_id)
 
         # Duplicate orchestrator prevention (backported from tools layer)
         if agent_display_name == "orchestrator":

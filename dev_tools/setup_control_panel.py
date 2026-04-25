@@ -312,8 +312,6 @@ def install_python_deps() -> bool:
 
 def update_launchers() -> None:
     """Ensure launcher scripts point to venv_devtools first."""
-    plat = get_platform()
-
     # Update the shell launcher
     launcher_sh = DEVTOOLS_DIR / "launch_control_panel.sh"
     if launcher_sh.exists():

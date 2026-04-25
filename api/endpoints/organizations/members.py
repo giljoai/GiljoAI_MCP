@@ -65,8 +65,7 @@ async def list_members(
     if not await org_service.can_view_org(org_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this organization")
 
-    members = await org_service.list_members(org_id)
-    return members
+    return await org_service.list_members(org_id)
 
 
 @router.post("/{org_id}/members", response_model=MemberResponse, status_code=status.HTTP_201_CREATED)

@@ -103,14 +103,13 @@ class DatabaseConfig:
             try:
                 from giljo_mcp.database import DatabaseManager
 
-                url = DatabaseManager.build_postgresql_url(
+                return DatabaseManager.build_postgresql_url(
                     host=self.host,
                     port=self.port,
                     database=(self.database_name if not tenant_key else f"{self.database_name}_{tenant_key}"),
                     username=self.username,
                     password=self.password or os.getenv("DB_PASSWORD", ""),
                 )
-                return url
             except ImportError:
                 # Fallback to manual URL building
                 password = self.password or os.getenv("DB_PASSWORD", "")
@@ -779,8 +778,7 @@ class ConfigManager:
     @classmethod
     def load_from_file(cls, path: Path) -> "ConfigManager":
         """Load configuration from a specific file."""
-        config = cls(config_path=path, auto_reload=False)
-        return config
+        return cls(config_path=path, auto_reload=False)
 
     def __enter__(self):
         """Context manager entry."""

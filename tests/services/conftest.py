@@ -529,13 +529,12 @@ async def message_service(
     db_manager.get_session_async = mock_get_session_async
 
     # Pass test_session for transaction-aware testing
-    service = MessageService(
+    return MessageService(
         db_manager=db_manager,
         tenant_manager=tenant_manager,
         websocket_manager=mock_websocket_manager,
         test_session=db_session,
     )
-    return service
 
 
 # ============================================================================

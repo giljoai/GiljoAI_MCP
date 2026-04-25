@@ -36,5 +36,4 @@ class APIMetricsMiddleware(BaseHTTPMiddleware):
             )
             # MCP tool calls are counted per-invocation in _call_tool()
             # (mcp_sdk_server.py), not per HTTP request here.
-        response = await call_next(request)
-        return response
+        return await call_next(request)

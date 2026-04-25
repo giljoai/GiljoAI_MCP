@@ -97,10 +97,11 @@ async def main():
         await test_discovery_manager()
         await test_integration()
 
-    except Exception:
+    except Exception as e:
         import traceback
 
         traceback.print_exc()
+        print(f"Test suite failed: {e}")
 
     finally:
         # Cleanup test database

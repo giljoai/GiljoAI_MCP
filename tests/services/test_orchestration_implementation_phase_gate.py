@@ -53,14 +53,13 @@ def mock_tenant_manager():
 def orchestration_service(mock_db_manager, mock_tenant_manager):
     """Create OrchestrationService with mocked dependencies."""
     db_manager, _ = mock_db_manager
-    service = OrchestrationService(db_manager=db_manager, tenant_manager=mock_tenant_manager)
-    return service
+    return OrchestrationService(db_manager=db_manager, tenant_manager=mock_tenant_manager)
 
 
 @pytest.fixture
 def mock_project_not_launched():
     """Create mock project with implementation_launched_at = None."""
-    project = Project(
+    return Project(
         id=str(uuid4()),
         tenant_key="tenant-test",
         name="Test Project",
@@ -70,13 +69,12 @@ def mock_project_not_launched():
         implementation_launched_at=None,  # BLOCKED - not launched yet
         series_number=random.randint(1, 999999),
     )
-    return project
 
 
 @pytest.fixture
 def mock_project_launched():
     """Create mock project with implementation_launched_at set."""
-    project = Project(
+    return Project(
         id=str(uuid4()),
         tenant_key="tenant-test",
         name="Test Project",
@@ -86,7 +84,6 @@ def mock_project_launched():
         implementation_launched_at=datetime.now(timezone.utc),  # LAUNCHED
         series_number=random.randint(1, 999999),
     )
-    return project
 
 
 @pytest.fixture

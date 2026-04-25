@@ -45,11 +45,10 @@ class TestRequiresActionAutoBlock:
         mock_tenant = MagicMock()
         mock_tenant.get_current_tenant.return_value = "test_tenant"
 
-        service = MessageRoutingService(
+        return MessageRoutingService(
             db_manager=mock_db,
             tenant_manager=mock_tenant,
         )
-        return service
 
     @pytest.mark.asyncio
     async def test_informational_message_does_not_auto_block(self, routing_service):

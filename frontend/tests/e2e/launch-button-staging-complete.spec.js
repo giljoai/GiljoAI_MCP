@@ -205,7 +205,7 @@ test.describe('Launch Button Staging Complete (Handover 0287)', () => {
     console.log('[Test] No page refresh - URL unchanged')
 
     // Verify button is visually disabled (not just disabled attribute)
-    const buttonClass = await stageButton.getAttribute('class')
+    await stageButton.getAttribute('class')
     console.log('[Test] Stage button CSS classes indicate disabled state')
   })
 

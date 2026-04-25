@@ -4,7 +4,6 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import MessagePanel from '@/components/messages/MessagePanel.vue'
-import MessageList from '@/components/messages/MessageList.vue'
 
 // Mock the API module
 vi.mock('@/services/api', () => ({

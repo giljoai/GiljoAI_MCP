@@ -190,9 +190,7 @@ class UserAuthService:
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        verified = bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8"))
-
-        return verified
+        return bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8"))
 
     # ============================================================================
     # Validation Methods

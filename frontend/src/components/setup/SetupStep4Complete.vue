@@ -15,11 +15,7 @@
 </template>
 
 <script setup>
-const emit = defineEmits(['complete'])
-
-function handleDashboard() {
-  emit('complete', { action: 'home', route: '/home' })
-}
+defineEmits(['complete'])
 </script>
 
 <style lang="scss" scoped>

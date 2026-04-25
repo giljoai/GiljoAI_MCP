@@ -245,7 +245,7 @@ class TemplateValidator:
 
             # Reconstruct result with cached=True
             start_time = time.time()
-            result = TemplateValidationResult(
+            return TemplateValidationResult(
                 is_valid=data["is_valid"],
                 errors=errors,
                 warnings=warnings,
@@ -254,8 +254,6 @@ class TemplateValidator:
                 validation_duration_ms=(time.time() - start_time) * 1000,
                 cached=True,
             )
-
-            return result
 
         except (ValueError, KeyError, RuntimeError):
             # Log error but don't fail validation

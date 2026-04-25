@@ -41,11 +41,10 @@ class TestCloseJobTransition:
         mock_tenant = MagicMock()
         mock_tenant.get_current_tenant.return_value = "test_tenant"
 
-        service = OrchestrationAgentStateService(
+        return OrchestrationAgentStateService(
             db_manager=mock_db,
             tenant_manager=mock_tenant,
         )
-        return service
 
     @pytest.mark.asyncio
     async def test_close_job_requires_complete_status(self, state_service):

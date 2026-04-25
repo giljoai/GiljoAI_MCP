@@ -107,8 +107,6 @@ test.describe('Memory Leak Detection', () => {
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1000)
 
-    const messagesAfterNavigate = consoleMessages.length
-
     // Navigate away and back multiple times
     for (let i = 0; i < 5; i++) {
       // Navigate to Launch tab
@@ -186,12 +184,6 @@ test.describe('Memory Leak Detection', () => {
     await page.fill('[data-testid="password-input"]', 'testpassword')
     await page.click('[data-testid="login-button"]')
     await page.waitForURL('**/projects', { timeout: 10000 })
-
-    // Get initial interval count
-    const initialIntervals = await page.evaluate(() => {
-      // Count setTimeout/setInterval calls (implementation-specific)
-      return 0 // Baseline
-    })
 
     // Navigate to Implement tab (has staleness monitor with intervals)
     const projectCards = page.locator('[data-testid="project-card"]')
@@ -292,11 +284,6 @@ test.describe('Memory Leak Detection', () => {
     if (await projectCards.count() > 0) {
       await projectCards.first().click()
     }
-
-    // Get DOM node count after navigation
-    const afterNavigateNodeCount = await page.evaluate(() => {
-      return document.getElementsByTagName('*').length
-    })
 
     // Navigate back
     await page.goto('/projects')

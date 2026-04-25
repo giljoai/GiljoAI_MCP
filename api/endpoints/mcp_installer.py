@@ -139,8 +139,7 @@ def generate_secure_token(user_id: str, expires_in: int, tenant_key: str = "defa
         "type": "mcp_installer_download",
     }
 
-    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    return token
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def validate_token(token: str) -> Optional[dict]:
@@ -200,11 +199,9 @@ def render_template(
     template_content = template_path.read_text(encoding="utf-8")
 
     # Replace placeholders
-    script = template_content.format(
+    return template_content.format(
         server_url=server_url, api_key=api_key, username=username, organization=organization, timestamp=timestamp
     )
-
-    return script
 
 
 async def _get_db_manager() -> DatabaseManager:

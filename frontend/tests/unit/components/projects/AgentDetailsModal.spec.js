@@ -174,7 +174,7 @@ describe('AgentDetailsModal Component', () => {
     })
 
     it('fetches template data for non-orchestrator agents', async () => {
-      const wrapper = createWrapper({
+      createWrapper({
         agent: {
           agent_display_name: 'implementer',
           template_id: 'template-456',
@@ -255,7 +255,7 @@ describe('AgentDetailsModal Component', () => {
     })
 
     it('handles missing template_id by searching templates list', async () => {
-      const wrapper = createWrapper({
+      createWrapper({
         agent: {
           agent_display_name: 'implementer',
           agent_name: 'Implementer',
@@ -282,7 +282,7 @@ describe('AgentDetailsModal Component', () => {
     })
 
     it('fetches orchestrator prompt for orchestrator agent type', async () => {
-      const wrapper = createWrapper({
+      createWrapper({
         agent: {
           agent_display_name: 'orchestrator',
           agent_name: 'System Orchestrator',

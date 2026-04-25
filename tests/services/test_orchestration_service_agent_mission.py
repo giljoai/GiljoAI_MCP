@@ -42,16 +42,14 @@ def mock_db_manager():
 @pytest.fixture
 def mock_tenant_manager():
     """Mock tenant manager."""
-    tenant_manager = MagicMock()
-    return tenant_manager
+    return MagicMock()
 
 
 @pytest.fixture
 def orchestration_service(mock_db_manager, mock_tenant_manager):
     """Create OrchestrationService with mocked dependencies."""
     db_manager, _ = mock_db_manager
-    service = OrchestrationService(db_manager=db_manager, tenant_manager=mock_tenant_manager)
-    return service
+    return OrchestrationService(db_manager=db_manager, tenant_manager=mock_tenant_manager)
 
 
 @pytest.fixture

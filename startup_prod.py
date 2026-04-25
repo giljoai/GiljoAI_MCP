@@ -15,6 +15,8 @@ Use 'python startup.py --dev' to force development mode.
 This script is kept for backward compatibility and delegates to startup.py.
 """
 
+import atexit
+import contextlib
 import platform
 import subprocess
 import sys
@@ -44,6 +46,11 @@ from startup import (
     wait_for_api_ready,
 )
 
+
+# ExitStack for managing log file handles that must outlive the function scope
+# (passed to subprocess.Popen). Registered with atexit so handles close on exit.
+_log_file_stack = contextlib.ExitStack()
+atexit.register(_log_file_stack.close)
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
@@ -91,8 +98,12 @@ def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             # Background mode: hide output for quiet startup
             logs_dir = Path.cwd() / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
-            api_stdout = open(logs_dir / "api_stdout.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
-            api_stderr = open(logs_dir / "api_stderr.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            api_stdout = _log_file_stack.enter_context(
+                open(logs_dir / "api_stdout.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            )
+            api_stderr = _log_file_stack.enter_context(
+                open(logs_dir / "api_stderr.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            )
             popen_kwargs["stdout"] = api_stdout
             popen_kwargs["stderr"] = api_stderr
 
@@ -158,7 +169,9 @@ def start_frontend_production_server(verbose: bool = False) -> Optional[subproce
             # Background mode: hide output for quiet startup
             logs_dir = Path.cwd() / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
-            fe_stdout = open(logs_dir / "frontend_prod.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            fe_stdout = _log_file_stack.enter_context(
+                open(logs_dir / "frontend_prod.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            )
             fe_stderr = fe_stdout  # Use same file for stderr
             popen_kwargs["stdout"] = fe_stdout
             popen_kwargs["stderr"] = fe_stderr

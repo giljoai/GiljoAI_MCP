@@ -77,8 +77,7 @@ def sync_db_manager():
     # Convert async connection string to sync (replace postgresql+asyncpg with postgresql+psycopg2)
     sync_connection_string = connection_string.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
 
-    db_mgr = DatabaseManager(sync_connection_string, is_async=False)
-    return db_mgr
+    return DatabaseManager(sync_connection_string, is_async=False)
 
 
 @pytest.fixture
@@ -179,8 +178,7 @@ def minimal_product():
 @pytest.fixture
 def empty_product():
     """Create product with no config data"""
-    product = Product(id="test-product-empty", tenant_key="test-tenant", name="Empty Product")
-    return product
+    return Product(id="test-product-empty", tenant_key="test-tenant", name="Empty Product")
 
 
 # --- Template service shared helpers (split from test_template_service.py) ---

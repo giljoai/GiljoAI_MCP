@@ -331,7 +331,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '@/stores/products'
 import { useSettingsStore } from '@/stores/settings'
-import { useNotificationStore } from '@/stores/notifications'
 import { useToast } from '@/composables/useToast'
 import { useFormatDate } from '@/composables/useFormatDate'
 import { useProductActivation } from '@/composables/useProductActivation'
@@ -348,7 +347,6 @@ import ProductForm from '@/components/products/ProductForm.vue'
 
 const productStore = useProductStore()
 const settingsStore = useSettingsStore()
-const notificationStore = useNotificationStore()
 const { showToast } = useToast()
 const { formatDate } = useFormatDate()
 // State

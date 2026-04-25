@@ -242,8 +242,6 @@ describe('v-draggable directive', () => {
   // -----------------------------------------------------------------------
 
   describe('bounds checking', () => {
-    const MIN_VISIBLE = 50
-
     beforeEach(() => {
       dom = createDialogDOM()
       // Card: 400x300, centered in 800x600 viewport => left=200, top=150
@@ -443,7 +441,7 @@ describe('v-draggable directive', () => {
       dom = createDialogDOM()
       draggable.mounted(dom.cardEl)
 
-      const event = fireMouseEvent('mousedown', dom.titleEl, { clientX: 300, clientY: 200 })
+      fireMouseEvent('mousedown', dom.titleEl, { clientX: 300, clientY: 200 })
 
       // MouseEvent in jsdom is not easily mockable for preventDefault,
       // but we verify drag started (cursor changed), which requires preventDefault

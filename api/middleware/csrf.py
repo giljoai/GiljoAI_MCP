@@ -131,13 +131,11 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
         # Exempt certain paths (login, public endpoints)
         path = request.url.path
         if path in self.exempt_paths or any(path.startswith(p) for p in self.exempt_prefixes):
-            response = await call_next(request)
-            return response
+            return await call_next(request)
 
         # Skip CSRF for API key-authenticated requests (not cookie-based)
         if request.headers.get(self.api_key_header):
-            response = await call_next(request)
-            return response
+            return await call_next(request)
 
         # Only validate state-changing methods
         # GET, HEAD, and OPTIONS are safe methods (no state changes)

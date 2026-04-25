@@ -12,7 +12,7 @@
  * - Loading state
  * - Warning alert display
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ProductDeleteDialog from '@/components/products/ProductDeleteDialog.vue'
 

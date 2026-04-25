@@ -471,8 +471,7 @@ class ProductService:
         """
         try:
             async with self._get_session() as session:
-                product = await self._repo.get_active_product(session, self.tenant_key)
-                return product
+                return await self._repo.get_active_product(session, self.tenant_key)
 
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get active product")

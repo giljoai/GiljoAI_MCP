@@ -115,7 +115,7 @@ class DatabaseManager:
 
     def _create_sync_engine(self) -> Engine:
         """Create synchronous PostgreSQL engine with optimized settings."""
-        engine = create_engine(
+        return create_engine(
             self.database_url,
             poolclass=QueuePool,
             pool_size=self.pool_size,
@@ -124,7 +124,6 @@ class DatabaseManager:
             pool_recycle=POOL_RECYCLE_SECONDS,
             echo=False,
         )
-        return engine
 
     def _create_async_engine(self) -> AsyncEngine:
         """Create asynchronous PostgreSQL engine with optimized settings."""
@@ -133,7 +132,7 @@ class DatabaseManager:
         if async_url.startswith("postgresql://"):
             async_url = async_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-        engine = create_async_engine(
+        return create_async_engine(
             async_url,
             pool_size=self.pool_size,
             max_overflow=self.max_overflow,
@@ -141,8 +140,6 @@ class DatabaseManager:
             pool_recycle=POOL_RECYCLE_SECONDS,
             echo=False,
         )
-
-        return engine
 
     def create_tables(self):
         """Create all database tables (sync)."""

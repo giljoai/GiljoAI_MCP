@@ -128,14 +128,6 @@ vi.mock('@/stores/notifications', () => ({
 // TEST HELPERS
 // ============================================
 
-/**
- * Helper to flush promise microtasks
- */
-async function flushPromises() {
-  // Use setTimeout(0) which works reliably in both Node and jsdom
-  return new Promise(resolve => setTimeout(resolve, 0))
-}
-
 // ============================================
 // TEST SUITE
 // ============================================

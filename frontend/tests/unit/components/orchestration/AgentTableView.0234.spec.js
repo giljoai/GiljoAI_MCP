@@ -13,7 +13,7 @@
  * - mission_tracking and messages columns replaced by individual message count columns
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createVuetify } from 'vuetify';
 import * as components from 'vuetify/components';
@@ -21,7 +21,6 @@ import * as directives from 'vuetify/directives';
 import { nextTick } from 'vue';
 
 import AgentTableView from '@/components/orchestration/AgentTableView.vue';
-import StatusChip from '@/components/StatusBoard/StatusChip.vue';
 
 // Mock useToast composable
 vi.mock('@/composables/useToast', () => ({
