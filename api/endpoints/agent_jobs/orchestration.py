@@ -250,7 +250,7 @@ async def launch_project(
             },
         )
         logger.info("WebSocket event 'project:launched' broadcasted for %s", sanitize(project_id_str))
-    except Exception:  # Broad catch: API boundary, converts to HTTP error
+    except Exception as _exc:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("Failed to broadcast WebSocket event")
 
     return LaunchProjectResponse(

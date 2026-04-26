@@ -107,7 +107,7 @@ async def spawn_job(
             },
         )
         logger.info("Agent spawn broadcasted: %s", sanitize(str(result.job_id)))
-    except Exception:  # Broad catch: API boundary, converts to HTTP error
+    except Exception as _exc:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("Failed to broadcast agent spawn event")
         # Non-critical - continue without broadcast
 

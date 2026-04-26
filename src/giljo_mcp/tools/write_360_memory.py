@@ -624,8 +624,8 @@ async def write_360_memory(
                 settings_svc = SettingsService(active_session, tenant_key)
                 git_settings = await settings_svc.get_setting_value("integrations", "git_integration", {})
                 git_integration_enabled = git_settings.get("enabled", False)
-            except Exception:  # noqa: BLE001, S110
-                pass  # Settings read failure is not a blocker
+            except Exception as _exc:  # noqa: BLE001, S110
+                logger.debug("Settings read skipped: %s", _exc)
 
             # SAAS-009b Bug 1: Only enforce the GIT_COMMITS_REQUIRED gate for
             # project_completion entries. Session handovers and handover closeouts
