@@ -229,7 +229,7 @@ For trivial items (~10 lines), prefer fixing immediately rather than deferring.
    → If `user_approval_required=false`: proceed with best judgment
 3. Write `action_required` tags for deferred findings via `write_360_memory()` BEFORE closing the project
 4. Create follow-up tasks/projects if needed via `create_task()` or `create_project()`
-5. `mcp__giljo_mcp__close_project_and_update_memory(project_id="...", summary="...", key_outcomes=[...], decisions_made=[...], git_commits=[...])` — final close
+5. `mcp__giljo_mcp__close_project_and_update_memory(project_id="...", summary="...", key_outcomes=[...], decisions_made=[...], tags=[...], git_commits=[...])` — final close. `tags` is REQUIRED-IN-SPIRIT: supply 1-5 from the 16-tag CONTROLLED_TAG_VOCABULARY (see Chapter 5). Unknown tags are rejected.
 6. Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
 
 **IMPORTANT:** You MUST complete your own job (step 2) BEFORE closing the project (step 5). The server requires all agents including the orchestrator to be complete before project closeout.

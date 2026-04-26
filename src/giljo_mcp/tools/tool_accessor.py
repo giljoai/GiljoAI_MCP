@@ -587,6 +587,7 @@ class ToolAccessor:
         tenant_key: str,
         force: bool = False,
         git_commits: list[dict[str, Any]] | None = None,
+        tags: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Close project and update product memory with sequential history entries (Handover 0138+).
@@ -602,6 +603,10 @@ class ToolAccessor:
             tenant_key: Tenant isolation key
             force: If True, auto-decommission active agents and close anyway
             git_commits: Agent-supplied git commits (from local git log)
+            tags: Orchestrator-supplied tags from the 16-entry controlled
+                vocabulary (CONTROLLED_TAG_VOCABULARY in MemoryEntryWriteSchema).
+                None or [] persists with empty tags; invalid tags are rejected
+                with MemoryEntryWriteValidationError.
 
         Returns:
             Success/error response with learning_id and sequence number
@@ -618,6 +623,7 @@ class ToolAccessor:
             db_manager=self.db_manager,
             force=force,
             git_commits=git_commits,
+            tags=tags,
         )
 
     async def write_360_memory(

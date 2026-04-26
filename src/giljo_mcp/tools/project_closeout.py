@@ -199,7 +199,7 @@ async def _resolve_git_commits(
         settings_svc = SettingsService(session, tenant_key)
         git_settings = await settings_svc.get_setting_value("integrations", "git_integration", {})
         git_integration_enabled = git_settings.get("enabled", False)
-    except Exception as _exc:  # noqa: BLE001, S110
+    except Exception as _exc:  # noqa: BLE001
         logger.debug("Settings read skipped: %s", _exc)
 
     git_warning: str | None = None
@@ -251,6 +251,8 @@ async def close_project_and_update_memory(
     summary: str,
     key_outcomes: list[str],
     decisions_made: list[str],
+    *,
+    tags: list[str] | None = None,
     tenant_key: str,
     db_manager: DatabaseManager | None = None,
     session: AsyncSession | None = None,
@@ -273,14 +275,26 @@ async def close_project_and_update_memory(
         summary <= 500 chars (2-3 sentence headline of what changed and why)
         key_outcomes <= 5 items, each <= 200 chars
         decisions_made <= 5 items, each <= 250 chars
+        tags <= 8 items, each from the 16-tag CONTROLLED_TAG_VOCABULARY in
+            MemoryEntryWriteSchema (or an ``action_required:<title>`` free-form
+            tag). Invalid tags trigger a structured MemoryEntryWriteValidationError
+            carrying the offending tag and the full allowed enum.
 
     Args:
+        tags: Orchestrator-supplied controlled-vocabulary tags for the
+            closeout entry. Pick 1-3 from the change-type axis
+            (feature/bug-fix/refactor/perf/security/docs/test/chore) AND
+            1-3 from the domain axis (frontend/backend/database/api/
+            infrastructure/ui-ux/integration). Use ``migration`` for schema
+            changes. ``None`` or ``[]`` produce an entry with empty tags
+            (no auto-extraction from prose).
         git_commits: Agent-supplied commits from local git log. When provided,
             skips the GitHub API fetch entirely (passive server model).
 
     Raises:
         MemoryEntryWriteValidationError: structured rejection when caps are
-            exceeded (single shared validator with write_360_memory).
+            exceeded or any supplied tag is outside the controlled vocabulary
+            (single shared validator with write_360_memory).
     """
     if not project_id:
         raise ValidationError("project_id is required")
@@ -295,20 +309,22 @@ async def close_project_and_update_memory(
     decisions_made = decisions_made or []
 
     # INF-WriteShape: shared validated write boundary (same as write_360_memory).
-    # Validates only the agent-supplied fields here; deliverables + tags are
-    # derived downstream and re-validated when applied.
+    # BE-5032: tags are now an agent-supplied parameter, validated against
+    # CONTROLLED_TAG_VOCABULARY here. The previous behaviour word-split the
+    # summary into junk tokens; that path is gone.
     validated = validate_memory_entry_write(
         {
             "summary": summary,
             "key_outcomes": key_outcomes,
             "decisions_made": decisions_made,
             "deliverables": [],
-            "tags": [],
+            "tags": tags or [],
         }
     )
     summary = validated.summary
     key_outcomes = validated.key_outcomes
     decisions_made = validated.decisions_made
+    validated_tags = validated.tags
 
     try:
         owns_session = session is None
@@ -389,7 +405,7 @@ async def close_project_and_update_memory(
             # scheduled post-demo); stop synthesizing it from key_outcomes.
             # TODO(post-demo): remove the deliverables column entirely.
             deliverables: list[str] = []
-            tags = _extract_tags(summary, key_outcomes, decisions_made)
+            tags = validated_tags
             priority = _derive_priority(project, summary, key_outcomes)
             significance_score = _calculate_significance(project, key_outcomes, git_commits)
             token_estimate = _estimate_tokens(summary, key_outcomes, decisions_made)
@@ -565,23 +581,6 @@ async def _force_decommission_agents(
         tenant_manager=TenantManager(),
     )
     return await svc.decommission_project_agents(session=session, project_id=project_id, tenant_key=tenant_key)
-
-
-def _extract_tags(summary: str, key_outcomes: list[str], decisions_made: list[str]) -> list[str]:
-    """Extract lightweight tags from summary/outcomes/decisions.
-
-    BE-5022f: Now uses shared clean_tags() for stopword filtering,
-    punctuation stripping, case-insensitive dedup, and length caps.
-    """
-    from giljo_mcp.utils.tag_utils import clean_tags
-
-    tokens = (summary or "").split()
-    for item in key_outcomes or []:
-        tokens.extend((item or "").split())
-    for decision in decisions_made or []:
-        tokens.extend((decision or "").split())
-
-    return clean_tags(tokens)
 
 
 def _derive_priority(project: Project, summary: str, key_outcomes: list[str]) -> int:

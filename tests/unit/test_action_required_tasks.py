@@ -502,57 +502,6 @@ class TestAutoResolveOnCompletion:
             mock_task_svc.change_status.assert_not_called()
 
 
-class TestExtractTagsIntegration:
-    """Task 3: project_closeout._extract_tags() uses clean_tags() correctly."""
-
-    def test_extract_tags_filters_stopwords(self):
-        """Words like 'the', 'from' in summary are stripped from tags."""
-        from giljo_mcp.tools.project_closeout import _extract_tags
-
-        result = _extract_tags(
-            summary="Refactored the database from scratch",
-            key_outcomes=["Added auth module"],
-            decisions_made=[],
-        )
-        # Stopwords filtered
-        assert "the" not in result
-        assert "from" not in result
-        # Meaningful tokens kept
-        assert "Refactored" in result or "refactored" in result.copy()
-
-    def test_extract_tags_deduplicates_case_insensitively(self):
-        """Same word appearing multiple times in different cases results in one tag."""
-        from giljo_mcp.tools.project_closeout import _extract_tags
-
-        result = _extract_tags(
-            summary="auth",
-            key_outcomes=["Auth was fixed"],
-            decisions_made=["AUTH removed"],
-        )
-        # At most one entry for "auth" (case-insensitive dedup keeps first)
-        lower_results = [t.lower() for t in result]
-        assert lower_results.count("auth") == 1
-
-    def test_extract_tags_caps_at_15(self):
-        """More than 15 distinct tokens produces at most 15 tags."""
-        from giljo_mcp.tools.project_closeout import _extract_tags
-
-        # Generate 30 unique meaningful words
-        summary = " ".join(f"word{i}" for i in range(30))
-        result = _extract_tags(summary=summary, key_outcomes=[], decisions_made=[])
-        assert len(result) <= 15
-
-    def test_extract_tags_empty_inputs_return_empty(self):
-        """Empty/None inputs produce an empty tag list."""
-        from giljo_mcp.tools.project_closeout import _extract_tags
-
-        result = _extract_tags(summary="", key_outcomes=[], decisions_made=[])
-        assert result == []
-
-        result = _extract_tags(summary=None, key_outcomes=None, decisions_made=None)
-        assert result == []
-
-
 class TestValidateTagsIntegration:
     """Task 3: write_360_memory._validate_tags() uses strip_tag_punctuation() correctly."""
 

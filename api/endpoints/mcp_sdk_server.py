@@ -957,6 +957,21 @@ async def close_project_and_update_memory(
             description="Git commits from project branch. Each: {sha: str, message: str, author: str}. Run 'git log --oneline' first."
         ),
     ] = None,
+    tags: Annotated[
+        list[str] | None,
+        Field(
+            description=(
+                "REQUIRED-IN-SPIRIT: 1-5 tags from the 16-entry controlled "
+                "vocabulary. Change-type axis: feature, bug-fix, refactor, perf, "
+                "security, docs, test, chore. Domain axis: frontend, backend, "
+                "database, api, infrastructure, ui-ux, integration. Operational: "
+                "migration. Pick 1-3 from change-type AND 1-3 from domain. "
+                "Invalid tags are rejected with a structured error carrying the "
+                "offending tag and the full allowed enum. None or [] persists "
+                "with empty tags (no auto-extraction)."
+            )
+        ),
+    ] = None,
     ctx: Context = None,
 ) -> dict:
     """Close project and update 360 Memory."""
@@ -969,6 +984,8 @@ async def close_project_and_update_memory(
     }
     if git_commits is not None:
         kwargs["git_commits"] = git_commits
+    if tags is not None:
+        kwargs["tags"] = tags
     return await _call_tool(ctx, "close_project_and_update_memory", kwargs)
 
 

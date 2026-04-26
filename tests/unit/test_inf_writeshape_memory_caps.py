@@ -33,6 +33,7 @@ from __future__ import annotations
 import random
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -213,7 +214,7 @@ async def test_close_project_and_update_memory_shares_validator(
 async def test_fetch_context_memory_360_default_is_headlines(db_session, test_tenant_key, test_product, linked_project):
     """Test 8: default fetch_context(memory_360) returns headlines-only shape."""
     # Seed one rich entry
-    long_summary = "Lorem ipsum dolor sit amet, " * 30  # > 200 chars
+    long_summary = "L" * 500  # full write-cap length, must come back uncut
     entry = ProductMemoryEntry(
         id=str(uuid.uuid4()),
         tenant_key=test_tenant_key,
@@ -253,15 +254,17 @@ async def test_fetch_context_memory_360_default_is_headlines(db_session, test_te
     memory_data = result["data"]["memory_360"]
     assert len(memory_data) >= 1
     item = memory_data[0]
-    # Headlines shape: identity fields + truncated summary + tags
+    # Headlines shape: identity fields + full summary + tags + has_full_body flag
     assert "id" in item
     assert "sequence" in item
     assert "project_name" in item
     assert "type" in item
     assert "timestamp" in item
     assert "tags" in item
-    assert item["truncated"] is True
-    assert len(item["summary"]) <= 203  # 200 chars + ellipsis
+    # Headlines no longer truncate -- full summary is emitted verbatim and the
+    # has_full_body flag signals that a shape="full" follow-up returns more fields.
+    assert item["has_full_body"] is True
+    assert item["summary"] == long_summary
     # Body fields excluded in headlines mode
     assert "key_outcomes" not in item
     assert "decisions_made" not in item
@@ -271,7 +274,7 @@ async def test_fetch_context_memory_360_default_is_headlines(db_session, test_te
 @pytest.mark.asyncio
 async def test_fetch_context_memory_360_full_opt_in(db_session, test_tenant_key, test_product, linked_project):
     """Test 9: depth_config={"memory_360": "full"} returns full bodies."""
-    long_summary = "Z" * 800
+    long_summary = "Z" * 500
     entry = ProductMemoryEntry(
         id=str(uuid.uuid4()),
         tenant_key=test_tenant_key,
@@ -311,8 +314,8 @@ async def test_fetch_context_memory_360_full_opt_in(db_session, test_tenant_key,
 
     memory_data = result["data"]["memory_360"]
     item = memory_data[0]
-    assert item["truncated"] is False
-    assert item["summary"] == long_summary  # not truncated
+    assert item["has_full_body"] is False
+    assert item["summary"] == long_summary  # full body, complete
     assert "key_outcomes" in item
     assert "decisions_made" in item
 
@@ -609,3 +612,202 @@ class TestLegacyTagMapping:
 
         result = _apply_legacy_tag_mapping(["some-old-tag"])
         assert result == ["some-old-tag"]
+
+
+# ---- BE-5031: headlines emit the full summary, no mid-sentence truncation --
+
+
+class TestSerializeHeadlineNoTruncation:
+    """BE-5031: _serialize_headline must emit the summary verbatim with the
+    has_full_body flag, replacing the legacy truncated/ellipsis behavior."""
+
+    def _entry(self, summary: str):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(
+            id="11111111-1111-1111-1111-111111111111",
+            sequence=1,
+            project_name="Proj",
+            entry_type="project_closeout",
+            timestamp=datetime.now(timezone.utc),
+            summary=summary,
+            tags=["bug-fix"],
+        )
+
+    def test_500_char_summary_returned_uncut(self):
+        """A 500-char summary (the schema write cap) round-trips verbatim."""
+        from giljo_mcp.tools.context_tools.get_360_memory import _serialize_headline
+
+        long_summary = "L" * 500
+        result = _serialize_headline(self._entry(long_summary))
+        assert result["summary"] == long_summary
+        assert not result["summary"].endswith("...")
+        assert result["has_full_body"] is True
+
+    def test_headline_has_full_body_true(self):
+        from giljo_mcp.tools.context_tools.get_360_memory import _serialize_headline
+
+        result = _serialize_headline(self._entry("short"))
+        assert result["has_full_body"] is True
+        assert "truncated" not in result
+
+    def test_full_has_full_body_false(self):
+        """_serialize_full emits has_full_body:false (full shape, nothing more)."""
+        from giljo_mcp.tools.context_tools.get_360_memory import _serialize_full
+
+        class StubEntry:
+            def to_dict(self):
+                return {
+                    "id": "22222222-2222-2222-2222-222222222222",
+                    "summary": "anything",
+                    "tags": ["bug-fix"],
+                }
+
+        result = _serialize_full(StubEntry())
+        assert result["has_full_body"] is False
+        assert "truncated" not in result
+
+    # ---- BE-5031 edge cases (verification scope) ---------------------------
+
+    def test_empty_summary_returned_as_empty_string(self):
+        """Empty string summary -> headlines returns summary:'' without crash."""
+        from giljo_mcp.tools.context_tools.get_360_memory import _serialize_headline
+
+        result = _serialize_headline(self._entry(""))
+        assert result["summary"] == ""
+        assert result["has_full_body"] is True
+
+    def test_none_summary_coerced_to_empty_string(self):
+        """None summary -> headlines coerces to '' (no crash, no None leak)."""
+        from giljo_mcp.tools.context_tools.get_360_memory import _serialize_headline
+
+        result = _serialize_headline(self._entry(None))
+        assert result["summary"] == ""
+        assert result["has_full_body"] is True
+
+    def test_499_char_summary_boundary_returned_uncut(self):
+        """One under the write cap: still returned verbatim with no slicing."""
+        from giljo_mcp.tools.context_tools.get_360_memory import _serialize_headline
+
+        boundary = "B" * 499
+        result = _serialize_headline(self._entry(boundary))
+        assert result["summary"] == boundary
+        assert len(result["summary"]) == 499
+
+    def test_tags_preserved_through_headline_serializer(self):
+        """Canonical tags pass through unchanged in headlines shape."""
+        from types import SimpleNamespace
+
+        from giljo_mcp.tools.context_tools.get_360_memory import _serialize_headline
+
+        entry = SimpleNamespace(
+            id="33333333-3333-3333-3333-333333333333",
+            sequence=2,
+            project_name="Proj",
+            entry_type="project_closeout",
+            timestamp=datetime.now(timezone.utc),
+            summary="ok",
+            tags=["bug-fix", "backend", "feature"],
+        )
+        result = _serialize_headline(entry)
+        # All three canonical tags survive (no drop, no reorder)
+        assert result["tags"] == ["bug-fix", "backend", "feature"]
+
+    def test_tags_preserved_through_full_serializer(self):
+        """Canonical tags pass through unchanged in full shape."""
+        from giljo_mcp.tools.context_tools.get_360_memory import _serialize_full
+
+        class StubEntry:
+            def to_dict(self):
+                return {
+                    "id": "44444444-4444-4444-4444-444444444444",
+                    "summary": "ok",
+                    "tags": ["bug-fix", "backend", "feature"],
+                }
+
+        result = _serialize_full(StubEntry())
+        assert result["tags"] == ["bug-fix", "backend", "feature"]
+
+
+# ---- BE-5031 regression: ceiling 'truncated' flag and 'has_full_body' coexist
+
+
+class TestResponseCeilingPreservesHasFullBody:
+    """BE-5031 regression: the 30K-char field-drop path in
+    _apply_response_ceiling sets entry['truncated']=True for a separate
+    concern (field drop) and must not be confused with the renamed
+    has_full_body flag from the headlines/full serializers. Both flags must
+    be able to coexist on the same entry without one clobbering the other.
+    """
+
+    def _build_oversize_response(self) -> dict[str, Any]:
+        """Build a memory_360 payload that comfortably exceeds the 30K cap."""
+        big_blob = "X" * 8000
+        return {
+            "data": {
+                "memory_360": [
+                    {
+                        "id": f"00000000-0000-0000-0000-{i:012d}",
+                        "sequence": i,
+                        "project_name": f"Proj-{i}",
+                        "type": "project_closeout",
+                        "timestamp": "2026-04-25T00:00:00+00:00",
+                        "summary": "S" * 400,
+                        "key_outcomes": [big_blob],
+                        "decisions_made": [big_blob],
+                        "tags": ["bug-fix"],
+                        # Mirrors the headline serializer flag -- must survive
+                        # the ceiling pass even when other fields are dropped.
+                        "has_full_body": True,
+                    }
+                    for i in range(5)
+                ]
+            },
+            "metadata": {},
+        }
+
+    def test_ceiling_sets_truncated_flag_after_field_drop(self):
+        """_apply_response_ceiling must set entry['truncated']=True when it
+        drops fields, AND must not strip the unrelated has_full_body flag."""
+        from giljo_mcp.tools.context_tools.fetch_context import (
+            RESPONSE_CHAR_CEILING,
+            _apply_response_ceiling,
+        )
+
+        response = self._build_oversize_response()
+        out = _apply_response_ceiling(response)
+
+        import json
+
+        assert len(json.dumps(out)) <= RESPONSE_CHAR_CEILING
+        assert out["metadata"]["truncation_applied"] is True
+
+        entries = out["data"]["memory_360"]
+        # At least one entry got fields dropped -> ceiling-truncated:true set
+        assert any(e.get("truncated") is True for e in entries)
+        # has_full_body is a separate flag and must still be present
+        # on every entry that retained any optional field.
+        # (PROTECTED_ENTRY_FIELDS doesn't include has_full_body, but the
+        # ceiling only drops the LARGEST droppable field per pass; the
+        # tiny boolean must outlive the giant blobs.)
+        assert any(e.get("has_full_body") is True for e in entries)
+
+    def test_ceiling_does_not_rename_truncated_to_has_full_body(self):
+        """Defensive: prove the rename in get_360_memory.py did NOT bleed
+        into fetch_context.py. The ceiling path must still emit the literal
+        key 'truncated', not 'has_full_body', when it drops fields."""
+        from giljo_mcp.tools.context_tools.fetch_context import (
+            _apply_response_ceiling,
+        )
+
+        response = self._build_oversize_response()
+        out = _apply_response_ceiling(response)
+
+        entries = out["data"]["memory_360"]
+        truncated_entries = [e for e in entries if e.get("truncated") is True]
+        # Field-drop must mark with the ORIGINAL 'truncated' key
+        assert truncated_entries, "expected at least one entry marked truncated"
+        # And the rename must NOT have replaced 'truncated' with 'has_full_body'
+        # on the ceiling path (those are unrelated concerns).
+        for e in truncated_entries:
+            assert "truncated" in e

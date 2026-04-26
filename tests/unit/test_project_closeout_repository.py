@@ -326,6 +326,7 @@ class TestRepositoryIntegration:
                 summary="Comprehensive test summary with details",
                 key_outcomes=["Outcome A", "Outcome B", "Outcome C"],
                 decisions_made=["Decision X", "Decision Y"],
+                tags=["refactor", "backend"],
                 git_commits=[{"sha": "abc123", "message": "Test commit", "date": "2025-11-15T10:00:00Z"}],
                 tenant_key=tenant_key,
                 db_manager=mock_db_manager,
@@ -356,9 +357,8 @@ class TestRepositoryIntegration:
             # Check token_estimate
             assert params.token_estimate > 0
 
-            # Check tags
-            assert isinstance(params.tags, list)
-            assert len(params.tags) > 0
+            # Check tags (BE-5032: agent-supplied, persisted verbatim)
+            assert params.tags == ["refactor", "backend"]
 
     @pytest.mark.asyncio
     async def test_git_commits_empty_when_disabled(self, mock_product, mock_project, tenant_key, mock_memory_entry):
