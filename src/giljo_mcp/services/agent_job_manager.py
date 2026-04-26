@@ -369,6 +369,6 @@ class AgentJobManager:
 
                 return team_members
 
-        except Exception:  # Broad catch: service boundary, wraps in BaseGiljoError
+        except Exception as _exc:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to list team agents")
             return []

@@ -100,7 +100,7 @@ class DatabaseManager:
             import psutil
 
             ram_gb = psutil.virtual_memory().total / (1024**3)
-        except Exception:  # noqa: BLE001 - Broad catch: psutil may be unavailable or raise any OS-level error
+        except Exception as _exc:  # noqa: BLE001 - Broad catch: psutil may be unavailable or raise any OS-level error
             return 20  # safe default when psutil unavailable
 
         if ram_gb <= 4:
@@ -228,7 +228,7 @@ class DatabaseManager:
                 with suppress(RuntimeError, OSError):
                     await session.rollback()
             raise
-        except Exception:  # Broad catch: session cleanup resilience
+        except Exception as _exc:  # Broad catch: session cleanup resilience
             # Regular exceptions - rollback and re-raise
             try:
                 await session.rollback()

@@ -91,6 +91,6 @@ async def fetch_context(
                 "context": product_context,
             }
 
-    except Exception:  # Broad catch: tool boundary, logs and re-raises
+    except Exception as _exc:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to fetch context")
         raise

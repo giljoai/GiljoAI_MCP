@@ -68,7 +68,7 @@ async def simulate_endpoint_with_http_exception():
         try:
             yield mock_session
             await mock_session.commit()
-        except Exception:
+        except Exception as _exc:
             await mock_session.rollback()
             raise
         finally:

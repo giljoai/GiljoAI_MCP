@@ -199,8 +199,8 @@ async def _resolve_git_commits(
         settings_svc = SettingsService(session, tenant_key)
         git_settings = await settings_svc.get_setting_value("integrations", "git_integration", {})
         git_integration_enabled = git_settings.get("enabled", False)
-    except Exception:  # noqa: BLE001, S110
-        pass  # Settings read failure is not a blocker
+    except Exception as _exc:  # noqa: BLE001, S110
+        logger.debug("Settings read skipped: %s", _exc)
 
     git_warning: str | None = None
     if git_integration_enabled and not git_commits:

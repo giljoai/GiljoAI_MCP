@@ -171,7 +171,7 @@ class OrchestrationAgentStateService:
                             f"Resolved {tags_removed} action tags on job completion "
                             f"(job_id={job.job_id}, product_id={proj.product_id})"
                         )
-            except Exception:  # noqa: BLE001 - Non-critical side effect: tag resolution failure should not block completion
+            except Exception as _exc:  # noqa: BLE001 - Non-critical side effect: tag resolution failure should not block completion
                 self._logger.warning(
                     f"Failed to resolve action tags for job {job.job_id}",
                     exc_info=True,

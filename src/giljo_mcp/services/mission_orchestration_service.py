@@ -285,7 +285,7 @@ class MissionOrchestrationService:
 
             settings_svc = SettingsService(session, tenant_key)
             integrations = await settings_svc.get_settings("integrations")
-        except Exception:  # noqa: BLE001
+        except Exception as _exc:  # noqa: BLE001
             logger.warning("[INTEGRATIONS] Failed to read settings from DB")
 
         # SEC-0005b: Fetch tenant-scoped orchestrator prompt override (if any).
@@ -299,7 +299,7 @@ class MissionOrchestrationService:
             prompt_record = await prompt_service.get_orchestrator_prompt(tenant_key=tenant_key, session=session)
             if prompt_record.is_override:
                 orchestrator_prompt_override = prompt_record.content
-        except Exception:  # noqa: BLE001
+        except Exception as _exc:  # noqa: BLE001
             logger.warning("[SEC-0005b] Failed to read orchestrator prompt override")
 
         return {
