@@ -2,6 +2,9 @@
 # Runs weekly and on PRs to catch security vulnerabilities automatically
 # What this does: GitHub's AI scans your Python and JavaScript for
 # SQL injection, XSS, command injection, and other security bugs — for free
+#
+# Quality linting (empty-except, unused-vars, etc.) is handled by ruff in CI
+# which runs stricter rules with project-specific configuration.
 
 name: CodeQL Security Scan
 
@@ -11,7 +14,6 @@ on:
   pull_request:
     branches: [master]
   schedule:
-    # Run every Monday at 06:00 UTC
     - cron: "0 6 * * 1"
 
 concurrency:
@@ -39,7 +41,12 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-          queries: security-queries
+          queries: security-extended
+          query-filters: |
+            - exclude:
+                tags contain: maintainability
+            - exclude:
+                tags contain: reliability
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4
