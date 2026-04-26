@@ -465,7 +465,11 @@ async def write_360_memory(
             Detail belongs in commit messages, not here.
         key_outcomes: <= 5 specific achievements, each <= 200 chars.
         decisions_made: <= 5 architectural/design decisions, each <= 250 chars.
-        entry_type: Type of entry ("project_completion", "handover_closeout", or "session_handover")
+        entry_type: Type of entry. Workers may write ``baseline``, ``decision``,
+            ``architecture``, ``discovery``. Orchestrator-only types (rejected
+            with ``ORCHESTRATOR_ONLY_ENTRY_TYPE`` for workers): ``project_completion``,
+            ``session_handover``, ``action_required``. ``handover_closeout`` is
+            preserved for back-compat.
         author_job_id: Job ID of agent writing entry (optional)
         git_commits: Agent-supplied commits from local git log. When provided,
             skips the GitHub API fetch entirely (passive server model).
@@ -520,9 +524,24 @@ async def write_360_memory(
     entry_type = entry_type_aliases.get(entry_type, entry_type)
 
     # Validate entry_type
-    valid_entry_types = {"project_completion", "handover_closeout", "session_handover"}
+    # BE-5028 Phase 2 Fix D: Extended vocabulary so the orchestrator/worker
+    # authorization matrix above is fully exercised. ``handover_closeout`` is
+    # preserved for back-compat (existing prod writers in
+    # thin_prompt_generator.py and historical entries).
+    valid_entry_types = frozenset(
+        {
+            "project_completion",
+            "handover_closeout",
+            "session_handover",
+            "action_required",
+            "baseline",
+            "decision",
+            "architecture",
+            "discovery",
+        }
+    )
     if entry_type not in valid_entry_types:
-        raise ValidationError(f"Invalid entry_type '{entry_type}'. Must be one of: {valid_entry_types}")
+        raise ValidationError(f"Invalid entry_type '{entry_type}'. Must be one of: {sorted(valid_entry_types)}")
 
     try:
         owns_session = session is None
@@ -550,6 +569,12 @@ async def write_360_memory(
                 caller_job = await completion_repo.get_agent_job_by_job_id(active_session, tenant_key, author_job_id)
                 caller_role = caller_job.job_type if caller_job else "unknown"
                 if caller_role != "orchestrator":
+                    logger.info(
+                        "write_360_memory rejected: ORCHESTRATOR_ONLY_ENTRY_TYPE entry_type=%s caller_role=%s author_job_id=%s",
+                        entry_type,
+                        caller_role,
+                        author_job_id,
+                    )
                     return {
                         "success": False,
                         "error": "ORCHESTRATOR_ONLY_ENTRY_TYPE",

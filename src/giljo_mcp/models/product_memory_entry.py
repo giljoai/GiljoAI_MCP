@@ -84,7 +84,18 @@ class ProductMemoryEntry(Base):
     entry_type = Column(
         String(50),
         nullable=False,
-        comment="Entry type: project_completion, handover_closeout, session_handover",
+        comment=(
+            "Entry type. Validated as a frozenset in write_360_memory.py "
+            "(no DB constraint). Admitted values: "
+            "project_completion (orchestrator project closeout); "
+            "handover_closeout (legacy/explicit handover entry, preserved for back-compat); "
+            "session_handover (orchestrator-to-orchestrator handover across sessions); "
+            "action_required (deferred follow-up flagged for future agents); "
+            "baseline (initial seeding -- architecture snapshot, foundation context); "
+            "decision (a specific choice with rationale); "
+            "architecture (structural notes about the system); "
+            "discovery (surprising finding worth remembering)."
+        ),
     )
     source = Column(
         String(50),

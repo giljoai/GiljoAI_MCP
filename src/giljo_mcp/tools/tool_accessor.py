@@ -644,7 +644,9 @@ class ToolAccessor:
             summary: 2-3 paragraph summary of work accomplished
             key_outcomes: 3-5 specific achievements
             decisions_made: 3-5 architectural/design decisions
-            entry_type: Type of entry ("project_completion", "handover_closeout", or "session_handover")
+            entry_type: Type of entry. Workers: baseline, decision, architecture, discovery.
+                Orchestrator-only: project_completion, session_handover, action_required.
+                Legacy: handover_closeout (preserved for back-compat).
             author_job_id: Job ID of agent writing entry (optional)
             git_commits: Agent-supplied git commits (from local git log)
             tags: Tags for categorization (e.g. 'action_required:description')
