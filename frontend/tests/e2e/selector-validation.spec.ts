@@ -22,8 +22,12 @@ import { test, expect, Page } from '@playwright/test'
 // ============================================
 
 const FRONTEND_URL = 'http://localhost:7274'
-const TEST_USER_EMAIL = 'patrik'
-const TEST_USER_PASSWORD = '***REMOVED***'
+const TEST_USER_EMAIL = process.env.TEST_USER || ''
+const TEST_USER_PASSWORD = process.env.TEST_PASSWORD || ''
+
+if (!TEST_USER_EMAIL || !TEST_USER_PASSWORD) {
+  throw new Error('Test credentials missing: set TEST_USER and TEST_PASSWORD env vars')
+}
 
 // ============================================
 // HELPER FUNCTIONS

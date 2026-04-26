@@ -10,8 +10,8 @@
  * Test Framework: Playwright
  * Server Base URL: http://localhost:7272
  * Frontend Base URL: http://localhost:7274
- * Test User: patrik (admin/owner user)
- * Password: ***REMOVED***
+ * Test User: TEST_USER env var (admin/owner role)
+ * Password: TEST_PASSWORD env var
  *
  * Handover: 0434
  */
@@ -29,7 +29,7 @@ test.describe('Admin Settings - Identity Tab (Handover 0434)', () => {
      */
     await loginAsDefaultTestUser(page)
 
-    console.log('[Setup] Logged in as patrik')
+    console.log('[Setup] Logged in as default test user')
   })
 
   // ============================================

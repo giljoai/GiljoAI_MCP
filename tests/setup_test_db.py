@@ -33,7 +33,7 @@ async def main():
     if not is_ready:
         print("\n ERROR: PostgreSQL is not available!")
         print("        Please ensure PostgreSQL is running and accessible at localhost:5432")
-        print("        Default credentials: postgres/4010")
+        print("        Default credentials: postgres/<your-password> (set POSTGRES_SUPERUSER_PASSWORD env var)")
         sys.exit(1)
 
     print("   PostgreSQL is available!")

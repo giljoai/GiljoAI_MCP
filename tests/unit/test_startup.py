@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 @pytest.fixture
 def mock_env(monkeypatch):
     """Mock environment variables."""
-    monkeypatch.setenv("DATABASE_URL", "postgresql://postgres:***@localhost:5432/giljo_mcp")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://postgres:testpw@localhost:5432/giljo_mcp")
     return monkeypatch
 
 
@@ -83,7 +83,7 @@ class TestDatabaseConnectivity:
         # This test verifies the DatabaseManager can be instantiated with valid URL
         from giljo_mcp.database import DatabaseManager
 
-        db_url = "postgresql://postgres:***@localhost:5432/giljo_mcp"
+        db_url = "postgresql://postgres:testpw@localhost:5432/giljo_mcp"
 
         # Just verify we can create the manager object
         # Actual connection testing would require a real database
