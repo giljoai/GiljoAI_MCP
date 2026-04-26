@@ -42,11 +42,12 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           queries: security-extended
-          query-filters: |
-            - exclude:
-                tags contain: maintainability
-            - exclude:
-                tags contain: reliability
+          config: |
+            query-filters:
+              - exclude:
+                  tags contain: maintainability
+              - exclude:
+                  tags contain: reliability
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4
