@@ -3477,8 +3477,12 @@ pg_restore -l {backup_file.name} | head -20
                                         {"path": str(profile_dir), "label": label}
                                     )
                                     break
-                        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-                            pass
+                        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+                            logging.debug(
+                                "Skipping Firefox profile NSS check for %s due to certutil error: %s",
+                                profile_dir,
+                                exc,
+                            )
 
         elif platform.system() == "Windows":
             # Check user certificate store (CurrentUser\Root)
