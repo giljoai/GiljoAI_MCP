@@ -68,7 +68,7 @@ def require_setup_incomplete() -> None:
             )
     except HTTPException:
         raise
-    except Exception:  # noqa: BLE001 -- broad catch intentional: any DB failure means setup is not complete
+    except Exception as _exc:  # noqa: BLE001 -- broad catch intentional: any DB failure means setup is not complete
         return
 
 

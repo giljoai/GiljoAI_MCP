@@ -354,7 +354,7 @@ async def wait_for_database_ready(max_attempts: int = 30, delay: float = 1.0) ->
                 await conn.execute(text("SELECT 1"))
             await engine.dispose()
             return True
-        except Exception:  # noqa: BLE001
+        except Exception as _exc:  # noqa: BLE001
             if attempt < max_attempts - 1:
                 await asyncio.sleep(delay)
 

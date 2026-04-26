@@ -643,7 +643,7 @@ class ConfigManager:
         try:
             self.load()
             logger.info("Configuration reloaded successfully")
-        except Exception:  # Broad catch: config reload boundary, logs and re-raises
+        except Exception as _exc:  # Broad catch: config reload boundary, logs and re-raises
             logger.exception("Failed to reload configuration")
             raise
 

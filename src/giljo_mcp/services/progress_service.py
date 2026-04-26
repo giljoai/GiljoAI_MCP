@@ -554,7 +554,7 @@ class ProgressService:
                         "project_id": str(job.project_id),
                     },
                 )
-            except Exception:  # Broad catch: WebSocket resilience, non-critical broadcast
+            except Exception as _exc:  # Broad catch: WebSocket resilience, non-critical broadcast
                 self._logger.exception(
                     "Failed to broadcast %s->working for agent %s",
                     old_resting_status or "blocked",

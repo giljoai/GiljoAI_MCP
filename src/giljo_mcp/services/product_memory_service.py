@@ -592,7 +592,7 @@ class ProductMemoryService:
                     tenant_key=params.tenant_key,
                 )
                 self._logger.info("Created action_required task %s: %s", task_id, title)
-            except Exception:  # noqa: BLE001
+            except Exception as _exc:  # noqa: BLE001
                 self._logger.warning(
                     "Failed to create action_required task: %s",
                     title,

@@ -91,7 +91,7 @@ class TestDatabaseConnectivity:
             manager = DatabaseManager(database_url=db_url, is_async=False)
             assert manager is not None
             assert manager.database_url == db_url
-        except Exception:  # noqa: S110
+        except Exception as _exc:  # noqa: S110
             # If database not available, that's ok for unit test
             # Real connection testing should be in integration tests
             pass

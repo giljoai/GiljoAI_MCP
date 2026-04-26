@@ -263,7 +263,7 @@ class WindowsPlatformHandler(PlatformHandler):
                     check=True,
                 )
                 shortcuts_created.append(str(lnk_path))
-            except Exception:
+            except Exception as _exc:
                 # Final fallback: create .bat if PowerShell fails too
                 bat_path = desktop / sc["name"].replace(".lnk", ".bat")
                 with open(bat_path, "w") as f:

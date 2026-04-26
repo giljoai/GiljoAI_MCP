@@ -173,7 +173,7 @@ class JobCompletionService:
                     closeout_checklist = self._build_closeout_checklist(
                         user_approval_required=(closeout_mode == "hitl") and has_deferred,
                     )
-                except Exception:  # noqa: BLE001
+                except Exception as _exc:  # noqa: BLE001
                     logger.warning(
                         "Failed to build closeout checklist during job completion",
                         exc_info=True,
@@ -402,7 +402,7 @@ class JobCompletionService:
                         task_id_str,
                         item_title,
                     )
-            except Exception:  # noqa: BLE001
+            except Exception as _exc:  # noqa: BLE001
                 self._logger.warning(
                     "Failed to auto-resolve action item: %s",
                     item_title,

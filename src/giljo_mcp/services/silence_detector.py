@@ -90,7 +90,7 @@ class SilenceDetector:
         while self.running:
             try:
                 await self._run_detection_cycle()
-            except Exception:  # Broad catch: background loop resilience, prevents monitoring crash
+            except Exception as _exc:  # Broad catch: background loop resilience, prevents monitoring crash
                 logger.exception("Silence detection cycle failed")
 
             await asyncio.sleep(self.scan_interval_seconds)
@@ -178,7 +178,7 @@ class SilenceDetector:
                     tenant_key=agent.tenant_key,
                     event=silent_event,
                 )
-            except Exception:  # Broad catch: WebSocket resilience, non-critical broadcast
+            except Exception as _exc:  # Broad catch: WebSocket resilience, non-critical broadcast
                 logger.exception(
                     "Failed to broadcast silent status for agent %s",
                     agent.agent_id,
@@ -235,7 +235,7 @@ async def auto_clear_silent(
             new_status="working",
             project_id=str(project_id) if project_id else None,
         )
-    except Exception:  # Broad catch: WebSocket resilience, non-critical broadcast
+    except Exception as _exc:  # Broad catch: WebSocket resilience, non-critical broadcast
         logger.exception(
             "Failed to broadcast auto-clear for agent %s",
             agent.agent_id,
@@ -286,7 +286,7 @@ async def clear_silent_status(
             new_status="working",
             project_id=str(project_id) if project_id else None,
         )
-    except Exception:  # Broad catch: WebSocket resilience, non-critical broadcast
+    except Exception as _exc:  # Broad catch: WebSocket resilience, non-critical broadcast
         logger.exception(
             "Failed to broadcast clear-silent for agent %s",
             agent.agent_id,
