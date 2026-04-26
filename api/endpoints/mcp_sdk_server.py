@@ -1001,7 +1001,18 @@ async def write_360_memory(
     entry_type: Annotated[
         str,
         Field(
-            description="Entry type: 'project_completion' (orchestrator closeout), 'handover_closeout' (agent context exhaustion handover), or 'session_handover' (session continuation)."
+            description=(
+                "Entry type. Workers may write: "
+                "baseline (foundation context); "
+                "decision (a specific choice with rationale); "
+                "architecture (structural notes); "
+                "discovery (surprising finding worth remembering). "
+                "Orchestrator-only (rejected with ORCHESTRATOR_ONLY_ENTRY_TYPE for workers): "
+                "project_completion (project closeout); "
+                "session_handover (orchestrator-to-orchestrator across sessions); "
+                "action_required (deferred follow-up). "
+                "Legacy: handover_closeout (preserved for back-compat)."
+            )
         ),
     ] = "project_completion",
     author_job_id: Annotated[
