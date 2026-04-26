@@ -242,6 +242,21 @@ when their mission explicitly assigns them. Workers MUST NOT write `project_comp
 `session_handover`, or `action_required` entries — the tool will reject those with
 `ORCHESTRATOR_ONLY_ENTRY_TYPE`. To record those, send a HANDOVER or progress message
 to your orchestrator with the content.
+
+Concrete examples (one per category):
+- Worker `baseline`: `write_360_memory(entry_type="baseline", ...)` after seeding
+  the architecture snapshot from a frozen reference doc.
+- Worker `decision`: `write_360_memory(entry_type="decision", ...)` to record
+  "chose Postgres JSONB over a separate audit table — rationale: tenant scoping".
+- Worker `architecture`: `write_360_memory(entry_type="architecture", ...)` to
+  capture a new layered boundary (e.g. EventBus introduced between CE and SaaS).
+- Worker `discovery`: `write_360_memory(entry_type="discovery", ...)` for a
+  surprising finding (e.g. "Alembic skips offline migrations on PG18 boot").
+- Orchestrator `action_required`: `write_360_memory(entry_type="action_required", ...)`
+  to flag a deferred follow-up that future agents must pick up.
+
+Use `discovery` for one-off findings worth remembering; use `action_required`
+only when the entry MUST trigger future work (orchestrator-only).
 ---
 **Your Identifiers:**
 - job_id (work order): `{job_id}` - Use for mission, progress, completion
