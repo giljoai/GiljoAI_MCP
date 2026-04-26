@@ -1485,8 +1485,8 @@ class UnifiedInstaller:
                     if mkcert_path:
                         self._print_success("mkcert installed via Homebrew")
                         return mkcert_path
-                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-                    pass
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+                    self._print_warning(f"Homebrew mkcert installation failed: {exc}")
 
             self._print_warning("Could not auto-install mkcert on macOS")
             self._print_info("Install manually: brew install mkcert")
