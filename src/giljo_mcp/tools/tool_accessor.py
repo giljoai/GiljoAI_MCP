@@ -346,7 +346,7 @@ class ToolAccessor:
                     "content_type": content_type,
                     "one_time_use": True,
                 }
-        except Exception:  # Broad catch: tool boundary, logs and re-raises
+        except Exception as _exc:  # Broad catch: tool boundary, logs and re-raises
             logger.exception("Failed to generate download token")
             raise
 
@@ -403,7 +403,7 @@ class ToolAccessor:
                 }
         except (ValidationError, ValueError):
             raise
-        except Exception:  # Broad catch: tool boundary, logs and re-raises
+        except Exception as _exc:  # Broad catch: tool boundary, logs and re-raises
             logger.exception("Failed to stage bootstrap setup")
             raise
 
@@ -467,7 +467,7 @@ class ToolAccessor:
                 return response
         except ValidationError:
             raise
-        except Exception:  # Broad catch: tool boundary, logs and re-raises
+        except Exception as _exc:  # Broad catch: tool boundary, logs and re-raises
             logger.exception("Failed to export agent templates")
             raise
 

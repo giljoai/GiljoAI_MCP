@@ -107,7 +107,7 @@ def create_backup(file_path: Path) -> Optional[Path]:
     try:
         backup_path.write_text(file_path.read_text(), encoding="utf-8")
         logger.info(f"Created backup: {backup_path}")
-    except Exception:  # Broad catch: API boundary, converts to HTTP error
+    except Exception as _exc:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("Failed to create backup for {file_path}")
         raise
     else:
@@ -174,7 +174,7 @@ def create_zip_backup(agents_dir: Path) -> Optional[Path]:
 
         return backup_path
 
-    except Exception:  # Broad catch: API boundary, converts to HTTP error
+    except Exception as _exc:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("[create_zip_backup] Failed to create backup")
         return None
 
@@ -403,7 +403,7 @@ async def export_templates_to_claude_code(
                 }
             )
 
-        except Exception:  # noqa: PERF203 - Resilient export: continue with other templates on error
+        except Exception as _exc:  # noqa: PERF203 - Resilient export: continue with other templates on error
             logger.exception("Failed to export template {template.name}")
             # Continue with other templates rather than failing completely
             continue

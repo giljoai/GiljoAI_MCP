@@ -270,7 +270,7 @@ class WebSocketManager:
             websocket = self.active_connections[client_id]
             try:
                 await websocket.send_json(data)
-            except Exception:  # Broad catch: WebSocket handler resilience
+            except Exception as _exc:  # Broad catch: WebSocket handler resilience
                 logger.exception(
                     "websocket_send_json_error error_code=%s client_id=%s",
                     ErrorCode.WS_MESSAGE_SEND_FAILED.value,
@@ -284,7 +284,7 @@ class WebSocketManager:
         for client_id, websocket in self.active_connections.items():
             try:
                 await websocket.send_text(message)
-            except Exception:  # noqa: PERF203 - Broadcast resilience: continue sending to other clients on error
+            except Exception as _exc:  # noqa: PERF203 - Broadcast resilience: continue sending to other clients on error
                 logger.exception(
                     "websocket_broadcast_error error_code=%s client_id=%s",
                     ErrorCode.WS_BROADCAST_FAILED.value,
@@ -345,7 +345,7 @@ class WebSocketManager:
                 if client_id in self.active_connections:
                     try:
                         await self.send_json(message, client_id)
-                    except Exception:  # Broad catch: WebSocket handler resilience
+                    except Exception as _exc:  # Broad catch: WebSocket handler resilience
                         logger.exception(
                             "websocket_notify_error error_code=%s client_id=%s",
                             ErrorCode.WS_MESSAGE_SEND_FAILED.value,

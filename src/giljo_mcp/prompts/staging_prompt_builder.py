@@ -221,6 +221,6 @@ START NOW:
             logger.warning("[StagingPromptBuilder] No mission parts available for regeneration")
             return project.mission or f"Mission for project: {project.name}"
 
-        except Exception:  # Broad catch: prompt fallback, returns safe default
+        except Exception as _exc:  # Broad catch: prompt fallback, returns safe default
             logger.exception("[StagingPromptBuilder] Failed to regenerate mission")
             return project.mission or f"Mission for project: {project.name}"
