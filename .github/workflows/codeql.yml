@@ -40,38 +40,6 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           queries: security-extended
-          query-filters: |
-            - exclude:
-                tags contain: maintainability
-            - exclude:
-                tags contain: reliability
-            - exclude:
-                id: py/empty-except
-            - exclude:
-                id: py/file-not-closed
-            - exclude:
-                id: py/unused-global-variable
-            - exclude:
-                id: py/unused-local-variable
-            - exclude:
-                id: py/unreachable-statement
-            - exclude:
-                id: py/ineffectual-statement
-            - exclude:
-                id: py/unused-import
-            - exclude:
-                id: py/multiple-definition
-            - exclude:
-                id: py/redundant-comparison
-            - exclude:
-                id: py/import-and-import-from
-            - exclude:
-                id: py/implicit-string-concatenation-in-list
-            - exclude:
-                id: js/unused-local-variable
-            - exclude:
-                id: js/superfluous-trailing-arguments
-          config-file: .github/codeql/codeql-config.yml
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4
