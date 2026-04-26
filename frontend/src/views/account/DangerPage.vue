@@ -28,27 +28,54 @@
       </div>
     </div>
 
-    <!-- Delete card (SaaS-only — wired by SAAS-022) -->
+    <!-- Delete card (SaaS-only — wired by SAAS-022; cancel-pending added by SAAS-023) -->
     <div
       v-if="isSaas"
       class="danger-card danger-card--enabled smooth-border"
       data-test="delete-account-card"
-      :style="{ '--card-accent': 'rgb(var(--v-theme-error))' }"
+      :style="{ '--card-accent': cardAccent }"
     >
       <div
-        class="danger-card-icon danger-card-icon--danger"
+        class="danger-card-icon"
+        :class="{ 'danger-card-icon--danger': !hasPendingDeletion, 'danger-card-icon--warning': hasPendingDeletion }"
       >
-        <v-icon size="20">mdi-trash-can-outline</v-icon>
+        <v-icon size="20">{{ hasPendingDeletion ? 'mdi-clock-alert-outline' : 'mdi-trash-can-outline' }}</v-icon>
       </div>
       <div class="danger-card-body">
-        <div class="danger-card-title danger-card-title--danger">Delete my account</div>
+        <div
+          class="danger-card-title"
+          :class="{ 'danger-card-title--danger': !hasPendingDeletion, 'danger-card-title--warning': hasPendingDeletion }"
+        >
+          {{ hasPendingDeletion ? 'Pending account deletion' : 'Delete my account' }}
+        </div>
         <div class="danger-card-desc">
-          Permanently remove your account and tenant data. We'll email you a
-          confirmation link with a 24-hour window before anything is changed.
+          <template v-if="hasPendingDeletion">
+            Your account is scheduled for permanent deletion on
+            <strong>{{ accountStateStoreRef?.purgeAfterFormatted }}</strong>.
+            You can still cancel and restore full access.
+          </template>
+          <template v-else>
+            Permanently remove your account and tenant data. We'll email you a
+            confirmation link with a 24-hour window before anything is changed.
+          </template>
         </div>
       </div>
       <div class="danger-card-action">
+        <!-- SAAS-023: when a deletion is pending or confirmed, the SAFE
+             primary action is "Cancel pending deletion" (warning, not red). -->
         <v-btn
+          v-if="hasPendingDeletion"
+          color="warning"
+          variant="flat"
+          :loading="cancellingDeletion"
+          data-test="cancel-pending-deletion-btn"
+          @click="onCancelPendingDeletion"
+        >
+          Cancel pending deletion
+          <v-icon end>mdi-arrow-right</v-icon>
+        </v-btn>
+        <v-btn
+          v-else
           color="error"
           variant="flat"
           data-test="open-delete-account-dialog"
@@ -84,11 +111,41 @@
  */
 import { ref, shallowRef, computed, onMounted } from 'vue'
 import configService from '@/services/configService'
+import { useToast } from '@/composables/useToast'
 
 const showDeleteDialog = ref(false)
 const DeleteAccountDialog = shallowRef(null)
+const { showToast } = useToast()
 
 const isSaas = computed(() => configService.getEdition() !== 'community')
+
+// SAAS-023: lazy account-state store handle (CE-export safe).
+const accountStateStoreRef = shallowRef(null)
+const hasPendingDeletion = computed(
+  () => accountStateStoreRef.value?.isAccountScheduledForDeletion ?? false,
+)
+const cardAccent = computed(() =>
+  hasPendingDeletion.value ? 'var(--brand-yellow, #ffc300)' : 'rgb(var(--v-theme-error))',
+)
+const cancellingDeletion = ref(false)
+
+async function onCancelPendingDeletion() {
+  const store = accountStateStoreRef.value
+  if (!store || cancellingDeletion.value) return
+  cancellingDeletion.value = true
+  try {
+    await store.cancelDeletion()
+    showToast({ message: 'Account deletion cancelled.', type: 'success' })
+  } catch (err) {
+    const detail = err?.response?.data?.detail
+    showToast({
+      message: detail || 'Could not cancel deletion. Please try again.',
+      type: 'error',
+    })
+  } finally {
+    cancellingDeletion.value = false
+  }
+}
 
 // CE-export safety: use Vite's static glob discovery so the import string
 // is *not* statically bound to a path that may have been stripped from the
@@ -98,15 +155,32 @@ const isSaas = computed(() => configService.getEdition() !== 'community')
 // main.js uses to load saas/routes/index.js.
 const dlgLoaders = import.meta.glob('@/saas/components/DeleteAccountDialog.vue')
 
+// SAAS-023: also lazy-load the account-state store so the Cancel-pending
+// affordance can read deletion status. CE export drops both globs.
+const acctStoreLoaders = import.meta.glob('@/saas/stores/useAccountStateStore.js')
+
 onMounted(async () => {
   if (!isSaas.value) return
   const [loader] = Object.values(dlgLoaders)
-  if (!loader) return
-  try {
-    const mod = await loader()
-    DeleteAccountDialog.value = mod.default
-  } catch (e) {
-    console.warn('[DangerPage] DeleteAccountDialog unavailable:', e?.message)
+  if (loader) {
+    try {
+      const mod = await loader()
+      DeleteAccountDialog.value = mod.default
+    } catch (e) {
+      console.warn('[DangerPage] DeleteAccountDialog unavailable:', e?.message)
+    }
+  }
+  const [storeLoader] = Object.values(acctStoreLoaders)
+  if (storeLoader) {
+    try {
+      const mod = await storeLoader()
+      const store = mod.useAccountStateStore()
+      accountStateStoreRef.value = store
+      // Refresh on mount in case the user landed here directly.
+      store.fetchStatus()
+    } catch (e) {
+      console.warn('[DangerPage] account-state store unavailable:', e?.message)
+    }
   }
 })
 </script>
@@ -181,6 +255,16 @@ onMounted(async () => {
 
 .danger-card-title--danger {
   color: rgb(var(--v-theme-error));
+}
+
+/* SAAS-023: SAFE-action variant — yellow accent for "Cancel pending deletion". */
+.danger-card-icon--warning {
+  background: rgba(255, 195, 0, 0.12);
+  color: var(--brand-yellow, #ffc300);
+}
+
+.danger-card-title--warning {
+  color: var(--brand-yellow, #ffc300);
 }
 
 .danger-card-desc {

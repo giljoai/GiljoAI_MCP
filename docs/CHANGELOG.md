@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.9.1] — 2026-04-25 — Installer Hotfix
+
+Patch release on top of v1.1.9 — installer reliability and speed only. No application code changes.
+
+### Fixed
+- **Windows one-liner: shortcut icon path.** Desktop and Start Menu shortcuts created by `irm giljo.ai/install.ps1 | iex` were missing their icon because the script looked for a non-existent `giljo.ico`. Now uses `Start.ico` from `frontend/public/` with `favicon.ico` as fallback.
+- **Windows one-liner: stray `False False` appended to install path.** The completion message printed `cd <path> False False` because PowerShell was leaking `tar` and `Remove-Item` output into the `Install-Release` function's return value. Pipeline output now flows to `Out-Null`; only the path string is returned.
+- **Linux reset script: hardcoded postgres version.** `scripts/linux_reset.sh` now auto-discovers the installed PostgreSQL version instead of failing on systems where the hardcoded version isn't present.
+
+### Changed
+- **Windows one-liner is faster (typically 2-4 minutes saved).** Disabled PowerShell's `Invoke-WebRequest` / `Invoke-RestMethod` progress bar (a known 5-10x slowdown on Windows PowerShell 5.1 — applies to the release tarball download and all GitHub API calls).
+- **Removed redundant second frontend build.** The Windows installer was running `npm run build` twice — once during environment setup and again after `install.py`. The second build was a leftover and is unnecessary because `config.yaml` is read at runtime, not bundled into the JS output.
+
+### For existing v1.1.9 users
+- No action required. v1.1.9.1 is identical to v1.1.9 at runtime — only `scripts/install.ps1` and `scripts/linux_reset.sh` changed. Skip this release unless you're running fresh installs.
+
 ## [Unreleased] — 2026-04-24 — IMP-0011 Phase 2 Mode-Aware Auto-Open URL
 
 ### Changed

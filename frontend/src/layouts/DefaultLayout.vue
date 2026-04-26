@@ -14,6 +14,8 @@
     <v-main>
       <!-- SaaS Trial Expiry Banner (loaded dynamically, absent in CE) -->
       <component :is="TrialBannerComponent" v-if="TrialBannerComponent" />
+      <!-- SAAS-023: Account Deletion Banner (loaded dynamically, absent in CE) -->
+      <component :is="AccountDeletionBannerComponent" v-if="AccountDeletionBannerComponent" />
       <SystemStatusBanner />
       <router-view :key="$route.path" :current-user="currentUser" />
     </v-main>
@@ -50,6 +52,8 @@ import configService from '@/services/configService'
 // When the saas/ directory is absent (CE build), the import fails silently.
 const TrialBannerComponent = shallowRef(null)
 const TrialExpiredOverlayComponent = shallowRef(null)
+// SAAS-023: account deletion banner (also lazy-loaded for CE-export safety).
+const AccountDeletionBannerComponent = shallowRef(null)
 
 const route = useRoute()
 const router = useRouter()
@@ -128,9 +132,14 @@ onMounted(async () => {
         const bannerLoaders = import.meta.glob('@/saas/components/TrialBanner.vue')
         const overlayLoaders = import.meta.glob('@/saas/components/TrialExpiredOverlay.vue')
         const guardLoaders = import.meta.glob('@/saas/composables/useTrialGuard.js')
+        // SAAS-023: deletion banner + account-state store (lazy, CE-stripped).
+        const deletionBannerLoaders = import.meta.glob('@/saas/components/AccountDeletionBanner.vue')
+        const accountStateStoreLoaders = import.meta.glob('@/saas/stores/useAccountStateStore.js')
         const [bannerLoader] = Object.values(bannerLoaders)
         const [overlayLoader] = Object.values(overlayLoaders)
         const [guardLoader] = Object.values(guardLoaders)
+        const [deletionBannerLoader] = Object.values(deletionBannerLoaders)
+        const [accountStateStoreLoader] = Object.values(accountStateStoreLoaders)
         if (bannerLoader && overlayLoader && guardLoader) {
           const [bannerMod, overlayMod, guardMod] = await Promise.all([
             bannerLoader(),
@@ -140,6 +149,16 @@ onMounted(async () => {
           TrialBannerComponent.value = bannerMod.default
           TrialExpiredOverlayComponent.value = overlayMod.default
           guardMod.installTrialGuardInterceptor()
+        }
+        // SAAS-023: wire deletion banner + start polling combined account state.
+        if (deletionBannerLoader && accountStateStoreLoader) {
+          const [deletionBannerMod, storeMod] = await Promise.all([
+            deletionBannerLoader(),
+            accountStateStoreLoader(),
+          ])
+          AccountDeletionBannerComponent.value = deletionBannerMod.default
+          const accountStateStore = storeMod.useAccountStateStore()
+          accountStateStore.startPolling()
         }
       } catch (error) {
         console.warn('[DefaultLayout] SaaS trial UI failed to load:', error)
@@ -168,9 +187,20 @@ onMounted(async () => {
   }
 })
 
-onUnmounted(() => {
+onUnmounted(async () => {
   wsStore.disconnect()
   window.removeEventListener('resize', onResize)
+  // SAAS-023: stop polling when leaving the authenticated layout.
+  try {
+    const storeLoaders = import.meta.glob('@/saas/stores/useAccountStateStore.js')
+    const [loader] = Object.values(storeLoaders)
+    if (loader) {
+      const mod = await loader()
+      mod.useAccountStateStore().stopPolling()
+    }
+  } catch {
+    // CE bundle has no store module — silent skip.
+  }
 })
 
 // Reload user after login (navigation from /login)
