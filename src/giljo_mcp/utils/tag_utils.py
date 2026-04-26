@@ -6,9 +6,10 @@
 """
 Shared tag cleanup utilities (BE-5022f).
 
-Used by both project_closeout._extract_tags() and write_360_memory._validate_tags()
-to enforce consistent tag hygiene: stopword filtering, punctuation stripping,
-case-insensitive dedup, and length caps.
+Used by write_360_memory._validate_tags() to enforce consistent tag hygiene:
+stopword filtering, punctuation stripping, case-insensitive dedup, and length
+caps. (BE-5032: project_closeout no longer auto-extracts tags from prose --
+tags must be agent-supplied from CONTROLLED_TAG_VOCABULARY.)
 """
 
 # Stopwords to filter from auto-extracted tags
