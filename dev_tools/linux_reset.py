@@ -86,30 +86,21 @@ def find_postgres_packages():
 def remove_postgresql():
     section("PostgreSQL (full purge)")
 
-    # Find ALL postgres packages regardless of state (ii, rc, iU, etc.)
+    # Auto-discover every installed postgres package (any version, any state: ii, rc, iU).
+    # Hardcoding version-specific names (postgresql-16, postgresql-18, ...) breaks apt
+    # if those packages aren't installed — apt aborts the whole batch on unknown names.
     packages = find_postgres_packages()
 
-    # Also include known package names in case dpkg missed them
-    known_packages = [
-        "postgresql",
-        "postgresql-16",
-        "postgresql-16-jit",
-        "postgresql-18",
-        "postgresql-18-jit",
-        "postgresql-client",
-        "postgresql-client-16",
-        "postgresql-client-18",
-        "postgresql-client-common",
-        "postgresql-common",
-        "libpq5",
-    ]
-    all_packages = list(set(packages + known_packages))
+    if packages:
+        # Detect installed major version(s) for visibility
+        versions = sorted({p.split("-", 2)[1] for p in packages if p.startswith("postgresql-") and p.split("-", 2)[1].isdigit()})
+        if versions:
+            print(f"  Detected PostgreSQL version(s): {', '.join(versions)}")
 
-    if all_packages:
-        pkg_list = " ".join(all_packages)
+        pkg_list = " ".join(packages)
         print(f"  Purging packages: {pkg_list}")
         run(f"apt-get purge -y {pkg_list}", sudo=True)
-        run("apt-get autoremove -y", sudo=True)
+        run("apt-get autoremove --purge -y", sudo=True)
     else:
         print("  No PostgreSQL packages found")
 
