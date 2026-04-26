@@ -38,6 +38,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Disable PowerShell's IWR/IRM progress bar — it slows downloads 5-10x on Win PS 5.1
+$ProgressPreference = 'SilentlyContinue'
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -492,7 +495,7 @@ function Install-Release {
     # Extract tarball
     Write-Step "Extracting release to $TargetDir..."
     try {
-        & tar -xzf $Release.TarballPath -C $TargetDir
+        & tar -xzf $Release.TarballPath -C $TargetDir 2>&1 | Out-Null
     } catch {
         Exit-WithError "Failed to extract tarball. Ensure 'tar' is available (Windows 10+ includes it)."
     }
@@ -515,8 +518,9 @@ function Install-Release {
     $Release.Version | Out-File -FilePath (Join-Path $TargetDir "VERSION") -Encoding UTF8 -NoNewline
 
     # Clean up temp files
-    Remove-Item -Path $Release.TarballPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $Release.TarballPath -Force -ErrorAction SilentlyContinue | Out-Null
 
+    # IMPORTANT: only return the string — no other pipeline output
     return $TargetDir
 }
 
@@ -625,21 +629,6 @@ function Invoke-InstallPy {
     }
 
     Write-Ok "Database and configuration setup complete"
-
-    # Rebuild frontend after install.py since config.yaml may have changed
-    $frontendDir = Join-Path $TargetDir "frontend"
-    if (Test-Path (Join-Path $frontendDir "package.json")) {
-        $npmPath = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
-        if (-not $npmPath) { $npmPath = (Get-Command npm -ErrorAction SilentlyContinue).Source }
-        if ($npmPath -and (Test-Path (Join-Path $frontendDir "node_modules"))) {
-            Write-Step "Rebuilding frontend with final configuration..."
-            $npmLog = Join-Path $TargetDir "npm-build.log"
-            $rebuildProc = Start-Process -FilePath $npmPath -ArgumentList "run build" -WorkingDirectory $frontendDir -Wait -PassThru -NoNewWindow -RedirectStandardOutput $npmLog -RedirectStandardError (Join-Path $TargetDir "npm-build-err.log")
-            if ($rebuildProc.ExitCode -eq 0) {
-                Write-Ok "Frontend rebuilt"
-            }
-        }
-    }
 }
 
 # ---------------------------------------------------------------------------
@@ -664,10 +653,10 @@ pause
     Set-Content -Path $batPath -Value $batContent -Encoding ASCII
     Write-Ok "Created start-giljoai.bat"
 
-    # Resolve icon path
-    $iconPath = Join-Path $TargetDir "frontend" "public" "giljo.ico"
+    # Resolve icon path — Start.ico ships in frontend/public/
+    $iconPath = Join-Path $TargetDir "frontend" "public" "Start.ico"
     if (-not (Test-Path $iconPath)) {
-        $iconPath = Join-Path $TargetDir "frontend" "dist" "giljo.ico"
+        $iconPath = Join-Path $TargetDir "frontend" "public" "favicon.ico"
     }
 
     # Create Start Menu shortcut

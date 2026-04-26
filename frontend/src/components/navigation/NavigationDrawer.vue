@@ -200,10 +200,51 @@
               <div v-bind="menuProps" class="nav-orb nav-orb--avatar" role="button" tabindex="0" aria-label="User menu">
                 <span v-if="currentUser" class="nav-orb-initials">{{ userInitials }}</span>
                 <v-icon v-else size="18">mdi-account</v-icon>
+                <!-- SAAS-023: account-state badge anchored to avatar (SaaS only). -->
+                <component :is="AccountStatusBadgeComponent" v-if="AccountStatusBadgeComponent" />
               </div>
             </template>
 
             <v-list density="compact" min-width="220">
+              <!-- SAAS-023: account status section (deletion / trial). -->
+              <template v-if="accountBadgeState && accountBadgeState !== 'none'">
+                <v-list-item
+                  data-test="account-status-section"
+                  :class="['account-status-section', `account-status-section--${accountBadgeStateModifier}`]"
+                >
+                  <v-list-item-title class="account-status-section__title">
+                    {{ accountStatusTitle }}
+                  </v-list-item-title>
+                  <v-list-item-subtitle class="account-status-section__subtitle">
+                    {{ accountStatusSubtitle }}
+                  </v-list-item-subtitle>
+                  <div class="account-status-section__actions mt-2">
+                    <v-btn
+                      v-if="isAccountScheduledForDeletion"
+                      size="small"
+                      color="warning"
+                      variant="flat"
+                      :loading="cancellingDeletion"
+                      data-test="dropdown-cancel-deletion"
+                      @click.stop="onCancelDeletion"
+                    >
+                      Cancel deletion
+                    </v-btn>
+                    <v-btn
+                      v-else
+                      size="small"
+                      color="primary"
+                      variant="flat"
+                      data-test="dropdown-upgrade-plan"
+                      @click="goUpgrade"
+                    >
+                      Upgrade plan
+                    </v-btn>
+                  </div>
+                </v-list-item>
+                <v-divider />
+              </template>
+
               <v-list-item
                 v-if="currentUser"
                 :to="{ path: '/account/profile' }"
@@ -374,7 +415,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, shallowRef, watch, onMounted } from 'vue'
 import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
@@ -463,6 +504,75 @@ function formatArchiveDate(dateStr) {
   if (!dateStr) return 'Unknown'
   const date = new Date(`${dateStr}T00:00:00`)
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+// SAAS-023: lazy-loaded badge component + account-state store handle.
+// CE bundle never imports them — saas/ is stripped before vite build.
+const AccountStatusBadgeComponent = shallowRef(null)
+const accountStateStoreRef = shallowRef(null)
+
+const accountBadgeState = computed(
+  () => accountStateStoreRef.value?.badgeState ?? 'none',
+)
+const isAccountScheduledForDeletion = computed(
+  () => accountStateStoreRef.value?.isAccountScheduledForDeletion ?? false,
+)
+const accountBadgeStateModifier = computed(() => {
+  switch (accountBadgeState.value) {
+    case 'account_scheduled_for_deletion': return 'danger'
+    case 'trial_expired': return 'expired'
+    case 'trial_ending_soon': return 'ending-soon'
+    default: return 'none'
+  }
+})
+const accountStatusTitle = computed(() => {
+  switch (accountBadgeState.value) {
+    case 'account_scheduled_for_deletion': return 'Account scheduled for deletion'
+    case 'trial_expired': return 'Trial expired'
+    case 'trial_ending_soon': return 'Trial ending soon'
+    default: return ''
+  }
+})
+const accountStatusSubtitle = computed(() => {
+  const s = accountStateStoreRef.value
+  if (!s) return ''
+  switch (accountBadgeState.value) {
+    case 'account_scheduled_for_deletion':
+      return `Permanent purge on ${s.purgeAfterFormatted}.`
+    case 'trial_expired':
+      return 'Your workspace is read-only until you upgrade.'
+    case 'trial_ending_soon': {
+      const days = s.daysRemaining
+      if (days === 0) return 'Trial ends today.'
+      if (days === 1) return 'Trial ends in 1 day.'
+      return `Trial ends in ${days} days.`
+    }
+    default:
+      return ''
+  }
+})
+
+const cancellingDeletion = ref(false)
+async function onCancelDeletion() {
+  const store = accountStateStoreRef.value
+  if (!store || cancellingDeletion.value) return
+  cancellingDeletion.value = true
+  try {
+    await store.cancelDeletion()
+    showToast({ message: 'Account deletion cancelled.', type: 'success' })
+  } catch (err) {
+    const detail = err?.response?.data?.detail
+    showToast({
+      message: detail || 'Could not cancel deletion. Please try again.',
+      type: 'error',
+    })
+  } finally {
+    cancellingDeletion.value = false
+  }
+}
+
+function goUpgrade() {
+  router.push('/upgrade')
 }
 
 // Edition state
@@ -642,9 +752,28 @@ const updateSelectedFromRoute = () => {
   selected.value = best ? [best.name] : []
 }
 
+async function loadAccountStateUI() {
+  await checkEdition()
+  if (giljoMode.value === 'ce') return
+  try {
+    const badgeLoaders = import.meta.glob('@/saas/components/AccountStatusBadge.vue')
+    const storeLoaders = import.meta.glob('@/saas/stores/useAccountStateStore.js')
+    const [badgeLoader] = Object.values(badgeLoaders)
+    const [storeLoader] = Object.values(storeLoaders)
+    if (!badgeLoader || !storeLoader) return
+    const [badgeMod, storeMod] = await Promise.all([badgeLoader(), storeLoader()])
+    AccountStatusBadgeComponent.value = badgeMod.default
+    accountStateStoreRef.value = storeMod.useAccountStateStore()
+  } catch (err) {
+    // CE export safety: glob returns empty on CE — never reaches here.
+    console.warn('[NavigationDrawer] Account-state UI unavailable:', err?.message)
+  }
+}
+
 onMounted(async () => {
   updateSelectedFromRoute()
   checkEdition()
+  loadAccountStateUI()
 
   // Check license status
   try {
@@ -900,9 +1029,51 @@ watch(
 .nav-orb--avatar {
   background: rgba($color-brand-yellow, 0.15);
   color: $color-brand-yellow;
+  // SAAS-023: positioning context for the absolute-anchored AccountStatusBadge.
+  position: relative;
 
   &:hover {
     background: rgba($color-brand-yellow, 0.25);
+  }
+}
+
+// SAAS-023: account status section at top of the avatar dropdown.
+.account-status-section {
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 12px 16px;
+
+  &--danger {
+    background: rgba(var(--v-theme-error), 0.08);
+  }
+
+  &--expired {
+    background: rgba(255, 152, 0, 0.10);
+  }
+
+  &--ending-soon {
+    background: rgba($color-brand-yellow, 0.10);
+  }
+
+  &__title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  &__subtitle {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    line-height: 1.35;
+    margin-top: 2px;
+    white-space: normal;
+    opacity: 1;
+  }
+
+  &__actions {
+    display: flex;
+    width: 100%;
   }
 }
 
