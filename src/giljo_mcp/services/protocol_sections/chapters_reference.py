@@ -473,13 +473,20 @@ Call: close_project_and_update_memory(
           project_id='{project_id}',
           summary='2-3 paragraph mission accomplishment overview',
           key_outcomes=['Achievement 1', 'Achievement 2', ...],
-          decisions_made=['Decision 1 + rationale', ...]{
+          decisions_made=['Decision 1 + rationale', ...],
+          tags=['<1-5 from the 16-tag controlled vocabulary above>']{
         ''',
           git_commits=[...]'''
         if git_integration_enabled
         else ""
     }
       )
+
+REQUIRED: supply 1-5 tags from the 16-tag controlled vocabulary documented
+above. The server validates them against CONTROLLED_TAG_VOCABULARY and
+rejects unknown tags with a structured error (invalid_tag + allowed enum).
+Omitting tags persists the entry with an empty tag list -- there is no
+auto-extraction from prose.
 Note: tenant_key auto-injected by server from API key session
 {
         ""

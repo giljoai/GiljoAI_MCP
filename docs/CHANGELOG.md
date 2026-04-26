@@ -5,21 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.9.1] — 2026-04-25 — Installer Hotfix
+## [1.1.9.1] — 2026-04-26 — Installer Hotfix + Closeout & 360-Memory Fixes
 
-Patch release on top of v1.1.9 — installer reliability and speed only. No application code changes.
+Patch release on top of v1.1.9. Installer reliability/speed plus two backend correctness fixes around project closeout and 360-memory headlines.
 
 ### Fixed
-- **Windows one-liner: shortcut icon path.** Desktop and Start Menu shortcuts created by `irm giljo.ai/install.ps1 | iex` were missing their icon because the script looked for a non-existent `giljo.ico`. Now uses `Start.ico` from `frontend/public/` with `favicon.ico` as fallback.
-- **Windows one-liner: stray `False False` appended to install path.** The completion message printed `cd <path> False False` because PowerShell was leaking `tar` and `Remove-Item` output into the `Install-Release` function's return value. Pipeline output now flows to `Out-Null`; only the path string is returned.
-- **Linux reset script: hardcoded postgres version.** `scripts/linux_reset.sh` now auto-discovers the installed PostgreSQL version instead of failing on systems where the hardcoded version isn't present.
+- **Installer (Windows one-liner): shortcut icon path.** Desktop and Start Menu shortcuts created by `irm giljo.ai/install.ps1 | iex` were missing their icon because the script looked for a non-existent `giljo.ico`. Now uses `Start.ico` from `frontend/public/` with `favicon.ico` as fallback.
+- **Installer (Windows one-liner): stray `False False` appended to install path.** The completion message printed `cd <path> False False` because PowerShell was leaking `tar` and `Remove-Item` output into the `Install-Release` function's return value. Pipeline output now flows to `Out-Null`; only the path string is returned.
+- **Installer (Linux reset script): hardcoded postgres version.** `scripts/linux_reset.sh` now auto-discovers the installed PostgreSQL version instead of failing on systems where the hardcoded version isn't present.
+- **BE-5032: closeout tags now require controlled vocabulary.** `close_project_and_update_memory` previously ran prose through a naive word-splitter that produced garbage tags like `['Surfaced', '+', 'BE-5028']`. Tags are now an explicit agent-supplied parameter validated against the 16-entry `CONTROLLED_TAG_VOCABULARY` via the same `MemoryEntryWriteSchema` that `write_360_memory` uses. Invalid tags raise `MemoryEntryWriteValidationError` listing the offending tag and the full allowed enum. 24 edge-case verification tests added on top of the implementer's 6.
+- **BE-5031: 360-memory headlines preserved verbatim.** The headlines summary is now emitted as-is, and the renamed `has_full_body` flag is protected from the 30K-character response-ceiling field-drop pass (alongside the existing `truncated` skip). Practical impact today is small (the boolean is the smallest field), but the protection list was semantically stale after the headlines-shape rename.
 
 ### Changed
-- **Windows one-liner is faster (typically 2-4 minutes saved).** Disabled PowerShell's `Invoke-WebRequest` / `Invoke-RestMethod` progress bar (a known 5-10x slowdown on Windows PowerShell 5.1 — applies to the release tarball download and all GitHub API calls).
-- **Removed redundant second frontend build.** The Windows installer was running `npm run build` twice — once during environment setup and again after `install.py`. The second build was a leftover and is unnecessary because `config.yaml` is read at runtime, not bundled into the JS output.
+- **Installer (Windows one-liner) is faster (typically 2-4 minutes saved).** Disabled PowerShell's `Invoke-WebRequest` / `Invoke-RestMethod` progress bar (a known 5-10x slowdown on Windows PowerShell 5.1 — applies to the release tarball download and all GitHub API calls).
+- **Installer: removed redundant second frontend build.** The Windows installer was running `npm run build` twice — once during environment setup and again after `install.py`. The second build was a leftover and is unnecessary because `config.yaml` is read at runtime, not bundled into the JS output.
 
 ### For existing v1.1.9 users
-- No action required. v1.1.9.1 is identical to v1.1.9 at runtime — only `scripts/install.ps1` and `scripts/linux_reset.sh` changed. Skip this release unless you're running fresh installs.
+- No migrations, no manual action. The closeout `tags` parameter is still threaded through the existing MCP tool surface — agents that already supplied valid tags continue to work; the only new behavior is rejection of invalid tags instead of silent acceptance of junk.
 
 ## [Unreleased] — 2026-04-24 — IMP-0011 Phase 2 Mode-Aware Auto-Open URL
 

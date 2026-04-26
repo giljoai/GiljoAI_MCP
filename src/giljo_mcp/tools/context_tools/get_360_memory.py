@@ -40,12 +40,13 @@ def estimate_tokens(data: Any) -> int:
 
 
 # INF-WriteShape: depth modes for response shape (separate from last_n_projects).
-# - "headlines" (default): id, sequence, project_name, type, timestamp,
-#   summary truncated to first 200 chars + ellipsis, tags, truncated:true|false
-# - "full": existing rich shape via to_dict(), truncated:false
+# - "headlines" (default): minimal fields (id, sequence, project_name, type,
+#   timestamp, full summary, tags) with has_full_body:true to signal that a
+#   shape="full" follow-up fetch will return additional rich fields.
+# - "full": all rich fields via to_dict() with has_full_body:false (no
+#   follow-up fetch needed -- this is the complete entry).
 DEPTH_HEADLINES = "headlines"
 DEPTH_FULL = "full"
-SUMMARY_HEADLINE_CAP = 200
 
 # Step C: legacy tag mapping (analyzer-ratified 2026-04-25). Junk legacy tags
 # get mapped to a canonical slug or dropped (mapped to None) on serialization.
@@ -138,27 +139,29 @@ def _apply_legacy_tag_mapping(raw_tags: list[str]) -> list[str]:
 
 
 def _serialize_headline(entry) -> dict[str, Any]:
-    """INF-WriteShape: minimal entry shape for the headlines-only default."""
-    summary = entry.summary or ""
-    truncated = len(summary) > SUMMARY_HEADLINE_CAP
-    headline_summary = summary[:SUMMARY_HEADLINE_CAP] + "..." if truncated else summary
+    """INF-WriteShape: minimal entry shape for the headlines-only default.
+
+    Emits the full summary verbatim (no character cap, no ellipsis). The
+    has_full_body flag is True to signal that a shape="full" follow-up fetch
+    will return additional rich fields (key_outcomes, decisions_made, etc.).
+    """
     return {
         "id": str(entry.id),
         "sequence": entry.sequence,
         "project_name": entry.project_name,
         "type": entry.entry_type,
         "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
-        "summary": headline_summary,
+        "summary": entry.summary or "",
         "tags": _apply_legacy_tag_mapping(entry.tags or []),
-        "truncated": truncated,
+        "has_full_body": True,
     }
 
 
 def _serialize_full(entry) -> dict[str, Any]:
-    """INF-WriteShape: full entry shape (existing to_dict() with truncated flag)."""
+    """INF-WriteShape: full entry shape via to_dict() with has_full_body:false."""
     data = entry.to_dict()
     data["tags"] = _apply_legacy_tag_mapping(data.get("tags") or [])
-    data["truncated"] = False
+    data["has_full_body"] = False
     return data
 
 

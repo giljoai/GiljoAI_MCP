@@ -474,8 +474,12 @@ def _apply_response_ceiling(response: dict[str, Any]) -> dict[str, Any]:
             break
 
         # Find largest droppable field in that entry
+        # Skip 'truncated' (legacy field-drop signal we set ourselves below) and
+        # 'has_full_body' (BE-5031 headlines-shape flag that survives ceiling).
         droppable = [
-            (k, _serialized_size(v)) for k, v in entry.items() if k not in PROTECTED_ENTRY_FIELDS and k != "truncated"
+            (k, _serialized_size(v))
+            for k, v in entry.items()
+            if k not in PROTECTED_ENTRY_FIELDS and k not in ("truncated", "has_full_body")
         ]
         if not droppable:
             break
