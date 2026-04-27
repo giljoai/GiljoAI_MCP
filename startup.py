@@ -38,6 +38,7 @@ import webbrowser
 from pathlib import Path
 from typing import IO, Optional, Tuple
 
+
 # NOTE: Third-party imports (click, colorama) are deferred until AFTER
 # ensure_project_virtualenv() runs below. Otherwise `python startup.py`
 # from a fresh shell (no venv activated) crashes with ModuleNotFoundError
@@ -115,8 +116,9 @@ if "pytest" not in sys.modules:
 
 # Third-party imports — safe now that the venv guard above has re-executed
 # us inside the project venv (when one exists).
-import click  # noqa: E402
-from colorama import Fore, Style, init  # noqa: E402
+import click
+from colorama import Fore, Style, init
+
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
