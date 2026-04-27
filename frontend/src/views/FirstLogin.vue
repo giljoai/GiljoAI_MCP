@@ -16,7 +16,7 @@
               />
               <h1 class="text-h5 font-weight-bold">Complete Account Setup</h1>
               <p class="text-body-2 text-muted-a11y mt-2">
-                Set your new password and recovery PIN
+                {{ isCeEdition ? 'Set your new password and recovery PIN' : 'Set your new password' }}
               </p>
             </div>
           </v-card-title>
@@ -38,8 +38,14 @@
 
             <!-- Info Alert -->
             <AppAlert type="info" variant="tonal" class="mb-4">
-              <strong>Security Setup Required:</strong> Please create a new password and 4-digit
-              recovery PIN. Your recovery PIN can be used to reset your password if you forget it.
+              <template v-if="isCeEdition">
+                <strong>Security Setup Required:</strong> Please create a new password and 4-digit
+                recovery PIN. Your recovery PIN can be used to reset your password if you forget it.
+              </template>
+              <template v-else>
+                <strong>Security Setup Required:</strong> Please create a new password. If you
+                forget it, you can reset it via email.
+              </template>
             </AppAlert>
 
             <!-- Form -->
@@ -150,6 +156,7 @@
                 </v-list-item>
               </v-list>
 
+              <template v-if="isCeEdition">
               <v-divider class="my-4" />
 
               <!-- Recovery PIN Section -->
@@ -205,6 +212,7 @@
                 <strong>Important:</strong> Keep your recovery PIN secure. Do not use obvious PINs
                 like 0000 or 1234.
               </AppAlert>
+              </template>
 
               <!-- Submit Button -->
               <v-btn
@@ -237,6 +245,9 @@ import configService from '@/services/configService'
 
 // Composables
 const router = useRouter()
+
+// Edition detection — PIN recovery is CE-only. SaaS/demo use email-based reset.
+const isCeEdition = computed(() => configService.getGiljoMode() === 'ce')
 
 // State
 const currentPassword = ref('')
@@ -308,12 +319,19 @@ const passwordStrengthText = computed(() => {
 })
 
 const isFormValid = computed(() => {
-  return (
+  const passwordValid =
     currentPassword.value &&
     newPassword.value &&
     confirmPassword.value &&
     newPassword.value === confirmPassword.value &&
-    passwordRequirements.value.every((req) => req.met) &&
+    passwordRequirements.value.every((req) => req.met)
+
+  if (!isCeEdition.value) {
+    return passwordValid
+  }
+
+  return (
+    passwordValid &&
     recoveryPin.value &&
     confirmPin.value &&
     recoveryPin.value === confirmPin.value &&
@@ -341,13 +359,16 @@ async function handleSubmit() {
   error.value = ''
 
   try {
-    await api.auth.completeFirstLogin({
+    const payload = {
       current_password: currentPassword.value,
       new_password: newPassword.value,
       confirm_password: confirmPassword.value,
-      recovery_pin: recoveryPin.value,
-      confirm_pin: confirmPin.value,
-    })
+    }
+    if (isCeEdition.value) {
+      payload.recovery_pin = recoveryPin.value
+      payload.confirm_pin = confirmPin.value
+    }
+    await api.auth.completeFirstLogin(payload)
 
     // SaaS/demo: check if org setup is needed before going to dashboard.
     // Use apiClient (not raw axios) so the JWT cookie + X-CSRF-Token are

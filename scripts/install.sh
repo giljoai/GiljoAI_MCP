@@ -342,9 +342,9 @@ check_prerequisites() {
 
     echo ""
     echo -e "    ${BRAND}╔══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "    ${BRAND}║  Installing prerequisites (Python, Node.js, PostgreSQL) ║${NC}"
-    echo -e "    ${BRAND}║  This may take 3-5 minutes. Please do not close         ║${NC}"
-    echo -e "    ${BRAND}║  this terminal.                                         ║${NC}"
+    echo -e "    ${BRAND}║  Installing prerequisites (Python, Node.js, PostgreSQL)  ║${NC}"
+    echo -e "    ${BRAND}║  This may take 3-5 minutes. Please do not close          ║${NC}"
+    echo -e "    ${BRAND}║  this terminal.                                          ║${NC}"
     echo -e "    ${BRAND}╚══════════════════════════════════════════════════════════╝${NC}"
     echo ""
 

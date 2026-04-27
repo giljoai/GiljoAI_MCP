@@ -22,7 +22,7 @@ The critical bug where user exclusions (Priority 4) were ignored has been FIXED 
 - **Backend Server**: Running on `http://localhost:7273`
 - **Database**: PostgreSQL (localhost:5432)
 - **Test Product**: TinyContacts
-- **Test User**: patrik (`tk_9DRpJ1OPsJ021RRcmDvOWiAFFzL6a2cC`)
+- **Test User**: `<your-username>` (`<your-tenant-key>`)
 - **Test Orchestrator**: `323b551e-8991-45ba-bf52-dd9bd72ae7d1`
 
 ---

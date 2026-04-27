@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
 # Licensed under the GiljoAI Community License v1.1.
@@ -142,6 +142,35 @@ function Refresh-PathEnv {
     $env:Path    = "$machinePath;$userPath"
 }
 
+function Add-ToUserPath {
+    <#
+    .SYNOPSIS
+        Persists a directory to the User PATH environment variable so it
+        survives shell restarts. Also updates the current session's PATH.
+        No-op if the directory is already present (case-insensitive match).
+    #>
+    param([Parameter(Mandatory=$true)][string]$Directory)
+
+    if (-not (Test-Path $Directory)) { return }
+
+    $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
+    if (-not $userPath) { $userPath = "" }
+
+    $entries = $userPath -split ';' | Where-Object { $_ -ne "" }
+    $alreadyPresent = $entries | Where-Object { $_.TrimEnd('\') -ieq $Directory.TrimEnd('\') }
+
+    if (-not $alreadyPresent) {
+        $newUserPath = if ($userPath) { "$Directory;$userPath" } else { $Directory }
+        [System.Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+        Write-Ok "Added $Directory to User PATH (persisted)"
+    }
+
+    # Always update current session so the rest of the installer sees it.
+    if (($env:PATH -split ';') -notcontains $Directory) {
+        $env:PATH = "$Directory;$env:PATH"
+    }
+}
+
 # ---------------------------------------------------------------------------
 # Phase 1 -- Prerequisites
 # ---------------------------------------------------------------------------
@@ -198,17 +227,42 @@ function Test-Prerequisites {
     # -- PostgreSQL --
     Write-Step "Checking PostgreSQL..."
     $pgFound = $false
+
+    # 1) Command on PATH
     if (Test-CommandExists "pg_isready") {
         Write-Ok "PostgreSQL found (pg_isready available)"
         $pgFound = $true
-    } else {
-        # Check if PostgreSQL service is running
+    }
+
+    # 2) Windows service
+    if (-not $pgFound) {
         $pgService = Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue
         if ($pgService) {
             Write-Ok "PostgreSQL service found: $($pgService.DisplayName)"
             $pgFound = $true
         }
     }
+
+    # 3) Standard filesystem locations -- bin may not be on PATH yet
+    if (-not $pgFound) {
+        $pgBinCandidates = Get-ChildItem -Path "C:\Program Files\PostgreSQL\*\bin\psql.exe" -ErrorAction SilentlyContinue
+        if ($pgBinCandidates) {
+            $pgBinDir = Split-Path $pgBinCandidates[0].FullName -Parent
+            Write-Ok "PostgreSQL found at $pgBinDir"
+            Add-ToUserPath -Directory $pgBinDir
+            $pgFound = $true
+        }
+    }
+
+    # 4) winget package registry -- catches installs whose bin isn't on PATH and whose service is named oddly
+    if (-not $pgFound -and (Test-CommandExists "winget")) {
+        $wingetList = & winget list --id PostgreSQL.PostgreSQL --exact 2>&1 | Out-String
+        if ($wingetList -match "PostgreSQL\.PostgreSQL") {
+            Write-Ok "PostgreSQL found via winget package registry"
+            $pgFound = $true
+        }
+    }
+
     if (-not $pgFound) {
         Write-Warn "PostgreSQL not detected"
         $missing += "postgresql"
@@ -331,15 +385,23 @@ function Test-Prerequisites {
             Write-Host "    ╚══════════════════════════════════════════════════════════╝" -ForegroundColor $script:BRAND_COLOR
             Write-Host ""
             $pgProc = Start-Process -FilePath "winget" -ArgumentList $argLine -Wait -PassThru -NoNewWindow
-            if ($pgProc.ExitCode -ne 0) {
+            # winget exit codes that mean "nothing to do, package already present":
+            #   -1978335189 (0x8A15002B) APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE
+            #   -1978335207 (0x8A150019) APPINSTALLER_CLI_ERROR_PACKAGE_ALREADY_INSTALLED
+            $okCodes = @(0, -1978335189, -1978335207)
+            if ($okCodes -notcontains $pgProc.ExitCode) {
                 throw "winget exited with code $($pgProc.ExitCode)"
             }
-            Write-Ok "PostgreSQL installed"
+            if ($pgProc.ExitCode -eq 0) {
+                Write-Ok "PostgreSQL installed"
+            } else {
+                Write-Ok "PostgreSQL already installed (winget reports up-to-date)"
+            }
         } catch {
             Exit-WithError "PostgreSQL installation failed: $_`nPlease install manually from https://www.postgresql.org/download/windows/ and re-run this script."
         }
 
-        # Add PostgreSQL bin to PATH for this session
+        # Persist PostgreSQL bin to User PATH (survives shell restart)
         $pgBinPaths = @(
             "C:\Program Files\PostgreSQL\18\bin",
             "C:\Program Files\PostgreSQL\17\bin",
@@ -347,7 +409,7 @@ function Test-Prerequisites {
         )
         foreach ($p in $pgBinPaths) {
             if (Test-Path $p) {
-                $env:PATH = "$p;$env:PATH"
+                Add-ToUserPath -Directory $p
                 break
             }
         }
@@ -647,7 +709,7 @@ function Install-Shortcuts {
 title GiljoAI MCP Server
 cd /d "%~dp0"
 call venv\Scripts\activate.bat
-python -m api.run_api
+python startup.py --verbose
 pause
 "@
     Set-Content -Path $batPath -Value $batContent -Encoding ASCII

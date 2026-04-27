@@ -134,7 +134,15 @@ class OrgService:
 
     async def get_organization(self, org_id: str, tenant_key: str | None = None) -> Organization:
         """
-        Get organization by ID (only active orgs).
+        Get organization by ID, including soft-deleted orgs in their grace period.
+
+        Soft-deleted orgs (is_active=False, status='deleted') are returned so
+        the user can keep using the app during the 30-day account-deletion
+        grace window: the existing AccountDeletionBanner / DangerPage UI shows
+        the "scheduled for deletion" state with an in-app cancel button, and
+        the email cancel link still works. The reaper hard-deletes the row at
+        the end of grace, at which point this query naturally returns None
+        and login fails because the user row is gone too.
 
         Args:
             org_id: Organization ID
@@ -144,14 +152,17 @@ class OrgService:
                 whenever the caller is acting on behalf of a specific user.
 
         Returns:
-            Organization: Found organization with members
+            Organization: Found organization with members (may be soft-deleted)
 
         Raises:
-            ResourceNotFoundError: Organization not found or inactive
+            ResourceNotFoundError: Organization row does not exist (purged or
+                never existed)
             DatabaseError: Database operation failed
         """
         try:
-            org = await self._repo.get_organization_by_id(self.session, org_id, tenant_key=tenant_key)
+            org = await self._repo.get_organization_by_id(
+                self.session, org_id, tenant_key=tenant_key, active_only=False
+            )
 
             if not org:
                 raise ResourceNotFoundError(

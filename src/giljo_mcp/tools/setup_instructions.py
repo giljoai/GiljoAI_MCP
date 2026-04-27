@@ -76,7 +76,7 @@ def build_setup_instructions(platform: str, download_url: str) -> str:
             "Step 3 — Install these files according to your MCP client's documentation\n"
             "  for custom agents and commands/skills.\n\n"
             "For platform-specific setup, visit your GiljoAI server's web interface\n"
-            "at Settings -> Integrations.\n"
+            "at Tools -> Connect.\n"
             "Note: Download link expires in 15 minutes."
         )
     # codex_cli

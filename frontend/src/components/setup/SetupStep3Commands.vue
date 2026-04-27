@@ -70,7 +70,7 @@
 
       <!-- Manual setup pointer -->
       <p class="manual-setup-hint">
-        For manual setup, go to <strong>Settings &gt; Integrations</strong>
+        For manual setup, go to <strong>Tools &gt; Connect</strong>
       </p>
     </div>
 

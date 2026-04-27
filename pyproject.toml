@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "giljo-mcp"
-version = "1.1.9.1"
+version = "1.1.9.3"
 description = "GiljoAI MCP Coding Orchestrator - Multi-agent orchestration system"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -131,7 +131,7 @@ ignore = ["E501", "PERF203", "PERF401"]
 "uninstall.py" = ["BLE001"]
 "install.py" = ["BLE001", "E402"]
 "update.py" = ["BLE001", "S110"]
-"startup.py" = ["BLE001"]
+"startup.py" = ["BLE001", "E402"]
 "startup_prod.py" = ["BLE001"]
 "api/startup/migration_check.py" = ["BLE001"]
 "api/startup/update_checker.py" = ["BLE001"]

@@ -126,7 +126,7 @@ description: "Add a task or project to the GiljoAI dashboard. Routes to task (te
 - Never pass `tenant_key` (auto-injected by security layer)
 - Active product required (server-side enforced) — if error mentions "No active product", tell user to activate one in dashboard
 - Projects are created as inactive — user activates via dashboard
-- On success: show type, title/name, ID, and "View in GiljoAI dashboard"
+- On success: show type, title/name, ID, and tell the user it should now be visible in their GiljoAI dashboard (do NOT fabricate a URL — the dashboard updates live via WebSocket)
 - On error: show what went wrong and how to fix
 """
 
@@ -281,7 +281,7 @@ prompt = '''
 - Never pass tenant_key (auto-injected by security layer)
 - Active product required (server-side enforced) — if error mentions "No active product", tell user to activate one in dashboard
 - Projects are created as inactive — user activates via dashboard
-- On success: show type, title/name, ID, and "View in GiljoAI dashboard"
+- On success: show type, title/name, ID, and tell the user it should now be visible in their GiljoAI dashboard (do NOT fabricate a URL — the dashboard updates live via WebSocket)
 - On error: show what went wrong and how to fix
 '''
 """
@@ -544,7 +544,7 @@ description: "Add a task or project to the GiljoAI dashboard"
 - Never pass `tenant_key` (auto-injected by security layer)
 - Active product required (server-side enforced) — if error mentions "No active product", tell user to activate one in dashboard
 - Projects are created as inactive — user activates via dashboard
-- On success: show type, title/name, ID, and "View in GiljoAI dashboard"
+- On success: show type, title/name, ID, and tell the user it should now be visible in their GiljoAI dashboard (do NOT fabricate a URL — the dashboard updates live via WebSocket)
 - On error: show what went wrong and how to fix
 """
 
@@ -624,7 +624,7 @@ Note: Download link expires in 15 minutes.
 """
 
 BOOTSTRAP_GENERIC = """Your CLI platform was not auto-detected. Visit your GiljoAI server's
-Settings -> Integrations page to download skill reference files.
+Tools -> Connect page to download skill reference files.
 Install them according to your tool's documentation, then use the
 get-agents command to pull agent templates.
 """

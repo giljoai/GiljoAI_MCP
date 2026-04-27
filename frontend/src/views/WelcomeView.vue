@@ -118,7 +118,7 @@
           <v-icon size="24" color="#ffc300">mdi-rocket-launch</v-icon>
           <div class="setup-cta-text">
             <div class="setup-cta-title">{{ setupCtaLabel }}</div>
-            <div class="setup-cta-desc">Configure AI tools, connect integrations, and learn the basics.</div>
+            <div class="setup-cta-desc">Configure AI tools, manage connections, and learn the basics.</div>
           </div>
           <v-icon size="18" style="color:var(--text-muted);">mdi-chevron-right</v-icon>
         </div>

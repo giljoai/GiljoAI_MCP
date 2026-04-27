@@ -62,6 +62,20 @@ export const useOrgStore = defineStore('org', () => {
       members.value = response.data.members || []
       return { success: true, data: currentOrg.value }
     } catch (err) {
+      // Stale org reference (commonly: demo accounts reaped after 7 days leave
+      // a dead org_id in localStorage). Clear local org state so views render
+      // with an empty org panel instead of stale data. Do NOT redirect from
+      // here -- the operator visiting /admin/settings legitimately needs to
+      // see the page even when their personal org_id is dead. Demo-visitor
+      // routing belongs in the auth guard, not in a generic data fetch.
+      if (err?.response?.status === 404) {
+        currentOrg.value = null
+        members.value = []
+        // Friendly message instead of raw "Request failed with status code 404".
+        // Components that bind to orgStore.error will show this verbatim.
+        error.value = null
+        return { success: false, error: 'Workspace not found. It may have been deleted.' }
+      }
       error.value = err.message
       return { success: false, error: err.message }
     } finally {

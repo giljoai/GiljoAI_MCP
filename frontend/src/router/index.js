@@ -271,6 +271,11 @@ const routes = [
       requiresPasswordChange: false,
     },
   },
+  // Legacy deep-link redirects: the Identity tab moved out of /tools to /admin/settings
+  // during the FE-0023 IA reshuffle. Old bookmarks and external links to /tools/identity
+  // (or its /settings alias) used to 404; redirect them to where the tab actually lives.
+  { path: '/tools/identity', redirect: '/admin/settings' },
+  { path: '/settings/identity', redirect: '/admin/settings' },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
