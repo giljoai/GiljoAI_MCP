@@ -251,7 +251,7 @@ These tests verify existing functionality still works:
 3. Query database:
 
 ```bash
-PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT COUNT(*) FROM mcp_agent_jobs WHERE agent_type='orchestrator' AND project_id='{project_id}'"
+PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT COUNT(*) FROM mcp_agent_jobs WHERE agent_type='orchestrator' AND project_id='{project_id}'"
 ```
 
 ✅ **Should return 1 (not 5+)**
@@ -316,13 +316,13 @@ Verify agents are created correctly in database:
 
 ```bash
 # List all agent jobs for project
-PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT job_id, agent_type, agent_name, status, created_at FROM mcp_agent_jobs WHERE project_id='{project_id}' ORDER BY created_at DESC;"
+PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT job_id, agent_type, agent_name, status, created_at FROM mcp_agent_jobs WHERE project_id='{project_id}' ORDER BY created_at DESC;"
 
 # Count agents by type
-PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT agent_type, COUNT(*) as count FROM mcp_agent_jobs WHERE project_id='{project_id}' GROUP BY agent_type;"
+PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT agent_type, COUNT(*) as count FROM mcp_agent_jobs WHERE project_id='{project_id}' GROUP BY agent_type;"
 
 # Verify no duplicate orchestrators
-PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT COUNT(*) FROM mcp_agent_jobs WHERE agent_type='orchestrator' AND project_id='{project_id}';"
+PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT COUNT(*) FROM mcp_agent_jobs WHERE agent_type='orchestrator' AND project_id='{project_id}';"
 ```
 
 Expected: Should be 1 orchestrator per project (not multiple)
