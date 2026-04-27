@@ -7,7 +7,7 @@
  * 3. Messages now route to PER-AGENT counters in JobsTab agent table
  *
  * Test Framework: Playwright
- * Credentials: patrik / ***REMOVED***
+ * Credentials: TEST_USER and TEST_PASSWORD env vars
  * Target URLs: http://localhost:7274 (frontend), http://localhost:7272 (backend)
  *
  * CRITICAL REQUIREMENTS:

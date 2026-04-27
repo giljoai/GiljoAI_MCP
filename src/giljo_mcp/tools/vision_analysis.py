@@ -239,6 +239,76 @@ async def get_vision_doc(
         return base
 
 
+def _build_update_kwargs(
+    product: Product,
+    fields: dict[str, Any],
+    fields_written: list[str],
+) -> dict[str, Any]:
+    """Build kwargs dict for ProductService.update_product() from extracted fields.
+
+    Mutates fields_written in place to track which fields will be written.
+    Merges JSONB block fields with existing values so only provided keys overwrite.
+    """
+    kwargs: dict[str, Any] = {}
+
+    for field_name in _PRODUCT_FIELDS:
+        if field_name not in fields:
+            continue
+        _, column_name = FIELD_MAP[field_name]
+        kwargs[column_name] = fields[field_name]
+        fields_written.append(field_name)
+
+    ts_provided = {k: fields[k] for k in _TECH_STACK_FIELDS if k in fields}
+    if ts_provided:
+        ts = product.tech_stack
+        merged_ts: dict[str, Any] = {
+            "programming_languages": (ts.programming_languages or "") if ts else "",
+            "frontend_frameworks": (ts.frontend_frameworks or "") if ts else "",
+            "backend_frameworks": (ts.backend_frameworks or "") if ts else "",
+            "databases_storage": (ts.databases_storage or "") if ts else "",
+            "infrastructure": (ts.infrastructure or "") if ts else "",
+            "dev_tools": (ts.dev_tools or "") if ts else "",
+        }
+        for field_name, value in ts_provided.items():
+            _, column_name = FIELD_MAP[field_name]
+            merged_ts[column_name] = value
+            fields_written.append(field_name)
+        kwargs["tech_stack"] = merged_ts
+
+    arch_provided = {k: fields[k] for k in _ARCHITECTURE_FIELDS if k in fields}
+    if arch_provided:
+        arch = product.architecture
+        merged_arch: dict[str, Any] = {
+            "primary_pattern": (arch.primary_pattern or "") if arch else "",
+            "design_patterns": (arch.design_patterns or "") if arch else "",
+            "api_style": (arch.api_style or "") if arch else "",
+            "architecture_notes": (arch.architecture_notes or "") if arch else "",
+            "coding_conventions": (arch.coding_conventions or "") if arch else "",
+        }
+        for field_name, value in arch_provided.items():
+            _, column_name = FIELD_MAP[field_name]
+            merged_arch[column_name] = value
+            fields_written.append(field_name)
+        kwargs["architecture"] = merged_arch
+
+    tc_provided = {k: fields[k] for k in _TEST_CONFIG_FIELDS if k in fields}
+    if tc_provided:
+        tc = product.test_config
+        merged_tc: dict[str, Any] = {
+            "quality_standards": (tc.quality_standards or "") if tc else "",
+            "test_strategy": (tc.test_strategy or "") if tc else "",
+            "coverage_target": (tc.coverage_target if tc and tc.coverage_target is not None else 80),
+            "testing_frameworks": (tc.testing_frameworks or "") if tc else "",
+        }
+        for field_name, value in tc_provided.items():
+            _, column_name = FIELD_MAP[field_name]
+            merged_tc[column_name] = value
+            fields_written.append(field_name)
+        kwargs["test_config"] = merged_tc
+
+    return kwargs
+
+
 async def update_product_fields(
     product_id: str,
     tenant_key: str,
@@ -311,67 +381,7 @@ async def update_product_fields(
                 context={"product_id": product_id},
             )
 
-        # -- Build kwargs for ProductService.update_product() --
-        kwargs: dict[str, Any] = {}
-
-        # Direct product fields
-        for field_name in _PRODUCT_FIELDS:
-            if field_name not in fields:
-                continue
-            _, column_name = FIELD_MAP[field_name]
-            kwargs[column_name] = fields[field_name]
-            fields_written.append(field_name)
-
-        # Tech stack: merge existing values with only the provided fields
-        ts_provided = {k: fields[k] for k in _TECH_STACK_FIELDS if k in fields}
-        if ts_provided:
-            ts = product.tech_stack
-            merged_ts: dict[str, Any] = {
-                "programming_languages": (ts.programming_languages or "") if ts else "",
-                "frontend_frameworks": (ts.frontend_frameworks or "") if ts else "",
-                "backend_frameworks": (ts.backend_frameworks or "") if ts else "",
-                "databases_storage": (ts.databases_storage or "") if ts else "",
-                "infrastructure": (ts.infrastructure or "") if ts else "",
-                "dev_tools": (ts.dev_tools or "") if ts else "",
-            }
-            for field_name, value in ts_provided.items():
-                _, column_name = FIELD_MAP[field_name]
-                merged_ts[column_name] = value
-                fields_written.append(field_name)
-            kwargs["tech_stack"] = merged_ts
-
-        # Architecture: merge existing values with only the provided fields
-        arch_provided = {k: fields[k] for k in _ARCHITECTURE_FIELDS if k in fields}
-        if arch_provided:
-            arch = product.architecture
-            merged_arch: dict[str, Any] = {
-                "primary_pattern": (arch.primary_pattern or "") if arch else "",
-                "design_patterns": (arch.design_patterns or "") if arch else "",
-                "api_style": (arch.api_style or "") if arch else "",
-                "architecture_notes": (arch.architecture_notes or "") if arch else "",
-                "coding_conventions": (arch.coding_conventions or "") if arch else "",
-            }
-            for field_name, value in arch_provided.items():
-                _, column_name = FIELD_MAP[field_name]
-                merged_arch[column_name] = value
-                fields_written.append(field_name)
-            kwargs["architecture"] = merged_arch
-
-        # Test config: merge existing values with only the provided fields
-        tc_provided = {k: fields[k] for k in _TEST_CONFIG_FIELDS if k in fields}
-        if tc_provided:
-            tc = product.test_config
-            merged_tc: dict[str, Any] = {
-                "quality_standards": (tc.quality_standards or "") if tc else "",
-                "test_strategy": (tc.test_strategy or "") if tc else "",
-                "coverage_target": (tc.coverage_target if tc and tc.coverage_target is not None else 80),
-                "testing_frameworks": (tc.testing_frameworks or "") if tc else "",
-            }
-            for field_name, value in tc_provided.items():
-                _, column_name = FIELD_MAP[field_name]
-                merged_tc[column_name] = value
-                fields_written.append(field_name)
-            kwargs["test_config"] = merged_tc
+        kwargs = _build_update_kwargs(product, fields, fields_written)
 
         # -- Route writes through ProductService (the validated single write path) --
         # Track skipped fields explicitly so the agent can see what didn't write

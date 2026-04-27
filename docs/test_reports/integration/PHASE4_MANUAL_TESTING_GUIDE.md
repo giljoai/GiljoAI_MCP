@@ -420,7 +420,7 @@ psql -U postgres -c "DROP DATABASE IF EXISTS giljo_mcp_test;"
 psql -U postgres -c "CREATE DATABASE giljo_mcp_test;"
 
 # Recreate tables
-python -c "from src.giljo_mcp.database import DatabaseManager; import asyncio; asyncio.run(DatabaseManager('postgresql://postgres:***@localhost/giljo_mcp_test', is_async=True).create_tables_async())"
+python -c "from src.giljo_mcp.database import DatabaseManager; import asyncio; asyncio.run(DatabaseManager('postgresql://postgres:$DB_PASSWORD@localhost/giljo_mcp_test', is_async=True).create_tables_async())"
 ```
 
 ### Issue 2: Firewall Blocking Network Access

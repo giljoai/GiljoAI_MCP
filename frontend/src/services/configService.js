@@ -198,6 +198,14 @@ class ConfigService {
   }
 
   /**
+   * Get running server version (from giljo_mcp package metadata)
+   * @returns {string} Semver-style version string, or empty string if not available
+   */
+  getVersion() {
+    return this.config?.version || ''
+  }
+
+  /**
    * Check if config was fetched successfully or is using fallback
    * @returns {boolean} True if using fallback config
    */
