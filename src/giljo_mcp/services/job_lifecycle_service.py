@@ -218,7 +218,6 @@ class JobLifecycleService:
                     agent_display_name=agent_display_name,
                     project_name=project.name,
                     job_id=job_id,
-                    tenant_key=tenant_key,
                 )
 
                 created_at = datetime.now(timezone.utc)
@@ -549,7 +548,6 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
         agent_display_name: str,
         project_name: str,
         job_id: str,
-        tenant_key: str,
     ) -> str:
         """
         Build the thin agent prompt injected into the spawned Claude Code session.
@@ -558,12 +556,15 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
         with enough context to call get_agent_mission and retrieve the full protocol
         and mission from the database.
 
+        Tenant isolation: the server auto-injects tenant_key from the API key
+        session, so the prompt must NEVER instruct agents to pass it. Including
+        it would contradict the documented "never pass tenant_key" contract.
+
         Args:
             agent_name: Agent name/identifier (template lookup key)
             agent_display_name: Display name of agent (UI label)
             project_name: Human-readable project name
             job_id: Work order UUID (persists across succession)
-            tenant_key: Tenant key for isolation
 
         Returns:
             Prompt string to pass to the Claude Code spawner
@@ -579,7 +580,9 @@ MCP tools are **native tool calls** (like Read/Write/Bash/Glob).
 
 1. Call `mcp__giljo_mcp__get_agent_mission` with:
    - job_id="{job_id}"
-   - tenant_key="{tenant_key}"
+
+   Note: tenant_key is auto-injected by the server from your API key
+   session. Do NOT pass it as a parameter.
 
 2. Read the response and follow `full_protocol`
    for all lifecycle behavior (startup, planning, progress,

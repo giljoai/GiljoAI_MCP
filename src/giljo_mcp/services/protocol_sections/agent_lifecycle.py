@@ -182,6 +182,23 @@ completing, an unblock event, or any other trigger — execute this loop:
   → In subagent mode: launch directly. In multi-terminal: tell user "Verification agent spawned, start it from dashboard"
   → Update the relevant TODO item
 
+**Implementation-phase verification spawning:**
+
+- **WHEN to spawn verification:** After deliverable agents (implementer, analyzer, documenter) complete
+  AND the project produced code or testable artifacts. If all agents produced only documentation or
+  analysis (no changed code, no new APIs, no migrations), skip verification entirely — there is
+  nothing for a tester/reviewer to run.
+- **HOW to build the verification mission:** Call `get_agent_result(job_id=<deliverable_job_id>)` for
+  every completed deliverable agent. Anchor the tester/reviewer mission in REAL artifacts: exact file
+  paths, commit hashes, API names, and behavior changes from those results. Never write a speculative
+  mission ("the implementer probably added X") — if the result is absent, note it as unknown and scope
+  verification to what is confirmed.
+- **HOW to handle findings the orchestrator can fix without re-spawning:** If a finding is trivial
+  (roughly 10 lines, single file, low risk — e.g. a lint warning, a missing docstring, a wrong constant),
+  the orchestrator may fix it inline and add a follow-up commit without re-spawning the deliverable agent.
+  If a finding is substantive (architectural change, multi-file impact, risky logic) → re-spawn the
+  relevant deliverable agent with a tightly scoped fix mission, referencing the reviewer's exact finding.
+
 **PROGRESS REPORTING (MANDATORY after every coordination action):**
   → To update statuses: `report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_items=[...FULL list with updated statuses...])`
   → To add NEW tasks: `report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_append=[...new items only...])`
@@ -220,6 +237,15 @@ If the reviewer reported non-blocking findings that were NOT fixed during this p
 include `tags=["action_required:<file> — <description>"]` in `close_project_and_update_memory()`
 or write a separate `write_360_memory()` entry with those tags so they persist for future agents.
 For trivial items (~10 lines), prefer fixing immediately rather than deferring.
+
+**Closeout works without git:**
+Git commit collection is best-effort. When the server cannot resolve commits (non-git environment,
+missing binary, bare repo), the `complete_job()` response will include `git_unavailable: true` and
+a human-readable `git_unavailable_reason` explaining why. The job still closes cleanly; the commit
+list will be empty or contain only agent-supplied hashes. When this happens, include the phrase
+"git not available — commits omitted" in your closeout summary so the audit trail is honest. The
+`git_warning` field covers a separate case: git integration enabled but the agent produced no commits
+(normal for coordinators and documentation-only agents — no action needed).
 
 **Closeout steps (order matters):**
 1. Mark any remaining non-closeout TODO items as `completed` via `report_progress()` (a TODO describing the closeout itself does NOT need to be marked completed first — see step 2)

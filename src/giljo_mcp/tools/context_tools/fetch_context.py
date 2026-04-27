@@ -339,10 +339,14 @@ async def fetch_context(
             effective_depths.update(user_depths)
 
     # IMP-2: Batch fetch -- iterate over all requested categories
+    # Wave 1 IMP-0019 Item 2: emit explicit empty entries for every fetched
+    # category (including directive-only ones) so the contract
+    # `categories_requested == categories_returned union failed_categories` holds.
     all_data: dict[str, Any] = {}
     all_directives: dict[str, Any] = {}
     all_errors: list[dict[str, str]] = []
     categories_returned: list[str] = []
+    categories_empty: list[str] = []
 
     for category in categories:
         # Enforce user field priority toggles -- skip disabled categories silently
@@ -362,14 +366,28 @@ async def fetch_context(
                 agent_name=agent_name,
                 db_manager=db_manager,
             )
+            # Use sentinel to distinguish "key absent" from "key present but empty"
             cat_data = result.get("data", {})
             directive = result.get("directive")
 
-            if cat_data:
-                all_data[category] = cat_data
-                categories_returned.append(category)
+            categories_returned.append(category)
+
             if directive:
                 all_directives[category] = directive
+                # Uniform contract: directive-handled categories also appear in
+                # data with an explicit marker so callers don't need to inspect
+                # the directive block to know the category was processed.
+                all_data[category] = {"directive": True}
+            elif cat_data:
+                all_data[category] = cat_data
+            else:
+                # Empty payload: preserve list-vs-dict shape so callers get a
+                # predictable type. The presence of the key (with empty value)
+                # IS the signal — silent omission would force callers to diff
+                # categories_requested against categories_returned.
+                empty_value: Any = [] if isinstance(cat_data, list) else {}
+                all_data[category] = empty_value
+                categories_empty.append(category)
         except Exception as e:  # Broad catch: tool boundary, logs per-category errors
             logger.error("category_fetch_error category=%s error=%s", category, e, exc_info=True)
             all_errors.append({"category": category, "error": str(e)})
@@ -392,6 +410,9 @@ async def fetch_context(
         "source": "fetch_context",
         "categories_requested": list(categories),
         "categories_returned": categories_returned,
+        # Wave 1 IMP-0019 Item 2: surface the empty-payload categories so
+        # callers can distinguish "fetched with data" from "fetched but empty".
+        "categories_empty": categories_empty,
         "data": response_data,
         "metadata": {
             "format": output_format,
