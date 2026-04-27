@@ -115,7 +115,9 @@ if "pytest" not in sys.modules:
     ensure_project_virtualenv()
 
 # Third-party imports — safe now that the venv guard above has re-executed
-# us inside the project venv (when one exists).
+# us inside the project venv (when one exists). E402 is intentional: these
+# MUST stay below ensure_project_virtualenv() or fresh-shell installs crash
+# with ModuleNotFoundError before the relaunch guard can fire.
 import click
 from colorama import Fore, Style, init
 
