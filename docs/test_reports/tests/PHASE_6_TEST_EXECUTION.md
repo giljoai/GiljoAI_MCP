@@ -34,7 +34,7 @@ Set required environment variables:
 
 ```bash
 # Database URL for tests
-export DATABASE_URL="postgresql://postgres:***@localhost:5432/giljo_mcp_test"
+export DATABASE_URL="postgresql://postgres:$DB_PASSWORD@localhost:5432/giljo_mcp_test"
 
 # Or use config.yaml (test mode)
 ```
@@ -209,7 +209,7 @@ Validation Summary: 2/2 products valid
 **Solution:**
 ```bash
 # Set environment variable
-export DATABASE_URL="postgresql://postgres:***@localhost:5432/giljo_mcp_test"
+export DATABASE_URL="postgresql://postgres:$DB_PASSWORD@localhost:5432/giljo_mcp_test"
 
 # Or use conftest fixtures (they auto-configure)
 pytest tests/integration/test_orchestrator_template.py

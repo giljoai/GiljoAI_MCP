@@ -49,9 +49,9 @@ def _check_database_safety() -> tuple[bool, str]:
         # Check if it contains production DB name without _test
         if f"/{PRODUCTION_DB_NAME}" in db_url and f"/{TEST_DB_NAME}" not in db_url:
             return False, (
-                f"DATABASE_URL points to production database!\n"
-                f"  Found: {db_url[:60]}...\n"
-                f"  Expected: URL containing '{TEST_DB_NAME}'\n\n"
+                f"DATABASE_URL points to production database '{PRODUCTION_DB_NAME}'!\n"
+                f"  Expected: URL containing '{TEST_DB_NAME}'\n"
+                f"  (Run `echo $DATABASE_URL` to inspect the actual value.)\n\n"
                 f"To fix:\n"
                 f"  1. Unset DATABASE_URL: unset DATABASE_URL\n"
                 f"  2. Or set it to test DB: export DATABASE_URL=postgresql://.../{TEST_DB_NAME}\n"

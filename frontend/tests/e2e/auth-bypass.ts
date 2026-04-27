@@ -44,12 +44,15 @@ export async function setAuthTokenDirectly(
     console.log('[setAuthTokenDirectly] Fetching JWT token from API...')
     console.log('[setAuthTokenDirectly] Backend URL:', BACKEND_URL)
 
+    const username = process.env.TEST_USER
+    const password = process.env.TEST_PASSWORD
+    if (!username || !password) {
+      throw new Error('Test credentials missing: set TEST_USER and TEST_PASSWORD env vars')
+    }
+
     const apiUrl = `${BACKEND_URL}/api/auth/login`
     const response = await page.request.post(apiUrl, {
-      data: {
-        username: 'patrik',
-        password: '***REMOVED***'
-      }
+      data: { username, password }
     })
 
     if (!response.ok()) {
