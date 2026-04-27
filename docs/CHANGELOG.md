@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.9.2] — 2026-04-26 — Test Configuration Refactor
+
+Patch release on top of v1.1.9.1. The Playwright E2E suite and several developer scripts now read user and database credentials from environment variables. No runtime code paths or end-user features change.
+
+### Changed
+- **Playwright E2E suite reads credentials from environment.** `frontend/tests/e2e/helpers.ts`, `auth-bypass.ts`, `selector-validation.spec.ts`, `closeout-workflow.spec.ts`, `cli-mode-toggle-staging.spec.js`, `launch-button-staging-complete.spec.js`, `admin-settings-identity.spec.js`, `message-counters.spec.js`, and `message-routing-0289.spec.ts` now read `TEST_USER` and `TEST_PASSWORD` from the environment and fail fast with a clear error when either is unset. The `loginAsPatrik()` helper has been renamed to `loginAsDefaultTestUser()` to make the API surface independent of any specific test account.
+- **Developer scripts read database password from environment.** `uninstall.py`, `scripts/devuninstall.py`, `scripts/reset_postgresql.py`, `reset.py`, `tests/helpers/test_db_helper.py`, and several `scripts/_historical/*.py` migration helpers now use `os.environ.get("DB_PASSWORD", "")` for the postgres superuser password. `install.py` already writes a per-install random password to `.env`, so production installs continue to resolve `DB_PASSWORD` correctly without action.
+- **Documentation updated** in `docs/test_reports/`, `docs/archive/`, `frontend/tests/e2e/`, and the `migrations/archive/pre_baseline/*.sql` headers to reference `$DB_PASSWORD` / `TEST_PASSWORD` placeholders rather than literal values.
+- **`.env.example` now documents the `TEST_USER` / `TEST_PASSWORD` env vars** so contributors know how to wire up the Playwright suite.
+
+### For existing users
+- No runtime impact. Only test fixtures, dev scripts, and documentation change. CE servers, the SaaS edition, and the demo edition behave identically to v1.1.9.1.
+- If you run the Playwright suite locally, set `TEST_USER` and `TEST_PASSWORD` in your shell or `.env` before invoking `npm run test:e2e`. Tests fail with a clear error if these are unset.
+- If you run admin scripts like `uninstall.py` or `scripts/reset_postgresql.py` against a manually-configured Postgres install, set `DB_PASSWORD` in your `.env` first. Standard `install.py` users already have this.
+
 ## [1.1.9.1] — 2026-04-26 — Installer Hotfix + Closeout & 360-Memory Fixes
 
 Patch release on top of v1.1.9. Installer reliability/speed plus two backend correctness fixes around project closeout and 360-memory headlines.

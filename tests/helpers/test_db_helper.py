@@ -14,6 +14,7 @@ CRITICAL SAFETY: This module includes guards to prevent accidental production da
 
 import asyncio
 import contextlib
+import os
 import re
 from typing import Optional
 
@@ -102,12 +103,14 @@ class PostgreSQLTestHelper:
 
     # Default test database configuration (local dev).
     # CI overrides via DATABASE_URL env var.
+    # Local dev reads password from POSTGRES_SUPERUSER_PASSWORD env var
+    # (set in .env — distinct from DB_PASSWORD which is the app's giljo_user password).
     DEFAULT_CONFIG = {
         "host": "localhost",
         "port": 5432,
         "database": "giljo_mcp_test",
         "username": "postgres",
-        "password": "4010",
+        "password": os.environ.get("POSTGRES_SUPERUSER_PASSWORD", ""),
     }
 
     @staticmethod

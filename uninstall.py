@@ -96,7 +96,7 @@ class GiljoProductionUninstaller:
         host = pg_info.get("host", "localhost")
         port = pg_info.get("port", "5432")
         user = pg_info.get("user", "postgres")
-        password = pg_info.get("password", "4010")
+        password = pg_info.get("password") or os.getenv("POSTGRES_SUPERUSER_PASSWORD", "")
 
         # Also check .env file for password if manifest doesn't have it
         env_file = self.root_path / ".env"
