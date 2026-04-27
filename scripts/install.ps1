@@ -680,7 +680,7 @@ function Install-Shortcuts {
 title GiljoAI MCP Server
 cd /d "%~dp0"
 call venv\Scripts\activate.bat
-python -m api.run_api
+python startup.py --verbose
 pause
 "@
     Set-Content -Path $batPath -Value $batContent -Encoding ASCII
