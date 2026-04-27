@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test'
  *
  * Validates the closeout workflow UI components and integration with backend.
  * This test verifies:
- * 1. Login with real user credentials (patrik)
+ * 1. Login with real user credentials (TEST_USER env var)
  * 2. Navigation to projects and project details
  * 3. Jobs tab visibility and accessibility
  * 4. Closeout button presence and functionality
@@ -13,18 +13,25 @@ import { test, expect } from '@playwright/test'
  * 6. Copy prompt functionality
  * 7. Completion workflow
  */
+const TEST_USER = process.env.TEST_USER || ''
+const TEST_PASSWORD = process.env.TEST_PASSWORD || ''
+
+if (!TEST_USER || !TEST_PASSWORD) {
+  throw new Error('Test credentials missing: set TEST_USER and TEST_PASSWORD env vars')
+}
+
 test.describe('Project Closeout Workflow - UI Integration', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to login
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
 
-    // Login as real user (patrik)
+    // Login as real user (from TEST_USER env var)
     const emailInput = page.locator('[data-testid="email-input"] input')
     const passwordInput = page.locator('[data-testid="password-input"] input')
 
-    await emailInput.fill('patrik')
-    await passwordInput.fill('***REMOVED***')
+    await emailInput.fill(TEST_USER)
+    await passwordInput.fill(TEST_PASSWORD)
     await page.click('[data-testid="login-button"]')
 
     // Wait for post-login redirect
@@ -86,7 +93,7 @@ test.describe('Project Closeout Workflow - UI Integration', () => {
 
     // If no projects exist, create one or skip to structure validation
     if (cardCount === 0) {
-      console.log('No projects found for user patrik - test will validate UI structure')
+      console.log('No projects found for test user - test will validate UI structure')
 
       // Navigate directly to a non-existent project to test the page structure
       // This validates that the route and component structure are correct
@@ -154,8 +161,8 @@ test.describe('Project Closeout Workflow - UI Integration', () => {
     const emailInput = page.locator('[data-testid="email-input"] input')
     const passwordInput = page.locator('[data-testid="password-input"] input')
 
-    await emailInput.fill('patrik')
-    await passwordInput.fill('***REMOVED***')
+    await emailInput.fill(TEST_USER)
+    await passwordInput.fill(TEST_PASSWORD)
     await page.click('[data-testid="login-button"]')
 
     await page.waitForURL(/\/(|dashboard|projects)/, { timeout: 10000 })

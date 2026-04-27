@@ -127,7 +127,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # CSP: Hash-based policy preventing XSS
         # Production: Strict hashes only
         # Development: Hashes + unsafe-eval for Vue HMR
-        script_src = f"'self' {CSP_SCRIPT_HASH_1} {CSP_SCRIPT_HASH_2}"
+        # Cloudflare: static.cloudflareinsights.com hosts the auto-injected
+        # Browser Insights (RUM) beacon; harmless if you're not behind CF.
+        script_src = f"'self' {CSP_SCRIPT_HASH_1} {CSP_SCRIPT_HASH_2} https://static.cloudflareinsights.com"
         if self.is_dev:
             script_src += " 'unsafe-eval'"  # Vue HMR needs eval in dev
 
@@ -140,7 +142,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # `http://demo.giljo.ai:7272` while the browser loaded via
         # `https://demo.giljo.ai` — rejecting the frontend's real API calls.
         # (INF-5012b close-out.)
-        connect_src = "'self' ws: wss:"
+        # cloudflareinsights.com is the beacon endpoint paired with the
+        # static.cloudflareinsights.com script source above.
+        connect_src = "'self' ws: wss: https://cloudflareinsights.com"
 
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
