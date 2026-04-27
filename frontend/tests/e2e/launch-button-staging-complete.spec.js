@@ -15,9 +15,9 @@ import { test, expect } from '@playwright/test'
  * 6. Verify "Launch Jobs" becomes enabled
  *
  * Configuration:
- * - Frontend URL: http://10.1.0.164:7274
- * - Username: patrik
- * - Password: ***REMOVED***
+ * - Frontend URL: PLAYWRIGHT_TEST_BASE_URL env var (default http://10.1.0.164:7274)
+ * - Username: TEST_USER env var
+ * - Password: TEST_PASSWORD env var
  * - Project ID: 555d0207-4f30-498a-9c44-9904804270ee
  */
 
@@ -25,8 +25,12 @@ test.describe('Launch Button Staging Complete (Handover 0287)', () => {
   const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://10.1.0.164:7274'
   const PROJECT_ID = '555d0207-4f30-498a-9c44-9904804270ee'
   const PROJECT_URL = `${BASE_URL}/projects/${PROJECT_ID}?via=jobs`
-  const USERNAME = 'patrik'
-  const PASSWORD = '***REMOVED***'
+  const USERNAME = process.env.TEST_USER || ''
+  const PASSWORD = process.env.TEST_PASSWORD || ''
+
+  if (!USERNAME || !PASSWORD) {
+    throw new Error('Test credentials missing: set TEST_USER and TEST_PASSWORD env vars')
+  }
 
   test.beforeEach(async ({ page }) => {
     // Navigate to project page

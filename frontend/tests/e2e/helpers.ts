@@ -17,6 +17,9 @@ const API_BASE_URL = 'http://localhost:7272'
 // AUTHENTICATION HELPERS
 // ============================================
 
+const DEFAULT_TEST_USER = process.env.TEST_USER || ''
+const DEFAULT_TEST_PASSWORD = process.env.TEST_PASSWORD || ''
+
 /**
  * Login as a test user
  *
@@ -24,14 +27,19 @@ const API_BASE_URL = 'http://localhost:7272'
  * The backend sets 'access_token' cookie with httpOnly=true, secure=false, samesite=lax.
  *
  * @param page - Playwright page instance
- * @param email - User email (default: patrik - real user for E2E tests)
- * @param password - User password (default: ***REMOVED***)
+ * @param email - User email (default: TEST_USER env var)
+ * @param password - User password (default: TEST_PASSWORD env var)
  */
 export async function loginAsTestUser(
   page: Page,
-  email: string = 'patrik',
-  password: string = '***REMOVED***'
+  email: string = DEFAULT_TEST_USER,
+  password: string = DEFAULT_TEST_PASSWORD
 ): Promise<void> {
+  if (!email || !password) {
+    throw new Error(
+      'Test credentials missing: set TEST_USER and TEST_PASSWORD env vars (or pass email/password explicitly)'
+    )
+  }
   console.log('[loginAsTestUser] Starting login process...')
 
   // Navigate to login page
@@ -82,10 +90,10 @@ export async function loginAsTestUser(
 }
 
 /**
- * Login as patrik (real user for integration tests)
+ * Login as default test user (uses TEST_USER and TEST_PASSWORD env vars)
  */
 export async function loginAsDefaultTestUser(page: Page): Promise<void> {
-  await loginAsTestUser(page, 'patrik', '***REMOVED***')
+  await loginAsTestUser(page)
 }
 
 // ============================================

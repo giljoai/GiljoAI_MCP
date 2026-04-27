@@ -578,7 +578,7 @@ async def test_api_key(db_session, test_user):
 ```bash
 # Drop and recreate test database
 psql -U postgres -c "DROP DATABASE IF EXISTS giljo_mcp_test;"
-python -c "from src.giljo_mcp.database import DatabaseManager; import asyncio; asyncio.run(DatabaseManager('postgresql://postgres:***@localhost/giljo_mcp_test', is_async=True).create_tables_async())"
+python -c "from src.giljo_mcp.database import DatabaseManager; import asyncio; asyncio.run(DatabaseManager('postgresql://postgres:$DB_PASSWORD@localhost/giljo_mcp_test', is_async=True).create_tables_async())"
 ```
 
 ### 3. CI/CD Integration

@@ -58,8 +58,8 @@ PLAYWRIGHT_TEST_BASE_URL=http://10.1.0.164:7274 npm run test:e2e
 ### Test User Credentials
 
 Default test user (if using custom server):
-- **Username:** patrik
-- **Password:** ***REMOVED***
+- **Username:** `<your-username>` (set via `TEST_USER` env var)
+- **Password:** `<your-test-password>` (set via `TEST_PASSWORD` env var)
 
 ### Project ID
 
