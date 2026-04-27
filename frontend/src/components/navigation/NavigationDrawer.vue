@@ -351,12 +351,25 @@
           />
           <v-card-text class="pa-5 text-body-2">
             <div class="font-weight-bold mb-3">GiljoAI MCP</div>
-            Beta 1.0.0<br />
-            Community Edition<br />
-            License: {{ licenseStatus }}<br /><br />
-            GiljoAI Community License v1.1<br />
-            Free for single-user use. Multi-user deployments require a Commercial License.
-            Commercial Licenses may be obtained at no cost at GiljoAI LLC's discretion.<br /><br />
+            {{ versionLabel }}<br />
+            {{ aboutEditionLabel }}<br />
+            License: {{ aboutLicenseLabel }}<br /><br />
+
+            <template v-if="giljoMode === 'demo'">
+              Demo trial accounts are read-mostly and reset periodically.
+              Sign up for a full account to keep your data.<br /><br />
+            </template>
+
+            <template v-else-if="giljoMode === 'saas'">
+              Hosted by GiljoAI under your active subscription.<br /><br />
+            </template>
+
+            <template v-else>
+              GiljoAI Community License v1.1<br />
+              Free for single-user use. Multi-user deployments require a Commercial License.
+              Commercial Licenses may be obtained at no cost at GiljoAI LLC's discretion.<br /><br />
+            </template>
+
             <a
               href="https://www.giljo.ai"
               target="_blank"
@@ -368,7 +381,7 @@
               target="_blank"
               class="about-link"
             >View License</a>
-            <template v-if="licenseStatus === 'Unlicensed'">
+            <template v-if="giljoMode === 'ce' && licenseStatus === 'Unlicensed'">
               &nbsp;&middot;&nbsp;
               <a href="mailto:sales@giljo.ai" class="about-link">Get a License</a>
             </template>
@@ -578,15 +591,18 @@ function goUpgrade() {
 // Edition state
 const edition = ref('')
 const giljoMode = ref('ce')
+const serverVersion = ref('')
 
 async function checkEdition() {
   try {
     await configService.fetchConfig()
     edition.value = configService.getEdition()
     giljoMode.value = configService.getGiljoMode()
+    serverVersion.value = configService.getVersion()
   } catch {
     edition.value = 'community'
     giljoMode.value = 'ce'
+    serverVersion.value = ''
   }
 }
 
@@ -597,6 +613,37 @@ const editionFooterLabel = computed(() => {
     case 'saas': return props.rail ? 'SaaS' : 'SaaS Edition'
     default: return props.rail ? 'CE' : 'Community Edition'
   }
+})
+
+// About dialog: edition label (always full name, no rail variant)
+const aboutEditionLabel = computed(() => {
+  switch (giljoMode.value) {
+    case 'demo': return 'Demo Edition'
+    case 'saas': return 'SaaS Edition'
+    default: return 'Community Edition'
+  }
+})
+
+// About dialog: version label, falls back gracefully if backend didn't supply one
+const versionLabel = computed(() =>
+  serverVersion.value ? `v${serverVersion.value}` : 'Version unavailable',
+)
+
+// About dialog: edition-aware license line
+const aboutLicenseLabel = computed(() => {
+  if (giljoMode.value === 'demo') {
+    const days = accountStateStoreRef.value?.daysRemaining
+    const status = accountStateStoreRef.value?.trial?.status
+    if (status === 'expired' || status === 'reaped') return '7-day trial (expired)'
+    if (typeof days === 'number') {
+      if (days <= 0) return '7-day trial (ends today)'
+      if (days === 1) return '7-day trial (1 day remaining)'
+      return `7-day trial (${days} days remaining)`
+    }
+    return '7-day trial'
+  }
+  if (giljoMode.value === 'saas') return 'Subscription'
+  return licenseStatus.value
 })
 
 // Reset password (SaaS/demo mode)

@@ -15,9 +15,15 @@ Tests will ABORT before collection if the environment is unsafe.
 
 import asyncio
 import os
+import re
 import sys
 
 import pytest
+
+
+def _mask_db_url_password(url: str) -> str:
+    """Mask the password component of a database URL for safe logging."""
+    return re.sub(r"://([^:/@]+):[^@]+@", r"://\1:***@", url)
 
 
 # =============================================================================
@@ -48,9 +54,10 @@ def _check_database_safety() -> tuple[bool, str]:
     if db_url:
         # Check if it contains production DB name without _test
         if f"/{PRODUCTION_DB_NAME}" in db_url and f"/{TEST_DB_NAME}" not in db_url:
+            safe_url = _mask_db_url_password(db_url)
             return False, (
                 f"DATABASE_URL points to production database!\n"
-                f"  Found: {db_url[:60]}...\n"
+                f"  Found: {safe_url[:60]}...\n"
                 f"  Expected: URL containing '{TEST_DB_NAME}'\n\n"
                 f"To fix:\n"
                 f"  1. Unset DATABASE_URL: unset DATABASE_URL\n"

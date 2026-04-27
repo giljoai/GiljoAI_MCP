@@ -13,7 +13,7 @@
  * Test Configuration:
  * - Backend: http://localhost:7272
  * - Frontend: http://localhost:7274
- * - Auth: username="patrik", password="***REMOVED***"
+ * - Auth: TEST_USER and TEST_PASSWORD env vars
  *
  * Handover: Message Counter Validation (E2E TDD)
  */
@@ -22,6 +22,13 @@ import { test, expect } from '@playwright/test'
 import {
   loginAsDefaultTestUser,
 } from './helpers'
+
+const TEST_USER = process.env.TEST_USER || ''
+const TEST_PASSWORD = process.env.TEST_PASSWORD || ''
+
+if (!TEST_USER || !TEST_PASSWORD) {
+  throw new Error('Test credentials missing: set TEST_USER and TEST_PASSWORD env vars')
+}
 
 test.describe('Message Counter Functionality', () => {
   const API_BASE_URL = 'http://localhost:7272'
@@ -40,8 +47,8 @@ test.describe('Message Counter Functionality', () => {
     try {
       // Login to get auth token
       await page.goto(`${FRONTEND_BASE_URL}/login`)
-      await page.fill('[data-testid="email-input"] input', 'patrik')
-      await page.fill('[data-testid="password-input"] input', '***REMOVED***')
+      await page.fill('[data-testid="email-input"] input', TEST_USER)
+      await page.fill('[data-testid="password-input"] input', TEST_PASSWORD)
       await page.click('[data-testid="login-button"]')
       await page.waitForURL((url) => !url.toString().includes('/login'), { timeout: 10000 })
 
