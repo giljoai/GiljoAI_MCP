@@ -198,17 +198,42 @@ function Test-Prerequisites {
     # -- PostgreSQL --
     Write-Step "Checking PostgreSQL..."
     $pgFound = $false
+
+    # 1) Command on PATH
     if (Test-CommandExists "pg_isready") {
         Write-Ok "PostgreSQL found (pg_isready available)"
         $pgFound = $true
-    } else {
-        # Check if PostgreSQL service is running
+    }
+
+    # 2) Windows service
+    if (-not $pgFound) {
         $pgService = Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue
         if ($pgService) {
             Write-Ok "PostgreSQL service found: $($pgService.DisplayName)"
             $pgFound = $true
         }
     }
+
+    # 3) Standard filesystem locations -- bin may not be on PATH yet
+    if (-not $pgFound) {
+        $pgBinCandidates = Get-ChildItem -Path "C:\Program Files\PostgreSQL\*\bin\psql.exe" -ErrorAction SilentlyContinue
+        if ($pgBinCandidates) {
+            $pgBinDir = Split-Path $pgBinCandidates[0].FullName -Parent
+            $env:PATH = "$pgBinDir;$env:PATH"
+            Write-Ok "PostgreSQL found at $pgBinDir (added to session PATH)"
+            $pgFound = $true
+        }
+    }
+
+    # 4) winget package registry -- catches installs whose bin isn't on PATH and whose service is named oddly
+    if (-not $pgFound -and (Test-CommandExists "winget")) {
+        $wingetList = & winget list --id PostgreSQL.PostgreSQL --exact 2>&1 | Out-String
+        if ($wingetList -match "PostgreSQL\.PostgreSQL") {
+            Write-Ok "PostgreSQL found via winget package registry"
+            $pgFound = $true
+        }
+    }
+
     if (-not $pgFound) {
         Write-Warn "PostgreSQL not detected"
         $missing += "postgresql"
@@ -331,10 +356,18 @@ function Test-Prerequisites {
             Write-Host "    ╚══════════════════════════════════════════════════════════╝" -ForegroundColor $script:BRAND_COLOR
             Write-Host ""
             $pgProc = Start-Process -FilePath "winget" -ArgumentList $argLine -Wait -PassThru -NoNewWindow
-            if ($pgProc.ExitCode -ne 0) {
+            # winget exit codes that mean "nothing to do, package already present":
+            #   -1978335189 (0x8A15002B) APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE
+            #   -1978335207 (0x8A150019) APPINSTALLER_CLI_ERROR_PACKAGE_ALREADY_INSTALLED
+            $okCodes = @(0, -1978335189, -1978335207)
+            if ($okCodes -notcontains $pgProc.ExitCode) {
                 throw "winget exited with code $($pgProc.ExitCode)"
             }
-            Write-Ok "PostgreSQL installed"
+            if ($pgProc.ExitCode -eq 0) {
+                Write-Ok "PostgreSQL installed"
+            } else {
+                Write-Ok "PostgreSQL already installed (winget reports up-to-date)"
+            }
         } catch {
             Exit-WithError "PostgreSQL installation failed: $_`nPlease install manually from https://www.postgresql.org/download/windows/ and re-run this script."
         }
