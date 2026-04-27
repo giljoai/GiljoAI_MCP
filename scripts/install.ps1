@@ -142,6 +142,35 @@ function Refresh-PathEnv {
     $env:Path    = "$machinePath;$userPath"
 }
 
+function Add-ToUserPath {
+    <#
+    .SYNOPSIS
+        Persists a directory to the User PATH environment variable so it
+        survives shell restarts. Also updates the current session's PATH.
+        No-op if the directory is already present (case-insensitive match).
+    #>
+    param([Parameter(Mandatory=$true)][string]$Directory)
+
+    if (-not (Test-Path $Directory)) { return }
+
+    $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
+    if (-not $userPath) { $userPath = "" }
+
+    $entries = $userPath -split ';' | Where-Object { $_ -ne "" }
+    $alreadyPresent = $entries | Where-Object { $_.TrimEnd('\') -ieq $Directory.TrimEnd('\') }
+
+    if (-not $alreadyPresent) {
+        $newUserPath = if ($userPath) { "$Directory;$userPath" } else { $Directory }
+        [System.Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+        Write-Ok "Added $Directory to User PATH (persisted)"
+    }
+
+    # Always update current session so the rest of the installer sees it.
+    if (($env:PATH -split ';') -notcontains $Directory) {
+        $env:PATH = "$Directory;$env:PATH"
+    }
+}
+
 # ---------------------------------------------------------------------------
 # Phase 1 -- Prerequisites
 # ---------------------------------------------------------------------------
@@ -219,8 +248,8 @@ function Test-Prerequisites {
         $pgBinCandidates = Get-ChildItem -Path "C:\Program Files\PostgreSQL\*\bin\psql.exe" -ErrorAction SilentlyContinue
         if ($pgBinCandidates) {
             $pgBinDir = Split-Path $pgBinCandidates[0].FullName -Parent
-            $env:PATH = "$pgBinDir;$env:PATH"
-            Write-Ok "PostgreSQL found at $pgBinDir (added to session PATH)"
+            Write-Ok "PostgreSQL found at $pgBinDir"
+            Add-ToUserPath -Directory $pgBinDir
             $pgFound = $true
         }
     }
@@ -372,7 +401,7 @@ function Test-Prerequisites {
             Exit-WithError "PostgreSQL installation failed: $_`nPlease install manually from https://www.postgresql.org/download/windows/ and re-run this script."
         }
 
-        # Add PostgreSQL bin to PATH for this session
+        # Persist PostgreSQL bin to User PATH (survives shell restart)
         $pgBinPaths = @(
             "C:\Program Files\PostgreSQL\18\bin",
             "C:\Program Files\PostgreSQL\17\bin",
@@ -380,7 +409,7 @@ function Test-Prerequisites {
         )
         foreach ($p in $pgBinPaths) {
             if (Test-Path $p) {
-                $env:PATH = "$p;$env:PATH"
+                Add-ToUserPath -Directory $p
                 break
             }
         }
