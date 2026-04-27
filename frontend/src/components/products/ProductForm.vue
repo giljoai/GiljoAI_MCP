@@ -710,11 +710,33 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  // Parent-driven spinner state. Bound via v-model:saving so the parent
+  // can reset the button to idle on error (see ProductsView.saveProduct
+  // catch block). Without this, a 4xx from the backend left the button
+  // permanently in :loading state and looked like a frozen UI.
+  saving: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'remove-vision', 'clear-upload-error', 'upload-vision-files'])
+const emit = defineEmits([
+  'update:modelValue',
+  'update:saving',
+  'save',
+  'cancel',
+  'remove-vision',
+  'clear-upload-error',
+  'upload-vision-files',
+])
 
-const saving = ref(false)
+// Internal proxy mirrors the v-model:saving prop so the rest of the
+// component reads/writes through one symbol. setSaving() forwards to
+// the parent so the parent stays the source of truth.
+const saving = computed({
+  get: () => props.saving,
+  set: (value) => emit('update:saving', value),
+})
 const formValid = ref(false)
 const formRef = ref(null)
 const visionFiles = ref([])

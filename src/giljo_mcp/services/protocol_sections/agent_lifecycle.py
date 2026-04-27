@@ -222,8 +222,9 @@ or write a separate `write_360_memory()` entry with those tags so they persist f
 For trivial items (~10 lines), prefer fixing immediately rather than deferring.
 
 **Closeout steps (order matters):**
-1. Mark any remaining TODO items as `completed` via `report_progress()`
-2. `mcp__giljo_mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})` — mark YOUR orchestrator job complete FIRST
+1. Mark any remaining non-closeout TODO items as `completed` via `report_progress()` (a TODO describing the closeout itself does NOT need to be marked completed first — see step 2)
+2. `mcp__giljo_mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}}, acknowledge_closeout_todo=True)` — mark YOUR orchestrator job complete FIRST
+   → Pass `acknowledge_closeout_todo=True` so the gate auto-completes any TODO whose content describes the closeout itself (matches "closeout", "complete_job", or "close_project"). This avoids the chicken-and-egg of needing to mark your closeout TODO done before calling closeout. Non-closeout incomplete TODOs still block. The unread-messages gate is independent — drain messages with `receive_messages()` first.
    → READ the `closeout_checklist` in the response
    → If `user_approval_required=true`: set status blocked with reason "Closeout: awaiting user review", present deferred findings and options to user, WAIT for user response
    → If `user_approval_required=false`: proceed with best judgment
@@ -235,7 +236,7 @@ For trivial items (~10 lines), prefer fixing immediately rather than deferring.
 **IMPORTANT:** You MUST complete your own job (step 2) BEFORE closing the project (step 5). The server requires all agents including the orchestrator to be complete before project closeout.
 
 **If `complete_job()` is rejected:** Read the error. Common causes:
-- Unread messages remain → run receive_messages() and process them
+- Unread messages remain → run receive_messages() and process them (the `acknowledge_closeout_todo` flag does NOT bypass this gate)
 - TODO items incomplete �� review and update your TODO list, then retry
 
 ## ORCHESTRATOR CONSTRAINTS

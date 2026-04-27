@@ -152,6 +152,7 @@ describe('WelcomeView — step-4 template-card bootstrap', () => {
       expect(createProjectMock).toHaveBeenCalledWith({
         name: tmpl.projectName,
         description: tmpl.projectDescription,
+        product_id: 'prod-1',
       })
     }
     expect(createProjectMock).toHaveBeenCalledTimes(PROJECT_TEMPLATES.length)

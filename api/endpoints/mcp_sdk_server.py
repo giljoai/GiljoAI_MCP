@@ -641,7 +641,11 @@ async def report_progress(
     description=(
         "Mark job as completed with results. Called by: ANY AGENT when all assigned "
         "work is done. System will REJECT if unread messages remain or TODOs are incomplete. "
-        "Check receive_messages() and verify all TODOs are completed before calling."
+        "Check receive_messages() and verify all TODOs are completed before calling. "
+        "ORCHESTRATOR CLOSEOUT: pass acknowledge_closeout_todo=True when the closeout "
+        "TODO IS this very call (e.g. 'Closeout: complete orchestrator job') — the gate "
+        "will auto-complete any TODO whose content matches closeout/complete_job/close_project. "
+        "Non-closeout incomplete TODOs still block. Unread-messages gate is unaffected."
     ),
 )
 async def complete_job(
@@ -652,10 +656,24 @@ async def complete_job(
             description="Completion result dict. Expected keys: 'summary' (str, what was accomplished), 'files_changed' (list[str], optional), 'decisions_made' (list[str], optional)."
         ),
     ],
+    acknowledge_closeout_todo: Annotated[
+        bool,
+        Field(
+            description="When True, auto-complete any incomplete TODO whose content describes the closeout itself (matches closeout/complete_job/close_project). Use from orchestrator closeout where the closeout TODO IS this call. Default False."
+        ),
+    ] = False,
     ctx: Context = None,
 ) -> dict:
     """Mark job as completed with results."""
-    return await _call_tool(ctx, "complete_job", {"job_id": job_id, "result": result})
+    return await _call_tool(
+        ctx,
+        "complete_job",
+        {
+            "job_id": job_id,
+            "result": result,
+            "acknowledge_closeout_todo": acknowledge_closeout_todo,
+        },
+    )
 
 
 @mcp.tool(

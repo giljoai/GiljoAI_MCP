@@ -11,6 +11,7 @@ Contains complete_job and its 8 helper methods (~330 lines).
 """
 
 import logging
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
@@ -30,6 +31,12 @@ if TYPE_CHECKING:
     from giljo_mcp.services.orchestration_agent_state_service import OrchestrationAgentStateService
 
 logger = logging.getLogger(__name__)
+
+
+# Narrow regex matching TODO content describing the closeout call itself.
+# Used by complete_job(acknowledge_closeout_todo=True) to auto-complete
+# self-referential TODOs that would otherwise block the gate.
+CLOSEOUT_TODO_PATTERN = re.compile(r"(?i)\b(closeout|complete[_ ]job|close[_ ]project)\b")
 
 
 class JobCompletionService:
@@ -67,7 +74,11 @@ class JobCompletionService:
         return self.db_manager.get_session_async()
 
     async def complete_job(
-        self, job_id: str, result: dict[str, Any], tenant_key: Optional[str] = None
+        self,
+        job_id: str,
+        result: dict[str, Any],
+        tenant_key: Optional[str] = None,
+        acknowledge_closeout_todo: bool = False,
     ) -> CompleteJobResult:
         """Mark job as complete (AgentExecution, async safe).
 
@@ -75,6 +86,12 @@ class JobCompletionService:
             job_id: Job UUID (looks up latest active execution)
             result: Job result data dict
             tenant_key: Optional tenant key (uses current if not provided)
+            acknowledge_closeout_todo: If True, auto-complete any incomplete TODOs
+                whose content matches the closeout pattern (e.g. "Closeout: ...",
+                "complete_job ...", "close_project ..."). Use this from the
+                orchestrator closeout call where the closeout TODO IS this call.
+                Non-closeout incomplete TODOs still block. Unread-messages gate
+                is unaffected.
 
         Returns:
             CompleteJobResult with success status
@@ -109,7 +126,13 @@ class JobCompletionService:
                     job = await self._fetch_job_for_completion(session, job_id, tenant_key)
 
                     await self._validate_completion_requirements(
-                        session, job, execution, tenant_key, job_id, completion_attempt_time
+                        session,
+                        job,
+                        execution,
+                        tenant_key,
+                        job_id,
+                        completion_attempt_time,
+                        acknowledge_closeout_todo=acknowledge_closeout_todo,
                     )
 
                     old_status, duration_seconds = self._apply_completion_status(execution, result)
@@ -224,8 +247,15 @@ class JobCompletionService:
         tenant_key: str,
         job_id: str,
         completion_attempt_time: datetime,
+        acknowledge_closeout_todo: bool = False,
     ) -> None:
-        """Check unread messages and incomplete TODOs; raise if completion is blocked."""
+        """Check unread messages and incomplete TODOs; raise if completion is blocked.
+
+        When ``acknowledge_closeout_todo`` is True, any incomplete TODOs whose
+        ``content`` matches :data:`CLOSEOUT_TODO_PATTERN` are auto-completed in
+        place before the gate evaluates. Non-closeout incomplete TODOs still
+        block. The unread-messages gate is unaffected by this flag.
+        """
         repo = AgentCompletionRepository()
         all_unread = await repo.get_unread_messages_for_agent(session, tenant_key, job.project_id, execution.agent_id)
 
@@ -240,6 +270,22 @@ class JobCompletionService:
         unread_messages = [message for message in all_unread if _is_before_attempt(message)]
 
         incomplete_todos = await repo.get_incomplete_todos(session, tenant_key, job_id)
+
+        if acknowledge_closeout_todo and incomplete_todos:
+            closeout_todos = [t for t in incomplete_todos if CLOSEOUT_TODO_PATTERN.search(t.content or "")]
+            remainder = [t for t in incomplete_todos if t not in closeout_todos]
+            if closeout_todos:
+                now = datetime.now(timezone.utc)
+                for todo in closeout_todos:
+                    todo.status = "completed"
+                    todo.updated_at = now
+                await session.flush()
+                self._logger.info(
+                    "Auto-completed %d closeout TODO(s) on acknowledged complete_job for job %s",
+                    len(closeout_todos),
+                    job_id,
+                )
+            incomplete_todos = remainder
 
         if unread_messages or incomplete_todos:
             reasons = []

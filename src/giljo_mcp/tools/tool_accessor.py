@@ -546,9 +546,33 @@ class ToolAccessor:
             todo_append=todo_append,
         )
 
-    async def complete_job(self, job_id: str, result: dict[str, Any], tenant_key: str | None = None) -> dict[str, Any]:
-        """Mark job as complete (delegates to JobCompletionService). Sprint 002f: collapsed."""
-        return await self._job_completion_service.complete_job(job_id=job_id, result=result, tenant_key=tenant_key)
+    async def complete_job(
+        self,
+        job_id: str,
+        result: dict[str, Any],
+        tenant_key: str | None = None,
+        acknowledge_closeout_todo: bool = False,
+    ) -> dict[str, Any]:
+        """Mark job as complete (delegates to JobCompletionService). Sprint 002f: collapsed.
+
+        Args:
+            job_id: Job UUID.
+            result: Completion result dict.
+            tenant_key: Optional tenant key (uses current if not provided).
+            acknowledge_closeout_todo: When True, the gate auto-completes any
+                incomplete TODOs whose content describes the closeout itself
+                (e.g. "Closeout: complete orchestrator job"). Use this from
+                the orchestrator closeout call where the closeout TODO IS the
+                very call being made — avoids the chicken-and-egg of needing
+                to mark a "call complete_job" TODO completed before calling
+                complete_job. Non-closeout incomplete TODOs still block.
+        """
+        return await self._job_completion_service.complete_job(
+            job_id=job_id,
+            result=result,
+            tenant_key=tenant_key,
+            acknowledge_closeout_todo=acknowledge_closeout_todo,
+        )
 
     async def close_job(self, job_id: str, tenant_key: str | None = None) -> dict[str, Any]:
         """Close a completed job (final acceptance). Sprint 002f: collapsed."""

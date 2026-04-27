@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -227,7 +227,7 @@ class ProjectRepository:
         query = select(Project).options(selectinload(Project.project_type)).where(Project.tenant_key == tenant_key)
 
         if product_id:
-            query = query.where(or_(Project.product_id == product_id, Project.product_id.is_(None)))
+            query = query.where(Project.product_id == product_id)
 
         if status:
             query = query.where(Project.status == status)
@@ -531,7 +531,7 @@ class ProjectRepository:
         """Get all soft-deleted projects for a tenant, optionally scoped to a product."""
         conditions = [Project.tenant_key == tenant_key, Project.status == "deleted", Project.deleted_at.isnot(None)]
         if product_id:
-            conditions.append(or_(Project.product_id == product_id, Project.product_id.is_(None)))
+            conditions.append(Project.product_id == product_id)
         stmt = select(Project).where(and_(*conditions))
         result = await session.execute(stmt)
         return list(result.scalars().all())

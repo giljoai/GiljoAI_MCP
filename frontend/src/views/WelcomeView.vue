@@ -351,6 +351,9 @@ function tintedBg(hex) {
 const hasActiveProduct = computed(() => !!productStore.activeProduct)
 const hasAnyProduct = computed(() => productStore.hasProducts)
 const activeProjectCount = computed(() => projectStore.activeProjects?.length ?? 0)
+// projectStore.projects is product-scoped via fetchProjects(currentProductId),
+// so this gate is per-product. ce_0004 enforces NOT NULL on product_id, so
+// orphan rows can no longer pollute another product's count.
 const hasAnyProject = computed(() => (projectStore.projects?.length ?? 0) > 0)
 
 // Onboarding-aware quick launch card definitions
@@ -462,22 +465,31 @@ const templateCards = computed(() =>
 
 async function createFromTemplate(tmpl) {
   if (busyTemplateId.value) return
+  const productId = productStore.activeProduct?.id || productStore.effectiveProductId
+  if (!productId) {
+    showToast({
+      message: 'No active product — activate a product before creating a project.',
+      color: 'error',
+    })
+    return
+  }
   busyTemplateId.value = tmpl.id
   try {
     await projectStore.createProject({
       name: tmpl.projectName,
       description: tmpl.projectDescription,
+      product_id: productId,
     })
+    busyTemplateId.value = null
     // Match newProjectCard's destination so the welcome flow advances
     // identically regardless of which step-4 card the user clicked.
     router.push('/Projects')
   } catch (err) {
+    busyTemplateId.value = null
     showToast({
       message: err?.message || 'Failed to create project from template',
       color: 'error',
     })
-  } finally {
-    busyTemplateId.value = null
   }
 }
 
@@ -518,7 +530,10 @@ const quickCards = computed(() => {
     return [activateProductCard.value]
   }
 
-  // Step 4: Product exists but no project → show "New Project" + 2 template cards
+  // Step 4: Product exists but no project under it → show "New Project" +
+  // 2 template cards. Cards naturally hide once the user creates any
+  // project under the active product (and reappear if they delete them
+  // all -- by design, that product is effectively starting fresh).
   if (!hasAnyProject.value) {
     return [newProjectCard.value, ...templateCards.value]
   }

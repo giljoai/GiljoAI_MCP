@@ -274,10 +274,19 @@ class OrchestrationService:
     # ============================================================================
 
     async def complete_job(
-        self, job_id: str, result: dict[str, Any], tenant_key: Optional[str] = None
+        self,
+        job_id: str,
+        result: dict[str, Any],
+        tenant_key: Optional[str] = None,
+        acknowledge_closeout_todo: bool = False,
     ) -> CompleteJobResult:
         """Facade: delegates to JobCompletionService."""
-        return await self._job_completion.complete_job(job_id, result, tenant_key)
+        return await self._job_completion.complete_job(
+            job_id,
+            result,
+            tenant_key,
+            acknowledge_closeout_todo=acknowledge_closeout_todo,
+        )
 
     async def get_agent_result(self, job_id: str, tenant_key: str | None = None) -> dict | None:
         """Fetch the completion result for a given job's latest execution.

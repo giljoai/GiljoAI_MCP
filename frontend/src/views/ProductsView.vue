@@ -265,6 +265,7 @@
     <!-- Create/Edit Product Dialog -->
     <ProductForm
       v-model="showDialog"
+      v-model:saving="savingProduct"
       :product="editingProduct"
       :is-edit="!!editingProduct && !autoSavedForAnalysis"
       :existing-vision-documents="existingVisionDocuments"
@@ -277,6 +278,26 @@
       @remove-vision="removeVisionDocument"
       @clear-upload-error="visionUploadError = null"
     />
+
+    <!-- Duplicate-name Modal — blocks the user with an actionable message
+         when the backend rejects a product create due to an active duplicate.
+         The ProductForm dialog underneath stays open so all typed-in fields
+         are preserved; user dismisses, renames, retries. -->
+    <v-dialog v-model="showDuplicateNameModal" max-width="480" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center ga-2">
+          <v-icon color="warning" size="24">mdi-alert-circle-outline</v-icon>
+          Duplicate product name
+        </v-card-title>
+        <v-card-text>{{ duplicateNameMessage }}</v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="primary" variant="flat" @click="showDuplicateNameModal = false">
+            OK
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Product Details Dialog -->
     <ProductDetailsDialog
@@ -368,6 +389,15 @@ const autoSavedForAnalysis = ref(null) // Holds product ID if auto-saved for sta
 const uploadingVision = ref(false)
 const uploadProgress = ref(0)
 const visionUploadError = ref(null)
+// Owned here (not inside ProductForm) so we can reset the spinner from
+// the saveProduct() catch block when the backend rejects (e.g. duplicate
+// active-product name). Two-way bound via v-model:saving on <ProductForm>.
+const savingProduct = ref(false)
+// Duplicate-name modal — used instead of a toast for active-product name
+// collisions because the form stays open behind it and the user must
+// pick a different name (blocking decision, not a passive notification).
+const showDuplicateNameModal = ref(false)
+const duplicateNameMessage = ref('')
 const detailsVisionDocuments = ref([])
 const cascadeImpact = ref(null)
 const loadingCascadeImpact = ref(false)
@@ -647,12 +677,31 @@ async function saveProduct(payload) {
     visionUploadError.value = null
   } catch (error) {
     console.error('Failed to save product:', error)
-    showToast({
-      message: 'Failed to save product. Check your connection and try again.',
-      type: 'error',
-      timeout: 5000,
-    })
-    // Handover 0051: Do NOT close dialog on error - keep form data visible
+    // Surface the real backend message instead of a generic
+    // "check your connection" toast. The server returns a structured
+    // {error_code, message} payload (e.g. duplicate active-product name)
+    // that the user needs verbatim to know what to fix.
+    const parsed = parseErrorResponse(error)
+    const isDuplicateName =
+      parsed?.message && /already exists/i.test(parsed.message)
+    if (isDuplicateName) {
+      // Modal beats a toast for blocking errors that require user action,
+      // and avoids any visual confusion with the WebSocket-driven toast
+      // surface. Form stays open behind the modal with all fields intact.
+      duplicateNameMessage.value = `${parsed.message}. Pick a different name, or activate or rename the existing product.`
+      showDuplicateNameModal.value = true
+    } else {
+      showToast({
+        message: parsed?.message || 'Failed to save product. Check your connection and try again.',
+        type: 'error',
+        timeout: 5000,
+      })
+    }
+  } finally {
+    // Reset the save-button spinner whether the call succeeded or failed.
+    // Without this, a 4xx left the button stuck in :loading state and the
+    // UI looked frozen / "backend locked up".
+    savingProduct.value = false
   }
 }
 

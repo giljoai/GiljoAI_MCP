@@ -27,7 +27,9 @@ class ProjectCreate(BaseModel):
     mission: str = Field(
         default="", description="AI-generated mission statement (initially empty, filled by orchestrator)"
     )
-    product_id: str | None = Field(None, description="Product ID to associate with")
+    product_id: str = Field(
+        ..., description="Product ID to associate with (required; projects must belong to a product)"
+    )
     status: str = Field(default="inactive", description="Project status (Handover 0050b: defaults to inactive)")
     # Handover 0260: Execution mode for Claude Code CLI toggle
     execution_mode: str = Field(
