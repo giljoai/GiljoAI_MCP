@@ -21,7 +21,7 @@ bcrypt>=4.0.0                      # Password hashing (direct bcrypt, no passlib
 cryptography>=42.0.0              # Fernet encryption for auth tokens (auth_manager.py)
 python-multipart>=0.0.6           # Form data and file upload support
 PyJWT>=2.8.0                      # JWT token handling (using PyJWT instead of python-jose)
-email-validator>=2.1.0            # Required by Pydantic EmailStr (auth.py, users.py)
+email-validator>=2.3.0            # Required by Pydantic EmailStr (auth.py, users.py)
 
 # MCP SDK (Model Context Protocol)
 mcp>=1.23.0                 # MCP SDK (upgraded from 1.12.3 for CVE-2025-66416 DNS rebinding fix)
