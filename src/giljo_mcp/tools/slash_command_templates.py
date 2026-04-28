@@ -16,7 +16,7 @@ Also provides bootstrap prompt templates for one-time CLI onboarding.
 
 # Semver for the skills/commands package. Bumped when slash command templates change.
 # Referenced by health_check so the frontend can compare installed vs available.
-SKILLS_VERSION = "1.1.9"
+SKILLS_VERSION = "1.1.10"
 
 # =============================================================================
 # CLAUDE CODE TEMPLATES
@@ -130,20 +130,24 @@ description: "Add a task or project to the GiljoAI dashboard. Routes to task (te
 - "fetch context for ..."
 - A bare list of project UUIDs
 
-**GOTCHA — read this BEFORE filtering:** the project identifier field is **`project_id`**, NOT `id`. Filtering on `.id` returns nothing because that key does not exist on project objects. Past Claude sessions burned 10+ minutes on this exact mistake. Always use `.project_id` in jq filters.
+**GOTCHA:** the project identifier field is **`project_id`**, NOT `id`. Filtering on `.id` returns nothing. Always use `.project_id` in jq filters.
 
-**Tool sequence:**
-1. Call `mcp__giljo_mcp__list_projects(summary_only=false, depth=2)` — returns all projects with full fields. If the response is large the harness auto-saves it to a tool-result file on disk.
-2. Filter the saved tool-result file with `jq`, keyed on `project_id` (NOT `id`):
+**IDs you already have:** `tenant_key` is auto-injected from auth. `product_id` is in your session context the moment any tool response surfaces it (most tool responses include it). You only need `project_id` — get it from step 1 below or from the user's paste.
+
+**Tool sequence (cheap-first — pick the smallest path that answers the question):**
+1. **Find the project_id by name/alias** → `mcp__giljo_mcp__list_projects(summary_only=true)`. Returns ~150 lines of metadata (project_id, name, taxonomy_alias, status, timestamps). Lightweight. Match by `name` or `taxonomy_alias` to grab the project_id.
+2. **Read one project deeply** → `mcp__giljo_mcp__fetch_context(product_id=..., project_id=..., categories=["project"])`. Returns ~300 tokens for one project: project_name, project_alias, project_description, orchestrator_mission, status, staging_status. This is the right tool when the user wants description/mission for ONE project.
+3. **Bulk read many projects (only if the user pastes multiple UUIDs and needs full fields for all)** → `mcp__giljo_mcp__list_projects(summary_only=false, depth=2)`. Heavy (can be multi-MB on busy products); the harness auto-saves to a tool-result file. Filter with jq:
    ```bash
    jq '.projects[] | select(.project_id == "UUID-HERE") | {project_id, name, taxonomy_alias, status, description, mission}' /path/to/saved-tool-result.json
    ```
-3. For deep single-project context (memory, tasks, agents), call `mcp__giljo_mcp__fetch_context(product_id=..., project_id=..., categories=["project"])` instead of jq-filtering.
 
-**Response shape** — each project object exposes: `project_id`, `name`, `taxonomy_alias` (e.g. "IMP-0015"), `status`, `project_type`, `series_number`, `description`, `mission`, `agent_summary`, `created_at`, `completed_at`.
+**Response shapes:**
+- `fetch_context(["project"])`: `project_name`, `project_alias`, `project_description`, `orchestrator_mission`, `status`, `staging_status`
+- `list_projects` row (depth=2): `project_id`, `name`, `taxonomy_alias`, `status`, `project_type`, `series_number`, `description`, `mission`, `agent_summary`, `created_at`, `completed_at`
 
 **Worked example:**
-> User pastes 5 UUIDs. Skill runs `mcp__giljo_mcp__list_projects(summary_only=false, depth=2)`, then jq-filters the saved tool-result file with `select(.project_id == "<uuid>")` for each UUID, and returns a compact summary table — one row per project: `taxonomy_alias`, `name`, `status`, one-line description.
+> User asks "what's IMP-0019 about?" → call `list_projects(summary_only=true)` → match `taxonomy_alias=="IMP-0019"` → grab `project_id` → call `fetch_context(product_id, project_id, ["project"])` → return description + mission. No multi-MB pull.
 
 ## Rules
 - Never pass `tenant_key` (auto-injected by security layer)
@@ -308,18 +312,22 @@ Triggers — route here when the user says any of these, or pastes one or more U
 - "fetch context for ..."
 - A bare list of project UUIDs
 
-GOTCHA — read this BEFORE filtering: the project identifier field is project_id, NOT id. Filtering on .id returns nothing because that key does not exist on project objects. Past Claude sessions burned 10+ minutes on this exact mistake. Always use .project_id in jq filters.
+GOTCHA: the project identifier field is project_id, NOT id. Filtering on .id returns nothing. Always use .project_id in jq filters.
 
-Tool sequence:
-1. Call list_projects with summary_only=false and depth=2 — returns all projects with full fields. If the response is large the harness auto-saves it to a tool-result file on disk.
-2. Filter the saved tool-result file with jq, keyed on project_id (NOT id). Example invocation via run_shell_command:
+IDs you already have: tenant_key is auto-injected from auth. product_id appears in tool responses (cache it once you see it). You only need project_id — get it from step 1 or the user's paste.
+
+Tool sequence (cheap-first — pick the smallest path that answers the question):
+1. Find the project_id by name/alias: call list_projects with summary_only=true. Returns ~150 lines of metadata only (project_id, name, taxonomy_alias, status, timestamps). Match by name or taxonomy_alias to grab the project_id.
+2. Read one project deeply: call fetch_context with product_id, project_id, and categories=["project"]. Returns ~300 tokens for that single project (project_name, project_alias, project_description, orchestrator_mission, status, staging_status). This is the right tool for "what's project X about?" / "show me the mission for X".
+3. Bulk read many projects (only if user pastes multiple UUIDs and needs full fields for all): call list_projects with summary_only=false and depth=2. Heavy (multi-MB on busy products); harness auto-saves to a tool-result file. Filter with jq via run_shell_command:
    jq '.projects[] | select(.project_id == "UUID-HERE") | {project_id, name, taxonomy_alias, status, description, mission}' /path/to/saved-tool-result.json
-3. For deep single-project context (memory, tasks, agents), call fetch_context with product_id, project_id, and categories=["project"] instead of jq-filtering.
 
-Response shape — each project object exposes: project_id, name, taxonomy_alias (e.g. "IMP-0015"), status, project_type, series_number, description, mission, agent_summary, created_at, completed_at.
+Response shapes:
+- fetch_context(["project"]): project_name, project_alias, project_description, orchestrator_mission, status, staging_status
+- list_projects row (depth=2): project_id, name, taxonomy_alias, status, project_type, series_number, description, mission, agent_summary, created_at, completed_at
 
 Worked example:
-User pastes 5 UUIDs. Skill calls list_projects(summary_only=false, depth=2), then jq-filters the saved tool-result file with select(.project_id == "<uuid>") for each UUID, and returns a compact summary table — one row per project: taxonomy_alias, name, status, one-line description.
+User asks "what's IMP-0019 about?" → call list_projects(summary_only=true) → match taxonomy_alias=="IMP-0019" → grab project_id → call fetch_context(product_id, project_id, ["project"]) → return description + mission. No multi-MB pull.
 
 ## Rules
 - Never pass tenant_key (auto-injected by security layer)
@@ -592,17 +600,21 @@ description: "Add a task or project to the GiljoAI dashboard"
 - "fetch context for ..."
 - A bare list of project UUIDs
 
-**GOTCHA — read this BEFORE filtering:** the project identifier field is **`project_id`**, NOT `id`. Filtering on `.id` returns nothing because that key does not exist on project objects. Past Claude sessions burned 10+ minutes on this exact mistake. Always use `.project_id` in jq filters.
+**GOTCHA:** the project identifier field is **`project_id`**, NOT `id`. Filtering on `.id` returns nothing. Always use `.project_id` in jq filters.
 
-**Tool sequence:**
-1. Invoke `$gil-add` Read mode by calling `list_projects` with `summary_only=false` and `depth=2`. Returns all projects with full fields. If the response is large, Codex auto-saves it to a tool-result file on disk.
-2. Filter the saved tool-result file with `jq`, keyed on `project_id` (NOT `id`):
+**IDs you already have:** `tenant_key` is auto-injected from auth. `product_id` is in your session context the moment any tool response surfaces it. You only need `project_id` — get it from step 1 or the user's paste.
+
+**Tool sequence (cheap-first — pick the smallest path that answers the question):**
+1. **Find the project_id by name/alias** → call `list_projects` with `summary_only=true`. Returns ~150 lines of metadata only (project_id, name, taxonomy_alias, status, timestamps). Match by `name` or `taxonomy_alias` to grab the project_id.
+2. **Read one project deeply** → call `fetch_context` with `product_id`, `project_id`, and `categories=["project"]`. Returns ~300 tokens for one project (project_name, project_alias, project_description, orchestrator_mission, status, staging_status). Right tool for "what's project X about?" / "show mission for X".
+3. **Bulk read many projects (only if user pastes multiple UUIDs and needs full fields for all)** → call `list_projects` with `summary_only=false` and `depth=2`. Heavy (multi-MB on busy products); Codex auto-saves to a tool-result file. Filter with `jq`:
    ```
    jq '.projects[] | select(.project_id == "UUID-HERE") | {project_id, name, taxonomy_alias, status, description, mission}' /path/to/saved-tool-result.json
    ```
-3. For deep single-project context (memory, tasks, agents), call `fetch_context` with `product_id`, `project_id`, and `categories=["project"]` instead of jq-filtering.
 
-**Response shape** — each project object exposes: `project_id`, `name`, `taxonomy_alias` (e.g. "IMP-0015"), `status`, `project_type`, `series_number`, `description`, `mission`, `agent_summary`, `created_at`, `completed_at`.
+**Response shapes:**
+- `fetch_context(["project"])`: `project_name`, `project_alias`, `project_description`, `orchestrator_mission`, `status`, `staging_status`
+- `list_projects` row (depth=2): `project_id`, `name`, `taxonomy_alias`, `status`, `project_type`, `series_number`, `description`, `mission`, `agent_summary`, `created_at`, `completed_at`
 
 **Menu prompts:** When asking which projects to expand, or whether to show summary vs full, use `request_user_input` (1-3 questions per call) with structured options. Never ask via plain text. Example shape:
 ```json

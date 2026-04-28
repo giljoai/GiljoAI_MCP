@@ -33,9 +33,10 @@ GIL_ADD_TEMPLATES = [
 ]
 
 # Required lowercase substrings that must appear in every /gil_add template.
-# These prove the Read-mode section landed: trigger phrasing, MCP tool name,
-# and the project_id field name (the gotcha).
-REQUIRED_READ_MODE_KEYWORDS = ("read project", "list_projects", "project_id")
+# These prove the Read-mode section landed: trigger phrasing, both MCP tools
+# (cheap list_projects + cheap fetch_context single-project read), and the
+# project_id field name (the gotcha).
+REQUIRED_READ_MODE_KEYWORDS = ("read project", "list_projects", "fetch_context", "project_id")
 
 
 @pytest.mark.parametrize(("constant_name", "template"), GIL_ADD_TEMPLATES)
@@ -48,6 +49,13 @@ def test_gil_add_template_contains_read_mode_keyword(constant_name: str, templat
     )
 
 
-def test_skills_version_bumped_for_read_mode() -> None:
-    """SKILLS_VERSION must be 1.1.9 once Read mode lands in /gil_add templates."""
-    assert SKILLS_VERSION == "1.1.9", f"SKILLS_VERSION is {SKILLS_VERSION!r}; expected '1.1.9' after adding Read mode."
+def test_skills_version_bumped_for_read_mode_routing_fix() -> None:
+    """SKILLS_VERSION must be 1.1.10 after Read-mode routing is corrected.
+
+    1.1.9 added Read mode (BE-5033). 1.1.10 reroutes the cheap-first path:
+    list_projects(summary_only=true) -> fetch_context(["project"]) for single
+    project lookup, and demotes list_projects(depth=2) to bulk-only.
+    """
+    assert SKILLS_VERSION == "1.1.10", (
+        f"SKILLS_VERSION is {SKILLS_VERSION!r}; expected '1.1.10' after Read-mode routing fix."
+    )
