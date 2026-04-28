@@ -225,7 +225,7 @@ class TestBuildPredecessorContext:
             agent_display_name="fixer",
         )
 
-        assert "PREDECESSOR CONTEXT" in result
+        assert "PRIOR PHASE OUTPUT" in result
         assert "Fix the bugs" in result
         assert "original-agent" in result
 
