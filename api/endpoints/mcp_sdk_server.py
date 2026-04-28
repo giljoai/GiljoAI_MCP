@@ -77,6 +77,17 @@ def _resolve_tenant(ctx: Context) -> str:
     return tenant_key
 
 
+def _resolve_user_id(ctx: Context) -> str | None:
+    """Extract user_id from ASGI scope state (set by MCPAuthMiddleware).
+
+    Returns None if the request was authenticated by an API key whose session
+    has no user_id back-reference (legacy keys). Callers must treat None as
+    "skip user-scoped side effects".
+    """
+    request: StarletteRequest = ctx.request_context.request
+    return request.scope.get("state", {}).get("user_id")
+
+
 def _set_tenant_context(tenant_key: str) -> None:
     """Set the current tenant for downstream DB queries."""
     _get_tenant_manager().set_current_tenant(tenant_key)
@@ -496,7 +507,10 @@ async def giljo_setup(
     """Install slash commands/skills for your CLI tool."""
     logger.info("giljo_setup called with platform=%s", platform)
 
-    result = await _call_tool(ctx, "bootstrap_setup", {"platform": platform})
+    # HO 1028: pass authenticated user_id so the staging layer can stamp the
+    # installed skills version through UserService (single write path).
+    user_id = _resolve_user_id(ctx)
+    result = await _call_tool(ctx, "bootstrap_setup", {"platform": platform, "user_id": user_id})
 
     # Emit setup:bootstrap_complete WebSocket event
     try:

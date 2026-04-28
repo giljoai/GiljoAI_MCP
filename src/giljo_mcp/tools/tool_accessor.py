@@ -350,7 +350,40 @@ class ToolAccessor:
             logger.exception("Failed to generate download token")
             raise
 
-    async def bootstrap_setup(self, tenant_key: str, platform: str = "claude_code") -> dict[str, Any]:
+    async def _stamp_skills_version(self, tenant_key: str, user_id: str) -> None:
+        """Persist the current SKILLS_VERSION on the user record (HO 1028).
+
+        Routed through ``UserService.update_user_metadata`` — the single
+        sanctioned write path. NEVER call ``setattr`` on the User ORM from
+        the staging or downloads layer; this helper is the only entry.
+
+        Failures are logged and swallowed: the bundle has already been
+        staged, and a stamping miss only delays the next reminder cycle —
+        it must not break the user-facing download flow.
+        """
+        from giljo_mcp.services.user_service import UserService
+        from giljo_mcp.tools.slash_command_templates import SKILLS_VERSION
+
+        try:
+            svc = UserService(
+                db_manager=self.db_manager,
+                tenant_key=tenant_key,
+                websocket_manager=self._websocket_manager,
+                session=self._test_session,
+            )
+            await svc.update_user_metadata(
+                user_id=user_id,
+                last_installed_skills_version=SKILLS_VERSION,
+            )
+        except Exception as exc:  # noqa: BLE001 — best-effort side-effect
+            logger.warning("Failed to stamp skills version for user %s: %s", user_id, exc)
+
+    async def bootstrap_setup(
+        self,
+        tenant_key: str,
+        platform: str = "claude_code",
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
         """
         Stage combined slash commands + agent templates ZIP for first-time setup (Handover 0907).
 
@@ -385,6 +418,13 @@ class ToolAccessor:
                     raise ValidationError(message)
 
                 await token_manager.mark_ready(token)
+
+                # HO 1028: stamp installed skills version on the requesting user
+                # via the single sanctioned write path. user_id may be None when
+                # the API key session lacks a user back-reference (legacy keys);
+                # in that case we skip silently — the column is nullable.
+                if user_id:
+                    await self._stamp_skills_version(tenant_key, user_id)
 
                 # MCP tool context has no FastAPI request, so we can't use
                 # request.base_url here. Fall back to GILJO_PUBLIC_URL env var

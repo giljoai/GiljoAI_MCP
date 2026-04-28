@@ -1,3 +1,7 @@
+// See docs/adr/ADR-002-setup-driven-mode-source-of-truth.md
+// Guards must read mode from setupState.mode (setup store), not configService.getGiljoMode().
+// @vite-ignore dynamic imports are banned — use import.meta.glob instead.
+
 import { createRouter, createWebHistory } from 'vue-router'
 import setupService from '@/services/setupService'
 import configService from '@/services/configService'
