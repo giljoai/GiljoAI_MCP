@@ -485,8 +485,14 @@ class ToolAccessor:
         parent_job_id: str | None = None,
         phase: int | None = None,
         predecessor_job_id: str | None = None,
+        predecessor_role: str = "chain",
     ) -> dict[str, Any]:
-        """Create an agent job (delegates to OrchestrationService)"""
+        """Create an agent job (delegates to OrchestrationService).
+
+        HO1021: predecessor_role distinguishes "chain" (forward phase handoff,
+        preamble skipped in subagent modes) from "replacement" (reactivation,
+        preamble always injected). Default "chain" matches the most common use.
+        """
         return await self._orchestration_service.spawn_job(
             agent_display_name=agent_display_name,
             agent_name=agent_name,
@@ -496,6 +502,7 @@ class ToolAccessor:
             parent_job_id=parent_job_id,
             phase=phase,
             predecessor_job_id=predecessor_job_id,
+            predecessor_role=predecessor_role,
         )
 
     async def get_agent_result(self, job_id: str, tenant_key: str) -> dict[str, Any]:
