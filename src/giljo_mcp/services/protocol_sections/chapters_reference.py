@@ -134,6 +134,15 @@ CROSS-AGENT COORDINATION (MCP-ONLY):
   (a worker delegating a sub-step to a child process inside its own terminal),
   but cross-job coordination is MCP only.
 
+CHAINING PHASES (PREDECESSOR HANDLING):
+  When a Phase N agent depends on Phase N-1 work (e.g. analyzer → implementer):
+  - Pass predecessor_job_id=<prior_job_id> when calling spawn_job for the successor
+  - In the successor's mission, instruct it to call get_agent_result(job_id="<prior_job_id>")
+    FIRST to read the predecessor's structured result (commits, files_changed, decisions)
+  Each terminal is independent — without this pointer, the successor has no inherent
+  way to see the predecessor's output. The id you pass is the existing job_id returned
+  by the prior spawn_job — no new id type, just reuse what you already have.
+
 MESSAGING: Always use agent_id UUIDs in to_agents (from spawn_job response).
 Orchestrator has NO active role after STAGING_COMPLETE broadcast.
 """

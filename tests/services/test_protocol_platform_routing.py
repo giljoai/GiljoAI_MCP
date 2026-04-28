@@ -154,6 +154,25 @@ class TestGenericBranchJobOrderFraming:
         assert "spawn_job" in ch3
         assert "send_message" in ch3
 
+    def test_generic_branch_includes_predecessor_handling_guidance(self):
+        """multi_terminal mode MUST tell the orchestrator how to chain phases:
+        pass predecessor_job_id at spawn AND have the successor call
+        get_agent_result(job_id=...) to read prior work. Without this,
+        cross-phase handoffs in multi_terminal mode break silently."""
+        ch3 = _build_ch3_spawning_rules(tool="multi_terminal")
+        assert "predecessor_job_id" in ch3
+        assert "get_agent_result" in ch3
+        assert "CHAINING PHASES" in ch3
+
+    def test_predecessor_guidance_is_multi_terminal_only(self):
+        """The predecessor-handling block lives in the generic branch only.
+        CLI modes (claude-code/codex/gemini) get inline Task()/spawn_agent()/@-syntax
+        that returns predecessor results directly to the orchestrator process —
+        explicit predecessor_job_id pointers are not load-bearing there."""
+        for tool in ("claude-code", "codex", "gemini"):
+            ch3 = _build_ch3_spawning_rules(tool=tool)
+            assert "CHAINING PHASES" not in ch3, f"predecessor-handling guidance should not appear in {tool} branch"
+
 
 # ---- Agent protocol signature defaults -----------------------------------
 
