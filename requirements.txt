@@ -45,7 +45,7 @@ scipy>=1.10.0              # Required by sumy LSA for SVD computation (not a tra
 nltk>=3.8                  # Natural language processing (tokenization, stopwords)
 
 # SaaS Dependencies (only used when GILJO_MODE=saas or demo)
-resend>=2.0.0              # Transactional email via Resend API (SAAS-006)
+resend>=2.29.0              # Transactional email via Resend API (SAAS-006)
 
 # Platform-Specific
 # pywin32 removed in Handover 0394 - no usage found in codebase
