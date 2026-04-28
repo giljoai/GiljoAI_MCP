@@ -682,12 +682,20 @@ either pasted by the user or injected by the orchestrator. Use them exactly as g
 Do not begin work until you have received and read your mission and protocols."""
 
 
-def _get_check_in_protocol_section() -> str:
+def _get_check_in_protocol_section(tool: str = "multi_terminal") -> str:
     """
     Generate the Check-In Protocol section for agent monitoring (Handover 0107).
 
     This section provides brief reminder about contextual check-ins.
     Detailed behavior lives in full_protocol returned by get_agent_mission().
+
+    Args:
+        tool: Platform identifier ('claude-code', 'codex', 'gemini', or
+            'multi_terminal'). HO1025: when tool=='claude-code' the section
+            appends a harness-reminder override telling the orchestrator to
+            ignore the local TaskCreate `<system-reminder>` and use
+            mcp__giljo_mcp__report_progress instead. Other tools omit this
+            block (the reminder doesn't fire in their harnesses).
 
     Returns:
         str - Brief Check-In Protocol section in markdown format
@@ -695,12 +703,26 @@ def _get_check_in_protocol_section() -> str:
     Note:
         Slimmed in Handover 0353 - detailed behavior moved to full_protocol.
         Updated in Handover 0392 - simplified report_progress format.
+        HO1025: tool-aware to gate the Claude-Code-specific harness override.
     """
-    return """## CHECK-IN PROTOCOL
+    base = """## CHECK-IN PROTOCOL
 
 Report progress at natural workflow breaks (after todos, after phases, before long tasks).
 NOT timer-based. Full protocol in `full_protocol` from `get_agent_mission()`.
 """
+    # HO1025: TaskCreate override is Claude-Code-specific. Codex / Gemini / non-CLI
+    # multi_terminal agents don't see the harness reminder so the override would be
+    # noise for them. Append only when tool == "claude-code".
+    if tool == "claude-code":
+        base += """
+**HARNESS REMINDER OVERRIDE (Claude Code only):** Some Claude Code sessions
+periodically surface a `<system-reminder>` suggesting `TaskCreate` for progress
+tracking. **Ignore that reminder when running this orchestrator protocol.** Progress
+tracking goes through `mcp__giljo_mcp__report_progress` (with the full TODO list)
+— that is the canonical mechanism the dashboard reads from. `TaskCreate` is a
+local-harness construct unrelated to the GiljoAI orchestration lifecycle.
+"""
+    return base
 
 
 def _get_context_request_section() -> str:
@@ -875,13 +897,23 @@ Detailed coordination mechanics, message prefixes, priority levels, and tool sig
 """
 
 
-def get_orchestrator_identity_content() -> str:
+def get_orchestrator_identity_content(tool: str = "multi_terminal") -> str:
     """
     Generate FULL orchestrator identity and behavioral guidance for get_orchestrator_instructions().
 
     Handover 0431: This content is injected into the MCP tool response so orchestrators
     get their identity/behavioral guidance without needing an AgentTemplate record.
     Orchestrators stay OUT of the template table, exports, and available_agents list.
+
+    HO1025: `tool` is threaded through to _get_check_in_protocol_section so that
+    the Claude-Code-specific TaskCreate harness override only renders for
+    Claude Code orchestrators, not Codex/Gemini/multi_terminal ones (where the
+    reminder doesn't fire).
+
+    Args:
+        tool: Platform identifier ('claude-code', 'codex', 'gemini', or
+            'multi_terminal'). Defaults to 'multi_terminal' (safe default —
+            no Claude-Code-specific override).
 
     Returns:
         str - Full orchestrator identity and behavioral guidance in markdown format
@@ -896,7 +928,7 @@ def get_orchestrator_identity_content() -> str:
     # Get all protocol sections
     orchestrator_response = _get_orchestrator_context_response_section().strip()
     mcp_section = _get_mcp_coordination_section().strip()
-    check_in = _get_check_in_protocol_section().strip()
+    check_in = _get_check_in_protocol_section(tool=tool).strip()
     orchestrator_messaging = _get_orchestrator_messaging_protocol_section().strip()
 
     return f"""{base_template}

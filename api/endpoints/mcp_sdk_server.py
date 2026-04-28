@@ -843,7 +843,14 @@ async def spawn_job(
     phase: Annotated[
         int | None,
         Field(
-            description="Execution phase number (1, 2, 3...). Phase 1 runs first, phase 2 after phase 1 completes. Must be an integer."
+            description=(
+                "Optional ordering metadata. Same phase = parallel siblings; "
+                "higher phase = depends on lower phases completing. "
+                "In multi_terminal execution mode the dashboard groups Play buttons by phase. "
+                "In subagent modes (Claude/Codex/Gemini CLI) the orchestrator manages ordering "
+                "via Task() / spawn_agent() / @-syntax invocation order; phase is informational. "
+                "Must be an integer."
+            )
         ),
     ] = None,
     predecessor_job_id: Annotated[

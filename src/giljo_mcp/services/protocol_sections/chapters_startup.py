@@ -334,17 +334,16 @@ Call: health_check()
 Expected: {{"status": "healthy", "database": "connected"}}
 If failed: Abort and notify user
 
-── STEP 1b: Initialize Progress Tracking ───────────────────────────────────
+── STEP 1b: Defer Progress Tracking ───────────────────────────────────────
 DO NOT report progress yet. Steps 0-3 are internal startup — do not track them.
+After Step 4 (Create Mission), you will have a real plan with work items;
+THAT is when you initialize progress tracking (see Step 1c below).
 
-After Step 4 (Create Mission), you will have a real plan with work items.
-THAT is when you initialize progress tracking.
-
-IMPLEMENTATION TODO LIST
-During staging, write yourself a todo list for the implementation phase.
-This is your execution plan — the deliverables you will hold yourself
-accountable to when implementation begins (which may be a different
-session with fresh context).
+── STEP 1c: Plan Implementation Deliverables (TODO list shape) ────────────
+During staging, write yourself a todo list for the IMPLEMENTATION phase
+(the future session, not this one). This is your execution plan — the
+deliverables you will hold yourself accountable to when implementation
+begins (which may be a different session with fresh context).
 
 Each item should describe a PROJECT OUTCOME, not an orchestrator action.
 You already know how to spawn agents, fetch context, and broadcast signals.

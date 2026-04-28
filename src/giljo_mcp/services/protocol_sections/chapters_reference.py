@@ -176,6 +176,17 @@ Agent-specific instructions (what THIS agent should do)
 Should be focused and actionable
 Target: 200-500 tokens per agent mission
 
+── phase (optional, ordering metadata) ────────────────────────────────────
+Same phase number = sibling agents intended to run in parallel.
+Higher phase number = depends on lower phases completing first.
+  - multi_terminal mode: dashboard groups Play buttons by phase; user is
+    expected to start same-phase terminals together and wait on lower phases.
+  - subagent modes (Claude/Codex/Gemini CLI): you (the orchestrator) manage
+    ordering directly via Task() / spawn_agent() / @-syntax invocation order.
+    Phase here is informational metadata for the audit trail and dashboard.
+Tip: pair `phase` with `predecessor_job_id` when a successor needs the
+predecessor's output (server handles the context preamble).
+
 SPAWNING LIMITS:
 
 - Max recommended: 2-5 agents for typical projects

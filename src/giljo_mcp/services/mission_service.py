@@ -456,13 +456,26 @@ class MissionService:
         # Handover 0830/0966: Orchestrator identity — resolve from seeded template
         # instead of hardcoded fallback, so the orchestrator retains full behavioral
         # guidance across the staging→implementation session boundary.
+        # HO1025: pass the project's execution-mode-derived tool so the
+        # Claude-Code-specific TaskCreate harness override only renders for
+        # Claude Code orchestrators (codex/gemini/multi_terminal omit it).
         if job.job_type == "orchestrator" and not agent_identity:
             from giljo_mcp.template_seeder import get_orchestrator_identity_content
 
-            agent_identity = get_orchestrator_identity_content()
+            project = await self._repo.get_project_by_id(session, tenant_key, job.project_id)
+            project_exec_mode = getattr(project, "execution_mode", "multi_terminal") if project else "multi_terminal"
+            _exec_to_tool = {
+                "claude_code_cli": "claude-code",
+                "codex_cli": "codex",
+                "gemini_cli": "gemini",
+                "multi_terminal": "multi_terminal",
+            }
+            tool = _exec_to_tool.get(project_exec_mode, "multi_terminal")
+
+            agent_identity = get_orchestrator_identity_content(tool=tool)
             self._logger.info(
                 "[AGENT_IDENTITY] Resolved orchestrator identity from seeded template",
-                extra={"job_id": job_id},
+                extra={"job_id": job_id, "tool": tool},
             )
 
         return agent_identity

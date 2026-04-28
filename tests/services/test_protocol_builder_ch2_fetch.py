@@ -91,6 +91,20 @@ class TestCH2InlineFetchCalls:
         ch2 = self._build_ch2()
         assert "fetch_context(" in ch2, "CH2 must contain fetch_context() calls"
 
+    def test_ch2_implementation_todo_hoisted_to_step_1c(self):
+        """HO1025: the Implementation TODO List guidance was previously buried
+        inside Step 1b (Initialize Progress Tracking). Test-agent feedback flagged
+        it as easy to skim past. Hoisted to its own labeled Step 1c so the
+        orchestrator sees it as a standalone planning concern."""
+        ch2 = self._build_ch2()
+        assert "STEP 1c" in ch2
+        assert "Plan Implementation Deliverables" in ch2
+        # Step 1b should now ONLY mention deferral, not the TODO list shape
+        assert "STEP 1b: Defer Progress Tracking" in ch2
+        # The TODO list keywords must be in CH2 SOMEWHERE, but the structural
+        # signal is the labeled step header.
+        assert "PROJECT OUTCOME" in ch2
+
     def test_ch2_contains_context_fetch_philosophy(self):
         """HO1024: CH2 Step 2 must teach context-fetch judgment, not prescribe
         fetch-all. Replaces the legacy 'essential context / configured by the

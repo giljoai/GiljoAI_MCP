@@ -164,6 +164,19 @@ class TestGenericBranchJobOrderFraming:
         assert "predecessor_job_id" in ch3
         assert "PHASE HANDOFF" in ch3
 
+    def test_phase_parameter_block_renders_in_all_branches(self):
+        """HO1025: CH3 PARAMETER REQUIREMENTS now documents the `phase` field
+        explicitly. Concept (same phase = parallel, higher = sequential) is
+        mode-agnostic; enforcement differs (multi_terminal: server/dashboard
+        groups by phase; subagent: orchestrator manages ordering inline). The
+        block must render in every branch so test-agent friction #4/#5 are
+        addressed regardless of which mode the project picks."""
+        for tool in ("multi_terminal", "claude-code", "codex", "gemini"):
+            ch3 = _build_ch3_spawning_rules(tool=tool)
+            assert "── phase (optional" in ch3, f"phase block missing in {tool} branch"
+            assert "Same phase number" in ch3
+            assert "Higher phase number" in ch3
+
     def test_predecessor_guidance_is_multi_terminal_only(self):
         """Subagent branches must contain NO mention of predecessor_job_id at all.
         Server silently skips preamble injection in subagent modes; orchestrator

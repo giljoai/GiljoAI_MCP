@@ -420,6 +420,7 @@ class MissionOrchestrationService:
                 "id_glossary": {
                     "job_id": "Use for: report_progress, complete_job, set_agent_status",
                     "agent_id": "Use for: send_message(from_agent), receive_messages",
+                    "project_id": "Use for: send_message(project_id), update_project_mission, spawn_job, get_workflow_status, close_project_and_update_memory",
                 },
             },
             "project_description_inline": {
@@ -512,7 +513,9 @@ class MissionOrchestrationService:
         if override_content:
             response["orchestrator_identity"] = override_content
         else:
-            response["orchestrator_identity"] = get_orchestrator_identity_content()
+            # HO1025: pass protocol_tool so the Claude-Code-only TaskCreate harness
+            # override only renders for Claude Code orchestrators.
+            response["orchestrator_identity"] = get_orchestrator_identity_content(tool=protocol_tool)
 
         logger.info(
             "Returning toggle-based orchestrator instructions",
