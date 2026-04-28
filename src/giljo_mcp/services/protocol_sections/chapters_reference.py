@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 
-def _build_ch3_spawning_rules(tool: str = "claude-code") -> str:
+def _build_ch3_spawning_rules(tool: str = "multi_terminal") -> str:
     """Build CH3: AGENT SPAWNING RULES section — fully tool-aware (Handover 0847).
 
     Each platform gets its own native spawning language as the PRIMARY instruction.
@@ -16,7 +16,9 @@ def _build_ch3_spawning_rules(tool: str = "claude-code") -> str:
 
     Args:
         tool: Platform identifier — 'claude-code', 'codex', 'gemini', or 'multi_terminal'.
-              Defaults to 'claude-code' for backward compatibility.
+              Defaults to 'multi_terminal' for fail-safe routing (HO1020 / Wave 2 Item 2):
+              an unknown tool produces the platform-neutral generic block, not Claude
+              Code Task() syntax that the agent may not be able to execute.
     """
     # --- Platform-specific file mapping and spawning syntax ---
     if tool == "codex":
@@ -108,18 +110,30 @@ Example:
 DO NOT invoke Task() during staging - this is planning reference only
 """
     else:
-        # Generic MCP mode — any MCP-connected coding agent
+        # Generic MCP mode — any MCP-connected coding agent.
+        # HO1020 (Wave 2 Item 2): reframed around "each terminal is a job order".
         file_mapping = "agent_name → fetched from MCP server via get_orchestrator_instructions()"
         platform_note = """Generic MCP Note:
   - Agent templates are served by the MCP server, not local files
   - Any MCP-connected coding tool can consume these templates
   - agent_name is the key used across DB records and template lookups"""
         execution_mode_block = """── YOUR PLATFORM: ANY MCP-CONNECTED AGENT ─────────────────────────────────
-Agent templates are served by the MCP server via get_orchestrator_instructions().
-Any MCP-connected coding agent can consume these templates.
-Each spawned agent gets a thin prompt (~10 lines).
-Agent calls get_agent_mission() to fetch full instructions.
-Coordination happens via MCP messaging tools (send_message, receive_messages).
+Each terminal is one job order. The user (or you, on behalf of the user) opens
+a terminal, the operator pastes the thin prompt for that job_id, and the agent
+in that terminal calls get_agent_mission() to load its work. One job per
+terminal — different terminals can run different CLI tools (Claude, Codex,
+Gemini) and still coordinate, because coordination is MCP-only.
+
+CROSS-AGENT COORDINATION (MCP-ONLY):
+  - spawn_job(...)       — request a NEW job order (a new terminal/agent)
+  - send_message(...)    — talk to a peer agent by agent_id UUID
+  - receive_messages(...) — read your own inbox
+  Never use a CLI's native subagent feature to spawn or talk to ANOTHER agent's
+  job — those processes are invisible across terminals. Agents MAY use their
+  CLI's own subagent feature for INTERNAL decomposition within their own job
+  (a worker delegating a sub-step to a child process inside its own terminal),
+  but cross-job coordination is MCP only.
+
 MESSAGING: Always use agent_id UUIDs in to_agents (from spawn_job response).
 Orchestrator has NO active role after STAGING_COMPLETE broadcast.
 """
@@ -282,12 +296,18 @@ def _build_reactivation_spawn_block(tool: str) -> str:
 
     Args:
         tool: Platform identifier — 'claude-code', 'codex', 'gemini', or 'multi_terminal'.
+
+    HO1020 (Wave 2 Item 2): the fallback for an unknown tool is now the
+    multi_terminal block (platform-neutral) rather than the claude-code block.
+    Defaulting to claude-code injects a Task() call the agent may not be able
+    to execute; the multi_terminal block always works because it relies only
+    on MCP-level instructions.
     """
-    return _REACTIVATION_SPAWN_BLOCKS.get(tool, _REACTIVATION_SPAWN_BLOCKS["claude-code"])
+    return _REACTIVATION_SPAWN_BLOCKS.get(tool, _REACTIVATION_SPAWN_BLOCKS["multi_terminal"])
 
 
 def _build_ch5_reference(
-    project_id: str, orchestrator_id: str, tool: str = "claude-code", git_integration_enabled: bool = False
+    project_id: str, orchestrator_id: str, tool: str = "multi_terminal", git_integration_enabled: bool = False
 ) -> str:
     """Build CH5: REFERENCE section for implementation phase (~380 tokens).
 

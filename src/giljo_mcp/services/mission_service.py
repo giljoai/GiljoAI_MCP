@@ -518,13 +518,18 @@ class MissionService:
         # Generate 5-phase lifecycle protocol (Handover 0334, 0359, 0378 Bug 2, 0497d)
         project_exec_mode = getattr(project, "execution_mode", "multi_terminal") if project else "multi_terminal"
         git_enabled = integrations.get("git_integration", {}).get("enabled", False)
-        # Handover 0841: Derive platform tool for platform-aware signoff
+        # Handover 0841: Derive platform tool for platform-aware signoff.
+        # HO1020 (Wave 2 Item 2): explicit multi_terminal mapping + fail-safe
+        # default of "multi_terminal" so an unknown/unmapped execution_mode
+        # routes to the platform-neutral generic branch instead of silently
+        # injecting Claude Code Task() syntax into agents that cannot run it.
         _exec_mode_to_tool = {
             "claude_code_cli": "claude-code",
             "codex_cli": "codex",
             "gemini_cli": "gemini",
+            "multi_terminal": "multi_terminal",
         }
-        agent_tool = _exec_mode_to_tool.get(project_exec_mode, "claude-code")
+        agent_tool = _exec_mode_to_tool.get(project_exec_mode, "multi_terminal")
         full_protocol = _generate_agent_protocol(
             job_id=job_id,
             tenant_key=tenant_key,

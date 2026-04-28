@@ -302,7 +302,7 @@ def _generate_agent_protocol(
     execution_mode: str = "multi_terminal",
     git_integration_enabled: bool = False,
     job_type: str = "agent",
-    tool: str = "claude-code",
+    tool: str = "multi_terminal",
 ) -> str:
     """
     Generate the 5-phase agent lifecycle protocol (Handover 0334, 0355, 0358b, 0359, 0378, 0392).

@@ -73,7 +73,7 @@ def _build_orchestrator_protocol(
     field_toggles: dict[str, bool] | None = None,
     depth_config: dict[str, Any] | None = None,
     product_id: str | None = None,
-    tool: str = "claude-code",
+    tool: str = "multi_terminal",
     auto_checkin_enabled: bool = False,
     auto_checkin_interval: int = 10,
     git_integration_enabled: bool = False,

@@ -552,6 +552,7 @@ class ToolAccessor:
         result: dict[str, Any],
         tenant_key: str | None = None,
         acknowledge_closeout_todo: bool = False,
+        acknowledge_messages_on_complete: bool = False,
     ) -> dict[str, Any]:
         """Mark job as complete (delegates to JobCompletionService). Sprint 002f: collapsed.
 
@@ -566,12 +567,21 @@ class ToolAccessor:
                 very call being made — avoids the chicken-and-egg of needing
                 to mark a "call complete_job" TODO completed before calling
                 complete_job. Non-closeout incomplete TODOs still block.
+            acknowledge_messages_on_complete: When True, the gate marks all
+                unread messages addressed to this agent (within tenant+project)
+                as ``acknowledged`` before evaluating. Mirror of
+                ``acknowledge_closeout_todo`` for the messages gate. Use this
+                escape hatch when an agent is stuck in a
+                reactivation-on-stale-message loop and needs to close out
+                without manually draining its inbox. The TODOs gate is
+                independent — this flag does NOT bypass incomplete TODOs.
         """
         return await self._job_completion_service.complete_job(
             job_id=job_id,
             result=result,
             tenant_key=tenant_key,
             acknowledge_closeout_todo=acknowledge_closeout_todo,
+            acknowledge_messages_on_complete=acknowledge_messages_on_complete,
         )
 
     async def close_job(self, job_id: str, tenant_key: str | None = None) -> dict[str, Any]:

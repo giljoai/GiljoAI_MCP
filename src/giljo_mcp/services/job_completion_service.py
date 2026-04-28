@@ -16,11 +16,13 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import OrchestrationError, ResourceNotFoundError, ValidationError
 from giljo_mcp.models import AgentExecution, AgentJob
+from giljo_mcp.models.tasks import MessageAcknowledgment
 from giljo_mcp.repositories.agent_completion_repository import AgentCompletionRepository
 from giljo_mcp.schemas.service_responses import CompleteJobResult
 from giljo_mcp.tenant import TenantManager
@@ -79,6 +81,7 @@ class JobCompletionService:
         result: dict[str, Any],
         tenant_key: Optional[str] = None,
         acknowledge_closeout_todo: bool = False,
+        acknowledge_messages_on_complete: bool = False,
     ) -> CompleteJobResult:
         """Mark job as complete (AgentExecution, async safe).
 
@@ -92,6 +95,14 @@ class JobCompletionService:
                 orchestrator closeout call where the closeout TODO IS this call.
                 Non-closeout incomplete TODOs still block. Unread-messages gate
                 is unaffected.
+            acknowledge_messages_on_complete: If True, drain (mark
+                ``acknowledged``) all unread messages addressed to this
+                execution's agent_id in the project+tenant before evaluating
+                the gate. Mirror of ``acknowledge_closeout_todo`` for the
+                messages gate. Use this when an agent is stuck in a
+                reactivation-on-stale-message loop and needs to close out
+                without manually draining its inbox. The TODOs gate is
+                independent — this flag does NOT bypass incomplete TODOs.
 
         Returns:
             CompleteJobResult with success status
@@ -133,6 +144,7 @@ class JobCompletionService:
                         job_id,
                         completion_attempt_time,
                         acknowledge_closeout_todo=acknowledge_closeout_todo,
+                        acknowledge_messages_on_complete=acknowledge_messages_on_complete,
                     )
 
                     old_status, duration_seconds = self._apply_completion_status(execution, result)
@@ -248,13 +260,22 @@ class JobCompletionService:
         job_id: str,
         completion_attempt_time: datetime,
         acknowledge_closeout_todo: bool = False,
+        acknowledge_messages_on_complete: bool = False,
     ) -> None:
         """Check unread messages and incomplete TODOs; raise if completion is blocked.
 
         When ``acknowledge_closeout_todo`` is True, any incomplete TODOs whose
         ``content`` matches :data:`CLOSEOUT_TODO_PATTERN` are auto-completed in
         place before the gate evaluates. Non-closeout incomplete TODOs still
-        block. The unread-messages gate is unaffected by this flag.
+        block.
+
+        When ``acknowledge_messages_on_complete`` is True, all unread messages
+        addressed to this execution's ``agent_id`` (filtered by tenant_key and
+        project_id) are marked ``status='acknowledged'`` before the gate
+        evaluates. The TODOs gate is unaffected by this flag.
+
+        The two flags are independent: each drains its own gate. Combining them
+        is conjunctive (both gates use their own flag).
         """
         repo = AgentCompletionRepository()
         all_unread = await repo.get_unread_messages_for_agent(session, tenant_key, job.project_id, execution.agent_id)
@@ -268,6 +289,32 @@ class JobCompletionService:
             return created_at <= completion_attempt_time
 
         unread_messages = [message for message in all_unread if _is_before_attempt(message)]
+
+        if acknowledge_messages_on_complete and unread_messages:
+            now = datetime.now(timezone.utc)
+            for msg in unread_messages:
+                msg.status = "acknowledged"
+                msg.acknowledged_at = now
+                # Junction-table insert for audit trail (Handover 0840b pattern,
+                # mirrors message_service._process_received_messages).
+                ack_stmt = (
+                    pg_insert(MessageAcknowledgment)
+                    .values(
+                        message_id=str(msg.id),
+                        agent_id=execution.agent_id,
+                        tenant_key=tenant_key,
+                    )
+                    .on_conflict_do_nothing(constraint="uq_msg_ack")
+                )
+                await session.execute(ack_stmt)
+            await session.flush()
+            self._logger.info(
+                "Auto-acknowledged %d unread message(s) on acknowledged complete_job for job %s (agent %s)",
+                len(unread_messages),
+                job_id,
+                execution.agent_id,
+            )
+            unread_messages = []
 
         incomplete_todos = await repo.get_incomplete_todos(session, tenant_key, job_id)
 

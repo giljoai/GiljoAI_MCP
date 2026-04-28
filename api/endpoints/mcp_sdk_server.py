@@ -645,7 +645,11 @@ async def report_progress(
         "ORCHESTRATOR CLOSEOUT: pass acknowledge_closeout_todo=True when the closeout "
         "TODO IS this very call (e.g. 'Closeout: complete orchestrator job') — the gate "
         "will auto-complete any TODO whose content matches closeout/complete_job/close_project. "
-        "Non-closeout incomplete TODOs still block. Unread-messages gate is unaffected."
+        "Non-closeout incomplete TODOs still block. STUCK ON UNREAD MESSAGES: pass "
+        "acknowledge_messages_on_complete=True to drain (mark acknowledged) all unread "
+        "messages addressed to this agent in the project+tenant before evaluating. "
+        "Mirror of acknowledge_closeout_todo for the messages gate. The TODOs gate is "
+        "independent — neither flag bypasses the other."
     ),
 )
 async def complete_job(
@@ -662,6 +666,12 @@ async def complete_job(
             description="When True, auto-complete any incomplete TODO whose content describes the closeout itself (matches closeout/complete_job/close_project). Use from orchestrator closeout where the closeout TODO IS this call. Default False."
         ),
     ] = False,
+    acknowledge_messages_on_complete: Annotated[
+        bool,
+        Field(
+            description="When True, drain (mark acknowledged) all unread messages addressed to this agent within the project+tenant before evaluating the gate. Mirror of acknowledge_closeout_todo for the messages gate. Use this escape hatch when stuck in a reactivation-on-stale-message loop and unable to close out. The TODOs gate is independent — this flag does NOT bypass incomplete TODOs. Default False."
+        ),
+    ] = False,
     ctx: Context = None,
 ) -> dict:
     """Mark job as completed with results."""
@@ -672,6 +682,7 @@ async def complete_job(
             "job_id": job_id,
             "result": result,
             "acknowledge_closeout_todo": acknowledge_closeout_todo,
+            "acknowledge_messages_on_complete": acknowledge_messages_on_complete,
         },
     )
 

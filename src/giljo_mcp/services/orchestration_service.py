@@ -279,6 +279,7 @@ class OrchestrationService:
         result: dict[str, Any],
         tenant_key: Optional[str] = None,
         acknowledge_closeout_todo: bool = False,
+        acknowledge_messages_on_complete: bool = False,
     ) -> CompleteJobResult:
         """Facade: delegates to JobCompletionService."""
         return await self._job_completion.complete_job(
@@ -286,6 +287,7 @@ class OrchestrationService:
             result,
             tenant_key,
             acknowledge_closeout_todo=acknowledge_closeout_todo,
+            acknowledge_messages_on_complete=acknowledge_messages_on_complete,
         )
 
     async def get_agent_result(self, job_id: str, tenant_key: str | None = None) -> dict | None:

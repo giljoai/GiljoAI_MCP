@@ -467,12 +467,17 @@ class MissionOrchestrationService:
         # Handover 0415: Add chapter-based orchestrator protocol
         cli_execution_modes = ("claude_code_cli", "codex_cli", "gemini_cli")
         cli_mode = execution_mode in cli_execution_modes
+        # HO1020 (Wave 2 Item 2): explicit multi_terminal mapping + fail-safe
+        # default of "multi_terminal" so an unknown/unmapped execution_mode
+        # falls back to the platform-neutral generic branch rather than the
+        # Claude Code Task() block.
         execution_mode_to_tool = {
             "claude_code_cli": "claude-code",
             "codex_cli": "codex",
             "gemini_cli": "gemini",
+            "multi_terminal": "multi_terminal",
         }
-        protocol_tool = execution_mode_to_tool.get(execution_mode, "claude-code")
+        protocol_tool = execution_mode_to_tool.get(execution_mode, "multi_terminal")
         is_staging = execution.status == "waiting"
 
         # Handover 0904: Read auto check-in settings from project

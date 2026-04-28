@@ -251,6 +251,7 @@ list will be empty or contain only agent-supplied hashes. When this happens, inc
 1. Mark any remaining non-closeout TODO items as `completed` via `report_progress()` (a TODO describing the closeout itself does NOT need to be marked completed first — see step 2)
 2. `mcp__giljo_mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}}, acknowledge_closeout_todo=True)` — mark YOUR orchestrator job complete FIRST
    → Pass `acknowledge_closeout_todo=True` so the gate auto-completes any TODO whose content describes the closeout itself (matches "closeout", "complete_job", or "close_project"). This avoids the chicken-and-egg of needing to mark your closeout TODO done before calling closeout. Non-closeout incomplete TODOs still block. The unread-messages gate is independent — drain messages with `receive_messages()` first.
+   → ESCAPE HATCH for stuck inboxes: pass `acknowledge_messages_on_complete=True` to drain (mark acknowledged) all unread messages addressed to this agent within the project+tenant before evaluating the gate. This is the messages-side mirror of `acknowledge_closeout_todo`. Use it only when you are stuck in a reactivation-on-stale-message loop and cannot otherwise close out — preferred path is still `receive_messages()` then complete. The TODOs gate is independent: this flag does NOT bypass incomplete TODOs.
    → READ the `closeout_checklist` in the response
    → If `user_approval_required=true`: set status blocked with reason "Closeout: awaiting user review", present deferred findings and options to user, WAIT for user response
    → If `user_approval_required=false`: proceed with best judgment
@@ -262,7 +263,7 @@ list will be empty or contain only agent-supplied hashes. When this happens, inc
 **IMPORTANT:** You MUST complete your own job (step 2) BEFORE closing the project (step 5). The server requires all agents including the orchestrator to be complete before project closeout.
 
 **If `complete_job()` is rejected:** Read the error. Common causes:
-- Unread messages remain → run receive_messages() and process them (the `acknowledge_closeout_todo` flag does NOT bypass this gate)
+- Unread messages remain → run receive_messages() and process them (the `acknowledge_closeout_todo` flag does NOT bypass this gate; if you are stuck, use the `acknowledge_messages_on_complete=True` escape hatch instead)
 - TODO items incomplete �� review and update your TODO list, then retry
 
 ## ORCHESTRATOR CONSTRAINTS
