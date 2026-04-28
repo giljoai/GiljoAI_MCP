@@ -5,19 +5,34 @@
 
 """
 Predecessor-context constants, preamble templates, and semantic auto-detection
-(HO1022 -- supersedes HO1021's role parameter).
+(HO1023 -- pre-staging chain fix; supersedes HO1022's pred_execution-only signal).
 
 Two-mode design:
   - multi_terminal: server injects a preamble (chain or replacement, auto-
-    detected from the predecessor's completion record).
+    detected from the predecessor's work-order status + completion record).
   - subagent_*    : server NEVER injects -- the orchestrator's CLI returned
     the predecessor result inline and is expected to splice findings into the
     successor's mission text directly.
 
-Auto-detection rule:
-  - pred_execution is None (predecessor never reached complete_job)  -> REPLACEMENT
-  - pred_execution.result.status in {force_completed, failed, blocked, error}  -> REPLACEMENT
-  - otherwise                                                        -> CHAIN
+Auto-detection rule (HO1023):
+  - pred_job.status in {failed, blocked, decommissioned}             -> REPLACEMENT
+  - pred_execution.result.status in {force_completed, failed,
+        blocked, error}                                              -> REPLACEMENT
+  - otherwise (predecessor is healthy, still running, or pre-execution)
+                                                                      -> CHAIN
+
+Why CHAIN is the default at spawn time:
+  In multi_terminal mode the orchestrator pre-spawns ALL phases up front during
+  staging, BEFORE any of them run. The successor's preamble is rendered AT SPAWN
+  TIME (and stored in the mission text) -- so when the orchestrator spawns
+  Phase 2 with predecessor=Phase1, Phase1 is necessarily in `waiting` status
+  with no completion record yet. Treating "no completion record" as "failure"
+  (the HO1022 heuristic) baked the REPLACEMENT preamble into every healthy
+  forward chain. HO1023 fixes that: REPLACEMENT only when there's an explicit
+  failure signal on the predecessor's work order or completion result.
+  Reactivation flows still work -- when the orchestrator respawns a successor
+  AFTER a confirmed failure, pred_job.status is failed/blocked at that point
+  and the REPLACEMENT preamble correctly renders.
 
 Neither preamble includes a `tenant_key="..."` arg in its example
 get_agent_result(...) call -- Wave 1 invariant from commit ffa779bf:
@@ -36,29 +51,39 @@ from typing import Any
 # successor's mission text directly.
 SUBAGENT_EXECUTION_MODES: frozenset[str] = frozenset({"claude_code_cli", "codex_cli", "gemini_cli"})
 
-# pred_execution.result.status values that indicate the predecessor was
-# replaced/failed/force-completed rather than completing cleanly. When any of
-# these (or a missing pred_execution entirely) is observed, the server renders
-# the REPLACEMENT preamble. Otherwise the CHAIN preamble.
+# AgentJob.status values on the predecessor that indicate explicit failure /
+# decommission. Trigger REPLACEMENT preamble.
+_REPLACEMENT_JOB_STATUSES: frozenset[str] = frozenset({"failed", "blocked", "decommissioned"})
+
+# pred_execution.result.status values (set by the agent or by orchestrator
+# force-completion via complete_job result dict) that indicate the predecessor
+# did not complete cleanly. Trigger REPLACEMENT preamble.
 _REPLACEMENT_RESULT_STATUSES: frozenset[str] = frozenset({"force_completed", "failed", "blocked", "error"})
 
 
-def _detect_replacement_semantics(pred_execution: Any) -> bool:
-    """Return True when the predecessor record indicates a failed/force-closed
-    handoff (replacement semantics), False when it looks like a clean forward
-    chain.
+def _detect_replacement_semantics(pred_job: Any, pred_execution: Any) -> bool:
+    """Return True when the predecessor record carries an EXPLICIT failure
+    signal, False otherwise.
 
-    Signals (in order):
-      - pred_execution is None: predecessor never reached complete_job, so the
-        successor is almost certainly picking up after a failure -- replacement.
-      - result.status is one of the replacement markers -- replacement.
-      - otherwise -- chain.
+    HO1023: chain is the default at spawn time. The successor's preamble is
+    rendered when the orchestrator calls spawn_job, which in multi_terminal
+    staging happens BEFORE the predecessor has run. A missing pred_execution
+    therefore does NOT mean failure -- it usually means pre-execution.
+
+    Signals checked (in order):
+      1. pred_job.status in {failed, blocked, decommissioned}    -> REPLACEMENT
+      2. pred_execution.result.status in failure markers          -> REPLACEMENT
+      3. otherwise                                                -> CHAIN
     """
-    if pred_execution is None:
-        return True
-    pred_result = getattr(pred_execution, "result", None) or {}
-    result_status = str(pred_result.get("status") or "").lower()
-    return result_status in _REPLACEMENT_RESULT_STATUSES
+    if pred_job is not None:
+        job_status = str(getattr(pred_job, "status", "") or "").lower()
+        if job_status in _REPLACEMENT_JOB_STATUSES:
+            return True
+    if pred_execution is not None:
+        result_status = str((pred_execution.result or {}).get("status") or "").lower()
+        if result_status in _REPLACEMENT_RESULT_STATUSES:
+            return True
+    return False
 
 
 PREDECESSOR_CHAIN_PREAMBLE = """## PRIOR PHASE OUTPUT

@@ -4,26 +4,34 @@
 # [CE] Community Edition — source-available, single-user use only.
 
 """
-HO1022: predecessor_job_id is mode-gated; chain vs replacement is auto-detected.
+HO1023 (pre-staging chain fix) — predecessor preamble auto-detection tests.
 
 Background
 ----------
-Pre-HO1021, _build_predecessor_context auto-prepended a single replacement-
-flavored preamble ("you are replacing a previous agent... fix the issues") to
-ANY successor spawned with predecessor_job_id. Wrong semantics for forward
-chains, redundant in subagent modes (CLI returns predecessor inline).
+HO1022 introduced server-side auto-detection of chain vs replacement preamble
+from `pred_execution.result.status`, with the heuristic "if pred_execution is
+None, treat as replacement (predecessor never reached complete_job)". That
+heuristic was wrong for the multi_terminal staging pattern: orchestrators
+pre-spawn ALL phases up front during staging, BEFORE any of them run. At
+spawn time the predecessor is in `waiting` status with no completion record,
+so HO1022 baked the REPLACEMENT preamble into every healthy forward chain.
 
-HO1021 added a `predecessor_role` parameter so callers could pick chain vs
-replacement -- but that pushed mode-awareness onto the orchestrator and asked
-it to tell the server something the server can already detect.
+HO1023 fix
+----------
+Auto-detect now consults `pred_job.status` FIRST (the work order's lifecycle
+state), then `pred_execution.result.status`. Replacement only when there is
+an EXPLICIT failure signal:
 
-HO1022 (this) reverts to two-mode design:
-  - subagent_*    : server NEVER injects a preamble
-  - multi_terminal: server injects, auto-picks chain vs replacement from
-                    predecessor's completion record (pred_execution.result.status)
+  - pred_job.status in {failed, blocked, decommissioned}    -> REPLACEMENT
+  - pred_execution.result.status in {force_completed, ...}  -> REPLACEMENT
+  - otherwise (healthy, running, or pre-execution)          -> CHAIN
 
-Predecessor existence + same-project validation still runs in the skip path
-(catches typo'd predecessor_job_id even when no preamble would be rendered).
+Reactivation flows still work: orchestrator respawns after a confirmed
+predecessor failure -> pred_job.status is failed/blocked -> replacement
+preamble correctly renders.
+
+Subagent execution modes still skip injection entirely regardless of role
+(the orchestrator's CLI returned the predecessor result inline).
 """
 
 from __future__ import annotations
@@ -52,6 +60,19 @@ def service() -> JobLifecycleService:
     return JobLifecycleService(db_manager=MagicMock(), tenant_manager=MagicMock())
 
 
+def _pred_job(status: str = "waiting", project_id: str = "proj-1"):
+    """Build a SimpleNamespace mirroring AgentJob shape with given status."""
+    return SimpleNamespace(project_id=project_id, status=status)
+
+
+def _pred_execution(result_status: str | None = None, *, display_name: str = "analyzer"):
+    """Build a SimpleNamespace mirroring AgentExecution shape with optional result.status."""
+    result: dict = {"summary": "Analysis complete.", "commits": ["c1", "c2"]}
+    if result_status is not None:
+        result["status"] = result_status
+    return SimpleNamespace(agent_display_name=display_name, result=result)
+
+
 def _install_repo(monkeypatch, *, pred_job, pred_execution=None) -> MagicMock:
     """Patch AgentCompletionRepository at the import site to return given fakes."""
     repo_instance = MagicMock()
@@ -64,21 +85,25 @@ def _install_repo(monkeypatch, *, pred_job, pred_execution=None) -> MagicMock:
     return repo_instance
 
 
-def _clean_pred_execution(result_status: str | None = None):
-    """Build a SimpleNamespace mirroring AgentExecution shape with optional result.status."""
-    result = {"summary": "Analysis complete.", "commits": ["c1", "c2"]}
-    if result_status is not None:
-        result["status"] = result_status
-    return SimpleNamespace(agent_display_name="analyzer", result=result)
+@pytest.fixture
+def fake_repo_clean_completion(monkeypatch) -> MagicMock:
+    """Predecessor completed cleanly (status=complete on job, no status on result)."""
+    return _install_repo(
+        monkeypatch,
+        pred_job=_pred_job(status="complete"),
+        pred_execution=_pred_execution(),
+    )
 
 
 @pytest.fixture
-def fake_repo_clean(monkeypatch) -> MagicMock:
-    """Default: predecessor exists in same project, completed cleanly (no result.status)."""
+def fake_repo_pre_execution(monkeypatch) -> MagicMock:
+    """Predecessor pre-staged but not yet executed (the multi_terminal default).
+    pred_job.status='waiting', pred_execution=None -- this was the case HO1022
+    incorrectly treated as replacement."""
     return _install_repo(
         monkeypatch,
-        pred_job=SimpleNamespace(project_id="proj-1"),
-        pred_execution=_clean_pred_execution(),
+        pred_job=_pred_job(status="waiting"),
+        pred_execution=None,
     )
 
 
@@ -118,33 +143,70 @@ def test_neither_preamble_leaks_tenant_key():
     assert "tenant_key" not in PREDECESSOR_REPLACEMENT_PREAMBLE
 
 
-# ---- Auto-detection helper ------------------------------------------------
+# ---- Auto-detect helper (HO1023 — chain default at spawn time) -----------
 
 
-def test_detect_replacement_returns_true_when_pred_execution_is_none():
-    """Predecessor never reached complete_job → almost certainly a replacement spawn."""
-    assert _detect_replacement_semantics(None) is True
+def test_detect_returns_false_when_predecessor_is_pre_execution():
+    """HO1023 regression: pre-staged predecessor (waiting, no execution yet)
+    must default to CHAIN, NOT replacement. This was the production bug HO1022
+    introduced for multi_terminal pre-staging."""
+    assert _detect_replacement_semantics(_pred_job(status="waiting"), None) is False
 
 
-def test_detect_replacement_returns_false_for_clean_completion():
-    """No status field on the result dict → clean completion → chain."""
-    assert _detect_replacement_semantics(_clean_pred_execution()) is False
+def test_detect_returns_false_when_predecessor_is_running():
+    """Predecessor in flight (working) is still healthy — chain stays default."""
+    assert _detect_replacement_semantics(_pred_job(status="working"), None) is False
 
 
-@pytest.mark.parametrize("status", ["force_completed", "failed", "blocked", "error"])
-def test_detect_replacement_returns_true_for_failure_statuses(status: str):
-    """Each documented failure marker triggers replacement semantics."""
-    assert _detect_replacement_semantics(_clean_pred_execution(status)) is True
+def test_detect_returns_false_for_clean_completion():
+    """Completed predecessor with no failure markers on result -> chain."""
+    assert _detect_replacement_semantics(_pred_job(status="complete"), _pred_execution()) is False
 
 
-def test_detect_replacement_is_case_insensitive_on_status():
-    """status='FORCE_COMPLETED' matches the lowercase replacement marker set."""
-    assert _detect_replacement_semantics(_clean_pred_execution("FORCE_COMPLETED")) is True
+@pytest.mark.parametrize("job_status", ["failed", "blocked", "decommissioned"])
+def test_detect_returns_true_for_failed_job_status(job_status: str):
+    """Explicit failure on the work order triggers replacement semantics."""
+    assert _detect_replacement_semantics(_pred_job(status=job_status), None) is True
 
 
-def test_detect_replacement_returns_false_for_unknown_status():
+def test_detect_returns_true_for_failed_job_status_case_insensitive():
+    """Job-status checks are case-insensitive."""
+    assert _detect_replacement_semantics(_pred_job(status="FAILED"), None) is True
+
+
+@pytest.mark.parametrize("result_status", ["force_completed", "failed", "blocked", "error"])
+def test_detect_returns_true_for_failure_result_status(result_status: str):
+    """Failure marker in pred_execution.result.status triggers replacement.
+    Covers the orchestrator force-completion path (status='force_completed')."""
+    assert (
+        _detect_replacement_semantics(_pred_job(status="complete"), _pred_execution(result_status=result_status))
+        is True
+    )
+
+
+def test_detect_returns_true_for_failure_result_status_case_insensitive():
+    """Result-status checks are case-insensitive."""
+    assert (
+        _detect_replacement_semantics(_pred_job(status="complete"), _pred_execution(result_status="FORCE_COMPLETED"))
+        is True
+    )
+
+
+def test_detect_returns_false_for_unknown_result_status():
     """An unrecognized status string is not a replacement marker — chain stays safe default."""
-    assert _detect_replacement_semantics(_clean_pred_execution("succeeded_with_warnings")) is False
+    assert (
+        _detect_replacement_semantics(
+            _pred_job(status="complete"), _pred_execution(result_status="succeeded_with_warnings")
+        )
+        is False
+    )
+
+
+def test_detect_returns_false_when_both_signals_absent():
+    """No pred_job AND no pred_execution -> chain (defensive default).
+    In practice the caller validates pred_job exists before reaching here, but
+    the helper is robust to defensive None inputs."""
+    assert _detect_replacement_semantics(None, None) is False
 
 
 # ---- Mode gating ----------------------------------------------------------
@@ -153,7 +215,7 @@ def test_detect_replacement_returns_false_for_unknown_status():
 @pytest.mark.parametrize("subagent_mode", sorted(SUBAGENT_EXECUTION_MODES))
 @pytest.mark.asyncio
 async def test_subagent_mode_returns_mission_unchanged(
-    service: JobLifecycleService, fake_repo_clean: MagicMock, subagent_mode: str
+    service: JobLifecycleService, fake_repo_clean_completion: MagicMock, subagent_mode: str
 ) -> None:
     """In any subagent mode, the mission must come back byte-identical regardless
     of predecessor's status. The orchestrator's CLI already has the predecessor
@@ -172,10 +234,12 @@ async def test_subagent_mode_returns_mission_unchanged(
 
 
 @pytest.mark.asyncio
-async def test_multi_terminal_clean_predecessor_injects_chain_preamble(
-    service: JobLifecycleService, fake_repo_clean: MagicMock
+async def test_multi_terminal_pre_execution_predecessor_injects_chain_preamble(
+    service: JobLifecycleService, fake_repo_pre_execution: MagicMock
 ) -> None:
-    """Multi-terminal + clean predecessor (no failure status) → chain preamble."""
+    """HO1023 regression: multi_terminal staging pre-spawns chains before any
+    phase runs. The successor's preamble MUST be the chain flavor, not the
+    replacement flavor that HO1022 incorrectly produced for this case."""
     result = await service._build_predecessor_context(
         session=None,
         predecessor_job_id="pred-1",
@@ -192,16 +256,35 @@ async def test_multi_terminal_clean_predecessor_injects_chain_preamble(
     assert "replacing a previous agent" not in result
 
 
-@pytest.mark.parametrize("status", ["force_completed", "failed", "blocked", "error"])
 @pytest.mark.asyncio
-async def test_multi_terminal_failed_predecessor_injects_replacement_preamble(
-    service: JobLifecycleService, monkeypatch, status: str
+async def test_multi_terminal_clean_completion_injects_chain_preamble(
+    service: JobLifecycleService, fake_repo_clean_completion: MagicMock
 ) -> None:
-    """Multi-terminal + predecessor with failure marker → replacement preamble."""
+    """Multi-terminal + completed predecessor (no failure status) → chain preamble."""
+    result = await service._build_predecessor_context(
+        session=None,
+        predecessor_job_id="pred-1",
+        tenant_key="tk-test",
+        project_id="proj-1",
+        mission="Implement.",
+        agent_display_name="implementer",
+        execution_mode="multi_terminal",
+    )
+    assert "PRIOR PHASE OUTPUT" in result
+    assert "REPLACEMENT" not in result
+
+
+@pytest.mark.parametrize("job_status", ["failed", "blocked", "decommissioned"])
+@pytest.mark.asyncio
+async def test_multi_terminal_failed_job_injects_replacement_preamble(
+    service: JobLifecycleService, monkeypatch, job_status: str
+) -> None:
+    """Multi-terminal + predecessor whose work-order is in a failure state
+    → replacement preamble. Covers the reactivation-after-failure flow."""
     _install_repo(
         monkeypatch,
-        pred_job=SimpleNamespace(project_id="proj-1"),
-        pred_execution=_clean_pred_execution(status),
+        pred_job=_pred_job(status=job_status),
+        pred_execution=None,
     )
     result = await service._build_predecessor_context(
         session=None,
@@ -216,16 +299,17 @@ async def test_multi_terminal_failed_predecessor_injects_replacement_preamble(
     assert "PRIOR PHASE OUTPUT" not in result
 
 
+@pytest.mark.parametrize("result_status", ["force_completed", "failed", "blocked", "error"])
 @pytest.mark.asyncio
-async def test_multi_terminal_missing_pred_execution_injects_replacement_preamble(
-    service: JobLifecycleService, monkeypatch
+async def test_multi_terminal_force_completed_predecessor_injects_replacement_preamble(
+    service: JobLifecycleService, monkeypatch, result_status: str
 ) -> None:
-    """Predecessor never reached complete_job → replacement (orchestrator is
-    almost certainly spawning a replacement for a failed agent)."""
+    """Multi-terminal + predecessor with failure marker on result.status
+    → replacement preamble. Covers orchestrator force-completion path."""
     _install_repo(
         monkeypatch,
-        pred_job=SimpleNamespace(project_id="proj-1"),
-        pred_execution=None,
+        pred_job=_pred_job(status="complete"),
+        pred_execution=_pred_execution(result_status=result_status),
     )
     result = await service._build_predecessor_context(
         session=None,
@@ -246,7 +330,7 @@ async def test_multi_terminal_missing_pred_execution_injects_replacement_preambl
 async def test_predecessor_validated_even_when_subagent_skips(service: JobLifecycleService, monkeypatch) -> None:
     """A typo'd predecessor_job_id must raise ResourceNotFoundError even in the
     subagent skip path. Otherwise bad ids would silently pass."""
-    _install_repo(monkeypatch, pred_job=None)  # predecessor not found
+    _install_repo(monkeypatch, pred_job=None)
     with pytest.raises(ResourceNotFoundError):
         await service._build_predecessor_context(
             session=None,
@@ -265,7 +349,7 @@ async def test_cross_project_predecessor_rejected_even_when_subagent_skips(
 ) -> None:
     """Cross-project predecessor_job_id must raise ValidationError even in the
     subagent skip path -- the same-project guard is a security boundary."""
-    _install_repo(monkeypatch, pred_job=SimpleNamespace(project_id="proj-OTHER"))
+    _install_repo(monkeypatch, pred_job=_pred_job(status="waiting", project_id="proj-OTHER"))
     with pytest.raises(ValidationError, match="different project"):
         await service._build_predecessor_context(
             session=None,

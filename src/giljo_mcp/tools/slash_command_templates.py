@@ -16,7 +16,7 @@ Also provides bootstrap prompt templates for one-time CLI onboarding.
 
 # Semver for the skills/commands package. Bumped when slash command templates change.
 # Referenced by health_check so the frontend can compare installed vs available.
-SKILLS_VERSION = "1.1.10"
+SKILLS_VERSION = "1.1.11"
 
 # =============================================================================
 # CLAUDE CODE TEMPLATES
@@ -90,7 +90,7 @@ You are the GiljoAI agent template installer for Claude Code. Be fast and effici
 
 
 GIL_ADD_MD = """---
-description: "Add a task or project to the GiljoAI dashboard. Routes to task (technical debt/TODOs) or project (actionable work items) based on context."
+description: "Add, update, or read tasks and projects in the GiljoAI dashboard. Routes by intent (create / update / read existing project info)."
 ---
 
 # /gil_add — Add task or project to GiljoAI dashboard
@@ -273,7 +273,7 @@ If agents don't appear after restart:
 '''
 """
 
-GIL_ADD_GEMINI_TOML = """description = "Add a task or project to the GiljoAI dashboard"
+GIL_ADD_GEMINI_TOML = """description = "Add, update, or read tasks and projects in the GiljoAI dashboard. Routes by intent (create / update / read existing project info)."
 
 prompt = '''
 # /gil_add — Add task or project to GiljoAI dashboard
@@ -560,7 +560,7 @@ If the agent does NOT mention these GiljoAI MCP calls, the custom template is no
 
 GIL_ADD_CODEX_SKILL_MD = """---
 name: gil-add
-description: "Add a task or project to the GiljoAI dashboard"
+description: "Add, update, or read tasks and projects in the GiljoAI dashboard. Routes by intent (create / update / read existing project info)."
 ---
 
 # $gil-add — Add task or project to GiljoAI dashboard

@@ -384,14 +384,17 @@ class JobLifecycleService:
         if len(pred_commits) > 10:
             pred_commits = [*pred_commits[:10], f"... and {len(pred_commits) - 10} more"]
 
-        # Auto-detect chain vs replacement from the predecessor's completion
-        # record. If the predecessor never reached complete_job (pred_execution
-        # is None) OR its result.status indicates failure/force-completion, treat
-        # this as a replacement spawn. Otherwise it is a forward chain handoff.
+        # Auto-detect chain vs replacement from the predecessor's work-order
+        # status FIRST, then its completion record. HO1023: the prior heuristic
+        # of "no pred_execution -> replacement" was wrong for multi_terminal
+        # staging, where the orchestrator pre-spawns chains BEFORE any phase
+        # runs (so pred_execution is naturally None at spawn time without
+        # implying failure). Replacement now requires an EXPLICIT failure
+        # signal on the work order or the completion result.
         # Note: tenant_key is NOT included in the rendered get_agent_result(...)
         # call -- Wave 1 (commit ffa779bf) established that tenant_key is auto-
         # injected server-side and must never appear in agent-facing prose.
-        is_replacement = _detect_replacement_semantics(pred_execution)
+        is_replacement = _detect_replacement_semantics(pred_job, pred_execution)
         template = PREDECESSOR_REPLACEMENT_PREAMBLE if is_replacement else PREDECESSOR_CHAIN_PREAMBLE
         predecessor_context = template.format(
             pred_display_name=pred_display_name,
