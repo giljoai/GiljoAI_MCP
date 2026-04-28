@@ -505,17 +505,17 @@ class MissionOrchestrationService:
         )
         response["orchestrator_protocol"] = orchestrator_protocol
 
-        # Handover 0431: Inject orchestrator identity/behavioral guidance
-        # SEC-0005b: tenant admin may override the identity content per tenant
-        from giljo_mcp.template_seeder import get_orchestrator_identity_content
+        # Handover 0431: Inject orchestrator identity/behavioral guidance.
+        # SEC-0005b: tenant admin may override the identity content per tenant.
+        # HO1027 (three-layer refactor): the system harness (MCP Tool Usage,
+        # CHECK-IN PROTOCOL, HARNESS REMINDER OVERRIDE for Claude Code) is
+        # ALWAYS appended via compose_orchestrator_identity — even when an
+        # admin override is set — so harness mechanics never leak into the
+        # admin textarea but always reach the spawned orchestrator.
+        from giljo_mcp.template_seeder import compose_orchestrator_identity
 
         override_content = ctx.get("orchestrator_prompt_override")
-        if override_content:
-            response["orchestrator_identity"] = override_content
-        else:
-            # HO1025: pass protocol_tool so the Claude-Code-only TaskCreate harness
-            # override only renders for Claude Code orchestrators.
-            response["orchestrator_identity"] = get_orchestrator_identity_content(tool=protocol_tool)
+        response["orchestrator_identity"] = compose_orchestrator_identity(override_content, tool=protocol_tool)
 
         logger.info(
             "Returning toggle-based orchestrator instructions",

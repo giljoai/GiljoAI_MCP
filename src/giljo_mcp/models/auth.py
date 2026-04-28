@@ -151,7 +151,6 @@ class User(Base):
     depth_agent_templates = Column(String(20), nullable=False, default="basic", server_default="basic")
     depth_tech_stack_sections = Column(String(20), nullable=False, default="all", server_default="all")
     depth_architecture = Column(String(20), nullable=False, default="overview", server_default="overview")
-    execution_mode = Column(String(20), nullable=False, default="claude_code", server_default="claude_code")
 
     # Relationships
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")

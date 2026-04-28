@@ -664,7 +664,6 @@ class UserService:
             "agent_templates": user.depth_agent_templates,
             "tech_stack_sections": user.depth_tech_stack_sections,
             "architecture_depth": user.depth_architecture,
-            "execution_mode": user.execution_mode,
         }
 
     async def update_depth_config(self, user_id: str, config: dict[str, Any]) -> None:
@@ -701,7 +700,6 @@ class UserService:
             "agent_templates": "depth_agent_templates",
             "tech_stack_sections": "depth_tech_stack_sections",
             "architecture_depth": "depth_architecture",
-            "execution_mode": "execution_mode",
         }
 
         for key, value in config.items():
@@ -720,71 +718,9 @@ class UserService:
             "agent_templates": user.depth_agent_templates,
             "tech_stack_sections": user.depth_tech_stack_sections,
             "architecture_depth": user.depth_architecture,
-            "execution_mode": user.execution_mode,
         }
         await self._emit_websocket_event(
             event_type="depth_config_updated", data={"user_id": user_id, "depth_config": depth_config}
-        )
-
-    # ------------------------------------------------------------------
-    # Execution mode (stored as column on users table)
-    # ------------------------------------------------------------------
-
-    async def get_execution_mode(self, user_id: str) -> str:
-        """Get user's execution mode from column on users table."""
-        try:
-            async with self._get_session() as session:
-                return await self._get_execution_mode_impl(session, user_id)
-        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
-            raise
-        except (RuntimeError, ValueError) as e:
-            logger.exception("Failed to get execution mode for user %s", user_id)
-            raise BaseGiljoError(message=str(e), context={"operation": "get_execution_mode", "user_id": user_id}) from e
-
-    async def _get_execution_mode_impl(self, session: AsyncSession, user_id: str) -> str:
-        """Read execution_mode column from users table."""
-        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
-        if not user:
-            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
-        return user.execution_mode or "claude_code"
-
-    async def update_execution_mode(self, user_id: str, execution_mode: str) -> None:
-        """Update user's execution_mode column."""
-        try:
-            async with self._get_session() as session:
-                return await self._update_execution_mode_impl(session, user_id, execution_mode)
-        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
-            raise
-        except (RuntimeError, ValueError) as e:
-            logger.exception("Failed to update execution mode for user %s", user_id)
-            raise BaseGiljoError(
-                message=str(e), context={"operation": "update_execution_mode", "user_id": user_id}
-            ) from e
-
-    async def _update_execution_mode_impl(self, session: AsyncSession, user_id: str, execution_mode: str) -> None:
-        """Set execution_mode column on users table."""
-        valid_modes = {"claude_code", "multi_terminal"}
-        if execution_mode not in valid_modes:
-            raise ValidationError(
-                message="Invalid execution_mode. Must be claude_code or multi_terminal",
-                context={"execution_mode": execution_mode, "valid_modes": list(valid_modes)},
-            )
-
-        user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
-        if not user:
-            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
-
-        user.execution_mode = execution_mode
-        await self._repo.commit_and_refresh_user(session, user)
-
-        await self._emit_websocket_event(
-            event_type="execution_mode_updated",
-            data={"user_id": user_id, "execution_mode": execution_mode},
-        )
-
-        self._logger.info(
-            "Updated execution mode",
-            extra={"user_id": user_id, "execution_mode": execution_mode},
         )
 
     # ============================================================================

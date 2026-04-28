@@ -36,7 +36,6 @@ You are STAGING the project. Your job:
 3. Assign work to specialist agents via spawn_job()
 
 WHAT YOU ARE NOT:
-- You do NOT execute implementation work
 - {spawn_warning}
 - You do NOT call complete_job() (staging never completes, it transitions)
 
@@ -264,7 +263,6 @@ def _build_ch2_startup(
         )
         step2_body = f"""── STEP 2: Fetch Context ───────────────────────────────────────────────────
 Call: get_orchestrator_instructions(job_id='{orchestrator_id}')
-Note: tenant_key auto-injected by server from API key session
 Returns: project_description, mission, field_toggles, orchestrator_protocol
 
 Read this protocol via orchestrator_protocol field.
@@ -301,7 +299,6 @@ of fetching when the user has under-specified.
     else:
         step2_body = f"""── STEP 2: Fetch Context ───────────────────────────────────────────────────
 Call: get_orchestrator_instructions(job_id='{orchestrator_id}')
-Note: tenant_key auto-injected by server from API key session
 Returns:
   - project_description: User requirements (INPUT for your analysis)
   - mission: Product context with priority fields applied
@@ -362,7 +359,6 @@ Call: report_progress(
           job_id='{orchestrator_id}',
           todo_items=[{{"content": "<project outcome>", "status": "pending"}}]
       )
-Note: tenant_key auto-injected by server from API key session
 
 {step2_body}
 
@@ -400,14 +396,12 @@ For each agent in your plan:
       mission='Agent-specific instructions',
       project_id='{project_id}'
   )
-Note: tenant_key auto-injected by server from API key session
 
 See CH3 for agent_name vs agent_display_name rules
 
 ── STEP 7: Persist Execution Plan ──────────────────────────────────────────
 Call: update_agent_mission(job_id='{orchestrator_id}',
                             mission=YOUR_EXECUTION_STRATEGY)
-Note: tenant_key auto-injected by server from API key session
 
 Document in YOUR_EXECUTION_STRATEGY:
   - Agent execution order (sequential/parallel/hybrid)
@@ -424,7 +418,6 @@ Call: send_message(
           project_id='{project_id}',
           message_type='broadcast'
       )
-Note: tenant_key auto-injected by server from API key session
 
 This broadcast enables the "Implement" button in UI (REQUIRED)
 

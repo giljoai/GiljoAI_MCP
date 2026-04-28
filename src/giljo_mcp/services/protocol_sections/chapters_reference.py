@@ -499,7 +499,6 @@ Call: complete_job(
           job_id='{orchestrator_id}',
           result={{"summary": "...", "artifacts": [...]}}
       )
-Note: tenant_key auto-injected by server from API key session
 
 IMPORTANT: Complete your own orchestrator job FIRST, before closing the project.
 The server requires all agents (including orchestrator) to be complete before
@@ -524,7 +523,6 @@ above. The server validates them against CONTROLLED_TAG_VOCABULARY and
 rejects unknown tags with a structured error (invalid_tag + allowed enum).
 Omitting tags persists the entry with an empty tag list -- there is no
 auto-extraction from prose.
-Note: tenant_key auto-injected by server from API key session
 {
         ""
         if git_integration_enabled

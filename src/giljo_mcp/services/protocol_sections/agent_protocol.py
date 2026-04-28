@@ -85,8 +85,8 @@ def _build_worker_protocol_body(
    When creating files or referencing directories, use context-provided paths.
    Do NOT hardcode paths observed in your terminal environment.
 
-1. Call `mcp__giljo_mcp__get_agent_mission(job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission (auto-transitions to WORKING)
-2. Call `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` - Check for instructions
+1. Call `mcp__giljo_mcp__get_agent_mission(job_id="{job_id}")` - Get mission (auto-transitions to WORKING)
+2. Call `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")` - Check for instructions
 3. Review any messages and incorporate feedback BEFORE starting work
 
 {phase1_step4}
@@ -96,19 +96,18 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 - Maintain focus on mission objectives
 - Update todos as you progress
 - **MESSAGE CHECK**: Call `receive_messages()` after completing each TodoWrite task
-  - Full call: `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
+  - Full call: `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")`
   - If queue not empty: Process messages BEFORE continuing
   - If queue empty: Safe to proceed
 
 ### Phase 3: PROGRESS REPORTING (After each milestone)
 1. Call `receive_messages()` - MANDATORY before reporting
-   - Full call: `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
+   - Full call: `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")`
 2. Process ALL pending messages
 3. Call `report_progress()` with your todo_items:
 
    mcp__giljo_mcp__report_progress(
        job_id="{job_id}",
-       tenant_key="{tenant_key}",
        todo_items=[
            {{{{"content": "Task 1 description", "status": "completed"}}}},
            {{{{"content": "Task 2 description", "status": "in_progress"}}}},
@@ -153,7 +152,7 @@ If so, include `resolved_action_items: ["<description>"]` in your result dict to
 
 Final steps:
 1. Call `receive_messages()` - Final message check
-   - Full call: `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
+   - Full call: `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")`
 2. Process any pending messages - ensure queue is empty
 3. Call `complete_job()` - ONLY after TODOs are complete and queue is empty
    - Full call: `mcp__giljo_mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})`
@@ -198,11 +197,11 @@ close_project_and_update_memory(project_id="...", force=False)               # c
    - `mcp__giljo_mcp__send_message(to_agents=["<orchestrator-agent-id-uuid>"], content="BLOCKER: <details>", from_agent="{executor_id}", project_id="...", message_type="direct", requires_action=true)`
    - ALWAYS use the orchestrator's agent_id UUID, NEVER the display name "orchestrator"
 3. STOP work and poll for response (use longer intervals while blocked — 15-20 seconds between polls, up to 5 attempts):
-   - `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
+   - `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")`
 
 **To resume from BLOCKED**:
 1. After receiving guidance, call `report_progress()` with your updated TODO list:
-   - `mcp__giljo_mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_items=[...])`
+   - `mcp__giljo_mcp__report_progress(job_id="{job_id}", todo_items=[...])`
    - This automatically transitions your status from "blocked" back to "working"
 2. Continue execution with Phase 2
 
@@ -315,7 +314,6 @@ def _generate_agent_protocol(
 
     Handover 0378: Fixed three protocol bugs:
     - Bug 2: Protocol now shows distinct job_id and agent_id values (not both job_id)
-    - Bug 3: All receive_messages() examples include tenant_key parameter
     - Bug 4: Added "Sync TodoWrite with MCP Progress" section with explicit instructions
 
     Handover 0359: Fixed progress format to match backend implementation.

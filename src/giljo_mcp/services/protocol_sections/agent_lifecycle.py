@@ -29,7 +29,7 @@ Your subagents are Codex spawn_agent() processes. They run autonomously.
 
 **How to check on agents:**
   → `mcp__giljo_mcp__get_workflow_status(project_id="...")` — poll agent statuses
-  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — read agent messages
+  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")` — read agent messages
 
 **Sleep-and-check pattern (when waiting for agents):**
   1. Tell the user what you are waiting for
@@ -49,7 +49,7 @@ Your subagents are Claude Code Task() processes. They run autonomously.
 
 **How to check on agents:**
   → `mcp__giljo_mcp__get_workflow_status(project_id="...")` — poll agent statuses
-  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — read agent messages
+  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")` — read agent messages
 
 **Sleep-and-check pattern (when waiting for agents):**
   1. Tell the user what you are waiting for and which TODO item depends on it
@@ -66,7 +66,7 @@ Your subagents are Gemini @agent processes. They run autonomously.
 
 **How to check on agents:**
   → `mcp__giljo_mcp__get_workflow_status(project_id="...")` — poll agent statuses
-  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — read agent messages
+  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")` — read agent messages
 
 **Sleep-and-check pattern (when waiting for agents):**
   1. Tell the user what you are waiting for and which TODO item depends on it
@@ -200,8 +200,8 @@ completing, an unblock event, or any other trigger — execute this loop:
   relevant deliverable agent with a tightly scoped fix mission, referencing the reviewer's exact finding.
 
 **PROGRESS REPORTING (MANDATORY after every coordination action):**
-  → To update statuses: `report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_items=[...FULL list with updated statuses...])`
-  → To add NEW tasks: `report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_append=[...new items only...])`
+  → To update statuses: `report_progress(job_id="{job_id}", todo_items=[...FULL list with updated statuses...])`
+  → To add NEW tasks: `report_progress(job_id="{job_id}", todo_append=[...new items only...])`
   → **CRITICAL:** `todo_items` REPLACES the entire list — always include ALL items (completed + in_progress + pending), never a partial list
   → The dashboard displays your TODO list — keep it current
 
@@ -228,7 +228,7 @@ After completing a coordination loop with no actionable work remaining:
 
 **Pre-closeout verification:**
 1. `mcp__giljo_mcp__get_workflow_status(project_id="...")` — confirm all agents are complete
-2. `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — drain final messages
+2. `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")` — drain final messages
 3. Review your TODO list — ALL items must be `completed`
    If any are not, either complete them or explain why they were dropped
 

@@ -897,47 +897,120 @@ Detailed coordination mechanics, message prefixes, priority levels, and tool sig
 """
 
 
-def get_orchestrator_identity_content(tool: str = "multi_terminal") -> str:
+def _get_user_facing_orchestrator_seed() -> str:
     """
-    Generate FULL orchestrator identity and behavioral guidance for get_orchestrator_instructions().
+    Generate the Layer B "user seed" — the admin-editable, tool-agnostic
+    orchestrator identity content.
 
-    Handover 0431: This content is injected into the MCP tool response so orchestrators
-    get their identity/behavioral guidance without needing an AgentTemplate record.
-    Orchestrators stay OUT of the template table, exports, and available_agents list.
+    HO1027 (three-layer identity refactor): This is the content shown in the
+    admin "Restore to default" textarea. It contains identity preamble,
+    behavioral principles, success criteria, "If Requirements Are Unclear",
+    "Before Closeout", "Responding to Context Requests", and the
+    ORCHESTRATOR COORDINATION PRINCIPLES — but no harness mechanics.
 
-    HO1025: `tool` is threaded through to _get_check_in_protocol_section so that
-    the Claude-Code-specific TaskCreate harness override only renders for
-    Claude Code orchestrators, not Codex/Gemini/multi_terminal ones (where the
-    reminder doesn't fire).
-
-    Args:
-        tool: Platform identifier ('claude-code', 'codex', 'gemini', or
-            'multi_terminal'). Defaults to 'multi_terminal' (safe default —
-            no Claude-Code-specific override).
+    Tool gating, MCP tool-call syntax, CHECK-IN PROTOCOL, and the Claude Code
+    HARNESS REMINDER OVERRIDE all live in `_get_orchestrator_system_harness`
+    instead, and are appended at runtime regardless of override state.
 
     Returns:
-        str - Full orchestrator identity and behavioral guidance in markdown format
+        str - Layer B seed content (orchestrator template + context-response
+            section + coordination principles).
     """
-    # Get base template (Identity, Workflow, Responsibilities, etc.)
     base_template = ""
     for template_def in _get_default_templates_v103():
         if template_def.get("role") == "orchestrator":
             base_template = template_def["user_instructions"].strip()
             break
 
-    # Get all protocol sections
+    if not base_template:
+        raise RuntimeError("Default orchestrator template definition not found")
+
     orchestrator_response = _get_orchestrator_context_response_section().strip()
-    mcp_section = _get_mcp_coordination_section().strip()
-    check_in = _get_check_in_protocol_section(tool=tool).strip()
     orchestrator_messaging = _get_orchestrator_messaging_protocol_section().strip()
 
     return f"""{base_template}
 
 {orchestrator_response}
 
-{mcp_section}
-
-{check_in}
-
 {orchestrator_messaging}
 """
+
+
+def _get_orchestrator_system_harness(tool: str = "multi_terminal") -> str:
+    """
+    Generate the Layer A "system harness" — hidden, immutable, tool-aware
+    orchestrator scaffolding that is always appended to the active identity.
+
+    HO1027 (three-layer identity refactor): Contains the MCP Tool Usage
+    section and the CHECK-IN PROTOCOL (which itself appends the Claude-Code-
+    only HARNESS REMINDER OVERRIDE when ``tool == 'claude-code'``).
+
+    The harness is appended after either the user override or the seed so
+    orchestrators always receive harness mechanics even when an admin has
+    replaced the seed with custom identity content.
+
+    Args:
+        tool: Platform identifier ('claude-code', 'codex', 'gemini', or
+            'multi_terminal'). Threaded into `_get_check_in_protocol_section`
+            so the HARNESS REMINDER OVERRIDE only renders for Claude Code.
+
+    Returns:
+        str - Layer A harness content.
+    """
+    mcp_section = _get_mcp_coordination_section().strip()
+    check_in = _get_check_in_protocol_section(tool=tool).strip()
+
+    return f"""{mcp_section}
+
+{check_in}
+"""
+
+
+def compose_orchestrator_identity(override_content: str | None, tool: str = "multi_terminal") -> str:
+    """
+    Compose the runtime orchestrator identity from override-or-seed + harness.
+
+    HO1027 (three-layer identity refactor): This is the canonical entry point
+    for runtime orchestrator identity assembly. It guarantees that the system
+    harness (MCP Tool Usage, CHECK-IN PROTOCOL, HARNESS REMINDER OVERRIDE) is
+    ALWAYS present regardless of whether the tenant has saved an admin
+    override of the user-facing seed.
+
+    Args:
+        override_content: Tenant admin override of the Layer B seed, or None
+            to use the default seed.
+        tool: Platform identifier passed through to the harness for
+            tool-aware gating (HARNESS REMINDER OVERRIDE for claude-code).
+
+    Returns:
+        str - ``(override OR seed) + "\\n\\n---\\n\\n" + harness(tool)``
+    """
+    body = override_content if override_content else _get_user_facing_orchestrator_seed()
+    harness = _get_orchestrator_system_harness(tool=tool)
+    return f"{body.strip()}\n\n---\n\n{harness.strip()}"
+
+
+def get_orchestrator_identity_content(tool: str = "multi_terminal") -> str:
+    """
+    Back-compat shim — returns the default (no-override) composed identity.
+
+    Handover 0431: This content is injected into the MCP tool response so
+    orchestrators get their identity/behavioral guidance without needing an
+    AgentTemplate record. Orchestrators stay OUT of the template table,
+    exports, and available_agents list.
+
+    HO1025: ``tool`` is threaded so the Claude-Code-specific HARNESS REMINDER
+    OVERRIDE only renders for Claude Code orchestrators, not Codex/Gemini/
+    multi_terminal ones.
+
+    HO1027: Now delegates to ``compose_orchestrator_identity(None, tool)``
+    so the seed-vs-harness split is honored even on legacy callers.
+
+    Args:
+        tool: Platform identifier ('claude-code', 'codex', 'gemini', or
+            'multi_terminal'). Defaults to 'multi_terminal'.
+
+    Returns:
+        str - Full orchestrator identity and behavioral guidance.
+    """
+    return compose_orchestrator_identity(None, tool=tool)

@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -161,33 +162,39 @@ class SystemPromptService:
         }
 
     async def _upsert_override(self, session: AsyncSession, tenant_key: str, payload: dict) -> None:
-        stmt = select(Configuration).where(
-            Configuration.tenant_key == tenant_key,
-            Configuration.key == DEFAULT_ORCHESTRATOR_CONFIG_KEY,
-        )
-        result = await session.execute(stmt)
-        record = result.scalar_one_or_none()
+        """
+        Persist the per-tenant orchestrator override.
 
+        HO1027: Converted from select-then-insert-or-update to PostgreSQL
+        ``INSERT ... ON CONFLICT (tenant_key, key) DO UPDATE`` so two
+        concurrent admin saves cannot create duplicate rows or race past the
+        existence check. Requires the ``uq_config_tenant_key`` unique
+        constraint added in migration ``ce_0006``.
+        """
         stored_value = {
             "content": payload["content"],
             "updated_by": payload.get("updated_by"),
             "updated_at": payload.get("updated_at").isoformat() if payload.get("updated_at") else None,
         }
+        now = datetime.now(timezone.utc)
 
-        if record:
-            record.value = stored_value
-            record.updated_at = datetime.now(timezone.utc)
-        else:
-            session.add(
-                Configuration(
-                    tenant_key=tenant_key,
-                    project_id=None,
-                    key=DEFAULT_ORCHESTRATOR_CONFIG_KEY,
-                    value=stored_value,
-                    category="system",
-                    description="Administrator override for orchestrator prompt",
-                )
-            )
+        stmt = pg_insert(Configuration).values(
+            tenant_key=tenant_key,
+            project_id=None,
+            key=DEFAULT_ORCHESTRATOR_CONFIG_KEY,
+            value=stored_value,
+            category="system",
+            description="Administrator override for orchestrator prompt",
+            updated_at=now,
+        )
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_config_tenant_key",
+            set_={
+                "value": stmt.excluded.value,
+                "updated_at": now,
+            },
+        )
+        await session.execute(stmt)
 
     async def _delete_override(self, session: AsyncSession, tenant_key: str) -> None:
         stmt = delete(Configuration).where(
@@ -197,35 +204,22 @@ class SystemPromptService:
         await session.execute(stmt)
 
     def _build_default_orchestrator_prompt(self) -> str:
+        """
+        Return the Layer B "user seed" content for the admin textarea.
+
+        HO1027 (three-layer identity refactor): The default prompt the admin
+        sees and edits is ONLY the user-facing seed — no harness mechanics
+        (MCP Tool Usage, CHECK-IN PROTOCOL, HARNESS REMINDER OVERRIDE). The
+        harness is appended at runtime by ``compose_orchestrator_identity``
+        regardless of whether the tenant has saved an override. This keeps
+        the textarea readable and prevents admins from accidentally deleting
+        harness wiring when they save a custom prompt.
+        """
         if self._default_orchestrator_prompt:
             return self._default_orchestrator_prompt
 
         # Import lazily to avoid circular import issues during startup.
-        from giljo_mcp.template_seeder import (
-            _get_check_in_protocol_section,
-            _get_default_templates_v103,
-            _get_mcp_coordination_section,
-            _get_orchestrator_context_response_section,
-            _get_orchestrator_messaging_protocol_section,
-        )
+        from giljo_mcp.template_seeder import _get_user_facing_orchestrator_seed
 
-        base_template = ""
-        for template_def in _get_default_templates_v103():
-            if template_def.get("role") == "orchestrator":
-                base_template = template_def["user_instructions"].strip()
-                break
-
-        if not base_template:
-            raise RuntimeError("Default orchestrator template definition not found")
-
-        orchestrator_response = _get_orchestrator_context_response_section().strip()
-        mcp_section = _get_mcp_coordination_section().strip()
-        check_in = _get_check_in_protocol_section().strip()
-        orchestrator_messaging = _get_orchestrator_messaging_protocol_section().strip()
-
-        user_instructions = f"{base_template}\n\n{orchestrator_response}".strip()
-        # Orchestrator doesn't need context_request (it doesn't ask itself for context)
-        system_instructions = f"{mcp_section}\n\n{check_in}\n\n{orchestrator_messaging}".strip()
-
-        self._default_orchestrator_prompt = f"{user_instructions}\n\n{system_instructions}".strip()
+        self._default_orchestrator_prompt = _get_user_facing_orchestrator_seed().strip()
         return self._default_orchestrator_prompt

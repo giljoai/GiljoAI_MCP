@@ -460,7 +460,12 @@ class MissionService:
         # Claude-Code-specific TaskCreate harness override only renders for
         # Claude Code orchestrators (codex/gemini/multi_terminal omit it).
         if job.job_type == "orchestrator" and not agent_identity:
-            from giljo_mcp.template_seeder import get_orchestrator_identity_content
+            # HO1027: Use the canonical composer so the system harness (MCP
+            # Tool Usage, CHECK-IN PROTOCOL, HARNESS REMINDER OVERRIDE) is
+            # always appended — even when the tenant admin has saved a
+            # custom seed override via SystemPromptService.
+            from giljo_mcp.system_prompts.service import SystemPromptService
+            from giljo_mcp.template_seeder import compose_orchestrator_identity
 
             project = await self._repo.get_project_by_id(session, tenant_key, job.project_id)
             project_exec_mode = getattr(project, "execution_mode", "multi_terminal") if project else "multi_terminal"
@@ -472,10 +477,22 @@ class MissionService:
             }
             tool = _exec_to_tool.get(project_exec_mode, "multi_terminal")
 
-            agent_identity = get_orchestrator_identity_content(tool=tool)
+            override_content: str | None = None
+            try:
+                prompt_service = SystemPromptService(db_manager=self.db_manager)
+                prompt_record = await prompt_service.get_orchestrator_prompt(tenant_key=tenant_key, session=session)
+                if prompt_record.is_override:
+                    override_content = prompt_record.content
+            except Exception:  # noqa: BLE001
+                self._logger.warning(
+                    "[HO1027] Failed to read orchestrator prompt override; using default seed",
+                    extra={"job_id": job_id},
+                )
+
+            agent_identity = compose_orchestrator_identity(override_content, tool=tool)
             self._logger.info(
-                "[AGENT_IDENTITY] Resolved orchestrator identity from seeded template",
-                extra={"job_id": job_id, "tool": tool},
+                "[AGENT_IDENTITY] Composed orchestrator identity (override+harness or seed+harness)",
+                extra={"job_id": job_id, "tool": tool, "is_override": override_content is not None},
             )
 
         return agent_identity
