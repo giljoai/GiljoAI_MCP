@@ -219,3 +219,8 @@ credentials.json
 service-account*.json
 *.kdbx
 *.netrc
+
+# Browser HAR network captures — debug artifacts containing live URLs,
+# headers, cookies, response bodies. Never commit.
+*.har
+HAR_files/
