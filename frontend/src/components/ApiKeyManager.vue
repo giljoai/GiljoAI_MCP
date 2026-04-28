@@ -6,7 +6,7 @@
         <template #activator="{ props }">
           <v-icon v-bind="props" size="18" color="medium-emphasis" class="ml-2">mdi-help-circle-outline</v-icon>
         </template>
-        Keys are automatically generated when you copy an MCP connection command from the Integrations tab.
+        Keys are automatically generated when you copy an MCP connection command from the Connect tab.
       </v-tooltip>
     </div>
     <p class="text-body-2 text-muted-a11y mb-4">View and revoke API keys used by AI coding agent integrations</p>
@@ -27,7 +27,7 @@
       <!-- Empty State -->
       <v-alert v-if="!loading && apiKeys.length === 0" type="info" variant="tonal" class="mb-4">
         No API keys yet. Copy an MCP connection command from the
-        <strong>Integrations</strong> tab to automatically generate one.
+        <strong>Connect</strong> tab to automatically generate one.
       </v-alert>
 
       <!-- API Keys Table -->

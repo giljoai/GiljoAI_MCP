@@ -304,8 +304,6 @@ async def test_update_depth_config_success(user_service, test_user, db_session):
     assert test_user.depth_vision_documents == "full"
     assert test_user.depth_memory_last_n == 10
     assert test_user.depth_git_commits == 100
-    # execution_mode must survive a depth-only update
-    assert test_user.execution_mode == "claude_code"
 
 
 @pytest.mark.asyncio
@@ -317,47 +315,6 @@ async def test_update_depth_config_validation(user_service, test_user):
 
     with pytest.raises(ValidationError) as exc_info:
         await user_service.update_depth_config(user_id=test_user.id, config=invalid_depth)
-
-    assert "invalid" in str(exc_info.value).lower()
-
-
-# ============================================================================
-# TEST: execution_mode persistence
-# ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_get_execution_mode_default(user_service, test_user):
-    """Execution mode defaults to claude_code when not set."""
-    execution_mode = await user_service.get_execution_mode(test_user.id)
-
-    assert execution_mode == "claude_code"
-
-
-@pytest.mark.asyncio
-async def test_update_execution_mode_persists(user_service, test_user, db_session):
-    """Execution mode updates persist in users.execution_mode column."""
-    result = await user_service.update_execution_mode(
-        user_id=test_user.id,
-        execution_mode="multi_terminal",
-    )
-    assert result is None
-
-    read_back = await user_service.get_execution_mode(test_user.id)
-    assert read_back == "multi_terminal"
-
-    await db_session.refresh(test_user)
-    assert test_user.execution_mode == "multi_terminal"
-
-
-@pytest.mark.asyncio
-async def test_update_execution_mode_validation(user_service, test_user):
-    """Invalid execution mode is rejected."""
-    with pytest.raises(ValidationError) as exc_info:
-        await user_service.update_execution_mode(
-            user_id=test_user.id,
-            execution_mode="invalid-mode",
-        )
 
     assert "invalid" in str(exc_info.value).lower()
 

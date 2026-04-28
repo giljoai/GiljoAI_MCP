@@ -40,6 +40,12 @@ from giljo_mcp.models import (
 from giljo_mcp.repositories.agent_completion_repository import AgentCompletionRepository
 from giljo_mcp.repositories.agent_job_repository import AgentJobRepository
 from giljo_mcp.schemas.service_responses import SpawnResult
+from giljo_mcp.services._predecessor_context import (
+    PREDECESSOR_CHAIN_PREAMBLE,
+    PREDECESSOR_REPLACEMENT_PREAMBLE,
+    SUBAGENT_EXECUTION_MODES,
+    _detect_replacement_semantics,
+)
 from giljo_mcp.services.dto import BroadcastAgentCreatedContext
 from giljo_mcp.tenant import TenantManager
 
@@ -122,7 +128,12 @@ class JobLifecycleService:
             parent_job_id: Optional parent agent_id for spawned agents (now refers to executor, not work order)
             context_chunks: Optional context chunks for the agent
             phase: Optional execution phase for multi-terminal ordering (1=first, same=parallel)
-            predecessor_job_id: Optional job_id of a completed predecessor agent whose work needs fixing
+            predecessor_job_id: Optional job_id of a previous agent whose output the new
+                                successor needs. Server reads the predecessor's completion
+                                record and renders the appropriate preamble (chain vs
+                                replacement is auto-detected from the predecessor's status).
+                                Skipped silently in subagent execution modes -- the
+                                orchestrator's CLI already has the predecessor result inline.
 
         Returns:
             Dict with job_id (work order), agent_id (executor), and agent_prompt
@@ -164,10 +175,18 @@ class JobLifecycleService:
                         context={"project_id": project_id, "status": project.status},
                     )
 
-                # Handover 0497e: Predecessor context injection for recovery spawning
+                # Handover 0497e: Predecessor context injection for recovery spawning.
+                # HO1022: Mode-gated, role auto-detected from predecessor status.
                 if predecessor_job_id:
+                    project_exec_mode = getattr(project, "execution_mode", "multi_terminal") or "multi_terminal"
                     mission = await self._build_predecessor_context(
-                        session, predecessor_job_id, tenant_key, project_id, mission, agent_display_name
+                        session,
+                        predecessor_job_id,
+                        tenant_key,
+                        project_id,
+                        mission,
+                        agent_display_name,
+                        execution_mode=project_exec_mode,
                     )
 
                 # Agent name validation + display name collision resolution
@@ -218,7 +237,6 @@ class JobLifecycleService:
                     agent_display_name=agent_display_name,
                     project_name=project.name,
                     job_id=job_id,
-                    tenant_key=tenant_key,
                 )
 
                 created_at = datetime.now(timezone.utc)
@@ -273,29 +291,50 @@ class JobLifecycleService:
         project_id: str,
         mission: str,
         agent_display_name: str,
+        execution_mode: str = "multi_terminal",
     ) -> str:
         """
-        Build predecessor context for recovery spawning and prepend it to the mission.
+        Build predecessor context for chain or replacement spawning, mode-gated.
 
-        Handover 0497e: When a successor agent is spawned to fix a predecessor's work,
-        this fetches the predecessor's completion result and injects context into the mission.
+        HO1022: Two-mode design. Server gates on execution_mode and auto-detects
+        chain vs replacement semantics from the predecessor's completion record.
+        Orchestrators never see this distinction -- they just pass
+        predecessor_job_id when a successor needs a previous agent's output.
+
+        +-----------------+----------------------------------------------------+
+        | execution_mode  | server behavior                                    |
+        +-----------------+----------------------------------------------------+
+        | multi_terminal  | inject preamble (chain or replacement, auto-       |
+        |                 | detected from pred_execution.result.status)        |
+        | subagent_*      | NO preamble -- orchestrator's CLI returned the     |
+        |                 | predecessor result inline and is expected to       |
+        |                 | splice findings into the successor mission         |
+        +-----------------+----------------------------------------------------+
+
+        Validation always runs (predecessor existence + same-project check) so
+        that a typo'd predecessor_job_id is caught even when the preamble is
+        skipped.
 
         Args:
             session: Active database session
-            predecessor_job_id: Job ID of the completed predecessor agent
+            predecessor_job_id: Job ID of the predecessor agent
             tenant_key: Tenant key for isolation
             project_id: Project UUID to validate predecessor belongs to same project
             mission: Original mission text
             agent_display_name: Display name of the successor agent (for logging)
+            execution_mode: Project's execution_mode column value. Determines
+                            whether any preamble is rendered at all.
 
         Returns:
-            Modified mission with predecessor context prepended
+            Modified mission with predecessor context prepended (or unchanged
+            mission in subagent modes).
 
         Raises:
             ResourceNotFoundError: Predecessor job not found
             ValidationError: Predecessor job belongs to a different project
         """
-        # Validate predecessor exists and belongs to same project + tenant
+        # Always validate predecessor exists and belongs to same project + tenant.
+        # This catches typo'd predecessor_job_id values even in the skip path.
         repo = AgentCompletionRepository()
         pred_job = await repo.get_predecessor_job(session, tenant_key, predecessor_job_id)
 
@@ -314,10 +353,24 @@ class JobLifecycleService:
                 },
             )
 
-        # Fetch predecessor's completion result
-        pred_execution = await repo.get_completed_execution_for_job(session, tenant_key, predecessor_job_id)
+        # Mode gate: subagent modes never get a preamble.
+        # The orchestrator's CLI returned the predecessor result inline (Task() /
+        # spawn_agent() / @-syntax) and is expected to splice findings into the
+        # successor's mission text directly. Injecting a preamble here would
+        # either duplicate that information or impose wrong-semantics framing.
+        if execution_mode in SUBAGENT_EXECUTION_MODES:
+            self._logger.info(
+                "[PREDECESSOR_CONTEXT] Skipped: subagent mode, orchestrator splices inline",
+                extra={
+                    "predecessor_job_id": predecessor_job_id,
+                    "execution_mode": execution_mode,
+                    "successor_display_name": agent_display_name,
+                },
+            )
+            return mission
 
-        # Build predecessor context
+        # Fetch predecessor's completion result for preamble rendering.
+        pred_execution = await repo.get_completed_execution_for_job(session, tenant_key, predecessor_job_id)
         pred_display_name = pred_execution.agent_display_name if pred_execution else "Unknown"
         pred_result = (pred_execution.result or {}) if pred_execution else {}
 
@@ -331,25 +384,32 @@ class JobLifecycleService:
         if len(pred_commits) > 10:
             pred_commits = [*pred_commits[:10], f"... and {len(pred_commits) - 10} more"]
 
-        predecessor_context = f"""## PREDECESSOR CONTEXT
-You are replacing a previous agent who completed their work but issues were found.
+        # Auto-detect chain vs replacement from the predecessor's work-order
+        # status FIRST, then its completion record. HO1023: the prior heuristic
+        # of "no pred_execution -> replacement" was wrong for multi_terminal
+        # staging, where the orchestrator pre-spawns chains BEFORE any phase
+        # runs (so pred_execution is naturally None at spawn time without
+        # implying failure). Replacement now requires an EXPLICIT failure
+        # signal on the work order or the completion result.
+        # Note: tenant_key is NOT included in the rendered get_agent_result(...)
+        # call -- Wave 1 (commit ffa779bf) established that tenant_key is auto-
+        # injected server-side and must never appear in agent-facing prose.
+        is_replacement = _detect_replacement_semantics(pred_job, pred_execution)
+        template = PREDECESSOR_REPLACEMENT_PREAMBLE if is_replacement else PREDECESSOR_CHAIN_PREAMBLE
+        predecessor_context = template.format(
+            pred_display_name=pred_display_name,
+            predecessor_job_id=predecessor_job_id,
+            pred_summary=pred_summary,
+            pred_commits=pred_commits,
+        )
 
-Previous Agent: {pred_display_name} (job_id: {predecessor_job_id})
-Completion Summary: {pred_summary}
-Commits: {pred_commits}
-
-Your task: Read the predecessor's work, understand what was done, then fix the issues described in your mission below.
-
-If git integration is enabled, run `git log --oneline -10` to see recent commits.
-If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predecessor_job_id}", tenant_key="{tenant_key}")`.
-
----
-"""
         mission = predecessor_context + mission
         self._logger.info(
-            "[PREDECESSOR_CONTEXT] Injected predecessor context into successor mission",
+            "[PREDECESSOR_CONTEXT] Injected predecessor preamble",
             extra={
                 "predecessor_job_id": predecessor_job_id,
+                "execution_mode": execution_mode,
+                "preamble_kind": "replacement" if is_replacement else "chain",
                 "successor_display_name": agent_display_name,
                 "predecessor_display_name": pred_display_name,
             },
@@ -549,7 +609,6 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
         agent_display_name: str,
         project_name: str,
         job_id: str,
-        tenant_key: str,
     ) -> str:
         """
         Build the thin agent prompt injected into the spawned Claude Code session.
@@ -558,12 +617,14 @@ If you need more detail, call `mcp__giljo_mcp__get_agent_result(job_id="{predece
         with enough context to call get_agent_mission and retrieve the full protocol
         and mission from the database.
 
+        Tenant isolation: the server auto-injects tenant_key from the API key
+        session, so the prompt omits it entirely from agent-facing examples.
+
         Args:
             agent_name: Agent name/identifier (template lookup key)
             agent_display_name: Display name of agent (UI label)
             project_name: Human-readable project name
             job_id: Work order UUID (persists across succession)
-            tenant_key: Tenant key for isolation
 
         Returns:
             Prompt string to pass to the Claude Code spawner
@@ -579,7 +640,6 @@ MCP tools are **native tool calls** (like Read/Write/Bash/Glob).
 
 1. Call `mcp__giljo_mcp__get_agent_mission` with:
    - job_id="{job_id}"
-   - tenant_key="{tenant_key}"
 
 2. Read the response and follow `full_protocol`
    for all lifecycle behavior (startup, planning, progress,

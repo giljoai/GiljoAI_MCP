@@ -91,10 +91,43 @@ class TestCH2InlineFetchCalls:
         ch2 = self._build_ch2()
         assert "fetch_context(" in ch2, "CH2 must contain fetch_context() calls"
 
-    def test_ch2_contains_essential_framing(self):
-        """CH2 Step 2 must tell agent context categories are essential (CE-OPT-001)."""
+    def test_ch2_implementation_todo_hoisted_to_step_1c(self):
+        """HO1025: the Implementation TODO List guidance was previously buried
+        inside Step 1b (Initialize Progress Tracking). Test-agent feedback flagged
+        it as easy to skim past. Hoisted to its own labeled Step 1c so the
+        orchestrator sees it as a standalone planning concern."""
         ch2 = self._build_ch2()
-        assert "essential context" in ch2 or "configured by the user" in ch2
+        assert "STEP 1c" in ch2
+        assert "Plan Implementation Deliverables" in ch2
+        # Step 1b should now ONLY mention deferral, not the TODO list shape
+        assert "STEP 1b: Defer Progress Tracking" in ch2
+        # The TODO list keywords must be in CH2 SOMEWHERE, but the structural
+        # signal is the labeled step header.
+        assert "PROJECT OUTCOME" in ch2
+
+    def test_ch2_contains_context_fetch_philosophy(self):
+        """HO1024: CH2 Step 2 must teach context-fetch judgment, not prescribe
+        fetch-all. Replaces the legacy 'essential context / configured by the
+        user' framing that pushed orchestrators to batch-fetch every enabled
+        category regardless of whether the project actually needed it.
+        """
+        ch2 = self._build_ch2()
+        assert "CONTEXT-FETCH PHILOSOPHY" in ch2
+        assert "SIZING" in ch2
+        # Idempotency safety-net language must surface so agents feel safe defaulting low.
+        assert "idempotent" in ch2
+        # Anti-over-fetch directive (case-insensitive — prose may evolve).
+        assert "pre-fetch defensively" in ch2.lower()
+        # Per-category usage hints must render for at least one category.
+        assert "[needed if:" in ch2
+        # Inverse heuristic: if the user wrote a vague description, the orchestrator
+        # must know to fetch MORE to compensate (not less). This guards against the
+        # under-specified-project failure mode where sizing alone would mislead.
+        assert "INVERSE" in ch2
+        assert "vague" in ch2 or "thin" in ch2
+        # Regression guard: the legacy "fetch all" framing must NOT return.
+        assert "fetch all" not in ch2.lower()
+        assert "essential context" not in ch2
 
     def test_ch2_includes_product_id_and_tenant_key(self):
         """Each fetch call must include product_id and tenant_key."""

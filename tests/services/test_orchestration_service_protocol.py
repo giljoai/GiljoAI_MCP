@@ -91,8 +91,13 @@ class TestAgentProtocolFormat:
         assert identifiers_section.count("job-123") >= 1
         assert identifiers_section.count("executor-456") >= 1
 
-    def test_protocol_receive_messages_includes_tenant_key(self):
-        """Verify all receive_messages examples include tenant_key parameter (Bug 3)."""
+    def test_protocol_receive_messages_omits_tenant_key(self):
+        """Rendered receive_messages examples must NOT include tenant_key (audit_vestigial_cleanup).
+
+        The MCP server auto-injects tenant_key from the API key session and strips
+        it from the tool schema entirely. Rendered example signatures that pass
+        tenant_key=... are an active contradiction with the dispatch contract.
+        """
         protocol = _generate_agent_protocol(
             job_id="job-abc", tenant_key="tenant-xyz", agent_name="test-agent", agent_id="executor-def"
         )
@@ -108,16 +113,13 @@ class TestAgentProtocolFormat:
             f"Expected at least 4 receive_messages examples, found {len(receive_messages_calls)}"
         )
 
-        # Verify NONE of them are missing tenant_key
-        # The old broken format would be: receive_messages(agent_id="...")
-        # The correct format is: receive_messages(agent_id="...", tenant_key="...")
+        # Verify NONE of them include tenant_key
         for call in receive_messages_calls:
             # Skip short-form examples that just show the tool name
             if "agent_id=" not in call:
                 continue
 
-            # Full-form examples MUST include tenant_key
-            assert "tenant_key=" in call, f"receive_messages call missing tenant_key: {call}"
+            assert "tenant_key=" not in call, f"receive_messages example must omit tenant_key: {call}"
 
     def test_protocol_includes_todowrite_sync_instructions(self):
         """Verify protocol includes instructions to sync TodoWrite with report_progress (Bug 4)."""

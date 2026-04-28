@@ -1,3 +1,7 @@
+// See docs/adr/ADR-001-frontend-url-resolution.md
+// This file IS the canonical resolver. All API/WS URL composition must use
+// getApiBaseUrl() / getWsBaseUrl() exported below — never ${host}:${port}.
+
 /**
  * API URL resolver
  *

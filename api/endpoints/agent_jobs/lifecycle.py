@@ -150,7 +150,11 @@ async def complete_job(
     # Service expects result as dict, wrap string result for compatibility
     result_dict = {"summary": complete_request.result} if complete_request.result else {"summary": "Job completed"}
     result = await orchestration_service.complete_job(
-        job_id=job_id, tenant_key=current_user.tenant_key, result=result_dict
+        job_id=job_id,
+        tenant_key=current_user.tenant_key,
+        result=result_dict,
+        acknowledge_closeout_todo=complete_request.acknowledge_closeout_todo,
+        acknowledge_messages_on_complete=complete_request.acknowledge_messages_on_complete,
     )
 
     logger.info("Completed job %s for tenant %s", sanitize(job_id), sanitize(current_user.tenant_key))

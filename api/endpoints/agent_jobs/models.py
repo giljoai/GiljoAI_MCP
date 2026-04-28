@@ -51,6 +51,25 @@ class JobCompleteRequest(BaseModel):
     """Request model for job completion."""
 
     result: Optional[str] = Field(None, description="Completion result/summary")
+    acknowledge_closeout_todo: bool = Field(
+        default=False,
+        description=(
+            "When True, the gate auto-completes any incomplete TODO whose content "
+            "describes the closeout itself (matches closeout/complete_job/close_project). "
+            "Use from orchestrator closeout where the closeout TODO IS this call. "
+            "Non-closeout TODOs still block."
+        ),
+    )
+    acknowledge_messages_on_complete: bool = Field(
+        default=False,
+        description=(
+            "When True, the gate drains (marks acknowledged) all unread messages "
+            "addressed to this agent within the project+tenant before evaluating. "
+            "Mirror of acknowledge_closeout_todo for the messages gate. Escape "
+            "hatch for the reactivation-on-stale-message loop. The TODOs gate is "
+            "independent — this flag does NOT bypass incomplete TODOs."
+        ),
+    )
 
 
 class JobCompleteResponse(BaseModel):

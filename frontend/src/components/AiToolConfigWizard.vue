@@ -266,6 +266,12 @@ async function generateApiKey() {
 }
 
 function buildServerUrl() {
+  // CE: always include the explicit backend port (LAN/WAN/localhost connect direct).
+  // demo/saas: reverse-proxied on 443, omit the port so URLs match the public host.
+  if (!isCe.value) {
+    const protocol = window.location.protocol === 'https:' ? 'https' : 'http'
+    return buildUrl({ host: serverIp.value, port: null, protocol })
+  }
   return buildUrl(serverIp.value, serverPort.value)
 }
 

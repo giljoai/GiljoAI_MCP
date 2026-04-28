@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import { useProductStore } from '@/stores/products'
 import { useToast } from '@/composables/useToast'
@@ -6,6 +7,7 @@ import { useToast } from '@/composables/useToast'
 export function useProductActivation(loadProducts) {
   const productStore = useProductStore()
   const { showToast } = useToast()
+  const router = useRouter()
 
   const showActivationWarning = ref(false)
   const pendingActivation = ref(null)
@@ -45,6 +47,10 @@ export function useProductActivation(loadProducts) {
         })
 
         await loadProducts()
+        // Activation is the universal entry point to per-product onboarding:
+        // route to /home so the user sees New Project + bootstrap cards
+        // (when applicable -- gated by Product.first_project_created_at).
+        router.push('/home')
       }
     } catch (error) {
       console.error('Failed to toggle product activation:', error)
@@ -73,6 +79,9 @@ export function useProductActivation(loadProducts) {
       showActivationWarning.value = false
       pendingActivation.value = null
       currentActiveProduct.value = null
+
+      // Same destination as the no-confirmation activation path.
+      router.push('/home')
     } catch (error) {
       console.error('Failed to confirm activation:', error)
       showToast({

@@ -66,7 +66,9 @@ async def get_product_context(
 
         if not product:
             logger.warning(
-                "product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_product_context"
+                "product_not_found product_id=%s tenant_key=%s operation=get_product_context",
+                product_id,
+                tenant_key,
             )
             return {
                 "source": "product_context",

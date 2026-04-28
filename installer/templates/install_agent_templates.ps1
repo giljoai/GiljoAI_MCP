@@ -28,7 +28,7 @@ Write-Host ""
 # ---------------------------------------------------------------------------
 if (-not $env:GILJO_API_KEY) {
     Write-Host "Error: GILJO_API_KEY environment variable not set" -ForegroundColor Red
-    Write-Host "Configure GiljoAI MCP first: Settings -> Integrations"
+    Write-Host "Configure GiljoAI MCP first: Tools -> Connect"
     exit 1
 }
 

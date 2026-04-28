@@ -29,7 +29,7 @@ Your subagents are Codex spawn_agent() processes. They run autonomously.
 
 **How to check on agents:**
   → `mcp__giljo_mcp__get_workflow_status(project_id="...")` — poll agent statuses
-  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — read agent messages
+  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")` — read agent messages
 
 **Sleep-and-check pattern (when waiting for agents):**
   1. Tell the user what you are waiting for
@@ -49,7 +49,7 @@ Your subagents are Claude Code Task() processes. They run autonomously.
 
 **How to check on agents:**
   → `mcp__giljo_mcp__get_workflow_status(project_id="...")` — poll agent statuses
-  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — read agent messages
+  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")` — read agent messages
 
 **Sleep-and-check pattern (when waiting for agents):**
   1. Tell the user what you are waiting for and which TODO item depends on it
@@ -66,7 +66,7 @@ Your subagents are Gemini @agent processes. They run autonomously.
 
 **How to check on agents:**
   → `mcp__giljo_mcp__get_workflow_status(project_id="...")` — poll agent statuses
-  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — read agent messages
+  → `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")` — read agent messages
 
 **Sleep-and-check pattern (when waiting for agents):**
   1. Tell the user what you are waiting for and which TODO item depends on it
@@ -182,9 +182,26 @@ completing, an unblock event, or any other trigger — execute this loop:
   → In subagent mode: launch directly. In multi-terminal: tell user "Verification agent spawned, start it from dashboard"
   → Update the relevant TODO item
 
+**Implementation-phase verification spawning:**
+
+- **WHEN to spawn verification:** After deliverable agents (implementer, analyzer, documenter) complete
+  AND the project produced code or testable artifacts. If all agents produced only documentation or
+  analysis (no changed code, no new APIs, no migrations), skip verification entirely — there is
+  nothing for a tester/reviewer to run.
+- **HOW to build the verification mission:** Call `get_agent_result(job_id=<deliverable_job_id>)` for
+  every completed deliverable agent. Anchor the tester/reviewer mission in REAL artifacts: exact file
+  paths, commit hashes, API names, and behavior changes from those results. Never write a speculative
+  mission ("the implementer probably added X") — if the result is absent, note it as unknown and scope
+  verification to what is confirmed.
+- **HOW to handle findings the orchestrator can fix without re-spawning:** If a finding is trivial
+  (roughly 10 lines, single file, low risk — e.g. a lint warning, a missing docstring, a wrong constant),
+  the orchestrator may fix it inline and add a follow-up commit without re-spawning the deliverable agent.
+  If a finding is substantive (architectural change, multi-file impact, risky logic) → re-spawn the
+  relevant deliverable agent with a tightly scoped fix mission, referencing the reviewer's exact finding.
+
 **PROGRESS REPORTING (MANDATORY after every coordination action):**
-  → To update statuses: `report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_items=[...FULL list with updated statuses...])`
-  → To add NEW tasks: `report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_append=[...new items only...])`
+  → To update statuses: `report_progress(job_id="{job_id}", todo_items=[...FULL list with updated statuses...])`
+  → To add NEW tasks: `report_progress(job_id="{job_id}", todo_append=[...new items only...])`
   → **CRITICAL:** `todo_items` REPLACES the entire list — always include ALL items (completed + in_progress + pending), never a partial list
   → The dashboard displays your TODO list — keep it current
 
@@ -211,7 +228,7 @@ After completing a coordination loop with no actionable work remaining:
 
 **Pre-closeout verification:**
 1. `mcp__giljo_mcp__get_workflow_status(project_id="...")` — confirm all agents are complete
-2. `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — drain final messages
+2. `mcp__giljo_mcp__receive_messages(agent_id="{executor_id}")` — drain final messages
 3. Review your TODO list — ALL items must be `completed`
    If any are not, either complete them or explain why they were dropped
 
@@ -221,9 +238,20 @@ include `tags=["action_required:<file> — <description>"]` in `close_project_an
 or write a separate `write_360_memory()` entry with those tags so they persist for future agents.
 For trivial items (~10 lines), prefer fixing immediately rather than deferring.
 
+**Closeout works without git:**
+Git commit collection is best-effort. When the server cannot resolve commits (non-git environment,
+missing binary, bare repo), the `complete_job()` response will include `git_unavailable: true` and
+a human-readable `git_unavailable_reason` explaining why. The job still closes cleanly; the commit
+list will be empty or contain only agent-supplied hashes. When this happens, include the phrase
+"git not available — commits omitted" in your closeout summary so the audit trail is honest. The
+`git_warning` field covers a separate case: git integration enabled but the agent produced no commits
+(normal for coordinators and documentation-only agents — no action needed).
+
 **Closeout steps (order matters):**
-1. Mark any remaining TODO items as `completed` via `report_progress()`
-2. `mcp__giljo_mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})` — mark YOUR orchestrator job complete FIRST
+1. Mark any remaining non-closeout TODO items as `completed` via `report_progress()` (a TODO describing the closeout itself does NOT need to be marked completed first — see step 2)
+2. `mcp__giljo_mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}}, acknowledge_closeout_todo=True)` — mark YOUR orchestrator job complete FIRST
+   → Pass `acknowledge_closeout_todo=True` so the gate auto-completes any TODO whose content describes the closeout itself (matches "closeout", "complete_job", or "close_project"). This avoids the chicken-and-egg of needing to mark your closeout TODO done before calling closeout. Non-closeout incomplete TODOs still block. The unread-messages gate is independent — drain messages with `receive_messages()` first.
+   → ESCAPE HATCH for stuck inboxes: pass `acknowledge_messages_on_complete=True` to drain (mark acknowledged) all unread messages addressed to this agent within the project+tenant before evaluating the gate. This is the messages-side mirror of `acknowledge_closeout_todo`. Use it only when you are stuck in a reactivation-on-stale-message loop and cannot otherwise close out — preferred path is still `receive_messages()` then complete. The TODOs gate is independent: this flag does NOT bypass incomplete TODOs.
    → READ the `closeout_checklist` in the response
    → If `user_approval_required=true`: set status blocked with reason "Closeout: awaiting user review", present deferred findings and options to user, WAIT for user response
    → If `user_approval_required=false`: proceed with best judgment
@@ -235,7 +263,7 @@ For trivial items (~10 lines), prefer fixing immediately rather than deferring.
 **IMPORTANT:** You MUST complete your own job (step 2) BEFORE closing the project (step 5). The server requires all agents including the orchestrator to be complete before project closeout.
 
 **If `complete_job()` is rejected:** Read the error. Common causes:
-- Unread messages remain → run receive_messages() and process them
+- Unread messages remain → run receive_messages() and process them (the `acknowledge_closeout_todo` flag does NOT bypass this gate; if you are stuck, use the `acknowledge_messages_on_complete=True` escape hatch instead)
 - TODO items incomplete �� review and update your TODO list, then retry
 
 ## ORCHESTRATOR CONSTRAINTS

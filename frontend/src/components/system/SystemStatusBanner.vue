@@ -35,6 +35,24 @@
       </template>
       {{ updateMessage }}
     </v-alert>
+
+    <v-alert
+      v-if="showSkillsDrift"
+      type="info"
+      variant="tonal"
+      density="compact"
+      closable
+      class="system-banner-alert"
+      @click:close="dismissSkills"
+    >
+      <template #prepend>
+        <v-icon>mdi-puzzle-outline</v-icon>
+      </template>
+      Your CLI skills are out of date. Run
+      <code class="banner-code">/giljo_setup</code>
+      (or <code class="banner-code">/gil_get_agents</code>) to refresh, then
+      <code class="banner-code">git pull</code> for the latest server.
+    </v-alert>
   </div>
 </template>
 
@@ -45,6 +63,8 @@ import { apiClient } from '@/services/api'
 
 const SESSION_KEY_MIGRATION = 'dismissed_migration_banner'
 const SESSION_KEY_UPDATE = 'dismissed_update_banner'
+const LOCAL_KEY_INSTALLED_SKILLS = 'giljo_skills_version'
+const LOCAL_KEY_SKILLS_DISMISS_PREFIX = 'giljo_skills_dismissed_for_'
 
 const userStore = useUserStore()
 
@@ -52,16 +72,38 @@ const pendingMigration = ref(false)
 const updateAvailable = ref(false)
 const commitsBehind = ref(0)
 
+// Skills version drift state.
+//   currentSkillsVersion = the bundled version returned by the server.
+//   skillsDriftDetected  = server's drift verdict for the installed version.
+//   skillsDismissedForCurrent = true once user has dismissed THIS version's banner.
+const currentSkillsVersion = ref(null)
+const skillsDriftDetected = ref(false)
+const skillsDismissedForCurrent = ref(false)
+const installedSkillsKnown = ref(false)
+
 const migrationDismissed = ref(sessionStorage.getItem(SESSION_KEY_MIGRATION) === 'true')
 const updateDismissed = ref(sessionStorage.getItem(SESSION_KEY_UPDATE) === 'true')
 
 const isAdmin = computed(() => userStore.currentUser?.role === 'admin')
 
+// Drift banner visibility rule:
+//   - admin gate (skills install is admin-only)
+//   - server reported drift_detected: true
+//   - localStorage has a known installed version (recon Q4: missing key = suppress)
+//   - user has not already dismissed THIS specific bundled version
+const showSkillsDrift = computed(() => {
+  if (!isAdmin.value) return false
+  if (!skillsDriftDetected.value) return false
+  if (!installedSkillsKnown.value) return false
+  if (skillsDismissedForCurrent.value) return false
+  return true
+})
+
 const showBanner = computed(() => {
   if (!isAdmin.value) return false
   const hasMigration = pendingMigration.value && !migrationDismissed.value
   const hasUpdate = updateAvailable.value && !updateDismissed.value
-  return hasMigration || hasUpdate
+  return hasMigration || hasUpdate || showSkillsDrift.value
 })
 
 const updateMessage = computed(() => {
@@ -83,6 +125,35 @@ async function fetchSystemStatus() {
   }
 }
 
+// Boot drift check (Phase 1 of Skills version tracking).
+// Reads localStorage giljo_skills_version (written by setup:* WS handlers in
+// stores/eventRoutes/systemEventRoutes.js), asks the server whether that
+// installed version is current, and updates banner state accordingly.
+async function fetchSkillsDrift() {
+  if (!isAdmin.value) return
+  try {
+    const installed = localStorage.getItem(LOCAL_KEY_INSTALLED_SKILLS)
+    installedSkillsKnown.value = installed !== null && installed !== ''
+
+    const response = await apiClient.get('/api/notifications/check-skills-version', {
+      params: { installed_skills_version: installed ?? undefined },
+    })
+    const data = response.data ?? {}
+    currentSkillsVersion.value = data.current ?? null
+    skillsDriftDetected.value = data.drift_detected === true
+
+    // Per-version dismissal — read AFTER we know `current` so a fresh drift
+    // (newer bundled version) automatically reappears even if the user
+    // dismissed a prior drift.
+    if (currentSkillsVersion.value) {
+      const dismissedKey = `${LOCAL_KEY_SKILLS_DISMISS_PREFIX}${currentSkillsVersion.value}`
+      skillsDismissedForCurrent.value = localStorage.getItem(dismissedKey) === 'true'
+    }
+  } catch {
+    // Drift endpoint may not exist on older servers — keep banner hidden.
+  }
+}
+
 function handleUpdateAvailableEvent(event) {
   const payload = event?.detail ?? event
   if (!payload) return
@@ -90,6 +161,8 @@ function handleUpdateAvailableEvent(event) {
   if (typeof payload.commits_behind === 'number') {
     commitsBehind.value = payload.commits_behind
   }
+  // Skills version may also have advanced server-side — re-check.
+  fetchSkillsDrift()
 }
 
 function dismissMigration() {
@@ -102,8 +175,20 @@ function dismissUpdate() {
   sessionStorage.setItem(SESSION_KEY_UPDATE, 'true')
 }
 
+function dismissSkills() {
+  skillsDismissedForCurrent.value = true
+  if (currentSkillsVersion.value) {
+    localStorage.setItem(
+      `${LOCAL_KEY_SKILLS_DISMISS_PREFIX}${currentSkillsVersion.value}`,
+      'true',
+    )
+  }
+}
+
+defineExpose({ dismissSkills })
+
 onMounted(async () => {
-  await fetchSystemStatus()
+  await Promise.all([fetchSystemStatus(), fetchSkillsDrift()])
 
   // Listen for WebSocket events dispatched by systemEventRoutes
   window.addEventListener('ws-system-update-available', handleUpdateAvailableEvent)

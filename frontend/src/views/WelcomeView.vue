@@ -23,11 +23,16 @@
       <div class="quick-grid">
         <div
           v-for="(card, i) in quickCards"
-          :key="card.title"
+          :key="card.id || card.title"
           class="quick-card smooth-border"
-          :class="{ 'quick-card--attention': card.attention }"
+          :class="{
+            'quick-card--attention': card.attention,
+            'quick-card--template': card.isTemplate,
+            'quick-card--busy': card.busy,
+          }"
           :style="{ '--card-accent': card.accent, animationDelay: (0.15 + i * 0.07) + 's' }"
-          @click="card.action ? card.action() : $router.push(card.to)"
+          :data-template-id="card.templateId || null"
+          @click="onCardClick(card)"
         >
           <div
             class="quick-card-icon"
@@ -37,7 +42,9 @@
           </div>
           <div class="quick-card-title">{{ card.title }}</div>
           <div class="quick-card-desc">{{ card.description }}</div>
+          <div v-if="card.subtitle" class="quick-card-subtitle">{{ card.subtitle }}</div>
           <span v-if="card.badge" class="quick-card-badge">{{ card.badge }}</span>
+          <span v-if="card.busy" class="quick-card-busy-label">Creating…</span>
         </div>
       </div>
 
@@ -118,7 +125,7 @@
           <v-icon size="24" color="#ffc300">mdi-rocket-launch</v-icon>
           <div class="setup-cta-text">
             <div class="setup-cta-title">{{ setupCtaLabel }}</div>
-            <div class="setup-cta-desc">Configure AI tools, connect integrations, and learn the basics.</div>
+            <div class="setup-cta-desc">Configure AI tools, manage connections, and learn the basics.</div>
           </div>
           <v-icon size="18" style="color:var(--text-muted);">mdi-chevron-right</v-icon>
         </div>
@@ -185,12 +192,19 @@ import CertTrustModal from '@/components/setup/CertTrustModal.vue'
 import RecentProjectsList from '@/components/dashboard/RecentProjectsList.vue'
 import ProjectReviewModal from '@/components/projects/ProjectReviewModal.vue'
 import configService from '@/services/configService'
+import { PROJECT_TEMPLATES } from '@/composables/projectTemplates'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const productStore = useProductStore()
 const projectStore = useProjectStore()
+const { showToast } = useToast()
+
+// Step-4 template card state — tracks which template is mid-create so we can
+// disable the card visually and functionally until the API call resolves.
+const busyTemplateId = ref(null)
 
 // Certificate trust modal state
 const showCertModal = ref(false)
@@ -337,6 +351,9 @@ function tintedBg(hex) {
 const hasActiveProduct = computed(() => !!productStore.activeProduct)
 const hasAnyProduct = computed(() => productStore.hasProducts)
 const activeProjectCount = computed(() => projectStore.activeProjects?.length ?? 0)
+// projectStore.projects is product-scoped via fetchProjects(currentProductId),
+// so this gate is per-product. ce_0004 enforces NOT NULL on product_id, so
+// orphan rows can no longer pollute another product's count.
 const hasAnyProject = computed(() => (projectStore.projects?.length ?? 0) > 0)
 
 // Onboarding-aware quick launch card definitions
@@ -427,6 +444,66 @@ const activeProjectsCard = computed(() => ({
   to: '/launch?via=jobs',
 }))
 
+// Step-4 template cards — pre-filled starter projects offered alongside the
+// blank-slate "+ Create your first project" path. Source-of-truth payloads
+// live in @/composables/projectTemplates.
+const templateCards = computed(() =>
+  PROJECT_TEMPLATES.map((tmpl) => ({
+    id: `template-${tmpl.id}`,
+    templateId: tmpl.id,
+    isTemplate: true,
+    busy: busyTemplateId.value === tmpl.id,
+    title: tmpl.cardTitle,
+    description: tmpl.cardSubtitle,
+    icon: tmpl.icon,
+    iconBg: 'rgba(109,179,228,0.12)',
+    iconColor: '#6DB3E4',
+    accent: '#6DB3E4',
+    action: () => createFromTemplate(tmpl),
+  }))
+)
+
+async function createFromTemplate(tmpl) {
+  if (busyTemplateId.value) return
+  const productId = productStore.activeProduct?.id || productStore.effectiveProductId
+  if (!productId) {
+    showToast({
+      message: 'No active product — activate a product before creating a project.',
+      color: 'error',
+    })
+    return
+  }
+  busyTemplateId.value = tmpl.id
+  try {
+    await projectStore.createProject({
+      name: tmpl.projectName,
+      description: tmpl.projectDescription,
+      product_id: productId,
+    })
+    busyTemplateId.value = null
+    // Match newProjectCard's destination so the welcome flow advances
+    // identically regardless of which step-4 card the user clicked.
+    router.push('/Projects')
+  } catch (err) {
+    busyTemplateId.value = null
+    showToast({
+      message: err?.message || 'Failed to create project from template',
+      color: 'error',
+    })
+  }
+}
+
+function onCardClick(card) {
+  if (card.busy) return
+  if (typeof card.action === 'function') {
+    card.action()
+    return
+  }
+  if (card.to) {
+    router.push(card.to)
+  }
+}
+
 // Onboarding phase: true until user has at least one product AND one project
 const onboardingComplete = computed(() => hasActiveProduct.value && hasAnyProject.value)
 
@@ -453,9 +530,12 @@ const quickCards = computed(() => {
     return [activateProductCard.value]
   }
 
-  // Step 4: Product exists but no project → show only "New Project"
+  // Step 4: Product exists but no project under it → show "New Project" +
+  // 2 template cards. Cards naturally hide once the user creates any
+  // project under the active product (and reappear if they delete them
+  // all -- by design, that product is effectively starting fresh).
   if (!hasAnyProject.value) {
-    return [newProjectCard.value]
+    return [newProjectCard.value, ...templateCards.value]
   }
 
   // --- Onboarding complete: full 3-card layout ---
@@ -831,6 +911,32 @@ onMounted(async () => {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.6rem;
   color: var(--text-muted);
+}
+
+/* Step-4 starter-template cards — visually grouped via accent border colour
+   on the existing smooth-border channel. No raw CSS border on rounded cards. */
+.quick-card--template {
+  --smooth-border-color: rgba(109, 179, 228, 0.28);
+}
+
+.quick-card--template .quick-card-subtitle {
+  font-size: 0.7rem;
+  color: #a3aac4; /* matches --text-secondary, WCAG AA 6.56:1 on #12202e */
+  margin-top: 8px;
+  line-height: 1.35;
+}
+
+.quick-card--busy {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.quick-card-busy-label {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.68rem;
+  color: #8895a8; /* matches --text-muted, WCAG AA 4.98:1 */
+  font-style: italic;
 }
 
 /* ═══ YOUR TEAM ═══ */

@@ -213,14 +213,6 @@ class FieldPriorityConfig(BaseModel):
         return v
 
 
-class ExecutionModeUpdate(BaseModel):
-    """Request model for updating execution mode."""
-
-    execution_mode: Literal["claude_code", "multi_terminal"] = Field(
-        ..., description="Execution mode: claude_code or multi_terminal"
-    )
-
-
 class DepthConfig(BaseModel):
     """
     Depth configuration for context extraction granularity (Handovers 0314, 0347d, 0347e).
@@ -904,48 +896,6 @@ async def update_depth_config(
     config = await user_service.get_depth_config(str(current_user.id))
 
     return {"depth_config": config}
-
-
-# ---------------------------------------------------------------------------
-# Execution mode settings (0248c)
-# ---------------------------------------------------------------------------
-
-
-@router.get("/me/settings/execution-mode")
-async def get_execution_mode(
-    current_user: User = Depends(get_current_active_user),
-    user_service: UserService = Depends(get_user_service),
-) -> dict[str, str]:
-    """
-    Get the current user's execution mode.
-
-    Raises:
-        ResourceNotFoundError: User not found (404)
-        BaseGiljoError: Database operation failed (500)
-    """
-    execution_mode = await user_service.get_execution_mode(str(current_user.id))
-    return {"execution_mode": execution_mode}
-
-
-@router.put("/me/settings/execution-mode")
-async def update_execution_mode(
-    payload: ExecutionModeUpdate,
-    current_user: User = Depends(get_current_active_user),
-    user_service: UserService = Depends(get_user_service),
-) -> dict[str, str]:
-    """
-    Update the current user's execution mode.
-
-    Raises:
-        ValidationError: Invalid execution mode (400)
-        ResourceNotFoundError: User not found (404)
-        BaseGiljoError: Database operation failed (500)
-    """
-    await user_service.update_execution_mode(
-        user_id=str(current_user.id),
-        execution_mode=payload.execution_mode,
-    )
-    return {"execution_mode": payload.execution_mode}
 
 
 # ---------------------------------------------------------------------------

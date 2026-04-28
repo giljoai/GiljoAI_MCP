@@ -1,3 +1,7 @@
+// See docs/adr/ADR-002-setup-driven-mode-source-of-truth.md
+// Guards must read mode from setupState.mode (setup store), not configService.getGiljoMode().
+// @vite-ignore dynamic imports are banned — use import.meta.glob instead.
+
 import { createRouter, createWebHistory } from 'vue-router'
 import setupService from '@/services/setupService'
 import configService from '@/services/configService'
@@ -271,6 +275,11 @@ const routes = [
       requiresPasswordChange: false,
     },
   },
+  // Legacy deep-link redirects: the Identity tab moved out of /tools to /admin/settings
+  // during the FE-0023 IA reshuffle. Old bookmarks and external links to /tools/identity
+  // (or its /settings alias) used to 404; redirect them to where the tab actually lives.
+  { path: '/tools/identity', redirect: '/admin/settings' },
+  { path: '/settings/identity', redirect: '/admin/settings' },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',

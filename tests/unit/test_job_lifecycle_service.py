@@ -367,10 +367,26 @@ class TestBuildAgentPrompt:
             agent_display_name="impl-1",
             project_name="My Project",
             job_id="job-123",
-            tenant_key=TENANT_KEY,
         )
-        assert "job-123" in prompt
-        assert TENANT_KEY in prompt
+        assert "mcp__giljo_mcp__get_agent_mission" in prompt
+        assert 'job_id="job-123"' in prompt
+
+    def test_prompt_does_not_pass_tenant_key(self):
+        """
+        The prompt MUST NOT instruct agents to pass tenant_key — the server
+        auto-injects it from the API key session. Documenting it as a
+        parameter would contradict the never-pass-tenant_key contract.
+        """
+        service = _make_service(_make_session())
+        prompt = service._build_agent_prompt(
+            agent_name="implementer",
+            agent_display_name="impl-1",
+            project_name="My Project",
+            job_id="job-abc",
+        )
+        # No interpolated tenant_key value, no "tenant_key=" parameter form.
+        assert TENANT_KEY not in prompt
+        assert 'tenant_key="' not in prompt
 
     def test_orchestrator_prompt_includes_staging_rules(self):
         """Orchestrator prompt includes STAGING RULES section."""
@@ -380,7 +396,6 @@ class TestBuildAgentPrompt:
             agent_display_name="orchestrator",
             project_name="My Project",
             job_id="job-456",
-            tenant_key=TENANT_KEY,
         )
         assert "STAGING RULES" in prompt
 
@@ -392,7 +407,6 @@ class TestBuildAgentPrompt:
             agent_display_name="impl-1",
             project_name="My Project",
             job_id="job-789",
-            tenant_key=TENANT_KEY,
         )
         assert "STAGING RULES" not in prompt
 
