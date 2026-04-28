@@ -22,6 +22,16 @@ import pytest_asyncio
 # TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Load .env first so POSTGRES_SUPERUSER_PASSWORD reaches PostgreSQLTestHelper
+# without requiring manual `export $(... .env | xargs)` before invoking pytest.
+# load_dotenv is a no-op if .env is missing (CI sets env via secrets instead).
+try:
+    from dotenv import load_dotenv as _load_dotenv
+
+    _load_dotenv(Path(__file__).parent.parent / ".env", override=False)
+except ImportError:
+    pass
+
 # Ensure config validation passes without real secrets
 os.environ.setdefault("DB_PASSWORD", "test-password")
 os.environ.setdefault("JWT_SECRET", "test_secret_key")
