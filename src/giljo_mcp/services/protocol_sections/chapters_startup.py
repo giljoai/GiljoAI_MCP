@@ -102,35 +102,57 @@ def _build_ch2_fetch_calls(
     # Category configs: maps field name to framing text and depth-awareness.
     # Handover 0823b: Framing text is now generic (no depth placeholders).
     # Depth is resolved at fetch_context runtime, not at protocol build time.
+    # HO1024: per-category framing now includes a "[needed if: ...]" hint so the
+    # orchestrator can apply judgment at fetch time and skip categories that are
+    # enabled-but-irrelevant for this specific project. The user-toggle UI defines
+    # what is AVAILABLE; these hints help the agent decide what is APPLICABLE.
     category_configs = {
         "product_core": {
-            "framing": "Product name, description, and core features.",
+            "framing": (
+                "Product name, description, and core features. "
+                "[needed if: scoping a new feature; skip for tech-debt / refactor / cleanup]"
+            ),
             "depth_aware": False,
         },
         "vision_documents": {
-            "framing": "Vision document content.",
+            "framing": (
+                "Vision document content. "
+                "[needed if: greenfield strategy or product-direction work; almost never for cleanup]"
+            ),
             "depth_aware": True,
             "default_depth": "medium",
         },
         "tech_stack": {
-            "framing": "Programming languages, frameworks, and databases.",
+            "framing": (
+                "Programming languages, frameworks, and databases. "
+                "[needed if: picking libraries or debugging build/runtime; skip for prose / doc-only work]"
+            ),
             "depth_aware": False,
         },
         "architecture": {
-            "framing": "System architecture patterns, API style, and design principles.",
+            "framing": (
+                "System architecture patterns, API style, and design principles. "
+                "[needed if: writing migrations, crossing edition boundaries, designing new services]"
+            ),
             "depth_aware": False,
         },
         "testing": {
-            "framing": "Quality standards, testing strategy, and frameworks.",
+            "framing": (
+                "Quality standards, testing strategy, and frameworks. "
+                "[needed if: writing tests or changing test infrastructure]"
+            ),
             "depth_aware": False,
         },
         "memory_360": {
-            "framing": "Recent product project closeouts (cumulative knowledge).",
+            "framing": (
+                "Recent product project closeouts (cumulative knowledge). "
+                "[needed if: continuing prior work; skip if project_description already cites the relevant past project]"
+            ),
             "depth_aware": True,
             "default_depth": 3,
         },
         "git_history": {
-            "framing": "Recent git commits.",
+            "framing": ("Recent git commits. [needed if: bug archaeology; skip otherwise — git log is on disk]"),
             "depth_aware": True,
             "default_depth": 25,
         },
@@ -247,9 +269,33 @@ Returns: project_description, mission, field_toggles, orchestrator_protocol
 
 Read this protocol via orchestrator_protocol field.
 
-Then call the batched fetch_context() calls below (multiple categories per call).
-If you have already fetched a category in the current session and its Modified date has not changed, you may skip it.
-Otherwise, fetch all — these are configured by the user and provide essential context.
+CONTEXT-FETCH PHILOSOPHY (read this before calling fetch_context):
+
+SIZING — classify the project FIRST, then pick categories:
+  - Cleanup / refactor / single-file fix / prose-only edit  → 0-1 categories
+  - Single feature / contained backend or frontend change   → 1-3 categories
+  - Greenfield / architectural / cross-cutting design       → most categories
+
+The categories below are AVAILABLE because the user enabled them in their context
+toggles — that is the policy layer. Your judgment is the optimization layer: pick
+only what THIS specific mission actually needs. Do NOT pre-fetch defensively.
+
+fetch_context is idempotent — call it again later if your mission surfaces a
+question you cannot answer from current context. The safety net is on, so
+default to fetching less.
+
+Skip aggressively when project_description already inlines the relevant info
+(e.g. skip memory_360 if the description already cites the prior wave or project).
+If a category was already fetched in this session and its Modified date has not
+changed, skip it.
+
+INVERSE — fetch MORE when the description is thin: if project_description is
+vague, short, hand-wavy, missing acceptance criteria, or omits architectural
+boundaries you would otherwise need, treat that as a signal to fetch BROADLY
+to compensate. The sizing heuristic above assumes a description that actually
+scopes the work; a one-line "fix the thing" description for a non-trivial
+project means you need the full menu, not the cleanup default. Err on the side
+of fetching when the user has under-specified.
 
 {fetch_calls}"""
     else:
