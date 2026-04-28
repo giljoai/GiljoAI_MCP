@@ -32,8 +32,6 @@ Sites covered
 
 from __future__ import annotations
 
-import pytest
-
 from giljo_mcp.services.protocol_sections.agent_protocol import _generate_agent_protocol
 from giljo_mcp.services.protocol_sections.chapters_reference import (
     _REACTIVATION_SPAWN_BLOCKS,
@@ -157,79 +155,27 @@ class TestGenericBranchJobOrderFraming:
         assert "send_message" in ch3
 
     def test_generic_branch_includes_predecessor_handling_guidance(self):
-        """multi_terminal mode MUST tell the orchestrator how to chain phases:
-        pass predecessor_job_id at spawn AND have the successor call
-        get_agent_result(job_id=...) to read prior work. Without this,
-        cross-phase handoffs in multi_terminal mode break silently."""
+        """multi_terminal CH3 must mention predecessor_job_id so the orchestrator
+        knows it can pass a previous agent's job_id when a successor needs to
+        read prior output. HO1022: prose collapsed from 2 multi-paragraph blocks
+        (CHAINING PHASES + REACTIVATION) into a single PHASE HANDOFF sentence.
+        Server now auto-detects chain vs replacement from predecessor status."""
         ch3 = _build_ch3_spawning_rules(tool="multi_terminal")
         assert "predecessor_job_id" in ch3
-        assert "get_agent_result" in ch3
-        assert "CHAINING PHASES" in ch3
+        assert "PHASE HANDOFF" in ch3
 
     def test_predecessor_guidance_is_multi_terminal_only(self):
-        """The predecessor-handling block lives in the generic branch only.
-        CLI modes (claude-code/codex/gemini) get inline Task()/spawn_agent()/@-syntax
-        that returns predecessor results directly to the orchestrator process —
-        explicit predecessor_job_id pointers are not load-bearing there."""
+        """Subagent branches must contain NO mention of predecessor_job_id at all.
+        Server silently skips preamble injection in subagent modes; orchestrator
+        splices predecessor findings inline using its CLI's native return value.
+        HO1022 removed the per-subagent PREDECESSOR PARAMETER USAGE blocks since
+        they were teaching the orchestrator about a server-internal decision."""
         for tool in ("claude-code", "codex", "gemini"):
             ch3 = _build_ch3_spawning_rules(tool=tool)
-            assert "CHAINING PHASES" not in ch3, f"predecessor-handling guidance should not appear in {tool} branch"
-
-
-class TestPredecessorRoleProsePerMode:
-    """HO1021: predecessor_job_id is a dual-purpose parameter (chain vs replacement).
-    CH3 must teach orchestrators when to use which role, with mode-specific advice:
-
-    - Subagent modes (claude-code / codex / gemini): for chain handoffs, do NOT
-      pass predecessor_job_id — the CLI returns the predecessor result inline and
-      the orchestrator splices it in. predecessor_role="replacement" is still
-      used for genuine reactivation.
-    - multi_terminal mode: chain handoffs MUST pass predecessor_job_id (default
-      role="chain", server injects PRIOR PHASE OUTPUT preamble); reactivation
-      passes role="replacement" (server injects REPLACEMENT preamble).
-    """
-
-    @pytest.mark.parametrize("subagent_tool", ["claude-code", "codex", "gemini"])
-    def test_subagent_branch_documents_predecessor_parameter_usage(self, subagent_tool):
-        ch3 = _build_ch3_spawning_rules(tool=subagent_tool)
-        assert "PREDECESSOR PARAMETER USAGE" in ch3, f"{subagent_tool} branch must teach predecessor_role usage"
-
-    @pytest.mark.parametrize("subagent_tool", ["claude-code", "codex", "gemini"])
-    def test_subagent_branch_warns_against_chain_use_of_predecessor_id(self, subagent_tool):
-        """Subagent branches must explicitly tell the orchestrator NOT to pass
-        predecessor_job_id for forward chains — the CLI returns results inline."""
-        ch3 = _build_ch3_spawning_rules(tool=subagent_tool)
-        # Case-insensitive: prose phrasing may evolve, but the "do not pass"
-        # signal must remain detectable.
-        assert "do not pass" in ch3.lower(), (
-            f"{subagent_tool} branch must tell orchestrator NOT to pass predecessor_job_id for chains"
-        )
-
-    @pytest.mark.parametrize("subagent_tool", ["claude-code", "codex", "gemini"])
-    def test_subagent_branch_documents_replacement_role(self, subagent_tool):
-        """Subagent branches must still document predecessor_role="replacement"
-        so reactivation flows are reachable from any execution mode."""
-        ch3 = _build_ch3_spawning_rules(tool=subagent_tool)
-        assert 'predecessor_role="replacement"' in ch3, (
-            f'{subagent_tool} branch must document predecessor_role="replacement" for reactivation'
-        )
-
-    def test_multi_terminal_branch_mentions_chain_role_default(self):
-        """Multi-terminal CHAINING PHASES block must reference the chain role
-        (default) so the orchestrator knows which preamble it triggers."""
-        ch3 = _build_ch3_spawning_rules(tool="multi_terminal")
-        assert "predecessor_role" in ch3
-        # The "chain" identifier (with quotes) must appear so the docs match the
-        # actual parameter value the orchestrator would set.
-        assert '"chain"' in ch3
-
-    def test_multi_terminal_branch_documents_reactivation_block(self):
-        """Multi-terminal must distinguish chain (forward handoff) from
-        reactivation (replacing a failed agent) — separate prose blocks, separate
-        role values, separate preambles."""
-        ch3 = _build_ch3_spawning_rules(tool="multi_terminal")
-        assert "REACTIVATION" in ch3
-        assert '"replacement"' in ch3
+            assert "predecessor_job_id" not in ch3, (
+                f"{tool} branch must not mention predecessor_job_id -- "
+                f"server skips preamble injection in subagent modes"
+            )
 
 
 # ---- Agent protocol signature defaults -----------------------------------

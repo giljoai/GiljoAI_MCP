@@ -57,18 +57,6 @@ The instructions= parameter should contain ONLY:
 The template handles everything else.
 
 DO NOT invoke spawn_agent() during staging - this is planning reference only
-
-PREDECESSOR PARAMETER USAGE (SUBAGENT MODE):
-  In Codex CLI mode, spawn_agent() returns the subagent's result inline to your
-  process. You already have Phase N-1 results in working context when composing
-  Phase N's mission — splice findings into the next mission text directly.
-  - For FORWARD CHAINS (analyzer -> implementer -> documenter): do NOT pass
-    predecessor_job_id. Spawn phases in parallel where possible, or sequentially
-    with predecessor results inlined. Server skips preamble injection in subagent
-    modes when role="chain", so passing it is harmless but adds no value.
-  - For REACTIVATION (replacing a failed/blocked agent): pass
-    predecessor_job_id=<failed_job_id> AND predecessor_role="replacement". Server
-    injects a replacement-flavored preamble in every execution mode for this case.
 """
     elif tool == "gemini":
         file_mapping = "agent_name → ~/.gemini/agents/{agent_name}.md"
@@ -99,18 +87,6 @@ Example:
   @tdd-implementor <mission-specific instructions only>
 
 DO NOT invoke subagents during staging - this is planning reference only
-
-PREDECESSOR PARAMETER USAGE (SUBAGENT MODE):
-  In Gemini CLI mode, @{agent_name} returns the subagent's result inline to your
-  process. You already have Phase N-1 results in working context when composing
-  Phase N's mission — splice findings into the next mission text directly.
-  - For FORWARD CHAINS (analyzer -> implementer -> documenter): do NOT pass
-    predecessor_job_id. Spawn phases in parallel where possible, or sequentially
-    with predecessor results inlined. Server skips preamble injection in subagent
-    modes when role="chain", so passing it is harmless but adds no value.
-  - For REACTIVATION (replacing a failed/blocked agent): pass
-    predecessor_job_id=<failed_job_id> AND predecessor_role="replacement". Server
-    injects a replacement-flavored preamble in every execution mode for this case.
 """
     elif tool == "claude-code":
         file_mapping = "agent_name → .claude/agents/{agent_name}.md"
@@ -132,18 +108,6 @@ Example:
   Task(subagent_type='tdd-implementor', ...)  # agent_name!
 
 DO NOT invoke Task() during staging - this is planning reference only
-
-PREDECESSOR PARAMETER USAGE (SUBAGENT MODE):
-  In Claude Code CLI mode, Task() returns the subagent's result inline to your
-  process. You already have Phase N-1 results in working context when composing
-  Phase N's mission — splice findings into the next mission text directly.
-  - For FORWARD CHAINS (analyzer -> implementer -> documenter): do NOT pass
-    predecessor_job_id. Spawn phases in parallel where possible, or sequentially
-    with predecessor results inlined. Server skips preamble injection in subagent
-    modes when role="chain", so passing it is harmless but adds no value.
-  - For REACTIVATION (replacing a failed/blocked agent): pass
-    predecessor_job_id=<failed_job_id> AND predecessor_role="replacement". Server
-    injects a replacement-flavored preamble in every execution mode for this case.
 """
     else:
         # Generic MCP mode — any MCP-connected coding agent.
@@ -170,25 +134,11 @@ CROSS-AGENT COORDINATION (MCP-ONLY):
   (a worker delegating a sub-step to a child process inside its own terminal),
   but cross-job coordination is MCP only.
 
-CHAINING PHASES (PREDECESSOR HANDLING):
-  When a Phase N agent depends on Phase N-1 work (e.g. analyzer → implementer):
-  - Pass predecessor_job_id=<prior_job_id> when calling spawn_job for the successor
-  - predecessor_role defaults to "chain" — server injects a chain-flavored preamble
-    (## PRIOR PHASE OUTPUT) telling the successor it is continuing a workflow.
-  - In the successor's mission you may also instruct it to call
-    get_agent_result(job_id="<prior_job_id>") for full predecessor context (commits,
-    files_changed, decisions not in the summary).
-  Each terminal is independent — without this pointer, the successor has no inherent
-  way to see the predecessor's output. The id you pass is the existing job_id returned
-  by the prior spawn_job — no new id type, just reuse what you already have.
-
-REACTIVATION (REPLACING A FAILED AGENT):
-  When a previous agent failed/blocked and you are spawning a replacement:
-  - Pass predecessor_job_id=<failed_job_id> AND predecessor_role="replacement"
-  - Server injects a REPLACEMENT-flavored preamble (## PREDECESSOR CONTEXT
-    (REPLACEMENT)) telling the successor it is taking over from a failed attempt.
-  Use "replacement" ONLY when the predecessor genuinely failed/blocked — for
-  healthy forward chains, leave predecessor_role at its default ("chain").
+PHASE HANDOFF: If a successor needs to read a previous agent's output, pass
+predecessor_job_id=<prior_job_id> when calling spawn_job. The server reads the
+predecessor's completion record and renders the appropriate context preamble
+into the successor's mission. The id is the existing job_id returned by the
+prior spawn_job — no new id type, just reuse what you already have.
 
 MESSAGING: Always use agent_id UUIDs in to_agents (from spawn_job response).
 Orchestrator has NO active role after STAGING_COMPLETE broadcast.

@@ -850,29 +850,14 @@ async def spawn_job(
         str,
         Field(
             description=(
-                "Optional job_id of a related predecessor agent. Used for two distinct workflows "
-                "distinguished by predecessor_role. Forward chains (analyzer -> implementer) and "
-                "reactivation/replacement of a failed agent both use this same field; pick the role "
-                "via predecessor_role."
+                "Optional job_id of a previous agent whose output this successor needs. The server "
+                "reads the predecessor's completion record and renders an appropriate context "
+                "preamble into the successor's mission (chain vs replacement is auto-detected from "
+                "the predecessor's status). In subagent execution modes the server silently skips "
+                "the preamble because your CLI already returned the predecessor result inline."
             )
         ),
     ] = "",
-    predecessor_role: Annotated[
-        str,
-        Field(
-            description=(
-                "Role the predecessor plays for this successor (default 'chain'). "
-                "'chain' = forward phase handoff. In subagent modes (Claude/Codex/Gemini CLI) "
-                "the orchestrator's CLI returns the predecessor result inline via Task() / "
-                "spawn_agent() / @-syntax, so the server SKIPS preamble injection -- the orchestrator "
-                "is expected to splice findings into the successor's mission text directly. "
-                "In multi_terminal mode a chain-flavored preamble is injected because each terminal "
-                "is isolated. "
-                "'replacement' = reactivation, the successor is taking over from a failed/blocked "
-                "predecessor; a replacement-flavored preamble is always injected, in every execution mode."
-            )
-        ),
-    ] = "chain",
     ctx: Context = None,
 ) -> dict:
     """Create specialist agent job for execution."""
@@ -886,9 +871,6 @@ async def spawn_job(
         kwargs["phase"] = phase
     if predecessor_job_id:
         kwargs["predecessor_job_id"] = predecessor_job_id
-        # Only thread predecessor_role when predecessor_job_id is set; otherwise the
-        # service-layer default ("chain") applies and the kwarg is irrelevant.
-        kwargs["predecessor_role"] = predecessor_role
     return await _call_tool(ctx, "spawn_job", kwargs)
 
 

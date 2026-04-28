@@ -44,7 +44,7 @@ from giljo_mcp.services._predecessor_context import (
     PREDECESSOR_CHAIN_PREAMBLE,
     PREDECESSOR_REPLACEMENT_PREAMBLE,
     SUBAGENT_EXECUTION_MODES,
-    VALID_PREDECESSOR_ROLES,
+    _detect_replacement_semantics,
 )
 from giljo_mcp.services.dto import BroadcastAgentCreatedContext
 from giljo_mcp.tenant import TenantManager
@@ -108,7 +108,6 @@ class JobLifecycleService:
         context_chunks: Optional[list[str]] = None,
         phase: Optional[int] = None,
         predecessor_job_id: Optional[str] = None,
-        predecessor_role: str = "chain",
     ) -> SpawnResult:
         """
         Create an agent job with thin client architecture using dual-model (AgentJob + AgentExecution).
@@ -129,18 +128,12 @@ class JobLifecycleService:
             parent_job_id: Optional parent agent_id for spawned agents (now refers to executor, not work order)
             context_chunks: Optional context chunks for the agent
             phase: Optional execution phase for multi-terminal ordering (1=first, same=parallel)
-            predecessor_job_id: Optional job_id of a related predecessor agent. Used for two
-                                distinct workflows distinguished by predecessor_role.
-            predecessor_role: Role the predecessor plays for this successor (HO1021):
-                              - "chain" (default): forward phase handoff. In multi_terminal
-                                mode the server injects a chain-flavored preamble. In subagent
-                                modes (claude_code_cli/codex_cli/gemini_cli) NO preamble is
-                                injected -- the orchestrator's CLI already has the predecessor
-                                result inline and is expected to splice findings into the
-                                successor's mission text directly.
-                              - "replacement": reactivation, the successor is replacing a
-                                failed/blocked predecessor. A replacement-flavored preamble is
-                                always injected, in every execution mode.
+            predecessor_job_id: Optional job_id of a previous agent whose output the new
+                                successor needs. Server reads the predecessor's completion
+                                record and renders the appropriate preamble (chain vs
+                                replacement is auto-detected from the predecessor's status).
+                                Skipped silently in subagent execution modes -- the
+                                orchestrator's CLI already has the predecessor result inline.
 
         Returns:
             Dict with job_id (work order), agent_id (executor), and agent_prompt
@@ -183,7 +176,7 @@ class JobLifecycleService:
                     )
 
                 # Handover 0497e: Predecessor context injection for recovery spawning.
-                # HO1021: Now mode + role aware. See _build_predecessor_context docstring.
+                # HO1022: Mode-gated, role auto-detected from predecessor status.
                 if predecessor_job_id:
                     project_exec_mode = getattr(project, "execution_mode", "multi_terminal") or "multi_terminal"
                     mission = await self._build_predecessor_context(
@@ -194,7 +187,6 @@ class JobLifecycleService:
                         mission,
                         agent_display_name,
                         execution_mode=project_exec_mode,
-                        predecessor_role=predecessor_role,
                     )
 
                 # Agent name validation + display name collision resolution
@@ -300,62 +292,49 @@ class JobLifecycleService:
         mission: str,
         agent_display_name: str,
         execution_mode: str = "multi_terminal",
-        predecessor_role: str = "chain",
     ) -> str:
         """
-        Build predecessor context for recovery / chain spawning, mode + role aware.
+        Build predecessor context for chain or replacement spawning, mode-gated.
 
-        HO1021: Distinguishes forward-chain handoffs from reactivation/replacement,
-        and skips preamble injection in subagent modes when the orchestrator's CLI
-        already returns predecessor results inline.
+        HO1022: Two-mode design. Server gates on execution_mode and auto-detects
+        chain vs replacement semantics from the predecessor's completion record.
+        Orchestrators never see this distinction -- they just pass
+        predecessor_job_id when a successor needs a previous agent's output.
 
-        Decision matrix:
-        +-----------------+--------------+--------------------------------------------+
-        | execution_mode  | predecessor  | result                                     |
-        |                 |    role      |                                            |
-        +-----------------+--------------+--------------------------------------------+
-        | multi_terminal  | chain        | inject CHAIN preamble (forward handoff)    |
-        | multi_terminal  | replacement  | inject REPLACEMENT preamble                |
-        | subagent_*      | chain        | NO preamble (orchestrator splices inline)  |
-        | subagent_*      | replacement  | inject REPLACEMENT preamble                |
-        +-----------------+--------------+--------------------------------------------+
+        +-----------------+----------------------------------------------------+
+        | execution_mode  | server behavior                                    |
+        +-----------------+----------------------------------------------------+
+        | multi_terminal  | inject preamble (chain or replacement, auto-       |
+        |                 | detected from pred_execution.result.status)        |
+        | subagent_*      | NO preamble -- orchestrator's CLI returned the     |
+        |                 | predecessor result inline and is expected to       |
+        |                 | splice findings into the successor mission         |
+        +-----------------+----------------------------------------------------+
 
-        Validation always runs (predecessor existence + same-project check) so that
-        a typo'd predecessor_job_id is caught even when the preamble is skipped.
+        Validation always runs (predecessor existence + same-project check) so
+        that a typo'd predecessor_job_id is caught even when the preamble is
+        skipped.
 
         Args:
             session: Active database session
-            predecessor_job_id: Job ID of the completed predecessor agent
+            predecessor_job_id: Job ID of the predecessor agent
             tenant_key: Tenant key for isolation
             project_id: Project UUID to validate predecessor belongs to same project
             mission: Original mission text
             agent_display_name: Display name of the successor agent (for logging)
-            execution_mode: Project's execution_mode column value. Determines whether
-                            the chain preamble is needed at all.
-            predecessor_role: "chain" or "replacement". Picks the preamble template
-                              when one is rendered.
+            execution_mode: Project's execution_mode column value. Determines
+                            whether any preamble is rendered at all.
 
         Returns:
-            Modified mission with predecessor context prepended
+            Modified mission with predecessor context prepended (or unchanged
+            mission in subagent modes).
 
         Raises:
             ResourceNotFoundError: Predecessor job not found
             ValidationError: Predecessor job belongs to a different project
         """
-        # Validate predecessor_role first (cheap, no DB).
-        if predecessor_role not in VALID_PREDECESSOR_ROLES:
-            raise ValidationError(
-                message=(
-                    f"Invalid predecessor_role '{predecessor_role}'. Must be one of: {sorted(VALID_PREDECESSOR_ROLES)}"
-                ),
-                context={
-                    "predecessor_role": predecessor_role,
-                    "predecessor_job_id": predecessor_job_id,
-                },
-            )
-
         # Always validate predecessor exists and belongs to same project + tenant.
-        # This catches typo'd predecessor_job_id values even in the skip-injection path.
+        # This catches typo'd predecessor_job_id values even in the skip path.
         repo = AgentCompletionRepository()
         pred_job = await repo.get_predecessor_job(session, tenant_key, predecessor_job_id)
 
@@ -374,14 +353,14 @@ class JobLifecycleService:
                 },
             )
 
-        # Gate: subagent mode + chain semantics = no preamble.
+        # Mode gate: subagent modes never get a preamble.
         # The orchestrator's CLI returned the predecessor result inline (Task() /
         # spawn_agent() / @-syntax) and is expected to splice findings into the
-        # successor's mission text directly. Injecting a preamble here would either
-        # duplicate that information or impose wrong-semantics replacement language.
-        if execution_mode in SUBAGENT_EXECUTION_MODES and predecessor_role == "chain":
+        # successor's mission text directly. Injecting a preamble here would
+        # either duplicate that information or impose wrong-semantics framing.
+        if execution_mode in SUBAGENT_EXECUTION_MODES:
             self._logger.info(
-                "[PREDECESSOR_CONTEXT] Skipped injection: subagent mode + chain semantics",
+                "[PREDECESSOR_CONTEXT] Skipped: subagent mode, orchestrator splices inline",
                 extra={
                     "predecessor_job_id": predecessor_job_id,
                     "execution_mode": execution_mode,
@@ -405,11 +384,15 @@ class JobLifecycleService:
         if len(pred_commits) > 10:
             pred_commits = [*pred_commits[:10], f"... and {len(pred_commits) - 10} more"]
 
-        # Pick template by role. Note: tenant_key is NOT included in the rendered
-        # get_agent_result(...) call — Wave 1 (commit ffa779bf) established that
-        # tenant_key is auto-injected server-side and must never appear in agent-
-        # facing prose.
-        template = PREDECESSOR_REPLACEMENT_PREAMBLE if predecessor_role == "replacement" else PREDECESSOR_CHAIN_PREAMBLE
+        # Auto-detect chain vs replacement from the predecessor's completion
+        # record. If the predecessor never reached complete_job (pred_execution
+        # is None) OR its result.status indicates failure/force-completion, treat
+        # this as a replacement spawn. Otherwise it is a forward chain handoff.
+        # Note: tenant_key is NOT included in the rendered get_agent_result(...)
+        # call -- Wave 1 (commit ffa779bf) established that tenant_key is auto-
+        # injected server-side and must never appear in agent-facing prose.
+        is_replacement = _detect_replacement_semantics(pred_execution)
+        template = PREDECESSOR_REPLACEMENT_PREAMBLE if is_replacement else PREDECESSOR_CHAIN_PREAMBLE
         predecessor_context = template.format(
             pred_display_name=pred_display_name,
             predecessor_job_id=predecessor_job_id,
@@ -423,7 +406,7 @@ class JobLifecycleService:
             extra={
                 "predecessor_job_id": predecessor_job_id,
                 "execution_mode": execution_mode,
-                "predecessor_role": predecessor_role,
+                "preamble_kind": "replacement" if is_replacement else "chain",
                 "successor_display_name": agent_display_name,
                 "predecessor_display_name": pred_display_name,
             },

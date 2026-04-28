@@ -4,42 +4,62 @@
 # [CE] Community Edition — source-available, single-user use only.
 
 """
-Predecessor-context constants and preamble templates (HO1021).
+Predecessor-context constants, preamble templates, and semantic auto-detection
+(HO1022 -- supersedes HO1021's role parameter).
 
-`predecessor_job_id` on spawn_job is overloaded across two semantically distinct
-workflows:
-  - "chain"        : forward phase handoff (analyzer -> implementer -> documenter)
-  - "replacement"  : reactivation, where a failed/blocked agent is being replaced
+Two-mode design:
+  - multi_terminal: server injects a preamble (chain or replacement, auto-
+    detected from the predecessor's completion record).
+  - subagent_*    : server NEVER injects -- the orchestrator's CLI returned
+    the predecessor result inline and is expected to splice findings into the
+    successor's mission text directly.
 
-These need different preamble wording AND different gating. The legacy server
-injected a single replacement-flavored preamble for every use of the parameter,
-which (a) was semantically wrong for forward chains and (b) was redundant in
-subagent execution modes where the orchestrator's CLI returns the predecessor
-result inline (Task() / spawn_agent() / @-syntax) and the orchestrator can
-splice findings into the next mission directly.
-
-This module owns the constants, the role enumeration, and the two preamble
-templates. The actual decision matrix (which template to render, when to skip
-entirely) lives in JobLifecycleService._build_predecessor_context to keep the
-DB-touching code in one place.
+Auto-detection rule:
+  - pred_execution is None (predecessor never reached complete_job)  -> REPLACEMENT
+  - pred_execution.result.status in {force_completed, failed, blocked, error}  -> REPLACEMENT
+  - otherwise                                                        -> CHAIN
 
 Neither preamble includes a `tenant_key="..."` arg in its example
-get_agent_result(...) call -- that is a Wave 1 invariant (commit ffa779bf):
+get_agent_result(...) call -- Wave 1 invariant from commit ffa779bf:
 tenant_key is auto-injected server-side and must never appear in agent prose.
 """
 
 from __future__ import annotations
 
+from typing import Any
 
-VALID_PREDECESSOR_ROLES: frozenset[str] = frozenset({"chain", "replacement"})
 
 # Execution modes where the orchestrator's CLI returns subagent results inline.
-# In these modes, predecessor_role="chain" requires NO preamble injection at all
-# because the orchestrator already has the predecessor result in working context
-# and is expected to splice it into the successor's mission text directly.
-# predecessor_role="replacement" still injects (rare but real: a failed Task()
-# subagent being respawned legitimately needs the replacement preamble).
+# In these modes the server NEVER injects a predecessor preamble -- the
+# orchestrator already has the result in working context (Task() / spawn_agent()
+# / @-syntax return value) and is expected to splice findings into the
+# successor's mission text directly.
 SUBAGENT_EXECUTION_MODES: frozenset[str] = frozenset({"claude_code_cli", "codex_cli", "gemini_cli"})
+
+# pred_execution.result.status values that indicate the predecessor was
+# replaced/failed/force-completed rather than completing cleanly. When any of
+# these (or a missing pred_execution entirely) is observed, the server renders
+# the REPLACEMENT preamble. Otherwise the CHAIN preamble.
+_REPLACEMENT_RESULT_STATUSES: frozenset[str] = frozenset({"force_completed", "failed", "blocked", "error"})
+
+
+def _detect_replacement_semantics(pred_execution: Any) -> bool:
+    """Return True when the predecessor record indicates a failed/force-closed
+    handoff (replacement semantics), False when it looks like a clean forward
+    chain.
+
+    Signals (in order):
+      - pred_execution is None: predecessor never reached complete_job, so the
+        successor is almost certainly picking up after a failure -- replacement.
+      - result.status is one of the replacement markers -- replacement.
+      - otherwise -- chain.
+    """
+    if pred_execution is None:
+        return True
+    pred_result = getattr(pred_execution, "result", None) or {}
+    result_status = str(pred_result.get("status") or "").lower()
+    return result_status in _REPLACEMENT_RESULT_STATUSES
+
 
 PREDECESSOR_CHAIN_PREAMBLE = """## PRIOR PHASE OUTPUT
 You are continuing a workflow. The previous phase completed successfully and produced the work below. Use this as input for the work described in your mission below.
