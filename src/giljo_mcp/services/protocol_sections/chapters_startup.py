@@ -36,7 +36,6 @@ You are STAGING the project. Your job:
 3. Assign work to specialist agents via spawn_job()
 
 WHAT YOU ARE NOT:
-- You do NOT execute implementation work
 - {spawn_warning}
 - You do NOT call complete_job() (staging never completes, it transitions)
 
@@ -102,35 +101,57 @@ def _build_ch2_fetch_calls(
     # Category configs: maps field name to framing text and depth-awareness.
     # Handover 0823b: Framing text is now generic (no depth placeholders).
     # Depth is resolved at fetch_context runtime, not at protocol build time.
+    # HO1024: per-category framing now includes a "[needed if: ...]" hint so the
+    # orchestrator can apply judgment at fetch time and skip categories that are
+    # enabled-but-irrelevant for this specific project. The user-toggle UI defines
+    # what is AVAILABLE; these hints help the agent decide what is APPLICABLE.
     category_configs = {
         "product_core": {
-            "framing": "Product name, description, and core features.",
+            "framing": (
+                "Product name, description, and core features. "
+                "[needed if: scoping a new feature; skip for tech-debt / refactor / cleanup]"
+            ),
             "depth_aware": False,
         },
         "vision_documents": {
-            "framing": "Vision document content.",
+            "framing": (
+                "Vision document content. "
+                "[needed if: greenfield strategy or product-direction work; almost never for cleanup]"
+            ),
             "depth_aware": True,
             "default_depth": "medium",
         },
         "tech_stack": {
-            "framing": "Programming languages, frameworks, and databases.",
+            "framing": (
+                "Programming languages, frameworks, and databases. "
+                "[needed if: picking libraries or debugging build/runtime; skip for prose / doc-only work]"
+            ),
             "depth_aware": False,
         },
         "architecture": {
-            "framing": "System architecture patterns, API style, and design principles.",
+            "framing": (
+                "System architecture patterns, API style, and design principles. "
+                "[needed if: writing migrations, crossing edition boundaries, designing new services]"
+            ),
             "depth_aware": False,
         },
         "testing": {
-            "framing": "Quality standards, testing strategy, and frameworks.",
+            "framing": (
+                "Quality standards, testing strategy, and frameworks. "
+                "[needed if: writing tests or changing test infrastructure]"
+            ),
             "depth_aware": False,
         },
         "memory_360": {
-            "framing": "Recent product project closeouts (cumulative knowledge).",
+            "framing": (
+                "Recent product project closeouts (cumulative knowledge). "
+                "[needed if: continuing prior work; skip if project_description already cites the relevant past project]"
+            ),
             "depth_aware": True,
             "default_depth": 3,
         },
         "git_history": {
-            "framing": "Recent git commits.",
+            "framing": ("Recent git commits. [needed if: bug archaeology; skip otherwise — git log is on disk]"),
             "depth_aware": True,
             "default_depth": 25,
         },
@@ -242,20 +263,42 @@ def _build_ch2_startup(
         )
         step2_body = f"""── STEP 2: Fetch Context ───────────────────────────────────────────────────
 Call: get_orchestrator_instructions(job_id='{orchestrator_id}')
-Note: tenant_key auto-injected by server from API key session
 Returns: project_description, mission, field_toggles, orchestrator_protocol
 
 Read this protocol via orchestrator_protocol field.
 
-Then call the batched fetch_context() calls below (multiple categories per call).
-If you have already fetched a category in the current session and its Modified date has not changed, you may skip it.
-Otherwise, fetch all — these are configured by the user and provide essential context.
+CONTEXT-FETCH PHILOSOPHY (read this before calling fetch_context):
+
+SIZING — classify the project FIRST, then pick categories:
+  - Cleanup / refactor / single-file fix / prose-only edit  → 0-1 categories
+  - Single feature / contained backend or frontend change   → 1-3 categories
+  - Greenfield / architectural / cross-cutting design       → most categories
+
+The categories below are AVAILABLE because the user enabled them in their context
+toggles — that is the policy layer. Your judgment is the optimization layer: pick
+only what THIS specific mission actually needs. Do NOT pre-fetch defensively.
+
+fetch_context is idempotent — call it again later if your mission surfaces a
+question you cannot answer from current context. The safety net is on, so
+default to fetching less.
+
+Skip aggressively when project_description already inlines the relevant info
+(e.g. skip memory_360 if the description already cites the prior wave or project).
+If a category was already fetched in this session and its Modified date has not
+changed, skip it.
+
+INVERSE — fetch MORE when the description is thin: if project_description is
+vague, short, hand-wavy, missing acceptance criteria, or omits architectural
+boundaries you would otherwise need, treat that as a signal to fetch BROADLY
+to compensate. The sizing heuristic above assumes a description that actually
+scopes the work; a one-line "fix the thing" description for a non-trivial
+project means you need the full menu, not the cleanup default. Err on the side
+of fetching when the user has under-specified.
 
 {fetch_calls}"""
     else:
         step2_body = f"""── STEP 2: Fetch Context ───────────────────────────────────────────────────
 Call: get_orchestrator_instructions(job_id='{orchestrator_id}')
-Note: tenant_key auto-injected by server from API key session
 Returns:
   - project_description: User requirements (INPUT for your analysis)
   - mission: Product context with priority fields applied
@@ -288,17 +331,16 @@ Call: health_check()
 Expected: {{"status": "healthy", "database": "connected"}}
 If failed: Abort and notify user
 
-── STEP 1b: Initialize Progress Tracking ───────────────────────────────────
+── STEP 1b: Defer Progress Tracking ───────────────────────────────────────
 DO NOT report progress yet. Steps 0-3 are internal startup — do not track them.
+After Step 4 (Create Mission), you will have a real plan with work items;
+THAT is when you initialize progress tracking (see Step 1c below).
 
-After Step 4 (Create Mission), you will have a real plan with work items.
-THAT is when you initialize progress tracking.
-
-IMPLEMENTATION TODO LIST
-During staging, write yourself a todo list for the implementation phase.
-This is your execution plan — the deliverables you will hold yourself
-accountable to when implementation begins (which may be a different
-session with fresh context).
+── STEP 1c: Plan Implementation Deliverables (TODO list shape) ────────────
+During staging, write yourself a todo list for the IMPLEMENTATION phase
+(the future session, not this one). This is your execution plan — the
+deliverables you will hold yourself accountable to when implementation
+begins (which may be a different session with fresh context).
 
 Each item should describe a PROJECT OUTCOME, not an orchestrator action.
 You already know how to spawn agents, fetch context, and broadcast signals.
@@ -317,7 +359,6 @@ Call: report_progress(
           job_id='{orchestrator_id}',
           todo_items=[{{"content": "<project outcome>", "status": "pending"}}]
       )
-Note: tenant_key auto-injected by server from API key session
 
 {step2_body}
 
@@ -355,14 +396,12 @@ For each agent in your plan:
       mission='Agent-specific instructions',
       project_id='{project_id}'
   )
-Note: tenant_key auto-injected by server from API key session
 
 See CH3 for agent_name vs agent_display_name rules
 
 ── STEP 7: Persist Execution Plan ──────────────────────────────────────────
 Call: update_agent_mission(job_id='{orchestrator_id}',
                             mission=YOUR_EXECUTION_STRATEGY)
-Note: tenant_key auto-injected by server from API key session
 
 Document in YOUR_EXECUTION_STRATEGY:
   - Agent execution order (sequential/parallel/hybrid)
@@ -379,7 +418,6 @@ Call: send_message(
           project_id='{project_id}',
           message_type='broadcast'
       )
-Note: tenant_key auto-injected by server from API key session
 
 This broadcast enables the "Implement" button in UI (REQUIRED)
 

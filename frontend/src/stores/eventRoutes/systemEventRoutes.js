@@ -105,10 +105,21 @@ export const SYSTEM_EVENT_ROUTES = {
     },
   },
 
-  // System update notifications (Handover 0965 Phase 4)
+  // System update notifications (Handover 0965 Phase 4 + skills-version drift wiring).
+  // SystemStatusBanner.vue listens to the window event for the banner surface.
+  // The notification-store entry surfaces the same drift in the bell-icon badge.
   'system:update_available': {
     handler: async (payload) => {
       dispatchWindowEvent('ws-system-update-available', payload)
+
+      const notificationStore = useNotificationStore()
+      notificationStore.addNotification({
+        type: 'system_alert',
+        title: 'Updates available',
+        message:
+          'Re-run giljo_setup (or /gil_get_agents) to refresh your CLI skills, then `git pull` and `python update.py` to apply server updates.',
+        metadata: payload ?? {},
+      })
     },
   },
 

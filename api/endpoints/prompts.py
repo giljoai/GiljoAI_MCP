@@ -795,7 +795,8 @@ After ALL agents are completed:
   c. Complete your own job (this MUST be the last call):
      complete_job(job_id="{orchestrator.job_id}",
          result={{"summary": "Project closeout after early termination",
-                 "status": "terminated_early"}})
+                 "status": "terminated_early"}},
+         acknowledge_closeout_todo=True)
 
 CRITICAL: Do NOT call close_project_and_update_memory(). Follow Steps 3-4 instead.
           Calling it with force=true will decommission you before you can self-complete.

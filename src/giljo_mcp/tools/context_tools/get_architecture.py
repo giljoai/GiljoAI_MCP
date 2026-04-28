@@ -67,7 +67,9 @@ async def get_architecture(
 
         if not product:
             logger.warning(
-                "product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_architecture"
+                "product_not_found product_id=%s tenant_key=%s operation=get_architecture",
+                product_id,
+                tenant_key,
             )
             return {
                 "source": "architecture",

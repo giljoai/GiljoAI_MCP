@@ -456,13 +456,43 @@ class MissionService:
         # Handover 0830/0966: Orchestrator identity — resolve from seeded template
         # instead of hardcoded fallback, so the orchestrator retains full behavioral
         # guidance across the staging→implementation session boundary.
+        # HO1025: pass the project's execution-mode-derived tool so the
+        # Claude-Code-specific TaskCreate harness override only renders for
+        # Claude Code orchestrators (codex/gemini/multi_terminal omit it).
         if job.job_type == "orchestrator" and not agent_identity:
-            from giljo_mcp.template_seeder import get_orchestrator_identity_content
+            # HO1027: Use the canonical composer so the system harness (MCP
+            # Tool Usage, CHECK-IN PROTOCOL, HARNESS REMINDER OVERRIDE) is
+            # always appended — even when the tenant admin has saved a
+            # custom seed override via SystemPromptService.
+            from giljo_mcp.system_prompts.service import SystemPromptService
+            from giljo_mcp.template_seeder import compose_orchestrator_identity
 
-            agent_identity = get_orchestrator_identity_content()
+            project = await self._repo.get_project_by_id(session, tenant_key, job.project_id)
+            project_exec_mode = getattr(project, "execution_mode", "multi_terminal") if project else "multi_terminal"
+            _exec_to_tool = {
+                "claude_code_cli": "claude-code",
+                "codex_cli": "codex",
+                "gemini_cli": "gemini",
+                "multi_terminal": "multi_terminal",
+            }
+            tool = _exec_to_tool.get(project_exec_mode, "multi_terminal")
+
+            override_content: str | None = None
+            try:
+                prompt_service = SystemPromptService(db_manager=self.db_manager)
+                prompt_record = await prompt_service.get_orchestrator_prompt(tenant_key=tenant_key, session=session)
+                if prompt_record.is_override:
+                    override_content = prompt_record.content
+            except Exception:  # noqa: BLE001
+                self._logger.warning(
+                    "[HO1027] Failed to read orchestrator prompt override; using default seed",
+                    extra={"job_id": job_id},
+                )
+
+            agent_identity = compose_orchestrator_identity(override_content, tool=tool)
             self._logger.info(
-                "[AGENT_IDENTITY] Resolved orchestrator identity from seeded template",
-                extra={"job_id": job_id},
+                "[AGENT_IDENTITY] Composed orchestrator identity (override+harness or seed+harness)",
+                extra={"job_id": job_id, "tool": tool, "is_override": override_content is not None},
             )
 
         return agent_identity
@@ -518,13 +548,18 @@ class MissionService:
         # Generate 5-phase lifecycle protocol (Handover 0334, 0359, 0378 Bug 2, 0497d)
         project_exec_mode = getattr(project, "execution_mode", "multi_terminal") if project else "multi_terminal"
         git_enabled = integrations.get("git_integration", {}).get("enabled", False)
-        # Handover 0841: Derive platform tool for platform-aware signoff
+        # Handover 0841: Derive platform tool for platform-aware signoff.
+        # HO1020 (Wave 2 Item 2): explicit multi_terminal mapping + fail-safe
+        # default of "multi_terminal" so an unknown/unmapped execution_mode
+        # routes to the platform-neutral generic branch instead of silently
+        # injecting Claude Code Task() syntax into agents that cannot run it.
         _exec_mode_to_tool = {
             "claude_code_cli": "claude-code",
             "codex_cli": "codex",
             "gemini_cli": "gemini",
+            "multi_terminal": "multi_terminal",
         }
-        agent_tool = _exec_mode_to_tool.get(project_exec_mode, "claude-code")
+        agent_tool = _exec_mode_to_tool.get(project_exec_mode, "multi_terminal")
         full_protocol = _generate_agent_protocol(
             job_id=job_id,
             tenant_key=tenant_key,

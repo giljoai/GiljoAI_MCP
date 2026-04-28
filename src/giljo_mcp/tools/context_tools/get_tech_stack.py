@@ -69,7 +69,9 @@ async def get_tech_stack(
 
         if not product:
             logger.warning(
-                "product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_tech_stack"
+                "product_not_found product_id=%s tenant_key=%s operation=get_tech_stack",
+                product_id,
+                tenant_key,
             )
             return {
                 "source": "tech_stack",

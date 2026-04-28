@@ -337,6 +337,21 @@ async def login(
     # Update last login timestamp
     await auth_service.update_last_login(auth_result.user_id, datetime.now(timezone.utc))
 
+    # HO 1028: post-login skills-version drift reminder (30-day throttle).
+    # Best-effort — must NOT break the login flow on failure.
+    try:
+        from giljo_mcp.services.user_service import UserService
+
+        ws_manager = getattr(request.app.state, "websocket_manager", None) if request else None
+        user_svc = UserService(
+            db_manager=request.app.state.db_manager if request else None,
+            tenant_key=auth_result.tenant_key,
+            websocket_manager=ws_manager,
+        )
+        await user_svc.check_and_emit_skills_update(auth_result.user_id)
+    except Exception as e:  # noqa: BLE001 — best-effort post-login hook
+        logger.warning("Skills-version reminder check failed for %s: %s", sanitize(auth_result.username), e)
+
     # v3.0 Unified (Handover 0034): No more default admin/admin password
     # Fresh installs go directly to "Create Admin Account" page
     # This flag is always False for v3.0+ (legacy field removed in Handover 0035)

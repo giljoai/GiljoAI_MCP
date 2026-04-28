@@ -485,7 +485,9 @@ async def _fetch_active_vision_docs(
 
     if not product:
         logger.warning(
-            "product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_vision_document"
+            "product_not_found product_id=%s tenant_key=%s operation=get_vision_document",
+            product_id,
+            tenant_key,
         )
         return None, {
             "source": "vision_documents",

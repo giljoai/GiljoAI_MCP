@@ -77,6 +77,17 @@ def _resolve_tenant(ctx: Context) -> str:
     return tenant_key
 
 
+def _resolve_user_id(ctx: Context) -> str | None:
+    """Extract user_id from ASGI scope state (set by MCPAuthMiddleware).
+
+    Returns None if the request was authenticated by an API key whose session
+    has no user_id back-reference (legacy keys). Callers must treat None as
+    "skip user-scoped side effects".
+    """
+    request: StarletteRequest = ctx.request_context.request
+    return request.scope.get("state", {}).get("user_id")
+
+
 def _set_tenant_context(tenant_key: str) -> None:
     """Set the current tenant for downstream DB queries."""
     _get_tenant_manager().set_current_tenant(tenant_key)
@@ -496,7 +507,10 @@ async def giljo_setup(
     """Install slash commands/skills for your CLI tool."""
     logger.info("giljo_setup called with platform=%s", platform)
 
-    result = await _call_tool(ctx, "bootstrap_setup", {"platform": platform})
+    # HO 1028: pass authenticated user_id so the staging layer can stamp the
+    # installed skills version through UserService (single write path).
+    user_id = _resolve_user_id(ctx)
+    result = await _call_tool(ctx, "bootstrap_setup", {"platform": platform, "user_id": user_id})
 
     # Emit setup:bootstrap_complete WebSocket event
     try:
@@ -641,7 +655,15 @@ async def report_progress(
     description=(
         "Mark job as completed with results. Called by: ANY AGENT when all assigned "
         "work is done. System will REJECT if unread messages remain or TODOs are incomplete. "
-        "Check receive_messages() and verify all TODOs are completed before calling."
+        "Check receive_messages() and verify all TODOs are completed before calling. "
+        "ORCHESTRATOR CLOSEOUT: pass acknowledge_closeout_todo=True when the closeout "
+        "TODO IS this very call (e.g. 'Closeout: complete orchestrator job') — the gate "
+        "will auto-complete any TODO whose content matches closeout/complete_job/close_project. "
+        "Non-closeout incomplete TODOs still block. STUCK ON UNREAD MESSAGES: pass "
+        "acknowledge_messages_on_complete=True to drain (mark acknowledged) all unread "
+        "messages addressed to this agent in the project+tenant before evaluating. "
+        "Mirror of acknowledge_closeout_todo for the messages gate. The TODOs gate is "
+        "independent — neither flag bypasses the other."
     ),
 )
 async def complete_job(
@@ -652,10 +674,31 @@ async def complete_job(
             description="Completion result dict. Expected keys: 'summary' (str, what was accomplished), 'files_changed' (list[str], optional), 'decisions_made' (list[str], optional)."
         ),
     ],
+    acknowledge_closeout_todo: Annotated[
+        bool,
+        Field(
+            description="When True, auto-complete any incomplete TODO whose content describes the closeout itself (matches closeout/complete_job/close_project). Use from orchestrator closeout where the closeout TODO IS this call. Default False."
+        ),
+    ] = False,
+    acknowledge_messages_on_complete: Annotated[
+        bool,
+        Field(
+            description="When True, drain (mark acknowledged) all unread messages addressed to this agent within the project+tenant before evaluating the gate. Mirror of acknowledge_closeout_todo for the messages gate. Use this escape hatch when stuck in a reactivation-on-stale-message loop and unable to close out. The TODOs gate is independent — this flag does NOT bypass incomplete TODOs. Default False."
+        ),
+    ] = False,
     ctx: Context = None,
 ) -> dict:
     """Mark job as completed with results."""
-    return await _call_tool(ctx, "complete_job", {"job_id": job_id, "result": result})
+    return await _call_tool(
+        ctx,
+        "complete_job",
+        {
+            "job_id": job_id,
+            "result": result,
+            "acknowledge_closeout_todo": acknowledge_closeout_todo,
+            "acknowledge_messages_on_complete": acknowledge_messages_on_complete,
+        },
+    )
 
 
 @mcp.tool(
@@ -814,13 +857,26 @@ async def spawn_job(
     phase: Annotated[
         int | None,
         Field(
-            description="Execution phase number (1, 2, 3...). Phase 1 runs first, phase 2 after phase 1 completes. Must be an integer."
+            description=(
+                "Optional ordering metadata. Same phase = parallel siblings; "
+                "higher phase = depends on lower phases completing. "
+                "In multi_terminal execution mode the dashboard groups Play buttons by phase. "
+                "In subagent modes (Claude/Codex/Gemini CLI) the orchestrator manages ordering "
+                "via Task() / spawn_agent() / @-syntax invocation order; phase is informational. "
+                "Must be an integer."
+            )
         ),
     ] = None,
     predecessor_job_id: Annotated[
         str,
         Field(
-            description="Job ID of predecessor agent whose work this agent continues. Agent can call get_agent_result(predecessor_job_id) to read prior work."
+            description=(
+                "Optional job_id of a previous agent whose output this successor needs. The server "
+                "reads the predecessor's completion record and renders an appropriate context "
+                "preamble into the successor's mission (chain vs replacement is auto-detected from "
+                "the predecessor's status). In subagent execution modes the server silently skips "
+                "the preamble because your CLI already returned the predecessor result inline."
+            )
         ),
     ] = "",
     ctx: Context = None,

@@ -33,7 +33,7 @@
             @click="navigateToIntegrations"
             class="text-decoration-underline cursor-pointer"
           >
-            Integrations tab
+            Connect tab
           </a>
           to use Git History context.
         </div>

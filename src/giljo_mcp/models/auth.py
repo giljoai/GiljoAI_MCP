@@ -144,6 +144,18 @@ class User(Base):
         comment="User notification preferences: tuning reminders, thresholds",
     )
 
+    # Skills version tracking (HO 1028 — skills bundle drift + update reminders)
+    last_installed_skills_version = Column(
+        String(32),
+        nullable=True,
+        comment="SKILLS_VERSION stamped at last /giljo_setup bundle download",
+    )
+    last_update_reminder_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Last time post-login cadence emitted system:update_available (30d throttle)",
+    )
+
     # Depth columns (Handover 0840d — replaces depth_config JSONB)
     depth_vision_documents = Column(String(20), nullable=False, default="medium", server_default="medium")
     depth_memory_last_n = Column(Integer, nullable=False, default=3, server_default="3")
@@ -151,7 +163,6 @@ class User(Base):
     depth_agent_templates = Column(String(20), nullable=False, default="basic", server_default="basic")
     depth_tech_stack_sections = Column(String(20), nullable=False, default="all", server_default="all")
     depth_architecture = Column(String(20), nullable=False, default="overview", server_default="overview")
-    execution_mode = Column(String(20), nullable=False, default="claude_code", server_default="claude_code")
 
     # Relationships
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")

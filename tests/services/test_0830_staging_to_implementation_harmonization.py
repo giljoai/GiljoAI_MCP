@@ -189,8 +189,24 @@ class TestOrchestratorIdentityPopulated:
         project_result.scalar_one_or_none = MagicMock(return_value=project)
         all_exec_result = MagicMock()
         all_exec_result.all = MagicMock(return_value=[(execution, job)])
+        # HO1027: extra reads for orchestrator identity composition —
+        # _resolve_mission_template fetches project (5th) + orchestrator
+        # prompt override row (6th).
+        project_again_result = MagicMock()
+        project_again_result.scalar_one_or_none = MagicMock(return_value=project)
+        override_result = MagicMock()
+        override_result.scalar_one_or_none = MagicMock(return_value=None)
 
-        session.execute = AsyncMock(side_effect=[job_result, exec_result, project_result, all_exec_result])
+        session.execute = AsyncMock(
+            side_effect=[
+                job_result,
+                exec_result,
+                project_result,
+                all_exec_result,
+                project_again_result,
+                override_result,
+            ]
+        )
 
         response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key="tenant-test")
 
@@ -241,7 +257,22 @@ class TestOrchestratorIdentityPopulated:
         all_exec_result = MagicMock()
         all_exec_result.all = MagicMock(return_value=[(execution, job)])
 
-        session.execute = AsyncMock(side_effect=[job_result, exec_result, project_result, all_exec_result])
+        # HO1027: extra mocks for project+override re-reads in identity composition.
+        project_again_result = MagicMock()
+        project_again_result.scalar_one_or_none = MagicMock(return_value=project)
+        override_result = MagicMock()
+        override_result.scalar_one_or_none = MagicMock(return_value=None)
+
+        session.execute = AsyncMock(
+            side_effect=[
+                job_result,
+                exec_result,
+                project_result,
+                all_exec_result,
+                project_again_result,
+                override_result,
+            ]
+        )
 
         response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key="tenant-test")
 
@@ -295,7 +326,22 @@ class TestOrchestratorIdentityPopulated:
         all_exec_result = MagicMock()
         all_exec_result.all = MagicMock(return_value=[(execution, job)])
 
-        session.execute = AsyncMock(side_effect=[job_result, exec_result, project_result, all_exec_result])
+        # HO1027: extra mocks for project+override re-reads in identity composition.
+        project_again_result = MagicMock()
+        project_again_result.scalar_one_or_none = MagicMock(return_value=project)
+        override_result = MagicMock()
+        override_result.scalar_one_or_none = MagicMock(return_value=None)
+
+        session.execute = AsyncMock(
+            side_effect=[
+                job_result,
+                exec_result,
+                project_result,
+                all_exec_result,
+                project_again_result,
+                override_result,
+            ]
+        )
 
         response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key="tenant-test")
 

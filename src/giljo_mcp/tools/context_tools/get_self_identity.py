@@ -123,7 +123,9 @@ async def _get_self_identity_impl(
 
     if not template:
         logger.warning(
-            "template_not_found", agent_name=agent_name, tenant_key=tenant_key, operation="get_self_identity"
+            "template_not_found agent_name=%s tenant_key=%s operation=get_self_identity",
+            agent_name,
+            tenant_key,
         )
         return {
             "source": "self_identity",

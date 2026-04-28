@@ -1,6 +1,126 @@
+title = "GiljoAI Custom Gitleaks Config"
+
+# Inherit gitleaks default rules (AWS, GitHub, Stripe, JWT, SSH keys, etc.)
+[extend]
+useDefault = true
+
+# ─── Custom rules for GiljoAI-specific secret formats ──────────────────────
+# These supplement the default rules to catch tokens that follow our
+# in-house naming conventions.
+
+[[rules]]
+id = "giljo-tenant-key"
+description = "GiljoAI tenant_key (tk_ prefix + 20+ alphanumeric chars)"
+regex = '''\btk_[A-Za-z0-9]{20,}\b'''
+keywords = ["tk_"]
+
+[[rules]]
+id = "giljo-api-key"
+description = "GiljoAI API key (gk_ prefix + 20+ alphanumeric chars)"
+regex = '''\bgk_[A-Za-z0-9]{20,}\b'''
+keywords = ["gk_"]
+
+[[rules]]
+id = "giljo-historical-leak-mhtgiljo"
+description = "Paranoid block of the v1.1.9.2 scrubbed password literal"
+regex = '''MHTGiljo\d+'''
+keywords = ["MHTGiljo"]
+
+[[rules]]
+id = "personal-email-leak"
+description = "Personal email addresses that should never ship to public CE"
+# Catches patrik@giljo.ai and any *@gmail.com address.
+# Path allowlist below excludes private-only locations (handovers/, tests/saas/, etc.)
+# and the regexes allowlist permits intentional service accounts (noreply, infoteam, ...).
+regex = '''\b(patrik@giljo\.ai|[A-Za-z0-9._%+-]+@gmail\.com)\b'''
+keywords = ["patrik@giljo", "@gmail.com"]
+
+# ─── Allowlist for test fixtures, tools, and private-only paths ────────────
 [allowlist]
-description = "Allowlist for test fixtures containing fake API keys"
+description = "Allowlist for test fixtures, gitignored secrets, tools, and private-only paths"
 
 paths = [
+    # Test fixtures (intentional fake credentials)
     '''tests/.*''',
+    '''frontend/tests/.*''',
+
+    # Local-only and gitignored (never committed, never shipped)
+    '''\.env$''',
+    '''\.env\..*''',
+    '''certs/.*''',
+    '''.*\.pem$''',
+    '''.*\.key$''',
+    '''.*\.dump$''',
+    '''logs/.*''',
+    '''installer/credentials/.*''',
+    '''Linux_Installer/credentials/.*''',
+    '''credentials\.json$''',
+
+    # Tooling / dependencies (not project code)
+    '''\.venv/.*''',
+    '''venv/.*''',
+    '''node_modules/.*''',
+    '''\.git/.*''',
+    '''dist/.*''',
+    '''build/.*''',
+    '''.*\.egg-info/.*''',
+    '''__pycache__/.*''',
+    '''\.pytest_cache/.*''',
+    '''playwright-report/.*''',
+    '''test-results/.*''',
+    '''htmlcov/.*''',
+    '''coverage/.*''',
+    '''\.coverage$''',
+
+    # Private-only (stripped from public CE export -- see scripts/export_ce.sh)
+    '''handovers/.*''',
+    '''backups/.*''',
+    '''saas/.*''',
+    '''saas_endpoints/.*''',
+    '''saas_middleware/.*''',
+    '''frontend/src/saas/.*''',
+    '''demo/.*''',
+    '''migrations/saas_versions/.*''',
+
+    # Local agent / IDE config (gitignored or local)
+    '''\.claude/.*''',
+    '''\.serena/.*''',
+    '''\.codex/.*''',
+    '''\.cursor/.*''',
+
+    # Archived API documentation -- contains curl examples with placeholder URLs
+    # (your-server, YOUR_TOKEN, etc.) that trigger curl-auth-header false positives
+    '''docs/archive/api/.*''',
+    '''docs/archive/retired-2026-01/urgent-drafts/.*''',
+    '''docs/archive/retired-2026-01/legacy-guides/.*''',
+    '''migrations/archive/.*''',
+]
+
+# Test-fixture and placeholder token literals -- clearly fake or example-only
+regexTarget = "match"
+regexes = [
+    # Test-fixture tk_* literals
+    '''tk_test[A-Za-z0-9]+''',
+    '''tk_otherTenant[A-Za-z0-9]+''',
+    '''tk_fullPopulatedTest[A-Za-z0-9]+''',
+    '''tk_uuidTypeTest[A-Za-z0-9]+''',
+    # Placeholder gk_* values
+    '''gk_xxx+''',
+    '''gk_RANDOMSTRING[A-Za-z0-9]*''',
+    '''gk_verylongtoken[A-Za-z0-9]+''',
+    '''gk_abcdef[A-Za-z0-9]+''',
+    '''gk_invalid_[A-Za-z0-9_]+''',
+    '''gk_your_api_key_here''',
+    # Placeholder bearer tokens / auth headers in docs and example scripts
+    '''YOUR_[A-Z_]+''',
+    '''<your-[a-z0-9_-]+>''',
+    '''<[A-Z_]+>''',
+    # Placeholder format used in API docs (gai_ prefix + sequential digits)
+    '''gai_[0-9a-z]+''',
+    # Truncated JWT examples ending with literal "..."
+    '''eyJ[A-Za-z0-9_-]*\.\.\.''',
+    # PowerShell auth header examples (false positives on curl in install scripts)
+    '''Authorization: Bearer \$env:''',
+    # Local dev URLs (not credentials)
+    '''(localhost|127\.0\.0\.1):\d+''',
 ]

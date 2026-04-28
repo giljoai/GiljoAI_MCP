@@ -2,7 +2,7 @@
   <v-container>
     <!-- Page Header -->
     <h1 class="text-h4 mb-2">Tools</h1>
-    <p class="text-subtitle-1 mb-4 settings-subtitle">Connect integrations, tune agents, and configure context</p>
+    <p class="text-subtitle-1 mb-4 settings-subtitle">Manage connections, tune agents, and configure context</p>
 
     <!-- Settings Pills -->
     <div class="pill-toggle-row">

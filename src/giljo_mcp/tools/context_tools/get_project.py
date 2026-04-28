@@ -75,7 +75,10 @@ async def get_project(
         )
     """
     logger.info(
-        "fetching_project_description", project_id=project_id, tenant_key=tenant_key, include_summary=include_summary
+        "fetching_project_description project_id=%s tenant_key=%s include_summary=%s",
+        project_id,
+        tenant_key,
+        include_summary,
     )
 
     if db_manager is None:

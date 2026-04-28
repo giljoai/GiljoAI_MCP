@@ -175,7 +175,7 @@ async def _resolve_git_commits(
     product_memory: dict[str, Any],
     git_commits: list[dict[str, Any]] | None,
     project: Any,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[dict[str, Any]], str | None, str | None]:
     """Resolve git commits from agent input, GitHub API, or empty default.
 
     Validates agent-supplied commits, falls back to GitHub API in SaaS mode,
@@ -187,10 +187,19 @@ async def _resolve_git_commits(
     recommendation while letting agents close projects in non-git directories
     after asking the user (per ch5 protocol guidance).
 
+    Wave 1 IMP-0019 Item 5: when the resolved commit list is empty AND the
+    agent did not supply commits (the demo-server scenario where `git` is not
+    installed and the agent's `git log` subprocess fails), surface a separate
+    `git_unavailable_reason` so callers can distinguish "git was not available
+    or not collected" from "git was available but produced no commits in
+    range." The closeout itself must still succeed.
+
     Returns:
-        (commits, warning) — commits is always a validated list (possibly empty);
-        warning is a human-readable string when git was enabled but no commits
-        were provided, otherwise None.
+        (commits, warning, git_unavailable_reason) — commits is always a
+        validated list (possibly empty); warning is a human-readable string
+        when git was enabled but no commits were provided, otherwise None;
+        git_unavailable_reason is a short text marker when the final commit
+        list is empty AND no agent-supplied commits arrived (otherwise None).
     """
     git_integration_enabled = False
     try:
@@ -215,6 +224,10 @@ async def _resolve_git_commits(
             project_id,
             tenant_key,
         )
+
+    # Track whether the agent supplied commits — used to detect the
+    # git-unavailable case below (empty result + no agent input).
+    agent_supplied_commits = git_commits is not None
 
     if git_commits is not None:
         git_commits = validate_git_commits(git_commits)
@@ -243,7 +256,24 @@ async def _resolve_git_commits(
     if git_commits is None:
         git_commits = []
 
-    return git_commits, git_warning
+    git_unavailable_reason: str | None = None
+    if not git_commits and not agent_supplied_commits:
+        # Demo-server / non-git-repo / git-binary-missing scenario. The agent
+        # could not run `git log` (FileNotFoundError on missing binary, or the
+        # project directory is not a git repo), so it sent git_commits=None.
+        # The closeout succeeds; we just surface the signal so callers know
+        # commit history was not collected.
+        git_unavailable_reason = (
+            "git not available — no agent-supplied commits and no GitHub API fallback. "
+            "Project closed without commit history."
+        )
+        logger.info(
+            "git_unavailable_in_closeout project_id=%s tenant_key=%s",
+            project_id,
+            tenant_key,
+        )
+
+    return git_commits, git_warning, git_unavailable_reason
 
 
 async def close_project_and_update_memory(
@@ -379,7 +409,7 @@ async def close_project_and_update_memory(
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
-            git_commits, git_warning = await _resolve_git_commits(
+            git_commits, git_warning, git_unavailable_reason = await _resolve_git_commits(
                 session=active_session,
                 project_id=project_id,
                 tenant_key=tenant_key,
@@ -461,6 +491,12 @@ async def close_project_and_update_memory(
             }
             if git_warning:
                 response["git_warning"] = git_warning
+            if git_unavailable_reason:
+                # Wave 1 IMP-0019 Item 5: explicit signal when git history was
+                # not collected (demo server / non-git repo / git binary
+                # missing). Closeout still succeeds; this just tells callers.
+                response["git_unavailable"] = True
+                response["git_unavailable_reason"] = git_unavailable_reason
             return response
 
     except Exception as exc:  # Broad catch: tool boundary, logs and re-raises

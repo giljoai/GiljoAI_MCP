@@ -22,6 +22,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.app_state import GILJO_MODE
 from api.endpoints.auth_models import (
     CheckFirstLoginRequest,
     CheckFirstLoginResponse,
@@ -81,6 +82,11 @@ async def verify_pin_and_reset_password(
         HTTPException: 400 if username/PIN invalid
         HTTPException: 429 if rate limit exceeded or user is locked out
     """
+    # PIN recovery is a CE-only feature (self-hosted users have no email channel).
+    # SaaS/demo use email-based password reset and must not expose this surface.
+    if GILJO_MODE != "ce":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
     # IP-based rate limiting: 3 attempts per minute (Handover 1009)
     # This is in ADDITION to per-user account lockout (5 failed → 15 min)
     rate_limiter = get_rate_limiter()
@@ -181,6 +187,10 @@ async def verify_pin(request_data: VerifyPinRequest = Body(...), db: AsyncSessio
 
     AUTH-EMAIL Phase 4: wire field `username` accepts either username OR email.
     """
+    # PIN recovery is CE-only — see verify_pin_and_reset_password.
+    if GILJO_MODE != "ce":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
     user = await _auth_repo.get_user_by_username_or_email(db, request_data.username)
 
     if not user or not user.recovery_pin_hash:
@@ -227,9 +237,10 @@ async def check_first_login(
         # Return safe defaults for non-existent users to prevent username enumeration
         return CheckFirstLoginResponse(must_change_password=False, must_set_pin=False)
 
-    return CheckFirstLoginResponse(
-        must_change_password=user.must_change_password or False, must_set_pin=user.must_set_pin or False
-    )
+    # SaaS/demo never require PIN setup — email-based recovery is used instead.
+    must_set_pin = bool(user.must_set_pin) if GILJO_MODE == "ce" else False
+
+    return CheckFirstLoginResponse(must_change_password=user.must_change_password or False, must_set_pin=must_set_pin)
 
 
 @router.post("/complete-first-login", response_model=CompleteFirstLoginResponse, tags=["auth"])
@@ -276,19 +287,26 @@ async def complete_first_login(
     if request_data.new_password != request_data.confirm_password:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match")
 
-    # Validate PIN confirmation match
-    if request_data.recovery_pin != request_data.confirm_pin:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PINs do not match")
+    # PIN is required in CE (only recovery channel) and optional in SaaS/demo
+    # (email reset replaces it). Reject missing PIN in CE; ignore PIN entirely
+    # in hosted editions even if a client sends one.
+    pin_required = GILJO_MODE == "ce"
+    if pin_required:
+        if not request_data.recovery_pin or not request_data.confirm_pin:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Recovery PIN is required")
+        if request_data.recovery_pin != request_data.confirm_pin:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PINs do not match")
 
     # Update password
     current_user.password_hash = bcrypt.hashpw(request_data.new_password.encode("utf-8"), bcrypt.gensalt()).decode(
         "utf-8"
     )
 
-    # Set recovery PIN
-    current_user.recovery_pin_hash = bcrypt.hashpw(request_data.recovery_pin.encode("utf-8"), bcrypt.gensalt()).decode(
-        "utf-8"
-    )
+    # Set recovery PIN (CE only)
+    if pin_required:
+        current_user.recovery_pin_hash = bcrypt.hashpw(
+            request_data.recovery_pin.encode("utf-8"), bcrypt.gensalt()
+        ).decode("utf-8")
 
     # Clear first login flags
     current_user.must_change_password = False

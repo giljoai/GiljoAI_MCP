@@ -28,7 +28,7 @@
             </v-avatar>
             Serena MCP
           </span>
-          <span>integrations in the Connect settings.</span>
+          <span>tools in the Connect settings.</span>
         </div>
       </div>
       <router-link to="/tools" class="onboard-link">
