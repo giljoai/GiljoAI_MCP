@@ -129,3 +129,74 @@ jobs:
           python startup.py --help > /tmp/help.out 2>&1 || (echo '--- startup.py --help output ---'; cat /tmp/help.out; exit 1)
           grep -q "GiljoAI MCP" /tmp/help.out || (echo "Expected 'GiljoAI MCP' in --help output:"; cat /tmp/help.out; exit 1)
           echo "[OK] Venv-guard re-exec succeeded -- startup.py --help reachable from no-deps Python."
+
+  installer-smoke-ubuntu:
+    name: Installer smoke (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Postgres 18
+        shell: bash
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-18 postgresql-client-18
+          sudo systemctl start postgresql
+          sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+          pg_isready -h localhost -p 5432
+          psql --version
+
+      - name: Run install.py --headless
+        shell: bash
+        env:
+          PG_PASSWORD: postgres
+        run: |
+          python install.py --headless --pg-password "$PG_PASSWORD" || \
+            (echo '--- install.py failed; dumping last 200 lines of installer.log ---'; \
+             tail -n 200 installer.log 2>/dev/null || true; exit 1)
+
+      - name: Verify startup.py --help (no ModuleNotFoundError)
+        shell: bash
+        run: |
+          python startup.py --help > help.out 2>&1 || (cat help.out; exit 1)
+          grep -q "GiljoAI MCP" help.out || (echo 'startup.py --help did not produce expected banner'; cat help.out; exit 1)
+
+      - name: Verify alembic head applied
+        shell: bash
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/giljo_mcp
+        run: |
+          source venv/bin/activate
+          alembic current | tee alembic.out
+          grep -qE '\(head\)' alembic.out || (echo 'Alembic not at head'; exit 1)
+
+      - name: Verify frontend build
+        shell: bash
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Upload installer log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-log-ubuntu
+          path: |
+            installer.log
+            help.out
+            alembic.out
+          if-no-files-found: ignore
