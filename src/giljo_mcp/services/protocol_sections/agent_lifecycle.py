@@ -57,6 +57,13 @@ Your subagents are Claude Code Task() processes. They run autonomously.
   3. After waking: run the coordination loop below — check messages, status, advance TODOs
   4. Repeat until the TODO item you are waiting on can be resolved
 
+⚠ CLAUDE CODE BASH NOTE: The Bash tool blocks `sleep N` when N ≥ 2 as the
+first command in an invocation. Use the `sleep 1 N` workaround — `sleep`
+sums numeric args, and the harness only inspects the first arg ("1",
+under threshold). Examples: `sleep 1 20 && echo woke` sleeps ~20s;
+`sleep 1 300 && receive_messages(...)` sleeps ~5min. PowerShell
+`Start-Sleep -Seconds N` is unaffected.
+
 **User-triggered wake:** The user may also tell you to check on things.
   Regardless of trigger source, always run the full coordination loop."""
 

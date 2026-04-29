@@ -37,6 +37,22 @@ Before every commit, verify:
 5. **No commented-out code**: Delete it. Git has the history.
 6. **Pre-commit hooks must pass**: Do not use `--no-verify`
 
+### Public Deploy — Definition of Done (MANDATORY)
+
+The public repo is the customer-facing face of the product. Red CI badges signal "broken product" to every visitor. **Any task that pushes to public master, opens a PR against public, force-pushes to public, or tags a public release is NOT COMPLETE until BOTH conditions are met:**
+
+1. **Local pre-flight green.** Run the same checks CI runs, locally, before pushing:
+   - Backend: `pytest tests/unit/ -v -m "not slow and not e2e and not stress and not network and not server_mode"`
+   - Frontend: `cd frontend && npm run lint && npm run build && npm run test:run`
+   - Installer integrity: `python scripts/check_installer_integrity.py`
+2. **CI verified green after push.** Run `gh pr checks <num> --watch` (for PRs) or `gh run list --repo giljoai/GiljoAI_MCP --branch master --limit 3 --json conclusion` (for direct pushes) until **all** checks (Backend CI, Frontend CI, CodeQL, Secret scan, Installer integrity) show `success`. **The badge state is the source of truth** — not "PR merged" or "tag pushed."
+
+If post-push CI fails, stop other work, diagnose, and **fix-forward** with another commit/PR — or revert the offending commit. Do not leave the badges red.
+
+**After INF-5017 (2026-04-29):** The primary CI gate is on the private repo (9 required checks, ruleset 15690228). Public CI is the downstream smoke test (6 checks). Both must be green before declaring a public deploy done. Run private CI first — if private is red, do not export.
+
+**For installer-touching changes** (`install.py`, `startup.py`, `install.ps1`, `install.sh`): static checks are necessary but NOT sufficient. Run the actual installer end-to-end on Windows AND Linux (deps-test box at `patrik@10.1.0.163`) before merging. macOS validation is a known gap — until a box exists, state "macOS not validated" explicitly in the commit message and handover.
+
 ### Function and Class Size
 
 - No function exceeds 200 lines without explicit justification

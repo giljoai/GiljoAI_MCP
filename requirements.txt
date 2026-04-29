@@ -15,6 +15,7 @@ sqlalchemy>=2.0.0           # ORM with async support
 alembic>=1.12.0             # Database migrations
 psycopg2-binary>=2.9.0      # PostgreSQL driver (sync)
 asyncpg>=0.29.0             # PostgreSQL driver (async)
+greenlet>=3.0               # Required by SQLAlchemy async on macOS arm64 (transitive dep not auto-installed)
 
 # Authentication & Security
 bcrypt>=4.0.0                      # Password hashing (direct bcrypt, no passlib wrapper)
