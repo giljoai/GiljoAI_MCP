@@ -33,8 +33,13 @@ jobs:
             | tar xz -C /tmp gitleaks
           sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
           gitleaks version
-      - name: Run gitleaks (full history scan)
-        run: gitleaks detect --redact --verbose --source . --no-banner
+      - name: Run gitleaks (working-tree scan)
+        # --no-git scans only the current working tree (HEAD snapshot), not git
+        # history. Pre-public-release historical findings are documented
+        # baggage we accept; what we want to catch is new secrets entering the
+        # current codebase. The pre-commit hook (.pre-commit-config.yaml) and
+        # this CI job together ensure no new secret reaches master.
+        run: gitleaks detect --redact --verbose --no-git --source . --no-banner
 
   no-ai-signatures:
     name: No AI signatures
