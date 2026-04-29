@@ -178,7 +178,7 @@ describe('ApiKeyManager.vue - Handover 0028 Simplified Interface', () => {
       expect(wrapper.text()).toContain('No API keys yet')
     })
 
-    it('empty state mentions Integrations tab', async () => {
+    it('empty state mentions Connect tab', async () => {
       api.apiKeys.list.mockResolvedValue({ data: [] })
 
       wrapper = mount(ApiKeyManager, {
@@ -190,7 +190,7 @@ describe('ApiKeyManager.vue - Handover 0028 Simplified Interface', () => {
       await new Promise(r => setTimeout(r, 0))
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.text()).toContain('Integrations')
+      expect(wrapper.text()).toContain('Connect tab')
     })
 
     it('hides data table when no keys exist', async () => {

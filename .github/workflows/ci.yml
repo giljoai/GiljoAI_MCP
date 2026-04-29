@@ -16,6 +16,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks binary
+        # Use the open-source binary directly (no GitHub Action wrapper).
+        # gitleaks-action@v2 requires a paid license for org-owned repos,
+        # the binary itself is MIT-licensed and free.
+        run: |
+          GITLEAKS_VERSION=8.21.2
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar xz -C /tmp gitleaks
+          sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Run gitleaks (working-tree scan)
+        # --no-git scans only the current working tree (HEAD snapshot), not git
+        # history. Pre-public-release historical findings are documented
+        # baggage we accept; what we want to catch is new secrets entering the
+        # current codebase. The pre-commit hook (.pre-commit-config.yaml) and
+        # this CI job together ensure no new secret reaches master.
+        run: gitleaks detect --redact --verbose --no-git --source . --no-banner
+
   no-ai-signatures:
     name: No AI signatures
     runs-on: ubuntu-latest

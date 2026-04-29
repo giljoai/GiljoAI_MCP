@@ -56,6 +56,18 @@ GiljoAI sits at the intersection of product thinking and development. Whether yo
 <br>
 
 <div align="center">
+
+### Try It First — Hosted Demo
+
+**[demo.giljo.ai](https://demo.giljo.ai)** — full GiljoAI MCP, no install required.
+
+Sign up for a free 7-day trial to explore the dashboard, define a product, and run a project end-to-end before deciding to self-host.
+
+</div>
+
+<br>
+
+<div align="center">
 <img src="docs/images/section-quick-start.png" alt="Quick Start" width="100%">
 </div>
 
