@@ -1,5 +1,0 @@
-# Dependabot disabled on public repo.
-# All dependency update PRs are managed from the private repo (giljoai/GiljoAI_MCP_Private).
-# INF-5017: moved 2026-04-29.
-version: 2
-updates: []
