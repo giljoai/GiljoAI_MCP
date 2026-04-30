@@ -201,34 +201,118 @@ async def create_project(
 
 @mcp.tool(
     description=(
-        "List projects for the active product with optional status filter and depth control. "
-        "By default returns summary-only fields (name, status, taxonomy_alias, etc.) to minimize payload. "
-        "Use summary_only=False with depth 1-3 for progressively more detail. "
+        "List projects for the active product with server-side filtering (v1.2.1). "
+        "Default returns only projects in active lifecycle (excludes completed and cancelled). "
+        "The 'hidden' field is per-row UI declutter and does NOT affect default visibility -- "
+        "agent sees hidden and non-hidden alike. Pass include_completed=true to retrieve "
+        "archived projects. Pass hidden=true|false to filter explicitly when needed (rare). "
+        "Use summary_only=false with depth 1-3 for progressively more detail. "
         "Requires an active product to be set."
     ),
 )
 async def list_projects(
-    status_filter: str = "all",
+    status: str = "",
+    project_type: str = "",
+    taxonomy_alias_prefix: str = "",
+    created_after: str = "",
+    created_before: str = "",
+    completed_after: str = "",
+    completed_before: str = "",
+    include_completed: bool = False,
+    hidden: str = "",
     summary_only: bool = True,
     depth: int = 0,
+    status_filter: str = "",
     ctx: Context = None,
 ) -> dict:
-    """List projects for the active product.
+    """List projects for the active product (v1.2.1 server-side filtering).
+
+    Default returns only projects in active lifecycle (excludes completed,
+    cancelled). The hidden column is per-row UI declutter and does NOT affect
+    default visibility -- agent sees hidden and non-hidden alike. Pass
+    include_completed=true to retrieve archived projects. Pass hidden=true|false
+    to filter explicitly when needed (rare).
 
     Args:
-        status_filter: Filter by status — "inactive", "active", "completed", "cancelled", or "all" (default).
+        status: Filter by status. Single value ("active") or comma-separated list
+            ("active,inactive"). Values: inactive, active, completed, cancelled.
+            When set, include_completed is ignored (user intent wins).
+        project_type: Filter by taxonomy type abbreviation. Single value ("BE")
+            or comma-separated list ("BE,FE,INF"). Must match a configured type.
+        taxonomy_alias_prefix: Prefix-match against taxonomy alias (e.g. "BE-50"
+            matches BE-5001..BE-5099 but not BE-5100; "BE-5036" exact-matches one).
+        created_after / created_before: ISO-8601 datetimes (e.g. "2026-01-01T00:00:00Z").
+        completed_after / completed_before: ISO-8601 datetimes for completion window.
+        include_completed: When True, archived projects (completed/cancelled) are
+            included. Ignored when `status` is explicitly set.
+        hidden: "true" / "false" / "" (empty = no filter, default).
         summary_only: When True (default), return only summary fields to minimize payload.
-            When False, include full details controlled by depth parameter.
-        depth: Detail level 0-3 (only used when summary_only=False):
-            0 = summary fields only (same as summary_only=True).
-            1 = + description, mission, agent job summary (types spawned, counts).
-            2 = + 360 memory entries, agent job details (display names, status, result).
+        depth: Detail level 0-3 when summary_only=False:
+            0 = summary fields only.
+            1 = + description, mission, agent job summary.
+            2 = + 360 memory entries, agent job details.
             3 = + message history, git commits from 360 memory.
+        status_filter: Legacy parameter -- prefer `status`. Accepts "all" or a single
+            status string. Honored only when `status` is unset.
     """
+    # Normalize status -> list[str] | None
+    status_arg: list[str] | str | None
+    if not status:
+        status_arg = None
+    elif "," in status:
+        status_arg = [s.strip() for s in status.split(",") if s.strip()]
+    else:
+        status_arg = status.strip()
+
+    pt_arg: list[str] | str | None
+    if not project_type:
+        pt_arg = None
+    elif "," in project_type:
+        pt_arg = [s.strip() for s in project_type.split(",") if s.strip()]
+    else:
+        pt_arg = project_type.strip()
+
+    # Parse hidden tri-state
+    hidden_arg: bool | None
+    if hidden == "" or hidden is None:
+        hidden_arg = None
+    elif str(hidden).lower() in ("true", "1", "yes"):
+        hidden_arg = True
+    elif str(hidden).lower() in ("false", "0", "no"):
+        hidden_arg = False
+    else:
+        hidden_arg = None
+
+    # Parse ISO datetimes
+    from datetime import datetime as _dt
+
+    from giljo_mcp.exceptions import ValidationError as _ValidationError
+
+    def _maybe(s: str):
+        if not s:
+            return None
+        try:
+            return _dt.fromisoformat(s.replace("Z", "+00:00"))
+        except (ValueError, TypeError) as exc:
+            raise _ValidationError(f"Invalid ISO-8601 datetime '{s}'. Expected e.g. '2026-01-01T00:00:00Z'.") from exc
+
     return await _call_tool(
         ctx,
         "list_projects",
-        {"status_filter": status_filter, "summary_only": summary_only, "depth": depth},
+        {
+            "status_filter": status_filter or None,
+            "summary_only": summary_only,
+            "depth": depth,
+            "status": status_arg,
+            "project_type": pt_arg,
+            "taxonomy_alias_prefix": taxonomy_alias_prefix or None,
+            "created_after": _maybe(created_after),
+            "created_before": _maybe(created_before),
+            "completed_after": _maybe(completed_after),
+            "completed_before": _maybe(completed_before),
+            "include_completed": include_completed,
+            "hidden": hidden_arg,
+        },
     )
 
 

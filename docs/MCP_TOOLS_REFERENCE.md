@@ -49,18 +49,33 @@ The project is created as inactive; activate it from the web dashboard.
 
 ### list_projects
 
-**Description:** List projects for the active product with optional status filter
-and depth control. By default returns summary-only fields to minimize payload
-(~2KB for 49 projects vs ~146KB with full descriptions). Use `summary_only=False`
-with `depth` 1-3 for progressively more detail.
+**Description:** List projects for the active product with server-side filtering
+(v1.2.1). By default returns only projects in active lifecycle (excludes completed
+and cancelled) and summary-only fields to minimize payload (~2KB for 49 projects
+vs ~146KB with full descriptions). Use `summary_only=False` with `depth` 1-3 for
+progressively more detail.
+
+> **Breaking change (v1.2.1):** The default no longer returns completed/cancelled
+> projects. Pass `include_completed=true` to retrieve archived projects. The `hidden`
+> field appears in every row regardless of filter — it is a UI declutter flag, not
+> an agent-visibility gate.
 
 **Parameters:**
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| status_filter | str | No | `"all"` | Filter by status: `"inactive"`, `"active"`, `"completed"`, `"cancelled"`, or `"all"`. |
+| status | str | No | `""` | Filter by status. Single value (`"active"`) or comma-separated (`"active,inactive"`). Values: `inactive`, `active`, `completed`, `cancelled`. When set, `include_completed` is ignored — caller intent wins. |
+| project_type | str | No | `""` | Filter by taxonomy type abbreviation. Single value (`"BE"`) or comma-separated (`"BE,FE,INF"`). Must match a configured type. |
+| taxonomy_alias_prefix | str | No | `""` | Prefix-match against taxonomy alias (e.g. `"BE-50"` matches BE-5001..BE-5099). |
+| created_after | str | No | `""` | ISO-8601 datetime lower bound on creation time (e.g. `"2026-01-01T00:00:00Z"`). |
+| created_before | str | No | `""` | ISO-8601 datetime upper bound on creation time. |
+| completed_after | str | No | `""` | ISO-8601 datetime lower bound on completion time. |
+| completed_before | str | No | `""` | ISO-8601 datetime upper bound on completion time. |
+| include_completed | bool | No | `false` | When `true`, include archived projects (completed/cancelled). Ignored when `status` is explicitly set. |
+| hidden | str | No | `""` | Tri-state: `"true"` to return only hidden rows, `"false"` to exclude them, `""` for no filter (default — hidden and non-hidden rows both appear). |
 | summary_only | bool | No | `true` | When `true`, return only summary fields. When `false`, include detail controlled by `depth`. |
 | depth | int | No | `0` | Detail level 0-3 (only used when `summary_only=false`). |
+| status_filter | str | No | `""` | **Legacy.** Prefer `status`. Accepts `"all"` or a single status string. Honored only when `status` is unset. `"all"` implies `include_completed=True`. |
 
 **Depth levels:**
 
@@ -76,17 +91,30 @@ with `depth` 1-3 for progressively more detail.
 **Examples:**
 
 ```python
-# Quick overview (default) — slim payload
+# Quick overview — active/inactive projects only (default since v1.2.1)
 list_projects()
 
-# Full data for all projects
+# Include completed and cancelled projects
+list_projects(include_completed=True)
+
+# Full data for all active projects
 list_projects(summary_only=False, depth=1)
 
 # Deep dive with memory and agent results
 list_projects(summary_only=False, depth=2)
 
-# Only active projects, summary only
+# Only active projects, summary only (explicit status)
+list_projects(status="active")
+
+# Multiple types, active only
+list_projects(project_type="BE,FE")
+
+# Projects created in a date range
+list_projects(created_after="2026-04-01T00:00:00Z", created_before="2026-04-30T23:59:59Z")
+
+# Legacy callers — still works
 list_projects(status_filter="active")
+list_projects(status_filter="all")  # equivalent to include_completed=True
 ```
 
 ---

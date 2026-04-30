@@ -154,6 +154,14 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 70)
     logger.info("Starting GiljoAI MCP API...")
     logger.info("=" * 70)
+    # v1.2.1: list_projects default behavior change.
+    # MCP `list_projects` now excludes lifecycle-finished statuses
+    # (completed, cancelled) by default. Pass include_completed=True to
+    # restore the previous behavior of returning archived projects.
+    logger.info(
+        "v1.2.1: MCP list_projects now hides completed/cancelled by default; "
+        "use include_completed=true to retrieve archived projects."
+    )
 
     # Phase 0: License validation
     # [CE] License validation — CE always passes. Commercial builds enforce here.
