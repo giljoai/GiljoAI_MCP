@@ -160,7 +160,7 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
     description=(
         "Create a new project bound to the active product. "
         "Projects are classified by taxonomy: project_type + series_number forming a serial like FE-0001. "
-        "Use list_projects() to see available project_types. "
+        "Unknown project_type values are rejected with a list of valid types. "
         "Project is created as inactive. Use the web dashboard to activate and launch."
     ),
 )
@@ -204,7 +204,6 @@ async def create_project(
         "List projects for the active product with optional status filter and depth control. "
         "By default returns summary-only fields (name, status, taxonomy_alias, etc.) to minimize payload. "
         "Use summary_only=False with depth 1-3 for progressively more detail. "
-        "Also returns available project_types for use with create_project. "
         "Requires an active product to be set."
     ),
 )

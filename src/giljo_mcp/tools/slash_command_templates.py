@@ -105,7 +105,7 @@ description: "Add, update, or read tasks and projects in the GiljoAI dashboard. 
 
 ## Project parameters
 - `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — must match a pre-configured type), `series_number` (optional int 1-9999 — auto-assigned if omitted), `suffix` (optional single letter a-z for sub-series)
-- **Before creating a project**, call `list_projects()` which returns available `project_types` in the response. Only use types returned — unknown types are rejected with a list of valid types.
+- **Project type discovery**: pass any candidate `project_type`; unknown values are rejected by `create_project` with a list of valid types in the error message. (The dashboard's project-types page is the canonical source.)
 - **Suffix parsing**: If user says "FE-5004b", use `series_number=5004, suffix='b'`. If user says "FE-5004", use `series_number=5004` with no suffix.
 
 ## Modes
@@ -575,7 +575,7 @@ description: "Add, update, or read tasks and projects in the GiljoAI dashboard. 
 
 ## Project parameters
 - `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — must match a pre-configured type), `series_number` (optional int 1-9999 — auto-assigned if omitted), `suffix` (optional single letter a-z for sub-series)
-- **Before creating a project**, call `list_projects()` which returns available `project_types` in the response. Only use types returned — unknown types are rejected with a list of valid types.
+- **Project type discovery**: pass any candidate `project_type`; unknown values are rejected by `create_project` with a list of valid types in the error message. (The dashboard's project-types page is the canonical source.)
 - **Suffix parsing**: If user says "FE-5004b", use `series_number=5004, suffix='b'`. If user says "FE-5004", use `series_number=5004` with no suffix.
 
 ## Modes
