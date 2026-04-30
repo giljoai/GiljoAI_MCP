@@ -195,10 +195,9 @@ BLIND_AUDIT_REPORT.md
 handovers/ops_panel_operator_quickstart.md
 
 # ── Secrets & credentials — defense-in-depth ──────────────
-# Block any file that looks like a key/cert, even if a future
-# `git add .` or `git add -A` is run. Filename-based defense; content
-# scanning runs in pre-commit and CI via gitleaks.
-*.pem
+# Filename-based blocks. Content-based scanning runs via gitleaks in
+# the pre-commit hook (.pre-commit-config.yaml). Keep generic — never
+# name internal hostnames here.
 *.key
 *.ppk
 id_rsa*
@@ -211,8 +210,6 @@ id_dsa*
 .stignore
 .stfolder/
 .stversions/
-
-# Well-known credential filenames
 .env.local
 .env.*.local
 credentials.json

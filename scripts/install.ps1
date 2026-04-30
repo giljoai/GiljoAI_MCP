@@ -38,7 +38,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Disable PowerShell's IWR/IRM progress bar — it slows downloads 5-10x on Win PS 5.1
+# Disable PowerShell's IWR/IRM progress bar - it slows downloads 5-10x on Win PS 5.1
 $ProgressPreference = 'SilentlyContinue'
 
 # ---------------------------------------------------------------------------
@@ -378,11 +378,11 @@ function Test-Prerequisites {
             # override value (which contains spaces) stays as one token.
             $argLine = ($pgArgs -join " ") + " `"--mode unattended --unattendedmodeui none --superpassword $escapedPw --serverport 5432 --enable-components server,commandlinetools --disable-components pgAdmin,stackbuilder`""
             Write-Host ""
-            Write-Host "    ╔══════════════════════════════════════════════════════════╗" -ForegroundColor $script:BRAND_COLOR
-            Write-Host "    ║  PostgreSQL is installing silently — this takes 3-5      ║" -ForegroundColor $script:BRAND_COLOR
-            Write-Host "    ║  minutes. Microsoft C++ dependencies may also install.   ║" -ForegroundColor $script:BRAND_COLOR
-            Write-Host "    ║  Please wait and do not close this window.               ║" -ForegroundColor $script:BRAND_COLOR
-            Write-Host "    ╚══════════════════════════════════════════════════════════╝" -ForegroundColor $script:BRAND_COLOR
+            Write-Host "    +==========================================================+" -ForegroundColor $script:BRAND_COLOR
+            Write-Host "    |  PostgreSQL is installing silently - this takes 3-5      |" -ForegroundColor $script:BRAND_COLOR
+            Write-Host "    |  minutes. Microsoft C++ dependencies may also install.   |" -ForegroundColor $script:BRAND_COLOR
+            Write-Host "    |  Please wait and do not close this window.               |" -ForegroundColor $script:BRAND_COLOR
+            Write-Host "    +==========================================================+" -ForegroundColor $script:BRAND_COLOR
             Write-Host ""
             $pgProc = Start-Process -FilePath "winget" -ArgumentList $argLine -Wait -PassThru -NoNewWindow
             # winget exit codes that mean "nothing to do, package already present":
@@ -582,7 +582,7 @@ function Install-Release {
     # Clean up temp files
     Remove-Item -Path $Release.TarballPath -Force -ErrorAction SilentlyContinue | Out-Null
 
-    # IMPORTANT: only return the string — no other pipeline output
+    # IMPORTANT: only return the string - no other pipeline output
     return $TargetDir
 }
 
@@ -634,7 +634,7 @@ function Initialize-Environment {
         }
     }
 
-    # Build frontend — use Start-Process to avoid irm|iex pipeline mangling npm
+    # Build frontend - use Start-Process to avoid irm|iex pipeline mangling npm
     $frontendDir = Join-Path $TargetDir "frontend"
     if (Test-Path (Join-Path $frontendDir "package.json")) {
         Write-Step "Installing frontend dependencies..."
@@ -650,13 +650,13 @@ function Initialize-Environment {
                 if ($proc2.ExitCode -eq 0 -and (Test-Path (Join-Path $frontendDir "dist" "index.html"))) {
                     Write-Ok "Frontend built"
                 } else {
-                    Write-Warn "Frontend build failed — see npm-build.log for details"
+                    Write-Warn "Frontend build failed - see npm-build.log for details"
                 }
             } else {
-                Write-Warn "npm install failed — startup.py will handle this on first run"
+                Write-Warn "npm install failed - startup.py will handle this on first run"
             }
         } else {
-            Write-Warn "npm not found — startup.py will handle frontend on first run"
+            Write-Warn "npm not found - startup.py will handle frontend on first run"
         }
     }
 }
@@ -715,7 +715,7 @@ pause
     Set-Content -Path $batPath -Value $batContent -Encoding ASCII
     Write-Ok "Created start-giljoai.bat"
 
-    # Resolve icon path — Start.ico ships in frontend/public/
+    # Resolve icon path - Start.ico ships in frontend/public/
     $iconPath = Join-Path $TargetDir "frontend" "public" "Start.ico"
     if (-not (Test-Path $iconPath)) {
         $iconPath = Join-Path $TargetDir "frontend" "public" "favicon.ico"

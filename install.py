@@ -2661,6 +2661,18 @@ class UnifiedInstaller:
                 result["error"] = "Migrations directory missing"
                 return result
 
+            # Fail fast if greenlet is missing (required by SQLAlchemy async engine;
+            # missing on macOS arm64 when only pulled transitively — alembic silently
+            # no-ops DDL without it, causing schema verification to fail later).
+            try:
+                import greenlet  # noqa: F401
+            except ImportError:
+                raise RuntimeError(
+                    "greenlet is required for alembic async migrations but is not installed. "
+                    "This typically means a fresh venv is missing transitive deps on this platform "
+                    "(macOS arm64 is a common case). Add 'greenlet>=3.5.0' to requirements.txt and reinstall."
+                )
+
             # Check database state before running migrations
             import asyncio
             import os

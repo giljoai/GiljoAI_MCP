@@ -114,6 +114,12 @@ async def test_get_agent_mission_emits_ack_and_status_changed(
         _scalar_result(execution),
         _scalar_result(project),
         _rows_result([(execution, job)]),
+        # Extra entries to cover additional queries in _resolve_mission_template
+        # (project lookup) and other downstream code added since this test was
+        # first written. Excess entries are harmless if not consumed.
+        _scalar_result(project),
+        _scalar_result(project),
+        _scalar_result(project),
     ]
 
     await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
@@ -167,6 +173,12 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
         _scalar_result(execution),
         _scalar_result(project),
         _rows_result([(execution, job)]),
+        # Extra entries to cover additional queries in _resolve_mission_template
+        # (project lookup) and other downstream code added since this test was
+        # first written. Excess entries are harmless if not consumed.
+        _scalar_result(project),
+        _scalar_result(project),
+        _scalar_result(project),
     ]
 
     await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)

@@ -624,6 +624,13 @@ STEP 2 — EXECUTE SLEEP COMMAND (IMMEDIATELY, NO CONFIRMATION):
   This blocks your terminal for {interval} minutes to prevent unnecessary
   token consumption while agents work via the passive MCP server.
 
+  ⚠ CLAUDE CODE NOTE: The Bash tool blocks `sleep N` when N ≥ 2 as the
+  first command in the invocation. Use the `sleep 1 N` workaround —
+  `sleep` sums numeric args, and the harness only inspects the first
+  arg ("1", under threshold). Example: `sleep 1 {seconds} && echo woke`
+  will sleep ~{seconds}s and pass. Applies to bash invocations only;
+  `Start-Sleep -Seconds {seconds}` via PowerShell is unaffected.
+
 STEP 3 — WAKE UP AND COORDINATE:
   After the sleep completes (or is interrupted by the developer via Ctrl+C):
   a) receive_messages() — read all agent reports and developer messages

@@ -777,10 +777,18 @@ echo ""
         print("A script has been generated with all necessary commands.")
         print()
 
+        # Resolve to absolute path, then try to make relative to cwd for shorter display.
+        # Fall back to absolute path if the script lives outside cwd (e.g. tmpdir on CI).
+        abs_script = Path(script_path).resolve()
+        try:
+            display_path = abs_script.relative_to(Path.cwd().resolve())
+        except ValueError:
+            display_path = abs_script
+
         if platform.system() == "Windows":
             print("Please run the following in an Administrator PowerShell:")
             print()
-            print(f"  .\\{script_path.relative_to(Path.cwd())}")
+            print(f"  .\\{display_path}")
             print()
             print("To open Administrator PowerShell:")
             print("  1. Right-click Start button")
@@ -790,7 +798,7 @@ echo ""
         else:
             print("Please run the following command:")
             print()
-            print(f"  sudo bash {script_path.relative_to(Path.cwd())}")
+            print(f"  sudo bash {display_path}")
             print()
 
         print()

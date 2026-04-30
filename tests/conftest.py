@@ -22,6 +22,16 @@ import pytest_asyncio
 # TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Load .env first so POSTGRES_SUPERUSER_PASSWORD reaches PostgreSQLTestHelper
+# without requiring manual `export $(... .env | xargs)` before invoking pytest.
+# load_dotenv is a no-op if .env is missing (CI sets env via secrets instead).
+try:
+    from dotenv import load_dotenv as _load_dotenv
+
+    _load_dotenv(Path(__file__).parent.parent / ".env", override=False)
+except ImportError:
+    pass
+
 # Ensure config validation passes without real secrets
 os.environ.setdefault("DB_PASSWORD", "test-password")
 os.environ.setdefault("JWT_SECRET", "test_secret_key")
@@ -43,9 +53,35 @@ os.environ.setdefault("JWT_SECRET", "test_secret_key")
 # Setting DATABASE_URL here (before app imports) makes the later
 # load_dotenv(override=False) calls no-ops, so the test database URL
 # sticks for the entire session.
+#
+# IMPORTANT: If the existing DATABASE_URL points to a NON-test database
+# (typically because .env injected the production URL giljo_user@giljo_mcp),
+# we must POP it before constructing a test URL. PostgreSQLTestHelper
+# ._config_from_env() reads DATABASE_URL when present and reuses its
+# credentials (just swapping the database name). Reusing giljo_user's
+# credentials against the postgres-owned test tables yields
+#   permission denied for table organizations
+# Unsetting forces the helper to fall through to DEFAULT_CONFIG, which
+# correctly uses the postgres superuser + POSTGRES_SUPERUSER_PASSWORD.
+#
+# CI sets DATABASE_URL to its own test URL (e.g. giljo_test@giljo_test)
+# with credentials that DO own the test tables in the CI Postgres service.
+# That URL must be honored as-is, NOT replaced with a DEFAULT_CONFIG that
+# expects a 'postgres' user CI doesn't have.
 # --------------------------------------------------------------------------
 _existing_db_url = os.environ.get("DATABASE_URL", "")
-if "/giljo_mcp_test" not in _existing_db_url:
+
+
+def _existing_url_targets_test_db(url: str) -> bool:
+    """True if URL's database name is a recognized test database."""
+    if not url:
+        return False
+    db_part = url.rsplit("/", 1)[-1].split("?")[0]
+    return db_part in ("giljo_mcp_test", "giljo_test", "postgres")
+
+
+if not _existing_url_targets_test_db(_existing_db_url):
+    os.environ.pop("DATABASE_URL", None)
     from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
     os.environ["DATABASE_URL"] = PostgreSQLTestHelper.get_test_db_url()

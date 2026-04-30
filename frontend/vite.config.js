@@ -67,9 +67,16 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html')
       },
       output: {
-        manualChunks: {
-          'vuetify': ['vuetify'],
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
+        // Vite 8 (Rolldown) requires manualChunks as a function, not an
+        // object. The function receives a module id (full path) and returns
+        // a chunk name string, or undefined for default chunking.
+        manualChunks: (id) => {
+          if (id.includes('node_modules/vuetify')) return 'vuetify'
+          if (
+            id.includes('node_modules/vue/') ||
+            id.includes('node_modules/vue-router/') ||
+            id.includes('node_modules/pinia/')
+          ) return 'vue-vendor'
         }
       }
     }
