@@ -6,6 +6,14 @@ All notable changes to this project are recorded here. Versions follow `MAJOR.MI
 
 _No pending work yet — v1.2.1+ entries will land here._
 
+## [1.2.1] — 2026-04-30
+
+- **BREAKING:** `list_projects` MCP tool no longer returns completed or cancelled projects by default. Pass `include_completed=true` to retrieve archived projects. Agents running `list_projects()` with no arguments will now see only active/inactive projects.
+- **New filter parameters:** `status` (single or comma-separated), `project_type`, `taxonomy_alias_prefix`, `created_after`, `created_before`, `completed_after`, `completed_before`, `include_completed`, `hidden` (tri-state: `"true"` / `"false"` / `""` for no filter).
+- **`hidden` field behaviour:** The `hidden` column is a UI declutter flag and appears in every row regardless of filter. Agents always see hidden and non-hidden projects alike unless `hidden=true|false` is passed explicitly. It is not an agent-visibility gate.
+- **Legacy backward-compat:** Callers using `status_filter="all"` continue to work; that value implies `include_completed=True` and is honored when the new `status` param is unset.
+- **REST endpoint unchanged:** `GET /api/projects/` (used by the dashboard) was not modified — only the MCP-tool-facing path changed.
+
 ## [1.2.0] — 2026-04-29
 
 The first minor-version release since the v1.1 line, consolidating six weeks of installer hardening, dependency cleanup, and dashboard polish into a single public cut. If you've been running v1.1.9.5, this upgrade is recommended — especially on Windows.

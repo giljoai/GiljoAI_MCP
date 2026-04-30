@@ -130,18 +130,46 @@ class ToolAccessor:
 
     async def list_projects(
         self,
-        status_filter: str = "all",
+        status_filter: str | None = None,
         summary_only: bool = True,
         depth: int = 0,
         tenant_key: str | None = None,
+        # v1.2.1 server-side filtering parameters
+        status: str | list[str] | None = None,
+        project_type: str | list[str] | None = None,
+        taxonomy_alias_prefix: str | None = None,
+        created_after: Any = None,
+        created_before: Any = None,
+        completed_after: Any = None,
+        completed_before: Any = None,
+        include_completed: bool = False,
+        hidden: bool | None = None,
     ) -> dict[str, Any]:
-        """List projects for active product. Sprint 002f: delegates to ProjectService."""
+        """List projects for active product (v1.2.1: server-side filtering).
+
+        Default returns only projects in active lifecycle (excludes completed
+        and cancelled). The `hidden` field is per-row UI declutter and does
+        NOT affect default visibility -- agent sees hidden and non-hidden alike.
+        Pass include_completed=True to retrieve archived projects. Pass
+        hidden=True|False to filter explicitly when needed (rare).
+
+        Sprint 002f: delegates to ProjectService.
+        """
         return await self._project_service.list_projects_for_mcp(
             status_filter=status_filter,
             summary_only=summary_only,
             depth=depth,
             tenant_key=tenant_key,
             websocket_manager=self._websocket_manager,
+            status=status,
+            project_type=project_type,
+            taxonomy_alias_prefix=taxonomy_alias_prefix,
+            created_after=created_after,
+            created_before=created_before,
+            completed_after=completed_after,
+            completed_before=completed_before,
+            include_completed=include_completed,
+            hidden=hidden,
         )
 
     async def update_project_metadata(

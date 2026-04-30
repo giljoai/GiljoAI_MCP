@@ -109,10 +109,14 @@ class TestListProjectsSignature:
         assert hasattr(ToolAccessor, "list_projects"), "ToolAccessor must have a list_projects method"
 
     def test_status_filter_parameter_is_optional(self):
+        # v1.2.1: legacy status_filter default flipped from "all" to None so
+        # callers that pass nothing get the new lifecycle-finished filter
+        # (excludes completed/cancelled by default). Passing the literal
+        # string "all" still preserves the legacy "show me everything" intent.
         sig = inspect.signature(ToolAccessor.list_projects)
         params = sig.parameters
         assert "status_filter" in params
-        assert params["status_filter"].default == "all"
+        assert params["status_filter"].default is None
 
     def test_tenant_key_parameter_present(self):
         sig = inspect.signature(ToolAccessor.list_projects)
@@ -180,21 +184,52 @@ class TestListProjectsBehavior:
 
     @pytest.mark.asyncio
     async def test_passes_status_filter_to_service(self):
-        """When status_filter is not 'all', it should be passed to ProjectService."""
+        """status_filter='active' must filter results to active projects only.
+
+        v1.2.1: filtering moved from service.list_projects to
+        list_projects_for_mcp (post-fetch). We assert the BEHAVIOR (only
+        active rows in payload), not the internal wiring.
+        """
         accessor = _make_accessor()
 
         mock_product = Mock()
         mock_product.id = "prod-001"
+
+        active_proj = Mock()
+        active_proj.id = "p-active"
+        active_proj.product_id = "prod-001"
+        active_proj.status = "active"
+        active_proj.hidden = False
+        active_proj.project_type = None
+        active_proj.taxonomy_alias = "AAA"
+        active_proj.created_at = "2026-01-01T00:00:00+00:00"
+        active_proj.completed_at = None
+
+        inactive_proj = Mock()
+        inactive_proj.id = "p-inactive"
+        inactive_proj.product_id = "prod-001"
+        inactive_proj.status = "inactive"
+        inactive_proj.hidden = False
+        inactive_proj.project_type = None
+        inactive_proj.taxonomy_alias = "BBB"
+        inactive_proj.created_at = "2026-01-01T00:00:00+00:00"
+        inactive_proj.completed_at = None
+
+        captured: list = []
+
+        async def fake_build(projects, depth, tk):
+            captured.extend(projects)
+            return [{"project_id": p.id, "status": p.status} for p in projects]
 
         with (
             patch.object(
                 accessor._project_service,
                 "list_projects",
                 new_callable=AsyncMock,
-                return_value=[],
-            ) as mock_list,
+                return_value=[active_proj, inactive_proj],
+            ),
             patch(_PRODUCT_SERVICE_PATH) as mock_product_svc,
-            patch.object(accessor._project_service, "_build_mcp_project_list", new_callable=AsyncMock, return_value=[]),
+            patch.object(accessor._project_service, "_build_mcp_project_list", new=AsyncMock(side_effect=fake_build)),
             patch.object(
                 accessor._project_service, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]
             ),
@@ -202,32 +237,58 @@ class TestListProjectsBehavior:
             mock_product_svc.return_value.get_active_product = AsyncMock(
                 return_value=mock_product,
             )
-            await accessor.list_projects(
+            result = await accessor.list_projects(
                 status_filter="active",
                 tenant_key="tenant-test",
             )
 
-        mock_list.assert_called_once()
-        call_kwargs = mock_list.call_args[1]
-        assert call_kwargs.get("status") == "active"
+        ids = {row["project_id"] for row in result["projects"]}
+        assert ids == {"p-active"}, "status_filter='active' must yield only active rows"
 
     @pytest.mark.asyncio
     async def test_status_filter_all_passes_none(self):
-        """status_filter='all' should pass status=None to service."""
+        """status_filter='all' must include archived projects (completed/cancelled).
+
+        v1.2.1: the legacy 'all' value disables the new lifecycle-finished
+        default filter, restoring pre-1.2.1 behavior.
+        """
         accessor = _make_accessor()
 
         mock_product = Mock()
         mock_product.id = "prod-001"
+
+        active_proj = Mock()
+        active_proj.id = "p-active"
+        active_proj.product_id = "prod-001"
+        active_proj.status = "active"
+        active_proj.hidden = False
+        active_proj.project_type = None
+        active_proj.taxonomy_alias = "AAA"
+        active_proj.created_at = "2026-01-01T00:00:00+00:00"
+        active_proj.completed_at = None
+
+        completed_proj = Mock()
+        completed_proj.id = "p-completed"
+        completed_proj.product_id = "prod-001"
+        completed_proj.status = "completed"
+        completed_proj.hidden = False
+        completed_proj.project_type = None
+        completed_proj.taxonomy_alias = "BBB"
+        completed_proj.created_at = "2026-01-01T00:00:00+00:00"
+        completed_proj.completed_at = "2026-01-02T00:00:00+00:00"
+
+        async def fake_build(projects, depth, tk):
+            return [{"project_id": p.id, "status": p.status} for p in projects]
 
         with (
             patch.object(
                 accessor._project_service,
                 "list_projects",
                 new_callable=AsyncMock,
-                return_value=[],
-            ) as mock_list,
+                return_value=[active_proj, completed_proj],
+            ),
             patch(_PRODUCT_SERVICE_PATH) as mock_product_svc,
-            patch.object(accessor._project_service, "_build_mcp_project_list", new_callable=AsyncMock, return_value=[]),
+            patch.object(accessor._project_service, "_build_mcp_project_list", new=AsyncMock(side_effect=fake_build)),
             patch.object(
                 accessor._project_service, "_get_valid_project_types", new_callable=AsyncMock, return_value=[]
             ),
@@ -235,13 +296,15 @@ class TestListProjectsBehavior:
             mock_product_svc.return_value.get_active_product = AsyncMock(
                 return_value=mock_product,
             )
-            await accessor.list_projects(
+            result = await accessor.list_projects(
                 status_filter="all",
                 tenant_key="tenant-test",
             )
 
-        call_kwargs = mock_list.call_args[1]
-        assert call_kwargs.get("status") is None
+        ids = {row["project_id"] for row in result["projects"]}
+        assert ids == {"p-active", "p-completed"}, (
+            "status_filter='all' must include archived projects (legacy contract preserved)"
+        )
 
     @pytest.mark.asyncio
     async def test_raises_on_no_active_product(self):

@@ -62,9 +62,39 @@ logger = logging.getLogger(__name__)
 # Statuses that indicate a project is closed and must not be modified.
 IMMUTABLE_PROJECT_STATUSES: frozenset[str] = frozenset({"completed", "cancelled"})
 
+# Lifecycle-finished statuses excluded by default from list_projects_for_mcp
+# when neither `status` nor `include_completed=True` is supplied (v1.2.1).
+# Distinct from IMMUTABLE_PROJECT_STATUSES (write gate) -- this is a read-side
+# default filter. Currently the same set, but the semantics are independent:
+# IMMUTABLE protects writes; LIFECYCLE_FINISHED hides closed projects from
+# default agent-facing reads.
+LIFECYCLE_FINISHED_STATUSES: frozenset[str] = frozenset({"completed", "cancelled"})
+
 # Fields that are always writable regardless of project status.
 # These are UI/display preferences (archive, visibility) — not project data.
 ALWAYS_MUTABLE_FIELDS: frozenset[str] = frozenset({"hidden"})
+
+
+def _parse_iso_datetime(value: Any) -> datetime | None:
+    """Parse an ISO-8601 string into a tz-aware datetime; pass-through if already a datetime.
+
+    Returns None for falsy/unparseable input. Naive datetimes are coerced to UTC
+    so callers can compare against tz-aware boundary values without surprises.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if not isinstance(value, str):
+        return None
+    try:
+        # datetime.fromisoformat handles "2026-01-01T00:00:00+00:00"; "Z" is parsed
+        # natively on Python 3.11+. Be defensive in case older inputs slip through.
+        normalized = value.replace("Z", "+00:00") if value.endswith("Z") else value
+        dt = datetime.fromisoformat(normalized)
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        return None
 
 
 class ProjectService:
@@ -903,27 +933,94 @@ class ProjectService:
 
     async def list_projects_for_mcp(
         self,
-        status_filter: str = "all",
+        status_filter: str | None = None,  # legacy param (kept for back-compat)
         summary_only: bool = True,
         depth: int = 0,
         tenant_key: str | None = None,
         websocket_manager: Any | None = None,
+        # v1.2.1 server-side filtering surface
+        status: str | list[str] | None = None,
+        project_type: str | list[str] | None = None,
+        taxonomy_alias_prefix: str | None = None,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+        completed_after: datetime | None = None,
+        completed_before: datetime | None = None,
+        include_completed: bool = False,
+        hidden: bool | None = None,
     ) -> dict[str, Any]:
-        """List projects via MCP tool (validation + depth-level assembly).
+        """List projects via MCP tool with server-side filtering (v1.2.1).
 
-        Pushed down from ToolAccessor.list_projects (sprint 002f).
+        Default returns only projects in active lifecycle (excludes completed,
+        cancelled). The `hidden` field is a per-row UI declutter flag and does
+        NOT affect default visibility -- agents see hidden and non-hidden alike.
+        Pass include_completed=True to retrieve archived (completed/cancelled)
+        projects. Pass hidden=True|False to filter by visibility explicitly.
+
+        Combination semantics: different fields AND together; multi-value
+        within a field ORs together.
         """
-        if status_filter not in self._VALID_STATUS_FILTERS:
-            raise ValidationError(
-                f"Invalid status_filter '{status_filter}'. "
-                f"Must be one of: {', '.join(sorted(self._VALID_STATUS_FILTERS))}",
-                context={"operation": "list_projects"},
-            )
+        # ----- Legacy status_filter back-compat -----
+        # Existing callers pass status_filter ("all" | status). When the new
+        # `status` kwarg is omitted, honor the legacy param. New callers
+        # should use `status` directly.
+        if status is None and status_filter is not None:
+            if status_filter not in self._VALID_STATUS_FILTERS:
+                raise ValidationError(
+                    f"Invalid status_filter '{status_filter}'. "
+                    f"Must be one of: {', '.join(sorted(self._VALID_STATUS_FILTERS))}",
+                    context={"operation": "list_projects"},
+                )
+            if status_filter == "all":
+                # Legacy "all" implies the user wants archived projects too --
+                # preserve pre-v1.2.1 behavior for callers still using the old kwarg.
+                include_completed = True
+            else:
+                status = status_filter
         if not isinstance(depth, int) or depth not in self._VALID_DEPTH_LEVELS:
             raise ValidationError(
                 f"Invalid depth '{depth}'. Must be an integer 0-3.",
                 context={"operation": "list_projects"},
             )
+
+        # ----- Normalize status to list[str] | None -----
+        status_list: list[str] | None = None
+        if status is not None:
+            status_list = [status] if isinstance(status, str) else list(status)
+            valid_statuses = self._VALID_UPDATE_STATUSES  # canonical write enum
+            invalid = [s for s in status_list if s not in valid_statuses]
+            if invalid:
+                raise ValidationError(
+                    f"Invalid status value(s) {invalid}. Must be one of: {', '.join(sorted(valid_statuses))}",
+                    context={"operation": "list_projects", "invalid": invalid},
+                )
+
+        # ----- Normalize project_type and validate -----
+        project_type_list: list[str] | None = None
+        if project_type is not None:
+            project_type_list = [project_type] if isinstance(project_type, str) else list(project_type)
+            effective_tk_for_types = tenant_key or self.tenant_manager.get_current_tenant()
+            valid_types = await self._get_valid_project_types(effective_tk_for_types)
+            valid_abbrevs = {t["abbreviation"] for t in valid_types}
+            invalid_types = [t for t in project_type_list if t not in valid_abbrevs]
+            if invalid_types:
+                raise ValidationError(
+                    f"Invalid project_type value(s) {invalid_types}. Valid types: {', '.join(sorted(valid_abbrevs))}",
+                    context={"operation": "list_projects", "invalid": invalid_types},
+                )
+
+        # ----- Validate taxonomy_alias_prefix (length cap, agent input) -----
+        if taxonomy_alias_prefix is not None:
+            if not isinstance(taxonomy_alias_prefix, str):
+                raise ValidationError(
+                    "taxonomy_alias_prefix must be a string.",
+                    context={"operation": "list_projects"},
+                )
+            if len(taxonomy_alias_prefix) > 64:
+                raise ValidationError(
+                    "taxonomy_alias_prefix exceeds 64-character limit.",
+                    context={"operation": "list_projects"},
+                )
 
         effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
         ws = websocket_manager or self._websocket_manager
@@ -942,18 +1039,66 @@ class ProjectService:
                 context={"tenant_key": effective_tenant_key, "operation": "list_projects"},
             )
 
-        svc_status = None if status_filter == "all" else status_filter
-        include_cancelled = status_filter == "all"
+        # ----- Compute lifecycle-finished default (v1.2.1 BREAKING) -----
+        # Explicit status wins; else if include_completed=False, exclude finished.
+        # We pass include_cancelled=True to the inner repo and apply the lifecycle
+        # filter ourselves, so we have a single decision point.
         all_projects = await self.list_projects(
-            status=svc_status,
+            status=None,
             tenant_key=effective_tenant_key,
-            include_cancelled=include_cancelled,
+            include_cancelled=True,
         )
 
+        # Active product scoping (existing behavior)
         product_projects = [p for p in all_projects if p.product_id == active_product.id]
+
+        # Apply filters in Python (post-fetch). This keeps the REST path's
+        # ProjectService.list_projects defaults untouched while the MCP path
+        # gets the full v1.2.1 contract. Performance is acceptable: this query
+        # is bounded by projects-per-product (small N).
+        filtered: list = []
+        for p in product_projects:
+            # Status filter
+            if status_list is not None:
+                if p.status not in status_list:
+                    continue
+            elif not include_completed and p.status in LIFECYCLE_FINISHED_STATUSES:
+                continue
+
+            # Hidden filter (None = both)
+            if hidden is not None and bool(p.hidden) != bool(hidden):
+                continue
+
+            # Project type filter
+            if project_type_list is not None:
+                pt_abbrev = p.project_type.abbreviation if p.project_type else None
+                if pt_abbrev not in project_type_list:
+                    continue
+
+            # Taxonomy alias prefix filter (case-sensitive prefix match)
+            if taxonomy_alias_prefix and not (p.taxonomy_alias or "").startswith(taxonomy_alias_prefix):
+                continue
+
+            # Date range filters (created_at and completed_at are ISO strings on ProjectListItem)
+            if created_after is not None or created_before is not None:
+                created_dt = _parse_iso_datetime(p.created_at)
+                if created_after is not None and (created_dt is None or created_dt < created_after):
+                    continue
+                if created_before is not None and (created_dt is None or created_dt > created_before):
+                    continue
+
+            if completed_after is not None or completed_before is not None:
+                completed_dt = _parse_iso_datetime(p.completed_at) if p.completed_at else None
+                if completed_after is not None and (completed_dt is None or completed_dt < completed_after):
+                    continue
+                if completed_before is not None and (completed_dt is None or completed_dt > completed_before):
+                    continue
+
+            filtered.append(p)
+
         effective_depth = 0 if summary_only else depth
 
-        projects_out = await self._build_mcp_project_list(product_projects, effective_depth, effective_tenant_key)
+        projects_out = await self._build_mcp_project_list(filtered, effective_depth, effective_tenant_key)
 
         return {
             "success": True,
