@@ -61,7 +61,7 @@ class TestSpawnWithPredecessor:
         res = await db_session.execute(stmt)
         job = res.scalar_one()
 
-        assert "## PREDECESSOR CONTEXT" in job.mission
+        assert "## PRIOR PHASE OUTPUT" in job.mission
         assert pred_spawn.job_id in job.mission
         assert "Implemented auth module with JWT tokens" in job.mission
         assert "abc123 feat: add auth module" in job.mission
@@ -180,7 +180,7 @@ class TestPredecessorNoResult:
         res = await db_session.execute(stmt)
         job = res.scalar_one()
 
-        assert "## PREDECESSOR CONTEXT" in job.mission
+        assert "## PRIOR PHASE OUTPUT" in job.mission
         assert "No summary available" in job.mission
         assert "Fix the issues" in job.mission
 

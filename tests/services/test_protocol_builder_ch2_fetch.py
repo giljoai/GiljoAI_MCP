@@ -533,7 +533,7 @@ class TestCH2CategoryMetadata:
             tenant_key="tk_test",
             category_metadata={"product_core": {"modified": "2026-04-13T20:22"}},
         )
-        assert "may skip it" in ch2 or "may skip" in ch2
+        assert "Skip aggressively" in ch2
         assert "MUST call each one" not in ch2
 
     def test_protocol_text_backward_compat_without_metadata(self):
@@ -549,4 +549,4 @@ class TestCH2CategoryMetadata:
             tenant_key="tk_test",
         )
         # The new wording is always used when field_toggles are provided
-        assert "may skip" in ch2
+        assert "Skip aggressively" in ch2

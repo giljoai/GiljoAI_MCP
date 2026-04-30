@@ -80,11 +80,15 @@ class TestCh3ToolAware:
         assert "NEVER spawn a generic" in ch3
 
     def test_codex_no_claude_references(self):
-        """Codex protocol must not mention Claude-specific concepts."""
+        """Codex protocol must not mention Claude-specific spawn syntax.
+        HO1025: bare `Task()` / `spawn_agent()` / `@-syntax` may appear in the
+        cross-platform `phase` educational block; only platform-specific
+        invocation forms (Task(subagent_type=...), .claude/ paths) are gated.
+        """
         ch3 = _build_ch3_spawning_rules(tool="codex")
-        assert "Task(" not in ch3
+        assert "Task(subagent_type=" not in ch3
         assert ".claude/agents/" not in ch3
-        assert "subagent_type" not in ch3
+        assert "subagent_type=" not in ch3
 
     def test_claude_has_task_syntax(self):
         ch3 = _build_ch3_spawning_rules(tool="claude-code")
@@ -93,9 +97,11 @@ class TestCh3ToolAware:
         assert ".claude/agents/" in ch3
 
     def test_claude_no_codex_references(self):
+        """HO1025: `spawn_agent()` may appear in the cross-platform `phase`
+        educational block; gate the codex-specific invocation form instead."""
         ch3 = _build_ch3_spawning_rules(tool="claude-code")
         assert "gil-" not in ch3
-        assert "spawn_agent(" not in ch3
+        assert "spawn_agent(agent=" not in ch3
         assert ".codex/" not in ch3
 
     def test_gemini_has_at_agent_syntax(self):
@@ -105,9 +111,12 @@ class TestCh3ToolAware:
         assert ".gemini/agents/" in ch3
 
     def test_gemini_no_codex_or_claude_references(self):
+        """HO1025: bare `Task()` / `spawn_agent()` may appear in the
+        cross-platform `phase` educational block; gate the platform-specific
+        invocation forms instead."""
         ch3 = _build_ch3_spawning_rules(tool="gemini")
-        assert "Task(" not in ch3
-        assert "spawn_agent(" not in ch3
+        assert "Task(subagent_type=" not in ch3
+        assert "spawn_agent(agent=" not in ch3
         assert ".claude/" not in ch3
         assert ".codex/" not in ch3
         assert "gil-" not in ch3
@@ -119,10 +128,13 @@ class TestCh3ToolAware:
         assert "send_message" in ch3
 
     def test_multi_terminal_no_cli_references(self):
+        """HO1025: bare `Task()` / `spawn_agent()` may appear in the
+        cross-platform `phase` educational block; gate the platform-specific
+        invocation forms instead."""
         ch3 = _build_ch3_spawning_rules(tool="multi_terminal")
-        assert "Task(" not in ch3
-        assert "spawn_agent(" not in ch3
-        assert "@" not in ch3 or "@agent" not in ch3  # @ can appear in other contexts
+        assert "Task(subagent_type=" not in ch3
+        assert "spawn_agent(agent=" not in ch3
+        assert "@agent" not in ch3
 
     def test_execution_mode_block_before_parameter_requirements(self):
         """Platform block should appear BEFORE parameter requirements (not buried)."""

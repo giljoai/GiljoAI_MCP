@@ -76,11 +76,12 @@ class TestExecutionModeRouting:
         assert "CLAUDE CODE CLI" in ch3
 
     def test_protocol_renders_no_task_syntax_for_multi_terminal(self):
-        """multi_terminal must NOT render Task() / spawn_agent() / @-syntax."""
+        """multi_terminal must NOT render platform-specific spawn invocation forms.
+        HO1025: bare `Task()` / `spawn_agent()` may appear in the cross-platform
+        `phase` educational block; gate the actual invocation forms instead."""
         ch3 = _build_ch3_spawning_rules(tool="multi_terminal")
         assert "Task(subagent_type=" not in ch3
-        assert "Task(" not in ch3
-        assert "spawn_agent(" not in ch3
+        assert "spawn_agent(agent=" not in ch3
         assert "ANY MCP-CONNECTED AGENT" in ch3
 
     def test_protocol_falls_back_to_generic_for_unknown_mode(self):
@@ -102,12 +103,14 @@ class TestExecutionModeRouting:
         assert "Task(subagent_type=" not in ch3
 
     def test_protocol_renders_gemini_syntax_for_gemini_cli(self):
-        """Regression guard: gemini stays on @-syntax."""
+        """Regression guard: gemini stays on @-syntax. HO1025: bare
+        `spawn_agent()` may appear in the cross-platform `phase` educational
+        block; gate the codex-specific invocation form instead."""
         ch3 = _build_ch3_spawning_rules(tool="gemini")
         assert "@" in ch3
         assert "GEMINI CLI" in ch3
         assert "Task(subagent_type=" not in ch3
-        assert "spawn_agent(" not in ch3
+        assert "spawn_agent(agent=" not in ch3
 
 
 # ---- Reactivation spawn block fallback -----------------------------------
@@ -178,16 +181,21 @@ class TestGenericBranchJobOrderFraming:
             assert "Higher phase number" in ch3
 
     def test_predecessor_guidance_is_multi_terminal_only(self):
-        """Subagent branches must contain NO mention of predecessor_job_id at all.
-        Server silently skips preamble injection in subagent modes; orchestrator
-        splices predecessor findings inline using its CLI's native return value.
-        HO1022 removed the per-subagent PREDECESSOR PARAMETER USAGE blocks since
-        they were teaching the orchestrator about a server-internal decision."""
+        """The multi_terminal-specific PHASE HANDOFF prose explaining the
+        predecessor preamble injection is gated to the multi_terminal branch.
+        Subagent branches still mention predecessor_job_id only in the brief
+        cross-platform `phase` educational tip (HO1025), not in the dedicated
+        PHASE HANDOFF block. Server silently skips preamble injection in
+        subagent modes; orchestrator splices predecessor findings inline using
+        its CLI's native return value. HO1022 removed the per-subagent
+        PREDECESSOR PARAMETER USAGE blocks since they were teaching the
+        orchestrator about a server-internal decision."""
         for tool in ("claude-code", "codex", "gemini"):
             ch3 = _build_ch3_spawning_rules(tool=tool)
-            assert "predecessor_job_id" not in ch3, (
-                f"{tool} branch must not mention predecessor_job_id -- "
-                f"server skips preamble injection in subagent modes"
+            assert "PHASE HANDOFF:" not in ch3, (
+                f"{tool} branch must not contain the multi_terminal-specific "
+                f"PHASE HANDOFF block -- server skips preamble injection in "
+                f"subagent modes"
             )
 
 
