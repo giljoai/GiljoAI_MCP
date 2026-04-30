@@ -955,15 +955,12 @@ class ProjectService:
 
         projects_out = await self._build_mcp_project_list(product_projects, effective_depth, effective_tenant_key)
 
-        project_types = await self._get_valid_project_types(effective_tenant_key)
-
         return {
             "success": True,
             "product_id": active_product.id,
             "count": len(projects_out),
             "depth": effective_depth,
             "projects": projects_out,
-            "project_types": project_types,
         }
 
     async def _build_mcp_project_list(

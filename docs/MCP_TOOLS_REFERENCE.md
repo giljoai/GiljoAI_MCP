@@ -30,8 +30,8 @@ Tools are organized by category below. Tool names match the exact MCP registrati
 
 **Description:** Create a new project bound to the active product. Projects are
 classified by taxonomy: `project_type` plus `series_number` form a serial such as
-`FE-0001`. Use `list_projects()` to see valid `project_type` values from the
-`project_types` metadata in the response.
+`FE-0001`. Unknown `project_type` values are rejected with a list of valid types
+in the error message; the dashboard's project-types page is the canonical source.
 The project is created as inactive; activate it from the web dashboard.
 
 **Parameters:**
@@ -71,7 +71,7 @@ with `depth` 1-3 for progressively more detail.
 | 2 | Depth 1 + `memory_entries` (360 memory for this project), `agent_details` (display names, status, result) |
 | 3 | Depth 2 + `message_history`, `git_commits` (extracted from 360 memory) |
 
-**Returns:** Dict with `projects` list, `count`, `depth`, and `project_types`.
+**Returns:** Dict with `projects` list, `count`, and `depth`.
 
 **Examples:**
 
