@@ -2713,7 +2713,11 @@ class UnifiedInstaller:
         # launched install.py still has the pre-install snapshot. Children
         # of that shell (including the next "python startup.py") inherit
         # the stale PATH and crash on `npm` lookup. Tell the user up front.
-        if self._node_freshly_installed:
+        # Windows-only: winget updates registry PATH but the parent
+        # PowerShell keeps its snapshot. Linux/macOS package managers drop
+        # binaries into /usr/bin or /usr/local/bin which are already on
+        # PATH, so new child processes find npm without a shell restart.
+        if self._node_freshly_installed and platform.system() == "Windows":
             print(f"{Fore.YELLOW}{Style.BRIGHT}{separator}{Style.RESET_ALL}")
             print(f"{Fore.YELLOW}{Style.BRIGHT}  Action required: restart your shell{Style.RESET_ALL}")
             print(f"{Fore.YELLOW}{Style.BRIGHT}{separator}{Style.RESET_ALL}")
