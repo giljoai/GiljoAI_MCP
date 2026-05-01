@@ -302,6 +302,11 @@ class UnifiedInstaller:
         self.psql_path: Optional[Path] = None
         self.venv_created = False
         self.database_credentials: Optional[Dict[str, str]] = None
+        # True when discover_nodejs() winget/apt/brew-installed Node during
+        # this run. Triggers an end-of-install "shell restart required"
+        # notice so users don't hit "npm: WinError 2" on first startup.py
+        # invocation in the same shell.
+        self._node_freshly_installed = False
 
     def _ensure_venv_site_packages(self) -> None:
         """Ensure virtualenv site-packages and src/ are available on sys.path."""
@@ -1098,6 +1103,7 @@ class UnifiedInstaller:
                     timeout=300,
                 )
                 self._print_success("Node.js LTS installed via winget")
+                self._node_freshly_installed = True
                 # Refresh PATH so subsequent shutil.which() finds the new node
                 self._refresh_windows_path()
             except subprocess.CalledProcessError as e:
@@ -1133,6 +1139,7 @@ class UnifiedInstaller:
                     timeout=120,
                 )
                 self._print_success("Node.js 22 LTS installed via NodeSource")
+                self._node_freshly_installed = True
             except subprocess.CalledProcessError as e:
                 self._print_error(f"apt install failed: {e}")
             except subprocess.TimeoutExpired:
@@ -1165,6 +1172,7 @@ class UnifiedInstaller:
                     timeout=300,
                 )
                 self._print_success("Node.js installed via Homebrew")
+                self._node_freshly_installed = True
             except subprocess.CalledProcessError as e:
                 self._print_error(f"brew install failed: {e}")
             except subprocess.TimeoutExpired:
@@ -2699,6 +2707,22 @@ class UnifiedInstaller:
         print(f"\n{Fore.GREEN}{Style.BRIGHT}{separator}{Style.RESET_ALL}")
         print(f"{Fore.GREEN}{Style.BRIGHT}  Installation Complete!{Style.RESET_ALL}")
         print(f"{Fore.GREEN}{Style.BRIGHT}{separator}{Style.RESET_ALL}\n")
+
+        # Shell-restart notice when Node.js was installed mid-session.
+        # winget/apt/brew updates the system PATH but the parent shell that
+        # launched install.py still has the pre-install snapshot. Children
+        # of that shell (including the next "python startup.py") inherit
+        # the stale PATH and crash on `npm` lookup. Tell the user up front.
+        if self._node_freshly_installed:
+            print(f"{Fore.YELLOW}{Style.BRIGHT}{separator}{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}{Style.BRIGHT}  Action required: restart your shell{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}{Style.BRIGHT}{separator}{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}Node.js was installed during this run. Your current{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}shell still has the pre-install PATH and will not find{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}npm. Close this window and open a new one before{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}running startup.py:{Style.RESET_ALL}\n")
+            print(f"  {Fore.WHITE}cd {self.install_dir}{Style.RESET_ALL}")
+            print(f"  {Fore.GREEN}python startup.py{Style.RESET_ALL}\n")
 
         # Database credentials
         if self.database_credentials:

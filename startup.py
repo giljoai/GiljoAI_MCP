@@ -1522,25 +1522,49 @@ def run_startup(
     dev_mode = "--dev" in sys.argv
     frontend_dir = Path.cwd() / "frontend"
     if not dev_mode and frontend_dir.exists() and (frontend_dir / "package.json").exists():
-        print_info("Rebuilding frontend...")
         npm_cmd = "npm.cmd" if platform.system() == "Windows" else "npm"
-        # Ensure node_modules exist
-        if not (frontend_dir / "node_modules" / ".package-lock.json").exists():
-            print_info("Installing frontend dependencies...")
-            subprocess.run([npm_cmd, "install"], cwd=str(frontend_dir), check=True)
-        build_result = subprocess.run(
-            [npm_cmd, "run", "build"],
-            cwd=str(frontend_dir),
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-        if build_result.returncode == 0:
-            print_success("Frontend build complete")
+        # Verify npm is actually callable BEFORE invoking subprocess.run.
+        # Common Windows trap: install.py freshly winget-installed Node in
+        # this session, the registry PATH update happened mid-process, but
+        # the parent PowerShell that launched startup.py still has the
+        # pre-install PATH. Node/npm are installed but invisible until the
+        # user opens a new shell. Without this guard, subprocess.run crashes
+        # with WinError 2 / FileNotFoundError, masking the real cause.
+        if shutil.which(npm_cmd) is None:
+            dist_dir = frontend_dir / "dist"
+            if dist_dir.exists() and any(dist_dir.iterdir()):
+                print_warning(f"{npm_cmd} not found in PATH — skipping frontend rebuild")
+                print_info(f"Using existing build at {dist_dir}")
+                print_info(
+                    "If you just installed Node.js, close this shell and open a "
+                    "new one to refresh PATH; the rebuild will run on next startup."
+                )
+            else:
+                print_error(f"{npm_cmd} not found in PATH and no existing frontend build at {frontend_dir / 'dist'}")
+                print_error(
+                    "If you just installed Node.js, close this shell and open a "
+                    "new one to refresh PATH, then re-run: python startup.py"
+                )
+                return 1
         else:
-            print_warning("Frontend build failed -- using existing dist/ if available")
-            if verbose:
-                print_warning(build_result.stderr[:500] if build_result.stderr else "No error output")
+            print_info("Rebuilding frontend...")
+            # Ensure node_modules exist
+            if not (frontend_dir / "node_modules" / ".package-lock.json").exists():
+                print_info("Installing frontend dependencies...")
+                subprocess.run([npm_cmd, "install"], cwd=str(frontend_dir), check=True)
+            build_result = subprocess.run(
+                [npm_cmd, "run", "build"],
+                cwd=str(frontend_dir),
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if build_result.returncode == 0:
+                print_success("Frontend build complete")
+            else:
+                print_warning("Frontend build failed -- using existing dist/ if available")
+                if verbose:
+                    print_warning(build_result.stderr[:500] if build_result.stderr else "No error output")
 
     print_info("Starting API server...")
     api_process = start_api_server(verbose=verbose)
