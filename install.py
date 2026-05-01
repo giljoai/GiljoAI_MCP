@@ -708,6 +708,7 @@ class UnifiedInstaller:
         print(f"\n{Fore.CYAN}[Database Name]{Style.RESET_ALL}")
         print(f"Default database name is {Fore.WHITE}giljo_mcp{Style.RESET_ALL}.")
         print("Change this if you run multiple installations on the same PostgreSQL server.")
+        print(f"{Fore.WHITE}Press Enter to accept the default, or type a new name.{Style.RESET_ALL}")
         db_name_input = tty_input(f"{Fore.YELLOW}Database name [giljo_mcp]: {Style.RESET_ALL}").strip()
         if db_name_input:
             self.settings["db_name"] = db_name_input
