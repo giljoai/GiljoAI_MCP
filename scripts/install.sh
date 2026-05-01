@@ -275,7 +275,18 @@ check_prerequisites() {
         py_minor="$(version_minor "$py_ver")"
         if [[ "$py_major" -gt "$MIN_PYTHON_MAJOR" ]] || \
            { [[ "$py_major" -eq "$MIN_PYTHON_MAJOR" ]] && [[ "$py_minor" -ge "$MIN_PYTHON_MINOR" ]]; }; then
-            print_ok "Python ${py_major}.${py_minor} found"
+            # Debian/Ubuntu/WSL ship python3 without the venv stdlib module
+            # (it lives in a separate python3.X-venv apt package). Verify
+            # `python3 -m venv` actually works; if not, treat as missing so
+            # apt-install pulls python3.X-venv. Without this, install.sh
+            # passes the prereq check, then crashes at venv-creation time
+            # with "ensurepip is not available".
+            if python3 -m venv --help &>/dev/null; then
+                print_ok "Python ${py_major}.${py_minor} found"
+            else
+                print_warn "Python ${py_major}.${py_minor} found but python3-venv missing (Debian/Ubuntu split)"
+                missing+=("python")
+            fi
         else
             print_warn "Python found but version too old: $py_raw (need ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+)"
             missing+=("python")
