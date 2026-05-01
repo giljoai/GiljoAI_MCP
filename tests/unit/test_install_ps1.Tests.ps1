@@ -7,7 +7,7 @@
 
 <#
 .SYNOPSIS
-    Pester unit tests for scripts/install.ps1
+    Pester unit tests for install.ps1
 
 .DESCRIPTION
     Tests the internal functions of the Windows one-liner installer without
@@ -22,7 +22,7 @@ BeforeAll {
     # Dot-source the installer to load its functions into scope.
     # We override the main entry call at the bottom of the script by
     # loading only the function definitions.
-    $scriptPath = Join-Path $PSScriptRoot "..\..\scripts\install.ps1"
+    $scriptPath = Join-Path $PSScriptRoot "..\..\install.ps1"
 
     # Extract function definitions without executing the installer.
     # We parse the AST and define functions in the test scope.
@@ -167,30 +167,30 @@ Describe "SHA256 Verification Logic" {
 Describe "Parameter Validation" {
 
     It "script file exists" {
-        $scriptPath = Join-Path $PSScriptRoot "..\..\scripts\install.ps1"
+        $scriptPath = Join-Path $PSScriptRoot "..\..\install.ps1"
         Test-Path $scriptPath | Should -Be $true
     }
 
     It "script has #Requires -Version 5.1 directive" {
-        $scriptPath = Join-Path $PSScriptRoot "..\..\scripts\install.ps1"
+        $scriptPath = Join-Path $PSScriptRoot "..\..\install.ps1"
         $content = Get-Content $scriptPath -Raw
         $content | Should -Match '#Requires -Version 5\.1'
     }
 
     It "script defines InstallDir parameter" {
-        $scriptPath = Join-Path $PSScriptRoot "..\..\scripts\install.ps1"
+        $scriptPath = Join-Path $PSScriptRoot "..\..\install.ps1"
         $content = Get-Content $scriptPath -Raw
         $content | Should -Match '\[string\]\$InstallDir'
     }
 
     It "script defines SkipPrereqs parameter" {
-        $scriptPath = Join-Path $PSScriptRoot "..\..\scripts\install.ps1"
+        $scriptPath = Join-Path $PSScriptRoot "..\..\install.ps1"
         $content = Get-Content $scriptPath -Raw
         $content | Should -Match '\[switch\]\$SkipPrereqs'
     }
 
     It "script defines Update parameter" {
-        $scriptPath = Join-Path $PSScriptRoot "..\..\scripts\install.ps1"
+        $scriptPath = Join-Path $PSScriptRoot "..\..\install.ps1"
         $content = Get-Content $scriptPath -Raw
         $content | Should -Match '\[switch\]\$Update'
     }
@@ -199,7 +199,7 @@ Describe "Parameter Validation" {
 Describe "Script Structure" {
 
     BeforeAll {
-        $scriptPath = Join-Path $PSScriptRoot "..\..\scripts\install.ps1"
+        $scriptPath = Join-Path $PSScriptRoot "..\..\install.ps1"
         $script:content = Get-Content $scriptPath -Raw
     }
 

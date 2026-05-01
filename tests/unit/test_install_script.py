@@ -3,7 +3,7 @@
 # [CE] Community Edition -- source-available, single-user use only.
 
 """
-Python-based validation tests for scripts/install.ps1.
+Python-based validation tests for install.ps1.
 
 These tests verify structural properties of the PowerShell installer
 without requiring Pester or PowerShell execution. They run as part of

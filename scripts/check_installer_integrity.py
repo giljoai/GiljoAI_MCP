@@ -9,7 +9,7 @@
 Installer integrity checks. Catches the regression classes that broke
 fresh-machine installs in v1.1.9.x:
 
-  1. UTF-8 BOM in scripts/install.ps1 or scripts/install.sh.
+  1. UTF-8 BOM in install.ps1 or install.sh.
      A BOM makes 'irm giljo.ai/install.ps1 | iex' fail because PowerShell
      treats the BOM as a literal token before '#Requires'.
 
@@ -34,11 +34,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 INSTALLER_SCRIPTS = [
-    REPO_ROOT / "scripts" / "install.ps1",
-    REPO_ROOT / "scripts" / "install.sh",
+    REPO_ROOT / "install.ps1",
+    REPO_ROOT / "install.sh",
 ]
 
-INSTALL_PS1 = REPO_ROOT / "scripts" / "install.ps1"
+INSTALL_PS1 = REPO_ROOT / "install.ps1"
 STARTUP_PY = REPO_ROOT / "startup.py"
 
 UTF8_BOM = b"\xef\xbb\xbf"
@@ -69,14 +69,14 @@ def check_bat_entry_point() -> list[str]:
         return failures
     if "python -m api.run_api" in text:
         failures.append(
-            "scripts/install.ps1: start-giljoai.bat heredoc invokes "
+            "install.ps1: start-giljoai.bat heredoc invokes "
             "'python -m api.run_api'. It MUST invoke 'python startup.py "
             "--verbose' so the desktop shortcut runs the canonical entry "
             "point (frontend launch, browser auto-open, migrations)."
         )
     if "python startup.py" not in text:
         failures.append(
-            "scripts/install.ps1: start-giljoai.bat heredoc does not "
+            "install.ps1: start-giljoai.bat heredoc does not "
             "invoke 'python startup.py'. The launcher and the post-install "
             "text instruction must run the same canonical entry point."
         )

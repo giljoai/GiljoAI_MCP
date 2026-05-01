@@ -782,7 +782,15 @@ function Test-ExistingInstall {
     param([string]$TargetDir)
 
     $versionFile = Join-Path $TargetDir "VERSION"
-    if (Test-Path $versionFile) {
+    $venvDir = Join-Path $TargetDir "venv"
+    $envFile = Join-Path $TargetDir ".env"
+
+    # Require VERSION + (venv/ OR .env). VERSION alone false-positives on
+    # cloned source repos (which ship a VERSION file but have no venv/.env
+    # -- those are install-time artifacts only). Without the multi-signal
+    # check, running this script from inside a clone with $PWD == repo root
+    # was incorrectly detected as "v1.2.x already installed."
+    if ((Test-Path $versionFile) -and ((Test-Path $venvDir) -or (Test-Path $envFile))) {
         $currentVersion = (Get-Content $versionFile -Raw).Trim()
         return @{ CurrentVersion = $currentVersion }
     }

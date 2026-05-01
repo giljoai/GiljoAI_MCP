@@ -855,8 +855,15 @@ first_run() {
 check_existing_install() {
     local target_dir="$1"
     local version_file="${target_dir}/VERSION"
+    local venv_dir="${target_dir}/venv"
+    local env_file="${target_dir}/.env"
 
-    if [[ -f "$version_file" ]]; then
+    # Require VERSION + (venv/ OR .env). VERSION alone false-positives on
+    # cloned source repos (which ship a VERSION file but have no venv/.env
+    # -- those are install-time artifacts only). Without the multi-signal
+    # check, running this script from inside a clone with $PWD == repo root
+    # was incorrectly detected as "v1.2.x already installed."
+    if [[ -f "$version_file" ]] && { [[ -d "$venv_dir" ]] || [[ -f "$env_file" ]]; }; then
         cat "$version_file"
         return 0
     fi

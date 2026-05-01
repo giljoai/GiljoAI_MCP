@@ -3,7 +3,7 @@
 # [CE] Community Edition -- source-available, single-user use only.
 
 """
-Python-based validation tests for scripts/install.sh.
+Python-based validation tests for install.sh.
 
 These tests verify structural properties of the Bash installer
 without requiring execution on Linux/macOS. They run as part of
