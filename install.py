@@ -797,9 +797,7 @@ class UnifiedInstaller:
             import importlib.util
 
             if importlib.util.find_spec("ensurepip") is None:
-                self._print_error(
-                    f"Python {version_str} found, but the ensurepip module is missing."
-                )
+                self._print_error(f"Python {version_str} found, but the ensurepip module is missing.")
                 self._print_error(
                     "On Debian/Ubuntu/WSL, install it with: "
                     f"sudo apt install -y python{sys.version_info.major}.{sys.version_info.minor}-venv"
