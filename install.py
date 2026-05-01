@@ -798,10 +798,11 @@ class UnifiedInstaller:
 
             if importlib.util.find_spec("ensurepip") is None:
                 self._print_error(f"Python {version_str} found, but the ensurepip module is missing.")
-                self._print_error(
-                    "On Debian/Ubuntu/WSL, install it with: "
+                print(
+                    f"  {Fore.YELLOW}Fix:{Style.RESET_ALL}  "
                     f"sudo apt install -y python{sys.version_info.major}.{sys.version_info.minor}-venv"
                 )
+                print(f"  {Fore.YELLOW}Then:{Style.RESET_ALL} python3 install.py")
                 return False
         except Exception as exc:  # pragma: no cover - defensive
             self._print_error(f"Could not probe ensurepip module: {exc}")
@@ -1043,13 +1044,67 @@ class UnifiedInstaller:
 
         platform_name = self.platform.platform_name
 
-        if platform_name == "Windows":
-            self._print_info("Please install Node.js from https://nodejs.org/")
-            self._print_warning("Frontend will not be available. Backend-only installation will continue.")
-            return result
-
         # Linux or macOS - offer auto-install
         headless = self.settings.get("headless")
+
+        if platform_name == "Windows":
+            # Mirror the Linux/macOS auto-install pattern: detect winget,
+            # prompt the user (unless headless), winget-install Node LTS,
+            # refresh PATH from registry so the shutil.which() re-check
+            # below succeeds without requiring a new shell.
+            #
+            # Prior to this branch, Windows users running `python install.py`
+            # standalone (clone-and-run) hit a hard dead-end: the script
+            # printed "Please install Node.js from https://nodejs.org/" and
+            # fell back to backend-only. install.ps1 (one-liner path) DID
+            # winget-install Node, leaving the standalone path asymmetric
+            # vs Linux (NodeSource auto-install) and macOS (Homebrew
+            # auto-install).
+            winget_path = shutil.which("winget")
+            if not winget_path:
+                self._print_info(
+                    "Please install Node.js from https://nodejs.org/ "
+                    "(winget not detected — required for automatic install)"
+                )
+                self._print_warning("Frontend will not be available. Backend-only installation will continue.")
+                return result
+
+            if not headless:
+                print(
+                    f"\n{Fore.YELLOW}Install Node.js LTS automatically via winget? [Y/n]: {Style.RESET_ALL}",
+                    end="",
+                    flush=True,
+                )
+                response = tty_input().strip().lower()
+                if response not in ("", "y", "yes"):
+                    self._print_warning("Skipping Node.js installation")
+                    self._print_warning("Frontend will not be available. Backend-only installation will continue.")
+                    return result
+
+            self._print_info("Installing Node.js LTS via winget...")
+            try:
+                subprocess.run(
+                    [
+                        "winget",
+                        "install",
+                        "--id",
+                        "OpenJS.NodeJS.LTS",
+                        "-e",
+                        "--silent",
+                        "--accept-source-agreements",
+                        "--accept-package-agreements",
+                    ],
+                    check=True,
+                    timeout=300,
+                )
+                self._print_success("Node.js LTS installed via winget")
+                # Refresh PATH so subsequent shutil.which() finds the new node
+                self._refresh_windows_path()
+            except subprocess.CalledProcessError as e:
+                self._print_error(f"winget install failed: {e}")
+            except subprocess.TimeoutExpired:
+                self._print_error("winget install timed out after 300 seconds")
+            # Fall through to the existing re-check at the end of this method
 
         if platform_name == "Linux":
             if not headless:
@@ -1128,6 +1183,51 @@ class UnifiedInstaller:
         self._print_warning("Node.js not found after install attempt")
         self._print_warning("Frontend will not be available. Backend-only installation will continue.")
         return result
+
+    def _refresh_windows_path(self) -> None:
+        """
+        Refresh the current process PATH from the Windows registry.
+
+        winget appends installed binary directories to
+        ``HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment\\Path``
+        (system scope) and/or ``HKCU\\Environment\\Path`` (user scope), but
+        already-running processes only see the launch-time PATH snapshot.
+        Without this refresh, ``shutil.which()`` calls right after a winget
+        install fail even when the install succeeded — the user sees a
+        false "not found after install attempt" warning.
+
+        No-op on non-Windows platforms.
+        """
+        if platform.system() != "Windows":
+            return
+        try:
+            import winreg
+
+            machine_path = ""
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment",
+            ) as key:
+                machine_path, _ = winreg.QueryValueEx(key, "Path")
+
+            user_path = ""
+            try:
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment") as key:
+                    user_path, _ = winreg.QueryValueEx(key, "Path")
+            except FileNotFoundError:
+                pass  # No user PATH override — fine, machine PATH is enough
+
+            # Prepend registry PATH so newly-installed binaries take precedence
+            # over whatever the launching shell had at process start.
+            new_path = machine_path
+            if user_path:
+                new_path = user_path + os.pathsep + new_path
+            existing = os.environ.get("PATH", "")
+            if existing:
+                new_path = new_path + os.pathsep + existing
+            os.environ["PATH"] = new_path
+        except Exception as exc:  # pragma: no cover - defensive
+            self._print_warning(f"Could not refresh PATH from registry: {exc}")
 
     def setup_https(self) -> Dict[str, Any]:
         """
