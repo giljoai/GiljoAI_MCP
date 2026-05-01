@@ -34,11 +34,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 INSTALLER_SCRIPTS = [
-    REPO_ROOT / "install.ps1",
-    REPO_ROOT / "install.sh",
+    REPO_ROOT / "scripts" / "install.ps1",
+    REPO_ROOT / "scripts" / "install.sh",
 ]
 
-INSTALL_PS1 = REPO_ROOT / "install.ps1"
+INSTALL_PS1 = REPO_ROOT / "scripts" / "install.ps1"
 STARTUP_PY = REPO_ROOT / "startup.py"
 
 UTF8_BOM = b"\xef\xbb\xbf"
