@@ -782,8 +782,34 @@ class UnifiedInstaller:
         else:
             required_str = f"{MIN_PYTHON_VERSION[0]}.{MIN_PYTHON_VERSION[1]}"
             self._print_error(f"Python {version_str} detected, but {required_str}+ required")
+            return False
 
-        return is_compatible
+        # Debian/Ubuntu/WSL ship python3 without the ensurepip module (it
+        # lives in a separate python3.X-venv apt package). venv creation
+        # at line ~1529 fails with a CalledProcessError swallowed by
+        # capture_output=True, leaving the user with no actionable
+        # diagnosis. Probe ensurepip directly here so we can print a
+        # clear remediation step before the failure. install.sh already
+        # apt-installs python3.X-venv up front; this redundant check
+        # protects standalone "python3 install.py" invocations on a
+        # fresh Debian-family box.
+        try:
+            import importlib.util
+
+            if importlib.util.find_spec("ensurepip") is None:
+                self._print_error(
+                    f"Python {version_str} found, but the ensurepip module is missing."
+                )
+                self._print_error(
+                    "On Debian/Ubuntu/WSL, install it with: "
+                    f"sudo apt install -y python{sys.version_info.major}.{sys.version_info.minor}-venv"
+                )
+                return False
+        except Exception as exc:  # pragma: no cover - defensive
+            self._print_error(f"Could not probe ensurepip module: {exc}")
+            return False
+
+        return True
 
     def discover_postgresql(self) -> Dict[str, Any]:
         """
