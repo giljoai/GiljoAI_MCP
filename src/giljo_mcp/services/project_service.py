@@ -33,6 +33,21 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
+
+# BE-5039 Phase 2b: project status constants are re-exported below from
+# giljo_mcp.domain.project_status -- the Single Source of Truth backed by
+# the Postgres ENUM ``project_status`` (see migration ce_0008). Legacy
+# importers keep resolving without churn via this module; new code
+# should import directly from giljo_mcp.domain.project_status.
+from giljo_mcp.domain.project_status import (
+    IMMUTABLE_PROJECT_STATUSES,
+    LIFECYCLE_FINISHED_STATUSES,
+    VALID_PROJECT_STATUSES,
+    ProjectStatus,
+)
+from giljo_mcp.domain.project_status import (
+    VALID_UPDATE_STATUSES as _DOMAIN_VALID_UPDATE_STATUSES,
+)
 from giljo_mcp.exceptions import (
     AlreadyExistsError,
     BaseGiljoError,
@@ -58,17 +73,6 @@ from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
-
-# Statuses that indicate a project is closed and must not be modified.
-IMMUTABLE_PROJECT_STATUSES: frozenset[str] = frozenset({"completed", "cancelled"})
-
-# Lifecycle-finished statuses excluded by default from list_projects_for_mcp
-# when neither `status` nor `include_completed=True` is supplied (v1.2.1).
-# Distinct from IMMUTABLE_PROJECT_STATUSES (write gate) -- this is a read-side
-# default filter. Currently the same set, but the semantics are independent:
-# IMMUTABLE protects writes; LIFECYCLE_FINISHED hides closed projects from
-# default agent-facing reads.
-LIFECYCLE_FINISHED_STATUSES: frozenset[str] = frozenset({"completed", "cancelled"})
 
 # Fields that are always writable regardless of project status.
 # These are UI/display preferences (archive, visibility) — not project data.
@@ -540,9 +544,9 @@ class ProjectService:
                 # Guard: block writes to immutable projects
                 if project.status in IMMUTABLE_PROJECT_STATUSES:
                     raise ProjectStateError(
-                        message=f"Cannot modify project in '{project.status}' status. "
+                        message=f"Cannot modify project in '{project.status.value}' status. "
                         "Only inactive and active projects can be updated.",
-                        context={"project_id": project_id, "status": project.status},
+                        context={"project_id": project_id, "status": project.status.value},
                     )
 
                 # Handover 0425: Also set staging_status to 'staging' when mission is updated
@@ -725,10 +729,27 @@ class ProjectService:
             # they are UI display preferences, not project data mutations.
             if project.status in IMMUTABLE_PROJECT_STATUSES and not updates.keys() <= ALWAYS_MUTABLE_FIELDS:
                 raise ProjectStateError(
-                    message=f"Cannot modify project in '{project.status}' status. "
+                    message=f"Cannot modify project in '{project.status.value}' status. "
                     "Only inactive and active projects can be updated.",
-                    context={"project_id": project_id, "status": project.status},
+                    context={"project_id": project_id, "status": project.status.value},
                 )
+
+            # BE-5039 Phase 2b: validate status enum membership at the
+            # service write boundary so callers get a clean 422
+            # ValidationError instead of a 500 surfaced from the Postgres
+            # ENUM cast. ProjectStatus accepts both raw strings and enum
+            # members thanks to the ``str`` mixin.
+            if "status" in updates and updates["status"] is not None:
+                try:
+                    updates["status"] = ProjectStatus(updates["status"])
+                except ValueError as e:
+                    raise ValidationError(
+                        message=(
+                            f"Invalid status '{updates['status']}'. "
+                            f"Must be one of: {', '.join(sorted(s.value for s in ProjectStatus))}."
+                        ),
+                        context={"project_id": project_id, "status": updates["status"]},
+                    ) from e
 
             self._apply_project_updates(project, updates)
 
@@ -823,8 +844,19 @@ class ProjectService:
     # MCP Tool Methods (sprint 002f: pushed down from ToolAccessor)
     # ============================================================================
 
-    _VALID_STATUS_FILTERS = frozenset({"inactive", "active", "completed", "cancelled", "all"})
-    _VALID_UPDATE_STATUSES = frozenset({"inactive", "active", "completed", "cancelled"})
+    # BE-5039 Phase 2b: legacy filter sets now derive from the canonical
+    # ProjectStatus enum metadata. ``_VALID_STATUS_FILTERS`` keeps the
+    # extra ``"all"`` sentinel that means "do not filter".
+    _VALID_STATUS_FILTERS = frozenset({s.value for s in _DOMAIN_VALID_UPDATE_STATUSES} | {"all"})
+    # Writes via update_project remain limited to user-mutable statuses
+    # (``is_user_mutable_via_mcp=True`` in PROJECT_STATUS_META).
+    # "terminated" and "deleted" are set only by dedicated lifecycle endpoints
+    # (archive_project / soft-delete) -- never by direct status writes.
+    _VALID_UPDATE_STATUSES = frozenset(s.value for s in _DOMAIN_VALID_UPDATE_STATUSES)
+    # Read-side filter accepts the full enum so agents can query
+    # terminated/deleted projects explicitly. Mirrors module-level
+    # VALID_PROJECT_STATUSES.
+    _VALID_FILTER_STATUSES = frozenset(s.value for s in VALID_PROJECT_STATUSES)
     _VALID_DEPTH_LEVELS = frozenset({0, 1, 2, 3})
 
     async def create_project_for_mcp(
@@ -987,7 +1019,11 @@ class ProjectService:
         status_list: list[str] | None = None
         if status is not None:
             status_list = [status] if isinstance(status, str) else list(status)
-            valid_statuses = self._VALID_UPDATE_STATUSES  # canonical write enum
+            # Read-side validation: accept the full project-status enum
+            # (including lifecycle-finished values terminated and deleted).
+            # Update-side validation lives in update_project and remains
+            # restricted to _VALID_UPDATE_STATUSES.
+            valid_statuses = self._VALID_FILTER_STATUSES
             invalid = [s for s in status_list if s not in valid_statuses]
             if invalid:
                 raise ValidationError(

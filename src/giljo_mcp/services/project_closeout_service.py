@@ -19,6 +19,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.exceptions import (
     BaseGiljoError,
     ResourceNotFoundError,
@@ -109,7 +110,7 @@ class ProjectCloseoutService:
                     )
 
                 # Mark project as completed
-                project.status = "completed"
+                project.status = ProjectStatus.COMPLETED
                 project.completed_at = datetime.now(timezone.utc)
                 project.updated_at = datetime.now(timezone.utc)
                 project.closeout_executed_at = datetime.now(timezone.utc)
@@ -137,7 +138,11 @@ class ProjectCloseoutService:
                         await self._websocket_manager.broadcast_project_update(
                             project_id=project_id,
                             update_type="closed",
-                            project_data={"name": project.name, "status": "completed", "mission": project.mission},
+                            project_data={
+                                "name": project.name,
+                                "status": ProjectStatus.COMPLETED.value,
+                                "mission": project.mission,
+                            },
                             tenant_key=tenant_key,
                         )
                     except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
@@ -147,7 +152,7 @@ class ProjectCloseoutService:
                     message="Project closed out successfully",
                     agents_decommissioned=len(decommissioned_ids),
                     decommissioned_agent_ids=decommissioned_ids,
-                    project_status="completed",
+                    project_status=ProjectStatus.COMPLETED.value,
                 )
 
         except ResourceNotFoundError:

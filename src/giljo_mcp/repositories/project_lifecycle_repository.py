@@ -28,6 +28,7 @@ from uuid import uuid4
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.projects import Project
 
@@ -100,7 +101,7 @@ class ProjectLifecycleRepository:
             select(Project).where(
                 and_(
                     Project.product_id == product_id,
-                    Project.status == "active",
+                    Project.status == ProjectStatus.ACTIVE,
                     Project.id != exclude_project_id,
                     Project.tenant_key == tenant_key,
                 )
@@ -204,7 +205,7 @@ class ProjectLifecycleRepository:
             Number of rows affected (0 or 1)
         """
         update_values: dict = {
-            "status": "cancelled",
+            "status": ProjectStatus.CANCELLED,
             "completed_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc),
         }

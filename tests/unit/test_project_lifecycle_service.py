@@ -18,6 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.exceptions import (
     ProjectStateError,
     ResourceNotFoundError,
@@ -54,11 +55,17 @@ def _make_project(
     tenant_key=TENANT_KEY,
     product_id="prod-1",
 ):
-    """Create a mock Project model."""
+    """Create a mock Project model.
+
+    ``status`` is coerced to a :class:`ProjectStatus` enum member to mirror
+    real DB behavior (SQLAlchemy returns enum members from the typed
+    ``project_status`` column). Tests may pass either a raw lifecycle string
+    ("active", "completed", ...) or a :class:`ProjectStatus` member.
+    """
     project = MagicMock()
     project.id = project_id
     project.name = "Test Project"
-    project.status = status
+    project.status = ProjectStatus(status) if isinstance(status, str) else status
     project.tenant_key = tenant_key
     project.product_id = product_id
     project.activated_at = None

@@ -202,10 +202,11 @@ async def create_project(
 @mcp.tool(
     description=(
         "List projects for the active product with server-side filtering (v1.2.1). "
-        "Default returns only projects in active lifecycle (excludes completed and cancelled). "
-        "The 'hidden' field is per-row UI declutter and does NOT affect default visibility -- "
-        "agent sees hidden and non-hidden alike. Pass include_completed=true to retrieve "
-        "archived projects. Pass hidden=true|false to filter explicitly when needed (rare). "
+        "Default returns only projects in active lifecycle (excludes completed, "
+        "cancelled, terminated, deleted). The 'hidden' field is per-row UI "
+        "declutter and does NOT affect default visibility -- agent sees hidden "
+        "and non-hidden alike. Pass include_completed=true to retrieve archived "
+        "projects. Pass hidden=true|false to filter explicitly when needed (rare). "
         "Use summary_only=false with depth 1-3 for progressively more detail. "
         "Requires an active product to be set."
     ),
@@ -227,24 +228,33 @@ async def list_projects(
 ) -> dict:
     """List projects for the active product (v1.2.1 server-side filtering).
 
-    Default returns only projects in active lifecycle (excludes completed,
-    cancelled). The hidden column is per-row UI declutter and does NOT affect
-    default visibility -- agent sees hidden and non-hidden alike. Pass
-    include_completed=true to retrieve archived projects. Pass hidden=true|false
-    to filter explicitly when needed (rare).
+    Default returns only projects in active lifecycle. Four statuses are
+    auto-excluded from the default response: completed, cancelled, terminated,
+    deleted. The two returned by default are: active, inactive. The hidden
+    column is per-row UI declutter and does NOT affect default visibility --
+    agent sees hidden and non-hidden alike. Pass include_completed=true to
+    retrieve archived projects. Pass hidden=true|false to filter explicitly
+    when needed (rare).
+
+    NOTE: status="deleted" returns soft-deleted rows. The default response
+    hides soft-deleted projects (deleted_at IS NULL), but explicitly passing
+    status="deleted" flips the soft-delete filter to deleted_at IS NOT NULL,
+    so soft-deleted projects are reachable when the agent asks for them by
+    status. Frontend StatusBadge enum parity is preserved either way.
 
     Args:
         status: Filter by status. Single value ("active") or comma-separated list
-            ("active,inactive"). Values: inactive, active, completed, cancelled.
-            When set, include_completed is ignored (user intent wins).
+            ("active,inactive"). Valid values: active, inactive, completed,
+            cancelled, terminated, deleted. When set, include_completed is
+            ignored -- explicit status arg overrides the default exclusion.
         project_type: Filter by taxonomy type abbreviation. Single value ("BE")
             or comma-separated list ("BE,FE,INF"). Must match a configured type.
         taxonomy_alias_prefix: Prefix-match against taxonomy alias (e.g. "BE-50"
             matches BE-5001..BE-5099 but not BE-5100; "BE-5036" exact-matches one).
         created_after / created_before: ISO-8601 datetimes (e.g. "2026-01-01T00:00:00Z").
         completed_after / completed_before: ISO-8601 datetimes for completion window.
-        include_completed: When True, archived projects (completed/cancelled) are
-            included. Ignored when `status` is explicitly set.
+        include_completed: When True, archived projects (completed, cancelled,
+            terminated, deleted) are included. Ignored when `status` is explicitly set.
         hidden: "true" / "false" / "" (empty = no filter, default).
         summary_only: When True (default), return only summary fields to minimize payload.
         depth: Detail level 0-3 when summary_only=False:

@@ -409,7 +409,7 @@ def main() -> None:
     # Step 1: Check Python version
     print_header("Step 1/5: Checking Python")
     if not check_python():
-        print_fail("Python 3.10+ is required. Please upgrade.")
+        print_fail("Python 3.12+ is required. Please upgrade.")
         sys.exit(1)
 
     # Step 2: Install system dependencies (platform-specific)

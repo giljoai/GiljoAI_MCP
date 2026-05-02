@@ -1105,6 +1105,107 @@ class GiljoDevControlPanel:
 
         print(f"WARNING: Port {port} could not be cleared after 2 rounds!")
 
+    def _kill_backend_processes_by_name(self, script_names: tuple[str, ...] = ("startup.py", "run_api.py")) -> None:
+        """Kill GiljoAI backend processes matched by script name in their cmdline.
+
+        startup.py spawns a process tree (startup -> uvicorn -> worker). Killing only
+        the port holder leaves parent processes alive, which can respawn or linger.
+        This sweep targets the parents by cmdline, scoped to this project_root so we
+        never touch unrelated python processes on the machine.
+
+        Cross-platform: prefers psutil; falls back to platform-specific tooling.
+        """
+        my_pid = os.getpid()
+        parent_pid = os.getppid()
+        project_root_str = str(self.project_root).lower()
+
+        # Preferred path: psutil (works identically on Windows + Linux + macOS)
+        if psutil is not None:
+            victims: list[psutil.Process] = []
+            for proc in psutil.process_iter(["pid", "name", "cmdline", "cwd"]):
+                try:
+                    if proc.pid in (my_pid, parent_pid):
+                        continue
+                    cmdline = proc.info.get("cmdline") or []
+                    cmdline_str = " ".join(cmdline).lower()
+                    if not any(s in cmdline_str for s in script_names):
+                        continue
+                    # Scope to this project to avoid nuking unrelated GiljoAI installs
+                    cwd = (proc.info.get("cwd") or "").lower()
+                    if project_root_str not in cmdline_str and project_root_str not in cwd:
+                        continue
+                    victims.append(proc)
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+
+            for proc in victims:
+                with contextlib.suppress(psutil.NoSuchProcess, psutil.AccessDenied):
+                    for child in proc.children(recursive=True):
+                        with contextlib.suppress(psutil.NoSuchProcess, psutil.AccessDenied):
+                            child.kill()
+                    proc.kill()
+            if victims:
+                print(f"Killed {len(victims)} backend parent process(es) by name: "
+                      f"{[v.pid for v in victims]}")
+            return
+
+        # Fallback: no psutil -- shell out per-platform.
+        system = platform.system()
+        try:
+            if system == "Windows":
+                # WMIC is deprecated but still present; use it to find python.exe
+                # processes whose CommandLine references one of our scripts.
+                for script in script_names:
+                    with contextlib.suppress(Exception):
+                        result = subprocess.run(
+                            ["wmic", "process", "where",
+                             f"CommandLine like '%%{script}%%' and not CommandLine like '%%wmic%%'",
+                             "get", "ProcessId,CommandLine", "/format:csv"],
+                            check=False, capture_output=True, text=True, timeout=5,
+                        )
+                        for line in result.stdout.splitlines():
+                            if project_root_str not in line.lower():
+                                continue
+                            parts = line.rsplit(",", 1)
+                            if len(parts) != 2:
+                                continue
+                            pid = parts[1].strip()
+                            if pid.isdigit() and int(pid) not in (my_pid, parent_pid):
+                                subprocess.run(
+                                    ["taskkill", "/F", "/T", "/PID", pid],
+                                    check=False, capture_output=True, timeout=5,
+                                )
+            else:
+                # Linux/macOS: pgrep -f matches against the full cmdline
+                for script in script_names:
+                    with contextlib.suppress(Exception):
+                        result = subprocess.run(
+                            ["pgrep", "-f", script],
+                            check=False, capture_output=True, text=True, timeout=5,
+                        )
+                        for pid_str in result.stdout.split():
+                            if not pid_str.isdigit():
+                                continue
+                            pid = int(pid_str)
+                            if pid in (my_pid, parent_pid):
+                                continue
+                            # Verify cmdline contains project_root before killing
+                            try:
+                                with open(f"/proc/{pid}/cmdline", "rb") as f:
+                                    cmd = f.read().replace(b"\x00", b" ").decode(
+                                        "utf-8", errors="ignore"
+                                    ).lower()
+                            except OSError:
+                                cmd = ""
+                            if cmd and project_root_str not in cmd:
+                                continue
+                            subprocess.run(
+                                ["kill", "-9", str(pid)],
+                                check=False, capture_output=True, timeout=5,
+                            )
+        except Exception as e:
+            print(f"Warning: name-based backend kill sweep failed: {e}")
+
     # Service Management Methods
 
     def check_backend_port(self):
@@ -1251,6 +1352,10 @@ class GiljoDevControlPanel:
 
             self._nuclear_kill_port(7272)
             self._nuclear_kill_port(7273)
+
+            # Port kills hit only the listener (uvicorn). startup.py spawns a tree
+            # (startup -> uvicorn -> worker); kill the parents by cmdline name too.
+            self._kill_backend_processes_by_name()
 
             self.root.after(0, lambda: self.update_status_message("Backend stopped"))
 

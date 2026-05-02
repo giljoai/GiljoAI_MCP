@@ -19,7 +19,7 @@ Usage:
     python windows_reset.py --force   # Skip confirmation prompts
     python windows_reset.py --dry-run # Show what would be removed without removing
 
-Requires: Python 3.10+ (uses no external packages)
+Requires: Python 3.12+ (uses no external packages)
 """
 
 import contextlib

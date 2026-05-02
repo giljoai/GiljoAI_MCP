@@ -22,6 +22,18 @@
   --color-accent-danger: #c6298c;
   --color-accent-special: #8b5cf6;
 
+  // Project status colors (BE-5039) — runtime-resolvable mirrors of the
+  // SCSS tokens in design-tokens.scss. The backend ProjectStatus enum
+  // emits `color_token` strings (e.g. 'color-status-complete') which the
+  // frontend resolves via `getComputedStyle(...).getPropertyValue('--' + token)`.
+  // Keep values in sync with design-tokens.scss; SCSS remains the single
+  // source of color truth for compile-time consumers.
+  --color-status-complete: #67bd6d;       // matches $color-status-complete
+  --color-status-blocked: #ff9800;        // matches $color-status-blocked
+  --color-text-muted: #9e9e9e;            // matches $color-text-muted
+  --color-agent-implementer: #6db3e4;     // matches $color-agent-implementor
+  --color-agent-analyzer: #e07872;        // matches $color-agent-analyzer
+
   // Brand gradients
   --gradient-brand: linear-gradient(45deg, #ffd93d, #6bcf7f);
   --gradient-orchestrator-card: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

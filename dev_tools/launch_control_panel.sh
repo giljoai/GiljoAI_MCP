@@ -47,11 +47,11 @@ echo ""
 SYS_PYTHON=""
 for candidate in python3 python; do
     if command -v "$candidate" &>/dev/null; then
-        # Verify it's Python 3.10+
+        # Verify it's Python 3.12+
         version=$("$candidate" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
         major=$(echo "$version" | cut -d. -f1)
         minor=$(echo "$version" | cut -d. -f2)
-        if [ "$major" = "3" ] && [ "$minor" -ge 10 ]; then
+        if [ "$major" = "3" ] && [ "$minor" -ge 12 ]; then
             SYS_PYTHON="$candidate"
             break
         fi
@@ -59,7 +59,7 @@ for candidate in python3 python; do
 done
 
 if [ -z "$SYS_PYTHON" ]; then
-    echo "  [FAIL] No Python 3.10+ found. Install Python and re-run."
+    echo "  [FAIL] No Python 3.12+ found. Install Python and re-run."
     exit 1
 fi
 

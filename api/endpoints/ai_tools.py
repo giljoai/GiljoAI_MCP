@@ -306,7 +306,7 @@ This guide will help you connect {tool_display_name} to your GiljoAI MCP server.
 
 - {tool_display_name} installed and working
 - Access to GiljoAI MCP server
-- Python 3.11+ installed
+- Python 3.12+ installed
 
 ## Configuration
 

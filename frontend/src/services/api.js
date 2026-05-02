@@ -286,6 +286,15 @@ export const api = {
     delete: (id) => apiClient.delete(`/api/v1/project-types/${id}`),
   },
 
+  // Project Statuses (BE-5039: Project Status SSOT)
+  // Read-only — the canonical six statuses live in the backend
+  // `ProjectStatus` enum. The endpoint returns metadata (label,
+  // color_token, lifecycle flags) the frontend caches in
+  // `projectStatusesStore` and consumes in StatusBadge / filters.
+  projectStatuses: {
+    list: () => apiClient.get('/api/v1/project-statuses/'),
+  },
+
   // Projects
   projects: {
     list: (params) => apiClient.get('/api/v1/projects/', { params }),

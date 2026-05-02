@@ -17,6 +17,7 @@ from uuid import UUID
 from sqlalchemy import and_, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.models import Product, Project, Task, VisionDocument
 from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from giljo_mcp.services.dto import MemoryEntryCreateParams
@@ -531,7 +532,7 @@ class ProductMemoryRepository:
             and_(
                 Project.product_id == product_id,
                 Project.tenant_key == tenant_key,
-                or_(Project.status != "deleted", Project.status.is_(None)),
+                or_(Project.status != ProjectStatus.DELETED, Project.status.is_(None)),
             )
         )
         result = await session.execute(stmt)

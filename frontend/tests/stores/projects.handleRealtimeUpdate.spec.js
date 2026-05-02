@@ -74,13 +74,27 @@ describe('projects store — handleRealtimeUpdate', () => {
     expect(project.mission).toBe('')
   })
 
-  it('handles update_type "closed" — sets status to closed', () => {
+  it('handles update_type "closed" — sets status to "completed" (BE-5039 orphan fix)', () => {
+    // Pre-BE-5039 the store wrote `'closed'`, an orphan value that the
+    // canonical ProjectStatus enum cannot hold and that StatusBadge had
+    // to render via fallback. The backend now sends `'completed'` on the
+    // closed-project event; the frontend must agree.
     store.handleRealtimeUpdate({
       project_id: 'proj-1',
       update_type: 'closed',
     })
 
-    expect(store.projects[0].status).toBe('closed')
+    expect(store.projects[0].status).toBe('completed')
+  })
+
+  it('handles update_type "closed" with explicit payload status — uses payload value', () => {
+    store.handleRealtimeUpdate({
+      project_id: 'proj-1',
+      update_type: 'closed',
+      status: 'cancelled',
+    })
+
+    expect(store.projects[0].status).toBe('cancelled')
   })
 
   it('handles update_type "activated" — sets status to active', () => {

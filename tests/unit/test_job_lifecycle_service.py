@@ -18,6 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.exceptions import (
     AlreadyExistsError,
     ProjectStateError,
@@ -50,11 +51,17 @@ def _make_session():
 
 
 def _make_project(project_id=PROJECT_ID, status="active", execution_mode="multi_terminal"):
-    """Create a mock Project model."""
+    """Create a mock Project model.
+
+    ``status`` is coerced to a :class:`ProjectStatus` enum member to mirror
+    real DB behavior (SQLAlchemy returns enum members from the typed
+    ``project_status`` column). Tests may pass either a raw lifecycle string
+    ("active", "completed", ...) or a :class:`ProjectStatus` member.
+    """
     project = MagicMock()
     project.id = project_id
     project.name = "Test Project"
-    project.status = status
+    project.status = ProjectStatus(status) if isinstance(status, str) else status
     project.tenant_key = TENANT_KEY
     project.execution_mode = execution_mode
     project.staging_status = None

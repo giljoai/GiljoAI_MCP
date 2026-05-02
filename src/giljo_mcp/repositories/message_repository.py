@@ -26,6 +26,7 @@ from typing import Any, Optional
 from sqlalchemy import and_, case, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.models import Message, Project
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.tasks import MessageRecipient
@@ -723,7 +724,7 @@ class MessageRepository:
             Project ORM instance or None
         """
         result = await session.execute(
-            select(Project).where(and_(Project.tenant_key == tenant_key, Project.status == "active"))
+            select(Project).where(and_(Project.tenant_key == tenant_key, Project.status == ProjectStatus.ACTIVE))
         )
         return result.scalar_one_or_none()
 

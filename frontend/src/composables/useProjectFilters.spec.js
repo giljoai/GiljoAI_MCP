@@ -99,14 +99,28 @@ describe('useProjectFilters', () => {
     },
   ]
 
+  // Canonical six statuses (BE-5039) — matches backend ProjectStatus enum
+  // declaration order. Real callers pass the response from
+  // projectStatusesStore; tests pass this fixture directly.
+  const makeProjectStatuses = () => [
+    { value: 'inactive', label: 'Inactive' },
+    { value: 'active', label: 'Active' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'terminated', label: 'Terminated' },
+    { value: 'deleted', label: 'Deleted' },
+  ]
+
   let projectTypes
   let projects
   let activeProduct
+  let projectStatuses
 
   beforeEach(() => {
     projectTypes = ref(makeProjectTypes())
     projects = ref(makeProjects())
     activeProduct = ref({ id: 'prod-1', name: 'Test Product' })
+    projectStatuses = ref(makeProjectStatuses())
   })
 
   it('returns non-deleted, non-hidden projects when no filters', () => {
@@ -253,6 +267,67 @@ describe('useProjectFilters', () => {
     })
     expect(currentPage.value).toBe(1)
     expect(itemsPerPage.value).toBe(10)
+  })
+
+  // --- BE-5039: Status filter dropdown derives from canonical store ---
+  describe('statusSelectOptions (BE-5039 store-driven)', () => {
+    it('renders one option per canonical status from the store', () => {
+      const { statusSelectOptions } = useProjectFilters({
+        projectTypes,
+        projects,
+        activeProduct,
+        projectStatuses,
+      })
+      const values = statusSelectOptions.value.map((o) => o.value)
+      // Six canonical + 'hidden' UI pseudo-status.
+      expect(values).toEqual([
+        'inactive',
+        'active',
+        'completed',
+        'cancelled',
+        'terminated',
+        'deleted',
+        'hidden',
+      ])
+    })
+
+    it('uses the store label as the dropdown title', () => {
+      const { statusSelectOptions } = useProjectFilters({
+        projectTypes,
+        projects,
+        activeProduct,
+        projectStatuses,
+      })
+      const completed = statusSelectOptions.value.find(
+        (o) => o.value === 'completed',
+      )
+      expect(completed.title).toBe('Completed')
+    })
+
+    it('returns only the hidden pseudo-option when store is empty', () => {
+      const { statusSelectOptions } = useProjectFilters({
+        projectTypes,
+        projects,
+        activeProduct,
+        projectStatuses: ref([]),
+      })
+      expect(statusSelectOptions.value).toEqual([
+        { title: 'Hidden', value: 'hidden' },
+      ])
+    })
+
+    it('exposes validStatusValues as a Set of canonical values', () => {
+      const { validStatusValues } = useProjectFilters({
+        projectTypes,
+        projects,
+        activeProduct,
+        projectStatuses,
+      })
+      expect(validStatusValues.value.has('active')).toBe(true)
+      expect(validStatusValues.value.has('deleted')).toBe(true)
+      expect(validStatusValues.value.has('archived')).toBe(false)
+      expect(validStatusValues.value.has('closed')).toBe(false)
+    })
   })
 
   // --- Fix 4: Hidden filter bug ---

@@ -411,6 +411,8 @@ import { useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
 import { useNotificationStore } from '@/stores/notifications'
+import { useProjectStatusesStore } from '@/stores/projectStatusesStore'
+import { storeToRefs } from 'pinia'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
 import ProjectReviewModal from '@/components/projects/ProjectReviewModal.vue'
@@ -430,6 +432,12 @@ const router = useRouter()
 const projectStore = useProjectStore()
 const productStore = useProductStore()
 const notificationStore = useNotificationStore()
+const projectStatusesStore = useProjectStatusesStore()
+// `projectStatuses` is a Vue ref that tracks the canonical metadata. The
+// store is fetched once at app boot from DefaultLayout.onMounted; this
+// view triggers a defensive ensureLoaded() in case the user lands on
+// /projects via a deep link before the layout's boot path completes.
+const { statuses: projectStatuses } = storeToRefs(projectStatusesStore)
 const { showToast } = useToast()
 const { formatDateWithTime, formatDateCompactWithTime } = useFormatDate()
 
@@ -483,13 +491,19 @@ const {
   currentPage,
   itemsPerPage,
   typeSelectOptions,
+  statusSelectOptions,
   // eslint-disable-next-line no-unused-vars -- exposed on vm for test assertions
   activeProductProjects,
   // eslint-disable-next-line no-unused-vars -- exposed on vm for test assertions
   filteredBySearch,
   filteredProjects,
   clearFilters,
-} = useProjectFilters({ projects, projectTypes, activeProduct })
+} = useProjectFilters({
+  projects,
+  projectTypes,
+  activeProduct,
+  projectStatuses,
+})
 
 // Default sort: serial number ascending
 const sortBy = ref([{ key: 'series_number', order: 'asc' }])
@@ -543,7 +557,9 @@ const tableItems = computed(() =>
 )
 
 // 0873: v-select items for filter bar dropdowns
-const statusSelectOptions = ['active', 'inactive', 'completed', 'cancelled', 'terminated', 'hidden']
+// BE-5039: status filter options now derive from projectStatusesStore via
+// useProjectFilters. The 'hidden' pseudo-option is appended client-side
+// (filters by the per-project hidden flag, not by an enum value).
 
 // Table headers
 const headers = [
@@ -871,6 +887,13 @@ function onTypeCreated() {
 
 // Lifecycle
 onMounted(async () => {
+  // BE-5039: defensive store boot — DefaultLayout.onMounted normally
+  // primes the projectStatusesStore, but a deep-link to /projects from a
+  // logged-in session can mount this view first. ensureLoaded() is
+  // idempotent, so calling it from both places is safe.
+  projectStatusesStore.ensureLoaded().catch((error) => {
+    console.warn('[ProjectsView] Failed to load project statuses:', error)
+  })
   try {
     await Promise.all([
       productStore.fetchProducts(),

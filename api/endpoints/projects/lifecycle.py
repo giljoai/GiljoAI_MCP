@@ -30,6 +30,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.domain.project_status import LIFECYCLE_FINISHED_STATUSES, ProjectStatus
 from giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError
 from giljo_mcp.models import User
 from giljo_mcp.models.schemas import ProjectLaunchResponse
@@ -443,12 +444,17 @@ async def archive_project(
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
     current_status = proj.status
 
-    # Only deactivate if not already inactive/completed
-    if current_status not in ("inactive", "completed", "cancelled", "archived", "terminated"):
+    # BE-5039 Phase 2b: deactivate-skip gate now derives from the
+    # canonical ``LIFECYCLE_FINISHED_STATUSES`` set (COMPLETED, CANCELLED,
+    # TERMINATED, DELETED) plus ``INACTIVE``. The previous tuple included
+    # an orphan ``"archived"`` literal that has no canonical mapping --
+    # ``archive_project`` actually writes ``terminated`` or ``completed``.
+    skip_deactivate = LIFECYCLE_FINISHED_STATUSES | {ProjectStatus.INACTIVE}
+    if current_status not in skip_deactivate:
         await project_service.deactivate_project(project_id=project_id, reason="User archived project after completion")
 
     # Check early_termination flag to determine target status (Handover 0498)
-    target_status = "terminated" if proj.early_termination else "completed"
+    target_status = ProjectStatus.TERMINATED if proj.early_termination else ProjectStatus.COMPLETED
 
     # Set completed_at timestamp to mark as archived (raises exceptions on error)
     await project_service.update_project(

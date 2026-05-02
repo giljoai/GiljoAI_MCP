@@ -90,7 +90,7 @@ unavailable, enter your existing PostgreSQL password when prompted.
 
 ### 5. Python version check
 
-The installer verifies that Python 3.10 or higher is running. If the check fails,
+The installer verifies that Python 3.12 or higher is running. If the check fails,
 install a supported version and re-run `python install.py`.
 
 ### 6. PostgreSQL discovery

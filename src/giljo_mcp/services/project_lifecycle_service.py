@@ -19,6 +19,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.exceptions import (
     BaseGiljoError,
     ProjectStateError,
@@ -119,11 +120,15 @@ class ProjectLifecycleService:
                         message="Project not found", context={"project_id": project_id, "tenant_key": resolved_tenant}
                     )
 
-                # Validate state transition
-                if project.status not in ["staging", "inactive"] and not force:
+                # Validate state transition.
+                # BE-5039 Phase 2b: ``staging`` is no longer a canonical
+                # value -- the Postgres ENUM cannot persist it and the
+                # codebase never wrote it. Only ``INACTIVE`` is a valid
+                # source state for activation.
+                if project.status != ProjectStatus.INACTIVE and not force:
                     raise ProjectStateError(
-                        message=f"Cannot activate project from status '{project.status}'",
-                        context={"project_id": project_id, "current_status": project.status},
+                        message=f"Cannot activate project from status '{project.status.value}'",
+                        context={"project_id": project_id, "current_status": project.status.value},
                     )
 
                 # Check for existing active project in same product (Single Active Project constraint)
@@ -134,7 +139,7 @@ class ProjectLifecycleService:
 
                     if existing_active:
                         # Auto-deactivate existing active project
-                        existing_active.status = "inactive"
+                        existing_active.status = ProjectStatus.INACTIVE
                         existing_active.updated_at = datetime.now(timezone.utc)
                         self._logger.info(
                             f"Auto-deactivated project {existing_active.id} due to Single Active Project constraint"
@@ -147,7 +152,7 @@ class ProjectLifecycleService:
                         await self._repo.flush(session)
 
                 # Activate project
-                project.status = "active"
+                project.status = ProjectStatus.ACTIVE
                 project.updated_at = datetime.now(timezone.utc)
 
                 # Set activated_at only on first activation
@@ -312,14 +317,14 @@ class ProjectLifecycleService:
                 )
 
             # Validate state
-            if project.status != "active":
+            if project.status != ProjectStatus.ACTIVE:
                 raise ProjectStateError(
-                    message=f"Cannot deactivate project with status '{project.status}'",
-                    context={"project_id": project_id, "current_status": project.status},
+                    message=f"Cannot deactivate project with status '{project.status.value}'",
+                    context={"project_id": project_id, "current_status": project.status.value},
                 )
 
             # Deactivate project
-            project.status = "inactive"
+            project.status = ProjectStatus.INACTIVE
             project.updated_at = datetime.now(timezone.utc)
 
             # Store reason if provided
@@ -458,7 +463,7 @@ class ProjectLifecycleService:
                 context={"project_id": project_id, "tenant_key": tenant_key},
             )
 
-        project.status = "completed"
+        project.status = ProjectStatus.COMPLETED
         project.completed_at = now
         project.updated_at = now
         project.closeout_executed_at = now
@@ -604,15 +609,15 @@ class ProjectLifecycleService:
                     )
 
                 # Validate project is in completed state
-                if project.status != "completed":
+                if project.status != ProjectStatus.COMPLETED:
                     raise ProjectStateError(
-                        message=f"Cannot resume project from status '{project.status}'. Project must be completed.",
-                        context={"project_id": project_id, "current_status": project.status},
+                        message=f"Cannot resume project from status '{project.status.value}'. Project must be completed.",
+                        context={"project_id": project_id, "current_status": project.status.value},
                     )
 
                 # Reopen project in inactive state.
                 # This avoids violating the Single Active Project per product constraint.
-                project.status = "inactive"
+                project.status = ProjectStatus.INACTIVE
                 project.completed_at = None
                 project.updated_at = datetime.now(timezone.utc)
 
@@ -636,7 +641,11 @@ class ProjectLifecycleService:
                         await ws_mgr.broadcast_project_update(
                             project_id=project_id,
                             update_type="status_changed",
-                            project_data={"name": project.name, "status": "inactive", "mission": project.mission},
+                            project_data={
+                                "name": project.name,
+                                "status": ProjectStatus.INACTIVE.value,
+                                "mission": project.mission,
+                            },
                             tenant_key=tenant_key,
                         )
                     except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
@@ -646,7 +655,7 @@ class ProjectLifecycleService:
                     message="Project resumed successfully",
                     agents_resumed=len(resumed_ids),
                     resumed_agent_ids=resumed_ids,
-                    project_status="inactive",
+                    project_status=ProjectStatus.INACTIVE.value,
                 )
 
         except (ResourceNotFoundError, ProjectStateError):

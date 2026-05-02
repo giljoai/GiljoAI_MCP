@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.models import Project
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.monitoring.health_config import AgentHealthStatus, HealthCheckConfig
@@ -188,7 +189,7 @@ class AgentHealthMonitor:
                         AgentJob.project_id.is_(None),  # Jobs without project (orphaned)
                         and_(
                             Project.deleted_at.is_(None),
-                            Project.status == "active",  # Only active projects
+                            Project.status == ProjectStatus.ACTIVE,  # Only active projects
                         ),
                     ),
                 )
@@ -266,7 +267,7 @@ class AgentHealthMonitor:
                         AgentJob.project_id.is_(None),  # Jobs without project (orphaned)
                         and_(
                             Project.deleted_at.is_(None),
-                            Project.status == "active",  # Only active projects
+                            Project.status == ProjectStatus.ACTIVE,  # Only active projects
                         ),
                     ),
                 )
@@ -354,7 +355,7 @@ class AgentHealthMonitor:
                         AgentJob.project_id.is_(None),  # Jobs without project (orphaned)
                         and_(
                             Project.deleted_at.is_(None),
-                            Project.status == "active",  # Only active projects
+                            Project.status == ProjectStatus.ACTIVE,  # Only active projects
                         ),
                     ),
                 )
@@ -517,7 +518,7 @@ class AgentHealthMonitor:
                     AgentJob.project_id.is_(None),  # Jobs without project (orphaned)
                     and_(
                         Project.deleted_at.is_(None),
-                        Project.status == "active",  # Only active projects
+                        Project.status == ProjectStatus.ACTIVE,  # Only active projects
                     ),
                 )
             )

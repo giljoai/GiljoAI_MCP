@@ -346,7 +346,14 @@ export const useProjectStore = defineStore('projects', () => {
       const project = projects.value[projectIndex]
 
       if (update_type === 'closed') {
-        project.status = 'closed'
+        // BE-5039 fix: 'closed' is not a value in the canonical
+        // ProjectStatus enum. The backend sends 'completed' on the
+        // closed-project event payload (project_closeout_service +
+        // project_lifecycle_service). Persist 'completed' so the badge
+        // and filters can resolve metadata; honor an explicit `status`
+        // from the payload when present (lets the backend evolve the
+        // event without requiring a frontend redeploy).
+        project.status = status || 'completed'
       } else if (update_type === 'updated') {
         // Patch fields from a general project update
         if (name) project.name = name

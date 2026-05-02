@@ -18,6 +18,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError
 from giljo_mcp.models.projects import Project
 from giljo_mcp.repositories.project_lifecycle_repository import ProjectLifecycleRepository
@@ -224,13 +225,27 @@ class ProjectStagingService:
             if not project:
                 raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
 
-            if project.status != "staging":
+            # BE-5039 Phase 2b: ``staging`` is no longer a value on the
+            # canonical ``project_status`` ENUM. The actual staging
+            # workflow tracker is the dedicated ``staging_status`` column
+            # ('staging' | 'staging_complete' | NULL). Guard against the
+            # right column so the precondition isn't dead code post-
+            # migration. The project must currently be inactive AND have
+            # an in-progress staging workflow.
+            if project.staging_status != "staging" or project.status != ProjectStatus.INACTIVE:
                 raise ProjectStateError(
-                    message=f"Cannot cancel staging for project with status '{project.status}'",
-                    context={"project_id": project_id, "current_status": project.status},
+                    message=(
+                        f"Cannot cancel staging: project status='{project.status.value}', "
+                        f"staging_status='{project.staging_status}' (need INACTIVE + staging)"
+                    ),
+                    context={
+                        "project_id": project_id,
+                        "current_status": project.status.value,
+                        "staging_status": project.staging_status,
+                    },
                 )
 
-            project.status = "cancelled"
+            project.status = ProjectStatus.CANCELLED
             project.completed_at = datetime.now(timezone.utc)
             project.updated_at = datetime.now(timezone.utc)
 

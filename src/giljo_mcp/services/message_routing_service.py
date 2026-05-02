@@ -28,6 +28,7 @@ from typing import Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.domain.project_status import IMMUTABLE_PROJECT_STATUSES
 from giljo_mcp.exceptions import (
     BaseGiljoError,
     MessageDeliveryError,
@@ -490,7 +491,11 @@ class MessageRoutingService:
         if not requires_action:
             return []
 
-        if project.status in ("completed", "cancelled"):
+        # BE-5039 Phase 2b: derive the closed-project gate from the
+        # canonical immutable-status set instead of duplicating the
+        # tuple. ``IMMUTABLE_PROJECT_STATUSES`` is the str-mixin enum
+        # frozenset {COMPLETED, CANCELLED}.
+        if project.status in IMMUTABLE_PROJECT_STATUSES:
             return []
 
         auto_blocked_ids = []

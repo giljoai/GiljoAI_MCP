@@ -170,9 +170,9 @@ class JobLifecycleService:
                 # Guard: block spawning into immutable projects
                 if project.status in IMMUTABLE_PROJECT_STATUSES:
                     raise ProjectStateError(
-                        message=f"Cannot modify project in '{project.status}' status. "
+                        message=f"Cannot modify project in '{project.status.value}' status. "
                         "Only inactive and active projects can be updated.",
-                        context={"project_id": project_id, "status": project.status},
+                        context={"project_id": project_id, "status": project.status.value},
                     )
 
                 # Handover 0497e: Predecessor context injection for recovery spawning.

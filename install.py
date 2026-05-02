@@ -371,8 +371,8 @@ class UnifiedInstaller:
                 self._print_header("Checking Python Version")
                 if not self.check_python_version():
                     self._print_error("Python version check failed")
-                    _logger.error("Python version check FAILED (requires 3.10+)")
-                    result["error"] = "Python 3.10+ required"
+                    _logger.error("Python version check FAILED (requires 3.12+)")
+                    result["error"] = "Python 3.12+ required"
                     return result
                 result["steps"].append("python_verified")
                 _logger.info(
