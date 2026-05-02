@@ -167,7 +167,9 @@ async def _call_with_items(service: ProjectService, items, **kwargs):
 
 class TestLifecycleFinishedConstant:
     def test_lifecycle_finished_constant_exposed(self):
-        assert frozenset({"completed", "cancelled"}) == LIFECYCLE_FINISHED_STATUSES
+        # BE-5037 follow-up: extended to all four lifecycle-finished statuses
+        # so default exclusion bucket matches the frontend StatusBadge enum.
+        assert frozenset({"completed", "cancelled", "terminated", "deleted"}) == LIFECYCLE_FINISHED_STATUSES
 
 
 # ---------------------------------------------------------------------------
@@ -177,17 +179,29 @@ class TestLifecycleFinishedConstant:
 
 class TestDefaultLifecycleFilter:
     @pytest.mark.asyncio
-    async def test_default_excludes_completed_and_cancelled(self):
+    async def test_default_excludes_all_lifecycle_finished(self):
+        """BE-5037 follow-up: default exclusion covers the full finished set
+        {completed, cancelled, terminated, deleted}.
+
+        On dogfood at the time of this test, two projects (INF-0002 Ops Panel
+        and BE-5006 BE-SPRINT-002f) carry status=='terminated'. Before this
+        change they leaked through the default response because terminated was
+        not in the exclusion bucket; now they are filtered out by default.
+        """
         service = _make_service(_TENANT_A)
         items = [
             _make_item(project_id="a", status="active"),
             _make_item(project_id="b", status="inactive"),
             _make_item(project_id="c", status="completed"),
             _make_item(project_id="d", status="cancelled"),
+            _make_item(project_id="t1", status="terminated"),
+            _make_item(project_id="t2", status="terminated"),
         ]
         result, _ = await _call_with_items(service, items)
         ids = {p["project_id"] for p in result["projects"]}
-        assert ids == {"a", "b"}, "Default should exclude completed AND cancelled"
+        # 6 in -> 2 out (active + inactive). Mirrors the dogfood 24->22 drop:
+        # the two terminated rows are excluded by default.
+        assert ids == {"a", "b"}, "Default must exclude completed, cancelled, terminated, deleted"
 
     @pytest.mark.asyncio
     async def test_default_includes_hidden_rows(self):
@@ -267,6 +281,62 @@ class TestStatusFilter:
         service = _make_service(_TENANT_A)
         with pytest.raises(ValidationError):
             await service.list_projects_for_mcp(tenant_key=_TENANT_A, status=["active", "bogus"])
+
+    @pytest.mark.asyncio
+    async def test_status_terminated_returns_only_terminated(self):
+        """BE-5037 follow-up: status='terminated' must be a valid filter value
+        (was rejected as 'bogus' by the v1.2.1 4-value enum). Returns only
+        rows where status=='terminated'.
+        """
+        service = _make_service(_TENANT_A)
+        items = [
+            _make_item(project_id="a", status="active"),
+            _make_item(project_id="t1", status="terminated"),
+            _make_item(project_id="t2", status="terminated"),
+            _make_item(project_id="c", status="completed"),
+        ]
+        result, _ = await _call_with_items(service, items, status="terminated")
+        assert {p["project_id"] for p in result["projects"]} == {"t1", "t2"}
+
+    @pytest.mark.asyncio
+    async def test_status_deleted_filter_validates(self):
+        """status='deleted' must validate (no ValidationError).
+
+        At runtime, ProjectRepository.list_projects() special-cases
+        status='deleted' by switching the soft-delete clause from
+        deleted_at IS NULL (default) to deleted_at IS NOT NULL when the
+        caller supplies that status, so soft-deleted rows ARE reachable
+        when the agent asks for them by status. This unit test pins the
+        validation contract and the in-memory status filter; the
+        repository-layer reachability is covered by repository tests.
+        """
+        service = _make_service(_TENANT_A)
+        items = [
+            _make_item(project_id="a", status="active"),
+            _make_item(project_id="d1", status="deleted"),
+        ]
+        result, _ = await _call_with_items(service, items, status="deleted")
+        # Only the deleted row should pass the in-memory status filter.
+        assert {p["project_id"] for p in result["projects"]} == {"d1"}
+
+    @pytest.mark.asyncio
+    async def test_status_validation_error_lists_all_six_values(self):
+        """Validation message must enumerate all 6 valid statuses so agents
+        get an actionable error.
+        """
+        service = _make_service(_TENANT_A)
+        with pytest.raises(ValidationError) as exc_info:
+            await service.list_projects_for_mcp(tenant_key=_TENANT_A, status="bogus")
+        msg = str(exc_info.value)
+        for expected in (
+            "active",
+            "inactive",
+            "completed",
+            "cancelled",
+            "terminated",
+            "deleted",
+        ):
+            assert expected in msg, f"Validation message missing '{expected}': {msg}"
 
 
 # ---------------------------------------------------------------------------

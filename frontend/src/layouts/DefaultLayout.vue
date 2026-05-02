@@ -36,6 +36,7 @@ import { ref, computed, shallowRef, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useProductStore } from '@/stores/products'
+import { useProjectStatusesStore } from '@/stores/projectStatusesStore'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useMessageStore } from '@/stores/messages'
 import { initWebsocketEventRouter } from '@/stores/websocketEventRouter'
@@ -59,6 +60,7 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const productStore = useProductStore()
+const projectStatusesStore = useProjectStatusesStore()
 const wsStore = useWebSocketStore()
 const messageStore = useMessageStore()
 
@@ -117,6 +119,16 @@ onMounted(async () => {
   // Restore active product state from localStorage + backend
   if (userLoaded && currentUser.value) {
     await productStore.initializeFromStorage()
+  }
+
+  // BE-5039: prime the canonical project-status metadata cache once per
+  // session. ensureLoaded() is idempotent and rejects on transport
+  // failure so we only catch + log here; consumers (StatusBadge,
+  // useProjectFilters) degrade gracefully when the cache is empty.
+  if (userLoaded && currentUser.value) {
+    projectStatusesStore.ensureLoaded().catch((error) => {
+      console.warn('[DefaultLayout] Failed to load project statuses:', error)
+    })
   }
 
   // Load SaaS trial components when in SaaS/Demo mode

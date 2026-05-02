@@ -4,7 +4,41 @@ All notable changes to this project are recorded here. Versions follow `MAJOR.MI
 
 ## [Unreleased]
 
-_No pending work yet — v1.2.1+ entries will land here._
+_No pending work yet — v1.2.2+ entries will land here._
+
+## [1.2.2] — 2026-05-01
+
+Foundation + installer hardening release. Two substantial pieces of work that set up the next several sprints: a real single-source-of-truth for project status, and a cross-platform installer story that finally works end-to-end on every supported path.
+
+### Project status SSoT (BE-5039)
+
+- **`ProjectStatus` is now a typed enum.** Eight statuses (`active`, `inactive`, `staging`, `paused`, `completed`, `cancelled`, `terminated`, `archived`) live in one place — no more drift between backend services, frontend stores, and database CHECK constraints.
+- **New REST endpoint `GET /api/v1/project-statuses/`** exposes the canonical list with labels, color tokens, and lifecycle flags. Frontend reads from this, never from a hardcoded array.
+- **Migration `ce_0008`** converts the existing TEXT column to a Postgres enum type with idempotent guards: NULL backfill before cast, unknown-value catch-all, partial unique index drop-and-recreate against the enum value. Safe to re-run.
+- **Backwards compatible.** `ProjectStatus` inherits from `str`, so every existing `project.status == "active"` comparison still works. Callers adopt the enum at their own pace.
+- **Adding a new status is now a one-record change.** `PROJECT_STATUS_META` centralizes label, color, immutability, and MCP-mutability per status.
+
+### Installer hardening (INF-5014)
+
+All four install paths now work on stock systems with no manual prep:
+
+- **Windows `install.ps1`** — verified on stock PowerShell 5.1 + Windows 11.
+- **Windows `install.py` direct** — Node.js auto-installs via `winget` when missing; PATH refresh resolves the chicken-egg where a subprocess inherits the pre-install PATH.
+- **Linux `install.sh`** — verified on stock Ubuntu / Debian / WSL.
+- **Linux `install.py` direct** — `python3-venv` detection now uses an actual `ensurepip` probe instead of `venv --help` (which doesn't fail when the module is missing). Catches the broken split-package state on stock Debian/Ubuntu before it becomes a cryptic error mid-install.
+
+The "please restart your shell" banner now only fires on Windows where it's actually needed. Eight commits of fixes; every fix verified on a real box.
+
+**macOS is not validated this release.** The CI smoke matrix runs `install.py` on macOS-latest, but no end-to-end real-box test was performed. Track as a known gap.
+
+### Tooling
+
+- **New `scripts/check_version_consistency.py`** — `VERSION` is the single source of truth; `pyproject.toml`, `frontend/package.json`, `package-lock.json`, `__init__.py` fallback, and the latest `CHANGELOG.md` entry must all match. Wired into pre-commit and the release pipeline. Bump everything atomically with `python scripts/check_version_consistency.py --bump X.Y.Z`. Catches the drift class that nearly slipped this release out the door with a stale `package-lock.json`.
+
+### Notes for upgraders
+
+- No database schema rollback path. `ce_0008` is a one-way migration; if you need to back out, restore from a pre-upgrade backup.
+- Routine `git pull` + restart on the test/dogfood server. `startup.py` runs `alembic upgrade head` automatically.
 
 ## [1.2.1] — 2026-04-30
 

@@ -53,14 +53,6 @@
       </v-btn>
     </AppAlert>
 
-    <!-- Onboarding Reminders -->
-    <OnboardingReminders
-      :show-integ="showIntegReminder"
-      :show-agent="showAgentReminder"
-      @dismiss:integration="dismissIntegrationReminder"
-      @dismiss:agent="dismissAgentReminder"
-    />
-
     <!-- Header -->
     <div class="dash-header main-window-reveal main-window-reveal--hero main-window-delay-1">
       <h1 class="text-h4">Dashboard</h1>
@@ -248,13 +240,11 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
-import OnboardingReminders from '@/components/dashboard/OnboardingReminders.vue'
 import RecentProjectsList from '@/components/dashboard/RecentProjectsList.vue'
 import RecentMemoriesList from '@/components/dashboard/RecentMemoriesList.vue'
 import ProjectReviewModal from '@/components/projects/ProjectReviewModal.vue'
 import { useRouter } from 'vue-router'
 import { useProductStore } from '@/stores/products'
-import { useOnboardingReminders } from '@/composables/useOnboardingReminders'
 
 import api from '@/services/api'
 import setupService from '@/services/setupService'
@@ -263,25 +253,6 @@ import { useToast } from '@/composables/useToast'
 const router = useRouter()
 const productStore = useProductStore()
 const { showToast } = useToast()
-
-// Onboarding reminders
-const {
-  showIntegrationReminder: integReminderCheck,
-  showAgentReminder: agentReminderCheck,
-  dismissIntegrationReminder,
-  dismissAgentReminder,
-} = useOnboardingReminders()
-
-const showIntegReminder = computed(() => {
-  const dist = dashboardData.value.project_status_dist || {}
-  const totalProjects = Object.values(dist).reduce((a, b) => a + b, 0)
-  return integReminderCheck.value(totalProjects > 0)
-})
-
-const showAgentReminder = computed(() => {
-  const dist = dashboardData.value.project_status_dist || {}
-  return agentReminderCheck.value((dist.completed || 0) > 0)
-})
 
 // Product filter
 const selectedProductId = ref(null)

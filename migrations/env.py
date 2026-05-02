@@ -47,7 +47,7 @@ if not db_url:
             "The installer should have created .env with POSTGRES_PASSWORD.\n"
             "If running migrations manually, ensure .env exists with:\n"
             "  POSTGRES_PASSWORD=<your_password>\n\n"
-            "Note: Only PostgreSQL 14-18 is supported."
+            "Note: PostgreSQL 18+ is required."
         )
 
 config.set_main_option("sqlalchemy.url", db_url)

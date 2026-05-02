@@ -348,7 +348,8 @@ Don't write down your operating procedures. Write down what the project
 needs to deliver.
 
 Good: "Build authentication API", "Validate inter-agent messaging", "Generate test summary report"
-Bad:  "Spawn api-implementer agent", "Fetch context", "Broadcast STAGING_COMPLETE"
+Bad:  "Spawn api-implementer agent", "Fetch context", "Broadcast STAGING_COMPLETE",
+      "Close out project", "Call complete_job", "Drain messages and complete orchestrator"
 
 Aim for 3-7 items. Too few = no visibility. Too many = you're tracking mechanics again.
 

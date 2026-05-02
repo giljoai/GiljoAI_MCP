@@ -190,7 +190,8 @@ class TestProjectServiceTypedReturns:
             mission="Test mission",
             description="Test description",
             tenant_key=test_tenant_key,
-            status="staging",
+            status="inactive",
+            staging_status="staging",
             series_number=random.randint(1, 999999),
         )
         db_session.add(project)

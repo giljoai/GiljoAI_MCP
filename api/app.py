@@ -97,6 +97,7 @@ try:
         notifications,
         oauth,
         products,
+        project_statuses,
         project_types,
         projects,
         prompts,
@@ -509,6 +510,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(projects.router)
     # Handover 0440a: Project type taxonomy module (prefix and tags defined in module __init__.py)
     app.include_router(project_types.router)
+    # BE-5039: Project status metadata module (frontend SSoT for badge labels/colors)
+    app.include_router(project_statuses.router)
     app.include_router(claude_export.router, prefix="/api", tags=["claude-export"])
     app.include_router(downloads.router, tags=["downloads"])
     app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])

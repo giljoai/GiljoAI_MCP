@@ -21,7 +21,7 @@ else
     # Fallback to system Python
     if ! command -v python3 &> /dev/null; then
         echo "Error: Python 3 not found and venv not found"
-        echo "Please install Python 3.10+ from python.org"
+        echo "Please install Python 3.12+ from python.org"
         exit 1
     fi
     echo "Warning: Using system Python (venv not found)"

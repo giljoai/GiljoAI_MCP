@@ -18,6 +18,19 @@
         </p>
       </div>
 
+      <!-- HOME HINTS — onboarding reminders, sized to the subtitle width -->
+      <div v-if="showIntegReminder || showAgentReminder" class="home-hints">
+        <OnboardingReminders
+          :show-integ="showIntegReminder"
+          :show-agent="showAgentReminder"
+          :username="reminderUsername"
+          :git-enabled="gitEnabled"
+          :serena-enabled="serenaEnabled"
+          @dismiss:integration="dismissIntegrationReminder"
+          @dismiss:agent="dismissAgentReminder"
+        />
+      </div>
+
       <!-- QUICK LAUNCH -->
       <div class="section-label">Quick Launch</div>
       <div class="quick-grid">
@@ -190,10 +203,13 @@ import GilMascot from '@/components/GilMascot.vue'
 import SetupWizardOverlay from '@/components/setup/SetupWizardOverlay.vue'
 import CertTrustModal from '@/components/setup/CertTrustModal.vue'
 import RecentProjectsList from '@/components/dashboard/RecentProjectsList.vue'
+import OnboardingReminders from '@/components/dashboard/OnboardingReminders.vue'
 import ProjectReviewModal from '@/components/projects/ProjectReviewModal.vue'
 import configService from '@/services/configService'
 import { PROJECT_TEMPLATES } from '@/composables/projectTemplates'
 import { useToast } from '@/composables/useToast'
+import { useOnboardingReminders } from '@/composables/useOnboardingReminders'
+import { useIntegrationStatus } from '@/composables/useIntegrationStatus'
 
 const route = useRoute()
 const router = useRouter()
@@ -548,6 +564,34 @@ const quickCards = computed(() => {
 // Recent projects (from dashboard API)
 const recentProjects = ref([])
 
+// Project status distribution from dashboard API — drives onboarding hints.
+// Mirrors the data DashboardView reads, so trigger semantics stay 1:1.
+const projectStatusDist = ref({})
+
+// Onboarding reminders — moved from Dashboard to Home (under the hero subtitle).
+const {
+  showIntegrationReminder: integReminderCheck,
+  showAgentReminder: agentReminderCheck,
+  dismissIntegrationReminder,
+  dismissAgentReminder,
+} = useOnboardingReminders()
+
+// Integration status — gates the "enable Git/Serena" hint so it only fires when
+// at least one is still off. Username personalizes the same hint copy.
+const { gitEnabled, serenaEnabled } = useIntegrationStatus()
+const reminderUsername = computed(
+  () => userStore.currentUser?.username || userStore.currentUser?.full_name || 'Friend',
+)
+
+const showIntegReminder = computed(() => {
+  const total = Object.values(projectStatusDist.value).reduce((a, b) => a + b, 0)
+  return integReminderCheck.value(total > 0)
+})
+
+const showAgentReminder = computed(() => {
+  return agentReminderCheck.value((projectStatusDist.value.completed || 0) > 0)
+})
+
 const showReviewModal = ref(false)
 const reviewProjectId = ref(null)
 const reviewProductId = ref(null)
@@ -719,11 +763,13 @@ onMounted(async () => {
     }
   } catch { /* ignore */ }
 
-  // Fetch recent projects for the bottom section
+  // Fetch recent projects + status distribution for the bottom section
+  // and the onboarding hint triggers.
   if (setupComplete.value && productStore.effectiveProductId) {
     try {
       const response = await api.stats.getDashboard(productStore.effectiveProductId)
       recentProjects.value = response.data?.recent_projects || []
+      projectStatusDist.value = response.data?.project_status_dist || {}
     } catch { /* ignore */ }
   }
 
@@ -812,6 +858,15 @@ onMounted(async () => {
 
 .hero-subtitle-dim {
   opacity: 0.7;
+}
+
+/* ═══ HOME HINTS ═══
+   Width matches the hero subtitle's max-width (480px) so the hint card
+   sits visually under the same column as the tagline. */
+.home-hints {
+  max-width: 528px;
+  margin: 0 auto 28px;
+  animation: fadeSlideUp 0.45s ease-out 0.18s both;
 }
 
 /* ═══ SECTION LABEL ═══ */

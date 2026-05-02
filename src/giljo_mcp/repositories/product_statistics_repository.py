@@ -10,6 +10,7 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.models import Message, Project, Task
 from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from giljo_mcp.models.products import Product
@@ -529,7 +530,7 @@ class ProductStatisticsRepository:
             .outerjoin(Product, Project.product_id == Product.id)
             .where(
                 Project.tenant_key == tenant_key,
-                Project.status == "completed",
+                Project.status == ProjectStatus.COMPLETED,
                 Project.completed_at.isnot(None),
                 Project.deleted_at.is_(None),
             )

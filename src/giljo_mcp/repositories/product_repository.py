@@ -28,6 +28,7 @@ from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.models import Product, Project
 from giljo_mcp.models.agent_identity import AgentJob
 from giljo_mcp.models.products import (
@@ -504,8 +505,8 @@ class ProductRepository:
         stmt = (
             update(Project)
             .where(Project.product_id.in_(product_ids))
-            .where(Project.status == "active")
-            .values(status="inactive", updated_at=datetime.now(timezone.utc))
+            .where(Project.status == ProjectStatus.ACTIVE)
+            .values(status=ProjectStatus.INACTIVE, updated_at=datetime.now(timezone.utc))
         )
         await session.execute(stmt)
 
@@ -545,8 +546,8 @@ class ProductRepository:
         stmt = (
             update(Project)
             .where(Project.product_id == product_id)
-            .where(Project.status == "active")
-            .values(status="inactive", updated_at=datetime.now(timezone.utc))
+            .where(Project.status == ProjectStatus.ACTIVE)
+            .values(status=ProjectStatus.INACTIVE, updated_at=datetime.now(timezone.utc))
         )
         await session.execute(stmt)
 

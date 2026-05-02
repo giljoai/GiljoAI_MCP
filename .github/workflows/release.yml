@@ -121,7 +121,7 @@ jobs:
             "tarball_url": "https://github.com/${REPO}/releases/download/${TAG}/giljoai-mcp-${VERSION}.tar.gz",
             "sha256": "${SHA256}",
             "min_python": "3.12",
-            "min_postgres": "14"
+            "min_postgres": "18"
           }
           MANIFEST_EOF
 

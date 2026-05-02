@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.domain.project_status import IMMUTABLE_PROJECT_STATUSES
 from giljo_mcp.exceptions import (
     OrchestrationError,
     ProjectStateError,
@@ -255,7 +256,7 @@ class OrchestrationAgentStateService:
                 # Check project is not closed out
                 if job.project_id:
                     project = await self._job_repo.get_project_by_id(session, tenant_key, str(job.project_id))
-                    if project and project.status in ("completed", "cancelled"):
+                    if project and project.status in IMMUTABLE_PROJECT_STATUSES:
                         raise ProjectStateError(
                             message="Cannot reactivate - project is already closed out.",
                             context={"job_id": job_id, "project_status": project.status},

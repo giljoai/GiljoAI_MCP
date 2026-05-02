@@ -20,6 +20,7 @@ import logging
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.models import Project, Task
 from giljo_mcp.models.auth import User
 from giljo_mcp.models.products import Product
@@ -258,7 +259,7 @@ class TaskRepository:
         stmt = select(Project).where(
             and_(
                 Project.product_id == product_id,
-                Project.status == "active",
+                Project.status == ProjectStatus.ACTIVE,
                 Project.tenant_key == tenant_key,
             )
         )

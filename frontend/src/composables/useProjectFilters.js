@@ -6,10 +6,23 @@
  * only filters.
  *
  * Extracted from ProjectsView.vue (Handover 0950k).
+ *
+ * BE-5039: `statusSelectOptions` derives the filter dropdown items from
+ * the canonical project-status enum exposed by `projectStatusesStore`.
+ * The 'hidden' pseudo-option is appended client-side because hidden is
+ * a UI-state (the `hidden` flag on the project), not a status enum
+ * member. Callers may pass `projectStatuses` as a Vue ref of the
+ * canonical metadata array so the composable stays test-friendly
+ * without depending on Pinia at unit-test time.
  */
 import { ref, computed } from 'vue'
 
-export function useProjectFilters({ projects, projectTypes, activeProduct }) {
+export function useProjectFilters({
+  projects,
+  projectTypes,
+  activeProduct,
+  projectStatuses = ref([]),
+}) {
   const searchQuery = ref('')
   const filterType = ref(null)
   const filterStatus = ref(null)
@@ -24,6 +37,32 @@ export function useProjectFilters({ projects, projectTypes, activeProduct }) {
     items.push({ title: 'No Type', value: 'none' })
     return items
   })
+
+  /**
+   * Status filter dropdown items, derived from the canonical
+   * `projectStatusesStore` payload (BE-5039). When the store hasn't
+   * loaded yet the array is empty — callers should treat this as
+   * "filter unavailable" rather than rendering a stale list. The
+   * `hidden` option is appended last; it filters by the per-project
+   * `hidden` UI flag, not by an enum member.
+   */
+  const statusSelectOptions = computed(() => {
+    const items = (projectStatuses.value || []).map((s) => ({
+      title: s.label,
+      value: s.value,
+    }))
+    items.push({ title: 'Hidden', value: 'hidden' })
+    return items
+  })
+
+  /**
+   * Set of canonical status values (string), used to defensively drop
+   * orphan values that may surface from stale WebSocket payloads during
+   * a deploy window. Empty until the store loads.
+   */
+  const validStatusValues = computed(
+    () => new Set((projectStatuses.value || []).map((s) => s.value)),
+  )
 
   const activeProductProjects = computed(() => {
     if (!activeProduct.value) return []
@@ -89,6 +128,8 @@ export function useProjectFilters({ projects, projectTypes, activeProduct }) {
     currentPage,
     itemsPerPage,
     typeSelectOptions,
+    statusSelectOptions,
+    validStatusValues,
     activeProductProjects,
     filteredBySearch,
     filteredProjects,

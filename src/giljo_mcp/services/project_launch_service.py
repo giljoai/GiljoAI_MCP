@@ -32,6 +32,7 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.exceptions import ResourceNotFoundError
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.projects import Project
@@ -178,7 +179,7 @@ class ProjectLaunchService:
                 context={"project_id": project_id},
             )
 
-        if project.status != "active" and project_service:
+        if project.status != ProjectStatus.ACTIVE and project_service:
             await project_service.activate_project(project_id, websocket_manager=websocket_manager)
 
         return project

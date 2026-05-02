@@ -80,7 +80,7 @@ cd GiljoAI_MCP
 python install.py
 python startup.py
 ```
-Requires Python 3.10+, PostgreSQL 14+ (18 recommended), Node.js 22+.
+Requires Python 3.12+, PostgreSQL 18+, Node.js 22+.
 </details>
 
 <br>

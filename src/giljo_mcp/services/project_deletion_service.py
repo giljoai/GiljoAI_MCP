@@ -21,6 +21,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.exceptions import (
     BaseGiljoError,
     ResourceNotFoundError,
@@ -100,7 +101,7 @@ class ProjectDeletionService:
                 )
 
             now = datetime.now(timezone.utc)
-            project.status = "deleted"
+            project.status = ProjectStatus.DELETED
             project.deleted_at = now
             project.updated_at = now
 
@@ -127,7 +128,7 @@ class ProjectDeletionService:
                     await self._websocket_manager.broadcast_project_update(
                         project_id=project_id,
                         update_type="status_changed",
-                        project_data={"name": project.name, "status": "deleted"},
+                        project_data={"name": project.name, "status": ProjectStatus.DELETED.value},
                         tenant_key=tenant_key,
                     )
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
@@ -195,8 +196,8 @@ class ProjectDeletionService:
             project_name = project.name
 
             # Deactivate project if it's active (to avoid constraint issues)
-            if project.status == "active":
-                project.status = "inactive"
+            if project.status == ProjectStatus.ACTIVE:
+                project.status = ProjectStatus.INACTIVE
                 project.updated_at = datetime.now(timezone.utc)
                 await self._repo.flush(session)
                 self._logger.info(f"Deactivated project {project_id} before nuclear delete")

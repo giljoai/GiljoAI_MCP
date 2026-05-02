@@ -21,6 +21,7 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from giljo_mcp.models.projects import Project, ProjectType
@@ -236,7 +237,7 @@ class ProjectRepository:
         else:
             query = query.where(Project.deleted_at.is_(None))
             if not include_cancelled:
-                query = query.where(Project.status != "cancelled")
+                query = query.where(Project.status != ProjectStatus.CANCELLED)
 
         result = await session.execute(query)
         return list(result.scalars().all())
@@ -254,7 +255,7 @@ class ProjectRepository:
         stmt = (
             select(Project)
             .options(selectinload(Project.project_type))
-            .where(and_(Project.tenant_key == tenant_key, Project.status == "active"))
+            .where(and_(Project.tenant_key == tenant_key, Project.status == ProjectStatus.ACTIVE))
             .limit(1)
         )
         result = await session.execute(stmt)
@@ -529,7 +530,11 @@ class ProjectRepository:
         product_id: str | None = None,
     ) -> list[Project]:
         """Get all soft-deleted projects for a tenant, optionally scoped to a product."""
-        conditions = [Project.tenant_key == tenant_key, Project.status == "deleted", Project.deleted_at.isnot(None)]
+        conditions = [
+            Project.tenant_key == tenant_key,
+            Project.status == ProjectStatus.DELETED,
+            Project.deleted_at.isnot(None),
+        ]
         if product_id:
             conditions.append(Project.product_id == product_id)
         stmt = select(Project).where(and_(*conditions))
@@ -544,7 +549,7 @@ class ProjectRepository:
         """Get projects deleted before a cutoff date."""
         stmt = select(Project).where(
             Project.deleted_at.isnot(None),
-            Project.status == "deleted",
+            Project.status == ProjectStatus.DELETED,
             Project.deleted_at < cutoff_date,
         )
         result = await session.execute(stmt)
@@ -561,7 +566,7 @@ class ProjectRepository:
             update(Project)
             .where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
             .values(
-                status="inactive",
+                status=ProjectStatus.INACTIVE,
                 completed_at=None,
                 deleted_at=None,
                 updated_at=datetime.now(timezone.utc),

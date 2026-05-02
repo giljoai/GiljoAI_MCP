@@ -44,7 +44,7 @@ async def test_update_execution_mode_allowed_before_staging(
         mission="",  # Empty - no staging
         description="Test description",
         tenant_key=tenant_key,
-        status="draft",
+        status="inactive",
         execution_mode="interactive",
         series_number=random.randint(1, 999999),
     )
@@ -162,7 +162,7 @@ async def test_execution_mode_unlocked_with_whitespace_only_mission(
         mission="   \n\t  ",  # Whitespace only
         description="Test description",
         tenant_key=tenant_key,
-        status="draft",
+        status="inactive",
         execution_mode="interactive",
         series_number=random.randint(1, 999999),
     )

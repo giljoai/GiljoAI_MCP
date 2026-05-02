@@ -34,6 +34,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.exceptions import (
     AuthorizationError,
     BaseGiljoError,
@@ -231,7 +232,7 @@ class TaskConversionService:
                 f"Deactivating existing active project {existing_active_project.id} "
                 f"before creating new project from task {task_id}"
             )
-            existing_active_project.status = "inactive"
+            existing_active_project.status = ProjectStatus.INACTIVE
             existing_active_project.updated_at = datetime.now(timezone.utc)
 
         # Create project
@@ -242,7 +243,7 @@ class TaskConversionService:
             mission="",  # Leave empty - orchestrator will generate mission during staging
             product_id=active_product.id,
             tenant_key=tenant_key,
-            status="inactive",  # Projects start inactive, user activates when ready
+            status=ProjectStatus.INACTIVE,  # Projects start inactive, user activates when ready
         )
 
         await self._repo.add_project(session, new_project)
