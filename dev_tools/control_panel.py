@@ -4125,7 +4125,7 @@ pg_restore -l {backup_file.name} | head -20
 
             except Exception as e:
                 removed.append(f"Windows cert store removal error: {e}")
-                self.logger.exception("Windows cert store removal failed: %s", e)
+                self.logger.exception("Windows cert store removal failed")
 
         elif system == "Darwin":
             # macOS: cert was added via security add-trusted-cert to System keychain

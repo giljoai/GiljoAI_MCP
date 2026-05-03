@@ -213,6 +213,7 @@ inline-quotes = "double"
     "T201",   # Print allowed in test runners, manual tests, and fixtures
     "BLE001", # Broad exception OK in test setup/teardown helpers
     "ERA001", # Section-header comments (# TEST: ...) and HANDOVER notes flagged as commented-out code
+    "FBT003", # Boolean positional args -- common in test API calls (defaults, asserts)
 ]
 "**/conftest.py" = [
     "ARG",    # Unused arguments OK in pytest fixtures
@@ -250,6 +251,7 @@ inline-quotes = "double"
     "T201",   # Dev tools use print() for CLI output
     "BLE001", # Broad exception OK for dev tool error handling
     "INP001", # No __init__.py needed in dev tools
+    "FBT003", # Boolean positional args -- Tkinter API uses positional booleans (resizable, etc.)
 ]
 "Linux_Installer/**/*.py" = [
     "T201",   # Installer uses print() for user-facing output
