@@ -82,7 +82,7 @@ class ProjectStatusMeta:
     is_user_mutable_via_mcp: bool
 
 
-class ProjectStatus(str, enum.Enum):
+class ProjectStatus(enum.StrEnum):
     """Canonical project lifecycle status.
 
     Inherits from :class:`str` so equality with raw strings is preserved

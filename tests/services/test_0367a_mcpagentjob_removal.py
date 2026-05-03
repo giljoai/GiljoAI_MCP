@@ -254,11 +254,10 @@ class TestNoMCPAgentJobImport:
         # Check all imports
         mcp_agent_job_imports = []
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom):
-                if node.names:
-                    for alias in node.names:
-                        if alias.name == "MCPAgentJob":
-                            mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob")
+            if isinstance(node, ast.ImportFrom) and node.names:
+                for alias in node.names:
+                    if alias.name == "MCPAgentJob":
+                        mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob")
 
         # Should have no MCPAgentJob imports
         assert len(mcp_agent_job_imports) == 0, f"ProjectService still imports MCPAgentJob: {mcp_agent_job_imports}"
@@ -283,11 +282,10 @@ class TestNoMCPAgentJobImport:
         # Check all imports
         mcp_agent_job_imports = []
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom):
-                if node.names:
-                    for alias in node.names:
-                        if alias.name == "MCPAgentJob":
-                            mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob")
+            if isinstance(node, ast.ImportFrom) and node.names:
+                for alias in node.names:
+                    if alias.name == "MCPAgentJob":
+                        mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob")
 
         # Should have no MCPAgentJob imports
         assert len(mcp_agent_job_imports) == 0, f"MessageService still imports MCPAgentJob: {mcp_agent_job_imports}"

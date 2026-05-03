@@ -32,17 +32,17 @@ from giljo_mcp.template_seeder import _get_mcp_bootstrap_section
 
 def _make_template(**overrides) -> AgentTemplate:
     """Build an AgentTemplate with sensible defaults for testing."""
-    defaults = dict(
-        name="test-agent",
-        role="implementer",
-        cli_tool="claude",
-        description="Test agent for 0814 validation",
-        system_instructions=_get_mcp_bootstrap_section(),
-        user_instructions="You are a testing specialist.",
-        model="sonnet",
-        behavioral_rules=["Follow coding standards", "Write tests first"],
-        success_criteria=["All tests pass", "No linting errors"],
-    )
+    defaults = {
+        "name": "test-agent",
+        "role": "implementer",
+        "cli_tool": "claude",
+        "description": "Test agent for 0814 validation",
+        "system_instructions": _get_mcp_bootstrap_section(),
+        "user_instructions": "You are a testing specialist.",
+        "model": "sonnet",
+        "behavioral_rules": ["Follow coding standards", "Write tests first"],
+        "success_criteria": ["All tests pass", "No linting errors"],
+    }
     defaults.update(overrides)
     return AgentTemplate(**defaults)
 

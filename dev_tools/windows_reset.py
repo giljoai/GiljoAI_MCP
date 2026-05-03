@@ -423,9 +423,8 @@ def clean_temp_files(dry_run: bool) -> int:
         if p.is_dir():
             if rmtree_safe(p, dry_run):
                 count += 1
-        elif p.is_file():
-            if rm_file_safe(p, dry_run):
-                count += 1
+        elif p.is_file() and rm_file_safe(p, dry_run):
+            count += 1
 
     if count == 0:
         warn("No temp files found")
@@ -446,13 +445,11 @@ def clean_claude_mcp_logs(dry_run: bool) -> int:
         if not project_dir.is_dir():
             continue
         for log_dir in project_dir.iterdir():
-            if log_dir.is_dir() and "giljo" in log_dir.name.lower():
-                if rmtree_safe(log_dir, dry_run):
-                    count += 1
-        # Also remove entire project dirs that are giljo-specific
-        if "giljoai-mcp-landing" in project_dir.name.lower():
-            if rmtree_safe(project_dir, dry_run):
+            if log_dir.is_dir() and "giljo" in log_dir.name.lower() and rmtree_safe(log_dir, dry_run):
                 count += 1
+        # Also remove entire project dirs that are giljo-specific
+        if "giljoai-mcp-landing" in project_dir.name.lower() and rmtree_safe(project_dir, dry_run):
+            count += 1
 
     if count == 0:
         warn("No giljo MCP logs found")

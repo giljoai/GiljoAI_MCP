@@ -1088,10 +1088,8 @@ class GiljoDevControlPanel:
                                     subprocess.run(["kill", "-9", pid], check=False, capture_output=True, timeout=5)
                                     pids_killed.add(pid)
                     except FileNotFoundError:
-                        try:
+                        with contextlib.suppress(FileNotFoundError):
                             subprocess.run(["fuser", "-k", f"{port}/tcp"], check=False, capture_output=True, timeout=5)
-                        except FileNotFoundError:
-                            pass
             except Exception as e:
                 print(f"Warning: Kill round {round_num + 1} for port {port} failed: {e}")
 
@@ -2373,9 +2371,9 @@ DROP DATABASE IF EXISTS giljo_mcp;
 
             # Format the timestamp
             mod_time = latest_backup.stat().st_mtime
-            from datetime import datetime
+            from datetime import UTC, datetime
 
-            backup_time = datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M:%S")
+            backup_time = datetime.fromtimestamp(mod_time, tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
 
             self.backup_label.config(text=backup_time)
             self.backup_indicator.config(foreground="green")
@@ -2400,9 +2398,9 @@ DROP DATABASE IF EXISTS giljo_mcp;
             backup_dir.mkdir(parents=True, exist_ok=True)
 
             # Create timestamped backup filename
-            from datetime import datetime
+            from datetime import UTC, datetime
 
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
             backup_file = backup_dir / f"giljo_mcp_{timestamp}.dump"
             metadata_file = backup_dir / f"giljo_mcp_{timestamp}.md"
 
@@ -2465,7 +2463,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             # Create metadata file
             metadata_content = f"""# Database Backup Metadata
 
-**Backup Date**: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+**Backup Date**: {datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")}
 **Database**: giljo_mcp
 **Format**: PostgreSQL Custom Format (pg_dump -Fc)
 **File**: {backup_file.name}

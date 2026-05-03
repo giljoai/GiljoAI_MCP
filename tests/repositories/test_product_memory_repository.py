@@ -9,7 +9,7 @@ TDD tests for ProductMemoryEntry repository (Handover 0390a).
 Run with: pytest tests/repositories/test_product_memory_repository.py -v
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -32,7 +32,7 @@ class TestProductMemoryRepository:
             sequence=1,
             entry_type="project_completion",
             source="test_v1",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(tz=UTC),
         )
         assert hasattr(entry, "id")
         assert hasattr(entry, "tenant_key")
@@ -59,7 +59,7 @@ class TestProductMemoryRepository:
                 sequence=1,
                 entry_type="project_completion",
                 source="test_v1",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(tz=UTC),
                 summary="Test summary",
                 key_outcomes=["outcome1"],
                 decisions_made=["decision1"],
@@ -83,7 +83,7 @@ class TestProductMemoryRepository:
                     sequence=i + 1,
                     entry_type="project_completion",
                     source="test_v1",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(tz=UTC),
                 ),
             )
 
@@ -116,7 +116,7 @@ class TestProductMemoryRepository:
                 sequence=1,
                 entry_type="test",
                 source="test_v1",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(tz=UTC),
             ),
         )
         seq2 = await repo.get_next_sequence(
@@ -139,7 +139,7 @@ class TestProductMemoryRepository:
                 sequence=1,
                 entry_type="project_completion",
                 source="test_v1",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(tz=UTC),
             ),
         )
         assert entry.deleted_by_user is False
@@ -168,7 +168,7 @@ class TestProductMemoryRepository:
                 sequence=1,
                 entry_type="test",
                 source="test_v1",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(tz=UTC),
             ),
         )
 
@@ -192,7 +192,7 @@ class TestProductMemoryRepository:
                 sequence=1,
                 entry_type="test",
                 source="test_v1",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(tz=UTC),
             ),
         )
 
@@ -205,7 +205,7 @@ class TestProductMemoryRepository:
                     sequence=1,  # Duplicate!
                     entry_type="test",
                     source="test_v1",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(tz=UTC),
                 ),
             )
 
@@ -235,7 +235,7 @@ class TestProductMemoryRepository:
                     sequence=seq,
                     entry_type="test",
                     source="test_v1",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(tz=UTC),
                 ),
             )
 

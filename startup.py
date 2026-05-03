@@ -102,7 +102,7 @@ def ensure_project_virtualenv() -> None:
         # Cross-platform process replacement:
         # subprocess.run() waits for child and captures exit code
         # sys.exit() propagates the exit code to parent/shell
-        result = subprocess.run([str(venv_python)] + sys.argv, check=False)
+        result = subprocess.run([str(venv_python), *sys.argv], check=False)
         sys.exit(result.returncode)
 
     except Exception as e:
@@ -1798,10 +1798,8 @@ def main(
         # Keep window open on error so the user can read the output
         if exit_code != 0:
             print_error("\nStartup failed. Press Enter to close this window...")
-            try:
+            with contextlib.suppress(EOFError):
                 input()
-            except EOFError:
-                pass
         sys.exit(exit_code)
 
 

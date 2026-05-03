@@ -267,6 +267,7 @@ def pytest_configure(config):
             f"Tests should use giljo_mcp_test, not giljo_mcp.\n"
             f"Current DATABASE_URL: {db_url[:50]}...",
             UserWarning,
+            stacklevel=2,
         )
 
     # Register custom markers

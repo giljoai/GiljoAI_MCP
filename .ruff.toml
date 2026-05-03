@@ -327,6 +327,9 @@ inline-quotes = "double"
 "src/giljo_mcp/cleanup/visualizer.py" = [
     "T201",   # CLI dependency visualization tool - print() is the interface
 ]
+"src/giljo_mcp/repositories/base.py" = [
+    "UP046",  # PEP 695 generic class syntax requires py312 — pre-push ruff (pyproject.toml) uses py310 target
+]
 "ops_panel/__main__.py" = [
     "T201",   # CLI entry point - print to stderr for startup-refusal message
 ]

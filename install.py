@@ -57,7 +57,7 @@ def _bootstrap_dependencies():
     print(f"Installing bootstrap dependencies: {', '.join(missing)}...")
     use_user = sys.prefix == sys.base_prefix  # Not in a venv
 
-    cmd = [sys.executable, "-m", "pip", "install", "-q", "--no-cache-dir"] + missing
+    cmd = [sys.executable, "-m", "pip", "install", "-q", "--no-cache-dir", *missing]
     if use_user:
         cmd.insert(5, "--user")
 
@@ -1290,24 +1290,23 @@ class UnifiedInstaller:
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
                     self._print_warning("Could not install libnss3-tools — browser may still show certificate warnings")
                     self._print_info("Fix later: sudo apt install libnss3-tools && mkcert -install")
-        elif current_os == "Darwin":
-            if not shutil.which("certutil"):
-                if shutil.which("brew"):
-                    self._print_info("Installing nss (required for Firefox certificate trust)...")
-                    try:
-                        subprocess.run(
-                            ["brew", "install", "nss"],
-                            check=True,
-                            capture_output=True,
-                            text=True,
-                            timeout=120,
-                        )
-                        self._print_success("nss installed (Firefox will trust certificates)")
-                    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
-                        self._print_warning("Could not install nss — Firefox may show certificate warnings")
-                        self._print_info("Fix later: brew install nss && mkcert -install")
-                else:
-                    self._print_info("If using Firefox: brew install nss && mkcert -install")
+        elif current_os == "Darwin" and not shutil.which("certutil"):
+            if shutil.which("brew"):
+                self._print_info("Installing nss (required for Firefox certificate trust)...")
+                try:
+                    subprocess.run(
+                        ["brew", "install", "nss"],
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                        timeout=120,
+                    )
+                    self._print_success("nss installed (Firefox will trust certificates)")
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+                    self._print_warning("Could not install nss — Firefox may show certificate warnings")
+                    self._print_info("Fix later: brew install nss && mkcert -install")
+            else:
+                self._print_info("If using Firefox: brew install nss && mkcert -install")
 
         # Install the local CA into the system and browser trust stores
         # On Windows, mkcert -install triggers a Windows Security dialog asking
@@ -1373,7 +1372,7 @@ class UnifiedInstaller:
         self._print_info(f"Generating trusted certificate for: {', '.join(domains)}")
         try:
             subprocess.run(
-                [mkcert_path, "-cert-file", str(cert_path), "-key-file", str(key_path)] + domains,
+                [mkcert_path, "-cert-file", str(cert_path), "-key-file", str(key_path), *domains],
                 check=True,
                 capture_output=True,
                 text=True,

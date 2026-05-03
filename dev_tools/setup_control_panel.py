@@ -212,9 +212,9 @@ def install_linux_system_deps(missing: dict) -> bool:
 
     # Check if we can use sudo
     if os.geteuid() == 0:
-        cmd = ["apt-get", "install", "-y"] + packages
+        cmd = ["apt-get", "install", "-y", *packages]
     elif cmd_exists("sudo"):
-        cmd = ["sudo", "apt-get", "install", "-y"] + packages
+        cmd = ["sudo", "apt-get", "install", "-y", *packages]
     else:
         print_fail("Cannot install system packages (not root and sudo not available)")
         print_info(f"Install manually: sudo apt install {' '.join(packages)}")
@@ -299,7 +299,7 @@ def install_python_deps() -> bool:
     else:
         print_info(f"Installing: {', '.join(PYTHON_DEPS)}...")
         try:
-            run_cmd([str(pip_path), "install"] + PYTHON_DEPS + ["-q"])
+            run_cmd([str(pip_path), "install", *PYTHON_DEPS, "-q"])
             print_ok(f"Installed: {', '.join(PYTHON_DEPS)}")
             return True
         except subprocess.CalledProcessError as e:

@@ -15,10 +15,10 @@ must not change in CE without a corresponding update in the commercial build.
 """
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class LicenseEdition(str, Enum):
+class LicenseEdition(StrEnum):
     CE = "CE"
     # [CE] Commercial editions declared here in the commercial build.
     # Do not add values to this enum in CE.
