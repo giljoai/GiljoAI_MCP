@@ -23,6 +23,7 @@ Usage:
     python dev_tools/control_panel.py
 """
 
+import configparser
 import contextlib
 import ctypes
 import logging
@@ -97,8 +98,6 @@ try:
 except ImportError:
     _bcrypt = None
     print("Warning: bcrypt not installed. Dev admin reset will be limited.")
-
-import configparser
 
 
 # ---------------------------------------------------------------------------

@@ -239,6 +239,7 @@ inline-quotes = "double"
     "BLE001", # Broad exception OK for graceful error handling in CLI tools
     "INP001", # No __init__.py needed in scripts
     "ERA001", # Inline doc comments illustrating "real implementation" calls flagged as commented-out code
+    "E402",   # sys.path.insert before giljo_mcp.* imports (script-as-module bootstrap pattern)
 ]
 "launchers/**/*.py" = [
     "T201",   # Launchers use print() for startup messages
@@ -275,6 +276,7 @@ inline-quotes = "double"
     "T201",   # CLI installer - print() for user-facing output
     "BLE001", # Broad exception OK for graceful install error handling
     "ERA001", # Doc comment "# Backspace (DEL or BS)" misclassified as commented-out code
+    "E402",   # Imports after _bootstrap_dependencies() call (intentional bootstrap pattern)
 ]
 "update.py" = [
     "T201",   # CLI tool - print() for user-facing update output
