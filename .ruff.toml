@@ -325,6 +325,9 @@ inline-quotes = "double"
 "src/giljo_mcp/cleanup/visualizer.py" = [
     "T201",   # CLI dependency visualization tool - print() is the interface
 ]
+"ops_panel/__main__.py" = [
+    "T201",   # CLI entry point - print to stderr for startup-refusal message
+]
 "src/giljo_mcp/database_backup.py" = [
     "T201",   # CLI database backup utility - print() for user feedback
 ]
