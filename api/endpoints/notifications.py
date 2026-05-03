@@ -34,11 +34,27 @@ router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
 
 class SkillsVersionDriftResponse(BaseModel):
-    """Response schema for the skills version drift check."""
+    """Response schema for the skills version drift check.
+
+    Fields:
+      - ``installed``: the version reported by the query param, if any. This
+        is the caller-asserted value, not the server-recorded one.
+      - ``current``: the server's authoritative ``SKILLS_VERSION``.
+      - ``drift_detected``: True when the caller cannot prove it has the
+        current bundle (legacy field — mixes "never installed" with "stale").
+      - ``never_installed``: True when the authenticated user's
+        ``users.last_installed_skills_version`` column is NULL — i.e. the
+        server has never recorded a successful bundle install for this user.
+        Independent of ``drift_detected`` so the dashboard can distinguish
+        "suppress banner because brand-new user" from "suppress banner
+        because already on current version". (HO 1028 follow-up.)
+      - ``message``: optional human-readable hint (only when drift is real).
+    """
 
     installed: Optional[str] = None
     current: str
     drift_detected: bool
+    never_installed: bool
     message: Optional[str] = None
 
 
@@ -65,14 +81,23 @@ async def check_skills_version(
 
     A caller running a *newer* version than the server (e.g., dev branch) is
     not flagged as drifted — the server is the older party in that case.
+
+    ``never_installed`` is the server-side source of truth for whether the
+    authenticated user has ever installed the skills bundle. Derived from the
+    CE ``users.last_installed_skills_version`` column (migration
+    ``ce_0007_users_skills_version_tracking``). This is independent of the
+    query param so the frontend can suppress the drift banner for genuinely
+    new users without relying on browser localStorage.
     """
     current = SKILLS_VERSION
+    never_installed = current_user.last_installed_skills_version is None
 
     if installed_skills_version is None:
         return SkillsVersionDriftResponse(
             installed=None,
             current=current,
             drift_detected=True,
+            never_installed=never_installed,
             message=(
                 "No installed skills version reported. Re-run /giljo_setup to install the latest slash-command bundle."
             ),
@@ -83,6 +108,7 @@ async def check_skills_version(
             installed=installed_skills_version,
             current=current,
             drift_detected=False,
+            never_installed=never_installed,
             message=None,
         )
 
@@ -92,6 +118,7 @@ async def check_skills_version(
         installed=installed_skills_version,
         current=current,
         drift_detected=drift,
+        never_installed=never_installed,
         message=(
             f"A newer skills bundle is available ({installed_skills_version} -> {current}). "
             "Re-run /giljo_setup to update."

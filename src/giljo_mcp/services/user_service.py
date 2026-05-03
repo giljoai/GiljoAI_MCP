@@ -204,7 +204,11 @@ class UserService:
             username: Unique username (required)
             email: User email address
             full_name: User's full name
-            password: User password (defaults to "GiljoMCP" if not provided)
+            password: User password (required, must be a non-empty string).
+                Callers MUST supply an explicit password — there is no default.
+                Pass-through from validated request bodies (Pydantic enforces
+                min_length) or pre-generate a secure random secret server-side
+                if the workflow does not collect one from the user.
             role: User role (admin, developer, viewer)
             is_active: Whether user account is active
 
@@ -212,9 +216,17 @@ class UserService:
             User ORM model instance
 
         Raises:
-            ValidationError: Username or email already exists
+            ValidationError: Password missing/empty, or username/email already exists
             BaseGiljoError: Database operation failed
         """
+        # SEC: password is mandatory. Historical fallback to the literal "GiljoMCP"
+        # was removed in v1.1.9.2 — see handovers/SECURITY_SCRUB_v1.1.9.2-IN-PROGRESS.md.
+        if not password:
+            raise ValidationError(
+                message="password is required to create a user",
+                context={"operation": "create_user", "username": username},
+            )
+
         try:
             async with self._get_session() as session:
                 return await self._create_user_impl(session, username, email, full_name, password, role, is_active)
@@ -251,8 +263,14 @@ class UserService:
         if email and await self._repo.check_email_exists(session, email):
             raise ValidationError(message=f"Email '{email}' already exists", context={"email": email})
 
-        # Hash password (default to "GiljoMCP" per Handover 0023)
-        password_hash = bcrypt.hashpw((password or "GiljoMCP").encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        # Hash the caller-supplied password. The public create_user() entry point
+        # rejects None/empty values; this is a defense-in-depth check on the impl.
+        if not password:
+            raise ValidationError(
+                message="password is required to create a user",
+                context={"operation": "create_user", "username": username},
+            )
+        password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         # Create user
         user = User(
@@ -264,7 +282,9 @@ class UserService:
             role=role,
             is_active=is_active,
             tenant_key=self.tenant_key,
-            must_change_password=bool(not password),  # Force change if default password
+            # Password is now always caller-supplied; no implicit force-change.
+            # SaaS password-reset flows set this explicitly when needed.
+            must_change_password=False,
             must_set_pin=True,  # Force PIN setup on first login
             recovery_pin_hash=None,  # No PIN set initially
             created_at=datetime.now(timezone.utc),

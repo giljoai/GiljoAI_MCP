@@ -105,9 +105,15 @@ export const SYSTEM_EVENT_ROUTES = {
     },
   },
 
-  // System update notifications (Handover 0965 Phase 4 + skills-version drift wiring).
-  // SystemStatusBanner.vue listens to the window event for the banner surface.
-  // The notification-store entry surfaces the same drift in the bell-icon badge.
+  // System update notifications (Handover 0965 Phase 4 + skills-version drift
+  // wiring; HO1028 follow-up).
+  // SystemStatusBanner.vue listens to the window event and re-fetches
+  // /api/notifications/check-skills-version, so the server's `never_installed`
+  // flag remains the authoritative gate for the drift banner — this handler
+  // does NOT itself flip any banner-visible state. The notification-store
+  // entry below surfaces an informational "updates available" item in the
+  // bell-icon badge (always safe to show even when the user has never
+  // installed skills, since it points them to giljo_setup as the next step).
   'system:update_available': {
     handler: async (payload) => {
       dispatchWindowEvent('ws-system-update-available', payload)

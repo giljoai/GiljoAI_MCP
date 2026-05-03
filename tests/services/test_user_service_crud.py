@@ -209,19 +209,63 @@ async def test_create_user_duplicate_email(user_service, test_user):
 
 
 @pytest.mark.asyncio
-async def test_create_user_default_password(user_service):
-    """Test that create_user sets default password 'GiljoMCP' and returns User ORM model"""
+async def test_create_user_missing_password_raises(user_service):
+    """SEC (v1.1.9.2): create_user must reject missing/empty passwords.
+
+    Historical behavior silently substituted the literal "GiljoMCP" for any
+    user created without a password. That fallback was removed; callers must
+    now supply an explicit password.
+    """
     username = f"newuser_{uuid4().hex[:6]}"
+
+    with pytest.raises(ValidationError) as exc_info:
+        await user_service.create_user(
+            username=username,
+            email=f"new_{uuid4().hex[:6]}@example.com",
+            role="developer",
+            # No password provided
+        )
+
+    assert "password" in str(exc_info.value).lower()
+
+
+@pytest.mark.asyncio
+async def test_create_user_empty_password_raises(user_service):
+    """SEC (v1.1.9.2): empty-string password is rejected the same as None."""
+    username = f"newuser_{uuid4().hex[:6]}"
+
+    with pytest.raises(ValidationError):
+        await user_service.create_user(
+            username=username,
+            email=f"new_{uuid4().hex[:6]}@example.com",
+            password="",
+            role="developer",
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_user_does_not_hash_giljomcp_default(user_service):
+    """SEC regression (v1.1.9.2): a user created with a real password must NOT
+    end up with a bcrypt hash that matches the historical "GiljoMCP" literal.
+    Locks in the removal of the silent default fallback.
+    """
+    username = f"newuser_{uuid4().hex[:6]}"
+    real_password = "AdminChosenPwd_4710!"
 
     user = await user_service.create_user(
         username=username,
         email=f"new_{uuid4().hex[:6]}@example.com",
+        password=real_password,
         role="developer",
-        # No password provided - should default to "GiljoMCP"
     )
 
     assert isinstance(user, User)
-    assert user.must_change_password is True
+    # The supplied password verifies.
+    assert bcrypt.checkpw(real_password.encode("utf-8"), user.password_hash.encode("utf-8"))
+    # The historical default does NOT verify — the fallback is gone.
+    assert not bcrypt.checkpw(b"GiljoMCP", user.password_hash.encode("utf-8"))
+    # No implicit must_change_password flag now that the password is real.
+    assert user.must_change_password is False
 
 
 # ============================================================================

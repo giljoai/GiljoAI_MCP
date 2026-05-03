@@ -75,26 +75,32 @@ const commitsBehind = ref(0)
 // Skills version drift state.
 //   currentSkillsVersion = the bundled version returned by the server.
 //   skillsDriftDetected  = server's drift verdict for the installed version.
+//   skillsNeverInstalled = server's authoritative "user has never run
+//     giljo_setup against this server" flag (HO1028 follow-up). This is the
+//     real suppression gate; localStorage is only a first-paint UX cache.
 //   skillsDismissedForCurrent = true once user has dismissed THIS version's banner.
 const currentSkillsVersion = ref(null)
 const skillsDriftDetected = ref(false)
+const skillsNeverInstalled = ref(true) // default-true so first paint suppresses until server replies
 const skillsDismissedForCurrent = ref(false)
-const installedSkillsKnown = ref(false)
 
 const migrationDismissed = ref(sessionStorage.getItem(SESSION_KEY_MIGRATION) === 'true')
 const updateDismissed = ref(sessionStorage.getItem(SESSION_KEY_UPDATE) === 'true')
 
 const isAdmin = computed(() => userStore.currentUser?.role === 'admin')
 
-// Drift banner visibility rule:
+// Drift banner visibility rule (HO1028 follow-up: server is source of truth):
 //   - admin gate (skills install is admin-only)
-//   - server reported drift_detected: true
-//   - localStorage has a known installed version (recon Q4: missing key = suppress)
+//   - server says the user HAS installed before (never_installed === false)
+//   - server says the installed version drifted from current
 //   - user has not already dismissed THIS specific bundled version
+// localStorage is intentionally NOT consulted here — it's only a first-paint
+// cache fed to the API as `installed_skills_version`. The server's
+// `never_installed` flag is authoritative once the fetch resolves.
 const showSkillsDrift = computed(() => {
   if (!isAdmin.value) return false
+  if (skillsNeverInstalled.value) return false
   if (!skillsDriftDetected.value) return false
-  if (!installedSkillsKnown.value) return false
   if (skillsDismissedForCurrent.value) return false
   return true
 })
@@ -125,15 +131,16 @@ async function fetchSystemStatus() {
   }
 }
 
-// Boot drift check (Phase 1 of Skills version tracking).
+// Boot drift check (Phase 1 of Skills version tracking, HO1028 follow-up).
 // Reads localStorage giljo_skills_version (written by setup:* WS handlers in
-// stores/eventRoutes/systemEventRoutes.js), asks the server whether that
-// installed version is current, and updates banner state accordingly.
+// stores/eventRoutes/systemEventRoutes.js) ONLY as a first-paint UX cache to
+// pass along as the `installed_skills_version` query param. The server's
+// `never_installed` flag is the authoritative suppression gate; localStorage
+// is never consulted by `showSkillsDrift`.
 async function fetchSkillsDrift() {
   if (!isAdmin.value) return
   try {
     const installed = localStorage.getItem(LOCAL_KEY_INSTALLED_SKILLS)
-    installedSkillsKnown.value = installed !== null && installed !== ''
 
     const response = await apiClient.get('/api/notifications/check-skills-version', {
       params: { installed_skills_version: installed ?? undefined },
@@ -141,6 +148,10 @@ async function fetchSkillsDrift() {
     const data = response.data ?? {}
     currentSkillsVersion.value = data.current ?? null
     skillsDriftDetected.value = data.drift_detected === true
+    // Default true if the server omits the flag — safest when older servers
+    // don't yet know about `never_installed`. Only an explicit `false` lifts
+    // the suppression.
+    skillsNeverInstalled.value = data.never_installed !== false
 
     // Per-version dismissal — read AFTER we know `current` so a fresh drift
     // (newer bundled version) automatically reappears even if the user
@@ -151,6 +162,7 @@ async function fetchSkillsDrift() {
     }
   } catch {
     // Drift endpoint may not exist on older servers — keep banner hidden.
+    skillsNeverInstalled.value = true
   }
 }
 

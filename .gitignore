@@ -134,6 +134,12 @@ temp/
 *.swp
 *.swo
 
+# Per-machine install/migration mode-switch backups (e.g., .env.ce-mode-backup,
+# config.yaml.ce-mode-backup created during demo/saas conversion per
+# handovers/DEMO_SAAS_INSTALL_MANUAL.md Step 4). Never commit — they hold
+# environment-specific credentials and only make sense on the box that wrote them.
+*-mode-backup
+
 # OS-specific
 Thumbs.db
 .DS_Store
