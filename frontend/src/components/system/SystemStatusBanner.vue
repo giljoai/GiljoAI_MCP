@@ -38,7 +38,7 @@
 
     <v-alert
       v-if="showSkillsDrift"
-      type="info"
+      type="warning"
       variant="tonal"
       density="compact"
       closable
