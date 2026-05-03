@@ -1,30 +1,34 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
 # Licensed under the GiljoAI Community License v1.1.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition -- source-available, single-user use only.
 
 """User-facing notification endpoints.
 
 Currently exposes:
-- ``GET /api/notifications/check-skills-version`` — drift check for the
-  installed slash-command/skills bundle vs. the server's authoritative
-  ``SKILLS_VERSION``.
+- ``GET /api/notifications/check-skills-version`` -- drift check for the
+  bundled slash-command/skills bundle vs. the deployment-wide announced
+  version.
 
-This router is auth-gated. It performs no DB writes; the stamping and
-cadence/throttle sides of the update-notification feature live on the
-download/MCP-setup paths and the auth login path
-(``UserService.update_user_metadata`` / ``UserService.check_and_emit_skills_update``).
+IMP-0023 (this rewrite): drift state is now system-wide. The server reads
+``SKILLS_VERSION`` (the bundled constant the running code ships with) and
+the ``system_settings.skills_version_announced`` row (what was seeded the
+last time the server announced a bundle), and reports whether they match.
+No per-user state is involved.
+
+This router is auth-gated. It performs no DB writes.
 """
 
 import logging
-from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from giljo_mcp.models import User
-from giljo_mcp.services.version_service import compare_versions
+from giljo_mcp.models.system_setting import SystemSetting
 from giljo_mcp.tools.slash_command_templates import SKILLS_VERSION
 
 
@@ -32,97 +36,65 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
+ANNOUNCED_KEY = "skills_version_announced"
+
 
 class SkillsVersionDriftResponse(BaseModel):
-    """Response schema for the skills version drift check.
+    """Response schema for the system-wide skills bundle drift check.
 
     Fields:
-      - ``installed``: the version reported by the query param, if any. This
-        is the caller-asserted value, not the server-recorded one.
-      - ``current``: the server's authoritative ``SKILLS_VERSION``.
-      - ``drift_detected``: True when the caller cannot prove it has the
-        current bundle (legacy field — mixes "never installed" with "stale").
-      - ``never_installed``: True when the authenticated user's
-        ``users.last_installed_skills_version`` column is NULL — i.e. the
-        server has never recorded a successful bundle install for this user.
-        Independent of ``drift_detected`` so the dashboard can distinguish
-        "suppress banner because brand-new user" from "suppress banner
-        because already on current version". (HO 1028 follow-up.)
-      - ``message``: optional human-readable hint (only when drift is real).
+      - ``current``: the version the running server's bundled
+        ``SKILLS_VERSION`` constant reports.
+      - ``announced``: the version stored in
+        ``system_settings.skills_version_announced``. ``None`` if the row
+        is missing (should not happen after migration ce_0009 has run).
+      - ``drift_detected``: True when ``current != announced``.
+      - ``message``: human-readable hint, populated only when drift is
+        detected.
     """
 
-    installed: Optional[str] = None
     current: str
+    announced: str | None
     drift_detected: bool
-    never_installed: bool
-    message: Optional[str] = None
+    message: str | None = None
 
 
 @router.get("/check-skills-version", response_model=SkillsVersionDriftResponse)
 async def check_skills_version(
-    installed_skills_version: Optional[str] = Query(
-        default=None,
-        max_length=32,
-        # Accept dotted numeric versions only — keep the surface small for an
-        # untrusted query parameter. Mirrors version_service._parse_version_tuple
-        # which only accepts integer-dotted strings.
-        pattern=r"^\d+(\.\d+)*$",
-        description="Caller's installed SKILLS_VERSION; omit if unknown.",
-    ),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+    _current_user: User = Depends(get_current_active_user),
 ) -> SkillsVersionDriftResponse:
-    """Compare caller's installed skills bundle version to the server's current.
+    """Compare the bundled SKILLS_VERSION to the system-announced value.
 
-    ``drift_detected`` is True when:
-      - ``installed_skills_version`` is omitted/null (the client cannot prove
-        it has the current bundle), OR
-      - ``installed_skills_version`` is strictly older than ``SKILLS_VERSION``
-        per the existing semver helper in ``version_service``.
+    Drift is the difference between what the running deployment ships with
+    (``SKILLS_VERSION`` constant) and what was last announced by the
+    operator (``system_settings.skills_version_announced``). Mismatch
+    means the slash-command bundle the server is serving has moved
+    forward without an explicit announce -- the dashboard renders a banner
+    so the user can re-run /giljo_setup.
 
-    A caller running a *newer* version than the server (e.g., dev branch) is
-    not flagged as drifted — the server is the older party in that case.
-
-    ``never_installed`` is the server-side source of truth for whether the
-    authenticated user has ever installed the skills bundle. Derived from the
-    CE ``users.last_installed_skills_version`` column (migration
-    ``ce_0007_users_skills_version_tracking``). This is independent of the
-    query param so the frontend can suppress the drift banner for genuinely
-    new users without relying on browser localStorage.
+    Auth is required so anonymous callers cannot probe deployment state.
     """
     current = SKILLS_VERSION
-    never_installed = current_user.last_installed_skills_version is None
 
-    if installed_skills_version is None:
-        return SkillsVersionDriftResponse(
-            installed=None,
-            current=current,
-            drift_detected=True,
-            never_installed=never_installed,
-            message=(
-                "No installed skills version reported. Re-run /giljo_setup to install the latest slash-command bundle."
-            ),
-        )
+    result = await db.execute(select(SystemSetting.value).where(SystemSetting.key == ANNOUNCED_KEY))
+    announced = result.scalar_one_or_none()
 
-    if installed_skills_version == current:
-        return SkillsVersionDriftResponse(
-            installed=installed_skills_version,
-            current=current,
-            drift_detected=False,
-            never_installed=never_installed,
-            message=None,
-        )
+    drift_detected = announced is None or announced != current
 
-    drift = compare_versions(installed_skills_version, current)
+    message: str | None = None
+    if drift_detected:
+        if announced is None:
+            message = (
+                "Skills bundle version not yet announced on this server. "
+                "Re-run /giljo_setup to install the latest bundle."
+            )
+        else:
+            message = f"A newer skills bundle is available ({announced} -> {current}). Re-run /giljo_setup to update."
 
     return SkillsVersionDriftResponse(
-        installed=installed_skills_version,
         current=current,
-        drift_detected=drift,
-        never_installed=never_installed,
-        message=(
-            f"A newer skills bundle is available ({installed_skills_version} -> {current}). "
-            "Re-run /giljo_setup to update."
-        )
-        if drift
-        else None,
+        announced=announced,
+        drift_detected=drift_detected,
+        message=message,
     )

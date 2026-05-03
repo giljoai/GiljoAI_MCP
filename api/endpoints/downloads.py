@@ -327,25 +327,7 @@ async def download_agent_templates(
     logger.info("Agent templates ZIP generated (%s): %d files (max 8), %d bytes", user_info, len(files), len(zip_bytes))
 
     if current_user:
-        # HO 1028: stamp installed skills version via the single sanctioned
-        # write path (UserService.update_user_metadata). Best-effort — the
-        # bundle has already been served; a stamping miss only delays the
-        # next reminder cycle.
-        try:
-            from giljo_mcp.services.user_service import UserService
-            from giljo_mcp.tools.slash_command_templates import SKILLS_VERSION
-
-            user_svc = UserService(
-                db_manager=request.app.state.db_manager,
-                tenant_key=current_user.tenant_key,
-            )
-            await user_svc.update_user_metadata(
-                user_id=str(current_user.id),
-                last_installed_skills_version=SKILLS_VERSION,
-            )
-        except Exception as e:  # noqa: BLE001 — best-effort side-effect
-            logger.warning("Failed to stamp skills version for user %s: %s", sanitize(current_user.username), e)
-
+        # IMP-0023: per-user skills-version stamping removed; system_settings drives drift state.
         try:
             ws_manager = request.app.state.websocket_manager
             if ws_manager:
