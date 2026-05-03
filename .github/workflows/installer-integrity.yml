@@ -1,0 +1,62 @@
+# Installer integrity — Tier 2 check (tag-only + manual)
+#
+# Runs on version tags and workflow_dispatch only. NOT required for every push.
+# Rationale: static file checks (BOM, bat entry point, startup.py import order)
+# are slow to break and fast to fix — they belong at release time, not every sprint commit.
+#
+# Required status check on the private-master TAG ruleset (pattern: v*).
+# Wired into merge_to_public.sh preflight as a local static check before any public push.
+#
+# What this does: checks BOM, bat entry point correctness, startup.py import order,
+# and runs the venv-guard self-test (startup.py --help from no-deps Python must succeed).
+
+name: Installer integrity
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  installer-integrity:
+    name: Installer integrity (BOM, bat entry point, startup.py import order)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Static integrity checks
+        # No third-party deps required: stdlib-only static checks.
+        run: python scripts/check_installer_integrity.py
+
+      - name: Venv-guard self-test (no-deps Python must reach --help)
+        # Proves 'python startup.py --help' from a fresh shell does NOT
+        # ModuleNotFoundError before the venv-relaunch guard runs. This is
+        # the exact bug class that broke v1.1.9.2 installs.
+        #
+        # Setup: create a project-local ./venv/ (the guard looks here),
+        # install click+colorama into it, then invoke startup.py with the
+        # system Python that has ZERO project deps. The guard must re-exec
+        # into ./venv/python and reach --help output.
+        run: |
+          python -m venv ./venv
+          ./venv/bin/pip install --quiet click colorama
+          # Sanity check: system Python has no click installed.
+          python -c "import sys; sys.exit(0 if 'click' not in {m.split('.')[0] for m in sys.modules} else 1)"
+          python -c "
+          try:
+              import click
+              raise SystemExit('FAIL: system Python has click installed -- self-test invalid.')
+          except ImportError:
+              pass
+          "
+          # Now run startup.py --help with the no-deps system Python.
+          # The guard must re-exec into ./venv/bin/python and succeed.
+          python startup.py --help > /tmp/help.out 2>&1 || (echo '--- startup.py --help output ---'; cat /tmp/help.out; exit 1)
+          grep -q "GiljoAI MCP" /tmp/help.out || (echo "Expected 'GiljoAI MCP' in --help output:"; cat /tmp/help.out; exit 1)
+          echo "[OK] Venv-guard re-exec succeeded -- startup.py --help reachable from no-deps Python."

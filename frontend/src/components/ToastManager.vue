@@ -63,26 +63,25 @@ const vuetifyLocation = computed(() => {
 const storeDuration = computed(() => settingsStore.notificationDuration)
 
 // Toast types configuration
+// Timeout policy: success/info/warning fall through to the user's
+// configured duration (Settings → Notifications). Errors stay sticky.
 const toastTypes = {
   success: {
     color: 'success',
     icon: 'mdi-check-circle',
-    timeout: 4000,
   },
   error: {
     color: 'error',
     icon: 'mdi-alert-circle',
-    timeout: 0, // No auto-dismiss for errors
+    timeout: 0,
   },
   warning: {
     color: 'warning',
     icon: 'mdi-alert',
-    timeout: 6000,
   },
   info: {
     color: 'info',
     icon: 'mdi-information',
-    timeout: 5000,
   },
 }
 
