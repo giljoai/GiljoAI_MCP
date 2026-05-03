@@ -30,7 +30,7 @@ Design Principles:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import bcrypt
@@ -403,8 +403,8 @@ class AuthService:
             key_prefix=key_prefix,
             permissions=validated_permissions,
             is_active=True,
-            created_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=90),
+            created_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + timedelta(days=90),
         )
 
         new_key = await self._repo.create_api_key(session, new_key)
@@ -461,7 +461,7 @@ class AuthService:
             )
 
         # Revoke key
-        await self._repo.revoke_api_key(session, api_key, datetime.now(timezone.utc))
+        await self._repo.revoke_api_key(session, api_key, datetime.now(UTC))
 
         self._logger.info(
             f"API key revoked: {api_key.name} (user: {user_id})",
@@ -551,7 +551,7 @@ class AuthService:
             tenant_key=tenant_key,
             org_id=org_id,  # Set org_id if provided (Handover 0424g)
             is_active=True,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         await self._repo.create_user(session, new_user)
@@ -764,7 +764,7 @@ class AuthService:
             tenant_key=tenant_key,
             org_id=org_id,  # Direct FK to organization (Handover 0424g)
             is_active=True,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         await self._repo.create_user(session, admin_user)
@@ -783,15 +783,15 @@ class AuthService:
 
         if setup_state:
             setup_state.first_admin_created = True
-            setup_state.first_admin_created_at = datetime.now(timezone.utc)
+            setup_state.first_admin_created_at = datetime.now(UTC)
         else:
             setup_state = SetupState(
                 id=str(uuid4()),
                 tenant_key=tenant_key,
                 database_initialized=True,
-                database_initialized_at=datetime.now(timezone.utc),
+                database_initialized_at=datetime.now(UTC),
                 first_admin_created=True,
-                first_admin_created_at=datetime.now(timezone.utc),
+                first_admin_created_at=datetime.now(UTC),
             )
             await self._repo.create_setup_state(session, setup_state)
 

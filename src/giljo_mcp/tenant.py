@@ -14,11 +14,11 @@ import hashlib
 import secrets
 import string
 from contextvars import ContextVar
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 
 # Thread-safe context variable for current tenant
-current_tenant: ContextVar[Optional[str]] = ContextVar("current_tenant", default=None)
+current_tenant: ContextVar[str | None] = ContextVar("current_tenant", default=None)
 
 
 class TenantManager:
@@ -42,7 +42,7 @@ class TenantManager:
     _cache_max_size: ClassVar[int] = 1000  # Limit cache size to prevent memory issues
 
     @classmethod
-    def generate_tenant_key(cls, project_name: Optional[str] = None) -> str:
+    def generate_tenant_key(cls, project_name: str | None = None) -> str:
         """
         Generate a unique, cryptographically secure tenant key.
 
@@ -67,7 +67,7 @@ class TenantManager:
         return tenant_key
 
     @classmethod
-    def validate_tenant_key(cls, tenant_key: Optional[str]) -> bool:
+    def validate_tenant_key(cls, tenant_key: str | None) -> bool:
         """
         Validate tenant key format and structure.
 
@@ -115,7 +115,7 @@ class TenantManager:
         current_tenant.set(tenant_key)
 
     @classmethod
-    def get_current_tenant(cls) -> Optional[str]:
+    def get_current_tenant(cls) -> str | None:
         """
         Get the current tenant from context.
 
@@ -195,7 +195,7 @@ class TenantManager:
         return hash_obj.hexdigest()[:8]
 
     @classmethod
-    def apply_tenant_filter(cls, query: Any, model: Any, tenant_key: Optional[str] = None) -> Any:
+    def apply_tenant_filter(cls, query: Any, model: Any, tenant_key: str | None = None) -> Any:
         """
         Apply tenant filtering to a SQLAlchemy query.
 
@@ -225,7 +225,7 @@ class TenantManager:
         return query
 
     @classmethod
-    def ensure_tenant_isolation(cls, entity: Any, tenant_key: Optional[str] = None) -> None:
+    def ensure_tenant_isolation(cls, entity: Any, tenant_key: str | None = None) -> None:
         """
         Ensure entity belongs to the correct tenant.
 
@@ -256,17 +256,17 @@ class TenantManager:
 
 
 # Convenience functions for common operations
-def generate_tenant_key(project_name: Optional[str] = None) -> str:
+def generate_tenant_key(project_name: str | None = None) -> str:
     """Convenience function to generate a tenant key."""
     return TenantManager.generate_tenant_key(project_name)
 
 
-def validate_tenant_key(tenant_key: Optional[str]) -> bool:
+def validate_tenant_key(tenant_key: str | None) -> bool:
     """Convenience function to validate a tenant key."""
     return TenantManager.validate_tenant_key(tenant_key)
 
 
-def get_current_tenant() -> Optional[str]:
+def get_current_tenant() -> str | None:
     """Convenience function to get current tenant."""
     return TenantManager.get_current_tenant()
 

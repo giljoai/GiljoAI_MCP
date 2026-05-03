@@ -12,7 +12,7 @@ come from the 16-entry CONTROLLED_TAG_VOCABULARY enforced by
 MemoryEntryWriteSchema; invalid tags raise MemoryEntryWriteValidationError.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -36,7 +36,7 @@ def _build_session_mocks(tenant_key: str):
     mock_project.id = project_id
     mock_project.tenant_key = tenant_key
     mock_project.product_id = product_id
-    mock_project.created_at = datetime.now(timezone.utc)
+    mock_project.created_at = datetime.now(UTC)
     mock_project.completed_at = None
     mock_project.name = "Tags Param Test Project"
 

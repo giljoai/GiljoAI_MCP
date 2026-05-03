@@ -5,8 +5,6 @@
 
 """Message service response models."""
 
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -34,7 +32,7 @@ class SendMessageResult(BaseModel):
     staging_directive is present only when a staging-phase orchestrator broadcasts.
     """
 
-    message_id: Optional[str] = None
+    message_id: str | None = None
     to_agents: list[str] = Field(default_factory=list)
     excluded_agents: list[str] = Field(
         default_factory=list,
@@ -42,7 +40,7 @@ class SendMessageResult(BaseModel):
     )
     warnings: list[str] = Field(default_factory=list)
     message_type: str = "direct"
-    staging_directive: Optional[StagingDirective] = None
+    staging_directive: StagingDirective | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -54,7 +52,7 @@ class BroadcastResult(BaseModel):
     Returned by broadcast_to_project().
     """
 
-    message_id: Optional[str] = None
+    message_id: str | None = None
     to_agents: list[str] = Field(default_factory=list)
     excluded_agents: list[str] = Field(
         default_factory=list,
@@ -75,7 +73,7 @@ class MessageListResult(BaseModel):
 
     messages: list[dict] = Field(default_factory=list)
     count: int = 0
-    agent: Optional[str] = None
+    agent: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

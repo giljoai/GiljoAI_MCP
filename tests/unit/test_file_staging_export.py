@@ -10,7 +10,7 @@ Tests verify that stage_agent_templates() correctly updates last_exported_at
 timestamp for all exported templates to enable staleness detection.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -53,9 +53,9 @@ async def test_stage_agent_templates_updates_export_timestamp(db_session: AsyncS
     staging_dir = tmp_path / "tenant-abc" / "test-token"
 
     # Stage templates
-    before_export = datetime.now(timezone.utc)
+    before_export = datetime.now(UTC)
     zip_path, msg = await staging.stage_agent_templates(staging_dir, "tenant-abc", db_session)
-    after_export = datetime.now(timezone.utc)
+    after_export = datetime.now(UTC)
 
     # Verify export succeeded
     assert zip_path is not None
@@ -80,7 +80,7 @@ async def test_stage_agent_templates_updates_export_timestamp(db_session: AsyncS
 async def test_stage_agent_templates_preserves_staleness_after_export(db_session: AsyncSession, tmp_path: Path):
     """Test that may_be_stale becomes False after export."""
     # Create stale template
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     template = AgentTemplate(
         id="stale-template",
         tenant_key="tenant-abc",

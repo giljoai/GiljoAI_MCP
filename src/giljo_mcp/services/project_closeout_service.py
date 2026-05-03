@@ -13,7 +13,7 @@ Handles project closeout operations:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -111,9 +111,9 @@ class ProjectCloseoutService:
 
                 # Mark project as completed
                 project.status = ProjectStatus.COMPLETED
-                project.completed_at = datetime.now(timezone.utc)
-                project.updated_at = datetime.now(timezone.utc)
-                project.closeout_executed_at = datetime.now(timezone.utc)
+                project.completed_at = datetime.now(UTC)
+                project.updated_at = datetime.now(UTC)
+                project.closeout_executed_at = datetime.now(UTC)
 
                 # Decommission associated agents with smart lifecycle drain (Handover 0498)
                 executions_to_decommission = await self._lifecycle_repo.get_active_agent_executions(
@@ -123,7 +123,7 @@ class ProjectCloseoutService:
 
                 for execution in executions_to_decommission:
                     execution.status = "decommissioned"
-                    execution.updated_at = datetime.now(timezone.utc)
+                    execution.updated_at = datetime.now(UTC)
                     decommissioned_ids.append(execution.job_id)
 
                 await self._project_repo.commit(session)

@@ -424,13 +424,12 @@ def main() -> None:
     elif plat == "macos":
         if not install_macos_system_deps():
             errors.append("tkinter may not be available")
+    # Windows: tkinter ships with Python installer
+    elif check_tkinter():
+        print_ok("Windows: tkinter included with Python")
     else:
-        # Windows: tkinter ships with Python installer
-        if check_tkinter():
-            print_ok("Windows: tkinter included with Python")
-        else:
-            print_warn("tkinter not found - reinstall Python with tkinter option checked")
-            errors.append("tkinter not available")
+        print_warn("tkinter not found - reinstall Python with tkinter option checked")
+        errors.append("tkinter not available")
 
     # Step 3: Check tkinter is working
     print_header("Step 3/5: Checking tkinter")
@@ -460,7 +459,7 @@ def main() -> None:
             print_warn(f"  - {err}")
         print()
 
-    print_ok(f"Virtual environment: dev_tools/venv_devtools/")
+    print_ok("Virtual environment: dev_tools/venv_devtools/")
     print_ok(f"Dependencies: {', '.join(PYTHON_DEPS)}")
     print()
     print("  Launch the control panel:")

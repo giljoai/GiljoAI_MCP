@@ -17,7 +17,7 @@ Responsibilities:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -105,7 +105,7 @@ class ProductLifecycleService:
             event_data_with_timestamp = {
                 **data,
                 "tenant_key": self.tenant_key,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
             await self._websocket_manager.broadcast_to_tenant(
@@ -151,7 +151,7 @@ class ProductLifecycleService:
 
                 for p in products_to_deactivate:
                     p.is_active = False
-                    p.updated_at = datetime.now(timezone.utc)
+                    p.updated_at = datetime.now(UTC)
 
                 if products_to_deactivate:
                     await self._repo.flush(session)
@@ -169,12 +169,12 @@ class ProductLifecycleService:
                         event_type="projects:bulk:deactivated",
                         data={
                             "product_ids": [str(pid) for pid in deactivated_product_ids],
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "timestamp": datetime.now(UTC).isoformat(),
                         },
                     )
 
                 product.is_active = True
-                product.updated_at = datetime.now(timezone.utc)
+                product.updated_at = datetime.now(UTC)
 
                 await self._repo.commit(session)
                 await self._repo.refresh(session, product)
@@ -243,7 +243,7 @@ class ProductLifecycleService:
                     )
 
                 product.is_active = False
-                product.updated_at = datetime.now(timezone.utc)
+                product.updated_at = datetime.now(UTC)
 
                 # Cascade: deactivate active projects under this product
                 await self._repo.deactivate_product_projects(session, product_id)
@@ -290,9 +290,9 @@ class ProductLifecycleService:
                         message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
-                product.deleted_at = datetime.now(timezone.utc)
+                product.deleted_at = datetime.now(UTC)
                 product.is_active = False
-                product.updated_at = datetime.now(timezone.utc)
+                product.updated_at = datetime.now(UTC)
 
                 await self._repo.commit(session)
 
@@ -334,7 +334,7 @@ class ProductLifecycleService:
                     )
 
                 product.deleted_at = None
-                product.updated_at = datetime.now(timezone.utc)
+                product.updated_at = datetime.now(UTC)
 
                 await self._repo.commit(session)
                 await self._repo.refresh(session, product)
@@ -455,7 +455,7 @@ class ProductLifecycleService:
 
                 purged_ids = []
                 for product in expired_products:
-                    days_ago = (datetime.now(timezone.utc) - product.deleted_at).days
+                    days_ago = (datetime.now(UTC) - product.deleted_at).days
                     purged_ids.append(str(product.id))
 
                     await self._repo.delete_hard(session, product)

@@ -29,7 +29,7 @@ async def _run_with_timeout(coro, step_name: str, timeout: float = STEP_TIMEOUT)
     try:
         await asyncio.wait_for(coro, timeout=timeout)
         return True
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning(f"Shutdown step '{step_name}' timed out after {timeout}s - forcing skip")
         return False
     except (RuntimeError, OSError, ConnectionError, ValueError):  # Shutdown resilience

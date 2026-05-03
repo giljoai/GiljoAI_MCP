@@ -22,7 +22,7 @@ Design Principles:
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -265,7 +265,7 @@ class ProductRepository:
         Returns:
             List of expired Product instances
         """
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_before_purge)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days_before_purge)
         stmt = select(Product).where(
             Product.deleted_at.isnot(None),
             Product.deleted_at < cutoff_date,
@@ -506,7 +506,7 @@ class ProductRepository:
             update(Project)
             .where(Project.product_id.in_(product_ids))
             .where(Project.status == ProjectStatus.ACTIVE)
-            .values(status=ProjectStatus.INACTIVE, updated_at=datetime.now(timezone.utc))
+            .values(status=ProjectStatus.INACTIVE, updated_at=datetime.now(UTC))
         )
         await session.execute(stmt)
 
@@ -547,7 +547,7 @@ class ProductRepository:
             update(Project)
             .where(Project.product_id == product_id)
             .where(Project.status == ProjectStatus.ACTIVE)
-            .values(status=ProjectStatus.INACTIVE, updated_at=datetime.now(timezone.utc))
+            .values(status=ProjectStatus.INACTIVE, updated_at=datetime.now(UTC))
         )
         await session.execute(stmt)
 

@@ -34,8 +34,7 @@ Usage:
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from sqlalchemy import delete, select
@@ -57,7 +56,7 @@ class TokenManager:
     with multi-tenant isolation and automatic expiry management.
     """
 
-    def __init__(self, db_session: Optional[AsyncSession] = None):
+    def __init__(self, db_session: AsyncSession | None = None):
         """
         Initialize TokenManager with optional database session.
 
@@ -98,7 +97,7 @@ class TokenManager:
             return str(uuid4())
 
         # Create expiry timestamp (15 minutes from now)
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+        expires_at = datetime.now(UTC) + timedelta(minutes=15)
 
         # Create token record
         token_record = DownloadToken(
@@ -175,7 +174,7 @@ class TokenManager:
             int: Number of tokens deleted
         """
         try:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             # Delete expired tokens
             stmt = delete(DownloadToken).where(DownloadToken.expires_at < now)
@@ -194,7 +193,7 @@ class TokenManager:
             logger.exception("Error cleaning up expired tokens")
             return 0
 
-    async def get_token_info(self, token: str, tenant_key: str) -> Optional[dict]:
+    async def get_token_info(self, token: str, tenant_key: str) -> dict | None:
         """
         Retrieve token information (for debugging/monitoring).
 
@@ -233,7 +232,7 @@ class TokenManager:
             logger.exception("Error retrieving token info")
             return None
 
-    async def get_token_info_by_token(self, token: str) -> Optional[dict]:
+    async def get_token_info_by_token(self, token: str) -> dict | None:
         """
         Retrieve token information by token only (no tenant isolation).
         Used for download validation where token is the authentication.
@@ -372,7 +371,7 @@ class TokenManager:
 
             # Increment counter and update timestamp
             token_record.download_count += 1
-            token_record.last_downloaded_at = datetime.now(timezone.utc)
+            token_record.last_downloaded_at = datetime.now(UTC)
 
             await self.db_session.commit()
 

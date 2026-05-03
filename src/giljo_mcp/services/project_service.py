@@ -25,7 +25,7 @@ Design Principles:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -88,7 +88,7 @@ def _parse_iso_datetime(value: Any) -> datetime | None:
     if value is None:
         return None
     if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
     if not isinstance(value, str):
         return None
     try:
@@ -96,7 +96,7 @@ def _parse_iso_datetime(value: Any) -> datetime | None:
         # natively on Python 3.11+. Be defensive in case older inputs slip through.
         normalized = value.replace("Z", "+00:00") if value.endswith("Z") else value
         dt = datetime.fromisoformat(normalized)
-        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
     except (ValueError, TypeError):
         return None
 
@@ -257,7 +257,7 @@ class ProjectService:
                         )
 
                 # Create project entity
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 project = Project(
                     name=name,
                     mission=mission,
@@ -552,7 +552,7 @@ class ProjectService:
                 # Handover 0425: Also set staging_status to 'staging' when mission is updated
                 project.mission = mission
                 project.staging_status = "staging"
-                project.updated_at = datetime.now(timezone.utc)
+                project.updated_at = datetime.now(UTC)
 
                 await self._repo.commit(session)
 
@@ -658,7 +658,7 @@ class ProjectService:
             if field in allowed_fields:
                 setattr(project, field, value)
 
-        project.updated_at = datetime.now(timezone.utc)
+        project.updated_at = datetime.now(UTC)
 
     @staticmethod
     def _build_project_data(project) -> ProjectData:
@@ -830,7 +830,7 @@ class ProjectService:
                     "token_estimate": len(mission) // 4,
                     "user_config_applied": False,
                     "generated_by": "orchestrator",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 },
             )
 

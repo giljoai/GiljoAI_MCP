@@ -19,7 +19,7 @@ Responsibilities:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
@@ -71,9 +71,9 @@ class JobLifecycleService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        test_session: Optional[AsyncSession] = None,
+        test_session: AsyncSession | None = None,
         message_service: Optional["MessageService"] = None,
-        websocket_manager: Optional[Any] = None,
+        websocket_manager: Any | None = None,
     ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
@@ -104,10 +104,10 @@ class JobLifecycleService:
         mission: str,
         project_id: str,
         tenant_key: str,
-        parent_job_id: Optional[str] = None,
-        context_chunks: Optional[list[str]] = None,
-        phase: Optional[int] = None,
-        predecessor_job_id: Optional[str] = None,
+        parent_job_id: str | None = None,
+        context_chunks: list[str] | None = None,
+        phase: int | None = None,
+        predecessor_job_id: str | None = None,
     ) -> SpawnResult:
         """
         Create an agent job with thin client architecture using dual-model (AgentJob + AgentExecution).
@@ -201,7 +201,7 @@ class JobLifecycleService:
                 # Build job metadata
                 metadata_dict = {
                     "created_via": "thin_client_spawn",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                     "thin_client": True,
                 }
                 if context_chunks:
@@ -239,7 +239,7 @@ class JobLifecycleService:
                     job_id=job_id,
                 )
 
-                created_at = datetime.now(timezone.utc)
+                created_at = datetime.now(UTC)
 
                 # Broadcast agent creation via direct WebSocket
                 await self._broadcast_agent_created(
@@ -486,7 +486,7 @@ class JobLifecycleService:
         agent_name: str,
         tenant_key: str,
         project_id: str,
-        parent_job_id: Optional[str],
+        parent_job_id: str | None,
     ) -> str:
         """
         Validate agent spawn: check template names and resolve display name collisions.
@@ -566,7 +566,7 @@ class JobLifecycleService:
         mission: str,
         tenant_key: str,
         agent_display_name: str,
-    ) -> tuple[str, Optional[str]]:
+    ) -> tuple[str, str | None]:
         """
         Resolve template ID for agent job creation.
 
@@ -674,9 +674,9 @@ do not act on them during staging. Complete the full staging sequence
         mission: str,
         agent_display_name: str,
         agent_name: str,
-        parent_job_id: Optional[str],
-        phase: Optional[int],
-        resolved_template_id: Optional[str],
+        parent_job_id: str | None,
+        phase: int | None,
+        resolved_template_id: str | None,
         metadata_dict: dict,
     ) -> tuple[AgentJob, AgentExecution]:
         """

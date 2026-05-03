@@ -17,8 +17,7 @@ Also provides:
 import asyncio
 import contextlib
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,7 +63,7 @@ class SilenceDetector:
         self.ws = ws_manager
         self.scan_interval_seconds = scan_interval_seconds
         self.running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
 
     async def start(self) -> None:
         """Start the background monitoring loop."""
@@ -126,7 +125,7 @@ class SilenceDetector:
         Returns:
             Number of agents marked as silent
         """
-        cutoff = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
+        cutoff = datetime.now(UTC) - timedelta(minutes=threshold_minutes)
 
         # TENANT ISOLATION NOTE (Phase C audit, Feb 2026):
         # This query intentionally scans ALL tenants. The silence detector is a
@@ -247,7 +246,7 @@ async def clear_silent_status(
     agent_id: str,
     tenant_key: str,
     ws_manager,
-) -> Optional[dict]:
+) -> dict | None:
     """Clear silent status for a specific agent (REST endpoint helper).
 
     Used by the dashboard when a user clicks the Silent badge to

@@ -26,8 +26,8 @@ Design Principles:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -234,7 +234,7 @@ class ProductService:
                     product_memory=validated_memory,
                     target_platforms=target_platforms or ["all"],
                     is_active=False,
-                    created_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
                 )
 
                 await self._repo.add(session, product)
@@ -416,7 +416,7 @@ class ProductService:
                     if field in _ALLOWED_PRODUCT_FIELDS:
                         setattr(product, field, value)
 
-                product.updated_at = datetime.now(timezone.utc)
+                product.updated_at = datetime.now(UTC)
 
                 await self._repo.commit(session)
                 await self._repo.refresh(session, product)
@@ -459,7 +459,7 @@ class ProductService:
     # Active Product Management
     # ============================================================================
 
-    async def get_active_product(self) -> Optional[Product]:
+    async def get_active_product(self) -> Product | None:
         """
         Get the currently active product for the tenant.
 
@@ -533,7 +533,7 @@ class ProductService:
 
                 product.product_memory = validate_product_memory(product.product_memory)
 
-                product.updated_at = datetime.now(timezone.utc)
+                product.updated_at = datetime.now(UTC)
 
                 try:
                     from sqlalchemy.orm.attributes import flag_modified

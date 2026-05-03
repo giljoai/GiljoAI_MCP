@@ -14,8 +14,8 @@ respect rate limits (60 req/hr unauthenticated).
 import logging
 import time
 from dataclasses import dataclass, field
+from datetime import UTC
 from pathlib import Path
-from typing import Optional
 
 import httpx
 
@@ -32,11 +32,11 @@ class VersionInfo:
     """Structured version check result."""
 
     installed_version: str
-    latest_version: Optional[str] = None
-    latest_tarball_url: Optional[str] = None
-    latest_sha256: Optional[str] = None
+    latest_version: str | None = None
+    latest_tarball_url: str | None = None
+    latest_sha256: str | None = None
     update_available: bool = False
-    checked_at: Optional[str] = None
+    checked_at: str | None = None
 
 
 @dataclass
@@ -50,7 +50,7 @@ class _CacheEntry:
 _cache_store: dict[str, _CacheEntry] = {}
 
 
-def get_installed_version(root: Optional[Path] = None) -> str:
+def get_installed_version(root: Path | None = None) -> str:
     """Read installed version from the VERSION file.
 
     Returns 'unknown' if the file is missing or unreadable.
@@ -63,7 +63,7 @@ def get_installed_version(root: Optional[Path] = None) -> str:
         return "unknown"
 
 
-def _parse_version_tuple(version_str: str) -> Optional[tuple[int, ...]]:
+def _parse_version_tuple(version_str: str) -> tuple[int, ...] | None:
     """Parse a semver-like string into a comparable tuple.
 
     Returns None if the string cannot be parsed.
@@ -84,8 +84,8 @@ def compare_versions(installed: str, latest: str) -> bool:
 
 
 async def _fetch_latest_from_github(
-    client: Optional[httpx.AsyncClient] = None,
-) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    client: httpx.AsyncClient | None = None,
+) -> tuple[str | None, str | None, str | None]:
     """Fetch latest release info from GitHub API.
 
     Returns (version, tarball_url, sha256) or (None, None, None) on failure.
@@ -147,9 +147,9 @@ async def _fetch_latest_from_github(
 
 
 async def get_version_info(
-    root: Optional[Path] = None,
-    client: Optional[httpx.AsyncClient] = None,
-    _now: Optional[float] = None,
+    root: Path | None = None,
+    client: httpx.AsyncClient | None = None,
+    _now: float | None = None,
 ) -> VersionInfo:
     """Return installed + latest version info, with 1-hour caching.
 
@@ -175,9 +175,9 @@ async def get_version_info(
 
     version, tarball_url, sha256 = await _fetch_latest_from_github(client)
 
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    checked_at = datetime.now(timezone.utc).isoformat()
+    checked_at = datetime.now(UTC).isoformat()
 
     update_available = compare_versions(installed, version) if version else False
 

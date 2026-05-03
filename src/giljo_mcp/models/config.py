@@ -12,7 +12,7 @@ download tokens, and API metrics.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, ClassVar
 
 from sqlalchemy import (
@@ -426,7 +426,7 @@ class DownloadToken(Base):
     @property
     def is_expired(self) -> bool:
         """Check if token has expired"""
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     @property
     def is_valid(self) -> bool:

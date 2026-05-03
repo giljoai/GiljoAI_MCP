@@ -16,8 +16,8 @@ Handover 0094: Token-Efficient MCP Downloads
 import io
 import logging
 import zipfile
+from datetime import UTC
 from pathlib import Path
-from typing import Optional
 
 from fastapi import APIRouter, Body, Cookie, Depends, Header, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
@@ -148,8 +148,8 @@ async def download_slash_commands(
 @router.get("/agent-templates.zip")
 async def download_agent_templates(
     request: Request,
-    access_token: Optional[str] = Cookie(None),
-    x_api_key: Optional[str] = Header(None),
+    access_token: str | None = Cookie(None),
+    x_api_key: str | None = Header(None),
     db: AsyncSession = Depends(get_db_session),
     active_only: bool = Query(default=True, description="Only include active templates"),
     platform: str = Query(default="claude_code", description="Target platform: claude_code, codex_cli, gemini_cli"),
@@ -310,9 +310,9 @@ async def download_agent_templates(
 
     # Handover 0335: Update last_exported_at and emit WebSocket event (authenticated users only)
     if current_user and selected:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        export_timestamp = datetime.now(timezone.utc)
+        export_timestamp = datetime.now(UTC)
 
         # Update last_exported_at for all exported templates
         for template in selected:

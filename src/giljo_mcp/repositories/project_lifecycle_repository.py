@@ -22,7 +22,7 @@ Design Principles:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import and_, select, update
@@ -206,8 +206,8 @@ class ProjectLifecycleRepository:
         """
         update_values: dict = {
             "status": ProjectStatus.CANCELLED,
-            "completed_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "completed_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
         }
         if reason:
             update_values["cancellation_reason"] = reason
@@ -248,7 +248,7 @@ class ProjectLifecycleRepository:
             status="active",
             job_metadata={
                 "created_via": "project_activation_fixture",
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             },
         )
         session.add(agent_job)

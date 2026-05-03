@@ -4,7 +4,7 @@
 # Basic settings
 line-length = 120
 indent-width = 4
-target-version = "py39"  # Python 3.9+
+target-version = "py312"  # Python 3.12+
 
 # Enable pyflakes, pycodestyle, isort, and more
 [lint]
@@ -170,7 +170,7 @@ exclude = [
     "build",
     "dist",
     "node_modules",
-    "migrations",
+    "migrations/**",
     "temp",
     "backups",
     "logs",
@@ -212,6 +212,7 @@ inline-quotes = "double"
     "SLF001", # Private member access OK in tests - need to verify internal state
     "T201",   # Print allowed in test runners, manual tests, and fixtures
     "BLE001", # Broad exception OK in test setup/teardown helpers
+    "ERA001", # Section-header comments (# TEST: ...) and HANDOVER notes flagged as commented-out code
 ]
 "**/conftest.py" = [
     "ARG",    # Unused arguments OK in pytest fixtures
@@ -237,6 +238,7 @@ inline-quotes = "double"
     "T201",   # CLI scripts use print() for user-facing output
     "BLE001", # Broad exception OK for graceful error handling in CLI tools
     "INP001", # No __init__.py needed in scripts
+    "ERA001", # Inline doc comments illustrating "real implementation" calls flagged as commented-out code
 ]
 "launchers/**/*.py" = [
     "T201",   # Launchers use print() for startup messages
@@ -272,6 +274,7 @@ inline-quotes = "double"
 "install.py" = [
     "T201",   # CLI installer - print() for user-facing output
     "BLE001", # Broad exception OK for graceful install error handling
+    "ERA001", # Doc comment "# Backspace (DEL or BS)" misclassified as commented-out code
 ]
 "update.py" = [
     "T201",   # CLI tool - print() for user-facing update output

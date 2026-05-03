@@ -22,8 +22,8 @@ For message retrieval, acknowledgment, and status, see MessageService.
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,8 +69,8 @@ class MessageRoutingService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        websocket_manager: Optional[Any] = None,
-        test_session: Optional[AsyncSession] = None,
+        websocket_manager: Any | None = None,
+        test_session: AsyncSession | None = None,
     ):
         """
         Initialize MessageRoutingService.
@@ -110,8 +110,8 @@ class MessageRoutingService:
         project_id: str,
         message_type: str = "direct",
         priority: str = "normal",
-        from_agent: Optional[str] = None,
-        tenant_key: Optional[str] = None,
+        from_agent: str | None = None,
+        tenant_key: str | None = None,
         requires_action: bool = False,
     ) -> SendMessageResult:
         """
@@ -230,7 +230,7 @@ class MessageRoutingService:
     async def _validate_send_message_inputs(
         self,
         session: AsyncSession,
-        tenant_key: Optional[str],
+        tenant_key: str | None,
         project_id: str,
     ) -> tuple[str, Any]:
         """Validate tenant context and resolve project for send_message."""
@@ -258,7 +258,7 @@ class MessageRoutingService:
         to_agents: list[str],
         project_id: str,
         tenant_key: str,
-        from_agent: Optional[str],
+        from_agent: str | None,
     ) -> list[str]:
         """Resolve agent display names/refs to agent_id UUIDs.
 
@@ -295,7 +295,7 @@ class MessageRoutingService:
     async def _resolve_sender_display_name(
         self,
         session: AsyncSession,
-        from_agent: Optional[str],
+        from_agent: str | None,
         project: Any,
     ) -> str:
         """Resolve sender agent reference to display name (Handover 0827a)."""
@@ -317,7 +317,7 @@ class MessageRoutingService:
         is_broadcast_fanout: bool,
         message_type: str,
         priority: str,
-        from_agent: Optional[str],
+        from_agent: str | None,
         sender_display_name: str,
         requires_action: bool = False,
     ) -> tuple[list[Message], str | None]:
@@ -353,7 +353,7 @@ class MessageRoutingService:
         response: SendMessageResult,
         resolved_to_agents: list[str],
         to_agents: list[str],
-        from_agent: Optional[str],
+        from_agent: str | None,
         tenant_key: str,
         project: Any,
     ) -> None:
@@ -381,7 +381,7 @@ class MessageRoutingService:
         if is_orchestrator and is_staging:
             if project.staging_status != "staging_complete":
                 project.staging_status = "staging_complete"
-                project.updated_at = datetime.now(timezone.utc)
+                project.updated_at = datetime.now(UTC)
 
             response.staging_directive = StagingDirective(
                 status="STAGING_SESSION_COMPLETE",
@@ -406,9 +406,9 @@ class MessageRoutingService:
         session: AsyncSession,
         messages: list,
         project: Any,
-        from_agent: Optional[str],
+        from_agent: str | None,
         project_id: str,
-        recipient_ids: Optional[list[str]] = None,
+        recipient_ids: list[str] | None = None,
     ) -> Any:
         """Update message counters (sent/waiting) with deadlock retry.
 
@@ -646,7 +646,7 @@ class MessageRoutingService:
         project_id: str,
         priority: str = "normal",
         from_agent: str = "orchestrator",
-        tenant_key: Optional[str] = None,
+        tenant_key: str | None = None,
     ) -> SendMessageResult:
         """
         Broadcast a message to all agents in a project.
@@ -719,7 +719,7 @@ class MessageRoutingService:
         project_id: str,
         content: str,
         from_agent: str = "orchestrator",
-        tenant_key: Optional[str] = None,
+        tenant_key: str | None = None,
     ) -> BroadcastResult:
         """
         Broadcast a message to all active executions in a project.

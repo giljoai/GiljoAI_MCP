@@ -16,7 +16,7 @@ These functions are pure data-access helpers with no api/ dependencies.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -268,11 +268,11 @@ async def get_available_series_numbers(
 async def check_series_available(
     session: AsyncSession,
     tenant_key: str,
-    type_id: Optional[str],
+    type_id: str | None,
     series_number: int,
-    subseries: Optional[str] = None,
-    exclude_project_id: Optional[str] = None,
-    product_id: Optional[str] = None,
+    subseries: str | None = None,
+    exclude_project_id: str | None = None,
+    product_id: str | None = None,
 ) -> dict[str, Any]:
     """Check if a specific series number combination is available within a product."""
     available = await _repo.check_series_available(
@@ -284,10 +284,10 @@ async def check_series_available(
 async def get_used_subseries(
     session: AsyncSession,
     tenant_key: str,
-    type_id: Optional[str],
+    type_id: str | None,
     series_number: int,
-    exclude_project_id: Optional[str] = None,
-    product_id: Optional[str] = None,
+    exclude_project_id: str | None = None,
+    product_id: str | None = None,
 ) -> dict[str, Any]:
     """Get all subseries letters already used for a type + series_number within a product."""
     used = await _repo.get_used_subseries(session, tenant_key, type_id, series_number, exclude_project_id, product_id)

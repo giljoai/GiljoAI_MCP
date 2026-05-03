@@ -22,7 +22,7 @@ Test Coverage (Handover 0424g):
 Handover 0731c: Updated for typed service returns (AuthResult, UserInfo).
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import bcrypt
 import pytest
@@ -81,7 +81,7 @@ async def test_admin_user(db_session, test_org):
         tenant_key="test_tenant_001",
         org_id=test_org.id,  # Direct FK to organization
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(admin)
     await db_session.flush()
@@ -114,7 +114,7 @@ async def test_member_user(db_session, test_org):
         tenant_key="test_tenant_002",
         org_id=test_org.id,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(member)
     await db_session.flush()

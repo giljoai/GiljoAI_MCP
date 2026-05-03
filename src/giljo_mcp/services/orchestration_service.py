@@ -12,7 +12,7 @@ Handover 0950j: Agent state methods extracted to OrchestrationAgentStateService.
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,9 +60,9 @@ class OrchestrationService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        test_session: Optional[AsyncSession] = None,
+        test_session: AsyncSession | None = None,
         message_service: Optional["MessageService"] = None,
-        websocket_manager: Optional[Any] = None,
+        websocket_manager: Any | None = None,
     ):
         """
         Initialize OrchestrationService with database and tenant management.
@@ -148,7 +148,7 @@ class OrchestrationService:
         last_warning = self._todo_warning_timestamps.get(job_id)
         if not last_warning:
             return True
-        elapsed = (datetime.now(timezone.utc) - last_warning).total_seconds()
+        elapsed = (datetime.now(UTC) - last_warning).total_seconds()
         return elapsed >= (cooldown_minutes * 60)
 
     def _record_todo_warning(self, job_id: str) -> None:
@@ -158,7 +158,7 @@ class OrchestrationService:
         Args:
             job_id: Job UUID
         """
-        self._todo_warning_timestamps[job_id] = datetime.now(timezone.utc)
+        self._todo_warning_timestamps[job_id] = datetime.now(UTC)
 
     # ============================================================================
     # Project Orchestration
@@ -168,7 +168,7 @@ class OrchestrationService:
         self,
         project_id: str,
         tenant_key: str,
-        exclude_job_id: Optional[str] = None,
+        exclude_job_id: str | None = None,
     ) -> WorkflowStatus:
         """Facade: delegates to WorkflowStatusService."""
         return await self._workflow_status.get_workflow_status(project_id, tenant_key, exclude_job_id)
@@ -205,7 +205,7 @@ class OrchestrationService:
     # Pending Jobs
     # ============================================================================
 
-    async def get_pending_jobs(self, tenant_key: str, agent_display_name: Optional[str] = None) -> PendingJobsResult:
+    async def get_pending_jobs(self, tenant_key: str, agent_display_name: str | None = None) -> PendingJobsResult:
         """
         Get pending jobs, optionally filtered by agent display name.
 
@@ -277,7 +277,7 @@ class OrchestrationService:
         self,
         job_id: str,
         result: dict[str, Any],
-        tenant_key: Optional[str] = None,
+        tenant_key: str | None = None,
         acknowledge_closeout_todo: bool = False,
         acknowledge_messages_on_complete: bool = False,
     ) -> CompleteJobResult:
@@ -316,9 +316,9 @@ class OrchestrationService:
     async def list_jobs(
         self,
         tenant_key: str,
-        project_id: Optional[str] = None,
-        status_filter: Optional[str] = None,
-        agent_display_name: Optional[str] = None,
+        project_id: str | None = None,
+        status_filter: str | None = None,
+        agent_display_name: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> JobListResult:
@@ -340,7 +340,7 @@ class OrchestrationService:
             "server": "giljo_mcp",
             "version": "1.0.0",
             "skills_version": SKILLS_VERSION,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "database": "connected",
             "message": "GiljoAI MCP server is operational",
         }

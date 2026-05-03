@@ -12,7 +12,7 @@ PaginatedResult, and cross-cutting serialization tests.
 Created: Handover 0731
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -44,7 +44,7 @@ class TestDeleteResult:
 
     def test_creation_with_timestamp(self):
         """DeleteResult accepts an explicit deleted_at timestamp."""
-        ts = datetime(2026, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        ts = datetime(2026, 1, 15, 12, 0, 0, tzinfo=UTC)
         result = DeleteResult(deleted=True, deleted_at=ts)
         assert result.deleted is True
         assert result.deleted_at == ts
@@ -149,7 +149,7 @@ class TestModelJsonSerialization:
 
     def test_delete_result_with_datetime_json(self):
         """Datetime fields should serialize to JSON correctly."""
-        ts = datetime(2026, 2, 1, 10, 30, 0, tzinfo=timezone.utc)
+        ts = datetime(2026, 2, 1, 10, 30, 0, tzinfo=UTC)
         result = DeleteResult(deleted_at=ts)
         json_str = result.model_dump_json()
         assert "2026" in json_str

@@ -19,7 +19,7 @@ Responsibilities:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -287,7 +287,7 @@ class UserService:
             must_change_password=False,
             must_set_pin=True,  # Force PIN setup on first login
             recovery_pin_hash=None,  # No PIN set initially
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         user = await self._repo.add_user(session, user)
@@ -563,7 +563,7 @@ class UserService:
         existing = {row.category: row for row in existing_rows}
 
         # Upsert toggleable categories
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for category, value in priorities.items():
             if category not in TOGGLEABLE_CATEGORIES:
                 continue  # Skip always-on categories
@@ -774,7 +774,7 @@ class UserService:
             event_data_with_timestamp = {
                 **data,
                 "tenant_key": self.tenant_key,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
             # Broadcast to tenant clients

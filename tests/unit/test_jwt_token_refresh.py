@@ -17,7 +17,7 @@ Covers:
 - Custom grace period override
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import jwt
@@ -43,7 +43,7 @@ class TestVerifyTokenAllowExpired:
                 Positive = future (valid), negative = past (expired).
             **extra_claims: Additional claims to include in the token.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload = {
             "sub": str(uuid4()),
             "username": "testuser",
@@ -139,7 +139,7 @@ class TestVerifyTokenAllowExpired:
 
     def test_wrong_signature_returns_none(self):
         """Token signed with wrong secret should return None."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload = {
             "sub": str(uuid4()),
             "username": "testuser",
@@ -175,7 +175,7 @@ class TestVerifyTokenAllowExpired:
 
     def test_missing_type_claim_returns_none(self):
         """Token without type claim should return None."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload = {
             "sub": str(uuid4()),
             "username": "testuser",

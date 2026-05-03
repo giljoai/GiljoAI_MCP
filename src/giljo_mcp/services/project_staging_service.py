@@ -12,7 +12,7 @@ Contains check_staging_allowed, restage, unstage, and cancel_staging.
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -136,7 +136,7 @@ class ProjectStagingService:
 
             project.staging_status = None
             project.execution_mode = "multi_terminal"
-            project.updated_at = datetime.now(timezone.utc)
+            project.updated_at = datetime.now(UTC)
 
             if orchestrator:
                 orchestrator.status = "decommissioned"
@@ -193,7 +193,7 @@ class ProjectStagingService:
                 )
 
             project.staging_status = None
-            project.updated_at = datetime.now(timezone.utc)
+            project.updated_at = datetime.now(UTC)
             await self._project_repo.commit(session)
 
             self._logger.info("[UNSTAGE] Project %s unstaged", project_id)
@@ -246,8 +246,8 @@ class ProjectStagingService:
                 )
 
             project.status = ProjectStatus.CANCELLED
-            project.completed_at = datetime.now(timezone.utc)
-            project.updated_at = datetime.now(timezone.utc)
+            project.completed_at = datetime.now(UTC)
+            project.updated_at = datetime.now(UTC)
 
             await self._project_repo.commit(session)
             await self._project_repo.refresh(session, project)

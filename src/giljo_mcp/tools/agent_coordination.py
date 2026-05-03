@@ -18,7 +18,7 @@ Production-grade features:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import ValidationError
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class _AgentCoordinationState:
     """State holder to avoid global statement."""
 
-    db_manager_instance: Optional[DatabaseManager] = None
+    db_manager_instance: DatabaseManager | None = None
     test_session = None
 
 

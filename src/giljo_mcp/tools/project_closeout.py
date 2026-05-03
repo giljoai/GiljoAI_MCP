@@ -12,7 +12,7 @@ Handles project completion and updates product memory with sequential history en
 import logging
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from inspect import iscoroutine
 from typing import Any
 
@@ -244,7 +244,7 @@ async def _resolve_git_commits(
                 repo_owner=git_config.get("repo_owner"),
                 access_token=git_config.get("access_token"),
                 project_created_at=project.created_at,
-                project_completed_at=project.completed_at or datetime.now(timezone.utc),
+                project_completed_at=project.completed_at or datetime.now(UTC),
             )
     else:
         git_commits = []
@@ -449,7 +449,7 @@ async def close_project_and_update_memory(
                 sequence=sequence_number,
                 entry_type="project_closeout",
                 source="closeout_v1",
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 project_name=project.name,
                 summary=summary,
                 key_outcomes=key_outcomes,

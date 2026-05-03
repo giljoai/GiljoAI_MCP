@@ -5,8 +5,6 @@
 
 """Template service response models."""
 
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -24,13 +22,13 @@ class TemplateDetail(BaseModel):
 
     id: str
     name: str
-    role: Optional[str] = None
-    content: Optional[str] = None
-    cli_tool: Optional[str] = None
-    background_color: Optional[str] = None
-    category: Optional[str] = None
-    tenant_key: Optional[str] = None
-    product_id: Optional[str] = None
+    role: str | None = None
+    content: str | None = None
+    cli_tool: str | None = None
+    background_color: str | None = None
+    category: str | None = None
+    tenant_key: str | None = None
+    product_id: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

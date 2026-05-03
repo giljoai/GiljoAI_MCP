@@ -13,7 +13,7 @@ with optional administrator overrides stored in the configurations table.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -93,7 +93,7 @@ class SystemPromptService:
         payload = {
             "content": sanitized_content,
             "updated_by": updated_by,
-            "updated_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(UTC),
         }
 
         if session:
@@ -176,7 +176,7 @@ class SystemPromptService:
             "updated_by": payload.get("updated_by"),
             "updated_at": payload.get("updated_at").isoformat() if payload.get("updated_at") else None,
         }
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         stmt = pg_insert(Configuration).values(
             tenant_key=tenant_key,

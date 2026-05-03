@@ -15,7 +15,7 @@ Covers:
 TDD: Tests written FIRST, implementation follows.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import bcrypt
@@ -76,7 +76,7 @@ async def test_user(db_session, test_org):
         tenant_key=test_org.tenant_key,
         org_id=test_org.id,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(user)
     await db_session.commit()
@@ -97,7 +97,7 @@ async def _create_api_key_in_db(db_session, user, *, is_active: bool = True, exp
         key_prefix="gk_test_key_",
         permissions=["*"],
         is_active=is_active,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         expires_at=expires_at,
     )
     db_session.add(api_key)
@@ -136,7 +136,7 @@ class TestApiKeyLimit:
             await _create_api_key_in_db(
                 db_session,
                 user,
-                expires_at=datetime.now(timezone.utc) + timedelta(days=90),
+                expires_at=datetime.now(UTC) + timedelta(days=90),
             )
 
         with pytest.raises(BaseGiljoError, match="Maximum of 5 active API keys"):
@@ -155,7 +155,7 @@ class TestApiKeyLimit:
                 db_session,
                 user,
                 is_active=False,
-                expires_at=datetime.now(timezone.utc) + timedelta(days=90),
+                expires_at=datetime.now(UTC) + timedelta(days=90),
             )
 
         # Should succeed because revoked keys are not counted
@@ -175,7 +175,7 @@ class TestApiKeyLimit:
                 db_session,
                 user,
                 is_active=True,
-                expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+                expires_at=datetime.now(UTC) - timedelta(days=1),
             )
 
         # Should succeed because expired keys are not counted
@@ -208,13 +208,13 @@ class TestApiKeyExpiry:
     async def test_new_key_expires_in_90_days(self, auth_service, test_user):
         """Newly created API key should expire approximately 90 days from now."""
         user, _ = test_user
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
 
         result = await auth_service.create_api_key(
             user_id=user.id, tenant_key=user.tenant_key, name="90-Day Test", permissions=["*"]
         )
 
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
         expires_at = datetime.fromisoformat(result.expires_at)
         expected_min = before + timedelta(days=89, hours=23)
         expected_max = after + timedelta(days=90, minutes=1)
@@ -290,7 +290,7 @@ class TestListApiKeysExpiresAt:
     async def test_list_keys_includes_expires_at(self, auth_service, test_user, db_session):
         """list_api_keys should include expires_at for each key."""
         user, _ = test_user
-        future_expiry = datetime.now(timezone.utc) + timedelta(days=90)
+        future_expiry = datetime.now(UTC) + timedelta(days=90)
         await _create_api_key_in_db(db_session, user, expires_at=future_expiry)
 
         result = await auth_service.list_api_keys(user.id, include_revoked=False)

@@ -10,7 +10,7 @@ This module provides a standardized exception hierarchy for consistent error han
 across the entire GiljoAI MCP system.
 """
 
-from typing import Optional
+from datetime import UTC
 
 
 class BaseGiljoError(Exception):
@@ -23,7 +23,7 @@ class BaseGiljoError(Exception):
 
     default_status_code: int = 500
 
-    def __init__(self, message: str, error_code: Optional[str] = None, context: Optional[dict] = None):
+    def __init__(self, message: str, error_code: str | None = None, context: dict | None = None):
         """
         Initialize the base exception.
 
@@ -32,13 +32,13 @@ class BaseGiljoError(Exception):
             error_code: Optional machine-readable error code
             context: Optional dictionary with additional error context
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         super().__init__(message)
         self.message = message
         self.error_code = error_code or self.__class__.__name__.upper()
         self.context = context or {}
-        self.timestamp = datetime.now(timezone.utc)
+        self.timestamp = datetime.now(UTC)
 
     def __str__(self):
         if self.context:

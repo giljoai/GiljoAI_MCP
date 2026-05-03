@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -65,7 +65,7 @@ async def create_test_key():
             key_prefix=key_prefix,
             permissions={},
             is_active=True,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         session.add(api_key_record)
@@ -74,11 +74,11 @@ async def create_test_key():
         print("SUCCESS: API Key Created Successfully!")
         print(f"   User: {user.username}")
         print(f"   Tenant: {user.tenant_key}")
-        print(f"   API Key: {api_key}")  # noqa: S106 — dev tool, key shown intentionally for local testing
+        print(f"   API Key: {api_key}")
         print(f"   Key ID: {api_key_record.id}")
         print()
         print("Use this API key for testing:")
-        print(f'export TEST_API_KEY="{api_key}"')  # noqa: S106 — dev tool, key shown intentionally for local testing
+        print(f'export TEST_API_KEY="{api_key}"')
 
         return api_key
 

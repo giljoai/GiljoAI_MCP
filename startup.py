@@ -36,7 +36,7 @@ import sys
 import time
 import webbrowser
 from pathlib import Path
-from typing import IO, Optional, Tuple
+from typing import IO
 
 
 # NOTE: Third-party imports (click, colorama) are deferred until AFTER
@@ -183,7 +183,7 @@ def check_python_version() -> bool:
     return is_compatible
 
 
-def load_postgresql_config() -> Optional[dict]:
+def load_postgresql_config() -> dict | None:
     """
     Load PostgreSQL configuration from config.yaml if available.
 
@@ -312,7 +312,7 @@ def check_npm_available() -> bool:
     return False
 
 
-def check_database_connectivity() -> Tuple[bool, Optional[str]]:
+def check_database_connectivity() -> tuple[bool, str | None]:
     """
     Check if database connection can be established.
 
@@ -373,7 +373,7 @@ def check_database_connectivity() -> Tuple[bool, Optional[str]]:
         return False, error_msg
 
 
-def check_first_run() -> Tuple[bool, Optional[dict]]:
+def check_first_run() -> tuple[bool, dict | None]:
     """
     Check if this is the first run (setup not completed).
 
@@ -593,7 +593,7 @@ def is_port_available(port: int, host: str = "127.0.0.1") -> bool:
     return False
 
 
-def find_available_port(preferred_port: int, max_attempts: int = 10) -> Optional[int]:
+def find_available_port(preferred_port: int, max_attempts: int = 10) -> int | None:
     """
     Find an available port starting from preferred port.
 
@@ -612,7 +612,7 @@ def find_available_port(preferred_port: int, max_attempts: int = 10) -> Optional
     return None
 
 
-def get_config_ports() -> Tuple[int, int]:
+def get_config_ports() -> tuple[int, int]:
     """
     Get API and Frontend ports from config.yaml.
 
@@ -707,7 +707,7 @@ def get_ssl_enabled() -> bool:
     return False
 
 
-def get_network_ip() -> Optional[str]:
+def get_network_ip() -> str | None:
     """
     Get network IP address for display purposes.
 
@@ -814,7 +814,7 @@ def get_network_ip() -> Optional[str]:
     return None
 
 
-def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
+def start_api_server(verbose: bool = False) -> subprocess.Popen | None:
     """
     Start the API server.
 
@@ -879,7 +879,7 @@ def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
         return None
 
 
-def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
+def start_frontend_server(verbose: bool = False) -> subprocess.Popen | None:
     """
     Start the frontend development server.
 
@@ -1323,7 +1323,7 @@ def _heal_schema_to_v37(session) -> None:
         print_info(f"Schema heal: {applied}/{len(heal_statements)} statements applied")
 
 
-def _get_database_url() -> Optional[str]:
+def _get_database_url() -> str | None:
     """Build database URL from environment (same source as check_database_connectivity)."""
     with contextlib.suppress(Exception):
         from dotenv import load_dotenv

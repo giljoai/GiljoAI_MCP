@@ -17,7 +17,7 @@ Tests that OrchestrationService correctly:
 """
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -80,7 +80,7 @@ async def active_project(
         description="Test project for 0827d",
         mission="Test todo append feature",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -109,7 +109,7 @@ def _create_agent_with_todos(
     )
     db_session.add(job)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     agent = AgentExecution(
         job_id=job_id,
         tenant_key=tenant_key,
@@ -468,7 +468,7 @@ def test_job_response_includes_reactivation_fields():
         agent_display_name="Test-Agent",
         mission="Test mission",
         status="working",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         accumulated_duration_seconds=175.5,
         reactivation_count=2,
     )
@@ -488,7 +488,7 @@ def test_job_response_defaults_reactivation_fields():
         agent_display_name="Test-Agent",
         mission="Test mission",
         status="working",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
     assert response.accumulated_duration_seconds == 0.0
@@ -546,7 +546,7 @@ def test_job_to_response_passes_reactivation_fields():
         "agent_display_name": "Test-Agent",
         "mission": "Test mission",
         "status": "working",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "accumulated_duration_seconds": 250.0,
         "reactivation_count": 3,
     }

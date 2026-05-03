@@ -13,7 +13,6 @@ import logging
 import os
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
-from typing import Optional
 
 
 # Set up logging early to catch import issues
@@ -614,9 +613,9 @@ def _register_routers(app: FastAPI) -> None:
 async def _authenticate_ws_connection(
     websocket: WebSocket,
     client_id: str,
-    api_key: Optional[str],
-    token: Optional[str],
-) -> Optional[dict]:
+    api_key: str | None,
+    token: str | None,
+) -> dict | None:
     """Authenticate an incoming WebSocket connection and return the auth context.
 
     Obtains a short-lived database session (None in setup mode), delegates to
@@ -840,7 +839,7 @@ def _register_event_handlers(app: FastAPI) -> None:
 
     @app.websocket("/ws/{client_id}")
     async def websocket_endpoint(
-        websocket: WebSocket, client_id: str, api_key: Optional[str] = Query(None), token: Optional[str] = Query(None)
+        websocket: WebSocket, client_id: str, api_key: str | None = Query(None), token: str | None = Query(None)
     ):
         """WebSocket endpoint for real-time updates with authentication"""
         auth_context = await _authenticate_ws_connection(

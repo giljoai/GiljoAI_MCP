@@ -25,7 +25,7 @@ Usage:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -155,7 +155,7 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
 
         # Seed each template
         seeded_count = 0
-        current_time = datetime.now(timezone.utc)
+        current_time = datetime.now(UTC)
 
         for template_def in default_templates:
             if template_def["role"] in SYSTEM_MANAGED_ROLES:

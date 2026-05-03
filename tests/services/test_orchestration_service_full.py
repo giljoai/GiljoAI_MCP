@@ -17,6 +17,7 @@ All tests use real database integration (db_manager fixture).
 
 import random
 import uuid
+from datetime import UTC
 
 import pytest
 
@@ -60,7 +61,7 @@ async def test_product(db_manager: DatabaseManager):
 @pytest.fixture
 async def test_project(db_manager: DatabaseManager, test_product: dict):
     """Create a test project."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     async with db_manager.get_session_async() as session:
         project = Project(
@@ -71,7 +72,7 @@ async def test_project(db_manager: DatabaseManager, test_product: dict):
             mission="Build a RESTful API for a todo application",
             status="active",
             # Handover 0709: Set implementation_launched_at to bypass phase gate
-            implementation_launched_at=datetime.now(timezone.utc),
+            implementation_launched_at=datetime.now(UTC),
             series_number=random.randint(1, 999999),
         )
         session.add(project)

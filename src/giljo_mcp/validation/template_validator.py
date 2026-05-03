@@ -21,7 +21,7 @@ import json
 import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from giljo_mcp.validation.rules import (
     InjectionDetectionRule,
@@ -141,7 +141,7 @@ class TemplateValidator:
             errors=errors,
             warnings=warnings,
             template_id=template_id,
-            validated_at=datetime.now(timezone.utc),
+            validated_at=datetime.now(UTC),
             validation_duration_ms=duration_ms,
             cached=False,
         )

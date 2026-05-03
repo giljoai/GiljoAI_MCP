@@ -10,6 +10,7 @@ Verifies that create_project auto-assigns series_number when not provided,
 preventing uq_project_taxonomy constraint violations for MCP callers.
 """
 
+from datetime import UTC
 from uuid import uuid4
 
 import pytest
@@ -127,7 +128,7 @@ class TestAutoAssignSeriesNumber:
         self, project_service: ProjectService, test_tenant_key: str, db_session
     ):
         """Auto-series includes deleted rows (constraint doesn't exclude them)."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         # Create a soft-deleted project with series_number=1
         deleted_project = Project(
@@ -138,7 +139,7 @@ class TestAutoAssignSeriesNumber:
             tenant_key=test_tenant_key,
             status="inactive",
             series_number=1,
-            deleted_at=datetime.now(timezone.utc),
+            deleted_at=datetime.now(UTC),
         )
         db_session.add(deleted_project)
         await db_session.commit()

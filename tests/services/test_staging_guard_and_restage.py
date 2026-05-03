@@ -14,7 +14,7 @@ Covers:
 5. Restage creates fresh orchestrator fixture
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -75,9 +75,9 @@ def _make_project(staging_status=None, execution_mode="multi_terminal", status="
     project.cancellation_reason = None
     project.deactivation_reason = None
     project.early_termination = None
-    project.created_at = datetime.now(timezone.utc)
-    project.updated_at = datetime.now(timezone.utc)
-    project.activated_at = datetime.now(timezone.utc)
+    project.created_at = datetime.now(UTC)
+    project.updated_at = datetime.now(UTC)
+    project.activated_at = datetime.now(UTC)
     project.completed_at = None
     project.product_id = str(uuid4())
     return project

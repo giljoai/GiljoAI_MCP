@@ -11,7 +11,6 @@ before authentication is configured.
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -28,11 +27,11 @@ class VersionResponse(BaseModel):
     """Response schema for GET /api/version/latest."""
 
     installed_version: str
-    latest_version: Optional[str] = None
-    latest_tarball_url: Optional[str] = None
-    latest_sha256: Optional[str] = None
+    latest_version: str | None = None
+    latest_tarball_url: str | None = None
+    latest_sha256: str | None = None
     update_available: bool = False
-    checked_at: Optional[str] = None
+    checked_at: str | None = None
 
 
 @router.get("/latest", response_model=VersionResponse)

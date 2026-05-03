@@ -15,7 +15,7 @@ All endpoints enforce multi-tenant isolation and authentication.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -196,7 +196,7 @@ async def generate_orchestrator_prompt_thin(
                     "execution_id": result.get("execution_id"),  # UNIQUE row ID for frontend Map key
                     "estimated_tokens": result["estimated_prompt_tokens"],
                     "thin_client": True,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 },
             )
 

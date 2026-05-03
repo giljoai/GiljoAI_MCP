@@ -21,7 +21,7 @@ Design Principles:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import and_, case, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -204,7 +204,7 @@ class MessageRepository:
         session: AsyncSession,
         agent_id: str,
         tenant_key: str,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Get current counter values for an agent.
 

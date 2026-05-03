@@ -14,7 +14,7 @@ Covers:
 - Tenant isolation on every query
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
@@ -58,8 +58,8 @@ def _make_project(
     project.tenant_key = tenant_key
     project.product_id = product_id
     project.mission = mission
-    project.created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    project.activated_at = datetime(2026, 1, 2, tzinfo=timezone.utc)
+    project.created_at = datetime(2026, 1, 1, tzinfo=UTC)
+    project.activated_at = datetime(2026, 1, 2, tzinfo=UTC)
     return project
 
 
@@ -221,7 +221,7 @@ class TestGetProjectSummary:
         mock_project_result.scalar_one_or_none.return_value = project
         mock_job_counts = MagicMock()
         mock_job_counts.all.return_value = []
-        last_activity = datetime(2026, 3, 15, 12, 0, 0, tzinfo=timezone.utc)
+        last_activity = datetime(2026, 3, 15, 12, 0, 0, tzinfo=UTC)
         mock_last_activity = MagicMock()
         mock_last_activity.scalar.return_value = last_activity
         mock_product_result = MagicMock()

@@ -17,8 +17,7 @@ All endpoints enforce role-based access control and multi-tenant isolation.
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, select
@@ -103,12 +102,12 @@ def task_to_response(task: Task) -> TaskResponse:
 
 @router.get("/", response_model=list[TaskResponse])
 async def list_tasks(
-    filter_type: Optional[str] = Query(None, description="Filter: 'product_tasks' | 'all_tasks'"),
-    created_by_me: Optional[bool] = Query(None, description="Only tasks I created"),
-    status: Optional[str] = Query(None, description="Filter by status"),
-    priority: Optional[str] = Query(None, description="Filter by priority"),
-    project_id: Optional[str] = Query(None, description="Filter by project"),
-    product_id: Optional[str] = Query(None, description="Filter by product"),
+    filter_type: str | None = Query(None, description="Filter: 'product_tasks' | 'all_tasks'"),
+    created_by_me: bool | None = Query(None, description="Only tasks I created"),
+    status: str | None = Query(None, description="Filter by status"),
+    priority: str | None = Query(None, description="Filter by priority"),
+    project_id: str | None = Query(None, description="Filter by project"),
+    product_id: str | None = Query(None, description="Filter by product"),
     current_user: User = Depends(get_current_active_user),
     task_service: TaskService = Depends(get_task_service),
 ) -> list[TaskResponse]:
@@ -227,7 +226,7 @@ async def create_task(
 @router.get("/summary")
 @router.get("/summary/")
 async def get_task_summary(
-    product_id: Optional[str] = Query(None, description="Filter by product ID"),
+    product_id: str | None = Query(None, description="Filter by product ID"),
     current_user: User = Depends(get_current_active_user),
     task_service: TaskService = Depends(get_task_service),
 ):
@@ -397,7 +396,7 @@ async def convert_task_to_project(
         project_name=data.project_name,
         original_task_id=data.task_id,
         conversion_strategy=conversion_request.strategy,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
 

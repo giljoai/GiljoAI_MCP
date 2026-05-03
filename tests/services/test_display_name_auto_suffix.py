@@ -19,6 +19,7 @@ RED PHASE - These tests verify:
 
 import random
 import uuid
+from datetime import UTC
 
 import pytest
 import pytest_asyncio
@@ -59,7 +60,7 @@ async def suffix_templates(db_session, suffix_tenant_key):
 @pytest_asyncio.fixture
 async def suffix_project(db_session, suffix_tenant_key, suffix_templates) -> Project:
     """Create test project for display name suffix tests."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     project = Project(
         id=str(uuid.uuid4()),
@@ -68,7 +69,7 @@ async def suffix_project(db_session, suffix_tenant_key, suffix_templates) -> Pro
         mission="Test auto-suffix logic",
         status="active",
         tenant_key=suffix_tenant_key,
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -262,7 +263,7 @@ class TestDisplayNameAutoSuffix:
         """Suffix cap: error when suffix exceeds 50."""
         # Create 50 active agents with names: implementer, implementer-2, ..., implementer-50
         # We do this directly in the DB to avoid spawning 50 agents through the service
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         base_name = "implementer"
         for i in range(50):
@@ -275,7 +276,7 @@ class TestDisplayNameAutoSuffix:
                 job_type=name,
                 mission=f"Mission {i}",
                 status="active",
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
             db_session.add(job)
             execution = AgentExecution(
@@ -285,7 +286,7 @@ class TestDisplayNameAutoSuffix:
                 agent_display_name=name,
                 agent_name="implementer",
                 status="working",
-                started_at=datetime.now(timezone.utc),
+                started_at=datetime.now(UTC),
             )
             db_session.add(execution)
 

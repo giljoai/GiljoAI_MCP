@@ -17,7 +17,7 @@ Created: 2025-11-02
 Relocated from api/events/schemas.py: 2026-04-18 (Sprint 003a)
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -85,7 +85,7 @@ class EventFactory:
 
         return {
             "type": event_type,
-            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "schema_version": schema_version,
             "data": payload,
         }
@@ -103,7 +103,7 @@ class EventFactory:
         project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
 
         event = ProjectMissionUpdatedEvent(
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             data=ProjectMissionUpdatedData(
                 project_id=project_id_str,
                 tenant_key=tenant_key,
@@ -125,7 +125,7 @@ class EventFactory:
         project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
 
         event = AgentCreatedEvent(
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             data=AgentCreatedData(
                 project_id=project_id_str,
                 tenant_key=tenant_key,
@@ -149,7 +149,7 @@ class EventFactory:
         project_id_str = str(project_id) if project_id and isinstance(project_id, UUID) else project_id
 
         event = AgentStatusChangedEvent(
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             data=AgentStatusChangedData(
                 job_id=job_id_str,
                 project_id=project_id_str,
@@ -177,7 +177,7 @@ class EventFactory:
         project_id_str = str(project_id) if project_id and isinstance(project_id, UUID) else project_id
 
         event = AgentSilentEvent(
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             data=AgentSilentData(
                 job_id=job_id_str,
                 tenant_key=tenant_key,
@@ -209,11 +209,11 @@ class EventFactory:
         """Create message:sent event."""
         project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
 
-        msg_ts = (message_timestamp or datetime.now(timezone.utc)).isoformat().replace("+00:00", "Z")
+        msg_ts = (message_timestamp or datetime.now(UTC)).isoformat().replace("+00:00", "Z")
         preview = (content_preview or "")[:200]
 
         event = MessageSentEvent(
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             data=MessageSentData(
                 message_id=message_id,
                 job_id=from_job_id,
@@ -253,11 +253,11 @@ class EventFactory:
         """Create message:received event."""
         project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
 
-        msg_ts = (message_timestamp or datetime.now(timezone.utc)).isoformat().replace("+00:00", "Z")
+        msg_ts = (message_timestamp or datetime.now(UTC)).isoformat().replace("+00:00", "Z")
         preview = (content_preview or "")[:200]
 
         event = MessageReceivedEvent(
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             data=MessageReceivedData(
                 message_id=message_id,
                 job_id=from_job_id,
@@ -294,14 +294,14 @@ class EventFactory:
         project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
 
         event = MessageAcknowledgedEvent(
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             data=MessageAcknowledgedData(
                 message_id=message_id,
                 message_ids=message_ids,
                 agent_id=agent_id,
                 project_id=project_id_str,
                 tenant_key=tenant_key,
-                timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                 from_job_id=from_job_id,
                 to_job_ids=to_job_ids,
                 waiting_count=waiting_count,
@@ -314,12 +314,12 @@ class EventFactory:
     def setup_tool_connected(tenant_key: str, user_id: str, tool_name: str) -> dict:
         """Create setup:tool_connected event."""
         event = SetupToolConnectedEvent(
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             data=SetupToolConnectedData(
                 tenant_key=tenant_key,
                 user_id=user_id,
                 tool_name=tool_name,
-                connected_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                connected_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             ),
         )
         return event.model_dump(mode="json")
@@ -328,7 +328,7 @@ class EventFactory:
     def setup_commands_installed(tenant_key: str, user_id: str, tool_name: str, command_count: int) -> dict:
         """Create setup:commands_installed event."""
         event = SetupCommandsInstalledEvent(
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             data=SetupCommandsInstalledData(
                 tenant_key=tenant_key,
                 user_id=user_id,
@@ -342,7 +342,7 @@ class EventFactory:
     def setup_agents_downloaded(tenant_key: str, user_id: str, agent_count: int) -> dict:
         """Create setup:agents_downloaded event."""
         event = SetupAgentsDownloadedEvent(
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             data=SetupAgentsDownloadedData(
                 tenant_key=tenant_key,
                 user_id=user_id,

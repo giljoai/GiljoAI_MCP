@@ -11,7 +11,7 @@ from api.websocket.
 """
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from api.websocket import WebSocketManager
 
@@ -22,9 +22,9 @@ __all__ = ["ConnectionInfo", "WebSocketManager"]
 @dataclass
 class ConnectionInfo:
     websocket: Any
-    user_id: Optional[str]
+    user_id: str | None
     tenant_key: str
-    username: Optional[str] = None
+    username: str | None = None
 
     async def send_json(self, data: dict):
         """Delegate send_json to underlying websocket for compatibility."""

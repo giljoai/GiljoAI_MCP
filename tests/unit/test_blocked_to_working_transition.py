@@ -18,7 +18,7 @@ Covers:
 - No status change when "silent" (handled by auto_clear_silent, not report_progress)
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -45,7 +45,7 @@ def _make_mock_execution(
     execution.last_progress_at = None
     execution.progress = 0
     execution.current_task = None
-    execution.started_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    execution.started_at = datetime(2026, 1, 1, tzinfo=UTC)
     execution.agent_display_name = agent_display_name
     return execution
 

@@ -15,7 +15,7 @@ Verifies that:
 """
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import jwt
@@ -76,8 +76,8 @@ class TestValidateJwtTokenTenantKeyRequired:
             "sub": str(uuid.uuid4()),
             "username": "testuser",
             "role": "developer",
-            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
-            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(UTC) + timedelta(hours=1),
+            "iat": datetime.now(UTC),
             "type": "access",
             # tenant_key intentionally omitted
         }

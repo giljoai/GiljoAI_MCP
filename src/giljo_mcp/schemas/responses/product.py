@@ -6,7 +6,6 @@
 """Product service response models."""
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -26,8 +25,8 @@ class ProductStatistics(BaseModel):
     unresolved_tasks: int = 0
     vision_documents_count: int = 0
     has_vision: bool = False
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -85,8 +84,8 @@ class GitIntegrationSettings(BaseModel):
     """Git integration settings."""
 
     enabled: bool = False
-    repo_url: Optional[str] = None
-    branch: Optional[str] = None
+    repo_url: str | None = None
+    branch: str | None = None
     auto_commit: bool = False
 
     model_config = ConfigDict(from_attributes=True)

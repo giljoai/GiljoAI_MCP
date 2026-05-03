@@ -20,9 +20,8 @@ Phase 2.1 of v3.0 consolidation project.
 import logging
 import os
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -130,7 +129,7 @@ def generate_secure_token(user_id: str, expires_in: int, tenant_key: str = "defa
     Returns:
         JWT token string
     """
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+    expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
     payload = {
         "user_id": user_id,
@@ -142,7 +141,7 @@ def generate_secure_token(user_id: str, expires_in: int, tenant_key: str = "defa
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def validate_token(token: str) -> Optional[dict]:
+def validate_token(token: str) -> dict | None:
     """
     Validate token and return user info.
 
@@ -157,7 +156,7 @@ def validate_token(token: str) -> Optional[dict]:
 
         # Check expiration
         expires_at = datetime.fromisoformat(payload["expires_at"].replace("Z", "+00:00"))
-        if datetime.now(timezone.utc) > expires_at:
+        if datetime.now(UTC) > expires_at:
             logger.warning("Token expired: %s", expires_at)
             return None
 
@@ -215,7 +214,7 @@ async def _get_db_manager() -> DatabaseManager:
 
 
 @router.get("/windows", tags=["MCP Integration"])
-async def download_windows_installer(current_user: Optional[User] = Depends(get_current_user)):
+async def download_windows_installer(current_user: User | None = Depends(get_current_user)):
     """
     Generate Windows .bat installer with embedded credentials.
 
@@ -264,7 +263,7 @@ async def download_windows_installer(current_user: Optional[User] = Depends(get_
             api_key=api_key,
             username=current_user.username,
             organization=organization,
-            timestamp=datetime.now(timezone.utc).isoformat() + "Z",
+            timestamp=datetime.now(UTC).isoformat() + "Z",
         )
     except FileNotFoundError as e:
         logger.exception("Template not found")
@@ -283,7 +282,7 @@ async def download_windows_installer(current_user: Optional[User] = Depends(get_
 
 
 @router.get("/unix", tags=["MCP Integration"])
-async def download_unix_installer(current_user: Optional[User] = Depends(get_current_user)):
+async def download_unix_installer(current_user: User | None = Depends(get_current_user)):
     """
     Generate macOS/Linux .sh installer with embedded credentials.
 
@@ -330,7 +329,7 @@ async def download_unix_installer(current_user: Optional[User] = Depends(get_cur
             api_key=api_key,
             username=current_user.username,
             organization=organization,
-            timestamp=datetime.now(timezone.utc).isoformat() + "Z",
+            timestamp=datetime.now(UTC).isoformat() + "Z",
         )
     except FileNotFoundError as e:
         logger.exception("Template not found")
@@ -349,7 +348,7 @@ async def download_unix_installer(current_user: Optional[User] = Depends(get_cur
 
 
 @router.post("/share-link", response_model=ShareLinkResponse, tags=["MCP Integration"])
-async def generate_share_link(current_user: Optional[User] = Depends(get_current_user)):
+async def generate_share_link(current_user: User | None = Depends(get_current_user)):
     """
     Generate secure URLs for script download (email-friendly).
 
@@ -388,7 +387,7 @@ async def generate_share_link(current_user: Optional[User] = Depends(get_current
     # Generate URLs
     windows_url = f"{base_url}/download/mcp/{token}/windows"
     unix_url = f"{base_url}/download/mcp/{token}/unix"
-    expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat() + "Z"
+    expires_at = (datetime.now(UTC) + timedelta(days=7)).isoformat() + "Z"
 
     logger.info("Share link generated for %s, expires: %s", sanitize(current_user.username), expires_at)
 

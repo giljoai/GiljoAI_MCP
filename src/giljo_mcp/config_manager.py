@@ -20,7 +20,7 @@ import os
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 from watchdog.events import FileModifiedEvent, FileSystemEventHandler
@@ -60,7 +60,7 @@ class ServerConfig:
     api_host: str = "0.0.0.0"
     api_port: int = 7272  # Production default (PortManager managed)
     api_cors_enabled: bool = True
-    api_key: Optional[str] = None  # Generated on first run
+    api_key: str | None = None  # Generated on first run
 
     # WebSocket
     websocket_enabled: bool = True
@@ -79,7 +79,7 @@ class DatabaseConfig:
 
     type: str = "postgresql"  # PostgreSQL only
     database_name: str = "giljo_mcp.db"
-    database_url: Optional[str] = None
+    database_url: str | None = None
 
     # PostgreSQL settings
     host: str = "localhost"
@@ -88,7 +88,7 @@ class DatabaseConfig:
     password: str = ""
     pg_pool_size: int = 10
 
-    def get_connection_string(self, tenant_key: Optional[str] = None) -> str:
+    def get_connection_string(self, tenant_key: str | None = None) -> str:
         """
         Generate database connection string.
 
@@ -210,7 +210,7 @@ class TenantConfig:
     """Multi-tenant configuration settings."""
 
     enable_multi_tenant: bool = True
-    default_tenant_key: Optional[str] = None
+    default_tenant_key: str | None = None
     tenant_isolation_level: str = "strict"
     key_header: str = "X-Tenant-Key"
 
@@ -247,7 +247,7 @@ class ConfigManager:
     - Thread-safe operations
     """
 
-    def __init__(self, config_path: Optional[Path] = None, auto_reload: bool = False):
+    def __init__(self, config_path: Path | None = None, auto_reload: bool = False):
         """
         Initialize ConfigManager.
 
@@ -743,7 +743,7 @@ class ConfigManager:
             },
         }
 
-    def create_database_manager(self, tenant_key: Optional[str] = None):
+    def create_database_manager(self, tenant_key: str | None = None):
         """
         Create a DatabaseManager instance with current configuration.
 
@@ -857,7 +857,7 @@ class ConfigManager:
 class _ConfigManagerHolder:
     """Lazy singleton holder to avoid global statement."""
 
-    _instance: Optional[ConfigManager] = None
+    _instance: ConfigManager | None = None
 
     @classmethod
     def get_instance(cls) -> ConfigManager:

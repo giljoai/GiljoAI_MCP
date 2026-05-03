@@ -24,7 +24,7 @@ Tenant isolation: every test passes an explicit tenant_key. Cross-tenant
 test confirms tenant_key flows through unchanged.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -83,7 +83,7 @@ def _make_item(
     tenant_key: str = _TENANT_A,
 ) -> ProjectListItem:
     """Build a ProjectListItem with the fields list_projects_for_mcp consumes."""
-    created = (created_at or datetime(2026, 1, 1, tzinfo=timezone.utc)).isoformat()
+    created = (created_at or datetime(2026, 1, 1, tzinfo=UTC)).isoformat()
     completed_iso = completed_at.isoformat() if completed_at else None
     type_info = (
         ProjectTypeInfo(id="t-1", abbreviation=type_abbrev, label=type_abbrev or "X", color="#fff")
@@ -436,15 +436,15 @@ class TestDateRangeFilters:
     async def test_created_after_before(self):
         service = _make_service(_TENANT_A)
         items = [
-            _make_item(project_id="old", created_at=datetime(2025, 1, 1, tzinfo=timezone.utc)),
-            _make_item(project_id="mid", created_at=datetime(2026, 1, 15, tzinfo=timezone.utc)),
-            _make_item(project_id="new", created_at=datetime(2026, 6, 1, tzinfo=timezone.utc)),
+            _make_item(project_id="old", created_at=datetime(2025, 1, 1, tzinfo=UTC)),
+            _make_item(project_id="mid", created_at=datetime(2026, 1, 15, tzinfo=UTC)),
+            _make_item(project_id="new", created_at=datetime(2026, 6, 1, tzinfo=UTC)),
         ]
         result, _ = await _call_with_items(
             service,
             items,
-            created_after=datetime(2026, 1, 1, tzinfo=timezone.utc),
-            created_before=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            created_after=datetime(2026, 1, 1, tzinfo=UTC),
+            created_before=datetime(2026, 5, 1, tzinfo=UTC),
         )
         assert {p["project_id"] for p in result["projects"]} == {"mid"}
 
@@ -455,19 +455,19 @@ class TestDateRangeFilters:
             _make_item(
                 project_id="early",
                 status="completed",
-                completed_at=datetime(2026, 1, 5, tzinfo=timezone.utc),
+                completed_at=datetime(2026, 1, 5, tzinfo=UTC),
             ),
             _make_item(
                 project_id="late",
                 status="completed",
-                completed_at=datetime(2026, 6, 5, tzinfo=timezone.utc),
+                completed_at=datetime(2026, 6, 5, tzinfo=UTC),
             ),
         ]
         result, _ = await _call_with_items(
             service,
             items,
             include_completed=True,
-            completed_after=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            completed_after=datetime(2026, 5, 1, tzinfo=UTC),
         )
         assert {p["project_id"] for p in result["projects"]} == {"late"}
 

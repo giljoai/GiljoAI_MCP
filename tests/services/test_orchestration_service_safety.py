@@ -21,6 +21,7 @@ Test Coverage:
 
 import random
 import uuid
+from datetime import UTC
 
 import pytest
 import pytest_asyncio
@@ -43,7 +44,7 @@ async def test_tenant_key() -> str:
 @pytest_asyncio.fixture
 async def test_project(db_session, test_tenant_key) -> Project:
     """Create test project for agent jobs."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     project = Project(
         id=str(uuid.uuid4()),
@@ -53,7 +54,7 @@ async def test_project(db_session, test_tenant_key) -> Project:
         status="active",
         tenant_key=test_tenant_key,
         # Handover 0709: Set implementation_launched_at to bypass phase gate
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)

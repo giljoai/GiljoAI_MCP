@@ -16,7 +16,6 @@ All operations use OrchestrationService (no direct DB access).
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
@@ -85,11 +84,11 @@ def job_to_response(job: dict) -> JobResponse:
 
 @router.get("/", response_model=JobListResponse)
 async def list_jobs(
-    project_id: Optional[str] = Query(None, description="Filter by project ID"),
-    status: Optional[str] = Query(
+    project_id: str | None = Query(None, description="Filter by project ID"),
+    status: str | None = Query(
         None, description="Filter by status (waiting, working, blocked, complete, silent, decommissioned)"
     ),
-    agent_display_name: Optional[str] = Query(
+    agent_display_name: str | None = Query(
         None, description="Filter by agent display name (orchestrator, implementer, etc.)"
     ),
     limit: int = Query(100, ge=1, le=500, description="Maximum results (default 100, max 500)"),

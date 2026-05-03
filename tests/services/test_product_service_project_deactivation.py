@@ -19,7 +19,7 @@ Expected Behavior:
 
 import random
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -55,8 +55,8 @@ async def test_activate_product_deactivates_projects_in_old_product(db_session, 
         description="First product",
         tenant_key=tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(product_a)
     await db_session.flush()
@@ -69,8 +69,8 @@ async def test_activate_product_deactivates_projects_in_old_product(db_session, 
         tenant_key=tenant_key,
         product_id=product_a.id,
         status="active",
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project_x)
@@ -83,8 +83,8 @@ async def test_activate_product_deactivates_projects_in_old_product(db_session, 
         description="Second product",
         tenant_key=tenant_key,
         is_active=False,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(product_b)
     await db_session.commit()
@@ -131,8 +131,8 @@ async def test_product_switch_emits_websocket_events(db_session, db_manager):
         description="First product",
         tenant_key=tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(product_a)
     await db_session.flush()
@@ -146,8 +146,8 @@ async def test_product_switch_emits_websocket_events(db_session, db_manager):
         tenant_key=tenant_key,
         product_id=product_a.id,
         status="active",
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project_1)
@@ -160,8 +160,8 @@ async def test_product_switch_emits_websocket_events(db_session, db_manager):
         tenant_key=tenant_key,
         product_id=product_a.id,
         status="inactive",  # This one is already inactive
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project_2)
@@ -174,8 +174,8 @@ async def test_product_switch_emits_websocket_events(db_session, db_manager):
         description="Second product",
         tenant_key=tenant_key,
         is_active=False,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(product_b)
     await db_session.commit()
@@ -224,8 +224,8 @@ async def test_product_switch_multi_tenant_isolation(db_session, db_manager):
         name="Product A",
         tenant_key=tenant_a,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(product_a)
     await db_session.flush()
@@ -238,8 +238,8 @@ async def test_product_switch_multi_tenant_isolation(db_session, db_manager):
         product_id=product_a.id,
         status="active",
         mission="Test",
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project_x_tenant_a)
@@ -250,8 +250,8 @@ async def test_product_switch_multi_tenant_isolation(db_session, db_manager):
         name="Product B",
         tenant_key=tenant_a,
         is_active=False,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(product_b)
 
@@ -261,8 +261,8 @@ async def test_product_switch_multi_tenant_isolation(db_session, db_manager):
         name="Product C",
         tenant_key=tenant_b,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(product_c)
     await db_session.flush()
@@ -275,8 +275,8 @@ async def test_product_switch_multi_tenant_isolation(db_session, db_manager):
         product_id=product_c.id,
         status="active",
         mission="Test",
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project_y_tenant_b)

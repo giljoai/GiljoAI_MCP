@@ -18,7 +18,7 @@ Tests that OrchestrationService correctly:
 """
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -89,7 +89,7 @@ def _create_agent(
     )
     db_session.add(job)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     agent = AgentExecution(
         job_id=job.job_id,
         tenant_key=tenant_key,
@@ -121,7 +121,7 @@ async def active_project(
         description="Test project for 0827c",
         mission="Test reactivation feature",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -137,8 +137,8 @@ async def blocked_agent(
     active_project: Project,
 ) -> tuple[AgentJob, AgentExecution]:
     """Create a blocked agent (auto-blocked from complete by 0827b)."""
-    started = datetime.now(timezone.utc) - timedelta(minutes=5)
-    completed = datetime.now(timezone.utc) - timedelta(minutes=2)
+    started = datetime.now(UTC) - timedelta(minutes=5)
+    completed = datetime.now(UTC) - timedelta(minutes=2)
 
     job, agent = _create_agent(
         db_session,
@@ -583,7 +583,7 @@ class TestReactivationGuidance:
             status="pending",
             from_agent_id=sender_id,
             from_display_name="File-Creator",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add(msg)
         await db_session.flush()
@@ -638,7 +638,7 @@ class TestReactivationGuidance:
             priority="normal",
             status="pending",
             from_agent_id=str(uuid4()),
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add(msg)
         await db_session.flush()

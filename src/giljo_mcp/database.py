@@ -11,7 +11,6 @@ Provides connection pooling, tenant isolation, and production-ready database man
 
 import logging
 from contextlib import asynccontextmanager, contextmanager, suppress
-from typing import Optional
 from urllib.parse import quote_plus
 
 from sqlalchemy import Engine, create_engine
@@ -44,10 +43,10 @@ class DatabaseManager:
 
     def __init__(
         self,
-        database_url: Optional[str] = None,
+        database_url: str | None = None,
         is_async: bool = False,
-        pool_size: Optional[int] = None,
-        max_overflow: Optional[int] = None,
+        pool_size: int | None = None,
+        max_overflow: int | None = None,
     ):
         """
         Initialize DatabaseManager.
@@ -313,10 +312,10 @@ class DatabaseManager:
 class _DatabaseManagerHolder:
     """Lazy singleton holder to avoid global statement."""
 
-    _instance: Optional[DatabaseManager] = None
+    _instance: DatabaseManager | None = None
 
     @classmethod
-    def get_instance(cls, database_url: Optional[str] = None, is_async: bool = False) -> DatabaseManager:
+    def get_instance(cls, database_url: str | None = None, is_async: bool = False) -> DatabaseManager:
         if cls._instance is None or (database_url and cls._instance.database_url != database_url):
             cls._instance = DatabaseManager(database_url, is_async)
         return cls._instance
@@ -326,7 +325,7 @@ class _DatabaseManagerHolder:
         cls._instance = manager
 
 
-def get_db_manager(database_url: Optional[str] = None, is_async: bool = False) -> DatabaseManager:
+def get_db_manager(database_url: str | None = None, is_async: bool = False) -> DatabaseManager:
     """
     Get or create the global DatabaseManager instance.
 
@@ -345,7 +344,7 @@ def set_db_manager(manager: DatabaseManager):
     _DatabaseManagerHolder.set_instance(manager)
 
 
-async def init_db(database_url: Optional[str] = None) -> DatabaseManager:
+async def init_db(database_url: str | None = None) -> DatabaseManager:
     """
     Initialize database with table creation.
 

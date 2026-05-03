@@ -24,7 +24,6 @@ SummarizeSingleResult and SummarizeMultiLevelResult.
 """
 
 import time
-from typing import Optional
 
 from sumy.nlp.stemmers import Stemmer
 from sumy.nlp.tokenizers import Tokenizer
@@ -149,7 +148,7 @@ class VisionDocumentSummarizer:
                 parser = PlaintextParser.from_string(chunk, Tokenizer(self.language))
                 sentences = self.summarizer(parser.document, sentences_per_chunk)
                 summaries.append(" ".join(str(s) for s in sentences))
-            except (ValueError, ImportError, RuntimeError):  # noqa: PERF203 - Chunk processing resilience: skip bad chunks
+            except (ValueError, ImportError, RuntimeError):
                 # If chunk summarization fails, skip it
                 # This handles edge cases like very short chunks
                 continue  # nosec B112
@@ -233,7 +232,7 @@ class VisionDocumentSummarizer:
             # Better to be slightly over target than lose content
             return text
 
-    def summarize_multi_level(self, text: str, levels: Optional[dict[str, float]] = None) -> SummarizeMultiLevelResult:
+    def summarize_multi_level(self, text: str, levels: dict[str, float] | None = None) -> SummarizeMultiLevelResult:
         """
         Generate 2 summary levels based on percentage of original content.
 

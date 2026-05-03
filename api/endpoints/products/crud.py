@@ -20,7 +20,7 @@ DeleteResult, ProductStatistics instead of dicts).
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
 
@@ -202,7 +202,7 @@ async def list_deleted_products(
     for p in products:
         # Compute purge date: deleted_at + retention period
         purge_date = p.deleted_at + timedelta(days=_PURGE_RETENTION_DAYS)
-        days_until_purge = max(0, (purge_date - datetime.now(timezone.utc)).days)
+        days_until_purge = max(0, (purge_date - datetime.now(UTC)).days)
 
         # Get statistics for project_count and vision_documents_count
         # Note: get_product_statistics filters on deleted_at IS NULL, so

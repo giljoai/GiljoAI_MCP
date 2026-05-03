@@ -10,7 +10,7 @@ Request/response models for product operations.
 """
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -18,50 +18,48 @@ from pydantic import BaseModel, Field
 class TechStackSchema(BaseModel):
     """Typed schema for product tech stack configuration. Handover 0840i."""
 
-    programming_languages: Optional[str] = None
-    frontend_frameworks: Optional[str] = None
-    backend_frameworks: Optional[str] = None
-    databases_storage: Optional[str] = None
-    infrastructure: Optional[str] = None
-    dev_tools: Optional[str] = None
+    programming_languages: str | None = None
+    frontend_frameworks: str | None = None
+    backend_frameworks: str | None = None
+    databases_storage: str | None = None
+    infrastructure: str | None = None
+    dev_tools: str | None = None
 
 
 class ArchitectureSchema(BaseModel):
     """Typed schema for product architecture configuration. Handover 0840i."""
 
-    primary_pattern: Optional[str] = None
-    design_patterns: Optional[str] = None
-    api_style: Optional[str] = None
-    architecture_notes: Optional[str] = None
-    coding_conventions: Optional[str] = None
+    primary_pattern: str | None = None
+    design_patterns: str | None = None
+    api_style: str | None = None
+    architecture_notes: str | None = None
+    coding_conventions: str | None = None
 
 
 class TestConfigSchema(BaseModel):
     """Typed schema for product test configuration. Handover 0840i."""
 
-    quality_standards: Optional[str] = None
-    test_strategy: Optional[str] = None
+    quality_standards: str | None = None
+    test_strategy: str | None = None
     coverage_target: int = 80
-    testing_frameworks: Optional[str] = None
+    testing_frameworks: str | None = None
 
 
 class ProductCreate(BaseModel):
     """Request model for creating a product"""
 
     name: str = Field(..., description="Product name")
-    description: Optional[str] = Field(None, description="Product description")
-    project_path: Optional[str] = Field(
-        None, description="File system path to product folder (required for agent export)"
-    )
-    tech_stack: Optional[TechStackSchema] = Field(None, description="Tech stack configuration - Handover 0840i")
-    architecture: Optional[ArchitectureSchema] = Field(None, description="Architecture configuration - Handover 0840i")
-    test_config: Optional[TestConfigSchema] = Field(None, description="Test configuration - Handover 0840i")
-    core_features: Optional[str] = Field(None, description="Core product features - Handover 0840i")
-    brand_guidelines: Optional[str] = Field(None, description="Brand & design guidelines for frontend agents")
-    product_memory: Optional[dict[str, Any]] = Field(
+    description: str | None = Field(None, description="Product description")
+    project_path: str | None = Field(None, description="File system path to product folder (required for agent export)")
+    tech_stack: TechStackSchema | None = Field(None, description="Tech stack configuration - Handover 0840i")
+    architecture: ArchitectureSchema | None = Field(None, description="Architecture configuration - Handover 0840i")
+    test_config: TestConfigSchema | None = Field(None, description="Test configuration - Handover 0840i")
+    core_features: str | None = Field(None, description="Core product features - Handover 0840i")
+    brand_guidelines: str | None = Field(None, description="Brand & design guidelines for frontend agents")
+    product_memory: dict[str, Any] | None = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
-    target_platforms: Optional[list[str]] = Field(
+    target_platforms: list[str] | None = Field(
         default=["all"],
         description="Target platforms: windows, linux, macos, android, ios, web, or all - Handover 0425",
     )
@@ -70,21 +68,21 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     """Request model for updating a product"""
 
-    name: Optional[str] = None
-    description: Optional[str] = None
-    project_path: Optional[str] = None
-    tech_stack: Optional[TechStackSchema] = Field(None, description="Tech stack configuration - Handover 0840i")
-    architecture: Optional[ArchitectureSchema] = Field(None, description="Architecture configuration - Handover 0840i")
-    test_config: Optional[TestConfigSchema] = Field(None, description="Test configuration - Handover 0840i")
-    core_features: Optional[str] = Field(None, description="Core product features - Handover 0840i")
-    brand_guidelines: Optional[str] = Field(None, description="Brand & design guidelines for frontend agents")
-    extraction_custom_instructions: Optional[str] = Field(
+    name: str | None = None
+    description: str | None = None
+    project_path: str | None = None
+    tech_stack: TechStackSchema | None = Field(None, description="Tech stack configuration - Handover 0840i")
+    architecture: ArchitectureSchema | None = Field(None, description="Architecture configuration - Handover 0840i")
+    test_config: TestConfigSchema | None = Field(None, description="Test configuration - Handover 0840i")
+    core_features: str | None = Field(None, description="Core product features - Handover 0840i")
+    brand_guidelines: str | None = Field(None, description="Brand & design guidelines for frontend agents")
+    extraction_custom_instructions: str | None = Field(
         None, description="Custom instructions for vision document extraction"
     )
-    product_memory: Optional[dict[str, Any]] = Field(
+    product_memory: dict[str, Any] | None = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
-    target_platforms: Optional[list[str]] = Field(
+    target_platforms: list[str] | None = Field(
         None, description="Target platforms: windows, linux, macos, android, ios, web, or all - Handover 0425"
     )
 
@@ -94,30 +92,28 @@ class ProductResponse(BaseModel):
 
     id: str
     name: str
-    description: Optional[str]
-    vision_path: Optional[str]
+    description: str | None
+    vision_path: str | None
     created_at: datetime
-    updated_at: Optional[datetime]
+    updated_at: datetime | None
     project_count: int = 0
     task_count: int = 0
     has_vision: bool = False
     unresolved_tasks: int = 0
     unfinished_projects: int = 0
     vision_documents_count: int = 0
-    tech_stack: Optional[TechStackSchema] = Field(None, description="Tech stack configuration - Handover 0840i")
-    architecture: Optional[ArchitectureSchema] = Field(None, description="Architecture configuration - Handover 0840i")
-    test_config: Optional[TestConfigSchema] = Field(None, description="Test configuration - Handover 0840i")
-    core_features: Optional[str] = Field(None, description="Core product features - Handover 0840i")
-    brand_guidelines: Optional[str] = Field(None, description="Brand & design guidelines for frontend agents")
+    tech_stack: TechStackSchema | None = Field(None, description="Tech stack configuration - Handover 0840i")
+    architecture: ArchitectureSchema | None = Field(None, description="Architecture configuration - Handover 0840i")
+    test_config: TestConfigSchema | None = Field(None, description="Test configuration - Handover 0840i")
+    core_features: str | None = Field(None, description="Core product features - Handover 0840i")
+    brand_guidelines: str | None = Field(None, description="Brand & design guidelines for frontend agents")
     is_active: bool = Field(default=False, description="Whether this product is currently active")
-    project_path: Optional[str] = Field(
-        None, description="File system path to product folder (required for agent export)"
-    )
-    product_memory: Optional[dict[str, Any]] = Field(
+    project_path: str | None = Field(None, description="File system path to product folder (required for agent export)")
+    product_memory: dict[str, Any] | None = Field(
         default_factory=lambda: {"github": {}, "sequential_history": [], "context": {}},
         description="360 Memory storage (GitHub, sequential_history, context) - Handover 0412",
     )
-    target_platforms: Optional[list[str]] = Field(
+    target_platforms: list[str] | None = Field(
         default=["all"],
         description="Target platforms: windows, linux, macos, android, ios, web, or all - Handover 0425",
     )
@@ -128,7 +124,7 @@ class ActiveProductInfo(BaseModel):
 
     id: str
     name: str
-    description: Optional[str]
+    description: str | None
     activated_at: datetime = Field(description="When this product was activated")
     active_projects_count: int = Field(default=0, description="Number of active projects")
 
@@ -137,7 +133,7 @@ class ProductActivationResponse(BaseModel):
     """Response for product activation matching frontend expectations (Handover 0503)"""
 
     product_id: str = Field(..., description="ID of the activated product")
-    previous_active_product_id: Optional[str] = Field(
+    previous_active_product_id: str | None = Field(
         None, description="ID of previously active product (if any) that was deactivated"
     )
     product: ProductResponse = Field(..., description="Full activated product details")
@@ -160,7 +156,7 @@ class ProductDeleteResponse(BaseModel):
     deleted_product_id: str
     was_active: bool = Field(description="Whether the deleted product was active")
     remaining_products_count: int
-    new_active_product: Optional[ActiveProductInfo] = Field(
+    new_active_product: ActiveProductInfo | None = Field(
         None, description="Auto-activated product (if deleted product was active)"
     )
 
@@ -169,9 +165,9 @@ class ActiveProductRefreshResponse(BaseModel):
     """Response for /refresh-active endpoint"""
 
     has_active_product: bool = Field(default=False, description="Whether there is an active product")
-    product: Optional[ProductResponse] = Field(None, description="Full product details if active")
-    total_products_count: Optional[int] = None
-    last_refreshed_at: Optional[datetime] = None
+    product: ProductResponse | None = Field(None, description="Full product details if active")
+    total_products_count: int | None = None
+    last_refreshed_at: datetime | None = None
 
 
 class DeletedProductResponse(BaseModel):
@@ -179,7 +175,7 @@ class DeletedProductResponse(BaseModel):
 
     id: str
     name: str
-    description: Optional[str]
+    description: str | None
     deleted_at: datetime
     days_until_purge: int = Field(ge=0, description="Days remaining before permanent deletion")
     purge_date: datetime = Field(description="Date when product will be permanently deleted")
@@ -236,7 +232,7 @@ class GitHubSettingsRequest(BaseModel):
     """Request model for updating GitHub integration settings"""
 
     enabled: bool = Field(..., description="Whether GitHub integration is enabled")
-    repo_url: Optional[str] = Field(
+    repo_url: str | None = Field(
         None,
         description="GitHub repository URL (HTTPS or SSH format). Required when enabled=True",
     )
@@ -247,9 +243,9 @@ class GitHubSettingsResponse(BaseModel):
     """Response model for GitHub integration settings"""
 
     enabled: bool = Field(..., description="Whether GitHub integration is enabled")
-    repo_url: Optional[str] = Field(None, description="GitHub repository URL (HTTPS or SSH format)")
+    repo_url: str | None = Field(None, description="GitHub repository URL (HTTPS or SSH format)")
     auto_commit: bool = Field(..., description="Whether to automatically commit changes to GitHub")
-    last_sync: Optional[str] = Field(None, description="ISO timestamp of last sync with GitHub")
+    last_sync: str | None = Field(None, description="ISO timestamp of last sync with GitHub")
 
 
 # ============================================================================
@@ -286,9 +282,9 @@ class MemoryEntryResponse(BaseModel):
     entry_type: str = Field(..., description="Entry type (project_closeout, session_handover, etc.)")
     source: str = Field(..., description="Source tool identifier")
     timestamp: str = Field(..., description="ISO timestamp of entry creation")
-    project_id: Optional[str] = Field(None, description="Source project UUID (if applicable)")
-    project_name: Optional[str] = Field(None, description="Project name at time of entry")
-    summary: Optional[str] = Field(None, description="2-3 paragraph summary")
+    project_id: str | None = Field(None, description="Source project UUID (if applicable)")
+    project_name: str | None = Field(None, description="Project name at time of entry")
+    summary: str | None = Field(None, description="2-3 paragraph summary")
     key_outcomes: list[str] = Field(default_factory=list, description="Key achievements")
     decisions_made: list[str] = Field(default_factory=list, description="Architectural/design decisions")
     git_commits: list[dict[str, Any]] = Field(default_factory=list, description="Git commit objects")
@@ -297,9 +293,9 @@ class MemoryEntryResponse(BaseModel):
     priority: int = Field(default=3, description="Priority level 1-5")
     significance_score: float = Field(default=0.5, description="Significance score 0.0-1.0")
     tags: list[str] = Field(default_factory=list, description="Tags for categorization")
-    author_job_id: Optional[str] = Field(None, description="Job ID of authoring agent")
-    author_name: Optional[str] = Field(None, description="Name of authoring agent")
-    author_type: Optional[str] = Field(None, description="Type of authoring agent")
+    author_job_id: str | None = Field(None, description="Job ID of authoring agent")
+    author_name: str | None = Field(None, description="Name of authoring agent")
+    author_type: str | None = Field(None, description="Type of authoring agent")
     deleted_by_user: bool = Field(default=False, description="Whether entry was soft-deleted")
 
 

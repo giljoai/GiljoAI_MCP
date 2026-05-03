@@ -14,7 +14,7 @@ Tests cover:
 """
 
 import inspect
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -75,7 +75,7 @@ def _make_job_dict(**overrides: Any) -> dict[str, Any]:
         "mission": "Test mission",
         "status": "active",
         "progress": 50,
-        "created_at": datetime.now(tz=timezone.utc),
+        "created_at": datetime.now(tz=UTC),
     }
     base.update(overrides)
     return base
@@ -182,7 +182,7 @@ class TestJobResponsePhaseField:
             agent_display_name="implementer",
             mission="Test",
             status="active",
-            created_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
         )
         assert response.phase is None
 
@@ -195,7 +195,7 @@ class TestJobResponsePhaseField:
             agent_display_name="implementer",
             mission="Test",
             status="active",
-            created_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
             phase=3,
         )
         assert response.phase == 3
@@ -209,7 +209,7 @@ class TestJobResponsePhaseField:
             agent_display_name="implementer",
             mission="Test",
             status="active",
-            created_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
             phase=1,
         )
         data = response.model_dump()
@@ -224,7 +224,7 @@ class TestJobResponsePhaseField:
             agent_display_name="implementer",
             mission="Test",
             status="active",
-            created_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
         )
         data = response.model_dump()
         assert data["phase"] is None

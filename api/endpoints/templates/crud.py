@@ -16,7 +16,6 @@ TemplateService methods as the service layer expands.
 
 import logging
 import re
-from typing import Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -68,7 +67,7 @@ router = APIRouter()
 USER_MANAGED_AGENT_LIMIT = 7  # Reserve one slot for orchestrator
 
 
-def _is_system_managed_role(role: Optional[str]) -> bool:
+def _is_system_managed_role(role: str | None) -> bool:
     """Check if role is system-managed"""
     return bool(role and role in SYSTEM_MANAGED_ROLES)
 
@@ -143,8 +142,8 @@ async def list_templates(
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
     template_service: TemplateService = Depends(get_template_service),
-    role: Optional[str] = Query(None, description="Filter by role"),
-    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    role: str | None = Query(None, description="Filter by role"),
+    is_active: bool | None = Query(None, description="Filter by active status"),
 ) -> list[TemplateResponse]:
     """
     List templates for the current tenant with optional filters.
@@ -310,8 +309,8 @@ async def update_template(
     previous_updated_at = template.updated_at
 
     # Clear user_managed_export when content fields change (re-triggers staleness)
-    _CONTENT_FIELDS = {"user_instructions", "role", "model", "tools", "description", "cli_tool"}
-    if update_data.keys() & _CONTENT_FIELDS and "user_managed_export" not in update_data:
+    content_fields = {"user_instructions", "role", "model", "tools", "description", "cli_tool"}
+    if update_data.keys() & content_fields and "user_managed_export" not in update_data:
         template.user_managed_export = False
 
     for field, value in update_data.items():

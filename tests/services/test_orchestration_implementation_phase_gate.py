@@ -14,7 +14,7 @@ Updated for exception-based error handling (Handover 0730).
 """
 
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -81,7 +81,7 @@ def mock_project_launched():
         description="Test description",
         mission="Test mission",
         status="active",
-        implementation_launched_at=datetime.now(timezone.utc),  # LAUNCHED
+        implementation_launched_at=datetime.now(UTC),  # LAUNCHED
         series_number=random.randint(1, 999999),
     )
 
@@ -100,7 +100,7 @@ def mock_agent_job_and_execution():
         mission="Test mission for implementation",
         job_type="implementer",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
     # Create AgentExecution (executor instance)

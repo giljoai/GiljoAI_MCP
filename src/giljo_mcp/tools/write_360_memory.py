@@ -20,7 +20,7 @@ Handover 0431: Added pre-closeout verification protocol.
 import logging
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from inspect import iscoroutine
 from typing import Any
 from uuid import UUID
@@ -209,7 +209,7 @@ async def _fetch_git_commits_for_project(
         repo_owner=git_config.get("repo_owner"),
         access_token=git_config.get("access_token"),
         project_created_at=project.created_at,
-        project_completed_at=project.completed_at or datetime.now(timezone.utc),
+        project_completed_at=project.completed_at or datetime.now(UTC),
     )
     return commits or []
 
@@ -624,7 +624,7 @@ async def write_360_memory(
                 settings_svc = SettingsService(active_session, tenant_key)
                 git_settings = await settings_svc.get_setting_value("integrations", "git_integration", {})
                 git_integration_enabled = git_settings.get("enabled", False)
-            except Exception as _exc:  # noqa: BLE001, S110
+            except Exception as _exc:  # noqa: BLE001
                 logger.debug("Settings read skipped: %s", _exc)
 
             # SAAS-009b Bug 1: Only enforce the GIT_COMMITS_REQUIRED gate for
@@ -680,7 +680,7 @@ async def write_360_memory(
                 sequence=sequence_number,
                 entry_type=entry_type,
                 source="write_360_memory_v1",
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 project_name=project.name,
                 summary=summary,
                 key_outcomes=key_outcomes,

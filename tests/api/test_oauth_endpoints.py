@@ -23,7 +23,7 @@ Handover 0828 Phase 3.
 import base64
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -126,7 +126,7 @@ class TestOAuthTokenEndpoint:
                 code_challenge=challenge,
                 code_challenge_method="S256",
                 scope="mcp",
-                expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+                expires_at=datetime.now(UTC) + timedelta(minutes=10),
                 used=False,
             )
             session.add(auth_code)
@@ -193,7 +193,7 @@ class TestOAuthTokenEndpoint:
                 code_challenge=challenge,
                 code_challenge_method="S256",
                 scope="mcp",
-                expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+                expires_at=datetime.now(UTC) + timedelta(minutes=10),
                 used=False,
             )
             session.add(auth_code)

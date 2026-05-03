@@ -15,7 +15,7 @@ WHY their execution is no longer active (decommissioned by force-close) instead
 of a generic "No active execution found" message.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, Mock
 from uuid import uuid4
 
@@ -39,7 +39,7 @@ def _make_mock_execution(
     exe.tenant_key = tenant_key
     exe.agent_id = str(uuid4())
     exe.agent_display_name = "test-agent"
-    exe.started_at = datetime.now(timezone.utc)
+    exe.started_at = datetime.now(UTC)
     return exe
 
 

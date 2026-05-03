@@ -11,7 +11,7 @@ TDD: tests written before implementation.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -43,7 +43,7 @@ def sample_params():
         sequence=1,
         entry_type="handover_closeout",
         source="agent",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         project_name="test-project",
         tags=["action_required:fix auth timeout", "refactor", "action_required:add retry logic"],
     )
@@ -161,7 +161,7 @@ class TestActionRequiredTaskCreation:
             sequence=1,
             entry_type="handover_closeout",
             source="agent",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             project_name="test-project",
             tags=["action_required:fix auth timeout"],
         )
@@ -201,7 +201,7 @@ class TestActionRequiredTaskCreation:
             sequence=1,
             entry_type="handover_closeout",
             source="agent",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             tags=None,
         )
 
@@ -246,7 +246,7 @@ class TestActionRequiredTaskCreation:
             sequence=1,
             entry_type="handover_closeout",
             source="agent",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             tags=["action_required:", "action_required:   "],
         )
 
@@ -323,7 +323,7 @@ class TestAutoResolveOnCompletion:
         mock_execution = Mock()
         mock_execution.id = str(uuid.uuid4())
         mock_execution.status = "working"
-        mock_execution.started_at = datetime.now(timezone.utc)
+        mock_execution.started_at = datetime.now(UTC)
         mock_execution.block_reason = None
 
         mock_job = Mock()
@@ -396,7 +396,7 @@ class TestAutoResolveOnCompletion:
         mock_execution = Mock()
         mock_execution.id = str(uuid.uuid4())
         mock_execution.status = "working"
-        mock_execution.started_at = datetime.now(timezone.utc)
+        mock_execution.started_at = datetime.now(UTC)
         mock_execution.block_reason = None
 
         mock_job = Mock()
@@ -453,7 +453,7 @@ class TestAutoResolveOnCompletion:
         mock_execution = Mock()
         mock_execution.id = str(uuid.uuid4())
         mock_execution.status = "working"
-        mock_execution.started_at = datetime.now(timezone.utc)
+        mock_execution.started_at = datetime.now(UTC)
         mock_execution.block_reason = None
 
         mock_job = Mock()

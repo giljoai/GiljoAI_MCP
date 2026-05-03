@@ -5,8 +5,6 @@
 
 """Project service response models."""
 
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -28,31 +26,31 @@ class ProjectDetail(BaseModel):
     """
 
     id: str
-    alias: Optional[str] = None
+    alias: str | None = None
     name: str
-    mission: Optional[str] = None
-    description: Optional[str] = None
+    mission: str | None = None
+    description: str | None = None
     status: str
-    staging_status: Optional[str] = None
-    product_id: Optional[str] = None
+    staging_status: str | None = None
+    product_id: str | None = None
     tenant_key: str
-    execution_mode: Optional[str] = None
+    execution_mode: str | None = None
     auto_checkin_enabled: bool = False
     auto_checkin_interval: int = 10
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-    completed_at: Optional[str] = None
-    cancellation_reason: Optional[str] = None
-    deactivation_reason: Optional[str] = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    completed_at: str | None = None
+    cancellation_reason: str | None = None
+    deactivation_reason: str | None = None
     early_termination: bool = False
     agents: list[dict] = Field(default_factory=list)
     agent_count: int = 0
     message_count: int = 0
-    project_type_id: Optional[str] = None
-    project_type: Optional[ProjectTypeInfo] = None
-    series_number: Optional[int] = None
-    subseries: Optional[str] = None
-    taxonomy_alias: Optional[str] = None
+    project_type_id: str | None = None
+    project_type: ProjectTypeInfo | None = None
+    series_number: int | None = None
+    subseries: str | None = None
+    taxonomy_alias: str | None = None
     hidden: bool = False
 
     model_config = ConfigDict(from_attributes=True)
@@ -66,20 +64,20 @@ class ProjectListItem(BaseModel):
 
     id: str
     name: str
-    mission: Optional[str] = None
-    description: Optional[str] = None
+    mission: str | None = None
+    description: str | None = None
     status: str
-    staging_status: Optional[str] = None
+    staging_status: str | None = None
     tenant_key: str
-    product_id: Optional[str] = None
+    product_id: str | None = None
     created_at: str
     updated_at: str
-    completed_at: Optional[str] = None
-    project_type_id: Optional[str] = None
-    project_type: Optional[ProjectTypeInfo] = None
-    series_number: Optional[int] = None
-    subseries: Optional[str] = None
-    taxonomy_alias: Optional[str] = None
+    completed_at: str | None = None
+    project_type_id: str | None = None
+    project_type: ProjectTypeInfo | None = None
+    series_number: int | None = None
+    subseries: str | None = None
+    taxonomy_alias: str | None = None
     hidden: bool = False
 
     model_config = ConfigDict(from_attributes=True)
@@ -95,20 +93,20 @@ class ActiveProjectDetail(BaseModel):
     alias: str = ""
     name: str
     mission: str = ""
-    description: Optional[str] = None
+    description: str | None = None
     status: str
-    product_id: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-    completed_at: Optional[str] = None
-    deleted_at: Optional[str] = None
+    product_id: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    completed_at: str | None = None
+    deleted_at: str | None = None
     agent_count: int = 0
     message_count: int = 0
-    project_type_id: Optional[str] = None
-    project_type: Optional[ProjectTypeInfo] = None
-    series_number: Optional[int] = None
-    subseries: Optional[str] = None
-    taxonomy_alias: Optional[str] = None
+    project_type_id: str | None = None
+    project_type: ProjectTypeInfo | None = None
+    series_number: int | None = None
+    subseries: str | None = None
+    taxonomy_alias: str | None = None
     hidden: bool = False
 
     model_config = ConfigDict(from_attributes=True)
@@ -162,24 +160,24 @@ class ProjectData(BaseModel):
     id: str
     name: str
     status: str
-    mission: Optional[str] = None
-    description: Optional[str] = None
-    execution_mode: Optional[str] = None
+    mission: str | None = None
+    description: str | None = None
+    execution_mode: str | None = None
     auto_checkin_enabled: bool = False
     auto_checkin_interval: int = 10
-    cancellation_reason: Optional[str] = None
-    deactivation_reason: Optional[str] = None
+    cancellation_reason: str | None = None
+    deactivation_reason: str | None = None
     early_termination: bool = False
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-    activated_at: Optional[str] = None
-    completed_at: Optional[str] = None
-    product_id: Optional[str] = None
-    project_type_id: Optional[str] = None
-    project_type: Optional[ProjectTypeInfo] = None
-    series_number: Optional[int] = None
-    subseries: Optional[str] = None
-    taxonomy_alias: Optional[str] = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    activated_at: str | None = None
+    completed_at: str | None = None
+    product_id: str | None = None
+    project_type_id: str | None = None
+    project_type: ProjectTypeInfo | None = None
+    series_number: int | None = None
+    subseries: str | None = None
+    taxonomy_alias: str | None = None
     hidden: bool = False
 
     model_config = ConfigDict(from_attributes=True)
@@ -191,16 +189,16 @@ class ProjectSummaryResult(BaseModel):
     id: str
     name: str
     status: str
-    mission: Optional[str] = None
+    mission: str | None = None
     total_jobs: int = 0
     completed_jobs: int = 0
     blocked_jobs: int = 0
     active_jobs: int = 0
     pending_jobs: int = 0
     completion_percentage: float = 0.0
-    created_at: Optional[str] = None
-    activated_at: Optional[str] = None
-    last_activity_at: Optional[str] = None
+    created_at: str | None = None
+    activated_at: str | None = None
+    last_activity_at: str | None = None
     product_id: str = ""
     product_name: str = ""
 
@@ -226,7 +224,7 @@ class CanCloseResult(BaseModel):
     """Project can-close readiness assessment."""
 
     can_close: bool = False
-    summary: Optional[str] = None
+    summary: str | None = None
     all_agents_finished: bool = False
     agent_statuses: dict[str, int] = Field(default_factory=dict)
 
@@ -251,7 +249,7 @@ class ProjectLaunchResult(BaseModel):
     orchestrator_job_id: str
     launch_prompt: str
     status: str
-    staging_status: Optional[str] = None
+    staging_status: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -261,7 +259,7 @@ class ProjectSwitchResult(BaseModel):
 
     project_id: str
     name: str
-    mission: Optional[str] = None
+    mission: str | None = None
     tenant_key: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -281,7 +279,7 @@ class SoftDeleteResult(BaseModel):
     """Soft delete project result."""
 
     message: str
-    deleted_at: Optional[str] = None
+    deleted_at: str | None = None
     decommissioned_jobs: int = 0
 
     model_config = ConfigDict(from_attributes=True)

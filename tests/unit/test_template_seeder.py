@@ -12,7 +12,7 @@ user_instructions (editable role-specific guidance) in agent templates.
 Handover 0106: Dual-Field System
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import select
@@ -270,7 +270,7 @@ class TestTemplateSeederDualField:
             is_active=True,
             is_default=False,
             tags=["test"],
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         db_session.add(template)

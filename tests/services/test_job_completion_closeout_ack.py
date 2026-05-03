@@ -14,7 +14,7 @@ auto-completes TODOs matching CLOSEOUT_TODO_PATTERN before evaluating the gate.
 from __future__ import annotations
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -64,7 +64,7 @@ async def active_project(
         description="Test project for closeout ack",
         mission="Test closeout acknowledgement",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -103,7 +103,7 @@ async def _seed_orchestrator_with_todos(
     )
     db_session.add(job)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     execution = AgentExecution(
         job_id=job_id,
         tenant_key=tenant_key,
@@ -296,7 +296,7 @@ async def test_ack_does_not_bypass_unread_messages_gate(
         from_agent_id=sender_id,
         content="Hello orchestrator, please read me",
         status="pending",
-        created_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+        created_at=datetime.now(UTC) - timedelta(minutes=1),
     )
     db_session.add(msg)
     await db_session.flush()

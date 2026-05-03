@@ -39,7 +39,7 @@ Usage Example:
 """
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import jwt
@@ -117,14 +117,14 @@ class JWTManager:
         """
         secret_key = cls._get_secret_key()
 
-        expire = datetime.now(timezone.utc) + timedelta(hours=cls.ACCESS_TOKEN_EXPIRE_HOURS)
+        expire = datetime.now(UTC) + timedelta(hours=cls.ACCESS_TOKEN_EXPIRE_HOURS)
         payload = {
             "sub": str(user_id),  # Subject (user ID)
             "username": username,
             "role": role,
             "tenant_key": tenant_key,
             "exp": expire,  # Expiration time
-            "iat": datetime.now(timezone.utc),  # Issued at
+            "iat": datetime.now(UTC),  # Issued at
             "type": "access",  # Token type
         }
         return jwt.encode(payload, secret_key, algorithm=cls.ALGORITHM)
@@ -217,8 +217,8 @@ class JWTManager:
                 )
                 if payload.get("type") != "access":
                     return None
-                exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
-                now = datetime.now(timezone.utc)
+                exp = datetime.fromtimestamp(payload["exp"], tz=UTC)
+                now = datetime.now(UTC)
                 if (now - exp) <= timedelta(hours=grace):
                     return payload
                 return None

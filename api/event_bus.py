@@ -19,7 +19,8 @@ Created: 2025-11-06
 
 import asyncio
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
@@ -108,7 +109,7 @@ class EventBus:
 
                 success_count += 1
 
-            except Exception as e:  # noqa: PERF203 - Resilient dispatch: continue calling handlers on error
+            except Exception as e:
                 failed_count += 1
                 self.logger.error(
                     f"Event handler failed for {event_type}: {e}",

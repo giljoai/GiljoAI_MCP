@@ -37,7 +37,7 @@ import time
 import webbrowser
 from pathlib import Path
 from tkinter import BooleanVar, StringVar, Tk, filedialog, messagebox, simpledialog, ttk
-from typing import Any, List, Optional
+from typing import Any
 
 
 THEMES = {
@@ -160,8 +160,8 @@ class GiljoDevControlPanel:
                 self.project_root = Path.cwd().parent
 
         # Process tracking
-        self.backend_process: Optional[subprocess.Popen] = None
-        self.frontend_process: Optional[subprocess.Popen] = None
+        self.backend_process: subprocess.Popen | None = None
+        self.frontend_process: subprocess.Popen | None = None
 
         # Status variables
         self.backend_status = BooleanVar(value=False)
@@ -170,7 +170,7 @@ class GiljoDevControlPanel:
         self.db_exists_status = BooleanVar(value=False)
 
         # Configuration
-        self.config: Optional[dict[str, Any]] = None
+        self.config: dict[str, Any] | None = None
         self.load_config()
 
         # Setup logger for database operations
@@ -765,9 +765,9 @@ class GiljoDevControlPanel:
         self,
         command: list[str],
         title: str = "",
-        cwd: Optional[Path] = None,
-        extra_path: Optional[str] = None,
-    ) -> Optional[subprocess.Popen]:
+        cwd: Path | None = None,
+        extra_path: str | None = None,
+    ) -> subprocess.Popen | None:
         """
         Launch command in a new terminal window.
 
@@ -871,7 +871,7 @@ class GiljoDevControlPanel:
             )
 
         system = platform.system()
-        candidates: List[Path] = []
+        candidates: list[Path] = []
 
         if system == "Windows":
             candidates.append(venv_dir / "Scripts" / "python.exe")
@@ -918,7 +918,7 @@ class GiljoDevControlPanel:
         except OSError:
             return False
 
-    def _find_nodejs_dir(self) -> Optional[str]:
+    def _find_nodejs_dir(self) -> str | None:
         """Find the directory containing Node.js/npm.
 
         Spawned cmd.exe terminals may not inherit the user's PATH, so we
@@ -941,7 +941,7 @@ class GiljoDevControlPanel:
 
         return None
 
-    def _find_process_on_port(self, port: int) -> Optional[int]:
+    def _find_process_on_port(self, port: int) -> int | None:
         """
         Find the PID of the process using the given port.
 
@@ -2002,7 +2002,7 @@ class GiljoDevControlPanel:
                 "- C:\\Program Files\\PostgreSQL\\*\\bin\\\n\n"
                 "Please ensure PostgreSQL is installed."
             )
-        elif system == "Darwin":
+        if system == "Darwin":
             return (
                 "Searched:\n"
                 "- PATH environment variable\n"
@@ -2010,16 +2010,15 @@ class GiljoDevControlPanel:
                 "- /Library/PostgreSQL/*/bin/\n\n"
                 "Install with: brew install postgresql"
             )
-        else:
-            return (
-                "Searched:\n"
-                "- PATH environment variable\n"
-                "- /usr/bin/, /usr/local/bin/\n"
-                "- /usr/lib/postgresql/*/bin/\n\n"
-                "Install with: sudo apt install postgresql"
-            )
+        return (
+            "Searched:\n"
+            "- PATH environment variable\n"
+            "- /usr/bin/, /usr/local/bin/\n"
+            "- /usr/lib/postgresql/*/bin/\n\n"
+            "Install with: sudo apt install postgresql"
+        )
 
-    def _find_psql_path(self) -> Optional[str]:
+    def _find_psql_path(self) -> str | None:
         """
         Find psql path (cross-platform).
 
@@ -2069,7 +2068,7 @@ class GiljoDevControlPanel:
                 if linux_path.name == "psql" and linux_path.exists():
                     self.logger.info(f"Found psql at: {linux_path}")
                     return str(linux_path)
-                elif linux_path.is_dir():
+                if linux_path.is_dir():
                     # Scan /usr/lib/postgresql/*/bin/psql
                     for version_dir in sorted(linux_path.glob("*"), reverse=True):
                         psql_path = version_dir / "bin" / "psql"
@@ -2091,7 +2090,7 @@ class GiljoDevControlPanel:
         self.logger.warning("Could not find psql in PATH or common locations")
         return None
 
-    def _find_pg_dump_path(self) -> Optional[str]:
+    def _find_pg_dump_path(self) -> str | None:
         """
         Find pg_dump path (cross-platform).
 
@@ -2138,7 +2137,7 @@ class GiljoDevControlPanel:
                 if linux_path.name == "pg_dump" and linux_path.exists():
                     self.logger.info(f"Found pg_dump at: {linux_path}")
                     return str(linux_path)
-                elif linux_path.is_dir():
+                if linux_path.is_dir():
                     for version_dir in sorted(linux_path.glob("*"), reverse=True):
                         pg_dump_path = version_dir / "bin" / "pg_dump"
                         if pg_dump_path.exists():
@@ -2221,7 +2220,7 @@ END $$;
 
             try:
                 env = os.environ.copy()
-                env["PGPASSWORD"] = credentials["password"]  # noqa: S105 — required by psql subprocess, cleared from env after call
+                env["PGPASSWORD"] = credentials["password"]
                 # Run audit against giljo_mcp database
                 audit_result = subprocess.run(
                     [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "giljo_mcp", "-f", audit_file],
@@ -2290,7 +2289,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             try:
                 # Execute psql with password in environment
                 env = os.environ.copy()
-                env["PGPASSWORD"] = credentials["password"]  # noqa: S105 — required by psql subprocess, cleared from env after call
+                env["PGPASSWORD"] = credentials["password"]
                 result = subprocess.run(
                     [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "postgres", "-f", sql_file],
                     check=False,
@@ -2413,7 +2412,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             # Build pg_dump command
             # Using -Fc format (custom format) for better compression and restore options
             env = os.environ.copy()
-            env["PGPASSWORD"] = credentials["password"]  # noqa: S105 — required by pg_dump subprocess
+            env["PGPASSWORD"] = credentials["password"]
             command = [
                 pg_dump_path,
                 "-h",
@@ -2608,7 +2607,7 @@ pg_restore -l {backup_file.name} | head -20
                 try:
                     credentials = self.get_db_credentials()
                     env = os.environ.copy()
-                    env["PGPASSWORD"] = credentials.get("password", "")  # noqa: S105 — required by psql subprocess
+                    env["PGPASSWORD"] = credentials.get("password", "")
                     # Check if database exists
                     db_result = subprocess.run(
                         [

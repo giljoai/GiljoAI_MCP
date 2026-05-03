@@ -13,7 +13,7 @@ Verifies:
 """
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -201,7 +201,7 @@ class TestDetectSilentAgentsEmitsAgentSilent:
         mock_agent.tenant_key = "test-tenant"
         mock_agent.agent_display_name = "implementor"
         mock_agent.status = "working"
-        mock_agent.last_progress_at = datetime.now(timezone.utc) - timedelta(minutes=30)
+        mock_agent.last_progress_at = datetime.now(UTC) - timedelta(minutes=30)
         mock_agent.job = mock_job
 
         # Mock the session and query result
@@ -255,7 +255,7 @@ class TestDetectSilentAgentsEmitsAgentSilent:
         mock_agent.tenant_key = "test-tenant"
         mock_agent.agent_display_name = "lonely-agent"
         mock_agent.status = "working"
-        mock_agent.last_progress_at = datetime.now(timezone.utc) - timedelta(minutes=30)
+        mock_agent.last_progress_at = datetime.now(UTC) - timedelta(minutes=30)
         mock_agent.job = None  # No job loaded
 
         session = AsyncMock()

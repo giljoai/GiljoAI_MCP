@@ -11,7 +11,7 @@ while keeping fixture definitions DRY.
 """
 
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -57,7 +57,7 @@ async def test_user(db_session, test_tenant_key):
         role="developer",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(user)
     await db_session.commit()
@@ -77,7 +77,7 @@ async def admin_user(db_session, test_tenant_key):
         role="admin",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(admin)
     await db_session.commit()
@@ -100,7 +100,7 @@ async def test_product(db_session, test_tenant_key):
         description="Test product for task service tests",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(product)
     await db_session.commit()
@@ -120,7 +120,7 @@ async def other_tenant_user(db_session, other_tenant_key):
         role="developer",
         tenant_key=other_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(user)
     await db_session.commit()
@@ -137,7 +137,7 @@ async def other_tenant_product(db_session, other_tenant_key):
         description="Product for other tenant",
         tenant_key=other_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(product)
     await db_session.commit()
@@ -157,7 +157,7 @@ async def other_tenant_task(db_session, other_tenant_key, other_tenant_product, 
         status="waiting",
         priority="medium",
         created_by_user_id=other_tenant_user.id,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(task)
     await db_session.commit()
@@ -211,7 +211,7 @@ async def test_project(db_session, test_tenant_key, test_agent_templates) -> Pro
         mission="Test mission for phase labels",
         status="active",
         tenant_key=test_tenant_key,
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -231,7 +231,7 @@ async def test_project_multi_terminal(db_session, test_tenant_key, test_agent_te
         status="active",
         tenant_key=test_tenant_key,
         execution_mode="multi_terminal",
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -251,7 +251,7 @@ async def test_project_cli_mode(db_session, test_tenant_key, test_agent_template
         status="active",
         tenant_key=test_tenant_key,
         execution_mode="claude_code_cli",
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -329,7 +329,7 @@ async def two_tenant_messages(db_session, db_manager):
         job_type="worker-a",
         mission="Worker agent for tenant A",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         job_metadata={},
     )
     job_b = AgentJob(
@@ -339,7 +339,7 @@ async def two_tenant_messages(db_session, db_manager):
         job_type="worker-b",
         mission="Worker agent for tenant B",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         job_metadata={},
     )
     db_session.add(job_a)
@@ -468,7 +468,7 @@ async def test_project_with_agents(
         description="Test project with agents",
         mission="Test mission",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -649,7 +649,7 @@ async def two_tenant_products(db_session, db_manager):
         project_id=project_a.id,
         mission="Implement feature for tenant A",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     job_b = AgentJob(
         job_id=str(uuid4()),
@@ -658,7 +658,7 @@ async def two_tenant_products(db_session, db_manager):
         project_id=project_b.id,
         mission="Test feature for tenant B",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add_all([job_a, job_b])
     await db_session.commit()
@@ -670,7 +670,7 @@ async def two_tenant_products(db_session, db_manager):
         agent_display_name="implementer",
         agent_name="implementer-a",
         status="working",
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
     execution_b = AgentExecution(
         agent_id=str(uuid4()),
@@ -679,7 +679,7 @@ async def two_tenant_products(db_session, db_manager):
         agent_display_name="tester",
         agent_name="tester-b",
         status="working",
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
     db_session.add_all([execution_a, execution_b])
 
@@ -689,14 +689,14 @@ async def two_tenant_products(db_session, db_manager):
         content="Message for tenant A",
         tenant_key=tenant_a,
         project_id=project_a.id,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     message_b = Message(
         id=str(uuid4()),
         content="Message for tenant B",
         tenant_key=tenant_b,
         project_id=project_b.id,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add_all([message_a, message_b])
     await db_session.commit()
@@ -863,7 +863,7 @@ async def two_tenant_service_setup(db_session, db_manager):
         mission="Test orchestrator mission A",
         job_type="orchestrator",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(job_a)
 
@@ -875,7 +875,7 @@ async def two_tenant_service_setup(db_session, db_manager):
         mission="Test orchestrator mission B",
         job_type="orchestrator",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(job_b)
 
@@ -1008,7 +1008,7 @@ async def project(db_session, tenant_key, agent_templates) -> Project:
         mission="Test recovery flow",
         status="active",
         tenant_key=tenant_key,
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(proj)
@@ -1027,7 +1027,7 @@ async def other_project(db_session, other_tenant_key, other_tenant_templates) ->
         mission="Other tenant work",
         status="active",
         tenant_key=other_tenant_key,
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(proj)
@@ -1158,7 +1158,7 @@ async def auth_user_with_password(db_session, auth_test_org):
         tenant_key=auth_test_org.tenant_key,  # Use org's tenant_key
         org_id=auth_test_org.id,  # 0424j: User.org_id NOT NULL
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(user)
     await db_session.commit()

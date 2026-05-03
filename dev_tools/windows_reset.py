@@ -260,9 +260,8 @@ def clean_node_options(dry_run: bool) -> int:
                 )
                 ok(f"Removed NODE_OPTIONS={current}")
             return 1
-        else:
-            warn("NODE_OPTIONS not set — nothing to clean")
-            return 0
+        warn("NODE_OPTIONS not set — nothing to clean")
+        return 0
     except Exception as e:
         fail(f"Error checking NODE_OPTIONS: {e}")
         return 0
@@ -558,9 +557,8 @@ def clean_install_dir_artifacts(install_dir: Path | None, dry_run: bool) -> int:
                 if item.is_dir():
                     if rmtree_safe(item, dry_run):
                         count += 1
-                else:
-                    if rm_file_safe(item, dry_run):
-                        count += 1
+                elif rm_file_safe(item, dry_run):
+                    count += 1
 
     for f in artifacts:
         if rm_file_safe(f, dry_run):

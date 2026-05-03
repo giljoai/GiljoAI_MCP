@@ -76,7 +76,7 @@ def _existing_url_targets_test_db(url: str) -> bool:
     """True if URL's database name is a recognized test database."""
     if not url:
         return False
-    db_part = url.rsplit("/", 1)[-1].split("?")[0]
+    db_part = url.rsplit("/", 1)[-1].split("?", maxsplit=1)[0]
     return db_part in ("giljo_mcp_test", "giljo_test", "postgres")
 
 

@@ -24,7 +24,7 @@ All operations use ProjectService.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -402,7 +402,7 @@ async def purge_deleted_project(
         "id": project_id,
         "name": result.project_name,
         "tenant_key": "",
-        "deleted_at": datetime.now(timezone.utc).isoformat(),
+        "deleted_at": datetime.now(UTC).isoformat(),
     }
 
     return ProjectPurgeResponse(
@@ -458,7 +458,7 @@ async def archive_project(
 
     # Set completed_at timestamp to mark as archived (raises exceptions on error)
     await project_service.update_project(
-        project_id=project_id, updates={"status": target_status, "completed_at": datetime.now(timezone.utc)}
+        project_id=project_id, updates={"status": target_status, "completed_at": datetime.now(UTC)}
     )
 
     # Handover 0435b: transition 'complete' agents to 'closed' on user archive action

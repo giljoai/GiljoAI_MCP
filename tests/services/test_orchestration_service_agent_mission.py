@@ -14,6 +14,7 @@ Tests cover:
 - Backward compatibility (include_protocol defaults to True)
 """
 
+from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -91,7 +92,7 @@ def setup_get_agent_mission_mocks(session, job, execution):
     3. Get Project for implementation phase gate (Handover 0709)
     4. Get all project executions (if job has project_id)
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
     from types import SimpleNamespace
 
     # 1. Get AgentJob
@@ -106,7 +107,7 @@ def setup_get_agent_mission_mocks(session, job, execution):
     mock_project = SimpleNamespace(
         id=job.project_id,
         tenant_key=job.tenant_key,
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
     )
     project_result = MagicMock()
     project_result.scalar_one_or_none = MagicMock(return_value=mock_project)

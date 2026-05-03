@@ -12,7 +12,7 @@ Separate from user tasks - handles agent-to-agent job coordination for agentic o
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -115,12 +115,12 @@ class AgentJobRepository:
             if started_at:
                 job.started_at = started_at
             elif status == "active" and not job.started_at:
-                job.started_at = datetime.now(timezone.utc)
+                job.started_at = datetime.now(UTC)
 
             if completed_at:
                 job.completed_at = completed_at
             elif status in ["completed", "cancelled"] and not job.completed_at:
-                job.completed_at = datetime.now(timezone.utc)
+                job.completed_at = datetime.now(UTC)
 
             await session.flush()
             return True
@@ -666,7 +666,7 @@ class AgentJobRepository:
             return None, []
 
         job.status = "completed"
-        job.completed_at = datetime.now(timezone.utc)
+        job.completed_at = datetime.now(UTC)
 
         executions_result = await session.execute(
             select(AgentExecution).where(
