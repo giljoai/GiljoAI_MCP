@@ -1466,7 +1466,7 @@ def run_startup(
     # Step 4: Check database connectivity
     print_header("Database Connectivity")
     print_info("Checking database connection...")
-    db_success, db_error = check_database_connectivity()
+    db_success, _db_error = check_database_connectivity()
 
     if not db_success:
         print_error("Database connectivity check failed")
@@ -1479,7 +1479,7 @@ def run_startup(
     # Step 5: Check first-run status
     print_header("Setup Status")
     print_info("Checking setup completion status...")
-    is_first_run, state = check_first_run()
+    is_first_run, _state = check_first_run()
 
     # Step 6: Get ports and SSL config
     api_port, frontend_port = get_config_ports()

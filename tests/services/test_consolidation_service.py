@@ -49,7 +49,7 @@ async def test_consolidate_single_document_returns_unified_summary(mock_db_manag
     """Single doc → summarization produces light and medium summaries"""
     from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
-    db_manager, session = mock_db_manager
+    _db_manager, session = mock_db_manager
 
     # Create product with one vision document
     doc = MagicMock(spec=VisionDocument)
@@ -112,7 +112,7 @@ async def test_consolidate_five_documents_returns_unified_summary(mock_db_manage
     """Five chapters → unified 33%/66% summaries from aggregate"""
     from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
-    db_manager, session = mock_db_manager
+    _db_manager, session = mock_db_manager
 
     # Create product with 5 vision documents
     docs = []
@@ -165,7 +165,7 @@ async def test_consolidate_respects_display_order(mock_db_manager):
     """Documents ordered by display_order in aggregate text"""
     from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
-    db_manager, session = mock_db_manager
+    _db_manager, session = mock_db_manager
 
     # Create docs with intentionally scrambled order
     doc1 = MagicMock(spec=VisionDocument)
@@ -199,7 +199,7 @@ async def test_consolidate_respects_display_order(mock_db_manager):
     service = ConsolidatedVisionService()
 
     # Build aggregate to check order
-    aggregate_text, source_ids, agg_hash = service._build_aggregate(product)
+    aggregate_text, _source_ids, _agg_hash = service._build_aggregate(product)
 
     # Verify order: doc2 (order=1), doc3 (order=2), doc1 (order=3)
     assert "Chapter 2" in aggregate_text
@@ -219,7 +219,7 @@ async def test_consolidate_skips_inactive_docs(mock_db_manager):
     """Only active documents included in aggregate"""
     from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
-    db_manager, session = mock_db_manager
+    _db_manager, session = mock_db_manager
 
     # Create 3 docs: 2 active, 1 inactive
     doc1 = MagicMock(spec=VisionDocument)
@@ -252,7 +252,7 @@ async def test_consolidate_skips_inactive_docs(mock_db_manager):
 
     service = ConsolidatedVisionService()
 
-    aggregate_text, source_ids, agg_hash = service._build_aggregate(product)
+    aggregate_text, source_ids, _agg_hash = service._build_aggregate(product)
 
     # Verify only active docs included
     assert "Active Doc 1" in aggregate_text
@@ -267,7 +267,7 @@ async def test_consolidate_detects_no_changes(mock_db_manager):
     """Hash unchanged → raises ValidationError with no_changes, skips re-summarization"""
     from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
-    db_manager, session = mock_db_manager
+    _db_manager, session = mock_db_manager
 
     doc = MagicMock(spec=VisionDocument)
     doc.document_name = "Vision"
@@ -312,7 +312,7 @@ async def test_consolidate_force_regenerates(mock_db_manager):
     """force=True → always regenerates regardless of hash"""
     from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
-    db_manager, session = mock_db_manager
+    _db_manager, session = mock_db_manager
 
     doc = MagicMock(spec=VisionDocument)
     doc.id = "doc-force"
@@ -365,7 +365,7 @@ async def test_consolidate_handles_product_not_found(mock_db_manager):
     """Non-existent product_id → raises ResourceNotFoundError"""
     from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
-    db_manager, session = mock_db_manager
+    _db_manager, session = mock_db_manager
 
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None  # Product not found
@@ -391,7 +391,7 @@ async def test_consolidate_enforces_tenant_isolation(mock_db_manager):
     """Product exists but belongs to different tenant → raises ResourceNotFoundError (no tenant leak)"""
     from giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
-    db_manager, session = mock_db_manager
+    _db_manager, session = mock_db_manager
 
     # Product belongs to different tenant - query returns None because
     # tenant_key is now in the WHERE clause (defense-in-depth fix)

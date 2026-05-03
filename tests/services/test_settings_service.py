@@ -353,7 +353,7 @@ class TestGitToggleCascade:
     async def test_git_disable_cascades_to_disable_git_history_for_tenant_users(
         self, db_session, user_service_a, user_a_with_git_history, tenant_key_a
     ):
-        user_a, fp = user_a_with_git_history
+        _user_a, fp = user_a_with_git_history
         assert fp.enabled is True
 
         count = await user_service_a.bulk_disable_field_priority("git_history")

@@ -73,7 +73,7 @@ class TestCreateProductExceptions:
     @pytest.mark.asyncio
     async def test_create_product_raises_validation_error_for_invalid_platforms(self, mock_db_manager):
         """Should raise ValidationError for invalid target platforms."""
-        db_manager, session = mock_db_manager
+        db_manager, _session = mock_db_manager
         service = ProductService(db_manager, "test-tenant")
 
         # Invalid platform
@@ -186,7 +186,7 @@ class TestUpdateProductExceptions:
     @pytest.mark.asyncio
     async def test_update_product_raises_validation_error_for_invalid_platforms(self, mock_db_manager):
         """Should raise ValidationError for invalid target platforms."""
-        db_manager, session = mock_db_manager
+        db_manager, _session = mock_db_manager
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(ValidationError) as exc_info:
@@ -472,7 +472,7 @@ class TestExceptionContextVerification:
     @pytest.mark.asyncio
     async def test_validation_exception_includes_field_in_context(self, mock_db_manager):
         """ValidationError should include relevant field information in context."""
-        db_manager, session = mock_db_manager
+        db_manager, _session = mock_db_manager
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(ValidationError) as exc_info:

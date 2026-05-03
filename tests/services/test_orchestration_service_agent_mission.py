@@ -128,7 +128,7 @@ class TestGetAgentMissionFullProtocol:
         self, orchestration_service, mock_db_manager, mock_agent_job
     ):
         """Test that get_agent_mission returns full_protocol field by default."""
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution = mock_agent_job
 
         # Setup database mocks
@@ -145,7 +145,7 @@ class TestGetAgentMissionFullProtocol:
     @pytest.mark.asyncio
     async def test_full_protocol_contains_five_phases(self, orchestration_service, mock_db_manager, mock_agent_job):
         """Test that full_protocol contains all 5 lifecycle phases (Handover 0359)."""
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution = mock_agent_job
 
         # Setup database mocks
@@ -165,7 +165,7 @@ class TestGetAgentMissionFullProtocol:
     @pytest.mark.asyncio
     async def test_full_protocol_references_mcp_tools(self, orchestration_service, mock_db_manager, mock_agent_job):
         """Test that full_protocol references required MCP tools."""
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution = mock_agent_job
 
         # Setup database mocks
@@ -182,7 +182,7 @@ class TestGetAgentMissionFullProtocol:
     @pytest.mark.asyncio
     async def test_full_protocol_includes_job_context(self, orchestration_service, mock_db_manager, mock_agent_job):
         """Test that full_protocol includes job-specific context."""
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution = mock_agent_job
         job.job_id = "unique-job-id-12345"
 
@@ -201,7 +201,7 @@ class TestGetAgentMissionFullProtocol:
         self, orchestration_service, mock_db_manager, mock_agent_job
     ):
         """Test that full_protocol addition maintains backward compatibility."""
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution = mock_agent_job
 
         # Setup database mocks
@@ -228,7 +228,7 @@ class TestGetAgentMissionFullProtocol:
         self, orchestration_service, mock_db_manager, mock_agent_job
     ):
         """Test that protocol includes message handling instructions (Issue 0361-5)."""
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution = mock_agent_job
 
         # Mock database query
@@ -260,7 +260,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
         This ensures agents check for orchestrator instructions during long-running work,
         not just at startup and completion.
         """
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution = mock_agent_job
 
         # Mock database query
@@ -295,7 +295,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
         This prevents agents from reporting progress without incorporating
         orchestrator feedback first.
         """
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution = mock_agent_job
 
         # Mock database query
@@ -334,7 +334,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
 
         This prevents agents from completing while orchestrator has pending instructions.
         """
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution = mock_agent_job
 
         # Mock database query
@@ -370,7 +370,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
         This ensures agents understand the complete message checking pattern across
         all phases of execution.
         """
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution = mock_agent_job
 
         # Mock database query

@@ -126,7 +126,7 @@ class TestGetAgentMissionImplementationGate:
         self, orchestration_service, mock_db_manager, mock_agent_job_and_execution, mock_project_not_launched
     ):
         """Test that get_agent_mission is blocked when implementation_launched_at is None."""
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution, project_id = mock_agent_job_and_execution
         project = mock_project_not_launched
         project.id = project_id  # Link project to job
@@ -166,7 +166,7 @@ class TestGetAgentMissionImplementationGate:
         Updated for exception-based error handling (Handover 0730b).
         Success is indicated by presence of job_id in response, not a 'success' wrapper.
         """
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution, project_id = mock_agent_job_and_execution
         project = mock_project_launched
         project.id = project_id  # Link project to job

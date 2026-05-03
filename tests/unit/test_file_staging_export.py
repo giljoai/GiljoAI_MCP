@@ -102,7 +102,7 @@ async def test_stage_agent_templates_preserves_staleness_after_export(db_session
     # Export template
     staging = FileStaging(base_path=tmp_path, db_session=db_session)
     staging_dir = tmp_path / "tenant-abc" / "test-token"
-    zip_path, msg = await staging.stage_agent_templates(staging_dir, "tenant-abc", db_session)
+    _zip_path, _msg = await staging.stage_agent_templates(staging_dir, "tenant-abc", db_session)
 
     # Refresh from database
     await db_session.refresh(template)
@@ -133,7 +133,7 @@ async def test_stage_agent_templates_timestamp_persists_to_database(db_session: 
     # Export template
     staging = FileStaging(base_path=tmp_path, db_session=db_session)
     staging_dir = tmp_path / "tenant-abc" / "test-token"
-    zip_path, msg = await staging.stage_agent_templates(staging_dir, "tenant-abc", db_session)
+    zip_path, _msg = await staging.stage_agent_templates(staging_dir, "tenant-abc", db_session)
 
     # Verify export succeeded
     assert zip_path is not None
@@ -210,7 +210,7 @@ async def test_stage_agent_templates_multiple_exports_update_timestamp(db_sessio
     # First export
     staging = FileStaging(base_path=tmp_path, db_session=db_session)
     staging_dir1 = tmp_path / "tenant-abc" / "token-1"
-    zip_path1, msg1 = await staging.stage_agent_templates(staging_dir1, "tenant-abc", db_session)
+    zip_path1, _msg1 = await staging.stage_agent_templates(staging_dir1, "tenant-abc", db_session)
     await db_session.refresh(template)
     first_export_time = template.last_exported_at
 
@@ -221,7 +221,7 @@ async def test_stage_agent_templates_multiple_exports_update_timestamp(db_sessio
 
     # Second export
     staging_dir2 = tmp_path / "tenant-abc" / "token-2"
-    zip_path2, msg2 = await staging.stage_agent_templates(staging_dir2, "tenant-abc", db_session)
+    zip_path2, _msg2 = await staging.stage_agent_templates(staging_dir2, "tenant-abc", db_session)
     await db_session.refresh(template)
     second_export_time = template.last_exported_at
 

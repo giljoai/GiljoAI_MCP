@@ -299,7 +299,7 @@ class TestReactivateJob:
         test_tenant_key: str,
     ):
         """Reactivation should transition completed job back to active."""
-        job, agent = blocked_agent
+        job, _agent = blocked_agent
         assert job.status == "completed"
 
         await orchestration_service._agent_state.reactivate_job(
@@ -340,7 +340,7 @@ class TestReactivateJob:
         test_tenant_key: str,
     ):
         """Reactivating a non-blocked agent should raise ResourceNotFoundError."""
-        job, agent = _create_agent(
+        job, _agent = _create_agent(
             db_session,
             active_project.id,
             test_tenant_key,
@@ -365,7 +365,7 @@ class TestReactivateJob:
         test_tenant_key: str,
     ):
         """Reactivating a complete (not blocked) agent should raise ResourceNotFoundError."""
-        job, agent = _create_agent(
+        job, _agent = _create_agent(
             db_session,
             active_project.id,
             test_tenant_key,
@@ -391,7 +391,7 @@ class TestReactivateJob:
         test_tenant_key: str,
     ):
         """Reactivating in a closed project should raise ProjectStateError."""
-        job, agent = blocked_agent
+        job, _agent = blocked_agent
 
         # Close the project
         active_project.status = "completed"
@@ -489,7 +489,7 @@ class TestDismissReactivation:
         test_tenant_key: str,
     ):
         """Dismissing should restore job status to completed if no other active executions."""
-        job, agent = blocked_agent
+        job, _agent = blocked_agent
 
         # The auto-block in 0827b doesn't change job status, but if it was
         # already "completed", dismiss should keep it that way
@@ -512,7 +512,7 @@ class TestDismissReactivation:
         test_tenant_key: str,
     ):
         """Dismissing a non-blocked agent should raise ResourceNotFoundError."""
-        job, agent = _create_agent(
+        job, _agent = _create_agent(
             db_session,
             active_project.id,
             test_tenant_key,
@@ -617,7 +617,7 @@ class TestReactivationGuidance:
         test_tenant_key: str,
     ):
         """Working agent should NOT get _reactivation_guidance."""
-        job, agent = _create_agent(
+        _job, agent = _create_agent(
             db_session,
             active_project.id,
             test_tenant_key,
@@ -667,7 +667,7 @@ class TestReactivationGuidance:
         test_tenant_key: str,
     ):
         """Blocked agent with no pending messages should NOT get guidance."""
-        job, agent = blocked_agent
+        _job, agent = blocked_agent
 
         result = await message_service.receive_messages(
             agent_id=agent.agent_id,
