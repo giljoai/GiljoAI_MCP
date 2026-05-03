@@ -1558,6 +1558,7 @@ def run_startup(
                 capture_output=True,
                 text=True,
                 timeout=120,
+                check=False,
             )
             if build_result.returncode == 0:
                 print_success("Frontend build complete")
@@ -1688,11 +1689,12 @@ def stop_services() -> int:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                check=False,
             )
             for line in result.stdout.strip().split("\n")[1:]:
                 pid = line.strip()
                 if pid.isdigit():
-                    subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10)
+                    subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10, check=False)
                     print_success(f"Stopped API server (PID: {pid})")
                     stopped += 1
         else:
@@ -1701,10 +1703,11 @@ def stop_services() -> int:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                check=False,
             )
             for pid in result.stdout.strip().split("\n"):
                 if pid.strip().isdigit():
-                    subprocess.run(["kill", pid.strip()], capture_output=True, timeout=10)
+                    subprocess.run(["kill", pid.strip()], capture_output=True, timeout=10, check=False)
                     print_success(f"Stopped API server (PID: {pid.strip()})")
                     stopped += 1
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
@@ -1718,11 +1721,12 @@ def stop_services() -> int:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                check=False,
             )
             for line in result.stdout.strip().split("\n")[1:]:
                 pid = line.strip()
                 if pid.isdigit():
-                    subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10)
+                    subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10, check=False)
                     print_success(f"Stopped frontend server (PID: {pid})")
                     stopped += 1
         else:
@@ -1731,10 +1735,11 @@ def stop_services() -> int:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                check=False,
             )
             for pid in result.stdout.strip().split("\n"):
                 if pid.strip().isdigit():
-                    subprocess.run(["kill", pid.strip()], capture_output=True, timeout=10)
+                    subprocess.run(["kill", pid.strip()], capture_output=True, timeout=10, check=False)
                     print_success(f"Stopped frontend server (PID: {pid.strip()})")
                     stopped += 1
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):

@@ -1010,7 +1010,7 @@ class UnifiedInstaller:
     def _get_node_version() -> str:
         """Get Node.js version string, or 'unknown' on failure."""
         with contextlib.suppress(Exception):
-            proc = subprocess.run(["node", "--version"], capture_output=True, text=True, timeout=10)
+            proc = subprocess.run(["node", "--version"], capture_output=True, text=True, timeout=10, check=False)
             return proc.stdout.strip()
         return "unknown"
 
@@ -1430,6 +1430,7 @@ class UnifiedInstaller:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                check=False,
             )
             ca_dir = ca_result.stdout.strip()
             str(Path(ca_dir) / "rootCA.pem") if ca_dir else "rootCA.pem"
@@ -3205,12 +3206,12 @@ except Exception as e:
             if system == "Darwin":
                 # macOS (Homebrew): postgres runs as current user
                 cmd = ["psql", "-U", "postgres", "-d", "postgres", "-c", safe_sql]
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
             else:
                 # Linux: use sudo -u postgres for peer auth
                 cmd = ["sudo", "-u", "postgres", "psql", "-c", safe_sql]
                 self._print_info("Setting PostgreSQL password (sudo may ask for your password)...")
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
 
             if result.returncode == 0:
                 return True

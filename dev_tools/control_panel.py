@@ -1470,6 +1470,7 @@ class GiljoDevControlPanel:
                         capture_output=True,
                         text=True,
                         timeout=120,
+                        check=False,
                     )
                     if install_result.returncode != 0:
                         messagebox.showerror(
@@ -3205,6 +3206,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=30,
+                        check=False,
                     )
                     deleted.append("mkcert CA (removed from trust stores)")
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
@@ -3368,6 +3370,7 @@ pg_restore -l {backup_file.name} | head -20
                 capture_output=True,
                 text=True,
                 timeout=5,
+                check=False,
             )
             if check.returncode == 0:
                 return ""  # Empty string signals passwordless sudo
@@ -3506,6 +3509,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=5,
+                        check=False,
                     )
                     if "-L" in result.stdout or "-L" in result.stderr:
                         return str(certutil)
@@ -3540,6 +3544,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=15,
+                        check=False,
                     )
                     current_uri = None
                     for line in result.stdout.splitlines():
@@ -3563,6 +3568,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=15,
+                        check=False,
                     )
                     for line in result.stdout.splitlines():
                         if "mkcert" in line.lower():
@@ -3586,6 +3592,7 @@ pg_restore -l {backup_file.name} | head -20
                                 capture_output=True,
                                 text=True,
                                 timeout=15,
+                                check=False,
                             )
                             for line in result.stdout.splitlines():
                                 if "mkcert" in line.lower():
@@ -3610,6 +3617,7 @@ pg_restore -l {backup_file.name} | head -20
                     capture_output=True,
                     text=True,
                     timeout=15,
+                    check=False,
                 )
                 thumbprint = result.stdout.strip()
                 if thumbprint:
@@ -3629,6 +3637,7 @@ pg_restore -l {backup_file.name} | head -20
                     capture_output=True,
                     text=True,
                     timeout=15,
+                    check=False,
                 )
                 thumbprint = result.stdout.strip()
                 if thumbprint:
@@ -3650,6 +3659,7 @@ pg_restore -l {backup_file.name} | head -20
                                     capture_output=True,
                                     text=True,
                                     timeout=15,
+                                    check=False,
                                 )
                                 for line in result.stdout.splitlines():
                                     if "mkcert" in line.lower():
@@ -3712,6 +3722,7 @@ pg_restore -l {backup_file.name} | head -20
                             capture_output=True,
                             text=True,
                             timeout=60,
+                            check=False,
                         )
                         if result.returncode == 0:
                             certutil_path = shutil.which("certutil")
@@ -3723,6 +3734,7 @@ pg_restore -l {backup_file.name} | head -20
                                         capture_output=True,
                                         text=True,
                                         timeout=15,
+                                        check=False,
                                     )
                                     for line in scan.stdout.splitlines():
                                         if "mkcert" in line.lower():
@@ -3747,6 +3759,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=15,
+                        check=False,
                     )
                     if result.returncode != 0:
                         self.logger.warning(f"NSS cert removal failed: {result.stderr.strip()}")
@@ -3765,6 +3778,7 @@ pg_restore -l {backup_file.name} | head -20
                             capture_output=True,
                             text=True,
                             timeout=5,
+                            check=False,
                         )
                         if "mkcert" in result.stdout.lower():
                             rm_result = subprocess.run(
@@ -3773,6 +3787,7 @@ pg_restore -l {backup_file.name} | head -20
                                 capture_output=True,
                                 text=True,
                                 timeout=10,
+                                check=False,
                             )
                             if rm_result.returncode == 0:
                                 removed_file = True
@@ -3789,6 +3804,7 @@ pg_restore -l {backup_file.name} | head -20
                             capture_output=True,
                             text=True,
                             timeout=30,
+                            check=False,
                         )
                     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                         self.logger.warning("update-ca-certificates failed")
@@ -3804,6 +3820,7 @@ pg_restore -l {backup_file.name} | head -20
                             capture_output=True,
                             text=True,
                             timeout=15,
+                            check=False,
                         )
                         if result.returncode != 0:
                             self.logger.warning(
@@ -3836,6 +3853,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=15,
+                        check=False,
                     )
                     if result.returncode == 0:
                         stores_cleaned.append("User certificate store")
@@ -3869,6 +3887,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=30,
+                        check=False,
                     )
                     verify_cmd = (
                         f"Get-ChildItem Cert:\\LocalMachine\\Root "
@@ -3880,6 +3899,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=10,
+                        check=False,
                     )
                     if verify.stdout.strip() == "0":
                         stores_cleaned.append("Machine certificate store")
@@ -3899,6 +3919,7 @@ pg_restore -l {backup_file.name} | head -20
                             capture_output=True,
                             text=True,
                             timeout=15,
+                            check=False,
                         )
                         if result.returncode == 0:
                             stores_cleaned.append(f"Firefox profile ({Path(profile['path']).name})")

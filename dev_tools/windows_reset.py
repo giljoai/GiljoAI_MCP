@@ -121,7 +121,7 @@ def rm_file_safe(path: Path, dry_run: bool) -> bool:
 
 def run_quiet(cmd: list[str], timeout: int = 30) -> subprocess.CompletedProcess:
     """Run a command quietly, returning the result."""
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
 
 
 # ---------------------------------------------------------------------------
