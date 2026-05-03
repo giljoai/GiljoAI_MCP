@@ -14,7 +14,7 @@ causing SQLAlchemy async lazy loading errors when accessing primary_vision_path 
 """
 
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, PropertyMock
 
 import pytest
@@ -65,8 +65,8 @@ async def test_get_active_product_returns_vision_path_without_lazy_load_error(mo
     mock_product.deleted_at = None
     mock_product.project_path = "/path/to/project"
     # Use datetime objects that have .isoformat() method
-    mock_product.created_at = datetime(2025, 1, 1, tzinfo=timezone.utc)
-    mock_product.updated_at = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    mock_product.created_at = datetime(2025, 1, 1, tzinfo=UTC)
+    mock_product.updated_at = datetime(2025, 1, 1, tzinfo=UTC)
     mock_product.config_data = {}
 
     # Mock vision_documents as already loaded (eager loading)
@@ -194,8 +194,8 @@ async def test_get_active_product_with_empty_vision_documents(mock_db_manager):
     mock_product.deleted_at = None
     mock_product.project_path = "/path/to/project"
     # Use datetime objects that have .isoformat() method
-    mock_product.created_at = datetime(2025, 1, 1, tzinfo=timezone.utc)
-    mock_product.updated_at = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    mock_product.created_at = datetime(2025, 1, 1, tzinfo=UTC)
+    mock_product.updated_at = datetime(2025, 1, 1, tzinfo=UTC)
     mock_product.config_data = {}
     mock_product.vision_documents = []  # Empty
 

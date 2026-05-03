@@ -18,7 +18,7 @@ Responsibilities:
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,8 +51,8 @@ class MissionOrchestrationService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        test_session: Optional[AsyncSession] = None,
-        websocket_manager: Optional[Any] = None,
+        test_session: AsyncSession | None = None,
+        websocket_manager: Any | None = None,
     ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager

@@ -47,6 +47,8 @@ nltk>=3.8                  # Natural language processing (tokenization, stopword
 
 # SaaS Dependencies (only used when GILJO_MODE=saas or demo)
 resend>=2.0.0              # Transactional email via Resend API (SAAS-006)
+aiosmtplib>=3.0.0          # Async SMTP client for SmtpProvider (Mailpit/local capture, EMAIL_BACKEND=smtp)
+jinja2>=3.1                # Templating for Ops Panel HTML views (ops_panel/main.py); ~200 KB total SaaS overhead on CE
 
 # Platform-Specific
 # pywin32 removed in Handover 0394 - no usage found in codebase

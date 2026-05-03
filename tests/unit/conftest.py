@@ -66,7 +66,7 @@ def mock_tenant_manager():
 # --- Synchronous DB fixtures for template validation tests ---
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def sync_db_manager():
     """Create synchronous database manager for validation tests."""
     from giljo_mcp.database import DatabaseManager

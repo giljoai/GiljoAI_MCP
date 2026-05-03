@@ -12,7 +12,7 @@ and improving readability without changing behaviour.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,12 +24,12 @@ class BroadcastMessageContext:
 
     session: AsyncSession
     messages: list
-    message_id: Optional[str]
+    message_id: str | None
     project: Any
     tenant_key: str
     to_agents: list[str]
     resolved_to_agents: list[str]
-    from_agent: Optional[str]
+    from_agent: str | None
     message_type: str
     content: str
     priority: str
@@ -48,7 +48,7 @@ class BroadcastAgentCreatedContext:
     agent_display_name: str
     agent_name: str
     mission: str
-    phase: Optional[int]
+    phase: int | None
     created_at: datetime
 
 
@@ -71,18 +71,18 @@ class MemoryEntryCreateParams:
     timestamp: datetime
 
     # Optional (defaults match current repository signature)
-    project_id: Optional[UUID] = None
-    project_name: Optional[str] = None
-    summary: Optional[str] = None
-    key_outcomes: Optional[list[str]] = None
-    decisions_made: Optional[list[str]] = None
-    git_commits: Optional[list[dict[str, Any]]] = None
-    deliverables: Optional[list[str]] = None
-    metrics: Optional[dict[str, Any]] = None
+    project_id: UUID | None = None
+    project_name: str | None = None
+    summary: str | None = None
+    key_outcomes: list[str] | None = None
+    decisions_made: list[str] | None = None
+    git_commits: list[dict[str, Any]] | None = None
+    deliverables: list[str] | None = None
+    metrics: dict[str, Any] | None = None
     priority: int = 3
     significance_score: float = 0.5
-    token_estimate: Optional[int] = None
-    tags: Optional[list[str]] = field(default=None)
-    author_job_id: Optional[UUID] = None
-    author_name: Optional[str] = None
-    author_type: Optional[str] = None
+    token_estimate: int | None = None
+    tags: list[str] | None = field(default=None)
+    author_job_id: UUID | None = None
+    author_name: str | None = None
+    author_type: str | None = None

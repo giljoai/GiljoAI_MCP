@@ -24,9 +24,9 @@ Architecture:
 
 import logging
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -78,10 +78,10 @@ class ClaudeExportResult(BaseModel):
     exported_count: int = Field(..., description="Number of templates exported")
     files: list[dict[str, str]] = Field(..., description="List of exported files with name and path")
     message: str = Field(..., description="User-readable result message")
-    backup: Optional[dict[str, Any]] = Field(None, description="Backup information (Handover 0075)")
+    backup: dict[str, Any] | None = Field(None, description="Backup information (Handover 0075)")
 
 
-def create_backup(file_path: Path) -> Optional[Path]:
+def create_backup(file_path: Path) -> Path | None:
     """
     Create backup of existing file with .old.YYYYMMDD_HHMMSS format.
 
@@ -100,7 +100,7 @@ def create_backup(file_path: Path) -> Optional[Path]:
         return None
 
     # Generate timestamp in YYYYMMDD_HHMMSS format
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     backup_path = file_path.parent / f"{file_path.name}.old.{timestamp}"
 
     # Copy content to backup
@@ -114,7 +114,7 @@ def create_backup(file_path: Path) -> Optional[Path]:
         return backup_path
 
 
-def create_zip_backup(agents_dir: Path) -> Optional[Path]:
+def create_zip_backup(agents_dir: Path) -> Path | None:
     """
     Create timestamped zip backup of .claude/agents/ directory (Handover 0075).
 
@@ -155,7 +155,7 @@ def create_zip_backup(agents_dir: Path) -> Optional[Path]:
     backups_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate timestamp
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     backup_filename = f"agents_backup_{timestamp}.zip"
     backup_path = backups_dir / backup_filename
 
@@ -238,7 +238,7 @@ async def export_template_to_claude_code(
     file_path.write_text(full_content, encoding="utf-8")
 
     # Update last_exported_at timestamp (Handover 0335)
-    template.last_exported_at = datetime.now(timezone.utc)
+    template.last_exported_at = datetime.now(UTC)
     await db.commit()
 
     logger.info(
@@ -392,7 +392,7 @@ async def export_templates_to_claude_code(
             file_path.write_text(full_content, encoding="utf-8")
 
             # Update last_exported_at timestamp (Handover 0335)
-            template.last_exported_at = datetime.now(timezone.utc)
+            template.last_exported_at = datetime.now(UTC)
 
             logger.info(f"Exported template: {template.name} to {file_path}")
 
@@ -403,7 +403,7 @@ async def export_templates_to_claude_code(
                 }
             )
 
-        except Exception as _exc:  # noqa: PERF203 - Resilient export: continue with other templates on error
+        except Exception as _exc:
             logger.exception("Failed to export template {template.name}")
             # Continue with other templates rather than failing completely
             continue

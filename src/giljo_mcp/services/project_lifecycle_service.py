@@ -13,7 +13,7 @@ Handles project lifecycle state transitions:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -140,7 +140,7 @@ class ProjectLifecycleService:
                     if existing_active:
                         # Auto-deactivate existing active project
                         existing_active.status = ProjectStatus.INACTIVE
-                        existing_active.updated_at = datetime.now(timezone.utc)
+                        existing_active.updated_at = datetime.now(UTC)
                         self._logger.info(
                             f"Auto-deactivated project {existing_active.id} due to Single Active Project constraint"
                         )
@@ -153,11 +153,11 @@ class ProjectLifecycleService:
 
                 # Activate project
                 project.status = ProjectStatus.ACTIVE
-                project.updated_at = datetime.now(timezone.utc)
+                project.updated_at = datetime.now(UTC)
 
                 # Set activated_at only on first activation
                 if not project.activated_at:
-                    project.activated_at = datetime.now(timezone.utc)
+                    project.activated_at = datetime.now(UTC)
 
                 await self._repo.commit(session)
                 await self._repo.refresh(session, project)
@@ -261,7 +261,7 @@ class ProjectLifecycleService:
                         "agent_name": "orchestrator",
                         "status": "waiting",
                         "fixture": True,  # Indicates this is a fixture, not from staging
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "timestamp": datetime.now(UTC).isoformat(),
                     },
                 )
                 self._logger.info(f"[ORCHESTRATOR FIXTURE] Broadcast agent:created for {job_id}")
@@ -325,7 +325,7 @@ class ProjectLifecycleService:
 
             # Deactivate project
             project.status = ProjectStatus.INACTIVE
-            project.updated_at = datetime.now(timezone.utc)
+            project.updated_at = datetime.now(UTC)
 
             # Store reason if provided
             if reason:
@@ -453,7 +453,7 @@ class ProjectLifecycleService:
         Raises:
             ResourceNotFoundError: When project not found
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         project = await self._repo.get_by_id(session, tenant_key, project_id)
 
@@ -619,7 +619,7 @@ class ProjectLifecycleService:
                 # This avoids violating the Single Active Project per product constraint.
                 project.status = ProjectStatus.INACTIVE
                 project.completed_at = None
-                project.updated_at = datetime.now(timezone.utc)
+                project.updated_at = datetime.now(UTC)
 
                 # Resume decommissioned agents (migrated to AgentExecution - Handover 0367a)
                 executions_to_resume = await self._repo.find_decommissioned_executions(session, tenant_key, project_id)
@@ -627,7 +627,7 @@ class ProjectLifecycleService:
 
                 for execution in executions_to_resume:
                     execution.status = "waiting"
-                    execution.updated_at = datetime.now(timezone.utc)
+                    execution.updated_at = datetime.now(UTC)
                     resumed_ids.append(execution.job_id)
 
                 await self._repo.commit(session)
@@ -695,7 +695,7 @@ class ProjectLifecycleService:
                     "project_name": project_name,
                     "sequence_number": sequence_number,
                     "summary_preview": summary_preview,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 },
             )
         except Exception as ws_error:  # Broad catch: WebSocket resilience, non-critical broadcast

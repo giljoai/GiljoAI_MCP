@@ -16,7 +16,7 @@ Covers 6 changes:
 """
 
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -158,7 +158,7 @@ class TestOrchestratorIdentityPopulated:
             mission="Coordinate implementation",
             job_type="orchestrator",
             status="active",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         execution = AgentExecution(
@@ -177,7 +177,7 @@ class TestOrchestratorIdentityPopulated:
             description="Test desc",
             mission="Test mission",
             status="active",
-            implementation_launched_at=datetime.now(timezone.utc),
+            implementation_launched_at=datetime.now(UTC),
             series_number=random.randint(1, 999999),
         )
 
@@ -225,7 +225,7 @@ class TestOrchestratorIdentityPopulated:
             mission="Coordinate implementation",
             job_type="orchestrator",
             status="active",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         execution = AgentExecution(
@@ -244,7 +244,7 @@ class TestOrchestratorIdentityPopulated:
             description="Test desc",
             mission="Test mission",
             status="active",
-            implementation_launched_at=datetime.now(timezone.utc),
+            implementation_launched_at=datetime.now(UTC),
             series_number=random.randint(1, 999999),
         )
 
@@ -294,7 +294,7 @@ class TestOrchestratorIdentityPopulated:
             mission="Coordinate implementation",
             job_type="orchestrator",
             status="active",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         execution = AgentExecution(
@@ -313,7 +313,7 @@ class TestOrchestratorIdentityPopulated:
             description="Test desc",
             mission="Test mission",
             status="active",
-            implementation_launched_at=datetime.now(timezone.utc),
+            implementation_launched_at=datetime.now(UTC),
             series_number=random.randint(1, 999999),
         )
 
@@ -486,7 +486,7 @@ class TestOrchestratorPhaseGate:
             mission="Coordinate",
             job_type="orchestrator",
             status="active",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         execution = AgentExecution(
@@ -540,7 +540,7 @@ class TestOrchestratorPhaseGate:
             mission="Coordinate",
             job_type="orchestrator",
             status="active",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         execution = AgentExecution(
@@ -598,7 +598,7 @@ class TestGetOrchestratorInstructionsRedirectBranches:
             mission="Orchestrate",
             job_type="orchestrator",
             status="active",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         execution = AgentExecution(
@@ -643,7 +643,7 @@ class TestGetOrchestratorInstructionsRedirectBranches:
         """When implementation_launched_at IS NOT NULL, returns redirect=get_agent_mission."""
         _, session = mock_db_manager
         job_id, job, execution, project = self._make_fixtures(
-            implementation_launched_at=datetime.now(timezone.utc),
+            implementation_launched_at=datetime.now(UTC),
         )
         # Wire execution.job to return the AgentJob
         execution.job = job
@@ -682,7 +682,7 @@ class TestGetOrchestratorInstructionsRedirectBranches:
         """Redirect response includes job_id, project_id, project_name."""
         _, session = mock_db_manager
         job_id, job, execution, project = self._make_fixtures(
-            implementation_launched_at=datetime.now(timezone.utc),
+            implementation_launched_at=datetime.now(UTC),
         )
         execution.job = job
 

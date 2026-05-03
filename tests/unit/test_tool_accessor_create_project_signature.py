@@ -17,7 +17,20 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from giljo_mcp.services.project_service import ProjectService
 from giljo_mcp.tools.tool_accessor import ToolAccessor
+
+
+@pytest.fixture(autouse=True)
+def _autopatch_valid_project_types():
+    """Stub _get_valid_project_types so the omitted-type hint path doesn't hit the DB."""
+    with patch.object(
+        ProjectService,
+        "_get_valid_project_types",
+        new_callable=AsyncMock,
+        return_value=[],
+    ):
+        yield
 
 
 class TestCreateProjectSignature:

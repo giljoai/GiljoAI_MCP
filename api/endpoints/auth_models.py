@@ -14,8 +14,6 @@ Contains request/response models used across multiple auth-related endpoints:
 Extracted from auth.py and auth_pin_recovery.py to eliminate duplication (Handover 0703).
 """
 
-from typing import Optional
-
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -71,8 +69,8 @@ class CompleteFirstLoginRequest(BaseModel):
     confirm_password: str = Field(..., min_length=8)
     # PIN is CE-only (self-hosted has no email recovery). SaaS/demo use email-based
     # password reset and omit these fields.
-    recovery_pin: Optional[str] = Field(default=None, min_length=4, max_length=4, pattern="^[0-9]{4}$")
-    confirm_pin: Optional[str] = Field(default=None, min_length=4, max_length=4, pattern="^[0-9]{4}$")
+    recovery_pin: str | None = Field(default=None, min_length=4, max_length=4, pattern="^[0-9]{4}$")
+    confirm_pin: str | None = Field(default=None, min_length=4, max_length=4, pattern="^[0-9]{4}$")
 
     @field_validator("new_password")
     @classmethod

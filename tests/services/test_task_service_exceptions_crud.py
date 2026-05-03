@@ -11,7 +11,7 @@ Covers exception paths for: log_task, list_tasks, update_task, get_task.
 """
 
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -46,7 +46,7 @@ async def test_project(db_session, test_tenant_key, test_product):
         product_id=test_product.id,
         tenant_key=test_tenant_key,
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -68,7 +68,7 @@ async def test_task(db_session, test_tenant_key, test_product, test_project, tes
         description="Test task description",
         status="pending",
         priority="medium",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(task)
     await db_session.commit()

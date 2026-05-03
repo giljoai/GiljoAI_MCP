@@ -14,7 +14,7 @@ Split from test_auth_service.py. Contains:
 Handover 0731c: Updated for typed service returns (AuthResult, SetupStateInfo).
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import bcrypt
@@ -70,7 +70,7 @@ async def auth_inactive_user(db_session, auth_inactive_org):
         tenant_key=auth_inactive_org.tenant_key,  # Use org's tenant_key
         org_id=auth_inactive_org.id,  # 0424j: User.org_id NOT NULL
         is_active=False,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(user)
     await db_session.commit()
@@ -85,7 +85,7 @@ async def auth_setup_state(db_session, auth_test_org):
         id=str(uuid4()),
         tenant_key=auth_test_org.tenant_key,  # Use org's tenant_key
         database_initialized=True,
-        database_initialized_at=datetime.now(timezone.utc),
+        database_initialized_at=datetime.now(UTC),
         first_admin_created=False,
     )
     db_session.add(state)
@@ -199,7 +199,7 @@ class TestAuthenticateUser:
         AUTH-EMAIL: if the identifier happens to match User A's username AND
         User B's email, the username match wins (deterministic first-lookup order).
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
         from uuid import uuid4
 
         import bcrypt
@@ -219,7 +219,7 @@ class TestAuthenticateUser:
             tenant_key=auth_test_org.tenant_key,
             org_id=auth_test_org.id,
             is_active=True,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         user_email_owner = User(
             id=str(uuid4()),
@@ -230,7 +230,7 @@ class TestAuthenticateUser:
             tenant_key=auth_test_org.tenant_key,
             org_id=auth_test_org.id,
             is_active=True,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add_all([user_username_owner, user_email_owner])
         await db_session.commit()
@@ -251,7 +251,7 @@ class TestUpdateLastLogin:
         """Test updating user's last login timestamp"""
         user, _ = auth_user_with_password
         original_last_login = user.last_login
-        new_timestamp = datetime.now(timezone.utc)
+        new_timestamp = datetime.now(UTC)
 
         # Returns None on success (void method)
         result = await auth_service.update_last_login(user.id, new_timestamp)
@@ -269,7 +269,7 @@ class TestUpdateLastLogin:
         """Test updating last login for non-existent user raises ResourceNotFoundError"""
 
         with pytest.raises(ResourceNotFoundError):
-            await auth_service.update_last_login("nonexistent-user-id", datetime.now(timezone.utc))
+            await auth_service.update_last_login("nonexistent-user-id", datetime.now(UTC))
 
 
 class TestCheckSetupState:

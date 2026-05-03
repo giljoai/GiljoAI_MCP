@@ -12,7 +12,7 @@ Tests MemoryEntryCreateParams dataclass:
 - Field count (regression guard)
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from giljo_mcp.services.dto import MemoryEntryCreateParams
@@ -29,7 +29,7 @@ class TestMemoryEntryCreateParams:
             "sequence": 1,
             "entry_type": "session_progress",
             "source": "orchestrator",
-            "timestamp": datetime.now(tz=timezone.utc),
+            "timestamp": datetime.now(tz=UTC),
         }
 
     def test_create_with_required_fields_only(self):
@@ -72,7 +72,7 @@ class TestMemoryEntryCreateParams:
         """MemoryEntryCreateParams accepts all fields when explicitly set."""
         project_uuid = uuid4()
         author_uuid = uuid4()
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         params = MemoryEntryCreateParams(
             tenant_key="tk_fullPopulatedTest12345678901",
@@ -147,7 +147,7 @@ class TestMemoryEntryCreateParams:
             sequence=1,
             entry_type="session_progress",
             source="test",
-            timestamp=datetime.now(tz=timezone.utc),
+            timestamp=datetime.now(tz=UTC),
         )
         assert params.product_id == pid
         assert isinstance(params.product_id, UUID)

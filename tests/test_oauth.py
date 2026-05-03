@@ -20,7 +20,7 @@ These tests require a database session (PostgreSQL via test fixtures).
 import base64
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -232,12 +232,12 @@ class TestGenerateAuthorizationCode:
         assert stored.code_challenge_method == "S256"
         assert stored.scope == "mcp"
         assert stored.used is False
-        assert stored.expires_at > datetime.now(timezone.utc)
+        assert stored.expires_at > datetime.now(UTC)
 
     async def test_generate_code_sets_expiry(self, oauth_service, test_user, test_tenant_key, db_session):
         """The code expiry must be approximately 10 minutes in the future."""
         _verifier, challenge = _generate_pkce_pair()
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         code = await oauth_service.generate_authorization_code(
             user_id=test_user.id,
             tenant_key=test_tenant_key,
@@ -245,7 +245,7 @@ class TestGenerateAuthorizationCode:
             redirect_uri="http://localhost:3000/callback",
             code_challenge=challenge,
         )
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
 
         result = await db_session.execute(select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code))
         stored = result.scalar_one()
@@ -296,7 +296,7 @@ class TestExchangeCodeForToken:
         # Manually expire the code
         result = await db_session.execute(select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code))
         stored = result.scalar_one()
-        stored.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+        stored.expires_at = datetime.now(UTC) - timedelta(minutes=1)
         await db_session.flush()
 
         with pytest.raises(ValueError, match="expired"):
@@ -422,7 +422,7 @@ class TestCleanupExpiredCodes:
         # Expire the code
         result = await db_session.execute(select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code))
         stored = result.scalar_one()
-        stored.expires_at = datetime.now(timezone.utc) - timedelta(minutes=5)
+        stored.expires_at = datetime.now(UTC) - timedelta(minutes=5)
         await db_session.flush()
 
         deleted_count = await oauth_service.cleanup_expired_codes()

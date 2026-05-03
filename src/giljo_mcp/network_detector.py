@@ -11,7 +11,6 @@ CORS configuration updates when adapter IPs change.
 """
 
 import logging
-from typing import Optional
 
 import psutil
 
@@ -38,7 +37,7 @@ class AdapterIPDetector:
         ]
         self.loopback_patterns = ["lo", "Loopback"]
 
-    def get_adapter_ip(self, adapter_id: str) -> Optional[str]:
+    def get_adapter_ip(self, adapter_id: str) -> str | None:
         """Get current IP address of a specific network adapter."""
         try:
             interfaces = psutil.net_if_addrs()
@@ -63,7 +62,7 @@ class AdapterIPDetector:
             logger.error(f"Failed to get IP for adapter {adapter_id!r}: {e}", exc_info=True)
             return None
 
-    def detect_ip_change(self, config: dict) -> tuple[bool, Optional[str], Optional[str]]:
+    def detect_ip_change(self, config: dict) -> tuple[bool, str | None, str | None]:
         """Detect if network adapter IP has changed from initial/stored configuration.
 
         If no adapter is configured but mode is 'auto', will auto-detect best adapter.
@@ -116,7 +115,7 @@ class AdapterIPDetector:
             logger.error(f"IP change detection failed: {e}", exc_info=True)
             return False, None, None
 
-    def get_recommended_adapter(self) -> Optional[tuple[str, str]]:
+    def get_recommended_adapter(self) -> tuple[str, str] | None:
         """Get recommended network adapter for LAN binding."""
         try:
             interfaces = psutil.net_if_addrs()

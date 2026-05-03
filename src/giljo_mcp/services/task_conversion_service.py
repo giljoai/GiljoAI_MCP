@@ -27,8 +27,8 @@ Return Type Conventions (0731c):
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -106,7 +106,7 @@ class TaskConversionService:
     # ============================================================================
 
     async def convert_to_project(
-        self, task_id: str, project_name: Optional[str], strategy: str, include_subtasks: bool, user_id: str
+        self, task_id: str, project_name: str | None, strategy: str, include_subtasks: bool, user_id: str
     ) -> ConversionResult:
         """Convert task to project with optional subtask handling.
 
@@ -163,7 +163,7 @@ class TaskConversionService:
         self,
         session: AsyncSession,
         task_id: str,
-        project_name: Optional[str],
+        project_name: str | None,
         strategy: str,
         include_subtasks: bool,
         user_id: str,
@@ -233,7 +233,7 @@ class TaskConversionService:
                 f"before creating new project from task {task_id}"
             )
             existing_active_project.status = ProjectStatus.INACTIVE
-            existing_active_project.updated_at = datetime.now(timezone.utc)
+            existing_active_project.updated_at = datetime.now(UTC)
 
         # Create project
         final_project_name = project_name or task.title
@@ -280,7 +280,7 @@ class TaskConversionService:
     # Summary Statistics
     # ============================================================================
 
-    async def get_summary(self, product_id: Optional[str] = None) -> dict[str, Any]:
+    async def get_summary(self, product_id: str | None = None) -> dict[str, Any]:
         """Get task summary statistics.
 
         Returns counts grouped by status, optionally filtered by product.
@@ -314,7 +314,7 @@ class TaskConversionService:
             self._logger.exception("Failed to get task summary")
             raise BaseGiljoError(message=str(e), context={"operation": "get_summary"}) from e
 
-    async def _get_summary_impl(self, session: AsyncSession, product_id: Optional[str] = None) -> dict[str, Any]:
+    async def _get_summary_impl(self, session: AsyncSession, product_id: str | None = None) -> dict[str, Any]:
         """Implementation of get_summary with explicit session parameter.
 
         Returns:

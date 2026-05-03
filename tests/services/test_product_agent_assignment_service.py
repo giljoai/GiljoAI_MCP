@@ -13,7 +13,7 @@ Covers:
 - Tenant isolation (cross-tenant access denied)
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -54,7 +54,7 @@ async def product_a(db_session, tenant_a_key):
         description="Product for assignment tests",
         tenant_key=tenant_a_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(product)
     await db_session.commit()
@@ -70,7 +70,7 @@ async def product_b(db_session, tenant_b_key):
         description="Product for other tenant",
         tenant_key=tenant_b_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(product)
     await db_session.commit()

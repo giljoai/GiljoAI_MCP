@@ -14,7 +14,7 @@ Validates the four backend fixes introduced in 0814:
 6. Export paths produce identical output via render_claude_agent()
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -32,17 +32,17 @@ from giljo_mcp.template_seeder import _get_mcp_bootstrap_section
 
 def _make_template(**overrides) -> AgentTemplate:
     """Build an AgentTemplate with sensible defaults for testing."""
-    defaults = dict(
-        name="test-agent",
-        role="implementer",
-        cli_tool="claude",
-        description="Test agent for 0814 validation",
-        system_instructions=_get_mcp_bootstrap_section(),
-        user_instructions="You are a testing specialist.",
-        model="sonnet",
-        behavioral_rules=["Follow coding standards", "Write tests first"],
-        success_criteria=["All tests pass", "No linting errors"],
-    )
+    defaults = {
+        "name": "test-agent",
+        "role": "implementer",
+        "cli_tool": "claude",
+        "description": "Test agent for 0814 validation",
+        "system_instructions": _get_mcp_bootstrap_section(),
+        "user_instructions": "You are a testing specialist.",
+        "model": "sonnet",
+        "behavioral_rules": ["Follow coding standards", "Write tests first"],
+        "success_criteria": ["All tests pass", "No linting errors"],
+    }
     defaults.update(overrides)
     return AgentTemplate(**defaults)
 
@@ -66,7 +66,7 @@ def _make_mock_session():
     async def _simulate_refresh(obj, *args, **kwargs):
         """Simulate DB refresh by filling server-default columns."""
         if hasattr(obj, "created_at") and obj.created_at is None:
-            obj.created_at = datetime.now(timezone.utc)
+            obj.created_at = datetime.now(UTC)
 
     session.refresh = AsyncMock(side_effect=_simulate_refresh)
     return session

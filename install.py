@@ -57,7 +57,7 @@ def _bootstrap_dependencies():
     print(f"Installing bootstrap dependencies: {', '.join(missing)}...")
     use_user = sys.prefix == sys.base_prefix  # Not in a venv
 
-    cmd = [sys.executable, "-m", "pip", "install", "-q", "--no-cache-dir"] + missing
+    cmd = [sys.executable, "-m", "pip", "install", "-q", "--no-cache-dir", *missing]
     if use_user:
         cmd.insert(5, "--user")
 
@@ -92,9 +92,9 @@ import re
 import shutil
 import socket
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Third-party imports (safe after bootstrap)
 import click
@@ -134,20 +134,20 @@ def _sanitize_log(text: str) -> str:
 # ---------------------------------------------------------------------------
 # TTY-aware input — reads from /dev/tty when stdin is piped (curl | bash)
 # ---------------------------------------------------------------------------
-_tty_file: Optional[io.TextIOWrapper] = None
+_tty_file: io.TextIOWrapper | None = None
 _tty_stack = contextlib.ExitStack()
 atexit.register(_tty_stack.close)
 
 
-def _get_tty() -> Optional[io.TextIOWrapper]:
+def _get_tty() -> io.TextIOWrapper | None:
     """Open /dev/tty once and cache the handle."""
-    global _tty_file
+    global _tty_file  # noqa: PLW0603  # reason: cached TTY file handle deliberately module-scoped
     if _tty_file is not None:
         return _tty_file
     if sys.stdin.isatty():
         return None  # stdin is fine, no override needed
     try:
-        _tty_file = _tty_stack.enter_context(open("/dev/tty", "r"))  # noqa: SIM115
+        _tty_file = _tty_stack.enter_context(open("/dev/tty"))  # noqa: SIM115
         return _tty_file
     except OSError:
         return None
@@ -227,7 +227,7 @@ def getpass_with_asterisks(prompt: str = "Password: ") -> str:
             if sys.stdin.isatty():
                 tty_stream = sys.stdin
             else:
-                tty_stream = stack.enter_context(open("/dev/tty", "r"))  # noqa: SIM115
+                tty_stream = stack.enter_context(open("/dev/tty"))
 
             fd = tty_stream.fileno()
             old_settings = termios.tcgetattr(fd)
@@ -271,7 +271,7 @@ class UnifiedInstaller:
     - Service launching
     """
 
-    def __init__(self, settings: Optional[Dict[str, Any]] = None):
+    def __init__(self, settings: dict[str, Any] | None = None):
         """
         Initialize installer with settings
 
@@ -299,9 +299,9 @@ class UnifiedInstaller:
 
         # State
         self.postgresql_found = False
-        self.psql_path: Optional[Path] = None
+        self.psql_path: Path | None = None
         self.venv_created = False
-        self.database_credentials: Optional[Dict[str, str]] = None
+        self.database_credentials: dict[str, str] | None = None
         # True when discover_nodejs() winget/apt/brew-installed Node during
         # this run. Triggers an end-of-install "shell restart required"
         # notice so users don't hit "npm: WinError 2" on first startup.py
@@ -328,7 +328,7 @@ class UnifiedInstaller:
                 if str_path not in sys.path:
                     sys.path.insert(0, str_path)
 
-    def run(self) -> Dict[str, Any]:
+    def run(self) -> dict[str, Any]:
         """
         Execute complete installation workflow
 
@@ -503,12 +503,11 @@ class UnifiedInstaller:
                 if https_result.get("enabled"):
                     result["steps"].append("https_configured")
 
-            if not setup_only:
+            if not setup_only and self.settings.get("create_shortcuts", False):
                 # Step 8: Create desktop shortcuts (if requested - Windows only)
-                if self.settings.get("create_shortcuts", False):
-                    self._print_header("Creating Desktop Shortcuts")
-                    self.create_desktop_shortcuts()
-                    result["steps"].append("shortcuts_created")
+                self._print_header("Creating Desktop Shortcuts")
+                self.create_desktop_shortcuts()
+                result["steps"].append("shortcuts_created")
 
             # Success
             result["success"] = True
@@ -529,7 +528,7 @@ class UnifiedInstaller:
         except Exception as e:
             self._print_error(f"Installation failed: {e}")
             result["error"] = str(e)
-            _logger.error("Installation status: FAILED | Error: %s", _sanitize_log(str(e)))
+            _logger.exception("Installation status: FAILED | Error: %s", _sanitize_log(str(e)))  # noqa: TRY401  # reason: sanitized error preserved for log searchability alongside traceback
             return result
 
     def welcome_screen(self) -> None:
@@ -687,25 +686,22 @@ class UnifiedInstaller:
                     if remaining > 0:
                         self._print_error(f"Passwords do not match. {remaining} attempt(s) remaining.")
                         continue
-                    else:
-                        raise ValueError("PostgreSQL password required for installation")
+                    raise ValueError("PostgreSQL password required for installation")
 
                 # Try setting the password via peer auth (local socket)
                 if self._set_postgres_password_via_peer(pg_pass):
                     self.settings["pg_password"] = pg_pass
                     self._print_success("PostgreSQL password set and confirmed")
                     break
-                else:
-                    # Peer auth failed — maybe user already set a password manually
-                    print(f"\n{Fore.YELLOW}Could not set password automatically.{Style.RESET_ALL}")
-                    print("If you already set a PostgreSQL password, enter it now.")
-                    pg_pass = getpass_with_asterisks(f"{Fore.YELLOW}Existing password: {Style.RESET_ALL}")
-                    if pg_pass:
-                        self.settings["pg_password"] = pg_pass
-                        self._print_success("Password accepted")
-                        break
-                    else:
-                        self._print_error("Password cannot be empty.")
+                # Peer auth failed — maybe user already set a password manually
+                print(f"\n{Fore.YELLOW}Could not set password automatically.{Style.RESET_ALL}")
+                print("If you already set a PostgreSQL password, enter it now.")
+                pg_pass = getpass_with_asterisks(f"{Fore.YELLOW}Existing password: {Style.RESET_ALL}")
+                if pg_pass:
+                    self.settings["pg_password"] = pg_pass
+                    self._print_success("Password accepted")
+                    break
+                self._print_error("Password cannot be empty.")
             else:
                 raise ValueError("PostgreSQL password required for installation")
 
@@ -815,7 +811,7 @@ class UnifiedInstaller:
 
         return True
 
-    def discover_postgresql(self) -> Dict[str, Any]:
+    def discover_postgresql(self) -> dict[str, Any]:
         """
         Discover PostgreSQL installation across platforms
 
@@ -847,7 +843,7 @@ class UnifiedInstaller:
             self.settings["postgresql_installation_path"] = (
                 str(psql_path_obj.parent.parent) if psql_path_obj.parent.name == "bin" else str(psql_path_obj.parent)
             )
-            self.settings["postgresql_discovered_at"] = datetime.now(timezone.utc).isoformat()
+            self.settings["postgresql_discovered_at"] = datetime.now(UTC).isoformat()
             self.settings["postgresql_custom_path"] = False
             self.settings["postgresql_discovery_method"] = "PATH"
 
@@ -875,7 +871,7 @@ class UnifiedInstaller:
                 self.settings["postgresql_installation_path"] = (
                     str(bin_dir.parent) if bin_dir.name == "bin" else str(bin_dir)
                 )
-                self.settings["postgresql_discovered_at"] = datetime.now(timezone.utc).isoformat()
+                self.settings["postgresql_discovered_at"] = datetime.now(UTC).isoformat()
                 self.settings["postgresql_custom_path"] = False
                 self.settings["postgresql_discovery_method"] = "COMMON_LOCATION"
 
@@ -930,7 +926,7 @@ class UnifiedInstaller:
                 self.settings["postgresql_installation_path"] = (
                     str(custom_path_obj.parent) if custom_path_obj.name == "bin" else str(custom_path_obj)
                 )
-                self.settings["postgresql_discovered_at"] = datetime.now(timezone.utc).isoformat()
+                self.settings["postgresql_discovered_at"] = datetime.now(UTC).isoformat()
                 self.settings["postgresql_custom_path"] = True
                 self.settings["postgresql_discovery_method"] = "CUSTOM"
 
@@ -1013,11 +1009,11 @@ class UnifiedInstaller:
     def _get_node_version() -> str:
         """Get Node.js version string, or 'unknown' on failure."""
         with contextlib.suppress(Exception):
-            proc = subprocess.run(["node", "--version"], capture_output=True, text=True, timeout=10)
+            proc = subprocess.run(["node", "--version"], capture_output=True, text=True, timeout=10, check=False)
             return proc.stdout.strip()
         return "unknown"
 
-    def discover_nodejs(self) -> Dict[str, Any]:
+    def discover_nodejs(self) -> dict[str, Any]:
         """
         Discover Node.js and npm installation across platforms
 
@@ -1032,7 +1028,7 @@ class UnifiedInstaller:
         Returns:
             Discovery result with found status: {"found": bool}
         """
-        result: Dict[str, Any] = {"found": False}
+        result: dict[str, Any] = {"found": False}
 
         # Check if node and npm are already available
         node_path = shutil.which("node")
@@ -1237,7 +1233,7 @@ class UnifiedInstaller:
         except Exception as exc:  # pragma: no cover - defensive
             self._print_warning(f"Could not refresh PATH from registry: {exc}")
 
-    def setup_https(self) -> Dict[str, Any]:
+    def setup_https(self) -> dict[str, Any]:
         """
         HTTPS setup using mkcert for locally-trusted certificates.
 
@@ -1251,7 +1247,7 @@ class UnifiedInstaller:
         Cross-platform: Windows, Linux, macOS.
         Requires elevated privileges for trust store installation.
         """
-        result: Dict[str, Any] = {"enabled": False}
+        result: dict[str, Any] = {"enabled": False}
 
         # Localhost installs skip HTTPS — browsers grant localhost secure context
         if self.settings.get("network_mode") == "localhost":
@@ -1293,24 +1289,23 @@ class UnifiedInstaller:
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
                     self._print_warning("Could not install libnss3-tools — browser may still show certificate warnings")
                     self._print_info("Fix later: sudo apt install libnss3-tools && mkcert -install")
-        elif current_os == "Darwin":
-            if not shutil.which("certutil"):
-                if shutil.which("brew"):
-                    self._print_info("Installing nss (required for Firefox certificate trust)...")
-                    try:
-                        subprocess.run(
-                            ["brew", "install", "nss"],
-                            check=True,
-                            capture_output=True,
-                            text=True,
-                            timeout=120,
-                        )
-                        self._print_success("nss installed (Firefox will trust certificates)")
-                    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
-                        self._print_warning("Could not install nss — Firefox may show certificate warnings")
-                        self._print_info("Fix later: brew install nss && mkcert -install")
-                else:
-                    self._print_info("If using Firefox: brew install nss && mkcert -install")
+        elif current_os == "Darwin" and not shutil.which("certutil"):
+            if shutil.which("brew"):
+                self._print_info("Installing nss (required for Firefox certificate trust)...")
+                try:
+                    subprocess.run(
+                        ["brew", "install", "nss"],
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                        timeout=120,
+                    )
+                    self._print_success("nss installed (Firefox will trust certificates)")
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+                    self._print_warning("Could not install nss — Firefox may show certificate warnings")
+                    self._print_info("Fix later: brew install nss && mkcert -install")
+            else:
+                self._print_info("If using Firefox: brew install nss && mkcert -install")
 
         # Install the local CA into the system and browser trust stores
         # On Windows, mkcert -install triggers a Windows Security dialog asking
@@ -1376,7 +1371,7 @@ class UnifiedInstaller:
         self._print_info(f"Generating trusted certificate for: {', '.join(domains)}")
         try:
             subprocess.run(
-                [mkcert_path, "-cert-file", str(cert_path), "-key-file", str(key_path)] + domains,
+                [mkcert_path, "-cert-file", str(cert_path), "-key-file", str(key_path), *domains],
                 check=True,
                 capture_output=True,
                 text=True,
@@ -1433,6 +1428,7 @@ class UnifiedInstaller:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                check=False,
             )
             ca_dir = ca_result.stdout.strip()
             str(Path(ca_dir) / "rootCA.pem") if ca_dir else "rootCA.pem"
@@ -1490,7 +1486,7 @@ class UnifiedInstaller:
         result["enabled"] = True
         return result
 
-    def _install_mkcert(self) -> Optional[str]:
+    def _install_mkcert(self) -> str | None:
         """
         Attempt to install mkcert on the current platform.
 
@@ -1557,7 +1553,7 @@ class UnifiedInstaller:
             self._print_info("  or: choco install mkcert")
             return None
 
-        elif platform_name == "Linux":
+        if platform_name == "Linux":
             # Try apt (Debian/Ubuntu)
             apt_path = shutil.which("apt")
             if apt_path:
@@ -1598,7 +1594,7 @@ class UnifiedInstaller:
             self._print_info("Install manually: sudo apt install mkcert")
             return None
 
-        elif platform_name == "Darwin":
+        if platform_name == "Darwin":
             brew_path = shutil.which("brew")
             if brew_path:
                 if not headless:
@@ -1627,7 +1623,7 @@ class UnifiedInstaller:
 
         return None
 
-    def _get_postgresql_scan_paths(self) -> List[Path]:
+    def _get_postgresql_scan_paths(self) -> list[Path]:
         """
         Get platform-specific PostgreSQL scan paths
 
@@ -1638,7 +1634,7 @@ class UnifiedInstaller:
         """
         return self.platform.get_postgresql_scan_paths()
 
-    def install_dependencies(self) -> Dict[str, Any]:
+    def install_dependencies(self) -> dict[str, Any]:
         """
         Install Python dependencies
 
@@ -1771,7 +1767,7 @@ class UnifiedInstaller:
             result["error"] = str(e)
             return result
 
-    def setup_database(self) -> Dict[str, Any]:
+    def setup_database(self) -> dict[str, Any]:
         """
         Setup PostgreSQL database using Alembic-first strategy (v3.1.0+)
 
@@ -1901,7 +1897,7 @@ class UnifiedInstaller:
             # Add src to path
             sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-            from datetime import datetime, timezone
+            from datetime import datetime
             from uuid import uuid4
 
             from giljo_mcp.database import DatabaseManager
@@ -1931,10 +1927,10 @@ class UnifiedInstaller:
                             id=str(uuid4()),
                             tenant_key=default_tenant_key,
                             database_initialized=True,
-                            database_initialized_at=datetime.now(timezone.utc),
+                            database_initialized_at=datetime.now(UTC),
                             setup_version="3.1.0",  # Updated to track Alembic-first architecture
-                            created_at=datetime.now(timezone.utc),
-                            updated_at=datetime.now(timezone.utc),
+                            created_at=datetime.now(UTC),
+                            updated_at=datetime.now(UTC),
                         )
                         session.add(setup_state)
                         await session.commit()
@@ -2000,7 +1996,7 @@ class UnifiedInstaller:
 
             # Get database URL from environment
             import os
-            from datetime import datetime, timedelta, timezone
+            from datetime import datetime, timedelta
             from uuid import uuid4
 
             from dotenv import load_dotenv
@@ -2040,7 +2036,7 @@ class UnifiedInstaller:
                     mission="Demo: Orchestrator with Succession - This is a sample job showing how orchestrator succession works when context limits are approached.",
                     job_type="orchestrator",
                     status="active",
-                    created_at=datetime.now(timezone.utc) - timedelta(hours=2),
+                    created_at=datetime.now(UTC) - timedelta(hours=2),
                     job_metadata={
                         "demo": True,
                         "description": "Demonstrates succession workflow",
@@ -2056,12 +2052,12 @@ class UnifiedInstaller:
                     tenant_key=tenant_key,
                     agent_display_name="orchestrator",
                     status="working",
-                    started_at=datetime.now(timezone.utc) - timedelta(hours=1),
+                    started_at=datetime.now(UTC) - timedelta(hours=1),
                     completed_at=None,
                     progress=35,
                     current_task="Monitoring implementation agents and coordinating integration testing",
                     health_status="healthy",
-                    last_progress_at=datetime.now(timezone.utc),
+                    last_progress_at=datetime.now(UTC),
                     agent_name="Orchestrator",
                 )
                 session.add(orchestrator_execution)
@@ -2078,7 +2074,7 @@ class UnifiedInstaller:
             traceback.print_exc()
             return False
 
-    def generate_configs(self) -> Dict[str, Any]:
+    def generate_configs(self) -> dict[str, Any]:
         """
         Generate configuration files (config.yaml ONLY)
 
@@ -2126,7 +2122,7 @@ class UnifiedInstaller:
             self._print_error(f"Config generation failed: {e}")
             return {"success": False, "errors": [str(e)]}
 
-    def update_env_with_real_credentials(self) -> Dict[str, Any]:
+    def update_env_with_real_credentials(self) -> dict[str, Any]:
         """
         Update .env file with real database credentials after database setup
 
@@ -2183,7 +2179,7 @@ class UnifiedInstaller:
 
         except Exception as e:
             self._print_error(f"Credential update failed: {e}")
-            _logger.error("Credential update exception: %s", _sanitize_log(str(e)))
+            _logger.exception("Credential update exception: %s", _sanitize_log(str(e)))  # noqa: TRY401  # reason: sanitized error preserved for log searchability alongside traceback
             return {"success": False, "errors": [str(e)]}
 
     def _ensure_logs_dir(self) -> Path:
@@ -2197,7 +2193,7 @@ class UnifiedInstaller:
         logs_dir.mkdir(parents=True, exist_ok=True)
         return logs_dir
 
-    def _npm_preflight_checks(self, frontend_dir: Path) -> Dict[str, Any]:
+    def _npm_preflight_checks(self, frontend_dir: Path) -> dict[str, Any]:
         """
         Run pre-flight checks before npm installation.
 
@@ -2359,7 +2355,7 @@ class UnifiedInstaller:
             # Log attempt
             with open(log_file, "a", encoding="utf-8") as f:
                 f.write(f"\n{'=' * 70}\n")
-                f.write(f"Attempt {attempt + 1}/{max_retries} - {datetime.now(timezone.utc).isoformat()}\n")
+                f.write(f"Attempt {attempt + 1}/{max_retries} - {datetime.now(UTC).isoformat()}\n")
                 f.write(f"Command: {' '.join(npm_cmd)}\n")
                 f.write(f"{'=' * 70}\n\n")
 
@@ -2419,7 +2415,7 @@ class UnifiedInstaller:
             f.write(f"\nFAILURE: All {max_retries} attempts exhausted\n")
         return False
 
-    def install_frontend_dependencies(self) -> Dict[str, Any]:
+    def install_frontend_dependencies(self) -> dict[str, Any]:
         """
         Install frontend dependencies during the main installation process.
 
@@ -2571,7 +2567,7 @@ class UnifiedInstaller:
             self._print_success("Development mode selected")
             self._print_info("startup.py will launch the Vite dev server on port 7274")
 
-    def launch_services(self) -> Dict[str, Any]:
+    def launch_services(self) -> dict[str, Any]:
         """
         Launch API and Frontend services
 
@@ -2695,7 +2691,7 @@ class UnifiedInstaller:
         else:
             self._print_warning(f"Shortcut creation: {result.get('message', 'Unknown result')}")
 
-    def _get_all_network_ips(self) -> List[str]:
+    def _get_all_network_ips(self) -> list[str]:
         """Get all non-loopback IPv4 addresses"""
         # Delegate to platform handler for network interface detection
         return self.platform.get_network_ips()
@@ -2779,7 +2775,7 @@ class UnifiedInstaller:
         print(guide)
         print()
 
-    def run_database_migrations(self) -> Dict[str, Any]:
+    def run_database_migrations(self) -> dict[str, Any]:
         """
         Run Alembic database migrations (alembic upgrade head)
 
@@ -2819,12 +2815,12 @@ class UnifiedInstaller:
             # no-ops DDL without it, causing schema verification to fail later).
             try:
                 import greenlet  # noqa: F401
-            except ImportError:
+            except ImportError as exc:
                 raise RuntimeError(
                     "greenlet is required for alembic async migrations but is not installed. "
                     "This typically means a fresh venv is missing transitive deps on this platform "
                     "(macOS arm64 is a common case). Add 'greenlet>=3.5.0' to requirements.txt and reinstall."
-                )
+                ) from exc
 
             # Check database state before running migrations
             import asyncio
@@ -3032,7 +3028,7 @@ class UnifiedInstaller:
 
         return result
 
-    async def _verify_essential_tables(self) -> Dict[str, Any]:
+    async def _verify_essential_tables(self) -> dict[str, Any]:
         """
         Verify that essential tables were created by migrations.
 
@@ -3114,7 +3110,7 @@ class UnifiedInstaller:
             return result != 0
         return False
 
-    def _find_available_port(self, start_port: int, max_attempts: int = 10) -> Optional[int]:
+    def _find_available_port(self, start_port: int, max_attempts: int = 10) -> int | None:
         """Find available port starting from start_port"""
         for offset in range(max_attempts):
             port = start_port + offset
@@ -3122,7 +3118,7 @@ class UnifiedInstaller:
                 return port
         return None
 
-    def _download_nltk_data(self, python_executable: Path) -> Dict[str, Any]:
+    def _download_nltk_data(self, python_executable: Path) -> dict[str, Any]:
         """
         Download required NLTK data for vision summarization (Handover 0345b).
 
@@ -3208,12 +3204,12 @@ except Exception as e:
             if system == "Darwin":
                 # macOS (Homebrew): postgres runs as current user
                 cmd = ["psql", "-U", "postgres", "-d", "postgres", "-c", safe_sql]
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
             else:
                 # Linux: use sudo -u postgres for peer auth
                 cmd = ["sudo", "-u", "postgres", "psql", "-c", safe_sql]
                 self._print_info("Setting PostgreSQL password (sudo may ask for your password)...")
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
 
             if result.returncode == 0:
                 return True

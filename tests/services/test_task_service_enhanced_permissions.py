@@ -11,7 +11,7 @@ Covers:
 """
 
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import bcrypt
@@ -39,7 +39,7 @@ async def test_project(db_session, test_tenant_key, test_product):
         product_id=test_product.id,
         tenant_key=test_tenant_key,
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -62,7 +62,7 @@ async def test_task(db_session, test_tenant_key, test_product, test_project, tes
         status="waiting",
         priority="medium",
         created_by_user_id=test_user.id,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(task)
     await db_session.commit()

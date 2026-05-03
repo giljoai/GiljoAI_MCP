@@ -59,7 +59,11 @@ paths = [
     # Tooling / dependencies (not project code)
     '''\.venv/.*''',
     '''venv/.*''',
+    '''dev_tools/venv_devtools/.*''',
     '''node_modules/.*''',
+
+    # Migration backups / safety nets (any *.old/ directory)
+    '''.*\.old/.*''',
     '''\.git/.*''',
     '''dist/.*''',
     '''build/.*''',

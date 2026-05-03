@@ -26,7 +26,7 @@ Author: GiljoAI Development Team
 import logging
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -494,7 +494,7 @@ class ThinClientPromptGenerator:
                     "user_id": user_id,
                     "tool": tool,
                     "created_via": "thin_client_generator",
-                    "reused_at": str(datetime.now(timezone.utc)),
+                    "reused_at": str(datetime.now(UTC)),
                 }
                 await self.db.commit()
 
@@ -542,7 +542,7 @@ class ThinClientPromptGenerator:
             self.db.add(agent_execution)
 
             project.staging_status = "staging"
-            project.updated_at = datetime.now(timezone.utc)
+            project.updated_at = datetime.now(UTC)
 
             await self.db.commit()
             await self.db.refresh(agent_job)

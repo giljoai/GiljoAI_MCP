@@ -16,7 +16,7 @@ Tenant isolation is enforced at the query level on every operation.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -285,7 +285,7 @@ class UserRepository:
                     UserFieldPriority.enabled.is_(True),
                 )
             )
-            .values(enabled=False, updated_at=datetime.now(timezone.utc))
+            .values(enabled=False, updated_at=datetime.now(UTC))
         )
         result = await session.execute(stmt)
         await session.commit()

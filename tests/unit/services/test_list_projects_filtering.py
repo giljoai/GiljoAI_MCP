@@ -24,7 +24,7 @@ Tenant isolation: every test passes an explicit tenant_key. Cross-tenant
 test confirms tenant_key flows through unchanged.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -83,7 +83,7 @@ def _make_item(
     tenant_key: str = _TENANT_A,
 ) -> ProjectListItem:
     """Build a ProjectListItem with the fields list_projects_for_mcp consumes."""
-    created = (created_at or datetime(2026, 1, 1, tzinfo=timezone.utc)).isoformat()
+    created = (created_at or datetime(2026, 1, 1, tzinfo=UTC)).isoformat()
     completed_iso = completed_at.isoformat() if completed_at else None
     type_info = (
         ProjectTypeInfo(id="t-1", abbreviation=type_abbrev, label=type_abbrev or "X", color="#fff")
@@ -436,15 +436,15 @@ class TestDateRangeFilters:
     async def test_created_after_before(self):
         service = _make_service(_TENANT_A)
         items = [
-            _make_item(project_id="old", created_at=datetime(2025, 1, 1, tzinfo=timezone.utc)),
-            _make_item(project_id="mid", created_at=datetime(2026, 1, 15, tzinfo=timezone.utc)),
-            _make_item(project_id="new", created_at=datetime(2026, 6, 1, tzinfo=timezone.utc)),
+            _make_item(project_id="old", created_at=datetime(2025, 1, 1, tzinfo=UTC)),
+            _make_item(project_id="mid", created_at=datetime(2026, 1, 15, tzinfo=UTC)),
+            _make_item(project_id="new", created_at=datetime(2026, 6, 1, tzinfo=UTC)),
         ]
         result, _ = await _call_with_items(
             service,
             items,
-            created_after=datetime(2026, 1, 1, tzinfo=timezone.utc),
-            created_before=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            created_after=datetime(2026, 1, 1, tzinfo=UTC),
+            created_before=datetime(2026, 5, 1, tzinfo=UTC),
         )
         assert {p["project_id"] for p in result["projects"]} == {"mid"}
 
@@ -455,19 +455,19 @@ class TestDateRangeFilters:
             _make_item(
                 project_id="early",
                 status="completed",
-                completed_at=datetime(2026, 1, 5, tzinfo=timezone.utc),
+                completed_at=datetime(2026, 1, 5, tzinfo=UTC),
             ),
             _make_item(
                 project_id="late",
                 status="completed",
-                completed_at=datetime(2026, 6, 5, tzinfo=timezone.utc),
+                completed_at=datetime(2026, 6, 5, tzinfo=UTC),
             ),
         ]
         result, _ = await _call_with_items(
             service,
             items,
             include_completed=True,
-            completed_after=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            completed_after=datetime(2026, 5, 1, tzinfo=UTC),
         )
         assert {p["project_id"] for p in result["projects"]} == {"late"}
 
@@ -622,3 +622,126 @@ class TestToolAccessorListProjectsSurface:
         assert kwargs["taxonomy_alias_prefix"] == "BE-50"
         assert kwargs["include_completed"] is True
         assert kwargs["hidden"] is False
+
+
+# ---------------------------------------------------------------------------
+# Regression: list_projects vs fetch_context status agreement
+# ---------------------------------------------------------------------------
+#
+# Reported bug: list_projects(status="inactive") returned a project that
+# fetch_context(categories=["project"]) reported as status="completed". The
+# same window also showed list_projects ignoring its status filter (returning
+# all rows regardless of value). These regressions pin the contract:
+#
+#  1) The status filter must filter for EVERY canonical ProjectStatus value.
+#  2) After a status transition, the next list_projects call must reflect it
+#     (no stale cached row).
+#  3) For a given (tenant_key, project_id), list_projects and the underlying
+#     get_project read path must agree on the status value.
+
+
+class TestStatusFilterCoversEntireEnum:
+    """Parametrize over every ProjectStatus value: each must filter precisely."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "target_status",
+        [s.value for s in __import__("giljo_mcp.domain.project_status", fromlist=["ProjectStatus"]).ProjectStatus],
+    )
+    async def test_status_filter_returns_only_matching_rows(self, target_status):
+        from giljo_mcp.domain.project_status import ProjectStatus
+
+        service = _make_service(_TENANT_A)
+        items = [_make_item(project_id=f"id-{s.value}", status=s.value) for s in ProjectStatus]
+        result, _ = await _call_with_items(service, items, status=target_status)
+        ids = {p["project_id"] for p in result["projects"]}
+        assert ids == {f"id-{target_status}"}, (
+            f"status={target_status!r} must return exactly the row with that status; got {ids}"
+        )
+
+
+class TestStatusTransitionReflectedInList:
+    """After a status transition, list_projects reflects the new value.
+
+    This is a read-path regression: calling list_projects twice across a
+    transition must return the row under its new status, never under the old.
+    No sleeps, no caches in between -- if a cache layer is ever introduced,
+    this test pins that it must be invalidated on write.
+    """
+
+    @pytest.mark.asyncio
+    async def test_transition_active_to_completed_visible_in_next_call(self):
+        service = _make_service(_TENANT_A)
+
+        before = [_make_item(project_id="p-x", status="active")]
+        result_active, _ = await _call_with_items(service, before, status="active")
+        assert {p["project_id"] for p in result_active["projects"]} == {"p-x"}
+
+        result_completed_pre, _ = await _call_with_items(service, before, status="completed")
+        assert {p["project_id"] for p in result_completed_pre["projects"]} == set()
+
+        after = [_make_item(project_id="p-x", status="completed")]
+        result_completed, _ = await _call_with_items(service, after, status="completed")
+        assert {p["project_id"] for p in result_completed["projects"]} == {"p-x"}, (
+            "After transition active->completed, status='completed' filter must include the row"
+        )
+
+        result_active_post, _ = await _call_with_items(service, after, status="active")
+        assert {p["project_id"] for p in result_active_post["projects"]} == set(), (
+            "After transition active->completed, status='active' filter must NOT include the row"
+        )
+
+
+class TestListProjectsAndFetchContextAgree:
+    """list_projects rows and the underlying get_project read path agree on status.
+
+    Both paths read Project.status from the same model attribute. This
+    regression asserts that the value flowing into the list payload (via
+    ProjectListItem.status -> _build_mcp_project_list) matches the value the
+    fetch_context project category reads (get_project -> project.status).
+    Catches drift if either path ever introduces a derived/cached column.
+    """
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status_value", ["inactive", "active", "completed"])
+    async def test_list_and_get_project_return_same_status_string(self, status_value):
+        from unittest.mock import MagicMock
+
+        from giljo_mcp.tools.context_tools.get_project import get_project
+
+        service = _make_service(_TENANT_A)
+        items = [_make_item(project_id="p-1", status=status_value)]
+        # include_completed=True so 'completed' is not excluded by the default
+        # lifecycle filter; we are testing read-path parity, not the default.
+        result, _ = await _call_with_items(service, items, include_completed=True)
+        list_status = next(p["status"] for p in result["projects"] if p["project_id"] == "p-1")
+
+        fake_project = MagicMock()
+        fake_project.name = "n"
+        fake_project.alias = "abc123"
+        fake_project.description = "d"
+        fake_project.mission = "m"
+        fake_project.status = status_value
+        fake_project.staging_status = None
+        fake_project.orchestrator_summary = None
+
+        fake_session = AsyncMock()
+        fake_session.__aenter__ = AsyncMock(return_value=fake_session)
+        fake_session.__aexit__ = AsyncMock(return_value=False)
+        fake_result = Mock()
+        fake_result.scalar_one_or_none = Mock(return_value=fake_project)
+        fake_session.execute = AsyncMock(return_value=fake_result)
+        fake_db_manager = Mock()
+        fake_db_manager.get_session_async = Mock(return_value=fake_session)
+
+        ctx_result = await get_project(
+            project_id="p-1",
+            tenant_key=_TENANT_A,
+            include_summary=False,
+            db_manager=fake_db_manager,
+        )
+        ctx_status = ctx_result["data"]["status"]
+
+        assert str(list_status) == str(ctx_status) == status_value, (
+            f"list_projects status={list_status!r} but fetch_context status={ctx_status!r}"
+        )

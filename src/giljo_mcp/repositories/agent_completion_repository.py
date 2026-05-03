@@ -13,7 +13,7 @@ predecessor context, template resolution, and display name collision handling.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import and_, select
@@ -297,7 +297,7 @@ class AgentCompletionRepository:
 
         if is_orchestrator and project is not None:
             project.staging_status = "staging"
-            project.updated_at = datetime.now(timezone.utc)
+            project.updated_at = datetime.now(UTC)
 
         session.add(agent_execution)
         await session.commit()

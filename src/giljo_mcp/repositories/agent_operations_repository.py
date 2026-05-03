@@ -13,7 +13,7 @@ orchestration service, and job query service.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,7 +54,7 @@ class AgentOperationsRepository:
         Returns:
             True if update was performed, False if debounced
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         threshold = now - timedelta(seconds=debounce_seconds)
 
         conditions = [
@@ -167,7 +167,7 @@ class AgentOperationsRepository:
             agent: AgentExecution to transition
         """
         agent.status = "working"
-        agent.last_progress_at = datetime.now(timezone.utc)
+        agent.last_progress_at = datetime.now(UTC)
         await session.flush()
 
     async def find_silent_agent_by_agent_id(

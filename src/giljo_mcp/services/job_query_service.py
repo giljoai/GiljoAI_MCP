@@ -12,7 +12,6 @@ list_jobs is completely self-contained (169 lines) -- pure read query with pagin
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,7 +37,7 @@ class JobQueryService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        test_session: Optional[AsyncSession] = None,
+        test_session: AsyncSession | None = None,
     ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
@@ -59,9 +58,9 @@ class JobQueryService:
     async def list_jobs(
         self,
         tenant_key: str,
-        project_id: Optional[str] = None,
-        status_filter: Optional[str] = None,
-        agent_display_name: Optional[str] = None,
+        project_id: str | None = None,
+        status_filter: str | None = None,
+        agent_display_name: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> JobListResult:
@@ -246,7 +245,7 @@ class JobQueryService:
         tenant_key: str,
         agent_id: str,
         session: AsyncSession | None = None,
-    ) -> Optional[AgentExecution]:
+    ) -> AgentExecution | None:
         """Get agent execution by agent_id with tenant isolation.
 
         BE-5022b: Service wrapper for AgentJobRepository.get_execution_by_agent_id().
@@ -270,7 +269,7 @@ class JobQueryService:
         tenant_key: str,
         job_id: str,
         session: AsyncSession | None = None,
-    ) -> Optional[AgentExecution]:
+    ) -> AgentExecution | None:
         """Get agent execution by job_id with tenant isolation.
 
         BE-5022b: Service wrapper for AgentJobRepository.get_execution_by_job_id().
@@ -294,7 +293,7 @@ class JobQueryService:
         tenant_key: str,
         job_id: str,
         session: AsyncSession | None = None,
-    ) -> Optional[AgentJob]:
+    ) -> AgentJob | None:
         """Get an agent job record by job_id with tenant isolation.
 
         BE-5022b: Service wrapper for AgentJobRepository.get_agent_job_by_job_id().
@@ -318,7 +317,7 @@ class JobQueryService:
         tenant_key: str,
         job_id: str,
         session: AsyncSession | None = None,
-    ) -> Optional[AgentExecution]:
+    ) -> AgentExecution | None:
         """Get the most recent execution for a job_id with tenant isolation.
 
         BE-5022b: Service wrapper for AgentJobRepository.get_latest_execution_for_job().

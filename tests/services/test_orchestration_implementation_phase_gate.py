@@ -14,7 +14,7 @@ Updated for exception-based error handling (Handover 0730).
 """
 
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -81,7 +81,7 @@ def mock_project_launched():
         description="Test description",
         mission="Test mission",
         status="active",
-        implementation_launched_at=datetime.now(timezone.utc),  # LAUNCHED
+        implementation_launched_at=datetime.now(UTC),  # LAUNCHED
         series_number=random.randint(1, 999999),
     )
 
@@ -100,7 +100,7 @@ def mock_agent_job_and_execution():
         mission="Test mission for implementation",
         job_type="implementer",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
     # Create AgentExecution (executor instance)
@@ -126,7 +126,7 @@ class TestGetAgentMissionImplementationGate:
         self, orchestration_service, mock_db_manager, mock_agent_job_and_execution, mock_project_not_launched
     ):
         """Test that get_agent_mission is blocked when implementation_launched_at is None."""
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution, project_id = mock_agent_job_and_execution
         project = mock_project_not_launched
         project.id = project_id  # Link project to job
@@ -166,7 +166,7 @@ class TestGetAgentMissionImplementationGate:
         Updated for exception-based error handling (Handover 0730b).
         Success is indicated by presence of job_id in response, not a 'success' wrapper.
         """
-        db_manager, session = mock_db_manager
+        _db_manager, session = mock_db_manager
         job, execution, project_id = mock_agent_job_and_execution
         project = mock_project_launched
         project.id = project_id  # Link project to job

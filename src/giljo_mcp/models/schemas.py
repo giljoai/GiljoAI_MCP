@@ -14,7 +14,6 @@ Created: Handover 0501
 """
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -30,7 +29,7 @@ class ProjectSummaryResponse(BaseModel):
     id: str = Field(..., description="Project UUID")
     name: str = Field(..., description="Project name")
     status: str = Field(..., description="Project status (staging/active/inactive/completed/cancelled)")
-    mission: Optional[str] = Field(None, description="Project mission statement")
+    mission: str | None = Field(None, description="Project mission statement")
 
     # Job metrics
     total_jobs: int = Field(0, description="Total number of agent jobs")
@@ -44,8 +43,8 @@ class ProjectSummaryResponse(BaseModel):
 
     # Timestamps
     created_at: datetime = Field(..., description="Project creation timestamp")
-    activated_at: Optional[datetime] = Field(None, description="First activation timestamp")
-    last_activity_at: Optional[datetime] = Field(None, description="Most recent activity timestamp")
+    activated_at: datetime | None = Field(None, description="First activation timestamp")
+    last_activity_at: datetime | None = Field(None, description="Most recent activity timestamp")
 
     # Product context
     product_id: str = Field(..., description="Parent product UUID")
@@ -110,19 +109,19 @@ class ProjectResponse(BaseModel):
     id: str = Field(..., description="Project UUID")
     name: str = Field(..., description="Project name")
     status: str = Field(..., description="Project status")
-    mission: Optional[str] = Field(None, description="Project mission")
-    description: Optional[str] = Field(None, description="Project description")
+    mission: str | None = Field(None, description="Project mission")
+    description: str | None = Field(None, description="Project description")
 
     # Structured fields (Handover 0840e: replaced meta_data JSONB)
-    cancellation_reason: Optional[str] = Field(None, description="Reason for cancellation")
-    deactivation_reason: Optional[str] = Field(None, description="Reason for deactivation")
+    cancellation_reason: str | None = Field(None, description="Reason for cancellation")
+    deactivation_reason: str | None = Field(None, description="Reason for deactivation")
     early_termination: bool = Field(default=False, description="Whether project was terminated early")
 
     # Timestamps
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
-    activated_at: Optional[datetime] = Field(None, description="Activation timestamp")
-    completed_at: Optional[datetime] = Field(None, description="Completion timestamp")
+    activated_at: datetime | None = Field(None, description="Activation timestamp")
+    completed_at: datetime | None = Field(None, description="Completion timestamp")
 
     # Product relation
     product_id: str = Field(..., description="Parent product UUID")

@@ -23,7 +23,7 @@ Follows patterns from: test_project_tenant_isolation_regression.py
 
 import random
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
@@ -74,7 +74,7 @@ async def two_tenant_orchestration(db_session, db_manager):
         tenant_key=tenant_a,
         product_id=product_a.id,
         status="active",
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     project_b = Project(
@@ -85,7 +85,7 @@ async def two_tenant_orchestration(db_session, db_manager):
         tenant_key=tenant_b,
         product_id=product_b.id,
         status="active",
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project_a)
@@ -100,7 +100,7 @@ async def two_tenant_orchestration(db_session, db_manager):
         job_type="implementer",
         mission="Implement feature for tenant A",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         job_metadata={},
     )
     job_b = AgentJob(
@@ -110,7 +110,7 @@ async def two_tenant_orchestration(db_session, db_manager):
         job_type="implementer",
         mission="Implement feature for tenant B",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         job_metadata={},
     )
     db_session.add(job_a)
@@ -124,8 +124,8 @@ async def two_tenant_orchestration(db_session, db_manager):
         tenant_key=tenant_a,
         agent_display_name="implementer",
         status="working",
-        started_at=datetime.now(timezone.utc),
-        mission_acknowledged_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
+        mission_acknowledged_at=datetime.now(UTC),
     )
     exec_b = AgentExecution(
         agent_id=str(uuid.uuid4()),
@@ -133,8 +133,8 @@ async def two_tenant_orchestration(db_session, db_manager):
         tenant_key=tenant_b,
         agent_display_name="implementer",
         status="working",
-        started_at=datetime.now(timezone.utc),
-        mission_acknowledged_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
+        mission_acknowledged_at=datetime.now(UTC),
     )
     db_session.add(exec_a)
     db_session.add(exec_b)

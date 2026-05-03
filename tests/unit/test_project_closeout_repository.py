@@ -14,7 +14,7 @@ TESTING STRATEGY:
 - Test all field mappings to repository
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -94,7 +94,7 @@ def mock_product(sample_product_id, tenant_key):
         "sequential_history": [],  # Should NOT be mutated
         "context": {},
     }
-    product.updated_at = datetime.now(timezone.utc)
+    product.updated_at = datetime.now(UTC)
     return product
 
 
@@ -108,9 +108,9 @@ def mock_project(sample_project_id, sample_product_id, tenant_key):
     project.name = "Test Project Alpha"
     project.mission = "Test mission"
     project.status = "completed"
-    project.created_at = datetime(2025, 11, 1, 10, 0, 0, tzinfo=timezone.utc)
-    project.completed_at = datetime(2025, 11, 16, 10, 0, 0, tzinfo=timezone.utc)
-    project.updated_at = datetime(2025, 11, 16, 10, 0, 0, tzinfo=timezone.utc)
+    project.created_at = datetime(2025, 11, 1, 10, 0, 0, tzinfo=UTC)
+    project.completed_at = datetime(2025, 11, 16, 10, 0, 0, tzinfo=UTC)
+    project.updated_at = datetime(2025, 11, 16, 10, 0, 0, tzinfo=UTC)
     project.cancellation_reason = None
     project.deactivation_reason = None
     project.early_termination = False

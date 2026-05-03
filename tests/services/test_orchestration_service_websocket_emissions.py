@@ -12,7 +12,7 @@ in-process WebSocketManager.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -89,7 +89,7 @@ async def test_get_agent_mission_emits_ack_and_status_changed(
         tenant_key=tenant_key,
         project_id=project_id,
         mission="Do work",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         job_type="orchestrator",
     )
     execution = SimpleNamespace(
@@ -106,7 +106,7 @@ async def test_get_agent_mission_emits_ack_and_status_changed(
     project = SimpleNamespace(
         id=project_id,
         tenant_key=tenant_key,
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
     )
 
     session.execute.side_effect = [
@@ -148,7 +148,7 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
         tenant_key=tenant_key,
         project_id=project_id,
         mission="Do work",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         job_type="orchestrator",
     )
     execution = SimpleNamespace(
@@ -159,13 +159,13 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
         agent_name="impl-worker-1",
         spawned_by=None,
         status="working",
-        mission_acknowledged_at=datetime.now(timezone.utc),
-        started_at=datetime.now(timezone.utc),
+        mission_acknowledged_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
     )
     project = SimpleNamespace(
         id=project_id,
         tenant_key=tenant_key,
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
     )
 
     session.execute.side_effect = [
@@ -196,7 +196,7 @@ async def test_complete_job_emits_status_changed_with_duration_seconds(
     tenant_key = "tenant-test-123"
     job_id = str(uuid4())
 
-    started_at = datetime.now(timezone.utc) - timedelta(seconds=60)
+    started_at = datetime.now(UTC) - timedelta(seconds=60)
     execution = SimpleNamespace(
         agent_id=str(uuid4()),
         job_id=job_id,
@@ -280,8 +280,8 @@ async def test_report_progress_fallback_emits_message_new_event(
         agent_display_name="implementer",
         agent_name="impl-worker-1",
         status="working",
-        started_at=datetime.now(timezone.utc),
-        mission_acknowledged_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
+        mission_acknowledged_at=datetime.now(UTC),
     )
     job = SimpleNamespace(
         job_id=job_id,

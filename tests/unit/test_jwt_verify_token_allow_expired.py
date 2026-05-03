@@ -20,7 +20,7 @@ Test matrix:
 - Edge cases: exactly at grace boundary, zero grace period
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import jwt
@@ -51,7 +51,7 @@ def _make_token(
     algorithm: str = "HS256",
 ) -> str:
     """Helper to create a JWT with a specific expiration offset."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expire = now + (expire_delta if expire_delta is not None else timedelta(hours=24))
     payload = {
         "sub": str(user_id),

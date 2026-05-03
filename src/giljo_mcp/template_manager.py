@@ -10,7 +10,7 @@ Single source of truth for all template operations
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from .database import DatabaseManager
 
@@ -64,8 +64,8 @@ def apply_augmentation(content: str, augmentation: dict[str, Any]) -> str:
 
 def process_template(
     content: str,
-    variables: Optional[dict[str, Any]] = None,
-    augmentations: Optional[list[dict[str, Any]]] = None,
+    variables: dict[str, Any] | None = None,
+    augmentations: list[dict[str, Any]] | None = None,
     substitute_first: bool = False,
 ) -> str:
     """
@@ -127,7 +127,7 @@ class UnifiedTemplateManager:
     - Supports legacy templates (no database) via _legacy_templates
     """
 
-    def __init__(self, db_manager: Optional[DatabaseManager] = None, redis_client=None):
+    def __init__(self, db_manager: DatabaseManager | None = None, redis_client=None):
         """
         Initialize the template manager.
 
@@ -580,9 +580,9 @@ SUCCESS CRITERIA:
         self,
         role: str,
         tenant_key: str,
-        variables: Optional[dict[str, Any]] = None,
-        augmentations: Optional[list[dict[str, Any]]] = None,
-        product_id: Optional[str] = None,
+        variables: dict[str, Any] | None = None,
+        augmentations: list[dict[str, Any]] | None = None,
+        product_id: str | None = None,
         use_cache: bool = True,
     ) -> str:
         """

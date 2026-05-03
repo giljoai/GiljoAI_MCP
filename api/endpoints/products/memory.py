@@ -11,7 +11,6 @@ BE-5022a: All DB access routed through ProductMemoryService.
 """
 
 import logging
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -33,7 +32,7 @@ router = APIRouter()
 @router.get("/{product_id}/memory-entries", response_model=MemoryEntriesResponse)
 async def get_memory_entries(
     product_id: str,
-    project_id: Optional[str] = Query(None, description="Filter by specific project"),
+    project_id: str | None = Query(None, description="Filter by specific project"),
     limit: int = Query(10, ge=1, le=100, description="Maximum entries to return (1-100)"),
     current_user: User = Depends(get_current_active_user),
     memory_service: ProductMemoryService = Depends(get_product_memory_service),

@@ -12,9 +12,9 @@ import json
 import logging
 import os
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import jwt
 from cryptography.fernet import Fernet, InvalidToken
@@ -36,7 +36,7 @@ class AuthManager:
     No special treatment for localhost - ensures consistent auth testing.
     """
 
-    def __init__(self, config=None, db: Optional[AsyncSession] = None):
+    def __init__(self, config=None, db: AsyncSession | None = None):
         """
         Initialize authentication manager.
 
@@ -90,13 +90,13 @@ class AuthManager:
         logger.info(f"Generated new encryption key stored at: {key_file}")
         return key
 
-    def generate_api_key(self, name: str, permissions: Optional[list[str]] = None) -> str:
+    def generate_api_key(self, name: str, permissions: list[str] | None = None) -> str:
         """Generate a new API key for LAN mode"""
         api_key = f"gk_{secrets.token_urlsafe(32)}"
 
         self.api_keys[api_key] = {
             "name": name,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "permissions": permissions or ["*"],
             "active": True,
         }
@@ -131,7 +131,7 @@ class AuthManager:
         logger.info(f"Generated and encrypted API key for '{name}'")
         return api_key
 
-    def validate_api_key(self, api_key: str) -> Optional[dict[str, Any]]:
+    def validate_api_key(self, api_key: str) -> dict[str, Any] | None:
         """Validate an API key for LAN mode"""
         # Load API keys from encrypted file if not in memory
         if not self.api_keys:
@@ -159,7 +159,7 @@ class AuthManager:
 
         return None
 
-    def validate_jwt_token(self, token: str) -> Optional[dict[str, Any]]:
+    def validate_jwt_token(self, token: str) -> dict[str, Any] | None:
         """Validate JWT token for WAN mode"""
         try:
             return jwt.decode(token, self.jwt_secret, algorithms=["HS256"])

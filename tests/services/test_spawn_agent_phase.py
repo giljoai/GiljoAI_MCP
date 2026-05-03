@@ -16,6 +16,7 @@ RED PHASE - These tests verify:
 
 import random
 import uuid
+from datetime import UTC
 
 import pytest
 import pytest_asyncio
@@ -55,7 +56,7 @@ async def test_agent_templates(db_session, test_tenant_key):
 @pytest_asyncio.fixture
 async def test_project(db_session, test_tenant_key, test_agent_templates) -> Project:
     """Create test project with templates pre-seeded."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     project = Project(
         id=str(uuid.uuid4()),
@@ -64,7 +65,7 @@ async def test_project(db_session, test_tenant_key, test_agent_templates) -> Pro
         mission="Test mission for phase labels",
         status="active",
         tenant_key=test_tenant_key,
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -210,7 +211,7 @@ class TestOrchestratorPhaseInstructions:
 
     async def test_phase_instructions_included_in_multi_terminal_mode(self, db_session, db_manager, test_tenant_key):
         """Phase assignment instructions appear in multi-terminal (default) mode."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from giljo_mcp.services.orchestration_service import OrchestrationService
         from giljo_mcp.tenant import TenantManager
@@ -226,7 +227,7 @@ class TestOrchestratorPhaseInstructions:
             mission="Test mission",
             status="active",
             tenant_key=test_tenant_key,
-            implementation_launched_at=datetime.now(timezone.utc),
+            implementation_launched_at=datetime.now(UTC),
             series_number=random.randint(1, 999999),
         )
         db_session.add(project)
@@ -268,7 +269,7 @@ class TestOrchestratorPhaseInstructions:
 
     async def test_phase_instructions_excluded_in_cli_mode(self, db_session, db_manager, test_tenant_key):
         """Phase assignment instructions do NOT appear in CLI mode."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from giljo_mcp.services.orchestration_service import OrchestrationService
         from giljo_mcp.tenant import TenantManager
@@ -285,7 +286,7 @@ class TestOrchestratorPhaseInstructions:
             status="active",
             tenant_key=test_tenant_key,
             execution_mode="claude_code_cli",
-            implementation_launched_at=datetime.now(timezone.utc),
+            implementation_launched_at=datetime.now(UTC),
             series_number=random.randint(1, 999999),
         )
         db_session.add(project)

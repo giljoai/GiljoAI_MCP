@@ -13,7 +13,7 @@ This module has no imports from api.app or any endpoint module.
 
 import asyncio
 import os
-from typing import Any, Optional
+from typing import Any
 
 
 # Edition detection: "ce" (default), "demo", or "saas"
@@ -38,11 +38,11 @@ class APIState:
         self.websocket_broker: Any = None  # WebSocketEventBroker (0379e)
         self.event_bus: Any = None  # EventBus instance (Handover 0111 Issue #1)
         self.connections: dict[str, Any] = {}
-        self.heartbeat_task: Optional[asyncio.Task] = None
-        self.cleanup_task: Optional[asyncio.Task] = None
-        self.metrics_sync_task: Optional[asyncio.Task] = None
+        self.heartbeat_task: asyncio.Task | None = None
+        self.cleanup_task: asyncio.Task | None = None
+        self.metrics_sync_task: asyncio.Task | None = None
         self.health_monitor: Any = None
-        self.health_monitor_task: Optional[asyncio.Task] = None
+        self.health_monitor_task: asyncio.Task | None = None
         self.silence_detector: Any = None  # SilenceDetector (Handover 0491)
         self.api_call_count: dict[str, int] = {}
         self.mcp_call_count: dict[str, int] = {}
@@ -52,7 +52,7 @@ class APIState:
         self.license: Any = None  # LicenseResult — set during lifespan startup
         self.pending_migration: bool = False
         self.update_available: dict | None = None  # {"commits_behind": int, "message": str}
-        self.update_checker_task: Optional[asyncio.Task] = None
+        self.update_checker_task: asyncio.Task | None = None
 
 
 state = APIState()

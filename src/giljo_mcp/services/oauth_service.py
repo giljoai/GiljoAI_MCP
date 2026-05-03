@@ -25,7 +25,7 @@ import hashlib
 import logging
 import re
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import delete, or_, select
@@ -128,7 +128,7 @@ class OAuthService:
             The generated authorization code string.
         """
         code = secrets.token_urlsafe(64)
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=AUTHORIZATION_CODE_LIFETIME_MINUTES)
+        expires_at = datetime.now(UTC) + timedelta(minutes=AUTHORIZATION_CODE_LIFETIME_MINUTES)
 
         auth_code = OAuthAuthorizationCode(
             code=code,
@@ -186,7 +186,7 @@ class OAuthService:
         if auth_code.used:
             raise ValueError("Authorization code has already been used")
 
-        if auth_code.expires_at < datetime.now(timezone.utc):
+        if auth_code.expires_at < datetime.now(UTC):
             raise ValueError("Authorization code has expired")
 
         if auth_code.client_id != client_id:
@@ -261,7 +261,7 @@ class OAuthService:
         Returns:
             Number of deleted records.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = await self._db.execute(
             delete(OAuthAuthorizationCode).where(
                 or_(

@@ -113,12 +113,12 @@ class TestRendererExcludesOldProtocol:
 
     def _make_template_with_slim_bootstrap(self, **overrides):
         """Helper to create a template with the new slim bootstrap."""
-        defaults = dict(
-            name="implementer",
-            role="implementer",
-            cli_tool="claude",
-            description="Implementation specialist",
-            system_instructions=(
+        defaults = {
+            "name": "implementer",
+            "role": "implementer",
+            "cli_tool": "claude",
+            "description": "Implementation specialist",
+            "system_instructions": (
                 "## GiljoAI MCP Agent\n\n"
                 "You are part of a GiljoAI MCP orchestration system.\n\n"
                 "### STARTUP (MANDATORY)\n"
@@ -126,11 +126,11 @@ class TestRendererExcludesOldProtocol:
                 '2. Call `mcp__giljo_mcp__get_agent_mission(job_id="<your_job_id>")`\n'
                 "3. Follow `full_protocol` for all lifecycle behavior\n"
             ),
-            user_instructions="You are an implementation specialist.",
-            model="sonnet",
-            behavioral_rules=["Follow standards"],
-            success_criteria=["Tests pass"],
-        )
+            "user_instructions": "You are an implementation specialist.",
+            "model": "sonnet",
+            "behavioral_rules": ["Follow standards"],
+            "success_criteria": ["Tests pass"],
+        }
         defaults.update(overrides)
         return AgentTemplate(**defaults)
 

@@ -26,7 +26,7 @@ Behavior:
 from __future__ import annotations
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -76,7 +76,7 @@ async def active_project(
         description="Test project for messages ack",
         mission="Test message acknowledgement",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -115,7 +115,7 @@ async def _seed_orchestrator(
     )
     db_session.add(job)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     execution = AgentExecution(
         job_id=job_id,
         tenant_key=tenant_key,
@@ -163,7 +163,7 @@ async def _seed_unread_message(
         content=content,
         status="pending",
         requires_action=requires_action,
-        created_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+        created_at=datetime.now(UTC) - timedelta(minutes=1),
     )
     db_session.add(msg)
     await db_session.flush()
@@ -408,7 +408,7 @@ async def test_acknowledge_messages_filters_by_tenant_key(
         description="Cross-tenant guard project",
         mission="cross-tenant",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(other_project)
@@ -420,7 +420,7 @@ async def test_acknowledge_messages_filters_by_tenant_key(
         content="cross-tenant — must NOT be drained",
         status="pending",
         requires_action=False,
-        created_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+        created_at=datetime.now(UTC) - timedelta(minutes=1),
     )
     db_session.add(other_msg)
     await db_session.flush()

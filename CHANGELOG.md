@@ -4,7 +4,59 @@ All notable changes to this project are recorded here. Versions follow `MAJOR.MI
 
 ## [Unreleased]
 
-_No pending work yet — v1.2.3+ entries will land here._
+_No pending work yet — v1.2.4+ entries will land here._
+
+## [1.2.4] — 2026-05-03
+
+Sprint v1.2.4 release: backlog burn-down across infrastructure hygiene, MCP-tool correctness, CI tier-separation, and the dashboard staleness bug we discovered while organizing the sprint itself.
+
+### BREAKING CHANGE — minimum Python raised to 3.12 (INF-5022)
+
+Bumped `requires-python` in `pyproject.toml` from `>=3.10` to `>=3.12`. Removed `Programming Language :: Python :: 3.10` and `:: 3.11` PyPI classifiers.
+
+`pip install` on pre-3.12 Python now fails with a `requires-python` resolver error. CI, installer scripts (`install.py`, `install.ps1`, `install.sh`), and docs already required 3.12; this aligns the wheel-build constraint with the de-facto minimum already enforced everywhere else.
+
+### INF-5020 — ruff target-version `py39` → `py312`
+
+`.ruff.toml` `target-version` aligned with the actual Python floor. The lint sweep auto-fixed PEP 604 unions, walrus opportunities, UP rules, datetime-aware constructions, and ~60 other modernization sites; remaining warnings either fixed manually or carry justified `# noqa` markers. Removed the `.ruff.toml` allowlist entry from `scripts/check_version_consistency.py`. Eight sequential cleanup commits land in this release.
+
+### INF-5021 — delete deprecated `scripts/deployment/deploy_lan_windows.ps1`
+
+Pre-unified-installer artifact (2025-10) fully obsoleted by the current `install.ps1` flow. Removed.
+
+### INF-5023 — SMTP email provider with `EMAIL_BACKEND` factory
+
+New `src/giljo_mcp/saas/email/SmtpProvider` plus an `EMAIL_BACKEND` config switch lets sprint test boxes route mail through a local SMTP server (Mailpit) instead of Resend. AI-TOP demo/saas test box (10.1.0.163) verified live with Mailpit on `127.0.0.1:1025` (web UI on `:8025`). 13/13 new tests pass; SaaS-only.
+
+### INF-5024 — Tier-separate CI: installer-integrity to tag-only
+
+Restructure private-repo CI into two tiers so sprint cadence is no longer dragged by the installer matrix:
+
+- **Tier 1 (every push, PR, workflow_dispatch):** 8 fast checks — gitleaks, ruff, AI-signature block, CE/SaaS boundary, SaaS table refs, pytest, frontend lint+build, vitest.
+- **Tier 2 (tag-only, `v*` pattern):** new `installer-integrity.yml` workflow runs the BOM / bat-entry / startup.py-import-order / venv-guard self-test matrix when a release tag is pushed.
+- **Local safety net:** `merge_to_public.sh` now runs `scripts/check_installer_integrity.py` as Step 1d preflight, so installer regressions are caught locally before any public push.
+
+GitHub branch protection rulesets reconfigured: `master-protection` (id `15690228`) drops to 8 required checks; new `tag-installer-integrity` ruleset (id `15889843`) gates `refs/tags/v*` on the integrity check.
+
+### IMP-5026 — Dashboard project list/state consistency bug
+
+`mcp__giljo_mcp__list_projects` was returning stale `status` values that disagreed with `mcp__giljo_mcp__fetch_context` for the same project. Root cause traced and fixed at the read path; the `status` filter now actually filters across all 8 `ProjectStatus` enum values, and a project that just transitioned reflects in `list_projects` within one poll cycle. Three regression tests added (status-filter correctness + `fetch_context` parity + state-transition reflection).
+
+### IMP-5027 — `create_project` MCP tool: type validation restored
+
+Regression introduced 2026-04-30 by commit `6f702526a` (which dropped the embedded taxonomy from `list_projects` for performance) silently lost validation in `create_project_for_mcp` — unknown `project_type` values were accepted with no error. Fixed: unknown types now raise `ValidationError` with the structured `valid_types` list (abbreviation + label + color) in the error context, and omitted `project_type` returns the same hint in the success response. `/gil_add` skill text + tool docstring aligned with the new behavior.
+
+### Side-effect infrastructure fixes
+
+Discovered while shipping v1.2.4 commits through the export pipeline:
+
+- **`.gitleaks.toml`** — allowlist generalized to a single `.*\.old/.*` regex covering `.venv.old/`, `frontend/node_modules.old/`, and any future migration backup directory. `dev_tools/venv_devtools` added explicitly.
+- **`scripts/export_ce.sh` / `scripts/export_ce_dev.sh`** — `COPY_EXCLUDES` generalized to a `*.old` glob (with `venv_devtools` explicit). Future `mv X X.old` safety-net workflows automatically excluded from the CE bundle.
+- **System-update banner copy** — post-IMP-5024 stale messaging cleaned up: bell-icon notification dropped the redundant "re-run /giljo_setup" line (skills-drift banner already covers that), and both the bell notification and the dashboard update banner now say "restart your server" instead of "python update.py" (functionally redundant for manual-restart workflows; `startup.py` runs migrations on boot).
+
+### Workflow change — retire HO-doc protocol
+
+Project tracking has fully migrated into the GiljoAI MCP server itself. `handovers/HANDOVER_INSTRUCTIONS.md`, `handovers/HANDOVER_CATALOGUE.md`, and superseded roadmap files moved to `handovers/Reference_docs/archived/`. `EM_HANDOVER_*.md` session-rotation pattern remains. New work goes through `mcp__giljo_mcp__create_project` + `mcp__giljo_mcp__write_360_memory` rather than markdown spec files.
 
 ## [1.2.3] — 2026-05-03
 

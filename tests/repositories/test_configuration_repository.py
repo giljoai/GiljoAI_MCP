@@ -10,7 +10,7 @@ Test-driven development: Comprehensive coverage of all configuration repository 
 with CRITICAL tenant isolation testing.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
@@ -35,8 +35,8 @@ async def test_configurations(db_session, test_tenant_key):
             tenant_key=test_tenant_key,
             key=f"test.key.{i}",
             value=f"test_value_{i}",
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         db_session.add(config)
         configurations.append(config)
@@ -54,8 +54,8 @@ async def other_tenant_configurations(db_session):
             tenant_key=other_tenant_key,
             key=f"other.key.{i}",
             value=f"other_value_{i}",
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         db_session.add(config)
         configurations.append(config)
@@ -73,7 +73,7 @@ async def admin_user(db_session):
         email="admin@test.com",
         password_hash="hashed_password",
         role="admin",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(user)
     await db_session.commit()

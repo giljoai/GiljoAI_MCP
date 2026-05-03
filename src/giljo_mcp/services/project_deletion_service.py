@@ -15,7 +15,7 @@ Handles project deletion and purge operations:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -100,7 +100,7 @@ class ProjectDeletionService:
                     context={"project_id": project_id, "tenant_key": tenant_key},
                 )
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             project.status = ProjectStatus.DELETED
             project.deleted_at = now
             project.updated_at = now
@@ -198,7 +198,7 @@ class ProjectDeletionService:
             # Deactivate project if it's active (to avoid constraint issues)
             if project.status == ProjectStatus.ACTIVE:
                 project.status = ProjectStatus.INACTIVE
-                project.updated_at = datetime.now(timezone.utc)
+                project.updated_at = datetime.now(UTC)
                 await self._repo.flush(session)
                 self._logger.info(f"Deactivated project {project_id} before nuclear delete")
 
@@ -365,7 +365,7 @@ class ProjectDeletionService:
                         "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
                     }
                 )
-            except Exception as _exc:  # noqa: PERF203 - Nuclear delete resilience: continue on failures
+            except Exception as _exc:
                 self._logger.exception("Failed to nuclear delete project {project.id}")
 
         self._logger.info(
@@ -409,7 +409,7 @@ class ProjectDeletionService:
             >>> result = await service.purge_expired_deleted_projects()
             >>> print(f"Nuclear purged {result.purged_count} expired projects")
         """
-        from datetime import timedelta, timezone
+        from datetime import timedelta
 
         if not self.db_manager:
             self._logger.error("[Nuclear Purge] Cannot purge - database manager not available")
@@ -417,7 +417,7 @@ class ProjectDeletionService:
 
         async with self._get_session() as session:
             # Find projects deleted more than specified days ago
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_before_purge)
+            cutoff_date = datetime.now(UTC) - timedelta(days=days_before_purge)
 
             expired_projects = await self._repo.get_expired_deleted_projects(session, cutoff_date)
 
@@ -442,9 +442,9 @@ class ProjectDeletionService:
                 )
                 self._logger.info(
                     f"[Nuclear Purge] Auto-purged expired project {project.id} "
-                    f"(deleted {(datetime.now(timezone.utc) - project.deleted_at).days} days ago)"
+                    f"(deleted {(datetime.now(UTC) - project.deleted_at).days} days ago)"
                 )
-            except Exception as _exc:  # noqa: PERF203 - Nuclear delete resilience: continue on failures
+            except Exception as _exc:
                 self._logger.exception("Failed to nuclear delete expired project {project.id}")
 
         self._logger.info(f"[Nuclear Purge] Successfully purged {len(purged_projects)} expired deleted projects")

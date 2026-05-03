@@ -11,7 +11,7 @@ Extracted from api/app.py lifespan function (lines ~335-577).
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -46,7 +46,7 @@ async def cleanup_expired_download_tokens(state: APIState):
                         logger.info(f"Download token cleanup: {deleted_total} tokens removed")
                     else:
                         logger.debug("Download token cleanup: no tokens removed")
-        except (SQLAlchemyError, TypeError, ValueError, AttributeError) as e:  # noqa: PERF203
+        except (SQLAlchemyError, TypeError, ValueError, AttributeError) as e:
             logger.error(f"Error during download token cleanup: {e}", exc_info=True)
 
 
@@ -70,7 +70,7 @@ async def sync_api_metrics_to_db(state: APIState):
                             insert(ApiMetrics)
                             .values(
                                 tenant_key=tenant_key,
-                                date=datetime.now(timezone.utc),
+                                date=datetime.now(UTC),
                                 total_api_calls=api_count,
                                 total_mcp_calls=mcp_count,
                             )
@@ -79,7 +79,7 @@ async def sync_api_metrics_to_db(state: APIState):
                                 set_={
                                     "total_api_calls": ApiMetrics.total_api_calls + api_count,
                                     "total_mcp_calls": ApiMetrics.total_mcp_calls + mcp_count,
-                                    "date": datetime.now(timezone.utc),
+                                    "date": datetime.now(UTC),
                                 },
                             )
                         )
@@ -101,7 +101,7 @@ async def purge_expired_deleted_items(db_manager: DatabaseManager, tenant_manage
         # Get all tenants that have deleted items
         async with db_manager.get_session_async() as session:
             # Find all unique tenant keys with deleted items
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=10)
+            cutoff_date = datetime.now(UTC) - timedelta(days=10)
 
             # Get unique tenants with expired deleted projects
             project_stmt = (

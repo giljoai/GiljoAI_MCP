@@ -212,9 +212,9 @@ def install_linux_system_deps(missing: dict) -> bool:
 
     # Check if we can use sudo
     if os.geteuid() == 0:
-        cmd = ["apt-get", "install", "-y"] + packages
+        cmd = ["apt-get", "install", "-y", *packages]
     elif cmd_exists("sudo"):
-        cmd = ["sudo", "apt-get", "install", "-y"] + packages
+        cmd = ["sudo", "apt-get", "install", "-y", *packages]
     else:
         print_fail("Cannot install system packages (not root and sudo not available)")
         print_info(f"Install manually: sudo apt install {' '.join(packages)}")
@@ -299,7 +299,7 @@ def install_python_deps() -> bool:
     else:
         print_info(f"Installing: {', '.join(PYTHON_DEPS)}...")
         try:
-            run_cmd([str(pip_path), "install"] + PYTHON_DEPS + ["-q"])
+            run_cmd([str(pip_path), "install", *PYTHON_DEPS, "-q"])
             print_ok(f"Installed: {', '.join(PYTHON_DEPS)}")
             return True
         except subprocess.CalledProcessError as e:
@@ -424,13 +424,12 @@ def main() -> None:
     elif plat == "macos":
         if not install_macos_system_deps():
             errors.append("tkinter may not be available")
+    # Windows: tkinter ships with Python installer
+    elif check_tkinter():
+        print_ok("Windows: tkinter included with Python")
     else:
-        # Windows: tkinter ships with Python installer
-        if check_tkinter():
-            print_ok("Windows: tkinter included with Python")
-        else:
-            print_warn("tkinter not found - reinstall Python with tkinter option checked")
-            errors.append("tkinter not available")
+        print_warn("tkinter not found - reinstall Python with tkinter option checked")
+        errors.append("tkinter not available")
 
     # Step 3: Check tkinter is working
     print_header("Step 3/5: Checking tkinter")
@@ -460,7 +459,7 @@ def main() -> None:
             print_warn(f"  - {err}")
         print()
 
-    print_ok(f"Virtual environment: dev_tools/venv_devtools/")
+    print_ok("Virtual environment: dev_tools/venv_devtools/")
     print_ok(f"Dependencies: {', '.join(PYTHON_DEPS)}")
     print()
     print("  Launch the control panel:")

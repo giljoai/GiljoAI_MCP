@@ -6,7 +6,7 @@
 """Shared/generic service response models."""
 
 from datetime import datetime
-from typing import Generic, Optional, TypeVar
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
@@ -18,7 +18,7 @@ class DeleteResult(BaseModel):
     """Standard delete operation result."""
 
     deleted: bool = True
-    deleted_at: Optional[datetime] = None
+    deleted_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -31,7 +31,7 @@ class OperationResult(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class PaginatedResult(BaseModel, Generic[T]):
+class PaginatedResult(BaseModel, Generic[T]):  # noqa: UP046 -- Pydantic v2 + PEP 695 generics interaction is fragile, keep classic Generic[T]
     """Paginated list result."""
 
     items: list[T]

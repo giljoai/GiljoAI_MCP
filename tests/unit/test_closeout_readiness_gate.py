@@ -13,7 +13,7 @@ Tests cover:
 4. Decommissioned agents are skipped (don't block)
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from uuid import uuid4
 
@@ -47,7 +47,7 @@ def _make_execution(
     exe.job_id = job_id or str(uuid4())
     exe.tenant_key = tenant_key
     exe.messages_waiting_count = messages_waiting
-    exe.started_at = datetime.now(timezone.utc)
+    exe.started_at = datetime.now(UTC)
     return exe
 
 
@@ -283,7 +283,7 @@ class TestCloseoutGateIntegration:
         mock_project.id = project_id
         mock_project.tenant_key = tenant_key
         mock_project.product_id = product_id
-        mock_project.created_at = datetime.now(timezone.utc)
+        mock_project.created_at = datetime.now(UTC)
         mock_project.completed_at = None
 
         mock_project.name = "Test Project"
@@ -456,7 +456,7 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_project.id = project_id
         mock_project.tenant_key = tenant_key
         mock_project.product_id = product_id
-        mock_project.created_at = datetime.now(timezone.utc)
+        mock_project.created_at = datetime.now(UTC)
         mock_project.completed_at = None
 
         mock_project.name = "Test Project"
@@ -551,7 +551,7 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_project.id = project_id
         mock_project.tenant_key = tenant_key
         mock_project.product_id = product_id
-        mock_project.created_at = datetime.now(timezone.utc)
+        mock_project.created_at = datetime.now(UTC)
         mock_project.completed_at = None
 
         mock_project.name = "Test Project"

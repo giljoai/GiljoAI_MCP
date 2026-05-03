@@ -29,7 +29,7 @@ DRY_RUN = True
 def ensure_sudo():
     """Acquire sudo credentials upfront so later commands don't stall."""
     print("\nThis script needs sudo access. You may be prompted for your password.\n")
-    result = subprocess.run(["sudo", "-v"])
+    result = subprocess.run(["sudo", "-v"], check=False)
     if result.returncode != 0:
         print("  [ERROR] Failed to acquire sudo. Exiting.")
         sys.exit(1)
@@ -44,7 +44,7 @@ def run(cmd, check=False, sudo=False):
         return None
     print(f"  [RUN] {cmd}")
     # Always run interactively so sudo prompts and apt progress are visible
-    result = subprocess.run(cmd, shell=True)
+    result = subprocess.run(cmd, shell=True, check=False)
     if check and result.returncode != 0:
         print(f"  [WARN] Command exited with code {result.returncode}")
     return result
@@ -58,7 +58,7 @@ def remove_path(path, sudo=False):
         else:
             print(f"  [REMOVE] {p}")
             if sudo:
-                subprocess.run(f"sudo rm -rf {p}", shell=True)
+                subprocess.run(f"sudo rm -rf {p}", shell=True, check=False)
             else:
                 shutil.rmtree(p, ignore_errors=True)
                 if p.exists() and p.is_file():
@@ -76,7 +76,11 @@ def section(title):
 def find_postgres_packages():
     """Find all PostgreSQL-related packages in any state (installed, config-remaining, etc.)."""
     result = subprocess.run(
-        "dpkg -l 2>/dev/null | grep -i postgres | awk '{print $2}'", shell=True, capture_output=True, text=True
+        "dpkg -l 2>/dev/null | grep -i postgres | awk '{print $2}'",
+        shell=True,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if result.stdout.strip():
         return result.stdout.strip().splitlines()
@@ -93,7 +97,9 @@ def remove_postgresql():
 
     if packages:
         # Detect installed major version(s) for visibility
-        versions = sorted({p.split("-", 2)[1] for p in packages if p.startswith("postgresql-") and p.split("-", 2)[1].isdigit()})
+        versions = sorted(
+            {p.split("-", 2)[1] for p in packages if p.startswith("postgresql-") and p.split("-", 2)[1].isdigit()}
+        )
         if versions:
             print(f"  Detected PostgreSQL version(s): {', '.join(versions)}")
 
@@ -164,7 +170,11 @@ def remove_mkcert():
     nssdb = HOME / ".pki" / "nssdb"
     if nssdb.exists():
         result = subprocess.run(
-            f"certutil -d sql:{nssdb} -L 2>/dev/null | grep mkcert", shell=True, capture_output=True, text=True
+            f"certutil -d sql:{nssdb} -L 2>/dev/null | grep mkcert",
+            shell=True,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if result.returncode == 0:
             for line in result.stdout.strip().splitlines():
@@ -187,7 +197,11 @@ def remove_mkcert():
     mkcert_pkgs = []
     for pkg in ["mkcert", "libnss3-tools"]:
         result = subprocess.run(
-            f"dpkg -l {pkg} 2>/dev/null | grep -E '^(ii|rc)'", shell=True, capture_output=True, text=True
+            f"dpkg -l {pkg} 2>/dev/null | grep -E '^(ii|rc)'",
+            shell=True,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if result.returncode == 0:
             mkcert_pkgs.append(pkg)
@@ -301,7 +315,11 @@ def verify():
 
     # Check PostgreSQL packages -- only flag actually installed (ii), not config remnants (rc)
     pg_check = subprocess.run(
-        "dpkg -l 2>/dev/null | grep -i postgres | grep '^ii'", shell=True, capture_output=True, text=True
+        "dpkg -l 2>/dev/null | grep -i postgres | grep '^ii'",
+        shell=True,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     checks.append(("PostgreSQL packages", bool(pg_check.stdout.strip())))
 

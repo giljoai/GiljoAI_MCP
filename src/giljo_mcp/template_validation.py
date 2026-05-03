@@ -6,10 +6,9 @@
 """Agent template validation functions for 0103."""
 
 import re
-from typing import Optional
 
 
-def slugify_name(role: str, suffix: Optional[str] = None) -> str:
+def slugify_name(role: str, suffix: str | None = None) -> str:
     """Generate agent name from role and optional suffix.
 
     Args:

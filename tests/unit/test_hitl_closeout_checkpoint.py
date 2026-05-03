@@ -14,7 +14,7 @@ Covers:
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -59,7 +59,7 @@ async def orchestrator_job(db_session, test_tenant_key, test_project_id):
         agent_name="orchestrator",
         agent_display_name="orchestrator",
         status="working",
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
     db_session.add(execution)
     await db_session.commit()
@@ -88,7 +88,7 @@ async def implementer_job(db_session, test_tenant_key, test_project_id):
         agent_name="implementer",
         agent_display_name="implementer-backend",
         status="working",
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
     db_session.add(execution)
     await db_session.commit()
@@ -281,7 +281,7 @@ async def test_write_360_memory_callable_after_complete_job(db_session, test_ten
         agent_name="orchestrator",
         agent_display_name="orchestrator",
         status="working",
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
     db_session.add(execution)
     await db_session.commit()

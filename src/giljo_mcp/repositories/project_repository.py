@@ -15,7 +15,7 @@ All methods enforce tenant_key isolation. Session is passed by the caller.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -569,7 +569,7 @@ class ProjectRepository:
                 status=ProjectStatus.INACTIVE,
                 completed_at=None,
                 deleted_at=None,
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
             )
         )
         return result.rowcount

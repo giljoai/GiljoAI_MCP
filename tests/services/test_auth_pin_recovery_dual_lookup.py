@@ -16,7 +16,7 @@ Also exercises the new AuthRepository helper
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -80,7 +80,7 @@ async def pin_user(db_session, auth_test_org):
         is_active=True,
         must_change_password=True,
         must_set_pin=False,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(user)
     await db_session.commit()
@@ -157,7 +157,7 @@ class TestRepoDualLookupHelper:
             tenant_key=auth_test_org.tenant_key,
             org_id=auth_test_org.id,
             is_active=True,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         u2 = User(
             id=str(uuid4()),
@@ -168,7 +168,7 @@ class TestRepoDualLookupHelper:
             tenant_key=auth_test_org.tenant_key,
             org_id=auth_test_org.id,
             is_active=True,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add_all([u1, u2])
         await db_session.commit()

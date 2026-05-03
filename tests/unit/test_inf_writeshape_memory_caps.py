@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import random
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -223,7 +223,7 @@ async def test_fetch_context_memory_360_default_is_headlines(db_session, test_te
         sequence=1,
         entry_type="project_closeout",
         source="test",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         project_name=linked_project.name,
         summary=long_summary,
         key_outcomes=["k1", "k2"],
@@ -283,7 +283,7 @@ async def test_fetch_context_memory_360_full_opt_in(db_session, test_tenant_key,
         sequence=1,
         entry_type="project_closeout",
         source="test",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         project_name=linked_project.name,
         summary=long_summary,
         key_outcomes=["k1"],
@@ -344,7 +344,7 @@ async def test_fetch_context_30k_char_ceiling_graceful_drop(db_session, test_ten
             sequence=i + 1,
             entry_type="project_closeout",
             source="test",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             project_name=f"{linked_project.name}-{i}",
             summary=big_summary,
             key_outcomes=big_outcome,
@@ -393,7 +393,7 @@ async def test_get_360_memory_splits_action_required_extras(db_session, test_ten
     """Test 11: 5 requested + 4 action_required extras report distinctly."""
     from datetime import timedelta
 
-    base_time = datetime.now(timezone.utc)
+    base_time = datetime.now(UTC)
 
     # OLDER project carrying 4 action_required extras (out-of-window).
     older_proj = Project(
@@ -629,7 +629,7 @@ class TestSerializeHeadlineNoTruncation:
             sequence=1,
             project_name="Proj",
             entry_type="project_closeout",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             summary=summary,
             tags=["bug-fix"],
         )
@@ -705,7 +705,7 @@ class TestSerializeHeadlineNoTruncation:
             sequence=2,
             project_name="Proj",
             entry_type="project_closeout",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             summary="ok",
             tags=["bug-fix", "backend", "feature"],
         )

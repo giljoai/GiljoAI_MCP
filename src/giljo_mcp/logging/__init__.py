@@ -30,7 +30,6 @@ import os
 import sys
 from logging.handlers import RotatingFileHandler as _BaseRotatingFileHandler
 from pathlib import Path
-from typing import Optional
 
 import structlog
 
@@ -93,7 +92,7 @@ def _setup_file_handler(level: int) -> None:
 
 
 def configure_logging(
-    environment: Optional[str] = None,
+    environment: str | None = None,
     log_level: str = "INFO",
     force_json: bool = False,
 ) -> None:

@@ -18,7 +18,7 @@ import logging
 import threading
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from giljo_mcp._config_io import read_config
 
@@ -38,7 +38,7 @@ class ConfigService:
     and infrastructure config that stays in config.yaml.
     """
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         """
         Initialize ConfigService.
 
@@ -48,7 +48,7 @@ class ConfigService:
         self.config_path = config_path or Path.cwd() / "config.yaml"
         self._cache: dict[str, Any] = {}
         self._cache_ttl = 60  # seconds
-        self._last_read: Optional[float] = None
+        self._last_read: float | None = None
         self._lock = threading.RLock()
 
     def get_serena_config(self, use_cache: bool = True) -> dict[str, Any]:

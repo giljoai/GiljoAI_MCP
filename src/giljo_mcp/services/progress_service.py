@@ -18,7 +18,7 @@ Responsibilities:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,9 +57,9 @@ class ProgressService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        test_session: Optional[AsyncSession] = None,
+        test_session: AsyncSession | None = None,
         message_service: Optional["MessageService"] = None,
-        websocket_manager: Optional[Any] = None,
+        websocket_manager: Any | None = None,
     ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
@@ -100,7 +100,7 @@ class ProgressService:
         last_warning = self._todo_warning_timestamps.get(job_id)
         if not last_warning:
             return True
-        elapsed = (datetime.now(timezone.utc) - last_warning).total_seconds()
+        elapsed = (datetime.now(UTC) - last_warning).total_seconds()
         return elapsed >= (cooldown_minutes * 60)
 
     def _record_todo_warning(self, job_id: str) -> None:
@@ -110,13 +110,13 @@ class ProgressService:
         Args:
             job_id: Job UUID
         """
-        self._todo_warning_timestamps[job_id] = datetime.now(timezone.utc)
+        self._todo_warning_timestamps[job_id] = datetime.now(UTC)
 
     async def report_progress(
         self,
         job_id: str,
         progress: dict[str, Any] | None = None,
-        tenant_key: Optional[str] = None,
+        tenant_key: str | None = None,
         todo_items: list[dict] | None = None,
         todo_append: list[dict] | None = None,
     ) -> ProgressResult:
@@ -182,7 +182,7 @@ class ProgressService:
                 job = await self._fetch_job(session, job_id, tenant_key)
 
                 # Update execution progress fields
-                execution.last_progress_at = datetime.now(timezone.utc)
+                execution.last_progress_at = datetime.now(UTC)
 
                 # Auto-wake transition: if an agent reports progress while in a
                 # resting state (blocked/idle/sleeping), resume "working" status.

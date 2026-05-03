@@ -18,7 +18,7 @@ Covers:
 Created: config.yaml -> DB settings migration (commit ef4111ebc)
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -104,7 +104,7 @@ async def user_a_with_git_history(db_session, tenant_key_a, user_a):
         tenant_key=tenant_key_a,
         category="git_history",
         enabled=True,
-        updated_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(fp)
     await db_session.commit()
@@ -150,7 +150,7 @@ async def user_b_with_git_history(db_session, tenant_key_b, org_b):
         tenant_key=tenant_key_b,
         category="git_history",
         enabled=True,
-        updated_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(fp)
     await db_session.commit()
@@ -353,7 +353,7 @@ class TestGitToggleCascade:
     async def test_git_disable_cascades_to_disable_git_history_for_tenant_users(
         self, db_session, user_service_a, user_a_with_git_history, tenant_key_a
     ):
-        user_a, fp = user_a_with_git_history
+        _user_a, fp = user_a_with_git_history
         assert fp.enabled is True
 
         count = await user_service_a.bulk_disable_field_priority("git_history")
@@ -389,7 +389,7 @@ class TestGitToggleCascade:
             tenant_key=tenant_key_a,
             category="git_history",
             enabled=False,  # User has git_history disabled
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
         )
         db_session.add(fp)
         await db_session.commit()

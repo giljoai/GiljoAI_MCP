@@ -17,7 +17,7 @@ from sqlalchemy import engine_from_config, pool
 # TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from giljo_mcp.models import Base  # noqa: E402
+from giljo_mcp.models import Base
 
 
 # this is the Alembic Config object, which provides

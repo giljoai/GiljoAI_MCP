@@ -14,8 +14,8 @@ Test isolation is achieved through transaction rollback.
 import contextlib
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,7 +53,7 @@ class TestData:
 
     @staticmethod
     def generate_agent_job_data(
-        project_id: str, tenant_key: str, agent_display_name: Optional[str] = None
+        project_id: str, tenant_key: str, agent_display_name: str | None = None
     ) -> dict[str, Any]:
         """
         Generate test AgentJob data (work order - the WHAT).
@@ -68,13 +68,13 @@ class TestData:
             "job_type": agent_display_name or "worker",
             "mission": f"Test mission for {agent_display_name or 'worker'} agent",
             "status": "active",  # AgentJob has 3 statuses: active/completed/cancelled
-            "created_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
             "job_metadata": {},
         }
 
     @staticmethod
     def generate_agent_execution_data(
-        job_id: str, tenant_key: str, agent_display_name: Optional[str] = None
+        job_id: str, tenant_key: str, agent_display_name: str | None = None
     ) -> dict[str, Any]:
         """
         Generate test AgentExecution data (executor - the WHO).
@@ -106,7 +106,7 @@ class TestData:
             "to_agent": to_agent,
             "content": "Test message content",
             "project_id": project_id,
-            "created_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
             "status": "waiting",
         }
 

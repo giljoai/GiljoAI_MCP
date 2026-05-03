@@ -37,8 +37,8 @@ Return Type Conventions (0731c):
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -140,13 +140,13 @@ class TaskService:
     async def log_task(
         self,
         content: str,
-        category: Optional[str] = None,
+        category: str | None = None,
         priority: str = "medium",
-        project_id: Optional[str] = None,
-        product_id: Optional[str] = None,
-        tenant_key: Optional[str] = None,
-        title: Optional[str] = None,
-        description: Optional[str] = None,
+        project_id: str | None = None,
+        product_id: str | None = None,
+        tenant_key: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
     ) -> str:
         """Quick task capture - logs a task with minimal information.
 
@@ -214,13 +214,13 @@ class TaskService:
         self,
         session: AsyncSession,
         content: str,
-        category: Optional[str],
+        category: str | None,
         priority: str,
-        project_id: Optional[str],
-        product_id: Optional[str],
-        tenant_key: Optional[str],
-        title: Optional[str] = None,
-        description: Optional[str] = None,
+        project_id: str | None,
+        product_id: str | None,
+        tenant_key: str | None,
+        title: str | None = None,
+        description: str | None = None,
     ) -> str:
         """Implementation of log_task with explicit session parameter.
 
@@ -305,10 +305,10 @@ class TaskService:
         title: str,
         description: str,
         priority: str = "medium",
-        assigned_to: Optional[str] = None,
-        project_id: Optional[str] = None,
-        product_id: Optional[str] = None,
-        tenant_key: Optional[str] = None,
+        assigned_to: str | None = None,
+        project_id: str | None = None,
+        product_id: str | None = None,
+        tenant_key: str | None = None,
     ) -> str:
         """
         Create a new task with full details.
@@ -353,14 +353,14 @@ class TaskService:
 
     async def list_tasks(
         self,
-        status: Optional[str] = None,
-        assigned_to: Optional[str] = None,
-        project_id: Optional[str] = None,
-        product_id: Optional[str] = None,
-        priority: Optional[str] = None,
-        created_by_user_id: Optional[str] = None,
-        filter_type: Optional[str] = None,
-        tenant_key: Optional[str] = None,
+        status: str | None = None,
+        assigned_to: str | None = None,
+        project_id: str | None = None,
+        product_id: str | None = None,
+        priority: str | None = None,
+        created_by_user_id: str | None = None,
+        filter_type: str | None = None,
+        tenant_key: str | None = None,
     ) -> list[Task]:
         """List tasks with optional filters (enhanced for API endpoint support - Handover 0324).
 
@@ -428,12 +428,12 @@ class TaskService:
         self,
         session: AsyncSession,
         tenant_key: str,
-        status: Optional[str],
-        project_id: Optional[str],
-        product_id: Optional[str],
-        priority: Optional[str],
-        created_by_user_id: Optional[str],
-        filter_type: Optional[str],
+        status: str | None,
+        project_id: str | None,
+        product_id: str | None,
+        priority: str | None,
+        created_by_user_id: str | None,
+        filter_type: str | None,
     ) -> list[Task]:
         """Implementation of list_tasks with explicit session parameter.
 
@@ -564,7 +564,7 @@ class TaskService:
         # Auto-update timestamps based on status changes (Handover 0324)
         if "status" in kwargs:
             new_status = kwargs["status"]
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             if new_status == "in_progress" and not task.started_at:
                 task.started_at = now
@@ -788,7 +788,7 @@ class TaskService:
         task.status = new_status
 
         # Update timestamps based on status
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if new_status == "in_progress" and not task.started_at:
             task.started_at = now
         elif new_status in ("completed", "cancelled") and not task.completed_at:
@@ -800,7 +800,7 @@ class TaskService:
 
         return task
 
-    async def get_summary(self, product_id: Optional[str] = None) -> dict[str, Any]:
+    async def get_summary(self, product_id: str | None = None) -> dict[str, Any]:
         """Facade: delegates to TaskConversionService."""
         return await self._conversion.get_summary(product_id)
 

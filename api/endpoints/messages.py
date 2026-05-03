@@ -7,8 +7,8 @@
 Message management API endpoints
 """
 
-from datetime import datetime, timezone
-from typing import Literal, Optional
+from datetime import UTC, datetime
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -30,7 +30,7 @@ class MessageSend(BaseModel):
     project_id: str = Field(..., description="Project ID")
     message_type: Literal["direct", "broadcast"] = Field("direct", description="Message type")
     priority: Literal["low", "normal", "high"] = Field("normal", description="Message priority")
-    from_agent: Optional[str] = Field(None, description="Sender agent name")
+    from_agent: str | None = Field(None, description="Sender agent name")
 
 
 class MessageResponse(BaseModel):
@@ -89,7 +89,7 @@ async def send_message(
         message_type=message.message_type,
         priority=message.priority,
         status="pending",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
     # Broadcast new message
@@ -145,9 +145,9 @@ async def send_message_from_ui(
 
 @router.get("/", response_model=list[MessageResponse])
 async def list_messages(
-    project_id: Optional[str] = Query(None, description="Filter by project ID"),
-    agent_name: Optional[str] = Query(None, description="Filter by agent name (to or from)"),
-    status: Optional[str] = Query(None, description="Filter by status"),
+    project_id: str | None = Query(None, description="Filter by project ID"),
+    agent_name: str | None = Query(None, description="Filter by agent name (to or from)"),
+    status: str | None = Query(None, description="Filter by status"),
     current_user: User = Depends(get_current_active_user),
     message_service: MessageService = Depends(get_message_service),
 ):
@@ -180,9 +180,9 @@ async def list_messages(
             try:
                 created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
             except (ValueError, AttributeError):
-                created_at = datetime.now(timezone.utc)
+                created_at = datetime.now(UTC)
         else:
-            created_at = datetime.now(timezone.utc)
+            created_at = datetime.now(UTC)
 
         messages.append(
             MessageResponse(
@@ -205,7 +205,7 @@ async def list_messages(
 @router.get("/agent/{agent_name}", response_model=list[MessageResponse])
 async def get_messages(
     agent_name: str,
-    project_id: Optional[str] = Query(None, description="Project ID filter"),
+    project_id: str | None = Query(None, description="Project ID filter"),
     current_user: User = Depends(get_current_active_user),
     message_service: MessageService = Depends(get_message_service),
 ):
@@ -223,9 +223,9 @@ async def get_messages(
             try:
                 created_at = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
             except (ValueError, AttributeError):
-                created_at = datetime.now(timezone.utc)
+                created_at = datetime.now(UTC)
         else:
-            created_at = datetime.now(timezone.utc)
+            created_at = datetime.now(UTC)
 
         messages.append(
             MessageResponse(
@@ -283,7 +283,7 @@ class BroadcastMessage(BaseModel):
     project_id: str = Field(..., description="Project ID to broadcast to")
     content: str = Field(..., description="Broadcast message content")
     priority: Literal["low", "normal", "high"] = Field("normal", description="Message priority")
-    from_agent: Optional[str] = Field(None, description="Sender name (defaults to 'user')")
+    from_agent: str | None = Field(None, description="Sender name (defaults to 'user')")
 
 
 @router.post("/broadcast", response_model=dict)
@@ -333,5 +333,5 @@ async def broadcast_message(
         "message_id": message_id,
         "recipient_count": len(agent_names),
         "recipients": agent_names,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }

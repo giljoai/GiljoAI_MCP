@@ -18,7 +18,25 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.services.project_service import ProjectService
 from giljo_mcp.tools.tool_accessor import ToolAccessor
+
+
+@pytest.fixture(autouse=True)
+def _autopatch_valid_project_types():
+    """create_project_for_mcp now reads valid_types as a hint when project_type is omitted.
+
+    These tests don't set up a real DB; stub the helper so the omitted-type path
+    doesn't try to open an async session. Tests that exercise the unknown-type
+    rejection path explicitly mock this with a populated list.
+    """
+    with patch.object(
+        ProjectService,
+        "_get_valid_project_types",
+        new_callable=AsyncMock,
+        return_value=[],
+    ):
+        yield
 
 
 class TestCreateProjectActiveProductResolution:
@@ -305,5 +323,6 @@ class TestCreateProjectReturnValue:
                 "message",
                 "project_type",
                 "series_number",
+                "valid_types",
             }
             assert set(result.keys()) == expected_keys, f"Expected keys {expected_keys}, got {set(result.keys())}"

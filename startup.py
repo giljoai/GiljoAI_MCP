@@ -36,7 +36,7 @@ import sys
 import time
 import webbrowser
 from pathlib import Path
-from typing import IO, Optional, Tuple
+from typing import IO
 
 
 # NOTE: Third-party imports (click, colorama) are deferred until AFTER
@@ -102,7 +102,7 @@ def ensure_project_virtualenv() -> None:
         # Cross-platform process replacement:
         # subprocess.run() waits for child and captures exit code
         # sys.exit() propagates the exit code to parent/shell
-        result = subprocess.run([str(venv_python)] + sys.argv, check=False)
+        result = subprocess.run([str(venv_python), *sys.argv], check=False)
         sys.exit(result.returncode)
 
     except Exception as e:
@@ -183,7 +183,7 @@ def check_python_version() -> bool:
     return is_compatible
 
 
-def load_postgresql_config() -> Optional[dict]:
+def load_postgresql_config() -> dict | None:
     """
     Load PostgreSQL configuration from config.yaml if available.
 
@@ -312,7 +312,7 @@ def check_npm_available() -> bool:
     return False
 
 
-def check_database_connectivity() -> Tuple[bool, Optional[str]]:
+def check_database_connectivity() -> tuple[bool, str | None]:
     """
     Check if database connection can be established.
 
@@ -373,7 +373,7 @@ def check_database_connectivity() -> Tuple[bool, Optional[str]]:
         return False, error_msg
 
 
-def check_first_run() -> Tuple[bool, Optional[dict]]:
+def check_first_run() -> tuple[bool, dict | None]:
     """
     Check if this is the first run (setup not completed).
 
@@ -593,7 +593,7 @@ def is_port_available(port: int, host: str = "127.0.0.1") -> bool:
     return False
 
 
-def find_available_port(preferred_port: int, max_attempts: int = 10) -> Optional[int]:
+def find_available_port(preferred_port: int, max_attempts: int = 10) -> int | None:
     """
     Find an available port starting from preferred port.
 
@@ -612,7 +612,7 @@ def find_available_port(preferred_port: int, max_attempts: int = 10) -> Optional
     return None
 
 
-def get_config_ports() -> Tuple[int, int]:
+def get_config_ports() -> tuple[int, int]:
     """
     Get API and Frontend ports from config.yaml.
 
@@ -707,7 +707,7 @@ def get_ssl_enabled() -> bool:
     return False
 
 
-def get_network_ip() -> Optional[str]:
+def get_network_ip() -> str | None:
     """
     Get network IP address for display purposes.
 
@@ -814,7 +814,7 @@ def get_network_ip() -> Optional[str]:
     return None
 
 
-def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
+def start_api_server(verbose: bool = False) -> subprocess.Popen | None:
     """
     Start the API server.
 
@@ -879,7 +879,7 @@ def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
         return None
 
 
-def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
+def start_frontend_server(verbose: bool = False) -> subprocess.Popen | None:
     """
     Start the frontend development server.
 
@@ -994,7 +994,7 @@ def wait_for_api_ready(port: int, max_attempts: int = 60, interval: float = 0.5,
 
     for attempt in range(1, max_attempts + 1):
         try:
-            with urllib.request.urlopen(url, timeout=1, context=ssl_context) as response:
+            with urllib.request.urlopen(url, timeout=1, context=ssl_context) as response:  # noqa: S310  # reason: url is dev-server localhost http(s):// only, scheme controlled by config
                 if response.status == 200:
                     print_success(f"API ready after {attempt * interval:.1f}s")
                     return True
@@ -1077,10 +1077,9 @@ def check_dependencies() -> bool:
     for check_name, check_func, required in checks:
         print_info(f"Checking {check_name}...")
         result = check_func()
-        if not result and required:
-            # PostgreSQL gets a pass here because we verify via DB connection
-            if "PostgreSQL" not in check_name:
-                all_passed = False
+        # PostgreSQL gets a pass here because we verify via DB connection
+        if not result and required and "PostgreSQL" not in check_name:
+            all_passed = False
 
     return all_passed
 
@@ -1109,7 +1108,7 @@ def install_requirements() -> bool:
 
     # Check if critical packages are already installed
     all_installed = True
-    for module_name, package_name in critical_packages:
+    for module_name, _package_name in critical_packages:
         try:
             __import__(module_name)
         except ImportError:
@@ -1323,7 +1322,7 @@ def _heal_schema_to_v37(session) -> None:
         print_info(f"Schema heal: {applied}/{len(heal_statements)} statements applied")
 
 
-def _get_database_url() -> Optional[str]:
+def _get_database_url() -> str | None:
     """Build database URL from environment (same source as check_database_connectivity)."""
     with contextlib.suppress(Exception):
         from dotenv import load_dotenv
@@ -1466,7 +1465,7 @@ def run_startup(
     # Step 4: Check database connectivity
     print_header("Database Connectivity")
     print_info("Checking database connection...")
-    db_success, db_error = check_database_connectivity()
+    db_success, _db_error = check_database_connectivity()
 
     if not db_success:
         print_error("Database connectivity check failed")
@@ -1479,7 +1478,7 @@ def run_startup(
     # Step 5: Check first-run status
     print_header("Setup Status")
     print_info("Checking setup completion status...")
-    is_first_run, state = check_first_run()
+    is_first_run, _state = check_first_run()
 
     # Step 6: Get ports and SSL config
     api_port, frontend_port = get_config_ports()
@@ -1558,6 +1557,7 @@ def run_startup(
                 capture_output=True,
                 text=True,
                 timeout=120,
+                check=False,
             )
             if build_result.returncode == 0:
                 print_success("Frontend build complete")
@@ -1688,11 +1688,12 @@ def stop_services() -> int:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                check=False,
             )
             for line in result.stdout.strip().split("\n")[1:]:
                 pid = line.strip()
                 if pid.isdigit():
-                    subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10)
+                    subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10, check=False)
                     print_success(f"Stopped API server (PID: {pid})")
                     stopped += 1
         else:
@@ -1701,10 +1702,11 @@ def stop_services() -> int:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                check=False,
             )
             for pid in result.stdout.strip().split("\n"):
                 if pid.strip().isdigit():
-                    subprocess.run(["kill", pid.strip()], capture_output=True, timeout=10)
+                    subprocess.run(["kill", pid.strip()], capture_output=True, timeout=10, check=False)
                     print_success(f"Stopped API server (PID: {pid.strip()})")
                     stopped += 1
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
@@ -1718,11 +1720,12 @@ def stop_services() -> int:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                check=False,
             )
             for line in result.stdout.strip().split("\n")[1:]:
                 pid = line.strip()
                 if pid.isdigit():
-                    subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10)
+                    subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10, check=False)
                     print_success(f"Stopped frontend server (PID: {pid})")
                     stopped += 1
         else:
@@ -1731,10 +1734,11 @@ def stop_services() -> int:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                check=False,
             )
             for pid in result.stdout.strip().split("\n"):
                 if pid.strip().isdigit():
-                    subprocess.run(["kill", pid.strip()], capture_output=True, timeout=10)
+                    subprocess.run(["kill", pid.strip()], capture_output=True, timeout=10, check=False)
                     print_success(f"Stopped frontend server (PID: {pid.strip()})")
                     stopped += 1
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
@@ -1793,10 +1797,8 @@ def main(
         # Keep window open on error so the user can read the output
         if exit_code != 0:
             print_error("\nStartup failed. Press Enter to close this window...")
-            try:
+            with contextlib.suppress(EOFError):
                 input()
-            except EOFError:
-                pass
         sys.exit(exit_code)
 
 

@@ -19,6 +19,7 @@ features added in Handover 0497b (result persistence + auto-message).
 
 import random
 import uuid
+from datetime import UTC
 
 import pytest
 import pytest_asyncio
@@ -61,7 +62,7 @@ async def agent_templates(db_session, tenant_key):
 @pytest_asyncio.fixture
 async def project(db_session, tenant_key, agent_templates) -> Project:
     """Create a test project with required fields."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     proj = Project(
         id=str(uuid.uuid4()),
@@ -70,7 +71,7 @@ async def project(db_session, tenant_key, agent_templates) -> Project:
         mission="Test completion result storage and auto-messaging",
         status="active",
         tenant_key=tenant_key,
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(proj)

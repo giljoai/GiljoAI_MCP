@@ -12,7 +12,7 @@ Covers:
 3. require_ce_mode is a no-op when GILJO_MODE == "ce".
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -44,7 +44,7 @@ async def test_list_users_with_explicit_tenant_key_filters_correctly(
         tenant_key=other_tenant,
         role="developer",
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(other_user)
     await db_session.commit()
@@ -75,7 +75,7 @@ async def test_list_users_tenant_key_overrides_service_tenant(user_service, db_s
         tenant_key=foreign_tenant,
         role="developer",
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(foreign_user)
     await db_session.commit()

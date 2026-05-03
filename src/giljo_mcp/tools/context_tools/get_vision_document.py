@@ -24,7 +24,7 @@ Backward Compatibility:
 
 import logging
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -116,8 +116,8 @@ async def _get_summary_response(
     product_id: str,
     tenant_key: str,
     offset: int = 0,
-    session: Optional[AsyncSession] = None,
-    db_manager: Optional[DatabaseManager] = None,
+    session: AsyncSession | None = None,
+    db_manager: DatabaseManager | None = None,
 ) -> dict[str, Any]:
     """
     Retrieve summary response, preferring per-document summaries (Handover 0842b).
@@ -159,8 +159,8 @@ async def _get_summary_response(
     ratio = DEPTH_RATIO_MAP[depth]
 
     # ---- Handover 0842b: Try per-document summaries table first ----
-    summary_text: Optional[str] = None
-    summary_tokens: Optional[int] = None
+    summary_text: str | None = None
+    summary_tokens: int | None = None
 
     if session is not None and db_manager is not None:
         vision_service = ProductVisionService(
@@ -298,9 +298,9 @@ async def get_vision_document(
     tenant_key: str,
     chunking: str = "medium",
     offset: int = 0,
-    limit: Optional[int] = None,
-    db_manager: Optional[DatabaseManager] = None,
-    _test_session: Optional[AsyncSession] = None,
+    limit: int | None = None,
+    db_manager: DatabaseManager | None = None,
+    _test_session: AsyncSession | None = None,
 ) -> dict[str, Any]:
     """
     Fetch vision document with depth-based source selection (Handover 0352).
@@ -417,9 +417,9 @@ async def _get_vision_document_with_session(
     tenant_key: str,
     chunking: str,
     offset: int,
-    limit: Optional[int],
-    db_manager: Optional[DatabaseManager],
-    session: Optional[AsyncSession] = None,
+    limit: int | None,
+    db_manager: DatabaseManager | None,
+    session: AsyncSession | None = None,
 ) -> dict[str, Any]:
     """Inner implementation that operates on a given or new session."""
     if session is not None:
@@ -451,9 +451,9 @@ async def _fetch_active_vision_docs(
     tenant_key: str,
     chunking: str,
     offset: int,
-    limit: Optional[int],
-    db_manager: Optional[DatabaseManager],
-) -> tuple[Optional[list], Optional[dict[str, Any]]]:
+    limit: int | None,
+    db_manager: DatabaseManager | None,
+) -> tuple[list | None, dict[str, Any] | None]:
     """Fetch product, validate vision documents, and dispatch light/medium to summary.
 
     Applies the guard-clause chain: product existence, presence of vision
@@ -613,8 +613,8 @@ async def _execute_vision_query(
     tenant_key: str,
     chunking: str,
     offset: int,
-    limit: Optional[int],
-    db_manager: Optional[DatabaseManager],
+    limit: int | None,
+    db_manager: DatabaseManager | None,
 ) -> dict[str, Any]:
     """Execute the actual vision document query within a session context."""
     active_docs, early_response = await _fetch_active_vision_docs(

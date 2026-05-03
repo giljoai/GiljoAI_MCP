@@ -19,7 +19,8 @@ Created in Handover 0129c - Security Hardening & OWASP Compliance
 
 import logging
 import re
-from typing import Any, Callable, ClassVar
+from collections.abc import Callable
+from typing import Any, ClassVar
 
 from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware

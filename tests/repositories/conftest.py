@@ -8,7 +8,7 @@ Shared fixtures for tests/repositories/ test modules.
 """
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
@@ -37,7 +37,7 @@ async def test_project_with_data(db_session, test_tenant_key):
         mission="Test mission",
         status="active",
         series_number=random.randint(1, 999999),
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(project)
     await db_session.commit()
@@ -71,7 +71,7 @@ async def test_messages(db_session, test_tenant_key, test_project_with_data):
             content=f"Test message {i}",
             message_type="direct",
             status=status,
-            created_at=datetime.now(timezone.utc) - timedelta(hours=i),
+            created_at=datetime.now(UTC) - timedelta(hours=i),
         )
         db_session.add(msg)
         await db_session.flush()
@@ -98,7 +98,7 @@ async def test_agent_executions(db_session, test_tenant_key, test_project_with_d
         job_type="worker",
         mission="Test mission",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         job_metadata={},
     )
     db_session.add(job)

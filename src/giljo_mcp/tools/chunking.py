@@ -11,7 +11,7 @@ Based on proven chunking implementation with enhancements.
 
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
@@ -65,9 +65,7 @@ class EnhancedChunker:
         """
         return len(content) // self.TOKEN_CHAR_RATIO
 
-    def find_natural_boundary(
-        self, content: str, target_pos: int, search_range: Optional[int] = None
-    ) -> tuple[int, str]:
+    def find_natural_boundary(self, content: str, target_pos: int, search_range: int | None = None) -> tuple[int, str]:
         """
         Find the nearest natural boundary to the target position.
         Implements multi-level boundary hierarchy.

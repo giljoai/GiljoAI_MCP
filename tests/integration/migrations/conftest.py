@@ -21,10 +21,10 @@ import pytest
 @pytest.fixture
 def test_user():
     """Override parent's test_user fixture -- bootstrap tests don't need it."""
-    return None
+    return
 
 
 @pytest.fixture(autouse=True)
 def set_tenant_context():
     """Override parent's autouse tenant-context fixture with a no-op."""
-    return None
+    return

@@ -18,7 +18,7 @@ Rules are executed in order by TemplateValidator.
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 
 @dataclass
@@ -28,7 +28,7 @@ class ValidationError:
     rule_id: str
     severity: str  # "critical", "warning", "info"
     message: str
-    remediation: Optional[str] = None
+    remediation: str | None = None
 
     def to_dict(self) -> dict:
         """Serialize to dictionary for API responses."""
@@ -48,7 +48,7 @@ class ValidationRule(ABC):
     severity: str
 
     @abstractmethod
-    def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
+    def validate(self, content: str, agent_display_name: str) -> ValidationError | None:
         """
         Validate template content.
 
@@ -83,7 +83,7 @@ class MCPToolsPresenceRule(ValidationRule):
         "receive_messages",
     ]
 
-    def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
+    def validate(self, content: str, agent_display_name: str) -> ValidationError | None:
         """Check all required MCP tools are mentioned in template."""
         missing_tools = [tool for tool in self.REQUIRED_TOOLS if tool not in content]
 
@@ -118,7 +118,7 @@ class PlaceholderVerificationRule(ValidationRule):
 
     REQUIRED_PLACEHOLDERS: ClassVar[list[str]] = ["agent_id", "tenant_key", "job_id"]
 
-    def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
+    def validate(self, content: str, agent_display_name: str) -> ValidationError | None:
         """Check required placeholders are present and well-formed."""
         missing_placeholders = []
 
@@ -193,7 +193,7 @@ class InjectionDetectionRule(ValidationRule):
         r"<iframe[^>]*>",
     ]
 
-    def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
+    def validate(self, content: str, agent_display_name: str) -> ValidationError | None:
         """Detect injection patterns in template content."""
         # Remove code blocks to avoid false positives
         content_without_code_blocks = self._remove_code_blocks(content)
@@ -271,7 +271,7 @@ class ToolUsageBestPracticesRule(ValidationRule):
         "gracefully",
     ]
 
-    def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
+    def validate(self, content: str, agent_display_name: str) -> ValidationError | None:
         """Check for best practice mentions."""
         # Check if error handling is mentioned
         error_handling_mentioned = any(keyword in content.lower() for keyword in self.BEST_PRACTICE_KEYWORDS)
