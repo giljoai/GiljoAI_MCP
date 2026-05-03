@@ -19,7 +19,7 @@ Responsibilities:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -204,7 +204,11 @@ class UserService:
             username: Unique username (required)
             email: User email address
             full_name: User's full name
-            password: User password (defaults to "GiljoMCP" if not provided)
+            password: User password (required, must be a non-empty string).
+                Callers MUST supply an explicit password — there is no default.
+                Pass-through from validated request bodies (Pydantic enforces
+                min_length) or pre-generate a secure random secret server-side
+                if the workflow does not collect one from the user.
             role: User role (admin, developer, viewer)
             is_active: Whether user account is active
 
@@ -212,9 +216,17 @@ class UserService:
             User ORM model instance
 
         Raises:
-            ValidationError: Username or email already exists
+            ValidationError: Password missing/empty, or username/email already exists
             BaseGiljoError: Database operation failed
         """
+        # SEC: password is mandatory. Historical fallback to the literal "GiljoMCP"
+        # was removed in v1.1.9.2 — see handovers/SECURITY_SCRUB_v1.1.9.2-IN-PROGRESS.md.
+        if not password:
+            raise ValidationError(
+                message="password is required to create a user",
+                context={"operation": "create_user", "username": username},
+            )
+
         try:
             async with self._get_session() as session:
                 return await self._create_user_impl(session, username, email, full_name, password, role, is_active)
@@ -251,8 +263,14 @@ class UserService:
         if email and await self._repo.check_email_exists(session, email):
             raise ValidationError(message=f"Email '{email}' already exists", context={"email": email})
 
-        # Hash password (default to "GiljoMCP" per Handover 0023)
-        password_hash = bcrypt.hashpw((password or "GiljoMCP").encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        # Hash the caller-supplied password. The public create_user() entry point
+        # rejects None/empty values; this is a defense-in-depth check on the impl.
+        if not password:
+            raise ValidationError(
+                message="password is required to create a user",
+                context={"operation": "create_user", "username": username},
+            )
+        password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         # Create user
         user = User(
@@ -264,7 +282,9 @@ class UserService:
             role=role,
             is_active=is_active,
             tenant_key=self.tenant_key,
-            must_change_password=bool(not password),  # Force change if default password
+            # Password is now always caller-supplied; no implicit force-change.
+            # SaaS password-reset flows set this explicitly when needed.
+            must_change_password=False,
             must_set_pin=True,  # Force PIN setup on first login
             recovery_pin_hash=None,  # No PIN set initially
             created_at=datetime.now(timezone.utc),
@@ -453,169 +473,7 @@ class UserService:
                 context={"operation": "update_notification_preferences", "user_id": user_id},
             ) from e
 
-    # ============================================================================
-    # User Metadata (skills version tracking — HO 1028)
-    # ============================================================================
-
-    # Explicit allowlist for update_user_metadata. Adding a field here is a
-    # deliberate review-gated action — do NOT widen this set without a paired
-    # write-discipline review (post-0962). hasattr is not a security gate.
-    _METADATA_ALLOWED_FIELDS: frozenset[str] = frozenset(
-        {
-            "last_installed_skills_version",
-            "last_update_reminder_at",
-        }
-    )
-
-    async def check_and_emit_skills_update(self, user_id: str) -> dict[str, Any] | None:
-        """Post-login skills-version reminder cadence (HO 1028).
-
-        If the current ``SKILLS_VERSION`` is strictly newer than the user's
-        ``last_installed_skills_version`` AND either no reminder has been
-        emitted yet or the last reminder was more than 30 days ago, emit a
-        ``system:update_available`` WebSocket event to the user's tenant
-        and update ``last_update_reminder_at = now()``.
-
-        Returns the emitted payload dict (``{installed, current, message}``)
-        or ``None`` if no reminder was due.
-
-        Failures are logged and swallowed; the login flow must not break on
-        a reminder side-effect.
-        """
-        from giljo_mcp.services.version_service import compare_versions
-        from giljo_mcp.tools.slash_command_templates import SKILLS_VERSION
-
-        try:
-            async with self._get_session() as session:
-                user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
-                if not user:
-                    return None
-
-                installed = user.last_installed_skills_version
-                current = SKILLS_VERSION
-
-                # compare_versions returns False when installed is None —
-                # emulate "always drift" for missing installs so first-time
-                # users still get the prompt.
-                drift = (installed is None) or compare_versions(installed, current)
-                if not drift:
-                    return None
-
-                now = datetime.now(timezone.utc)
-                last = user.last_update_reminder_at
-                if last is not None and (now - last) <= timedelta(days=30):
-                    return None
-
-                payload = {
-                    "installed": installed,
-                    "current": current,
-                    "message": (
-                        "A newer skills bundle is available. Run /giljo_setup "
-                        f"to update from {installed or 'none'} to {current}."
-                    ),
-                }
-
-                user.last_update_reminder_at = now
-                await self._repo.commit(session)
-
-                await self._emit_websocket_event(
-                    event_type="system:update_available",
-                    data={"user_id": user_id, **payload},
-                )
-                self._logger.info(
-                    "Emitted system:update_available for user %s (installed=%s, current=%s)",
-                    user_id,
-                    installed,
-                    current,
-                )
-                return payload
-
-        except (RuntimeError, ValueError) as e:
-            self._logger.warning("check_and_emit_skills_update failed: %s", e)
-            return None
-
-    async def update_user_metadata(self, user_id: str, **fields: Any) -> User:
-        """Single validated write path for skills-version tracking columns on users.
-
-        Accepts only fields in ``_METADATA_ALLOWED_FIELDS``. Any other key is
-        rejected with ``ValidationError`` — this is the only sanctioned write
-        path for ``last_installed_skills_version`` and ``last_update_reminder_at``;
-        callers MUST NOT setattr these on User from staging or download layers.
-
-        Args:
-            user_id: User UUID (must belong to current tenant_key).
-            **fields: Subset of allowlisted columns to persist.
-
-        Returns:
-            The refreshed User ORM instance.
-
-        Raises:
-            ResourceNotFoundError: User not found in current tenant.
-            ValidationError: Disallowed field, wrong type, or oversized value.
-            BaseGiljoError: Database operation failed.
-        """
-        if not fields:
-            raise ValidationError(
-                message="update_user_metadata called with no fields",
-                context={"user_id": user_id},
-            )
-
-        unknown = set(fields) - self._METADATA_ALLOWED_FIELDS
-        if unknown:
-            raise ValidationError(
-                message=f"Disallowed metadata field(s): {sorted(unknown)}",
-                context={
-                    "user_id": user_id,
-                    "allowed": sorted(self._METADATA_ALLOWED_FIELDS),
-                    "rejected": sorted(unknown),
-                },
-            )
-
-        # Per-field validation. Cheap, application-layer; produces 422-style
-        # errors at the boundary instead of letting a DB constraint produce 500.
-        if "last_installed_skills_version" in fields:
-            value = fields["last_installed_skills_version"]
-            if value is not None:
-                if not isinstance(value, str):
-                    raise ValidationError(
-                        message="last_installed_skills_version must be str or None",
-                        context={"user_id": user_id, "type": type(value).__name__},
-                    )
-                if len(value) > 32:
-                    raise ValidationError(
-                        message="last_installed_skills_version exceeds 32 chars",
-                        context={"user_id": user_id, "length": len(value)},
-                    )
-
-        if "last_update_reminder_at" in fields:
-            value = fields["last_update_reminder_at"]
-            if value is not None and not isinstance(value, datetime):
-                raise ValidationError(
-                    message="last_update_reminder_at must be datetime or None",
-                    context={"user_id": user_id, "type": type(value).__name__},
-                )
-
-        try:
-            async with self._get_session() as session:
-                user = await self._repo.get_user_by_id(session, user_id, self.tenant_key)
-                if not user:
-                    raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
-
-                for field, value in fields.items():
-                    setattr(user, field, value)
-
-                user = await self._repo.commit_and_refresh_user(session, user)
-                self._logger.info("Updated user metadata for %s: %s", user_id, sorted(fields))
-                return user
-
-        except (ResourceNotFoundError, ValidationError, BaseGiljoError):
-            raise
-        except (RuntimeError, ValueError) as e:
-            self._logger.exception("Failed to update user metadata")
-            raise BaseGiljoError(
-                message=str(e),
-                context={"operation": "update_user_metadata", "user_id": user_id},
-            ) from e
+    # IMP-0023: per-user skills-version tracking removed (system_settings.skills_version_announced).
 
     async def get_field_priority_config(self, user_id: str) -> dict[str, Any]:
         """Get user's field toggle configuration from user_field_priorities table.

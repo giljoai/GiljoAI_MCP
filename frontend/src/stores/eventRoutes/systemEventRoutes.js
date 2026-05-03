@@ -105,9 +105,10 @@ export const SYSTEM_EVENT_ROUTES = {
     },
   },
 
-  // System update notifications (Handover 0965 Phase 4 + skills-version drift wiring).
-  // SystemStatusBanner.vue listens to the window event for the banner surface.
-  // The notification-store entry surfaces the same drift in the bell-icon badge.
+  // System update notifications. SystemStatusBanner.vue re-fetches
+  // /api/notifications/check-skills-version on this event; the server's
+  // drift_detected flag is the authoritative banner gate. This handler only
+  // surfaces an informational "updates available" item in the bell-icon badge.
   'system:update_available': {
     handler: async (payload) => {
       dispatchWindowEvent('ws-system-update-available', payload)
@@ -138,21 +139,17 @@ export const SYSTEM_EVENT_ROUTES = {
     },
   },
 
-  // Agent setup: update local skills version when agents are downloaded
+  // Agent setup events. Drift state is computed server-side from the bundled
+  // SKILLS_VERSION vs system_settings.skills_version_announced, so these
+  // handlers only re-dispatch for downstream listeners.
   'setup:agents_downloaded': {
     handler: async (payload) => {
-      if (payload?.skills_version) {
-        localStorage.setItem('giljo_skills_version', payload.skills_version)
-      }
       dispatchWindowEvent('setup:agents_downloaded', payload)
     },
   },
 
   'setup:bootstrap_complete': {
     handler: async (payload) => {
-      if (payload?.skills_version) {
-        localStorage.setItem('giljo_skills_version', payload.skills_version)
-      }
       dispatchWindowEvent('setup:bootstrap_complete', payload)
     },
   },
