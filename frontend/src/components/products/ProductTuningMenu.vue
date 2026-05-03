@@ -314,9 +314,9 @@ async function generatePrompt() {
 async function copyPrompt() {
   const success = await clipboardCopy(generatedPrompt.value)
   if (success) {
-    showToast({ message: 'Tuning prompt copied to clipboard', type: 'success' })
+    showToast({ message: 'Tuning prompt copied. Paste so your agent can refine the selected sections.', type: 'success' })
   } else {
-    showToast({ message: 'Failed to copy to clipboard — select the text and press Ctrl+C', type: 'error' })
+    showToast({ message: 'Clipboard blocked. Select the prompt and press Ctrl+C to copy manually.', type: 'error' })
   }
 }
 </script>

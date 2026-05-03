@@ -83,7 +83,7 @@ export function useJobActions(getJob) {
         if (!copyOk) throw new Error('Clipboard copy failed')
 
         showToast({
-          message: `Termination prompt copied! Paste into orchestrator terminal. (${response.data.agent_count} agents)`,
+          message: `Termination prompt copied. Paste to stop all ${response.data.agent_count} agents and save progress.`,
           type: 'warning',
           timeout: 8000,
         })

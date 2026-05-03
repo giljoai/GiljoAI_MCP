@@ -84,7 +84,7 @@ test.describe('Launch Tab Workflow (Job Staging)', () => {
     // Step 5: Verify success notification
     const toast = page.locator('.v-snackbar')
     await expect(toast).toBeVisible({ timeout: 3000 })
-    await expect(toast).toContainText('Orchestrator prompt')
+    await expect(toast).toContainText('Orchestrator brief')
 
     // Step 6: Wait for mission to appear (WebSocket event)
     const missionContent = page.locator('.mission-content')

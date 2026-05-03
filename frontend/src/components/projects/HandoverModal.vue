@@ -144,9 +144,9 @@ async function copyRetirementPrompt() {
   const success = await clipboardCopy(props.retirementPrompt)
   if (success) {
     step1Done.value = true
-    showToast({ message: 'Retirement prompt copied to clipboard', type: 'success' })
+    showToast({ message: 'Retirement prompt copied. Paste so the orchestrator saves state and stands down.', type: 'success' })
   } else {
-    showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
+    showToast({ message: 'Clipboard blocked. Select the prompt and press Ctrl+C to copy manually.', type: 'warning' })
   }
 }
 
@@ -154,9 +154,9 @@ async function copyContinuationPrompt() {
   const success = await clipboardCopy(props.continuationPrompt)
   if (success) {
     step2Done.value = true
-    showToast({ message: 'Continuation prompt copied to clipboard', type: 'success' })
+    showToast({ message: 'Continuation prompt copied. Paste in a fresh terminal to restore full context.', type: 'success' })
   } else {
-    showToast({ message: 'Copy failed — select the text and press Ctrl+C', type: 'warning' })
+    showToast({ message: 'Clipboard blocked. Select the prompt and press Ctrl+C to copy manually.', type: 'warning' })
   }
 }
 

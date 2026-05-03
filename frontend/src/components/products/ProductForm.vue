@@ -179,7 +179,7 @@
                       :prepend-icon="analysisPromptCopied ? 'mdi-check' : 'mdi-content-copy'"
                       @click.stop="stageAnalysis"
                     >
-                      {{ analysisPromptCopied ? 'Prompt Copied!' : 'Stage Analysis' }}
+                      {{ analysisPromptCopied ? 'Copied ✓' : 'Stage Analysis' }}
                     </v-btn>
                   </div>
                 </v-radio-group>

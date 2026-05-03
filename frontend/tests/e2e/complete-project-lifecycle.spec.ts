@@ -77,7 +77,7 @@ test.describe('Complete Project Lifecycle E2E', () => {
     await waitForWebSocketEvent(page, 'orchestrator:prompt_generated', 30000)
 
     // Verify success toast
-    await expectToastWithText(page, 'Orchestrator prompt')
+    await expectToastWithText(page, 'Orchestrator brief')
 
     // Verify mission appears in Panel 2
     const missionPanel = page.locator('[data-testid="mission-panel"]')

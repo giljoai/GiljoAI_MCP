@@ -197,7 +197,7 @@ function handleViewMessages(job) {
  */
 function handleHandOver(event) {
   if (event.success) {
-    showToast({ message: event.message || 'Session refreshed — continuation prompt copied to clipboard', type: 'success' })
+    showToast({ message: event.message || 'Session refreshed. Paste the continuation prompt to resume the orchestrator.', type: 'success' })
   } else {
     console.error('[AgentTableView] Session refresh failed:', event.error)
     showToast({ message: event.error || 'Failed to refresh session. Try again or reload the page.', type: 'error' })
@@ -222,13 +222,14 @@ async function handleCopyPrompt(agent) {
     const success = await copy(prompt)
 
     if (success) {
-      showToast({ message: 'Prompt copied to clipboard', type: 'success' })
+      const role = (agent.agent_display_name || 'Specialist').replace(/\b\w/g, (c) => c.toUpperCase())
+      showToast({ message: `${role} prompt copied. Paste to hand off this specialist's mission.`, type: 'success' })
     } else {
       throw new Error('Clipboard copy failed')
     }
   } catch (error) {
     console.error('[AgentTableView] Copy prompt failed:', error)
-    showToast({ message: 'Failed to copy prompt — select the text and press Ctrl+C', type: 'error' })
+    showToast({ message: 'Copy failed. Check your browser\'s clipboard permissions and try again.', type: 'error' })
   } finally {
     copyingJobId.value = null
   }

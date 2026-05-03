@@ -64,7 +64,7 @@ export function usePlayButton(project, getProjectState, clipboardCopy) {
             const prompt = response.data.prompt
             await _copyPrompt(prompt)
             showToast({
-              message: `Implementation prompt copied! ${response.data.agent_count + 1} jobs ready (1 orchestrator, ${response.data.agent_count} agents)`,
+              message: `Implementation prompt copied. ${response.data.agent_count + 1} jobs ready to launch (1 orchestrator, ${response.data.agent_count} specialists).`,
               type: 'success',
               timeout: 5000,
             })
@@ -88,7 +88,7 @@ export function usePlayButton(project, getProjectState, clipboardCopy) {
           const prompt = response.data.prompt
           await _copyPrompt(prompt)
           showToast({
-            message: `Orchestrator prompt copied! ${response.data.agent_count} agents ready for launch.`,
+            message: `Orchestrator prompt copied. ${response.data.agent_count} specialists ready to launch.`,
             type: 'success',
             timeout: 5000,
           })
@@ -108,12 +108,18 @@ export function usePlayButton(project, getProjectState, clipboardCopy) {
       }
 
       await _copyPrompt(promptText)
-      showToast({ message: 'Launch prompt copied to clipboard', type: 'success', timeout: 3000 })
+      const role = _titleCaseRole(agent.agent_display_name)
+      showToast({ message: `${role} prompt copied. Paste in a fresh terminal to bring this specialist online.`, type: 'success', timeout: 3000 })
     } catch (error) {
       console.error('[usePlayButton] Failed to prepare launch prompt:', error)
       const msg = error.response?.data?.detail || error.message || 'Failed to prepare launch prompt'
       showToast({ message: msg, type: 'error', timeout: 5000 })
     }
+  }
+
+  function _titleCaseRole(name) {
+    if (!name) return 'Specialist'
+    return String(name).replace(/\b\w/g, (c) => c.toUpperCase())
   }
 
   async function _copyPrompt(text) {

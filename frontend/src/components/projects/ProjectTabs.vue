@@ -822,14 +822,14 @@ async function handleStageProject() {
 
     if (copied) {
       const _pasteLabels = {
-        multi_terminal: 'Orchestrator prompt copied - paste into ANY terminal (fresh or existing)',
-        claude_code_cli: 'Orchestrator prompt copied - paste into Claude Code CLI',
-        codex_cli: 'Orchestrator prompt copied - paste into Codex CLI',
-        gemini_cli: 'Orchestrator prompt copied - paste into Gemini CLI',
+        multi_terminal: 'Orchestrator brief copied. Paste into any terminal to stage the project.',
+        claude_code_cli: 'Orchestrator brief copied. Paste into Claude Code CLI to stage the project.',
+        codex_cli: 'Orchestrator brief copied. Paste into Codex CLI to stage the project.',
+        gemini_cli: 'Orchestrator brief copied. Paste into Gemini CLI to stage the project.',
       }
       showToast({ message: _pasteLabels[currentMode] || _pasteLabels.multi_terminal, type: 'success' })
     } else {
-      showToast({ message: 'Copy failed — select the prompt text and press Ctrl+C', type: 'warning', timeout: 6000 })
+      showToast({ message: 'Copy failed. Check your browser\'s clipboard permissions and try again.', type: 'warning', timeout: 6000 })
     }
   } catch (error) {
     console.error('Stage project failed:', error)

@@ -168,7 +168,7 @@ async function generateBootstrapPrompt(platform) {
 
     await copyToClipboard(data.prompt)
     const label = platforms.find((p) => p.id === platform)?.label || platform
-    showToast({ message: `${label} setup prompt copied to clipboard`, type: 'success' })
+    showToast({ message: `Setup prompt copied. Paste into ${label} to install GiljoAI skills and agents.`, type: 'success' })
   } catch (error) {
     console.error(`[AGENT EXPORT] Bootstrap prompt failed for ${platform}:`, error)
     showToast({ message: `Failed to generate setup prompt: ${error.message}`, type: 'error' })
@@ -211,7 +211,7 @@ async function downloadZip(contentType, platform) {
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
 
-    showToast({ message: 'Agent export downloaded successfully', type: 'success' })
+    showToast({ message: 'Agent templates downloaded. Unzip into your project to register the specialist team.', type: 'success' })
   } catch (error) {
     console.error(`[AGENT EXPORT] Download failed:`, error)
     showToast({ message: `Download failed: ${error.message}`, type: 'error' })
