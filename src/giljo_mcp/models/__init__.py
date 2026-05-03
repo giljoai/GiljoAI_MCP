@@ -137,6 +137,7 @@ from .projects import (
 
 # Settings models
 from .settings import Settings
+from .system_setting import SystemSetting
 
 # Task and message models
 from .tasks import (
@@ -197,6 +198,7 @@ __all__ = [
     # Settings
     "Settings",
     "SetupState",
+    "SystemSetting",
     # Tasks
     "Task",
     "TemplateArchive",

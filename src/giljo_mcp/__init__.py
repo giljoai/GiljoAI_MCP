@@ -13,4 +13,4 @@ try:
 
     __version__ = _get_version("giljo-mcp")
 except (PackageNotFoundError, ImportError):
-    __version__ = "1.2.2"
+    __version__ = "1.2.3"

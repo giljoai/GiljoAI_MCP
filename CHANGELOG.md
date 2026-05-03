@@ -4,7 +4,27 @@ All notable changes to this project are recorded here. Versions follow `MAJOR.MI
 
 ## [Unreleased]
 
-_No pending work yet — v1.2.2+ entries will land here._
+_No pending work yet — v1.2.3+ entries will land here._
+
+## [1.2.3] — 2026-05-03
+
+Sprint v1.2.3 release: one security fix and a refactor of the skills-version drift banner that turned three pieces of state into one.
+
+### SEC-5009 — remove `GiljoMCP` password fallback
+
+`UserService.create_user` no longer silently substitutes the literal `"GiljoMCP"` when no password is supplied. The admin endpoint now forwards `user_data.password` and the service treats the absence of a password as an explicit error. Reviewer + tester clean (zero findings, 64/64 unit + 985/985 service tests). Stale `GiljoMCP` tenant_key matrix verified false on dev / demo prod / dogfood — no rotation needed.
+
+### IMP-5024 — skills-version drift banner: simplified server-side model
+
+Replaces the per-user tracking model from HO1028 + IMP-0022. The previous design used three pieces of state (`users.last_installed_skills_version` column + `localStorage giljo_skills_version` cache + server-side `never_installed` flag) for what is fundamentally one comparison: "did the bundled `SKILLS_VERSION` move past the version we last announced?"
+
+- **New migration `ce_0009`** drops `users.last_installed_skills_version` and `users.last_update_reminder_at`, then seeds `system_settings.skills_version_announced` to the current bundled `SKILLS_VERSION` via `ON CONFLICT DO NOTHING`.
+- **Endpoint `/api/notifications/check-skills-version`** now returns `{current, announced, drift_detected, message}` — no per-user state involved. Drift is the difference between what the running deployment ships with and what was last operator-announced.
+- **`SystemStatusBanner.vue`** simplified: `showSkillsDrift = isAdmin && drift_detected && !dismissedForCurrent`. Per-version dismissal continues via `localStorage.giljo_skills_dismissed_for_<version>`. Banner switched from `type="info"` (Vuetify blue) to `type="warning"` (brand yellow `#ffc300`) for better contrast and semantic correctness — drift is a "take action" notice.
+- **30-day post-login reminder loop dropped.** Per-version dismissal is the right primitive; the throttle was belt-and-suspenders.
+- Edition-aware copy: CE says "run `/giljo_setup` then `git pull`"; demo/saas says just "run `/giljo_setup`" (no `git pull` line — those users don't run the server).
+
+Verified on dogfood: bumped `SKILLS_VERSION` triggers banner, click-X dismisses it, F5 reload keeps it dismissed (per-version key), bumping again re-arms.
 
 ## [1.2.2] — 2026-05-01
 

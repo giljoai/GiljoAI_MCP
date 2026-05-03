@@ -359,11 +359,17 @@ async def create_user(
     """
     logger.debug("Admin %s creating user: %s", sanitize(current_user.username), sanitize(user_data.username))
 
+    # SEC (v1.1.9.2): pass the admin-supplied password through. The historical
+    # `password=None` here silently dropped the validated UserCreate.password and
+    # caused every user created via the admin UI to be hashed against the literal
+    # "GiljoMCP". Pydantic UserCreate already enforces min_length=8 — no extra
+    # validation needed here. UserService.create_user raises ValidationError on
+    # missing/empty password as defense-in-depth.
     user = await user_service.create_user(
         username=user_data.username,
         email=user_data.email,
         full_name=user_data.full_name,
-        password=None,  # Use default password 'GiljoMCP'
+        password=user_data.password,
         role=user_data.role,
         is_active=user_data.is_active,
     )
