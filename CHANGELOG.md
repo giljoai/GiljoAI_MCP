@@ -2,9 +2,13 @@
 
 All notable changes to this project are recorded here. Versions follow `MAJOR.MINOR.PATCH[.HOTFIX]` and tags live on the public repository (`giljoai/GiljoAI_MCP`).
 
-## [Unreleased]
+## [Unreleased] — v1.3 groundwork
 
-_No pending work yet — v1.2.3+ entries will land here._
+### BREAKING CHANGE — minimum Python raised to 3.12
+
+Bumped `requires-python` in `pyproject.toml` from `>=3.10` to `>=3.12`. Removed `Programming Language :: Python :: 3.10` and `:: 3.11` PyPI classifiers.
+
+`pip install` on pre-3.12 Python now fails with a `requires-python` resolver error. CI, installer scripts (`install.py`, `install.ps1`, `install.sh`), and docs already required 3.12; this aligns the wheel-build constraint with the de-facto minimum already enforced everywhere else.
 
 ## [1.2.3] — 2026-05-03
 

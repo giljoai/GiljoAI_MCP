@@ -39,7 +39,7 @@ describe('systemEventRoutes - system:update_available', () => {
     expect(store.notifications).toHaveLength(1)
     const note = store.notifications[0]
     expect(note.type).toBe('system_alert')
-    expect(note.message).toMatch(/giljo_setup|gil_get_agents/i)
+    expect(note.message).toMatch(/git pull|restart your server/i)
   })
 
   it('passes through gracefully when payload is missing', async () => {

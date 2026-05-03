@@ -893,6 +893,15 @@ class ProjectService:
             if resolved_type:
                 project_type_id = resolved_type.id
                 resolved_type_label = resolved_type.abbreviation or project_type
+            else:
+                valid_types = await self._get_valid_project_types(effective_tenant_key)
+                valid_labels = [t["abbreviation"] for t in valid_types]
+                raise ValidationError(
+                    f"Unknown project type '{project_type}'. "
+                    f"Valid types: {', '.join(valid_labels)}. "
+                    "Use list_projects() to see all valid project_types.",
+                    context={"operation": "create_project", "valid_types": valid_types},
+                )
 
         if not product_id:
             from giljo_mcp.services.product_service import ProductService
@@ -940,7 +949,7 @@ class ProjectService:
             except (RuntimeError, ValueError, OSError) as e:
                 logger.warning(f"Failed to broadcast project:created event: {e}")
 
-        return {
+        response: dict[str, Any] = {
             "success": True,
             "project_id": project.id,
             "alias": project.alias,
@@ -953,15 +962,11 @@ class ProjectService:
             "series_number": project.series_number or 0,
             "taxonomy_alias": project.taxonomy_alias,
             "created_at": project.created_at.isoformat() if project.created_at else None,
-            "message": f"Project '{project.name}' created successfully"
-            + (
-                f". NOTE: project_type '{project_type}' is not a recognized category -- "
-                "project created without taxonomy. Add the category in the dashboard first, "
-                "then assign it to this project."
-                if project_type and not project_type_id
-                else ""
-            ),
+            "message": f"Project '{project.name}' created successfully",
         }
+        if not project_type:
+            response["valid_types"] = await self._get_valid_project_types(effective_tenant_key)
+        return response
 
     async def list_projects_for_mcp(
         self,
