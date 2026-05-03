@@ -214,6 +214,9 @@ inline-quotes = "double"
     "BLE001", # Broad exception OK in test setup/teardown helpers
     "ERA001", # Section-header comments (# TEST: ...) and HANDOVER notes flagged as commented-out code
     "FBT003", # Boolean positional args -- common in test API calls (defaults, asserts)
+    "PT006",  # parametrize string-comma form is canonical pytest, not just tuple
+    "PT011",  # pytest.raises(Exception) acceptable for "any failure" test intent
+    "PT018",  # Composite asserts are concise and readable in test contexts
 ]
 "**/conftest.py" = [
     "ARG",    # Unused arguments OK in pytest fixtures
@@ -241,6 +244,12 @@ inline-quotes = "double"
     "INP001", # No __init__.py needed in scripts
     "ERA001", # Inline doc comments illustrating "real implementation" calls flagged as commented-out code
     "E402",   # sys.path.insert before giljo_mcp.* imports (script-as-module bootstrap pattern)
+    "S602",   # shell=True intentional for cross-platform installer auto-install (winget/brew/apt-get)
+]
+"scripts/_historical/**/*.py" = [
+    "PTH",    # Historical one-off migration scripts: not worth pathlib refactor
+    "TRY002", # Historical scripts: bare RuntimeError acceptable
+    "PERF",   # Historical scripts: perf hints not worth refactor
 ]
 "launchers/**/*.py" = [
     "T201",   # Launchers use print() for startup messages
@@ -252,6 +261,8 @@ inline-quotes = "double"
     "BLE001", # Broad exception OK for dev tool error handling
     "INP001", # No __init__.py needed in dev tools
     "FBT003", # Boolean positional args -- Tkinter API uses positional booleans (resizable, etc.)
+    "S602",   # shell=True intentional for apt-get / dpkg / certutil pipelines in reset scripts
+    "S605",   # start-process-with-shell intentional for shell pipelines in reset scripts
 ]
 "Linux_Installer/**/*.py" = [
     "T201",   # Installer uses print() for user-facing output

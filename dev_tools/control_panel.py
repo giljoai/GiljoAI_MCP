@@ -2254,8 +2254,8 @@ END $$;
             except Exception as e:
                 self.logger.warning(f"Could not audit database via psql: {e}")
             finally:
-                if os.path.exists(audit_file):
-                    os.unlink(audit_file)
+                if Path(audit_file).exists():
+                    Path(audit_file).unlink()
 
             # SQL commands to execute (deletion sequence)
             sql_commands = """
@@ -2311,7 +2311,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                 )
 
                 # Clean up temp file
-                os.unlink(sql_file)
+                Path(sql_file).unlink()
 
                 if result.returncode == 0:
                     self.db_exists_indicator.config(foreground="red")
@@ -2334,8 +2334,8 @@ DROP DATABASE IF EXISTS giljo_mcp;
 
             finally:
                 # Ensure temp file is cleaned up
-                if os.path.exists(sql_file):
-                    os.unlink(sql_file)
+                if Path(sql_file).exists():
+                    Path(sql_file).unlink()
 
         except Exception as e:
             self.update_status_message(f"psql CLI deletion failed: {e}")

@@ -111,7 +111,7 @@ __all__ = [
 ]
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def event_loop():
     """
     Create event loop for async tests.
