@@ -10,7 +10,7 @@ Tests verify model structure, field defaults, and constraints
 without requiring a database connection.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from giljo_mcp.models.base import generate_uuid
 from giljo_mcp.models.oauth import OAuthAuthorizationCode
@@ -117,7 +117,7 @@ class TestOAuthAuthorizationCodeModel:
 
     def test_instantiation_with_required_fields(self):
         """Verify model can be instantiated with all required fields."""
-        expires = datetime.now(timezone.utc) + timedelta(minutes=10)
+        expires = datetime.now(UTC) + timedelta(minutes=10)
         instance = OAuthAuthorizationCode(
             code="test_auth_code_abc123",
             client_id="giljo-mcp-default",

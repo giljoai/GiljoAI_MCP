@@ -10,8 +10,8 @@ WebSocket manager for real-time updates
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from fastapi import HTTPException, WebSocket
@@ -35,7 +35,7 @@ class WebSocketManager:
         self.entity_subscribers: dict[
             str, set[str]
         ] = {}  # entity_key -> set of client_ids  # entity_key -> set of client_ids
-        self._event_broker: Optional[WebSocketEventBroker] = None
+        self._event_broker: WebSocketEventBroker | None = None
         self._broker_unsubscribe = None
         self._broker_origin = uuid4().hex
 
@@ -74,7 +74,7 @@ class WebSocketManager:
         self,
         tenant_key: str,
         event: dict[str, Any],
-        exclude_client: Optional[str] = None,
+        exclude_client: str | None = None,
         *,
         publish_to_broker: bool = True,
     ) -> int:
@@ -100,7 +100,7 @@ class WebSocketManager:
 
         message = {
             "type": event_type,
-            "timestamp": event.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+            "timestamp": event.get("timestamp") or datetime.now(UTC).isoformat(),
             "schema_version": event.get("schema_version") or "1.0",
             "data": data,
         }
@@ -186,7 +186,7 @@ class WebSocketManager:
 
         return sent_count
 
-    async def connect(self, websocket: WebSocket, client_id: str, auth_context: Optional[dict[str, Any]] = None):
+    async def connect(self, websocket: WebSocket, client_id: str, auth_context: dict[str, Any] | None = None):
         """Accept and track new WebSocket connection with auth context"""
         # Note: websocket.accept() is called in the endpoint after validation
         self.active_connections[client_id] = websocket
@@ -219,7 +219,7 @@ class WebSocketManager:
 
         logger.info(f"WebSocket disconnected: {client_id}")
 
-    async def subscribe(self, client_id: str, entity_type: str, entity_id: str, tenant_key: Optional[str] = None):
+    async def subscribe(self, client_id: str, entity_type: str, entity_id: str, tenant_key: str | None = None):
         """Subscribe client to entity updates with authorization check"""
 
         # Check authorization
@@ -284,7 +284,7 @@ class WebSocketManager:
         for client_id, websocket in self.active_connections.items():
             try:
                 await websocket.send_text(message)
-            except Exception as _exc:  # noqa: PERF203 - Broadcast resilience: continue sending to other clients on error
+            except Exception as _exc:
                 logger.exception(
                     "websocket_broadcast_error error_code=%s client_id=%s",
                     ErrorCode.WS_BROADCAST_FAILED.value,
@@ -307,7 +307,7 @@ class WebSocketManager:
         event_type: str,
         data: dict[str, Any],
         schema_version: str = "1.0",
-        exclude_client: Optional[str] = None,
+        exclude_client: str | None = None,
     ) -> int:
         """Broadcast an event to all connected clients in a tenant.
 
@@ -361,7 +361,7 @@ class WebSocketManager:
         """Get number of active connections"""
         return len(self.active_connections)
 
-    def get_subscription_count(self, entity_type: Optional[str] = None, entity_id: Optional[str] = None) -> int:
+    def get_subscription_count(self, entity_type: str | None = None, entity_id: str | None = None) -> int:
         """Get number of subscriptions for an entity"""
         if entity_type and entity_id:
             entity_key = f"{entity_type}:{entity_id}"
@@ -391,7 +391,7 @@ class WebSocketManager:
                 "priority": message_data.get("priority"),
                 "status": message_data.get("status"),
             },
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         # Notify project subscribers
@@ -403,7 +403,7 @@ class WebSocketManager:
                 await self.notify_entity_update("agent", f"{project_id}:{agent}", message)
 
     async def broadcast_progress(
-        self, operation_id: str, project_id: str, percentage: float, message: str, details: Optional[dict] = None
+        self, operation_id: str, project_id: str, percentage: float, message: str, details: dict | None = None
     ):
         """Broadcast progress updates for long-running operations"""
         progress_message = {
@@ -416,7 +416,7 @@ class WebSocketManager:
                 "details": details or {},
                 "is_complete": percentage >= 100,
             },
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         # Notify project subscribers
@@ -427,8 +427,8 @@ class WebSocketManager:
         notification_type: str,  # 'info', 'warning', 'error', 'success'
         title: str,
         message: str,
-        project_id: Optional[str] = None,
-        target_clients: Optional[list[str]] = None,
+        project_id: str | None = None,
+        target_clients: list[str] | None = None,
     ):
         """Broadcast system notifications to clients"""
         notification = {
@@ -439,7 +439,7 @@ class WebSocketManager:
                 "message": message,
                 "project_id": project_id,
             },
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         if target_clients:
@@ -496,13 +496,13 @@ class WebSocketManager:
 
     async def send_heartbeat(self):
         """Send heartbeat ping to all connected clients"""
-        heartbeat = {"type": "ping", "timestamp": datetime.now(timezone.utc).isoformat()}
+        heartbeat = {"type": "ping", "timestamp": datetime.now(UTC).isoformat()}
 
         disconnected = []
         for client_id, websocket in self.active_connections.items():
             try:
                 await websocket.send_json(heartbeat)
-            except (RuntimeError, OSError) as e:  # noqa: PERF203 - Heartbeat resilience: continue pinging other clients
+            except (RuntimeError, OSError) as e:
                 logger.debug(f"Heartbeat failed for {client_id}: {e}")
                 disconnected.append(client_id)
 
@@ -519,11 +519,11 @@ class WebSocketManager:
         tenant_key: str,
         status: str,
         context_usage: int,
-        context_delta: Optional[int] = None,
-        current_task: Optional[str] = None,
-        progress_percentage: Optional[int] = None,
-        meta_data: Optional[dict] = None,
-        block_reason: Optional[str] = None,  # Handover 0491: Replaced failure_reason
+        context_delta: int | None = None,
+        current_task: str | None = None,
+        progress_percentage: int | None = None,
+        meta_data: dict | None = None,
+        block_reason: str | None = None,  # Handover 0491: Replaced failure_reason
     ):
         """Broadcast real-time status updates during agent execution."""
         data: dict[str, Any] = {
@@ -537,7 +537,7 @@ class WebSocketManager:
             "current_task": current_task,
             "progress_percentage": progress_percentage,
             "meta_data": meta_data or {},
-            "update_time": datetime.now(timezone.utc).isoformat(),
+            "update_time": datetime.now(UTC).isoformat(),
         }
 
         if status in ("blocked", "silent", "idle", "sleeping") and block_reason:
@@ -564,17 +564,17 @@ class WebSocketManager:
         job_id: str,
         agent_display_name: str,
         tenant_key: str,
-        spawned_by: Optional[str] = None,
-        mission_preview: Optional[str] = None,
-        created_at: Optional[datetime] = None,
-        project_id: Optional[str] = None,
-        agent_name: Optional[str] = None,
+        spawned_by: str | None = None,
+        mission_preview: str | None = None,
+        created_at: datetime | None = None,
+        project_id: str | None = None,
+        agent_name: str | None = None,
         status: str = "waiting",
-        execution_id: Optional[str] = None,  # Handover 0457: Unique row ID for frontend Map key
-        agent_id: Optional[str] = None,  # Handover 0457: Executor UUID
+        execution_id: str | None = None,  # Handover 0457: Unique row ID for frontend Map key
+        agent_id: str | None = None,  # Handover 0457: Executor UUID
     ):
         """Broadcast agent job creation events."""
-        created_ts = (created_at or datetime.now(timezone.utc)).isoformat()
+        created_ts = (created_at or datetime.now(UTC)).isoformat()
 
         job_event = EventFactory.tenant_envelope(
             event_type="agent_job:created",
@@ -627,9 +627,9 @@ class WebSocketManager:
         tenant_key: str,
         old_status: str,
         new_status: str,
-        updated_at: Optional[datetime] = None,
-        duration_seconds: Optional[float] = None,
-        project_id: Optional[str] = None,
+        updated_at: datetime | None = None,
+        duration_seconds: float | None = None,
+        project_id: str | None = None,
     ):
         """Broadcast agent job status change event.
 
@@ -644,7 +644,7 @@ class WebSocketManager:
             "old_status": old_status,
             "status": new_status,
             "tenant_key": tenant_key,
-            "updated_at": (updated_at or datetime.now(timezone.utc)).isoformat(),
+            "updated_at": (updated_at or datetime.now(UTC)).isoformat(),
         }
 
         # Handover 0463: Include project_id for frontend project-aware filtering
@@ -671,10 +671,10 @@ class WebSocketManager:
         message_id: str,
         from_agent: str,
         tenant_key: str,
-        to_agent: Optional[str] = None,
+        to_agent: str | None = None,
         message_type: str = "status",
-        content_preview: Optional[str] = None,
-        timestamp: Optional[datetime] = None,
+        content_preview: str | None = None,
+        timestamp: datetime | None = None,
     ):
         """Broadcast agent job message event."""
         data: dict[str, Any] = {
@@ -685,7 +685,7 @@ class WebSocketManager:
             "message_type": message_type,
             "message": content_preview,
             "tenant_key": tenant_key,
-            "timestamp": (timestamp or datetime.now(timezone.utc)).isoformat(),
+            "timestamp": (timestamp or datetime.now(UTC)).isoformat(),
         }
 
         event = EventFactory.tenant_envelope(
@@ -707,15 +707,15 @@ class WebSocketManager:
         job_id: str,
         tenant_key: str,
         from_agent: str,
-        to_agent: Optional[str],
+        to_agent: str | None,
         message_type: str,
         content_preview: str,
         priority: int,
-        timestamp: Optional[datetime] = None,
-        project_id: Optional[str] = None,
-        to_job_ids: Optional[list[str]] = None,
-        sender_sent_count: Optional[int] = None,
-        recipient_waiting_count: Optional[int] = None,
+        timestamp: datetime | None = None,
+        project_id: str | None = None,
+        to_job_ids: list[str] | None = None,
+        sender_sent_count: int | None = None,
+        recipient_waiting_count: int | None = None,
     ):
         """Broadcast message sent event for agent-orchestrator communication."""
         event = EventFactory.message_sent(
@@ -748,9 +748,9 @@ class WebSocketManager:
         message_type: str,
         content_preview: str,
         priority: int,
-        timestamp: Optional[datetime] = None,
-        project_id: Optional[str] = None,
-        waiting_count: Optional[int] = None,
+        timestamp: datetime | None = None,
+        project_id: str | None = None,
+        waiting_count: int | None = None,
     ):
         """Broadcast message received event to recipient agent(s)."""
         event = EventFactory.message_received(
@@ -779,8 +779,8 @@ class WebSocketManager:
         tenant_key: str,
         project_id: str,
         message_ids: list[str],
-        waiting_count: Optional[int] = None,
-        read_count: Optional[int] = None,
+        waiting_count: int | None = None,
+        read_count: int | None = None,
     ):
         """Broadcast message acknowledged event when an agent reads messages."""
         event = EventFactory.message_acknowledged(
@@ -805,10 +805,10 @@ class WebSocketManager:
         tenant_key: str,
         agent_id: str,
         status: str,
-        current_task: Optional[str] = None,
-        progress_percentage: Optional[int] = None,
-        context_usage: Optional[int] = None,
-        timestamp: Optional[datetime] = None,
+        current_task: str | None = None,
+        progress_percentage: int | None = None,
+        context_usage: int | None = None,
+        timestamp: datetime | None = None,
     ):
         """Broadcast agent status update event."""
         message_data: dict[str, Any] = {
@@ -816,7 +816,7 @@ class WebSocketManager:
             "job_id": job_id,
             "agent_id": agent_id,
             "status": status,
-            "updated_at": (timestamp or datetime.now(timezone.utc)).isoformat(),
+            "updated_at": (timestamp or datetime.now(UTC)).isoformat(),
         }
 
         if current_task:

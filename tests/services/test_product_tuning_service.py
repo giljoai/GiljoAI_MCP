@@ -15,7 +15,7 @@ Test Coverage:
 Created as part of Handover 0831: Product Context Tuning
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -123,7 +123,7 @@ def sample_memory_entries():
             "git_commits": [{"sha": f"abc{i}", "message": f"feat: feature {chr(65 + i)}", "date": f"2026-03-{15 + i}"}],
             "tags": ["closeout"],
             "project_name": f"Project {i + 1}",
-            "timestamp": datetime(2026, 3, 15 + i, tzinfo=timezone.utc).isoformat(),
+            "timestamp": datetime(2026, 3, 15 + i, tzinfo=UTC).isoformat(),
         }
         entries.append(entry)
     return entries

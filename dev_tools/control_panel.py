@@ -23,6 +23,7 @@ Usage:
     python dev_tools/control_panel.py
 """
 
+import configparser
 import contextlib
 import ctypes
 import logging
@@ -37,7 +38,7 @@ import time
 import webbrowser
 from pathlib import Path
 from tkinter import BooleanVar, StringVar, Tk, filedialog, messagebox, simpledialog, ttk
-from typing import Any, List, Optional
+from typing import Any
 
 
 THEMES = {
@@ -97,8 +98,6 @@ try:
 except ImportError:
     _bcrypt = None
     print("Warning: bcrypt not installed. Dev admin reset will be limited.")
-
-import configparser
 
 
 # ---------------------------------------------------------------------------
@@ -160,8 +159,8 @@ class GiljoDevControlPanel:
                 self.project_root = Path.cwd().parent
 
         # Process tracking
-        self.backend_process: Optional[subprocess.Popen] = None
-        self.frontend_process: Optional[subprocess.Popen] = None
+        self.backend_process: subprocess.Popen | None = None
+        self.frontend_process: subprocess.Popen | None = None
 
         # Status variables
         self.backend_status = BooleanVar(value=False)
@@ -170,7 +169,7 @@ class GiljoDevControlPanel:
         self.db_exists_status = BooleanVar(value=False)
 
         # Configuration
-        self.config: Optional[dict[str, Any]] = None
+        self.config: dict[str, Any] | None = None
         self.load_config()
 
         # Setup logger for database operations
@@ -765,9 +764,9 @@ class GiljoDevControlPanel:
         self,
         command: list[str],
         title: str = "",
-        cwd: Optional[Path] = None,
-        extra_path: Optional[str] = None,
-    ) -> Optional[subprocess.Popen]:
+        cwd: Path | None = None,
+        extra_path: str | None = None,
+    ) -> subprocess.Popen | None:
         """
         Launch command in a new terminal window.
 
@@ -871,7 +870,7 @@ class GiljoDevControlPanel:
             )
 
         system = platform.system()
-        candidates: List[Path] = []
+        candidates: list[Path] = []
 
         if system == "Windows":
             candidates.append(venv_dir / "Scripts" / "python.exe")
@@ -918,7 +917,7 @@ class GiljoDevControlPanel:
         except OSError:
             return False
 
-    def _find_nodejs_dir(self) -> Optional[str]:
+    def _find_nodejs_dir(self) -> str | None:
         """Find the directory containing Node.js/npm.
 
         Spawned cmd.exe terminals may not inherit the user's PATH, so we
@@ -941,7 +940,7 @@ class GiljoDevControlPanel:
 
         return None
 
-    def _find_process_on_port(self, port: int) -> Optional[int]:
+    def _find_process_on_port(self, port: int) -> int | None:
         """
         Find the PID of the process using the given port.
 
@@ -1089,10 +1088,8 @@ class GiljoDevControlPanel:
                                     subprocess.run(["kill", "-9", pid], check=False, capture_output=True, timeout=5)
                                     pids_killed.add(pid)
                     except FileNotFoundError:
-                        try:
+                        with contextlib.suppress(FileNotFoundError):
                             subprocess.run(["fuser", "-k", f"{port}/tcp"], check=False, capture_output=True, timeout=5)
-                        except FileNotFoundError:
-                            pass
             except Exception as e:
                 print(f"Warning: Kill round {round_num + 1} for port {port} failed: {e}")
 
@@ -1145,8 +1142,7 @@ class GiljoDevControlPanel:
                             child.kill()
                     proc.kill()
             if victims:
-                print(f"Killed {len(victims)} backend parent process(es) by name: "
-                      f"{[v.pid for v in victims]}")
+                print(f"Killed {len(victims)} backend parent process(es) by name: {[v.pid for v in victims]}")
             return
 
         # Fallback: no psutil -- shell out per-platform.
@@ -1158,10 +1154,19 @@ class GiljoDevControlPanel:
                 for script in script_names:
                     with contextlib.suppress(Exception):
                         result = subprocess.run(
-                            ["wmic", "process", "where",
-                             f"CommandLine like '%%{script}%%' and not CommandLine like '%%wmic%%'",
-                             "get", "ProcessId,CommandLine", "/format:csv"],
-                            check=False, capture_output=True, text=True, timeout=5,
+                            [
+                                "wmic",
+                                "process",
+                                "where",
+                                f"CommandLine like '%%{script}%%' and not CommandLine like '%%wmic%%'",
+                                "get",
+                                "ProcessId,CommandLine",
+                                "/format:csv",
+                            ],
+                            check=False,
+                            capture_output=True,
+                            text=True,
+                            timeout=5,
                         )
                         for line in result.stdout.splitlines():
                             if project_root_str not in line.lower():
@@ -1173,7 +1178,9 @@ class GiljoDevControlPanel:
                             if pid.isdigit() and int(pid) not in (my_pid, parent_pid):
                                 subprocess.run(
                                     ["taskkill", "/F", "/T", "/PID", pid],
-                                    check=False, capture_output=True, timeout=5,
+                                    check=False,
+                                    capture_output=True,
+                                    timeout=5,
                                 )
             else:
                 # Linux/macOS: pgrep -f matches against the full cmdline
@@ -1181,7 +1188,10 @@ class GiljoDevControlPanel:
                     with contextlib.suppress(Exception):
                         result = subprocess.run(
                             ["pgrep", "-f", script],
-                            check=False, capture_output=True, text=True, timeout=5,
+                            check=False,
+                            capture_output=True,
+                            text=True,
+                            timeout=5,
                         )
                         for pid_str in result.stdout.split():
                             if not pid_str.isdigit():
@@ -1192,16 +1202,16 @@ class GiljoDevControlPanel:
                             # Verify cmdline contains project_root before killing
                             try:
                                 with open(f"/proc/{pid}/cmdline", "rb") as f:
-                                    cmd = f.read().replace(b"\x00", b" ").decode(
-                                        "utf-8", errors="ignore"
-                                    ).lower()
+                                    cmd = f.read().replace(b"\x00", b" ").decode("utf-8", errors="ignore").lower()
                             except OSError:
                                 cmd = ""
                             if cmd and project_root_str not in cmd:
                                 continue
                             subprocess.run(
                                 ["kill", "-9", str(pid)],
-                                check=False, capture_output=True, timeout=5,
+                                check=False,
+                                capture_output=True,
+                                timeout=5,
                             )
         except Exception as e:
             print(f"Warning: name-based backend kill sweep failed: {e}")
@@ -1457,6 +1467,7 @@ class GiljoDevControlPanel:
                         capture_output=True,
                         text=True,
                         timeout=120,
+                        check=False,
                     )
                     if install_result.returncode != 0:
                         messagebox.showerror(
@@ -2002,7 +2013,7 @@ class GiljoDevControlPanel:
                 "- C:\\Program Files\\PostgreSQL\\*\\bin\\\n\n"
                 "Please ensure PostgreSQL is installed."
             )
-        elif system == "Darwin":
+        if system == "Darwin":
             return (
                 "Searched:\n"
                 "- PATH environment variable\n"
@@ -2010,16 +2021,15 @@ class GiljoDevControlPanel:
                 "- /Library/PostgreSQL/*/bin/\n\n"
                 "Install with: brew install postgresql"
             )
-        else:
-            return (
-                "Searched:\n"
-                "- PATH environment variable\n"
-                "- /usr/bin/, /usr/local/bin/\n"
-                "- /usr/lib/postgresql/*/bin/\n\n"
-                "Install with: sudo apt install postgresql"
-            )
+        return (
+            "Searched:\n"
+            "- PATH environment variable\n"
+            "- /usr/bin/, /usr/local/bin/\n"
+            "- /usr/lib/postgresql/*/bin/\n\n"
+            "Install with: sudo apt install postgresql"
+        )
 
-    def _find_psql_path(self) -> Optional[str]:
+    def _find_psql_path(self) -> str | None:
         """
         Find psql path (cross-platform).
 
@@ -2069,7 +2079,7 @@ class GiljoDevControlPanel:
                 if linux_path.name == "psql" and linux_path.exists():
                     self.logger.info(f"Found psql at: {linux_path}")
                     return str(linux_path)
-                elif linux_path.is_dir():
+                if linux_path.is_dir():
                     # Scan /usr/lib/postgresql/*/bin/psql
                     for version_dir in sorted(linux_path.glob("*"), reverse=True):
                         psql_path = version_dir / "bin" / "psql"
@@ -2091,7 +2101,7 @@ class GiljoDevControlPanel:
         self.logger.warning("Could not find psql in PATH or common locations")
         return None
 
-    def _find_pg_dump_path(self) -> Optional[str]:
+    def _find_pg_dump_path(self) -> str | None:
         """
         Find pg_dump path (cross-platform).
 
@@ -2138,7 +2148,7 @@ class GiljoDevControlPanel:
                 if linux_path.name == "pg_dump" and linux_path.exists():
                     self.logger.info(f"Found pg_dump at: {linux_path}")
                     return str(linux_path)
-                elif linux_path.is_dir():
+                if linux_path.is_dir():
                     for version_dir in sorted(linux_path.glob("*"), reverse=True):
                         pg_dump_path = version_dir / "bin" / "pg_dump"
                         if pg_dump_path.exists():
@@ -2221,7 +2231,7 @@ END $$;
 
             try:
                 env = os.environ.copy()
-                env["PGPASSWORD"] = credentials["password"]  # noqa: S105 — required by psql subprocess, cleared from env after call
+                env["PGPASSWORD"] = credentials["password"]
                 # Run audit against giljo_mcp database
                 audit_result = subprocess.run(
                     [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "giljo_mcp", "-f", audit_file],
@@ -2244,8 +2254,8 @@ END $$;
             except Exception as e:
                 self.logger.warning(f"Could not audit database via psql: {e}")
             finally:
-                if os.path.exists(audit_file):
-                    os.unlink(audit_file)
+                if Path(audit_file).exists():
+                    Path(audit_file).unlink()
 
             # SQL commands to execute (deletion sequence)
             sql_commands = """
@@ -2290,7 +2300,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             try:
                 # Execute psql with password in environment
                 env = os.environ.copy()
-                env["PGPASSWORD"] = credentials["password"]  # noqa: S105 — required by psql subprocess, cleared from env after call
+                env["PGPASSWORD"] = credentials["password"]
                 result = subprocess.run(
                     [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "postgres", "-f", sql_file],
                     check=False,
@@ -2301,7 +2311,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                 )
 
                 # Clean up temp file
-                os.unlink(sql_file)
+                Path(sql_file).unlink()
 
                 if result.returncode == 0:
                     self.db_exists_indicator.config(foreground="red")
@@ -2324,8 +2334,8 @@ DROP DATABASE IF EXISTS giljo_mcp;
 
             finally:
                 # Ensure temp file is cleaned up
-                if os.path.exists(sql_file):
-                    os.unlink(sql_file)
+                if Path(sql_file).exists():
+                    Path(sql_file).unlink()
 
         except Exception as e:
             self.update_status_message(f"psql CLI deletion failed: {e}")
@@ -2361,9 +2371,9 @@ DROP DATABASE IF EXISTS giljo_mcp;
 
             # Format the timestamp
             mod_time = latest_backup.stat().st_mtime
-            from datetime import datetime
+            from datetime import UTC, datetime
 
-            backup_time = datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M:%S")
+            backup_time = datetime.fromtimestamp(mod_time, tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
 
             self.backup_label.config(text=backup_time)
             self.backup_indicator.config(foreground="green")
@@ -2388,9 +2398,9 @@ DROP DATABASE IF EXISTS giljo_mcp;
             backup_dir.mkdir(parents=True, exist_ok=True)
 
             # Create timestamped backup filename
-            from datetime import datetime
+            from datetime import UTC, datetime
 
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
             backup_file = backup_dir / f"giljo_mcp_{timestamp}.dump"
             metadata_file = backup_dir / f"giljo_mcp_{timestamp}.md"
 
@@ -2413,7 +2423,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             # Build pg_dump command
             # Using -Fc format (custom format) for better compression and restore options
             env = os.environ.copy()
-            env["PGPASSWORD"] = credentials["password"]  # noqa: S105 — required by pg_dump subprocess
+            env["PGPASSWORD"] = credentials["password"]
             command = [
                 pg_dump_path,
                 "-h",
@@ -2453,7 +2463,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             # Create metadata file
             metadata_content = f"""# Database Backup Metadata
 
-**Backup Date**: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+**Backup Date**: {datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")}
 **Database**: giljo_mcp
 **Format**: PostgreSQL Custom Format (pg_dump -Fc)
 **File**: {backup_file.name}
@@ -2608,7 +2618,7 @@ pg_restore -l {backup_file.name} | head -20
                 try:
                     credentials = self.get_db_credentials()
                     env = os.environ.copy()
-                    env["PGPASSWORD"] = credentials.get("password", "")  # noqa: S105 — required by psql subprocess
+                    env["PGPASSWORD"] = credentials.get("password", "")
                     # Check if database exists
                     db_result = subprocess.run(
                         [
@@ -3193,6 +3203,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=30,
+                        check=False,
                     )
                     deleted.append("mkcert CA (removed from trust stores)")
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
@@ -3356,6 +3367,7 @@ pg_restore -l {backup_file.name} | head -20
                 capture_output=True,
                 text=True,
                 timeout=5,
+                check=False,
             )
             if check.returncode == 0:
                 return ""  # Empty string signals passwordless sudo
@@ -3494,6 +3506,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=5,
+                        check=False,
                     )
                     if "-L" in result.stdout or "-L" in result.stderr:
                         return str(certutil)
@@ -3528,6 +3541,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=15,
+                        check=False,
                     )
                     current_uri = None
                     for line in result.stdout.splitlines():
@@ -3551,6 +3565,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=15,
+                        check=False,
                     )
                     for line in result.stdout.splitlines():
                         if "mkcert" in line.lower():
@@ -3574,6 +3589,7 @@ pg_restore -l {backup_file.name} | head -20
                                 capture_output=True,
                                 text=True,
                                 timeout=15,
+                                check=False,
                             )
                             for line in result.stdout.splitlines():
                                 if "mkcert" in line.lower():
@@ -3598,6 +3614,7 @@ pg_restore -l {backup_file.name} | head -20
                     capture_output=True,
                     text=True,
                     timeout=15,
+                    check=False,
                 )
                 thumbprint = result.stdout.strip()
                 if thumbprint:
@@ -3617,6 +3634,7 @@ pg_restore -l {backup_file.name} | head -20
                     capture_output=True,
                     text=True,
                     timeout=15,
+                    check=False,
                 )
                 thumbprint = result.stdout.strip()
                 if thumbprint:
@@ -3638,6 +3656,7 @@ pg_restore -l {backup_file.name} | head -20
                                     capture_output=True,
                                     text=True,
                                     timeout=15,
+                                    check=False,
                                 )
                                 for line in result.stdout.splitlines():
                                     if "mkcert" in line.lower():
@@ -3700,6 +3719,7 @@ pg_restore -l {backup_file.name} | head -20
                             capture_output=True,
                             text=True,
                             timeout=60,
+                            check=False,
                         )
                         if result.returncode == 0:
                             certutil_path = shutil.which("certutil")
@@ -3711,6 +3731,7 @@ pg_restore -l {backup_file.name} | head -20
                                         capture_output=True,
                                         text=True,
                                         timeout=15,
+                                        check=False,
                                     )
                                     for line in scan.stdout.splitlines():
                                         if "mkcert" in line.lower():
@@ -3735,6 +3756,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=15,
+                        check=False,
                     )
                     if result.returncode != 0:
                         self.logger.warning(f"NSS cert removal failed: {result.stderr.strip()}")
@@ -3753,6 +3775,7 @@ pg_restore -l {backup_file.name} | head -20
                             capture_output=True,
                             text=True,
                             timeout=5,
+                            check=False,
                         )
                         if "mkcert" in result.stdout.lower():
                             rm_result = subprocess.run(
@@ -3761,6 +3784,7 @@ pg_restore -l {backup_file.name} | head -20
                                 capture_output=True,
                                 text=True,
                                 timeout=10,
+                                check=False,
                             )
                             if rm_result.returncode == 0:
                                 removed_file = True
@@ -3777,6 +3801,7 @@ pg_restore -l {backup_file.name} | head -20
                             capture_output=True,
                             text=True,
                             timeout=30,
+                            check=False,
                         )
                     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                         self.logger.warning("update-ca-certificates failed")
@@ -3792,6 +3817,7 @@ pg_restore -l {backup_file.name} | head -20
                             capture_output=True,
                             text=True,
                             timeout=15,
+                            check=False,
                         )
                         if result.returncode != 0:
                             self.logger.warning(
@@ -3824,6 +3850,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=15,
+                        check=False,
                     )
                     if result.returncode == 0:
                         stores_cleaned.append("User certificate store")
@@ -3857,6 +3884,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=30,
+                        check=False,
                     )
                     verify_cmd = (
                         f"Get-ChildItem Cert:\\LocalMachine\\Root "
@@ -3868,6 +3896,7 @@ pg_restore -l {backup_file.name} | head -20
                         capture_output=True,
                         text=True,
                         timeout=10,
+                        check=False,
                     )
                     if verify.stdout.strip() == "0":
                         stores_cleaned.append("Machine certificate store")
@@ -3887,6 +3916,7 @@ pg_restore -l {backup_file.name} | head -20
                             capture_output=True,
                             text=True,
                             timeout=15,
+                            check=False,
                         )
                         if result.returncode == 0:
                             stores_cleaned.append(f"Firefox profile ({Path(profile['path']).name})")
@@ -4095,7 +4125,7 @@ pg_restore -l {backup_file.name} | head -20
 
             except Exception as e:
                 removed.append(f"Windows cert store removal error: {e}")
-                self.logger.error("Windows cert store removal failed: %s", e)
+                self.logger.exception("Windows cert store removal failed")
 
         elif system == "Darwin":
             # macOS: cert was added via security add-trusted-cert to System keychain

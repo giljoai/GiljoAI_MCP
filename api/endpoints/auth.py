@@ -18,7 +18,7 @@ All endpoints support multi-tenant isolation through tenant_key.
 import asyncio
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status
@@ -335,7 +335,7 @@ async def login(
     token = auth_result.token
 
     # Update last login timestamp
-    await auth_service.update_last_login(auth_result.user_id, datetime.now(timezone.utc))
+    await auth_service.update_last_login(auth_result.user_id, datetime.now(UTC))
 
     # IMP-0023: post-login skills-version reminder removed; system_settings drives drift state.
 

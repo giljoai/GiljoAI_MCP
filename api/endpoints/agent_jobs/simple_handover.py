@@ -17,7 +17,7 @@ No more Agent ID Swap. No new AgentExecution rows. Same UUID, same card.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -191,7 +191,7 @@ async def simple_handover(
                     "agent_id": execution.agent_id,
                     "job_id": execution.job_id,
                     "project_id": str(job.project_id),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 },
             )
     except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast

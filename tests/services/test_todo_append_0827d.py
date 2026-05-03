@@ -17,7 +17,7 @@ Tests that OrchestrationService correctly:
 """
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -80,7 +80,7 @@ async def active_project(
         description="Test project for 0827d",
         mission="Test todo append feature",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -109,7 +109,7 @@ def _create_agent_with_todos(
     )
     db_session.add(job)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     agent = AgentExecution(
         job_id=job_id,
         tenant_key=tenant_key,
@@ -207,7 +207,7 @@ async def test_todo_append_preserves_existing_items(
     test_tenant_key: str,
 ):
     """todo_append should NOT delete existing completed items."""
-    job, agent = working_agent_with_todos
+    job, _agent = working_agent_with_todos
 
     # Append 2 new steps
     result = await orchestration_service.report_progress(
@@ -255,7 +255,7 @@ async def test_todo_append_correct_sequence_after_gap(
     test_tenant_key: str,
 ):
     """Sequence numbers should continue from max existing sequence."""
-    job, agent = working_agent_with_todos
+    job, _agent = working_agent_with_todos
 
     # Append once
     await orchestration_service.report_progress(
@@ -292,7 +292,7 @@ async def test_todo_append_updates_jsonb_summary(
     test_tenant_key: str,
 ):
     """JSONB todo_steps metadata should reflect appended items."""
-    job, agent = working_agent_with_todos
+    job, _agent = working_agent_with_todos
 
     await orchestration_service.report_progress(
         job_id=job.job_id,
@@ -326,7 +326,7 @@ async def test_todo_items_full_replace_still_works(
     test_tenant_key: str,
 ):
     """todo_items full replace works when completed count is maintained."""
-    job, agent = working_agent_with_todos
+    job, _agent = working_agent_with_todos
 
     # Replace with new items — must keep at least 5 completed (matching DB state)
     result = await orchestration_service.report_progress(
@@ -366,7 +366,7 @@ async def test_todo_items_regression_guard_rejects_lossy_replace(
     test_tenant_key: str,
 ):
     """Regression guard rejects todo_items that would lose completed work."""
-    job, agent = working_agent_with_todos
+    job, _agent = working_agent_with_todos
 
     with pytest.raises(ValidationError, match="regression rejected"):
         await orchestration_service.report_progress(
@@ -391,7 +391,7 @@ async def test_todo_items_and_todo_append_mutually_exclusive(
     test_tenant_key: str,
 ):
     """Cannot use both todo_items and todo_append in the same call."""
-    job, agent = working_agent_with_todos
+    job, _agent = working_agent_with_todos
 
     with pytest.raises(ValidationError, match="Cannot use both"):
         await orchestration_service.report_progress(
@@ -468,7 +468,7 @@ def test_job_response_includes_reactivation_fields():
         agent_display_name="Test-Agent",
         mission="Test mission",
         status="working",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         accumulated_duration_seconds=175.5,
         reactivation_count=2,
     )
@@ -488,7 +488,7 @@ def test_job_response_defaults_reactivation_fields():
         agent_display_name="Test-Agent",
         mission="Test mission",
         status="working",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
     assert response.accumulated_duration_seconds == 0.0
@@ -546,7 +546,7 @@ def test_job_to_response_passes_reactivation_fields():
         "agent_display_name": "Test-Agent",
         "mission": "Test mission",
         "status": "working",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "accumulated_duration_seconds": 250.0,
         "reactivation_count": 3,
     }

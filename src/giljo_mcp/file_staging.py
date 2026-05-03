@@ -35,6 +35,7 @@ import logging
 import re
 import shutil
 import zipfile
+from datetime import UTC
 from json import dumps as json_dumps
 from pathlib import Path
 
@@ -214,7 +215,7 @@ class FileStaging:
             return (None, "Database session not configured for template staging")
 
         try:
-            from datetime import datetime, timezone
+            from datetime import datetime
 
             staging_path.mkdir(parents=True, exist_ok=True)
             zip_path = staging_path / "agent_templates.zip"
@@ -251,7 +252,7 @@ class FileStaging:
             # ═══════════════════════════════════════════════════════════════════════
             # Handover 0421: Update export timestamp for staleness detection
             # ═══════════════════════════════════════════════════════════════════════
-            export_timestamp = datetime.now(timezone.utc)
+            export_timestamp = datetime.now(UTC)
 
             for template in selected:
                 template.last_exported_at = export_timestamp
@@ -321,7 +322,7 @@ class FileStaging:
             selected_templates: list = []
 
             if session:
-                from datetime import datetime, timezone
+                from datetime import datetime
 
                 from .template_renderer import select_templates_for_packaging
                 from .tools.agent_template_assembler import AgentTemplateAssembler
@@ -359,7 +360,7 @@ class FileStaging:
 
             # Update export timestamps
             if selected_templates and session:
-                export_timestamp = datetime.now(timezone.utc)
+                export_timestamp = datetime.now(UTC)
                 for t in selected_templates:
                     t.last_exported_at = export_timestamp
                 await session.commit()

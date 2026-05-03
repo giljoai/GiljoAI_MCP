@@ -12,7 +12,6 @@ get_workflow_status is completely self-contained (162 lines) -- pure read query.
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,7 +40,7 @@ class WorkflowStatusService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        test_session: Optional[AsyncSession] = None,
+        test_session: AsyncSession | None = None,
     ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
@@ -63,7 +62,7 @@ class WorkflowStatusService:
         self,
         project_id: str,
         tenant_key: str,
-        exclude_job_id: Optional[str] = None,
+        exclude_job_id: str | None = None,
     ) -> WorkflowStatus:
         """Get workflow status for a project.
 

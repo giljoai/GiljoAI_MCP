@@ -118,7 +118,7 @@ export const SYSTEM_EVENT_ROUTES = {
         type: 'system_alert',
         title: 'Updates available',
         message:
-          'Re-run giljo_setup (or /gil_get_agents) to refresh your CLI skills, then `git pull` and `python update.py` to apply server updates.',
+          'Server updates available. Run `git pull`, then restart your server. Migrations apply automatically.',
         metadata: payload ?? {},
       })
     },

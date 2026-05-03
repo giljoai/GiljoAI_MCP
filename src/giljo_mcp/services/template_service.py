@@ -28,7 +28,7 @@ TemplateListResult, TemplateGetResult, TemplateCreateResult, TemplateUpdateResul
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional
+from datetime import UTC
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -112,7 +112,7 @@ class TemplateService:
     # CRUD Operations
     # ============================================================================
 
-    async def list_templates(self, tenant_key: Optional[str] = None) -> TemplateListResult:
+    async def list_templates(self, tenant_key: str | None = None) -> TemplateListResult:
         """
         List all agent templates for a tenant.
 
@@ -168,7 +168,7 @@ class TemplateService:
             raise BaseGiljoError(message=f"Failed to list templates: {e!s}", context={"tenant_key": tenant_key}) from e
 
     async def get_template(
-        self, template_id: Optional[str] = None, template_name: Optional[str] = None, tenant_key: Optional[str] = None
+        self, template_id: str | None = None, template_name: str | None = None, tenant_key: str | None = None
     ) -> TemplateGetResult:
         """
         Get a specific template by ID or name.
@@ -254,12 +254,12 @@ class TemplateService:
         self,
         name: str,
         content: str,
-        role: Optional[str] = None,
+        role: str | None = None,
         category: str = "custom",
-        cli_tool: Optional[str] = None,
-        background_color: Optional[str] = None,
-        product_id: Optional[str] = None,
-        tenant_key: Optional[str] = None,
+        cli_tool: str | None = None,
+        background_color: str | None = None,
+        product_id: str | None = None,
+        tenant_key: str | None = None,
         **kwargs,
     ) -> TemplateCreateResult:
         """
@@ -340,13 +340,13 @@ class TemplateService:
     async def update_template(
         self,
         template_id: str,
-        name: Optional[str] = None,
-        content: Optional[str] = None,
-        role: Optional[str] = None,
-        category: Optional[str] = None,
-        cli_tool: Optional[str] = None,
-        background_color: Optional[str] = None,
-        tenant_key: Optional[str] = None,
+        name: str | None = None,
+        content: str | None = None,
+        role: str | None = None,
+        category: str | None = None,
+        cli_tool: str | None = None,
+        background_color: str | None = None,
+        tenant_key: str | None = None,
         **kwargs,
     ) -> TemplateUpdateResult:
         """
@@ -436,7 +436,7 @@ class TemplateService:
     # ============================================================================
 
     @staticmethod
-    def _is_system_managed_role(role: Optional[str]) -> bool:
+    def _is_system_managed_role(role: str | None) -> bool:
         """
         Check if a role is system-managed and cannot be toggled by users.
 
@@ -460,7 +460,7 @@ class TemplateService:
         tenant_key: str,
         template_id: str,
         new_is_active: bool,
-        role: Optional[str] = None,
+        role: str | None = None,
     ) -> tuple[bool, str]:
         """
         Validate 8-role active limit before toggling (Handover 0103).
@@ -530,7 +530,7 @@ class TemplateService:
         session: AsyncSession,
         template_id: str,
         tenant_key: str,
-    ) -> Optional[AgentTemplate]:
+    ) -> AgentTemplate | None:
         """
         Get a template by ID with tenant isolation.
 
@@ -553,8 +553,8 @@ class TemplateService:
         self,
         session: AsyncSession,
         tenant_key: str,
-        role: Optional[str] = None,
-        is_active: Optional[bool] = None,
+        role: str | None = None,
+        is_active: bool | None = None,
     ) -> list[AgentTemplate]:
         """
         List templates for a tenant with optional filters.
@@ -717,7 +717,7 @@ class TemplateService:
         archive_id: str,
         template_id: str,
         tenant_key: str,
-    ) -> Optional[TemplateArchive]:
+    ) -> TemplateArchive | None:
         """
         Get a specific archive entry with tenant isolation.
 
@@ -899,12 +899,12 @@ class TemplateService:
             ...     ["tpl-1", "tpl-2"], "tenant-1"
             ... )
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         if not template_ids:
             return 0
 
-        export_timestamp = datetime.now(timezone.utc)
+        export_timestamp = datetime.now(UTC)
 
         async with self._get_session() as session:
             updated_count = await self._repo.update_exported_timestamps(

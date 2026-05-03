@@ -14,7 +14,7 @@ Verifies that:
 Edition Scope: CE
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
@@ -34,7 +34,7 @@ class TestAgentHealthStatusProjectFields:
             agent_display_name="implementer",
             current_status="working",
             health_state="critical",
-            last_update=datetime.now(timezone.utc),
+            last_update=datetime.now(UTC),
             minutes_since_update=15.0,
             issue_description="Agent stalled",
             recommended_action="Check agent logs",
@@ -54,7 +54,7 @@ class TestAgentHealthStatusProjectFields:
             agent_display_name="orchestrator",
             current_status="waiting",
             health_state="warning",
-            last_update=datetime.now(timezone.utc),
+            last_update=datetime.now(UTC),
             minutes_since_update=5.0,
             issue_description="Waiting too long",
             recommended_action="Check queue",
@@ -65,7 +65,7 @@ class TestAgentHealthStatusProjectFields:
 
     def test_agent_health_status_stores_all_required_fields(self):
         """AgentHealthStatus should correctly store all required fields alongside project fields."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         status = AgentHealthStatus(
             execution_id="exec-003",
             job_id="job-003",
@@ -103,7 +103,7 @@ class TestAgentHealthStatusProjectFields:
             agent_display_name="implementer",
             current_status="working",
             health_state="critical",
-            last_update=datetime.now(timezone.utc),
+            last_update=datetime.now(UTC),
             minutes_since_update=10.0,
             issue_description="Stalled execution",
             recommended_action="Manual review",
@@ -135,7 +135,7 @@ class TestBroadcastHealthAlertProjectContext:
             agent_display_name="implementer",
             current_status="working",
             health_state="critical",
-            last_update=datetime.now(timezone.utc),
+            last_update=datetime.now(UTC),
             minutes_since_update=20.0,
             issue_description="No progress for 20 minutes",
             recommended_action="Check agent",
@@ -183,7 +183,7 @@ class TestBroadcastHealthAlertProjectContext:
             agent_display_name="orchestrator",
             current_status="waiting",
             health_state="timeout",
-            last_update=datetime.now(timezone.utc),
+            last_update=datetime.now(UTC),
             minutes_since_update=45.0,
             issue_description="Job never acknowledged",
             recommended_action="Manual intervention required",
@@ -224,7 +224,7 @@ class TestBroadcastHealthAlertProjectContext:
             agent_display_name="implementer",
             current_status="working",
             health_state="warning",
-            last_update=datetime.now(timezone.utc),
+            last_update=datetime.now(UTC),
             minutes_since_update=10.0,
             issue_description="Slow progress",
             recommended_action="Monitor",

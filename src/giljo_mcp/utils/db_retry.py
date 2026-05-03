@@ -15,8 +15,8 @@ Used by MessageService for counter updates on both send and receive paths.
 import asyncio
 import logging
 import random
-from collections.abc import Coroutine
-from typing import Any, Callable
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession

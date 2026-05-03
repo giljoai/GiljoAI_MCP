@@ -4,7 +4,7 @@
 # Basic settings
 line-length = 120
 indent-width = 4
-target-version = "py39"  # Python 3.9+
+target-version = "py312"  # Python 3.12+
 
 # Enable pyflakes, pycodestyle, isort, and more
 [lint]
@@ -170,7 +170,7 @@ exclude = [
     "build",
     "dist",
     "node_modules",
-    "migrations",
+    "migrations/**",
     "temp",
     "backups",
     "logs",
@@ -212,6 +212,19 @@ inline-quotes = "double"
     "SLF001", # Private member access OK in tests - need to verify internal state
     "T201",   # Print allowed in test runners, manual tests, and fixtures
     "BLE001", # Broad exception OK in test setup/teardown helpers
+    "ERA001", # Section-header comments (# TEST: ...) and HANDOVER notes flagged as commented-out code
+    "FBT003", # Boolean positional args -- common in test API calls (defaults, asserts)
+    "PT006",  # parametrize string-comma form is canonical pytest, not just tuple
+    "PT011",  # pytest.raises(Exception) acceptable for "any failure" test intent
+    "PT018",  # Composite asserts are concise and readable in test contexts
+    "B007",   # Unused loop-control vars common in test iteration
+    "B017",   # assertRaises(Exception) common in test catch-all
+    "RUF012", # Mutable defaults on test fixture classes -- intentional shared state
+    "PERF401", # list.extend hint not worth refactoring test setup loops
+    "SIM102", # Nested if in tests often clearer than combined condition
+    "SIM117", # Nested with statements OK in tests for setup readability
+    "S608",   # SQL string in test queries -- inputs are test fixtures, not user data
+    "RUF100", # noqa: E402 needed for pyproject.toml ruff config (tests/conftest.py)
 ]
 "**/conftest.py" = [
     "ARG",    # Unused arguments OK in pytest fixtures
@@ -237,6 +250,20 @@ inline-quotes = "double"
     "T201",   # CLI scripts use print() for user-facing output
     "BLE001", # Broad exception OK for graceful error handling in CLI tools
     "INP001", # No __init__.py needed in scripts
+    "ERA001", # Inline doc comments illustrating "real implementation" calls flagged as commented-out code
+    "E402",   # sys.path.insert before giljo_mcp.* imports (script-as-module bootstrap pattern)
+    "S602",   # shell=True intentional for cross-platform installer auto-install (winget/brew/apt-get)
+    "B007",   # Unused loop-control vars common in script iteration
+    "G003",   # Logging string concat acceptable in script output
+    "PLW1508", # os.getenv(name, int_default) pattern -- known idiom in scripts
+    "PLW2901", # Loop-var reassignment OK in script string parsing
+    "ARG004", # Unused static-method args may be required by callback signatures
+    "UP032", # .format() call OK in scripts (pre-existing style)
+]
+"scripts/_historical/**/*.py" = [
+    "PTH",    # Historical one-off migration scripts: not worth pathlib refactor
+    "TRY002", # Historical scripts: bare RuntimeError acceptable
+    "PERF",   # Historical scripts: perf hints not worth refactor
 ]
 "launchers/**/*.py" = [
     "T201",   # Launchers use print() for startup messages
@@ -247,6 +274,17 @@ inline-quotes = "double"
     "T201",   # Dev tools use print() for CLI output
     "BLE001", # Broad exception OK for dev tool error handling
     "INP001", # No __init__.py needed in dev tools
+    "FBT003", # Boolean positional args -- Tkinter API uses positional booleans (resizable, etc.)
+    "S602",   # shell=True intentional for apt-get / dpkg / certutil pipelines in reset scripts
+    "S605",   # start-process-with-shell intentional for shell pipelines in reset scripts
+    "TRY002", # Bare Exception() acceptable in dev-tool failure paths
+    "PLW0603", # global statement OK for dev-tool DRY_RUN flag
+    "ICN001", # tkinter as 'tk' alias not enforced (existing convention varies)
+    "PERF401", # list.extend hint; not worth refactoring dev-tool loops
+    "PERF402", # list copy hint; same as above
+    "PLW2901", # Loop var reassignment acceptable in dev-tool string parsing
+    "SIM105", # contextlib.suppress vs try/except/pass -- both readable in dev-tool code
+    "SIM112", # Capitalized env var for ProgramFiles -- Windows env names use mixed case
 ]
 "Linux_Installer/**/*.py" = [
     "T201",   # Installer uses print() for user-facing output
@@ -272,6 +310,8 @@ inline-quotes = "double"
 "install.py" = [
     "T201",   # CLI installer - print() for user-facing output
     "BLE001", # Broad exception OK for graceful install error handling
+    "ERA001", # Doc comment "# Backspace (DEL or BS)" misclassified as commented-out code
+    "E402",   # Imports after _bootstrap_dependencies() call (intentional bootstrap pattern)
 ]
 "update.py" = [
     "T201",   # CLI tool - print() for user-facing update output
@@ -321,6 +361,12 @@ inline-quotes = "double"
 ]
 "src/giljo_mcp/cleanup/visualizer.py" = [
     "T201",   # CLI dependency visualization tool - print() is the interface
+]
+"src/giljo_mcp/repositories/base.py" = [
+    "UP046",  # PEP 695 generic class syntax requires py312 — pre-push ruff (pyproject.toml) uses py310 target
+]
+"ops_panel/__main__.py" = [
+    "T201",   # CLI entry point - print to stderr for startup-refusal message
 ]
 "src/giljo_mcp/database_backup.py" = [
     "T201",   # CLI database backup utility - print() for user feedback

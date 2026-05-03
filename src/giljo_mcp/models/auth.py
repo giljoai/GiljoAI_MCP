@@ -13,7 +13,7 @@ This module contains all user authentication and session management models:
 - MCPSession: MCP HTTP session tracking with tenant isolation
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import (
     Boolean,
@@ -366,9 +366,9 @@ class MCPSession(Base):
         """Check if session has expired"""
         if not self.expires_at:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def extend_expiration(self, hours: int = 24) -> None:
         """Extend session expiration by specified hours"""
-        self.expires_at = datetime.now(timezone.utc) + timedelta(hours=hours)
-        self.last_accessed = datetime.now(timezone.utc)
+        self.expires_at = datetime.now(UTC) + timedelta(hours=hours)
+        self.last_accessed = datetime.now(UTC)

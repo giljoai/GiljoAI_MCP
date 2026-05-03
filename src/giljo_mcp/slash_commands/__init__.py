@@ -8,7 +8,7 @@ Slash command registry for GiljoAI
 Maps /gil_* commands to handler functions
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 
 # Slash command registry

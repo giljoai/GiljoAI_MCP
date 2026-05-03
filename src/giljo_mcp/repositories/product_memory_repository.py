@@ -10,7 +10,7 @@ CRUD operations for 360 memory entries with tenant isolation.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -288,8 +288,8 @@ class ProductMemoryRepository:
             )
             .values(
                 deleted_by_user=True,
-                user_deleted_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc),
+                user_deleted_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         result = await session.execute(stmt)

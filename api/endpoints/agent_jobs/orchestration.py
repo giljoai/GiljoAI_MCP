@@ -17,8 +17,7 @@ Note: regenerate-mission endpoint removed in Handover 0729 (never integrated wit
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -59,7 +58,7 @@ class AgentInfo(BaseModel):
     agent_id: str
     job_id: str
     agent_display_name: str
-    agent_name: Optional[str]
+    agent_name: str | None
     status: str
     mission: str
     tool_type: str
@@ -74,7 +73,7 @@ class LaunchProjectResponse(BaseModel):
     staging_status: str
     agent_count: int
     agents: list[AgentInfo]
-    message: Optional[str] = None
+    message: str | None = None
 
 
 # ============================================================================
@@ -208,7 +207,7 @@ async def launch_project(
         )
 
     # Update project timestamp (staging_status stays "staged" — implementation tracked by implementation_launched_at)
-    project.updated_at = datetime.now(timezone.utc)
+    project.updated_at = datetime.now(UTC)
 
     try:
         await db.commit()
@@ -245,7 +244,7 @@ async def launch_project(
                 "project_id": project_id_str,
                 "staging_status": project.staging_status,
                 "agent_count": len(agents),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "launched_by": current_user.username,
             },
         )
@@ -272,9 +271,9 @@ class LaunchImplementationResponse(BaseModel):
     """Response model for launch implementation."""
 
     success: bool = True
-    implementation_launched_at: Optional[str] = None
-    already_launched: Optional[bool] = None
-    launched_at: Optional[str] = None
+    implementation_launched_at: str | None = None
+    already_launched: bool | None = None
+    launched_at: str | None = None
 
 
 @router.patch("/projects/{project_id}/launch-implementation", response_model=LaunchImplementationResponse)
@@ -326,7 +325,7 @@ async def launch_implementation(
         )
 
     # Set timestamp
-    project.implementation_launched_at = datetime.now(timezone.utc)
+    project.implementation_launched_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(project)
 

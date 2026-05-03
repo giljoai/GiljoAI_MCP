@@ -33,8 +33,7 @@ Usage Example:
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -90,9 +89,9 @@ async def get_db_session(request: Request = None):
 
 async def get_current_user(
     request: Request,
-    access_token: Optional[str] = Cookie(None),
-    x_api_key: Optional[str] = Header(None),
-    authorization: Optional[str] = Header(None),
+    access_token: str | None = Cookie(None),
+    x_api_key: str | None = Header(None),
+    authorization: str | None = Header(None),
     db: AsyncSession = Depends(get_db_session),
 ) -> User:
     """
@@ -155,7 +154,7 @@ async def get_current_user(
             logger.error(f"[AUTH] JWT authentication error: {e}", exc_info=True)
 
     # Try Authorization: Bearer <token> header (CLI / API clients)
-    bearer_token: Optional[str] = None
+    bearer_token: str | None = None
     if authorization and str(authorization).lower().startswith("bearer "):
         bearer_token = str(authorization).split(" ", 1)[1].strip()
 
@@ -202,7 +201,7 @@ async def get_current_user(
             for key_record in api_keys:
                 if verify_api_key(x_api_key, key_record.key_hash):
                     # Update last_used timestamp
-                    key_record.last_used = datetime.now(timezone.utc)
+                    key_record.last_used = datetime.now(UTC)
                     await db.commit()
 
                     # Get associated user with tenant_key consistency check
@@ -243,7 +242,7 @@ async def get_current_user(
     )
 
 
-async def get_current_active_user(current_user: Optional[User] = Depends(get_current_user)) -> User:
+async def get_current_active_user(current_user: User | None = Depends(get_current_user)) -> User:
     """
     Get current user and verify they are active.
 
@@ -324,11 +323,11 @@ async def require_ce_mode() -> None:
 
 async def get_current_user_optional(
     request: Request,
-    access_token: Optional[str] = Cookie(None),
-    x_api_key: Optional[str] = Header(None),
-    authorization: Optional[str] = Header(None),
+    access_token: str | None = Cookie(None),
+    x_api_key: str | None = Header(None),
+    authorization: str | None = Header(None),
     db: AsyncSession = Depends(get_db_session),
-) -> Optional[User]:
+) -> User | None:
     """
     Get current user if authenticated, otherwise return None.
 

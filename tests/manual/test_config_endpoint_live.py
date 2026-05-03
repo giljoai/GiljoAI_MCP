@@ -17,6 +17,7 @@ Usage:
 """
 
 import asyncio
+import sys
 import time
 
 import httpx
@@ -212,4 +213,4 @@ async def main():
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())
-    exit(exit_code)
+    sys.exit(exit_code)

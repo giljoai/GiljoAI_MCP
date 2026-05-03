@@ -12,7 +12,7 @@ Simplified authentication WITHOUT IP-based auto-login:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import WebSocket, WebSocketException
 from sqlalchemy.exc import SQLAlchemyError
@@ -168,7 +168,7 @@ async def authenticate_websocket(websocket: WebSocket, db: AsyncSession = None) 
     )
 
 
-async def validate_jwt_token(token: str, db: AsyncSession = None) -> Optional[dict[str, Any]]:
+async def validate_jwt_token(token: str, db: AsyncSession = None) -> dict[str, Any] | None:
     """
     Validate JWT token.
 
@@ -204,7 +204,7 @@ async def validate_jwt_token(token: str, db: AsyncSession = None) -> Optional[di
         return None
 
 
-async def validate_api_key(api_key: str, db: AsyncSession = None) -> Optional[dict[str, Any]]:
+async def validate_api_key(api_key: str, db: AsyncSession = None) -> dict[str, Any] | None:
     """
     Validate API key.
 
@@ -244,7 +244,7 @@ async def validate_api_key(api_key: str, db: AsyncSession = None) -> Optional[di
 
 
 def check_subscription_permission(
-    auth_context: dict[str, Any], entity_type: str, entity_id: str, tenant_key: Optional[str] = None
+    auth_context: dict[str, Any], entity_type: str, entity_id: str, tenant_key: str | None = None
 ) -> bool:
     """
     Check if a WebSocket client has permission to subscribe to an entity.

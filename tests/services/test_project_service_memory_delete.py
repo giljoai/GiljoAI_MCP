@@ -13,7 +13,7 @@ Updated 0731c: Typed returns - nuclear_delete_project returns NuclearDeleteResul
 """
 
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -40,8 +40,8 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
         description="Test project for memory table delete",
         mission="Test mission for project deletion",
         status="active",
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -56,7 +56,7 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
             sequence=i + 1,
             entry_type="project_closeout",
             source="test",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             project_name=project.name,
             summary=f"Test entry {i + 1}",
             deleted_by_user=False,
@@ -114,8 +114,8 @@ async def test_nuclear_delete_with_no_memory_entries(
         description="Test project without memory entries",
         mission="Test mission without memory",
         status="active",
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project)
@@ -147,8 +147,8 @@ async def test_nuclear_delete_tenant_isolation(db_session, test_tenant_key, test
         description="Project for testing tenant isolation",
         mission="Test mission for tenant isolation",
         status="active",
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(project1)
@@ -160,7 +160,7 @@ async def test_nuclear_delete_tenant_isolation(db_session, test_tenant_key, test
         sequence=1,
         entry_type="project_closeout",
         source="test",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         project_name=project1.name,
         summary="Tenant 1 entry",
         deleted_by_user=False,

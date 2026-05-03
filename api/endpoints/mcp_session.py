@@ -24,7 +24,7 @@ Usage:
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import delete, func, or_, select
@@ -67,7 +67,7 @@ class MCPSessionManager:
 
             for key_record in api_keys:
                 if verify_api_key(api_key_value, key_record.key_hash):
-                    key_record.last_used = datetime.now(timezone.utc)
+                    key_record.last_used = datetime.now(UTC)
                     await self.db.commit()
 
                     # WI-3: tenant_key consistency — verify user belongs to same tenant as key
@@ -175,7 +175,7 @@ class MCPSessionManager:
                 logger.exception("[MCP Session] Failed to cleanup duplicate sessions")
 
         if existing_session and not existing_session.is_expired:
-            existing_session.last_accessed = datetime.now(timezone.utc)
+            existing_session.last_accessed = datetime.now(UTC)
             existing_session.extend_expiration(self.DEFAULT_SESSION_LIFETIME_HOURS)
 
             if project_id:
@@ -193,8 +193,8 @@ class MCPSessionManager:
             tenant_key=user.tenant_key,
             project_id=project_id,
             session_data={"initialized": False, "capabilities": {}, "client_info": {}, "tool_call_history": []},
-            created_at=datetime.now(timezone.utc),
-            last_accessed=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            last_accessed=datetime.now(UTC),
         )
         new_session.extend_expiration(self.DEFAULT_SESSION_LIFETIME_HOURS)
 
@@ -235,7 +235,7 @@ class MCPSessionManager:
         existing_session = sessions[0] if sessions else None
 
         if existing_session and not existing_session.is_expired:
-            existing_session.last_accessed = datetime.now(timezone.utc)
+            existing_session.last_accessed = datetime.now(UTC)
             existing_session.extend_expiration(self.DEFAULT_SESSION_LIFETIME_HOURS)
             await self.db.commit()
             await self.db.refresh(existing_session)
@@ -254,8 +254,8 @@ class MCPSessionManager:
                 "auth_method": "oauth_jwt",
                 "username": username,
             },
-            created_at=datetime.now(timezone.utc),
-            last_accessed=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            last_accessed=datetime.now(UTC),
         )
         new_session.extend_expiration(self.DEFAULT_SESSION_LIFETIME_HOURS)
 
@@ -303,7 +303,7 @@ class MCPSessionManager:
         else:
             session.session_data = data
 
-        session.last_accessed = datetime.now(timezone.utc)
+        session.last_accessed = datetime.now(UTC)
         await self.db.commit()
 
         logger.debug(f"Updated session data: {session_id}")
@@ -314,7 +314,7 @@ class MCPSessionManager:
 
         Returns the number of sessions removed.
         """
-        threshold = datetime.now(timezone.utc) - timedelta(hours=self.SESSION_CLEANUP_THRESHOLD_HOURS)
+        threshold = datetime.now(UTC) - timedelta(hours=self.SESSION_CLEANUP_THRESHOLD_HOURS)
 
         stmt = delete(MCPSession).where(MCPSession.last_accessed < threshold)
 

@@ -19,7 +19,7 @@ Responsibilities:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,9 +67,9 @@ class MissionService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        test_session: Optional[AsyncSession] = None,
+        test_session: AsyncSession | None = None,
         message_service: Optional["MessageService"] = None,
-        websocket_manager: Optional[Any] = None,
+        websocket_manager: Any | None = None,
     ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
@@ -134,13 +134,13 @@ class MissionService:
         """
         try:
             status_changed = False
-            old_status: Optional[str] = None
-            execution: Optional[AgentExecution] = None
-            job: Optional[AgentJob] = None
+            old_status: str | None = None
+            execution: AgentExecution | None = None
+            job: AgentJob | None = None
             all_project_executions: list[AgentExecution] = []
             mission_lookup: dict[str, str] = {}
-            agent_identity: Optional[str] = None
-            current_team_state: Optional[list[dict]] = None
+            agent_identity: str | None = None
+            current_team_state: list[dict] | None = None
             project = None
 
             async with self._get_session() as session:
@@ -172,7 +172,7 @@ class MissionService:
 
                 # Atomic start semantics on FIRST mission fetch
                 if execution.status == "waiting":
-                    now = datetime.now(timezone.utc)
+                    now = datetime.now(UTC)
                     old_status = execution.status
                     execution.status = "working"
                     execution.started_at = now
@@ -257,8 +257,8 @@ class MissionService:
             ) from e
 
     async def _get_agent_template_internal(
-        self, role: str, tenant_key: str, session: Optional[AsyncSession] = None
-    ) -> Optional[AgentTemplate]:
+        self, role: str, tenant_key: str, session: AsyncSession | None = None
+    ) -> AgentTemplate | None:
         """
         Get agent template for role with cascade resolution.
 
@@ -314,7 +314,7 @@ class MissionService:
         job: AgentJob,
         job_id: str,
         tenant_key: str,
-    ) -> tuple[Any, Optional[MissionResponse]]:
+    ) -> tuple[Any, MissionResponse | None]:
         """Check implementation phase gate.
 
         Returns:
@@ -358,13 +358,13 @@ class MissionService:
         execution: AgentExecution,
         job_id: str,
         tenant_key: str,
-    ) -> tuple[list[AgentExecution], dict[str, str], Optional[list[dict]]]:
+    ) -> tuple[list[AgentExecution], dict[str, str], list[dict] | None]:
         """Fetch project-wide executions and build team context for orchestrator.
 
         Returns:
             Tuple of (all_project_executions, mission_lookup, current_team_state).
         """
-        current_team_state: Optional[list[dict]] = None
+        current_team_state: list[dict] | None = None
 
         if not job.project_id:
             return [execution], {job.job_id: job.mission}, None
@@ -402,7 +402,7 @@ class MissionService:
         job: AgentJob,
         execution: AgentExecution,
         tenant_key: str,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve agent identity from template or orchestrator defaults.
 
         Handover 0825: Identity is resolved at read-time, not baked at spawn.
@@ -410,7 +410,7 @@ class MissionService:
         Returns:
             Agent identity string, or None if no template and not an orchestrator.
         """
-        agent_identity: Optional[str] = None
+        agent_identity: str | None = None
         job_id = job.job_id
 
         if getattr(job, "template_id", None):
@@ -502,10 +502,10 @@ class MissionService:
         job: AgentJob,
         execution: AgentExecution,
         project: Any,
-        agent_identity: Optional[str],
+        agent_identity: str | None,
         all_project_executions: list[AgentExecution],
         mission_lookup: dict[str, str],
-        current_team_state: Optional[list[dict]],
+        current_team_state: list[dict] | None,
         tenant_key: str,
         integrations: dict | None = None,
     ) -> MissionResponse:
@@ -684,7 +684,7 @@ class MissionService:
                         project = await self._repo.get_project_by_id(session, tenant_key, job.project_id)
                         if project and project.staging_status != "staging_complete":
                             project.staging_status = "staging_complete"
-                            project.updated_at = datetime.now(timezone.utc)
+                            project.updated_at = datetime.now(UTC)
                             await self._repo.commit(session)
 
                             if self._websocket_manager:

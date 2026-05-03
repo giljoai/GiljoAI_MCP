@@ -44,7 +44,7 @@ from __future__ import annotations
 
 import random
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import ClassVar
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -104,7 +104,7 @@ async def _make_agent_job(db_session, tenant_key: str, project_id: str, job_type
         agent_name=job_type,
         agent_display_name=job_type,
         status="working",
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
     db_session.add(execution)
     await db_session.commit()

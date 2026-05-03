@@ -13,7 +13,7 @@ All operations enforce tenant_key filtering for security (zero cross-tenant leak
 """
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -204,7 +204,7 @@ class VisionDocumentRepository:
         doc.chunked_at = None
 
         # Update timestamp
-        doc.updated_at = datetime.now(timezone.utc)
+        doc.updated_at = datetime.now(UTC)
 
         await session.flush()
         return doc
@@ -281,7 +281,7 @@ class VisionDocumentRepository:
             doc.chunked = True
             doc.chunk_count = chunk_count
             doc.total_tokens = total_tokens
-            doc.chunked_at = datetime.now(timezone.utc)
+            doc.chunked_at = datetime.now(UTC)
 
             # Ensure content hash is current
             if doc.vision_document:

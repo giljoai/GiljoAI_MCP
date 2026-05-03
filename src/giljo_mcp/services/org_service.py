@@ -25,7 +25,7 @@ import logging
 import re
 import secrets
 import string
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 class OrgService:
     """Service for organization management."""
 
-    def __init__(self, session: AsyncSession, websocket_manager: Optional[Any] = None):
+    def __init__(self, session: AsyncSession, websocket_manager: Any | None = None):
         self.session = session
         self._websocket_manager = websocket_manager
         self._repo = OrgRepository()
@@ -66,7 +66,7 @@ class OrgService:
     # =========================================================================
 
     async def create_organization(
-        self, name: str, owner_id: str, tenant_key: str, slug: Optional[str] = None, settings: Optional[dict] = None
+        self, name: str, owner_id: str, tenant_key: str, slug: str | None = None, settings: dict | None = None
     ) -> Organization:
         """
         Create organization with owner.
@@ -211,7 +211,7 @@ class OrgService:
             ) from e
 
     async def update_organization(
-        self, org_id: str, name: Optional[str] = None, settings: Optional[dict] = None
+        self, org_id: str, name: str | None = None, settings: dict | None = None
     ) -> Organization:
         """
         Update organization details.
@@ -661,7 +661,7 @@ class OrgService:
                 message="Failed to get user organizations", context={"user_id": user_id, "error": str(e)}
             ) from e
 
-    async def get_user_role(self, org_id: str, user_id: str) -> Optional[str]:
+    async def get_user_role(self, org_id: str, user_id: str) -> str | None:
         """Get user's role in organization."""
         membership = await self._get_membership(org_id, user_id)
         return membership.role if membership else None
@@ -694,7 +694,7 @@ class OrgService:
     # Private Helpers
     # =========================================================================
 
-    async def _get_membership(self, org_id: str, user_id: str) -> Optional[OrgMembership]:
+    async def _get_membership(self, org_id: str, user_id: str) -> OrgMembership | None:
         """Get membership for user in org."""
         return await self._repo.get_membership(self.session, org_id, user_id)
 

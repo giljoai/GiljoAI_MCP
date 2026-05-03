@@ -10,7 +10,7 @@ Verifies that services use ProductMemoryRepository for reads instead of JSONB.
 Handover 0390b Phase 3.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
@@ -54,7 +54,7 @@ async def test_product_memory_entries_available_via_repository(db_session, test_
             params=MemoryEntryCreateParams(
                 tenant_key=test_tenant_key,
                 product_id=test_product.id,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(tz=UTC),
                 **data,
             ),
         )
@@ -103,7 +103,7 @@ async def test_get_entries_for_context_returns_lightweight_dicts(db_session, tes
                 sequence=i + 1,
                 entry_type="project_closeout",
                 source="test",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(tz=UTC),
                 project_name=f"Project {i + 1}",
                 summary=f"Summary {i + 1}",
                 key_outcomes=[f"Outcome {i + 1}"],
@@ -145,7 +145,7 @@ async def test_repository_respects_include_deleted_flag(db_session, test_tenant_
             sequence=1,
             entry_type="project_closeout",
             source="test",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(tz=UTC),
             summary="Entry 1",
         ),
     )
@@ -158,7 +158,7 @@ async def test_repository_respects_include_deleted_flag(db_session, test_tenant_
             sequence=2,
             entry_type="project_closeout",
             source="test",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(tz=UTC),
             summary="Entry 2",
         ),
     )
@@ -167,7 +167,7 @@ async def test_repository_respects_include_deleted_flag(db_session, test_tenant_
 
     # Mark entry1 as deleted directly (no project_id-based deletion since we don't have a project)
     entry1.deleted_by_user = True
-    entry1.user_deleted_at = datetime.utcnow()
+    entry1.user_deleted_at = datetime.now(tz=UTC)
     await db_session.commit()
 
     # Act - Fetch without deleted

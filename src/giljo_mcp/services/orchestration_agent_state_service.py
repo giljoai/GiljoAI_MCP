@@ -12,7 +12,7 @@ side effects (memory warnings, auto-messages, WebSocket broadcasts).
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,9 +57,9 @@ class OrchestrationAgentStateService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        test_session: Optional[AsyncSession] = None,
+        test_session: AsyncSession | None = None,
         message_service: Optional["MessageService"] = None,
-        websocket_manager: Optional[Any] = None,
+        websocket_manager: Any | None = None,
     ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
@@ -204,9 +204,7 @@ class OrchestrationAgentStateService:
                     waiting_increments={orch_exec.agent_id: 1},
                 )
 
-    async def reactivate_job(
-        self, job_id: str, tenant_key: Optional[str] = None, reason: str = ""
-    ) -> ReactivationResult:
+    async def reactivate_job(self, job_id: str, tenant_key: str | None = None, reason: str = "") -> ReactivationResult:
         """
         Resume work on a completed job after receiving a follow-up message.
 
@@ -272,7 +270,7 @@ class OrchestrationAgentStateService:
                 old_status = execution.status
                 execution.status = "working"
                 execution.completed_at = None
-                execution.started_at = datetime.now(timezone.utc)
+                execution.started_at = datetime.now(UTC)
                 execution.block_reason = None
 
                 # Increment reactivation counter
@@ -330,9 +328,7 @@ class OrchestrationAgentStateService:
                 message="Failed to reactivate job", context={"job_id": job_id, "error": str(e)}
             ) from e
 
-    async def dismiss_reactivation(
-        self, job_id: str, tenant_key: Optional[str] = None, reason: str = ""
-    ) -> DismissResult:
+    async def dismiss_reactivation(self, job_id: str, tenant_key: str | None = None, reason: str = "") -> DismissResult:
         """
         Acknowledge a post-completion message without resuming work.
 
@@ -421,7 +417,7 @@ class OrchestrationAgentStateService:
                 message="Failed to dismiss reactivation", context={"job_id": job_id, "error": str(e)}
             ) from e
 
-    async def close_job(self, job_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def close_job(self, job_id: str, tenant_key: str | None = None) -> dict[str, Any]:
         """
         Mark a completed job as closed (final orchestrator acceptance). Handover 0435b.
 
@@ -501,7 +497,7 @@ class OrchestrationAgentStateService:
         status: str,
         reason: str = "",
         wake_in_minutes: int | None = None,
-        tenant_key: Optional[str] = None,
+        tenant_key: str | None = None,
     ) -> ErrorReportResult:
         """
         Set agent resting or blocked status (Handover 0880: expanded from report_error).

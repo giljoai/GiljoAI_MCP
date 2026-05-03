@@ -23,7 +23,6 @@ import sys
 import time
 import webbrowser
 from pathlib import Path
-from typing import Optional
 
 import click
 from colorama import Fore, Style, init
@@ -56,7 +55,7 @@ atexit.register(_log_file_stack.close)
 init(autoreset=True)
 
 
-def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
+def start_api_server(verbose: bool = False) -> subprocess.Popen | None:
     """
     Start the API server (same as dev mode).
 
@@ -121,7 +120,7 @@ def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
         return None
 
 
-def start_frontend_production_server(verbose: bool = False) -> Optional[subprocess.Popen]:
+def start_frontend_production_server(verbose: bool = False) -> subprocess.Popen | None:
     """
     Start the frontend PRODUCTION server using serve_frontend.py.
 

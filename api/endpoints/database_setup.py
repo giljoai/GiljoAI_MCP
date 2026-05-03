@@ -16,7 +16,7 @@ Handles:
 import logging
 import os
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -253,7 +253,7 @@ async def setup_database(request: DatabaseSetupRequest) -> dict:
             del config_data["setup_mode"]
 
         # Write updated config
-        backup_path = config_path.with_suffix(f".yaml.backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}")
+        backup_path = config_path.with_suffix(f".yaml.backup_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}")
         shutil.copy(config_path, backup_path)
 
         write_config(config_data, config_path)

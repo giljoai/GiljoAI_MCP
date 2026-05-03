@@ -5,8 +5,6 @@
 
 """Orchestration service response models."""
 
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -64,13 +62,13 @@ class SpawnResult(BaseModel):
 
     job_id: str
     agent_id: str
-    execution_id: Optional[str] = None
-    agent_display_name: Optional[str] = None
+    execution_id: str | None = None
+    agent_display_name: str | None = None
     agent_prompt: str
     mission_stored: bool = True
     thin_client: bool = True
     thin_client_note: list[str] = Field(default_factory=list)
-    predecessor_job_id: Optional[str] = None
+    predecessor_job_id: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -83,25 +81,25 @@ class MissionResponse(BaseModel):
     """
 
     job_id: str
-    agent_id: Optional[str] = None
-    agent_name: Optional[str] = None
-    agent_display_name: Optional[str] = None
-    agent_identity: Optional[str] = None
-    mission: Optional[str] = None
-    project_id: Optional[str] = None
-    parent_job_id: Optional[str] = None
-    status: Optional[str] = None
-    created_at: Optional[str] = None
-    started_at: Optional[str] = None
+    agent_id: str | None = None
+    agent_name: str | None = None
+    agent_display_name: str | None = None
+    agent_identity: str | None = None
+    mission: str | None = None
+    project_id: str | None = None
+    parent_job_id: str | None = None
+    status: str | None = None
+    created_at: str | None = None
+    started_at: str | None = None
     thin_client: bool = True
-    full_protocol: Optional[str] = None
-    current_team_state: Optional[list[dict]] = Field(
+    full_protocol: str | None = None
+    current_team_state: list[dict] | None = Field(
         default=None,
         description="Orchestrator-only. Live team state with agent statuses. Null for non-orchestrator agents.",
     )
     blocked: bool = False
-    error: Optional[str] = None
-    user_instruction: Optional[str] = Field(
+    error: str | None = None
+    user_instruction: str | None = Field(
         default=None,
         description="Present only when blocked=True. Contains guidance for the blocked state. Null in normal responses.",
     )
@@ -189,7 +187,7 @@ class ErrorReportResult(BaseModel):
     job_id: str
     message: str = "Status updated"
     status: str = "blocked"
-    block_reason: Optional[str] = None
+    block_reason: str | None = None
     guidance: str = "To resume, call report_progress() with updated todo_items."
 
     model_config = ConfigDict(from_attributes=True)

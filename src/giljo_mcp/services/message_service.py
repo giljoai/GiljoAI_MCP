@@ -16,8 +16,8 @@ Handover 0950h: Routing/broadcast methods extracted to MessageRoutingService.
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -68,8 +68,8 @@ class MessageService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        websocket_manager: Optional[Any] = None,
-        test_session: Optional[AsyncSession] = None,
+        websocket_manager: Any | None = None,
+        test_session: AsyncSession | None = None,
     ):
         """
         Initialize MessageService with database and tenant management.
@@ -113,9 +113,9 @@ class MessageService:
     async def get_messages(
         self,
         agent_name: str,
-        project_id: Optional[str] = None,
+        project_id: str | None = None,
         status: str = "pending",
-        tenant_key: Optional[str] = None,
+        tenant_key: str | None = None,
     ) -> MessageListResult:
         """
         Retrieve messages for a specific agent.
@@ -204,10 +204,10 @@ class MessageService:
         self,
         agent_id: str,
         limit: int = 10,
-        tenant_key: Optional[str] = None,
+        tenant_key: str | None = None,
         exclude_self: bool = True,
         exclude_progress: bool = True,
-        message_types: Optional[list[str]] = None,
+        message_types: list[str] | None = None,
     ) -> MessageListResult:
         """
         Receive pending messages for an agent executor with optional filtering.
@@ -312,7 +312,7 @@ class MessageService:
         project_id: Any,
         exclude_self: bool,
         exclude_progress: bool,
-        message_types: Optional[list[str]],
+        message_types: list[str] | None,
         limit: int,
     ) -> Any:
         """Build the SQLAlchemy query for receive_messages with all filters applied."""
@@ -374,7 +374,7 @@ class MessageService:
         if messages:
             for msg in messages:
                 msg.status = "acknowledged"
-                msg.acknowledged_at = datetime.now(timezone.utc)
+                msg.acknowledged_at = datetime.now(UTC)
                 # Handover 0840b: INSERT into junction table instead of JSONB append
                 ack_stmt = (
                     pg_insert(MessageAcknowledgment)
@@ -509,7 +509,7 @@ class MessageService:
         self,
         execution: Any,
         messages_list: list[dict],
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """Build reactivation guidance for auto-blocked agents (Handover 0827c)."""
         # Only show for post-completion auto-blocks (completed_at set),
         # not for mid-work blocks via set_agent_status(status="blocked")
@@ -545,11 +545,11 @@ class MessageService:
 
     async def list_messages(
         self,
-        project_id: Optional[str] = None,
-        status: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        tenant_key: Optional[str] = None,
-        limit: Optional[int] = None,
+        project_id: str | None = None,
+        status: str | None = None,
+        agent_id: str | None = None,
+        tenant_key: str | None = None,
+        limit: int | None = None,
     ) -> MessageListResult:
         """
         List messages in a project or for a specific agent.
@@ -592,12 +592,12 @@ class MessageService:
     async def _build_list_query(
         self,
         session: AsyncSession,
-        project_id: Optional[str],
-        status: Optional[str],
-        agent_id: Optional[str],
+        project_id: str | None,
+        status: str | None,
+        agent_id: str | None,
         tenant_key: str,
-        limit: Optional[int],
-    ) -> tuple[Any, Optional[str]]:
+        limit: int | None,
+    ) -> tuple[Any, str | None]:
         """Build the SQLAlchemy query for list_messages.
 
         Returns:
@@ -657,7 +657,7 @@ class MessageService:
             query = query.limit(limit)
         return query, None
 
-    def _format_list_message(self, msg: Any, for_agent_id: Optional[str] = None) -> dict:
+    def _format_list_message(self, msg: Any, for_agent_id: str | None = None) -> dict:
         """Format a Message record for list_messages output."""
         from_agent = msg.from_agent_id or "unknown"
         base = {
@@ -683,7 +683,7 @@ class MessageService:
     # ============================================================================
 
     async def complete_message(
-        self, message_id: str, agent_name: str, result: str, tenant_key: Optional[str] = None
+        self, message_id: str, agent_name: str, result: str, tenant_key: str | None = None
     ) -> CompleteMessageResult:
         """
         Mark a message as completed with a result.
@@ -731,7 +731,7 @@ class MessageService:
                 # Update message
                 message.status = "completed"
                 message.result = result
-                message.completed_at = datetime.now(timezone.utc)
+                message.completed_at = datetime.now(UTC)
 
                 # Handover 0840b: INSERT into junction table instead of JSONB field
                 completion_stmt = (
@@ -782,7 +782,7 @@ class MessageService:
                 message=str(e), context={"operation": "complete_message", "message_id": message_id}
             ) from e
 
-    async def get_message_status(self, message_id: str, tenant_key: Optional[str] = None) -> MessageStatusResult:
+    async def get_message_status(self, message_id: str, tenant_key: str | None = None) -> MessageStatusResult:
         """
         Get delivery and read status for a specific message.
 

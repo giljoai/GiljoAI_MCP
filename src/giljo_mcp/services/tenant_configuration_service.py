@@ -16,7 +16,7 @@ For YAML config, see ConfigService.
 import json
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,7 +80,7 @@ class TenantConfigurationService:
 
                 if config:
                     config.value = json.dumps(value) if value is not None else None
-                    config.updated_at = datetime.now(timezone.utc)
+                    config.updated_at = datetime.now(UTC)
                 else:
                     config = Configuration(
                         tenant_key=self.tenant_key,

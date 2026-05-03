@@ -10,7 +10,7 @@ Request/response models for agent job operations with validation.
 """
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -25,10 +25,10 @@ class SpawnAgentRequest(BaseModel):
     """Request model for spawning a new agent job."""
 
     agent_display_name: str = Field(..., description="Human-readable display name for UI")
-    agent_name: Optional[str] = Field(None, description="User-readable agent name")
+    agent_name: str | None = Field(None, description="User-readable agent name")
     mission: str = Field(..., description="Agent mission/instructions")
     project_id: str = Field(..., description="Project UUID")
-    parent_job_id: Optional[str] = Field(None, description="Parent job UUID")
+    parent_job_id: str | None = Field(None, description="Parent job UUID")
     context_chunks: list[str] = Field(default_factory=list, description="Context chunk IDs")
 
 
@@ -50,7 +50,7 @@ class SpawnAgentResponse(BaseModel):
 class JobCompleteRequest(BaseModel):
     """Request model for job completion."""
 
-    result: Optional[str] = Field(None, description="Completion result/summary")
+    result: str | None = Field(None, description="Completion result/summary")
     acknowledge_closeout_todo: bool = Field(
         default=False,
         description=(
@@ -77,7 +77,7 @@ class JobCompleteResponse(BaseModel):
 
     job_id: str
     status: str
-    completed_at: Optional[datetime]
+    completed_at: datetime | None
     message: str
 
 
@@ -92,7 +92,7 @@ class JobErrorResponse(BaseModel):
 
     job_id: str
     status: str
-    completed_at: Optional[datetime]
+    completed_at: datetime | None
     message: str
 
 
@@ -113,35 +113,35 @@ class JobResponse(BaseModel):
 
     id: str  # Changed from int to str for UUID (0366 series)
     job_id: str
-    agent_id: Optional[str] = None  # Handover 0401: Executor UUID for WebSocket event matching
-    execution_id: Optional[str] = None  # UNIQUE per row - AgentExecution primary key
+    agent_id: str | None = None  # Handover 0401: Executor UUID for WebSocket event matching
+    execution_id: str | None = None  # UNIQUE per row - AgentExecution primary key
     tenant_key: str
-    project_id: Optional[str] = None
+    project_id: str | None = None
     agent_display_name: str
-    agent_name: Optional[str] = None
+    agent_name: str | None = None
     mission: str
     status: str
     progress: int = 0
-    spawned_by: Optional[str] = None
+    spawned_by: str | None = None
     tool_type: str = "universal"
     context_chunks: list[str] = Field(default_factory=list)
     # Handover 0407: Counter fields for message tracking (used by frontend store)
     messages_sent_count: int = 0
     messages_waiting_count: int = 0
     messages_read_count: int = 0
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
     # Numeric steps summary for TODO-style progress (Handover 0297)
     # When present, represents completed/total steps for dashboard Steps column.
-    steps: Optional[dict[str, int]] = None
+    steps: dict[str, int] | None = None
     # Handover 0423: TODO items for Plan tab display
     todo_items: list[TodoItemResponse] = Field(default_factory=list)
     # Handover 0411a: Execution phase for multi-terminal ordering
-    phase: Optional[int] = None
+    phase: int | None = None
     # Handover 0497e: Completion result for frontend display
-    result: Optional[dict] = None
+    result: dict | None = None
     # Handover 0827d: Reactivation tracking for frontend duration display
     accumulated_duration_seconds: float = 0.0
     reactivation_count: int = 0
@@ -172,8 +172,8 @@ class ProgressReportRequest(BaseModel):
     """Request model for progress reporting."""
 
     progress_percent: int = Field(..., ge=0, le=100, description="Progress percentage")
-    status_message: Optional[str] = Field(None, description="Progress status message")
-    current_task: Optional[str] = Field(None, description="Current task description")
+    status_message: str | None = Field(None, description="Progress status message")
+    current_task: str | None = Field(None, description="Current task description")
 
 
 class ProgressReportResponse(BaseModel):
@@ -200,8 +200,8 @@ class OrchestrationResponse(BaseModel):
 
     success: bool
     project_id: str
-    message: Optional[str] = None
-    result: Optional[dict[str, Any]] = None
+    message: str | None = None
+    result: dict[str, Any] | None = None
 
 
 class WorkflowStatusResponse(BaseModel):
@@ -253,9 +253,9 @@ class JobHealthResponse(BaseModel):
 
     job_id: str
     status: str
-    last_progress_at: Optional[datetime] = None
-    last_message_check_at: Optional[datetime] = None
-    minutes_since_progress: Optional[float] = None
+    last_progress_at: datetime | None = None
+    last_message_check_at: datetime | None = None
+    minutes_since_progress: float | None = None
     is_stale: bool
 
 
@@ -290,9 +290,9 @@ class AgentExecutionResponse(BaseModel):
     job_id: str
     status: str
     progress: int = 0
-    spawned_by: Optional[str] = None
+    spawned_by: str | None = None
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -304,4 +304,4 @@ class ClearSilentResponse(BaseModel):
     agent_id: str
     job_id: str
     status: str
-    last_progress_at: Optional[str] = None
+    last_progress_at: str | None = None

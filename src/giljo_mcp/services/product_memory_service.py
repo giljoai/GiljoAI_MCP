@@ -17,7 +17,7 @@ Responsibilities:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -281,7 +281,7 @@ class ProductMemoryService:
                 product.product_memory = updated_memory
 
         if needs_update:
-            product.updated_at = datetime.now(timezone.utc)
+            product.updated_at = datetime.now(UTC)
             await self._repo.commit(session)
             # Include relationships so refresh doesn't discard eager loads (Handover 0840h)
             await self._repo.refresh_product(session, product)

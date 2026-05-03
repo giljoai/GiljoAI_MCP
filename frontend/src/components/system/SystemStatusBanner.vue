@@ -103,7 +103,7 @@ const showBanner = computed(() => {
 const updateMessage = computed(() => {
   const behind = commitsBehind.value
   const commitText = behind > 0 ? `(${behind} commit${behind === 1 ? '' : 's'} behind)` : ''
-  return `Updates available ${commitText}. Run \`git pull\` then \`python update.py\``.trim()
+  return `Updates available ${commitText}. Run \`git pull\`, then restart your server.`.trim()
 })
 
 // Edition-aware copy. CE users self-host (need git pull); demo/saas users

@@ -12,7 +12,6 @@ IP addresses, hostname, and network availability for LAN deployment.
 
 import logging
 import socket
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -49,7 +48,7 @@ class NetworkAdaptersResponse(BaseModel):
     """Response model for network adapters detection"""
 
     adapters: list[NetworkAdapter] = Field(..., description="List of detected network adapters")
-    recommended: Optional[NetworkAdapter] = Field(None, description="Recommended adapter for LAN binding")
+    recommended: NetworkAdapter | None = Field(None, description="Recommended adapter for LAN binding")
 
 
 @router.get("/detect-ip", response_model=NetworkDetectionResponse)
@@ -211,7 +210,7 @@ async def get_network_adapters(current_user: User = Depends(get_current_active_u
     return NetworkAdaptersResponse(adapters=adapters, recommended=recommended)
 
 
-def _select_recommended_adapter(adapters: list[NetworkAdapter]) -> Optional[NetworkAdapter]:
+def _select_recommended_adapter(adapters: list[NetworkAdapter]) -> NetworkAdapter | None:
     """
     Select the best adapter for LAN binding.
 

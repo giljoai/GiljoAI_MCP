@@ -24,6 +24,7 @@ tests/saas/test_auth_create_first_admin_demo_mode.py.
 """
 
 import os
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -36,7 +37,7 @@ def _gil_mode() -> str:
     if val:
         return val.lower()
     try:
-        env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
+        env_path = str(Path(__file__).resolve().parent.parent.parent / ".env")
         with open(env_path) as f:
             for line in f:
                 if line.startswith("GILJO_MODE="):

@@ -6,7 +6,7 @@
 """Global exception handlers for FastAPI."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
@@ -51,7 +51,7 @@ def register_exception_handlers(app):
                 "error_code": "VALIDATION_ERROR",
                 "message": "Request validation failed",
                 "errors": sanitized_errors,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -74,7 +74,7 @@ def register_exception_handlers(app):
             content = {
                 "error_code": detail["error_code"],
                 "message": detail.get("message", ""),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
             context = {k: v for k, v in detail.items() if k not in {"error_code", "message"}}
             if context:
@@ -86,7 +86,7 @@ def register_exception_handlers(app):
             content={
                 "error_code": "HTTP_ERROR",
                 "message": detail,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -99,6 +99,6 @@ def register_exception_handlers(app):
             content={
                 "error_code": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected error occurred",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )

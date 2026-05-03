@@ -11,7 +11,7 @@ Tests cover:
 - _build_project_data: DTO construction from Project model
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
@@ -44,9 +44,9 @@ def mock_project():
     project.early_termination = False
     project.auto_checkin_enabled = False
     project.auto_checkin_interval = 10
-    project.created_at = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-    project.updated_at = datetime(2026, 1, 2, 12, 0, 0, tzinfo=timezone.utc)
-    project.activated_at = datetime(2026, 1, 1, 13, 0, 0, tzinfo=timezone.utc)
+    project.created_at = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+    project.updated_at = datetime(2026, 1, 2, 12, 0, 0, tzinfo=UTC)
+    project.activated_at = datetime(2026, 1, 1, 13, 0, 0, tzinfo=UTC)
     project.completed_at = None
     project.product_id = "product-001"
     project.project_type_id = "type-001"
@@ -108,9 +108,9 @@ class TestApplyProjectUpdates:
 
     def test_sets_updated_at_timestamp(self, project_service, mock_project):
         """_apply_project_updates always sets updated_at to current UTC time."""
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         project_service._apply_project_updates(mock_project, {"name": "Updated"})
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
         assert before <= mock_project.updated_at <= after
 
     def test_raises_on_execution_mode_change_after_staging(self, project_service, mock_project):
@@ -139,7 +139,7 @@ class TestApplyProjectUpdates:
             "mission": "M",
             "execution_mode": "cli",
             "status": "completed",
-            "completed_at": datetime(2026, 3, 1, tzinfo=timezone.utc),
+            "completed_at": datetime(2026, 3, 1, tzinfo=UTC),
             "project_type_id": "type-new",
             "series_number": 100,
             "subseries": "b",
@@ -152,7 +152,7 @@ class TestApplyProjectUpdates:
         assert mock_project.mission == "M"
         assert mock_project.execution_mode == "cli"
         assert mock_project.status == "completed"
-        assert mock_project.completed_at == datetime(2026, 3, 1, tzinfo=timezone.utc)
+        assert mock_project.completed_at == datetime(2026, 3, 1, tzinfo=UTC)
         assert mock_project.project_type_id == "type-new"
         assert mock_project.series_number == 100
         assert mock_project.subseries == "b"
@@ -237,6 +237,6 @@ class TestBuildProjectData:
 
     def test_completed_at_formatted_when_present(self, mock_project):
         """completed_at is formatted as ISO string when not None."""
-        mock_project.completed_at = datetime(2026, 3, 1, 15, 30, 0, tzinfo=timezone.utc)
+        mock_project.completed_at = datetime(2026, 3, 1, 15, 30, 0, tzinfo=UTC)
         result = ProjectService._build_project_data(mock_project)
         assert result.completed_at == "2026-03-01T15:30:00+00:00"

@@ -14,8 +14,8 @@ moved to the new middleware directory structure in Handover 0129c.
 
 import logging
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
 from fastapi import Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -38,7 +38,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
     of client location (localhost or network).
     """
 
-    def __init__(self, app, auth_manager: Optional[Callable] = None):
+    def __init__(self, app, auth_manager: Callable | None = None):
         """
         Initialize authentication middleware.
 
@@ -231,7 +231,7 @@ def _is_api_or_static_path(path: str) -> bool:
     return path.startswith(_API_PREFIXES)
 
 
-def _resolve_spa_index(request: Request) -> Optional[Path]:
+def _resolve_spa_index(request: Request) -> Path | None:
     """Locate the SPA index.html, or None if frontend isn't built."""
     state = getattr(request.app.state, "config", None)
     static_path = state.get_nested("paths.static", "frontend/dist") if state else "frontend/dist"

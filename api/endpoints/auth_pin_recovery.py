@@ -15,7 +15,7 @@ All endpoints include rate limiting, timing-safe comparisons, and audit logging.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
@@ -113,8 +113,8 @@ async def verify_pin_and_reset_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid username or PIN")
 
     # Check if user is locked out
-    if user.pin_lockout_until and datetime.now(timezone.utc) < user.pin_lockout_until:
-        lockout_remaining = user.pin_lockout_until - datetime.now(timezone.utc)
+    if user.pin_lockout_until and datetime.now(UTC) < user.pin_lockout_until:
+        lockout_remaining = user.pin_lockout_until - datetime.now(UTC)
         minutes_remaining = int(lockout_remaining.total_seconds() / 60)
         logger.warning(
             f"PIN reset attempt while locked out - user: {user.username}, remaining: {minutes_remaining} minutes"
@@ -131,7 +131,7 @@ async def verify_pin_and_reset_password(
 
         # Trigger lockout after 5 failed attempts
         if user.failed_pin_attempts >= 5:
-            user.pin_lockout_until = datetime.now(timezone.utc) + timedelta(minutes=15)
+            user.pin_lockout_until = datetime.now(UTC) + timedelta(minutes=15)
             await db.commit()
 
             logger.warning(
@@ -196,15 +196,15 @@ async def verify_pin(request_data: VerifyPinRequest = Body(...), db: AsyncSessio
     if not user or not user.recovery_pin_hash:
         return VerifyPinResponse(valid=False, message="Invalid username or PIN")
 
-    if user.pin_lockout_until and datetime.now(timezone.utc) < user.pin_lockout_until:
-        lockout_remaining = user.pin_lockout_until - datetime.now(timezone.utc)
+    if user.pin_lockout_until and datetime.now(UTC) < user.pin_lockout_until:
+        lockout_remaining = user.pin_lockout_until - datetime.now(UTC)
         minutes_remaining = int(lockout_remaining.total_seconds() / 60)
         return VerifyPinResponse(valid=False, message=f"Account locked. Try again in {minutes_remaining} minutes.")
 
     if not bcrypt.checkpw(request_data.recovery_pin.encode("utf-8"), user.recovery_pin_hash.encode("utf-8")):
         user.failed_pin_attempts += 1
         if user.failed_pin_attempts >= 5:
-            user.pin_lockout_until = datetime.now(timezone.utc) + timedelta(minutes=15)
+            user.pin_lockout_until = datetime.now(UTC) + timedelta(minutes=15)
         await db.commit()
         attempts_remaining = max(0, 5 - user.failed_pin_attempts)
         return VerifyPinResponse(valid=False, message=f"Invalid PIN. {attempts_remaining} attempts remaining.")

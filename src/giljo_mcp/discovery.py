@@ -10,9 +10,9 @@ Provides dynamic path resolution for context loading.
 
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from sqlalchemy import select
 
@@ -49,7 +49,7 @@ class PathResolver:
         self._cache_ttl = timedelta(minutes=5)
         self._cache_timestamps = {}
 
-    async def resolve_path(self, path_key: str, project_id: Optional[str] = None) -> Path:
+    async def resolve_path(self, path_key: str, project_id: str | None = None) -> Path:
         """
         Resolve a path key to an actual filesystem path.
 
@@ -93,7 +93,7 @@ class PathResolver:
         self._update_cache(cache_key, resolved)
         return resolved
 
-    async def get_all_paths(self, project_id: Optional[str] = None) -> dict[str, Path]:
+    async def get_all_paths(self, project_id: str | None = None) -> dict[str, Path]:
         """
         Get all resolved paths for the current project.
 
@@ -108,7 +108,7 @@ class PathResolver:
             paths[key] = await self.resolve_path(key, project_id)
         return paths
 
-    async def _get_database_path(self, path_key: str, project_id: str) -> Optional[str]:
+    async def _get_database_path(self, path_key: str, project_id: str) -> str | None:
         """Get path override from database"""
         try:
             async with self.db_manager.get_session_async() as session:
@@ -127,7 +127,7 @@ class PathResolver:
 
         return None
 
-    async def _get_config_file_path(self, path_key: str) -> Optional[str]:
+    async def _get_config_file_path(self, path_key: str) -> str | None:
         """Get path from config.yaml"""
         try:
             config_path = Path.home() / ".giljo-mcp" / "config.yaml"
@@ -152,12 +152,12 @@ class PathResolver:
         if not timestamp:
             return False
 
-        return datetime.now(timezone.utc) - timestamp < self._cache_ttl
+        return datetime.now(UTC) - timestamp < self._cache_ttl
 
     def _update_cache(self, cache_key: str, path: Path):
         """Update path cache"""
         self._cache[cache_key] = path
-        self._cache_timestamps[cache_key] = datetime.now(timezone.utc)
+        self._cache_timestamps[cache_key] = datetime.now(UTC)
 
 
 class DiscoveryManager:
@@ -176,7 +176,7 @@ class DiscoveryManager:
         self.tenant_manager = tenant_manager
         self.path_resolver = path_resolver
 
-    async def get_discovery_paths(self, project_id: Optional[str] = None) -> dict[str, Path]:
+    async def get_discovery_paths(self, project_id: str | None = None) -> dict[str, Path]:
         """
         Get all configured paths dynamically.
 

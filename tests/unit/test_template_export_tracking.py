@@ -10,7 +10,7 @@ Tests last_exported_at timestamp tracking and may_be_stale flag computation.
 Following TDD principles - these tests are written BEFORE implementation.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -41,7 +41,7 @@ class TestAgentTemplateExportTracking:
 
     def test_last_exported_at_accepts_datetime(self):
         """Test that last_exported_at accepts datetime values."""
-        export_time = datetime.now(timezone.utc)
+        export_time = datetime.now(UTC)
 
         template = AgentTemplate(
             id=str(uuid4()),
@@ -54,7 +54,7 @@ class TestAgentTemplateExportTracking:
         )
 
         assert template.last_exported_at == export_time
-        assert template.last_exported_at.tzinfo == timezone.utc
+        assert template.last_exported_at.tzinfo == UTC
 
 
 class TestMayBeStaleComputation:
@@ -62,7 +62,7 @@ class TestMayBeStaleComputation:
 
     def test_may_be_stale_true_when_modified_after_export(self):
         """Test may_be_stale is True when updated_at > last_exported_at."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         exported_time = now - timedelta(hours=2)
         modified_time = now - timedelta(hours=1)
 
@@ -88,7 +88,7 @@ class TestMayBeStaleComputation:
 
     def test_may_be_stale_false_when_exported_after_modification(self):
         """Test may_be_stale is False when last_exported_at > updated_at."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         modified_time = now - timedelta(hours=2)
         exported_time = now - timedelta(hours=1)
 
@@ -122,7 +122,7 @@ class TestMayBeStaleComputation:
             system_instructions="Test instructions",
             is_active=True,
             last_exported_at=None,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
         )
 
         # Compute may_be_stale
@@ -136,7 +136,7 @@ class TestMayBeStaleComputation:
 
     def test_may_be_stale_property_or_method(self):
         """Test that may_be_stale is accessible as property or computed field."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         template = AgentTemplate(
             id=str(uuid4()),
             tenant_key="test_tenant",
@@ -175,7 +175,7 @@ class TestExportEndpointTimestampUpdate:
         # and can be set during export. The actual export timestamp
         # setting will be verified through integration tests.
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         template = AgentTemplate(
             id=str(uuid4()),
             tenant_key="test_tenant",
@@ -194,7 +194,7 @@ class TestExportEndpointTimestampUpdate:
 
         # Verify timestamp was set
         assert template.last_exported_at == now
-        assert template.last_exported_at.tzinfo == timezone.utc
+        assert template.last_exported_at.tzinfo == UTC
 
     @pytest.mark.asyncio
     async def test_export_updates_existing_last_exported_at(self):
@@ -203,7 +203,7 @@ class TestExportEndpointTimestampUpdate:
         # Implementation will add timestamp update logic to export function
 
         # Mock template with existing export timestamp
-        old_export_time = datetime.now(timezone.utc) - timedelta(days=1)
+        old_export_time = datetime.now(UTC) - timedelta(days=1)
 
         mock_template = MagicMock(spec=AgentTemplate)
         mock_template.id = "tmpl-123"

@@ -11,7 +11,7 @@ Updated Handover 0731: Migrated from dict returns to typed ConsolidationResult.
 
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -92,7 +92,7 @@ class ConsolidatedVisionService:
         product.consolidated_vision_medium = summary_result.medium.summary
         product.consolidated_vision_medium_tokens = summary_result.medium.tokens
         product.consolidated_vision_hash = aggregate_hash
-        product.consolidated_at = datetime.now(timezone.utc)
+        product.consolidated_at = datetime.now(UTC)
 
         # Commit changes
         await self._repo.commit(session)

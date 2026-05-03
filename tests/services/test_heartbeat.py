@@ -11,7 +11,7 @@ Covers:
 - Terminal-status agents are NOT updated
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -44,7 +44,7 @@ async def job_with_execution(db_session, test_tenant_key):
         tenant_key=test_tenant_key,
         agent_display_name="test-agent",
         status="working",
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
     db_session.add(execution)
     await db_session.flush()
@@ -61,7 +61,7 @@ async def test_heartbeat_sets_last_activity(db_session, job_with_execution):
     result = await db_session.execute(select(AgentExecution.last_activity_at).where(AgentExecution.job_id == job_id))
     ts = result.scalar_one()
     assert ts is not None
-    assert (datetime.now(timezone.utc) - ts).total_seconds() < 5
+    assert (datetime.now(UTC) - ts).total_seconds() < 5
 
 
 @pytest.mark.asyncio
@@ -69,7 +69,7 @@ async def test_heartbeat_debounce_skips_recent(db_session, job_with_execution):
     """If last_activity_at is recent (< 30s), heartbeat should NOT update."""
     job_id, _, tenant_key = job_with_execution
 
-    recent_ts = datetime.now(timezone.utc) - timedelta(seconds=10)
+    recent_ts = datetime.now(UTC) - timedelta(seconds=10)
     result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job_id))
     execution = result.scalar_one()
     execution.last_activity_at = recent_ts
@@ -87,7 +87,7 @@ async def test_heartbeat_updates_stale(db_session, job_with_execution):
     """If last_activity_at is older than debounce window, heartbeat should update."""
     job_id, _, tenant_key = job_with_execution
 
-    old_ts = datetime.now(timezone.utc) - timedelta(seconds=DEBOUNCE_SECONDS + 10)
+    old_ts = datetime.now(UTC) - timedelta(seconds=DEBOUNCE_SECONDS + 10)
     result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job_id))
     execution = result.scalar_one()
     execution.last_activity_at = old_ts
@@ -96,7 +96,7 @@ async def test_heartbeat_updates_stale(db_session, job_with_execution):
     await touch_heartbeat(db_session, job_id, tenant_key=tenant_key)
 
     await db_session.refresh(execution)
-    assert (datetime.now(timezone.utc) - execution.last_activity_at).total_seconds() < 5
+    assert (datetime.now(UTC) - execution.last_activity_at).total_seconds() < 5
 
 
 @pytest.mark.asyncio
@@ -121,8 +121,8 @@ async def test_heartbeat_skips_terminal_status(db_session, test_tenant_key):
         tenant_key=test_tenant_key,
         agent_display_name="test-agent",
         status="complete",
-        started_at=datetime.now(timezone.utc),
-        completed_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
+        completed_at=datetime.now(UTC),
     )
     db_session.add(execution)
     await db_session.flush()
@@ -163,8 +163,8 @@ async def test_heartbeat_skips_closed_status(db_session, test_tenant_key):
         tenant_key=test_tenant_key,
         agent_display_name="test-agent",
         status="closed",
-        started_at=datetime.now(timezone.utc),
-        completed_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
+        completed_at=datetime.now(UTC),
     )
     db_session.add(execution)
     await db_session.flush()
@@ -197,8 +197,8 @@ async def test_heartbeat_skips_decommissioned_status(db_session, test_tenant_key
         tenant_key=test_tenant_key,
         agent_display_name="test-agent",
         status="decommissioned",
-        started_at=datetime.now(timezone.utc),
-        completed_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
+        completed_at=datetime.now(UTC),
     )
     db_session.add(execution)
     await db_session.flush()

@@ -22,7 +22,7 @@ Follows patterns from: test_tenant_isolation_services.py (Handover 0325)
 
 import random
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
@@ -94,7 +94,7 @@ async def two_tenant_projects(db_session, db_manager):
         tenant_key=tenant_a,
         product_id=product_a.id,
         status="deleted",
-        deleted_at=datetime.now(timezone.utc),
+        deleted_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
 
@@ -107,7 +107,7 @@ async def two_tenant_projects(db_session, db_manager):
         tenant_key=tenant_b,
         product_id=product_b.id,
         status="cancelled",
-        completed_at=datetime.now(timezone.utc),
+        completed_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
 

@@ -10,6 +10,8 @@ Tests that the Pydantic schema properly validates product_id requirement
 without needing full database setup.
 """
 
+from datetime import UTC
+
 import pytest
 from pydantic import ValidationError
 
@@ -99,9 +101,9 @@ def test_task_create_with_all_fields():
     - Schema accepts all valid fields
     - No regressions in optional field handling
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    due_date = datetime.now(timezone.utc)
+    due_date = datetime.now(UTC)
 
     task = TaskCreate(
         title="Complete Task",

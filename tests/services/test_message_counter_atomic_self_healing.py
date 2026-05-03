@@ -21,7 +21,7 @@ Fix 2 (Self-healing counter in receive_messages):
 
 import random
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
@@ -85,7 +85,7 @@ async def test_product(db_session, tenant_key) -> Product:
         name=f"Counter Test Product {uuid.uuid4().hex[:6]}",
         description="Product for counter fix tests",
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(product)
     await db_session.commit()
@@ -104,7 +104,7 @@ async def project(db_session, tenant_key, agent_templates, test_product) -> Proj
         status="active",
         tenant_key=tenant_key,
         product_id=test_product.id,
-        implementation_launched_at=datetime.now(timezone.utc),
+        implementation_launched_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(proj)
@@ -347,7 +347,7 @@ async def project_with_messaging_agents(
         description="For self-healing counter tests",
         mission="Test receive_messages counter behavior",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         series_number=random.randint(1, 999999),
     )
     db_session.add(proj)

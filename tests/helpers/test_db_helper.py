@@ -16,7 +16,6 @@ import asyncio
 import contextlib
 import os
 import re
-from typing import Optional
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -299,7 +298,7 @@ class TransactionalTestContext:
         self.db_manager = db_manager
         self.connection = None
         self.transaction = None
-        self.session: Optional[AsyncSession] = None
+        self.session: AsyncSession | None = None
 
     async def __aenter__(self) -> AsyncSession:
         """Start connection, transaction and return session."""
@@ -357,7 +356,7 @@ async def wait_for_database_ready(max_attempts: int = 30, delay: float = 1.0) ->
                 await conn.execute(text("SELECT 1"))
             await engine.dispose()
             return True
-        except Exception as _exc:  # noqa: BLE001
+        except Exception as _exc:
             if attempt < max_attempts - 1:
                 await asyncio.sleep(delay)
 

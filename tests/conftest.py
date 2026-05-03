@@ -76,7 +76,7 @@ def _existing_url_targets_test_db(url: str) -> bool:
     """True if URL's database name is a recognized test database."""
     if not url:
         return False
-    db_part = url.rsplit("/", 1)[-1].split("?")[0]
+    db_part = url.rsplit("/", 1)[-1].split("?", maxsplit=1)[0]
     return db_part in ("giljo_mcp_test", "giljo_test", "postgres")
 
 
@@ -111,7 +111,7 @@ __all__ = [
 ]
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def event_loop():
     """
     Create event loop for async tests.
@@ -267,6 +267,7 @@ def pytest_configure(config):
             f"Tests should use giljo_mcp_test, not giljo_mcp.\n"
             f"Current DATABASE_URL: {db_url[:50]}...",
             UserWarning,
+            stacklevel=2,
         )
 
     # Register custom markers

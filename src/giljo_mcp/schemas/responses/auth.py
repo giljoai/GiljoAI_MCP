@@ -5,8 +5,6 @@
 
 """Auth service response models."""
 
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -25,11 +23,11 @@ class AuthResult(BaseModel):
     token: str
     tenant_key: str
     role: str = "user"
-    email: Optional[str] = None
-    full_name: Optional[str] = None
+    email: str | None = None
+    full_name: str | None = None
     is_active: bool = True
-    created_at: Optional[str] = None
-    last_login: Optional[str] = None
+    created_at: str | None = None
+    last_login: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -60,10 +58,10 @@ class ApiKeyInfo(BaseModel):
     key_prefix: str
     permissions: list[str] = Field(default_factory=list)
     is_active: bool = True
-    created_at: Optional[str] = None
-    last_used: Optional[str] = None
-    revoked_at: Optional[str] = None
-    expires_at: Optional[str] = None
+    created_at: str | None = None
+    last_used: str | None = None
+    revoked_at: str | None = None
+    expires_at: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -84,7 +82,7 @@ class ApiKeyCreateResult(BaseModel):
     key_prefix: str
     key_hash: str
     permissions: list[str] = Field(default_factory=list)
-    expires_at: Optional[str] = None
+    expires_at: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -99,7 +97,7 @@ class UserInfo(BaseModel):
 
     id: str
     username: str
-    email: Optional[str] = None
+    email: str | None = None
     role: str
     tenant_key: str
 

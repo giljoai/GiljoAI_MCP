@@ -13,7 +13,7 @@ Contains complete_job and its 8 helper methods (~330 lines).
 import logging
 import re
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -51,9 +51,9 @@ class JobCompletionService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        test_session: Optional[AsyncSession] = None,
+        test_session: AsyncSession | None = None,
         message_service: Optional["MessageService"] = None,
-        websocket_manager: Optional[Any] = None,
+        websocket_manager: Any | None = None,
         agent_state_service: Optional["OrchestrationAgentStateService"] = None,
     ):
         self.db_manager = db_manager
@@ -79,7 +79,7 @@ class JobCompletionService:
         self,
         job_id: str,
         result: dict[str, Any],
-        tenant_key: Optional[str] = None,
+        tenant_key: str | None = None,
         acknowledge_closeout_todo: bool = False,
         acknowledge_messages_on_complete: bool = False,
     ) -> CompleteJobResult:
@@ -122,7 +122,7 @@ class JobCompletionService:
                     context={"method": "complete_job", "result_type": type(result).__name__},
                 )
 
-            completion_attempt_time = datetime.now(timezone.utc)
+            completion_attempt_time = datetime.now(UTC)
 
             job = None
             execution = None
@@ -285,13 +285,13 @@ class JobCompletionService:
                 return True
             created_at = message.created_at
             if created_at.tzinfo is None:
-                created_at = created_at.replace(tzinfo=timezone.utc)
+                created_at = created_at.replace(tzinfo=UTC)
             return created_at <= completion_attempt_time
 
         unread_messages = [message for message in all_unread if _is_before_attempt(message)]
 
         if acknowledge_messages_on_complete and unread_messages:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             for msg in unread_messages:
                 msg.status = "acknowledged"
                 msg.acknowledged_at = now
@@ -322,7 +322,7 @@ class JobCompletionService:
             closeout_todos = [t for t in incomplete_todos if CLOSEOUT_TODO_PATTERN.search(t.content or "")]
             remainder = [t for t in incomplete_todos if t not in closeout_todos]
             if closeout_todos:
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 for todo in closeout_todos:
                     todo.status = "completed"
                     todo.updated_at = now
@@ -373,7 +373,7 @@ class JobCompletionService:
         """Update execution fields for completion. Returns (old_status, duration_seconds)."""
         old_status = execution.status
         execution.status = "complete"
-        execution.completed_at = datetime.now(timezone.utc)
+        execution.completed_at = datetime.now(UTC)
         execution.progress = 100
         execution.result = result
 

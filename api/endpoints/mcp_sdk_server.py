@@ -160,7 +160,9 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
     description=(
         "Create a new project bound to the active product. "
         "Projects are classified by taxonomy: project_type + series_number forming a serial like FE-0001. "
-        "Unknown project_type values are rejected with a list of valid types. "
+        "Unknown project_type values are rejected with a ValidationError whose context includes "
+        "valid_types: a list of {abbreviation, label} pairs registered for this tenant. "
+        "Omitting project_type is allowed; the success response then includes the same hint. "
         "Project is created as inactive. Use the web dashboard to activate and launch."
     ),
 )

@@ -26,7 +26,7 @@ Design Philosophy:
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,7 +60,7 @@ class AgentJobManager:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        test_session: Optional[AsyncSession] = None,
+        test_session: AsyncSession | None = None,
     ):
         """
         Initialize AgentJobManager.
@@ -103,10 +103,10 @@ class AgentJobManager:
         agent_display_name: str,
         mission: str,
         tenant_key: str,
-        agent_name: Optional[str] = None,
+        agent_name: str | None = None,
         tool_type: str = "universal",
-        spawned_by: Optional[str] = None,
-        job_metadata: Optional[dict[str, Any]] = None,
+        spawned_by: str | None = None,
+        job_metadata: dict[str, Any] | None = None,
     ) -> tuple[str, str, str, str]:
         """
         Spawn a new agent (creates BOTH job and execution).

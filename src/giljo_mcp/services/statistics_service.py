@@ -14,7 +14,7 @@ All methods are read-only SELECT queries. No writes occur in this service.
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,7 +64,7 @@ class StatisticsService:
     async def get_dashboard_stats(
         self,
         tenant_key: str,
-        product_id: Optional[str] = None,
+        product_id: str | None = None,
     ) -> dict[str, Any]:
         """Get consolidated dashboard analytics.
 
@@ -163,7 +163,7 @@ class StatisticsService:
     async def get_project_stats(
         self,
         tenant_key: str,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list:
@@ -226,8 +226,8 @@ class StatisticsService:
     async def get_agent_executions_with_filters(
         self,
         tenant_key: str,
-        project_id: Optional[str] = None,
-        status: Optional[str] = None,
+        project_id: str | None = None,
+        status: str | None = None,
         limit: int = 100,
     ) -> list:
         """Get agent executions with optional filters."""
@@ -261,7 +261,7 @@ class StatisticsService:
     async def get_message_stats(
         self,
         tenant_key: str,
-        project_id: Optional[str] = None,
+        project_id: str | None = None,
         since: Any = None,
     ) -> dict[str, int]:
         """Get message statistics with optional filters.

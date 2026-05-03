@@ -13,7 +13,6 @@ Schemas:
 """
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -45,9 +44,9 @@ class ProjectTypeCreate(BaseModel):
 class ProjectTypeUpdate(BaseModel):
     """Request model for updating a project type (partial)."""
 
-    label: Optional[str] = Field(None, min_length=1, max_length=50)
-    color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
-    sort_order: Optional[int] = None
+    label: str | None = Field(None, min_length=1, max_length=50)
+    color: str | None = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    sort_order: int | None = None
 
 
 class ProjectTypeResponse(BaseModel):

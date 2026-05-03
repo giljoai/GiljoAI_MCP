@@ -18,7 +18,7 @@ WebSocket event integration for real-time alerting.
 import asyncio
 import contextlib
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -153,7 +153,7 @@ class AgentHealthMonitor:
         Returns:
             List of jobs with waiting timeouts
         """
-        timeout_threshold = datetime.now(timezone.utc) - timedelta(minutes=self.config.waiting_timeout_minutes)
+        timeout_threshold = datetime.now(UTC) - timedelta(minutes=self.config.waiting_timeout_minutes)
 
         # Filter out jobs from deleted projects and inactive projects using LEFT JOIN
         # Handover 0424: Only monitor jobs from active projects
@@ -209,7 +209,7 @@ class AgentHealthMonitor:
                 health_state="critical",
                 last_update=execution.job.created_at,
                 minutes_since_update=(
-                    (datetime.now(timezone.utc) - execution.job.created_at).total_seconds() / 60
+                    (datetime.now(UTC) - execution.job.created_at).total_seconds() / 60
                     if execution.job.created_at
                     else float(self.config.waiting_timeout_minutes)
                 ),
@@ -232,7 +232,7 @@ class AgentHealthMonitor:
         Returns:
             List of stalled jobs
         """
-        timeout_threshold = datetime.now(timezone.utc) - timedelta(minutes=self.config.active_no_progress_minutes)
+        timeout_threshold = datetime.now(UTC) - timedelta(minutes=self.config.active_no_progress_minutes)
 
         # Query active jobs, filtering out jobs from deleted projects and inactive projects
         # Handover 0424: Only monitor jobs from active projects
@@ -281,7 +281,7 @@ class AgentHealthMonitor:
         for execution in executions:
             last_progress = self._get_last_progress_time(execution)
             if last_progress < timeout_threshold:
-                minutes_stalled = (datetime.now(timezone.utc) - last_progress).total_seconds() / 60
+                minutes_stalled = (datetime.now(UTC) - last_progress).total_seconds() / 60
 
                 # Determine health state based on duration
                 if minutes_stalled >= self.config.heartbeat_timeout_minutes:
@@ -369,11 +369,11 @@ class AgentHealthMonitor:
         for execution in executions:
             # Apply agent-type-specific timeouts
             timeout_minutes = self.config.get_timeout_for_agent(execution.agent_display_name)
-            threshold = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
+            threshold = datetime.now(UTC) - timedelta(minutes=timeout_minutes)
             last_activity = self._get_last_activity_time(execution)
 
             if last_activity < threshold:
-                minutes_silent = (datetime.now(timezone.utc) - last_activity).total_seconds() / 60
+                minutes_silent = (datetime.now(UTC) - last_activity).total_seconds() / 60
 
                 project = execution.job.project if execution.job else None
                 failures.append(
@@ -431,7 +431,7 @@ class AgentHealthMonitor:
         # Update execution health fields
         execution.health_status = health_status.health_state
         execution.health_failure_count += 1
-        execution.last_health_check = datetime.now(timezone.utc)
+        execution.last_health_check = datetime.now(UTC)
 
         # Handover 0491: Auto-silent on timeout (if configured)
         # Silent status indicates detected inactivity - agent may have disconnected
@@ -494,7 +494,7 @@ class AgentHealthMonitor:
 
         # Filter out None values and return max
         valid_timestamps = [ts for ts in candidates if ts is not None]
-        return max(valid_timestamps) if valid_timestamps else datetime.now(timezone.utc)
+        return max(valid_timestamps) if valid_timestamps else datetime.now(UTC)
 
     async def _get_all_tenants(self, session: AsyncSession) -> list[str]:
         """

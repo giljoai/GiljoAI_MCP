@@ -25,7 +25,7 @@ Design Principles:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -88,7 +88,7 @@ def _parse_iso_datetime(value: Any) -> datetime | None:
     if value is None:
         return None
     if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
     if not isinstance(value, str):
         return None
     try:
@@ -96,7 +96,7 @@ def _parse_iso_datetime(value: Any) -> datetime | None:
         # natively on Python 3.11+. Be defensive in case older inputs slip through.
         normalized = value.replace("Z", "+00:00") if value.endswith("Z") else value
         dt = datetime.fromisoformat(normalized)
-        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
     except (ValueError, TypeError):
         return None
 
@@ -257,7 +257,7 @@ class ProjectService:
                         )
 
                 # Create project entity
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 project = Project(
                     name=name,
                     mission=mission,
@@ -552,7 +552,7 @@ class ProjectService:
                 # Handover 0425: Also set staging_status to 'staging' when mission is updated
                 project.mission = mission
                 project.staging_status = "staging"
-                project.updated_at = datetime.now(timezone.utc)
+                project.updated_at = datetime.now(UTC)
 
                 await self._repo.commit(session)
 
@@ -658,7 +658,7 @@ class ProjectService:
             if field in allowed_fields:
                 setattr(project, field, value)
 
-        project.updated_at = datetime.now(timezone.utc)
+        project.updated_at = datetime.now(UTC)
 
     @staticmethod
     def _build_project_data(project) -> ProjectData:
@@ -830,7 +830,7 @@ class ProjectService:
                     "token_estimate": len(mission) // 4,
                     "user_config_applied": False,
                     "generated_by": "orchestrator",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 },
             )
 
@@ -893,6 +893,15 @@ class ProjectService:
             if resolved_type:
                 project_type_id = resolved_type.id
                 resolved_type_label = resolved_type.abbreviation or project_type
+            else:
+                valid_types = await self._get_valid_project_types(effective_tenant_key)
+                valid_labels = [t["abbreviation"] for t in valid_types]
+                raise ValidationError(
+                    f"Unknown project type '{project_type}'. "
+                    f"Valid types: {', '.join(valid_labels)}. "
+                    "Set project_type to one of these abbreviations or omit it.",
+                    context={"operation": "create_project", "valid_types": valid_types},
+                )
 
         if not product_id:
             from giljo_mcp.services.product_service import ProductService
@@ -940,7 +949,7 @@ class ProjectService:
             except (RuntimeError, ValueError, OSError) as e:
                 logger.warning(f"Failed to broadcast project:created event: {e}")
 
-        return {
+        response: dict[str, Any] = {
             "success": True,
             "project_id": project.id,
             "alias": project.alias,
@@ -953,15 +962,11 @@ class ProjectService:
             "series_number": project.series_number or 0,
             "taxonomy_alias": project.taxonomy_alias,
             "created_at": project.created_at.isoformat() if project.created_at else None,
-            "message": f"Project '{project.name}' created successfully"
-            + (
-                f". NOTE: project_type '{project_type}' is not a recognized category -- "
-                "project created without taxonomy. Add the category in the dashboard first, "
-                "then assign it to this project."
-                if project_type and not project_type_id
-                else ""
-            ),
+            "message": f"Project '{project.name}' created successfully",
         }
+        if not project_type:
+            response["valid_types"] = await self._get_valid_project_types(effective_tenant_key)
+        return response
 
     async def list_projects_for_mcp(
         self,
@@ -1307,7 +1312,7 @@ class ProjectService:
                 raise ValidationError(
                     f"Unknown project type '{project_type}'. "
                     f"Valid types: {', '.join(valid_labels)}. "
-                    "Use list_projects() to see all valid project_types.",
+                    "Set project_type to one of these abbreviations or omit it.",
                     context={"operation": "update_project_metadata", "valid_types": valid_types},
                 )
 

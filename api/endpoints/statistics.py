@@ -11,8 +11,8 @@ Original direct SQLAlchemy queries preserved as comments for rollback reference.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -72,7 +72,7 @@ class AgentStatsResponse(BaseModel):
     messages_received: int
     tasks_assigned: int
     tasks_completed: int
-    average_response_time_seconds: Optional[float] = None
+    average_response_time_seconds: float | None = None
     last_activity: datetime
 
 
@@ -82,20 +82,20 @@ class MessageStatsResponse(BaseModel):
     acknowledged_messages: int
     completed_messages: int
     failed_messages: int
-    average_processing_time_seconds: Optional[float] = None
+    average_processing_time_seconds: float | None = None
     messages_per_hour: float
-    peak_hour_messages: Optional[int] = None
+    peak_hour_messages: int | None = None
 
 
 class PerformanceMetricsResponse(BaseModel):
     api_response_time_ms: float
     database_query_time_ms: float
     websocket_connections: int
-    active_sessions: Optional[int] = None
+    active_sessions: int | None = None
     memory_usage_mb: float
     cpu_usage_percent: float
     disk_usage_percent: float
-    error_rate_percent: Optional[float] = None
+    error_rate_percent: float | None = None
 
 
 class CallCountsResponse(BaseModel):
@@ -111,7 +111,7 @@ class DetailedHealthResponse(BaseModel):
 
 
 # Store startup time
-startup_time = datetime.now(timezone.utc)
+startup_time = datetime.now(UTC)
 
 
 class AgentRoleDistItem(BaseModel):
@@ -139,7 +139,7 @@ class DashboardStatsResponse(BaseModel):
 @router.get("/dashboard", response_model=DashboardStatsResponse)
 async def get_dashboard_stats(
     request: Request,
-    product_id: Optional[str] = Query(None, description="Filter by product (None = all products)"),
+    product_id: str | None = Query(None, description="Filter by product (None = all products)"),
     current_user: User = Depends(get_current_active_user),
 ):
     """
@@ -210,7 +210,7 @@ async def get_system_statistics(request: Request, current_user: User = Depends(g
     stats_service = StatisticsService(state.db_manager)
     data = await stats_service.get_system_stats(tenant_key)
 
-    uptime = (datetime.now(timezone.utc) - startup_time).total_seconds()
+    uptime = (datetime.now(UTC) - startup_time).total_seconds()
 
     return SystemStatsResponse(
         total_projects=data["total_projects"],
@@ -235,7 +235,7 @@ async def get_system_statistics(request: Request, current_user: User = Depends(g
 @router.get("/projects", response_model=list[ProjectStatsResponse])
 async def get_project_statistics(
     request: Request,
-    status: Optional[str] = Query(None, description="Filter by project status"),
+    status: str | None = Query(None, description="Filter by project status"),
     limit: int = Query(100, description="Maximum number of results"),
     offset: int = Query(0, description="Number of results to skip"),
     current_user: User = Depends(get_current_active_user),
@@ -263,7 +263,7 @@ async def get_project_statistics(
         last_message = await stats_service.get_last_activity_for_project(tenant_key, project.id)
 
         # Calculate duration
-        end_time = project.updated_at if project.status == "completed" else datetime.now(timezone.utc)
+        end_time = project.updated_at if project.status == "completed" else datetime.now(UTC)
         duration = (end_time - project.created_at).total_seconds()
 
         stats.append(
@@ -309,7 +309,7 @@ async def get_project_statistics_by_id(
     completed_task_count = await stats_service.count_completed_tasks_for_project(tenant_key, project.id)
     last_message = await stats_service.get_last_activity_for_project(tenant_key, project.id)
 
-    end_time = project.updated_at if project.status == "completed" else datetime.now(timezone.utc)
+    end_time = project.updated_at if project.status == "completed" else datetime.now(UTC)
     duration = (end_time - project.created_at).total_seconds()
 
     return ProjectStatsResponse(
@@ -328,8 +328,8 @@ async def get_project_statistics_by_id(
 @router.get("/agents", response_model=list[AgentStatsResponse])
 async def get_agent_statistics(
     request: Request,
-    project_id: Optional[str] = Query(None, description="Filter by project"),
-    status: Optional[str] = Query(None, description="Filter by agent status"),
+    project_id: str | None = Query(None, description="Filter by project"),
+    status: str | None = Query(None, description="Filter by agent status"),
     limit: int = Query(100, description="Maximum number of results"),
     current_user: User = Depends(get_current_active_user),
 ):
@@ -389,8 +389,8 @@ async def get_agent_statistics(
 @router.get("/messages", response_model=MessageStatsResponse)
 async def get_message_statistics(
     request: Request,
-    project_id: Optional[str] = Query(None, description="Filter by project"),
-    time_range: Optional[str] = Query("24h", description="Time range (1h, 24h, 7d, 30d)"),
+    project_id: str | None = Query(None, description="Filter by project"),
+    time_range: str | None = Query("24h", description="Time range (1h, 24h, 7d, 30d)"),
     current_user: User = Depends(get_current_active_user),
 ):
     """Get message statistics"""
@@ -404,7 +404,7 @@ async def get_message_statistics(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if time_range == "1h":
         since = now - timedelta(hours=1)
     elif time_range == "24h":
@@ -502,7 +502,7 @@ async def get_detailed_health(current_user: User = Depends(get_current_active_us
     # Check API
     health["components"]["api"] = {
         "status": "healthy",
-        "uptime_seconds": (datetime.now(timezone.utc) - startup_time).total_seconds(),
+        "uptime_seconds": (datetime.now(UTC) - startup_time).total_seconds(),
     }
     health["checks_passed"] += 1
 

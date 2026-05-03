@@ -9,9 +9,9 @@ Configuration management API endpoints
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -30,25 +30,25 @@ router = APIRouter()
 # Pydantic models for request/response
 class ConfigurationGet(BaseModel):
     key: str = Field(..., description="Configuration key path (e.g., 'database.pool_size')")
-    default: Optional[Any] = Field(None, description="Default value if key not found")
+    default: Any | None = Field(None, description="Default value if key not found")
 
 
 class ConfigurationSet(BaseModel):
     key: str = Field(..., description="Configuration key path")
     value: Any = Field(..., description="Configuration value")
-    tenant_key: Optional[str] = Field(None, description="Tenant-specific configuration")
+    tenant_key: str | None = Field(None, description="Tenant-specific configuration")
 
 
 class ConfigurationUpdate(BaseModel):
     configurations: dict[str, Any] = Field(..., description="Multiple configuration updates")
-    tenant_key: Optional[str] = Field(None, description="Tenant-specific configuration")
+    tenant_key: str | None = Field(None, description="Tenant-specific configuration")
 
 
 class ConfigurationResponse(BaseModel):
     key: str
     value: Any
     source: str = Field(..., description="Configuration source (default, file, env, database)")
-    tenant_key: Optional[str] = None
+    tenant_key: str | None = None
     updated_at: datetime
 
 
@@ -104,7 +104,7 @@ async def get_system_configuration(current_user: User = Depends(get_current_acti
 @router.get("/key/{key_path}", response_model=ConfigurationResponse)
 async def get_configuration(
     key_path: str,
-    default: Optional[Any] = None,
+    default: Any | None = None,
     current_user: User = Depends(get_current_active_user),
     _ce: None = Depends(require_ce_mode),
 ):
@@ -126,7 +126,7 @@ async def get_configuration(
     if hasattr(state.config, "_sources") and key in state.config._sources:
         source = state.config._sources[key]
 
-    return ConfigurationResponse(key=key, value=value, source=source, updated_at=datetime.now(timezone.utc))
+    return ConfigurationResponse(key=key, value=value, source=source, updated_at=datetime.now(UTC))
 
 
 # SERVER-LEVEL: mutates in-memory config.yaml (state.config.set), CE-only
@@ -181,7 +181,7 @@ async def update_configurations(
         try:
             state.config.set(key, value)
             updated.append(key)
-        except Exception as e:  # noqa: BLE001, PERF203 - Partial update resilience: collect failures, continue loop
+        except Exception as e:  # noqa: BLE001 - Partial update resilience: collect failures, continue loop
             # Log full detail server-side; return a generic message to avoid
             # leaking internal exception text to the caller (CodeQL: py/stack-trace-exposure)
             logger.warning("Configuration update failed for key %r: %s", key, e)
@@ -498,8 +498,8 @@ class SSLToggleRequest(BaseModel):
 class SSLStatusResponse(BaseModel):
     ssl_enabled: bool
     has_certificate: bool
-    cert_path: Optional[str] = None
-    key_path: Optional[str] = None
+    cert_path: str | None = None
+    key_path: str | None = None
     restart_required: bool = True
     message: str
 

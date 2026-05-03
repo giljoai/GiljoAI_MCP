@@ -9,7 +9,7 @@ Allows MCP adapter to route slash commands via HTTP (Handover 0080a)
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -28,7 +28,7 @@ class SlashCommandRequest(BaseModel):
     """Request model for slash command execution"""
 
     command: str  # e.g., "gil_handover"
-    project_id: Optional[str] = None
+    project_id: str | None = None
     arguments: dict[str, Any] = {}
 
 
@@ -37,11 +37,11 @@ class SlashCommandResponse(BaseModel):
 
     success: bool
     message: str
-    launch_prompt: Optional[str] = None  # Continuation prompt for simple handover
-    memory_entry_id: Optional[str] = None  # 360 Memory entry ID (simple handover)
-    context_reset: Optional[bool] = None  # Whether context was reset (simple handover)
-    error: Optional[str] = None
-    details: Optional[str] = None
+    launch_prompt: str | None = None  # Continuation prompt for simple handover
+    memory_entry_id: str | None = None  # 360 Memory entry ID (simple handover)
+    context_reset: bool | None = None  # Whether context was reset (simple handover)
+    error: str | None = None
+    details: str | None = None
 
 
 @router.post("/execute", response_model=SlashCommandResponse)

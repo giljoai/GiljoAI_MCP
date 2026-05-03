@@ -26,10 +26,10 @@ Usage:
     )
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ErrorCode(str, Enum):
+class ErrorCode(StrEnum):
     """Standardized error codes for structured logging"""
 
     # ============================================================================

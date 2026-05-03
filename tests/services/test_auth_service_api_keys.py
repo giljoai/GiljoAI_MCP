@@ -14,7 +14,7 @@ Split from test_auth_service.py. Contains:
 Handover 0731c: Updated for typed service returns (ApiKeyInfo, ApiKeyCreateResult).
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import bcrypt
@@ -48,7 +48,7 @@ async def auth_api_key(db_session, auth_user_with_password):
         key_prefix="gk_test_key_",
         permissions=["*"],
         is_active=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(api_key)
     await db_session.commit()
@@ -83,7 +83,7 @@ class TestListAPIKeys:
 
         # Revoke the API key
         api_key.is_active = False
-        api_key.revoked_at = datetime.now(timezone.utc)
+        api_key.revoked_at = datetime.now(UTC)
         await db_session.commit()
 
         result = await auth_service.list_api_keys(user.id, include_revoked=True)

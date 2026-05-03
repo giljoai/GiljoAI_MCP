@@ -15,6 +15,7 @@ Validates:
 
 import random
 import uuid
+from datetime import UTC
 
 import pytest
 
@@ -51,7 +52,7 @@ class TestPredecessorValidation:
 
     async def test_predecessor_different_project_raises_error(self, db_session, service, project, tenant_key):
         """Predecessor from a different project should raise ValidationError."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from giljo_mcp.exceptions import ValidationError
         from tests.services.conftest import _spawn_and_complete
@@ -65,7 +66,7 @@ class TestPredecessorValidation:
             status="active",
             tenant_key=tenant_key,
             series_number=random.randint(1, 999999),
-            implementation_launched_at=datetime.now(timezone.utc),
+            implementation_launched_at=datetime.now(UTC),
         )
         db_session.add(proj2)
         await db_session.commit()

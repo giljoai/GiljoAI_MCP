@@ -12,7 +12,6 @@ Handover 0041 - Phase 2: Template Resolution with Caching
 
 import logging
 import pickle  # nosec B403
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,7 +58,7 @@ class TemplateCache:
 
         logger.info(f"TemplateCache initialized (redis={'enabled' if redis_client else 'disabled'})")
 
-    def _build_cache_key(self, role: str, tenant_key: str, product_id: Optional[str] = None) -> str:
+    def _build_cache_key(self, role: str, tenant_key: str, product_id: str | None = None) -> str:
         """
         Build cache key for template lookup.
 
@@ -75,9 +74,7 @@ class TemplateCache:
             return f"template:{tenant_key}:{product_id}:{role}"
         return f"template:{tenant_key}:tenant:{role}"
 
-    async def get_template(
-        self, role: str, tenant_key: str, product_id: Optional[str] = None
-    ) -> Optional[AgentTemplate]:
+    async def get_template(self, role: str, tenant_key: str, product_id: str | None = None) -> AgentTemplate | None:
         """
         Get template with three-layer cache resolution.
 
@@ -143,9 +140,7 @@ class TemplateCache:
 
         return template
 
-    async def _query_cascade(
-        self, role: str, tenant_key: str, product_id: Optional[str] = None
-    ) -> Optional[AgentTemplate]:
+    async def _query_cascade(self, role: str, tenant_key: str, product_id: str | None = None) -> AgentTemplate | None:
         """
         Database cascade query with priority resolution.
 
@@ -174,7 +169,7 @@ class TemplateCache:
             logger.debug(f"No database template found for role='{role}', tenant='{tenant_key}'")
             return None
 
-    async def _query_system_template(self, session: AsyncSession, role: str) -> Optional[AgentTemplate]:
+    async def _query_system_template(self, session: AsyncSession, role: str) -> AgentTemplate | None:
         """Query system default template"""
         stmt = select(AgentTemplate).where(
             AgentTemplate.tenant_key == "system",
@@ -184,7 +179,7 @@ class TemplateCache:
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def invalidate(self, role: str, tenant_key: str, product_id: Optional[str] = None) -> None:
+    async def invalidate(self, role: str, tenant_key: str, product_id: str | None = None) -> None:
         """
         Invalidate template cache across all layers.
 
@@ -212,7 +207,7 @@ class TemplateCache:
 
     # Redis helper methods (async wrappers)
 
-    async def _get_from_redis(self, key: str) -> Optional[bytes]:
+    async def _get_from_redis(self, key: str) -> bytes | None:
         """Get value from Redis"""
         if not self.redis:
             return None

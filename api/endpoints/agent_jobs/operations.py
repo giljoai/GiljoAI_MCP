@@ -14,8 +14,7 @@ Sprint 003c: Mission update routed through MissionService (no direct session.com
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,11 +82,11 @@ async def get_job_health(
 
     if not execution:
         raise ResourceNotFoundError(f"Job {job_id} not found")
-    minutes_since_progress: Optional[float] = None
+    minutes_since_progress: float | None = None
     is_stale = False
 
     if execution.last_progress_at:
-        time_delta = datetime.now(timezone.utc) - execution.last_progress_at
+        time_delta = datetime.now(UTC) - execution.last_progress_at
         minutes_since_progress = time_delta.total_seconds() / 60.0
 
         # Job is stale if no progress in 10+ minutes and not in terminal state

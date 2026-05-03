@@ -10,18 +10,19 @@ Tests the combined ZIP staging that bundles slash commands + agent templates
 into a single download for first-time setup.
 """
 
+import tomllib
 import zipfile
+from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import tomllib
 
 from giljo_mcp.file_staging import FileStaging
 
 
 def _make_template(name: str, role: str, description: str = "") -> MagicMock:
     """Create a mock AgentTemplate with required fields."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     t = MagicMock()
     t.name = name
@@ -38,7 +39,7 @@ def _make_template(name: str, role: str, description: str = "") -> MagicMock:
     t.tenant_key = "test-tenant"
     t.cli_tool = None
     t.tools = None
-    t.updated_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    t.updated_at = datetime(2026, 1, 1, tzinfo=UTC)
     t.last_exported_at = None
     return t
 

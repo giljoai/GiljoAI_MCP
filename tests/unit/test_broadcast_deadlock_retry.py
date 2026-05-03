@@ -15,7 +15,7 @@ Tests cover:
 6. Batch counter update (Handover 0821): single-statement CASE-based UPDATE
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock, patch
 from uuid import uuid4
 
@@ -42,7 +42,7 @@ def _make_execution(agent_id: str, display_name: str, status: str = "working") -
     exe.agent_display_name = display_name
     exe.agent_name = display_name
     exe.status = status
-    exe.started_at = datetime.now(timezone.utc)
+    exe.started_at = datetime.now(UTC)
     exe.messages_sent_count = 0
     exe.messages_waiting_count = 0
     exe.job_id = str(uuid4())

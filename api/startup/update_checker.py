@@ -64,7 +64,7 @@ async def _is_git_repo() -> bool:
     try:
         code, _, _ = await _run_git("rev-parse", "--is-inside-work-tree")
         return code == 0
-    except (FileNotFoundError, asyncio.TimeoutError, OSError):
+    except (TimeoutError, FileNotFoundError, OSError):
         return False
 
 
@@ -73,7 +73,7 @@ async def _has_remote(remote: str = "origin") -> bool:
     try:
         code, _, _ = await _run_git("remote", "get-url", remote)
         return code == 0
-    except (FileNotFoundError, asyncio.TimeoutError, OSError):
+    except (TimeoutError, FileNotFoundError, OSError):
         return False
 
 
@@ -85,7 +85,7 @@ async def _fetch_remote(remote: str = "origin") -> bool:
             logger.debug("git fetch %s failed: %s", remote, stderr)
             return False
         return True
-    except (FileNotFoundError, asyncio.TimeoutError, OSError) as exc:
+    except (TimeoutError, FileNotFoundError, OSError) as exc:
         logger.debug("git fetch %s error: %s", remote, exc)
         return False
 
@@ -102,7 +102,7 @@ async def _commits_behind(branch: str = "origin/master") -> int | None:
             logger.debug("git rev-list failed: %s", stderr)
             return None
         return int(stdout)
-    except (FileNotFoundError, asyncio.TimeoutError, OSError, ValueError) as exc:
+    except (TimeoutError, FileNotFoundError, OSError, ValueError) as exc:
         logger.debug("git rev-list error: %s", exc)
         return None
 

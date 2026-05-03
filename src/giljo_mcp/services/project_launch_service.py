@@ -25,7 +25,7 @@ Design Principles:
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -344,7 +344,7 @@ class ProjectLaunchService:
 
         # Set staging_status to 'staging' when orchestrator is launched
         project.staging_status = "staging"
-        project.updated_at = datetime.now(timezone.utc)
+        project.updated_at = datetime.now(UTC)
 
         await self._lifecycle_repo.flush(session)
 

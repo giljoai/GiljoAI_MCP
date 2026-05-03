@@ -23,7 +23,7 @@ Handover 0828 Phase 3.
 import base64
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -126,7 +126,7 @@ class TestOAuthTokenEndpoint:
                 code_challenge=challenge,
                 code_challenge_method="S256",
                 scope="mcp",
-                expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+                expires_at=datetime.now(UTC) + timedelta(minutes=10),
                 used=False,
             )
             session.add(auth_code)
@@ -193,7 +193,7 @@ class TestOAuthTokenEndpoint:
                 code_challenge=challenge,
                 code_challenge_method="S256",
                 scope="mcp",
-                expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+                expires_at=datetime.now(UTC) + timedelta(minutes=10),
                 used=False,
             )
             session.add(auth_code)
@@ -239,7 +239,7 @@ class TestOAuthAuthorizeEndpoint:
     @pytest.mark.asyncio
     async def test_authorize_endpoint_validates_params(self, api_client, auth_headers):
         """Authorize endpoint must validate OAuth parameters and return redirect on success."""
-        verifier, challenge = _generate_pkce_pair()
+        _verifier, challenge = _generate_pkce_pair()
         response = await api_client.post(
             "/api/oauth/authorize",
             headers=auth_headers,
@@ -264,7 +264,7 @@ class TestOAuthAuthorizeEndpoint:
     @pytest.mark.asyncio
     async def test_authorize_endpoint_rejects_invalid_client(self, api_client, auth_headers):
         """Authorize endpoint must reject requests with an invalid client_id."""
-        verifier, challenge = _generate_pkce_pair()
+        _verifier, challenge = _generate_pkce_pair()
         response = await api_client.post(
             "/api/oauth/authorize",
             headers=auth_headers,
@@ -283,7 +283,7 @@ class TestOAuthAuthorizeEndpoint:
     @pytest.mark.asyncio
     async def test_authorize_endpoint_requires_auth(self, api_client):
         """Authorize POST endpoint must require authentication (no auth = 401)."""
-        verifier, challenge = _generate_pkce_pair()
+        _verifier, challenge = _generate_pkce_pair()
         response = await api_client.post(
             "/api/oauth/authorize",
             json={
