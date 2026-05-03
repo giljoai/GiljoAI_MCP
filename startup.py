@@ -994,7 +994,7 @@ def wait_for_api_ready(port: int, max_attempts: int = 60, interval: float = 0.5,
 
     for attempt in range(1, max_attempts + 1):
         try:
-            with urllib.request.urlopen(url, timeout=1, context=ssl_context) as response:
+            with urllib.request.urlopen(url, timeout=1, context=ssl_context) as response:  # noqa: S310  # reason: url is dev-server localhost http(s):// only, scheme controlled by config
                 if response.status == 200:
                     print_success(f"API ready after {attempt * interval:.1f}s")
                     return True
@@ -1077,10 +1077,9 @@ def check_dependencies() -> bool:
     for check_name, check_func, required in checks:
         print_info(f"Checking {check_name}...")
         result = check_func()
-        if not result and required:
-            # PostgreSQL gets a pass here because we verify via DB connection
-            if "PostgreSQL" not in check_name:
-                all_passed = False
+        # PostgreSQL gets a pass here because we verify via DB connection
+        if not result and required and "PostgreSQL" not in check_name:
+            all_passed = False
 
     return all_passed
 
@@ -1109,7 +1108,7 @@ def install_requirements() -> bool:
 
     # Check if critical packages are already installed
     all_installed = True
-    for module_name, package_name in critical_packages:
+    for module_name, _package_name in critical_packages:
         try:
             __import__(module_name)
         except ImportError:

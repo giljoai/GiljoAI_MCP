@@ -141,7 +141,7 @@ atexit.register(_tty_stack.close)
 
 def _get_tty() -> io.TextIOWrapper | None:
     """Open /dev/tty once and cache the handle."""
-    global _tty_file
+    global _tty_file  # noqa: PLW0603  # reason: cached TTY file handle deliberately module-scoped
     if _tty_file is not None:
         return _tty_file
     if sys.stdin.isatty():
@@ -503,12 +503,11 @@ class UnifiedInstaller:
                 if https_result.get("enabled"):
                     result["steps"].append("https_configured")
 
-            if not setup_only:
+            if not setup_only and self.settings.get("create_shortcuts", False):
                 # Step 8: Create desktop shortcuts (if requested - Windows only)
-                if self.settings.get("create_shortcuts", False):
-                    self._print_header("Creating Desktop Shortcuts")
-                    self.create_desktop_shortcuts()
-                    result["steps"].append("shortcuts_created")
+                self._print_header("Creating Desktop Shortcuts")
+                self.create_desktop_shortcuts()
+                result["steps"].append("shortcuts_created")
 
             # Success
             result["success"] = True
@@ -2816,12 +2815,12 @@ class UnifiedInstaller:
             # no-ops DDL without it, causing schema verification to fail later).
             try:
                 import greenlet  # noqa: F401
-            except ImportError:
+            except ImportError as exc:
                 raise RuntimeError(
                     "greenlet is required for alembic async migrations but is not installed. "
                     "This typically means a fresh venv is missing transitive deps on this platform "
                     "(macOS arm64 is a common case). Add 'greenlet>=3.5.0' to requirements.txt and reinstall."
-                )
+                ) from exc
 
             # Check database state before running migrations
             import asyncio

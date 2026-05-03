@@ -10,12 +10,12 @@ Tests the combined ZIP staging that bundles slash commands + agent templates
 into a single download for first-time setup.
 """
 
+import tomllib
 import zipfile
 from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import tomllib
 
 from giljo_mcp.file_staging import FileStaging
 
