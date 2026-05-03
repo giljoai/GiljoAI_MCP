@@ -529,7 +529,7 @@ class UnifiedInstaller:
         except Exception as e:
             self._print_error(f"Installation failed: {e}")
             result["error"] = str(e)
-            _logger.error("Installation status: FAILED | Error: %s", _sanitize_log(str(e)))
+            _logger.exception("Installation status: FAILED | Error: %s", _sanitize_log(str(e)))
             return result
 
     def welcome_screen(self) -> None:
@@ -2180,7 +2180,7 @@ class UnifiedInstaller:
 
         except Exception as e:
             self._print_error(f"Credential update failed: {e}")
-            _logger.error("Credential update exception: %s", _sanitize_log(str(e)))
+            _logger.exception("Credential update exception: %s", _sanitize_log(str(e)))
             return {"success": False, "errors": [str(e)]}
 
     def _ensure_logs_dir(self) -> Path:

@@ -1145,8 +1145,7 @@ class GiljoDevControlPanel:
                             child.kill()
                     proc.kill()
             if victims:
-                print(f"Killed {len(victims)} backend parent process(es) by name: "
-                      f"{[v.pid for v in victims]}")
+                print(f"Killed {len(victims)} backend parent process(es) by name: {[v.pid for v in victims]}")
             return
 
         # Fallback: no psutil -- shell out per-platform.
@@ -1158,10 +1157,19 @@ class GiljoDevControlPanel:
                 for script in script_names:
                     with contextlib.suppress(Exception):
                         result = subprocess.run(
-                            ["wmic", "process", "where",
-                             f"CommandLine like '%%{script}%%' and not CommandLine like '%%wmic%%'",
-                             "get", "ProcessId,CommandLine", "/format:csv"],
-                            check=False, capture_output=True, text=True, timeout=5,
+                            [
+                                "wmic",
+                                "process",
+                                "where",
+                                f"CommandLine like '%%{script}%%' and not CommandLine like '%%wmic%%'",
+                                "get",
+                                "ProcessId,CommandLine",
+                                "/format:csv",
+                            ],
+                            check=False,
+                            capture_output=True,
+                            text=True,
+                            timeout=5,
                         )
                         for line in result.stdout.splitlines():
                             if project_root_str not in line.lower():
@@ -1173,7 +1181,9 @@ class GiljoDevControlPanel:
                             if pid.isdigit() and int(pid) not in (my_pid, parent_pid):
                                 subprocess.run(
                                     ["taskkill", "/F", "/T", "/PID", pid],
-                                    check=False, capture_output=True, timeout=5,
+                                    check=False,
+                                    capture_output=True,
+                                    timeout=5,
                                 )
             else:
                 # Linux/macOS: pgrep -f matches against the full cmdline
@@ -1181,7 +1191,10 @@ class GiljoDevControlPanel:
                     with contextlib.suppress(Exception):
                         result = subprocess.run(
                             ["pgrep", "-f", script],
-                            check=False, capture_output=True, text=True, timeout=5,
+                            check=False,
+                            capture_output=True,
+                            text=True,
+                            timeout=5,
                         )
                         for pid_str in result.stdout.split():
                             if not pid_str.isdigit():
@@ -1192,16 +1205,16 @@ class GiljoDevControlPanel:
                             # Verify cmdline contains project_root before killing
                             try:
                                 with open(f"/proc/{pid}/cmdline", "rb") as f:
-                                    cmd = f.read().replace(b"\x00", b" ").decode(
-                                        "utf-8", errors="ignore"
-                                    ).lower()
+                                    cmd = f.read().replace(b"\x00", b" ").decode("utf-8", errors="ignore").lower()
                             except OSError:
                                 cmd = ""
                             if cmd and project_root_str not in cmd:
                                 continue
                             subprocess.run(
                                 ["kill", "-9", str(pid)],
-                                check=False, capture_output=True, timeout=5,
+                                check=False,
+                                capture_output=True,
+                                timeout=5,
                             )
         except Exception as e:
             print(f"Warning: name-based backend kill sweep failed: {e}")
@@ -4094,7 +4107,7 @@ pg_restore -l {backup_file.name} | head -20
 
             except Exception as e:
                 removed.append(f"Windows cert store removal error: {e}")
-                self.logger.error("Windows cert store removal failed: %s", e)
+                self.logger.exception("Windows cert store removal failed: %s", e)
 
         elif system == "Darwin":
             # macOS: cert was added via security add-trusted-cert to System keychain
