@@ -899,7 +899,7 @@ class ProjectService:
                 raise ValidationError(
                     f"Unknown project type '{project_type}'. "
                     f"Valid types: {', '.join(valid_labels)}. "
-                    "Use list_projects() to see all valid project_types.",
+                    "Set project_type to one of these abbreviations or omit it.",
                     context={"operation": "create_project", "valid_types": valid_types},
                 )
 
@@ -1312,7 +1312,7 @@ class ProjectService:
                 raise ValidationError(
                     f"Unknown project type '{project_type}'. "
                     f"Valid types: {', '.join(valid_labels)}. "
-                    "Use list_projects() to see all valid project_types.",
+                    "Set project_type to one of these abbreviations or omit it.",
                     context={"operation": "update_project_metadata", "valid_types": valid_types},
                 )
 

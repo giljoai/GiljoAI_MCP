@@ -58,11 +58,12 @@ paths = [
 
     # Tooling / dependencies (not project code)
     '''\.venv/.*''',
-    '''\.venv\.old/.*''',
     '''venv/.*''',
     '''dev_tools/venv_devtools/.*''',
     '''node_modules/.*''',
-    '''frontend/node_modules\.old/.*''',
+
+    # Migration backups / safety nets (any *.old/ directory)
+    '''.*\.old/.*''',
     '''\.git/.*''',
     '''dist/.*''',
     '''build/.*''',
