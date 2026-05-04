@@ -20,6 +20,7 @@ Define your product once. Every agent that connects gets the full picture.
 [![Backend CI](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/ci.yml)
 [![Frontend CI](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/frontend.yml/badge.svg)](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/frontend.yml)
 [![CodeQL](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/codeql.yml/badge.svg)](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/codeql.yml)
+[![SafeSkill 30/100](https://img.shields.io/badge/SafeSkill-30%2F100_Blocked-red)](https://safeskill.dev/scan/giljoai-giljoai-mcp)
 
 <br>
 
