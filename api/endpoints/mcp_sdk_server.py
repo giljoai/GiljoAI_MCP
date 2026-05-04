@@ -1199,13 +1199,16 @@ async def write_360_memory(
                 "Tags for categorization. Max 8 tags, each from the controlled 16-tag vocabulary "
                 "(server-enforced): change-type [feature, bug-fix, refactor, perf, security, docs, test, chore], "
                 "domain [frontend, backend, database, api, infrastructure, ui-ux, integration], "
-                "operational [migration]. Use 'action_required:description' prefix for items that must persist beyond depth window."
+                "operational [migration]. DEPRECATED: do not use 'action_required:description' tag prefixes for new work — create a follow-up task via create_task instead."
             ),
         ),
     ] = None,
     ctx: Context = None,
 ) -> dict:
-    """Write 360 memory entry for project completion/handover."""
+    """Write 360 memory entry for project completion/handover.
+
+    DEPRECATED: do not use `action_required:` tag prefixes or write `action_required` 360 entries for new work. Create a follow-up task via `mcp__giljo_mcp__create_task` (or a project via `mcp__giljo_mcp__create_project` for multi-step work) and cite the returned ID in `decisions_made` at closeout.
+    """
     kwargs: dict[str, Any] = {
         "project_id": project_id,
         "summary": summary,

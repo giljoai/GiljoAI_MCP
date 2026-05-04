@@ -473,11 +473,12 @@ async def write_360_memory(
         author_job_id: Job ID of agent writing entry (optional)
         git_commits: Agent-supplied commits from local git log. When provided,
             skips the GitHub API fetch entirely (passive server model).
-        tags: <= 8 tags, each <= 30 chars matching ``^[a-z0-9-]+$``,
-            OR ``action_required:<title>`` for items that must persist
-            beyond the depth window.
+        tags: <= 8 tags, each <= 30 chars matching ``^[a-z0-9-]+$``.
+            DEPRECATED: do not use ``action_required:<title>`` tag prefixes for new work.
         db_manager: Database manager (dependency injection)
         session: Optional existing session
+
+    DEPRECATED: do not use `action_required:` tag prefixes or write `action_required` 360 entries for new work. Create a follow-up task via `mcp__giljo_mcp__create_task` (or a project via `mcp__giljo_mcp__create_project` for multi-step work) and cite the returned ID in `decisions_made` at closeout.
 
     Returns:
         Success/error dictionary with sequence number and entry_id

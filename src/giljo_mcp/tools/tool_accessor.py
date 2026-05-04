@@ -726,6 +726,8 @@ class ToolAccessor:
             git_commits: Agent-supplied git commits (from local git log)
             tags: Tags for categorization (e.g. 'action_required:description')
 
+        DEPRECATED: do not use `action_required:` tag prefixes or write `action_required` 360 entries for new work. Create a follow-up task via `mcp__giljo_mcp__create_task` (or a project via `mcp__giljo_mcp__create_project` for multi-step work) and cite the returned ID in `decisions_made` at closeout.
+
         Returns:
             Success/error response with sequence number
         """

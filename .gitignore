@@ -238,3 +238,5 @@ scripts/hooks/
 # G: Dev Drive migration backups (safety nets, never tracked)
 .venv.old/
 frontend/node_modules.old/
+.env.pre-ops-backup
+config.yaml.pre-lanbind-backup

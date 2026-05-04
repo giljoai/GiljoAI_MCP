@@ -54,7 +54,7 @@ async def get_git_history(
 
     Updated in Handover 0390b to read from product_memory_entries table.
     Uses ProductMemoryRepository.get_git_history() to aggregate commits.
-    Returns empty if GitHub integration is disabled.
+    Returns empty if Git integration is disabled.
 
     Args:
         product_id: Product UUID
@@ -144,7 +144,7 @@ async def _get_git_history_impl(
             },
         }
 
-    # Check if GitHub integration is enabled (still in JSONB)
+    # Check if Git integration is enabled (still in JSONB)
     git_config = product.product_memory.get("git_integration", {}) if product.product_memory else {}
     git_enabled = git_config.get("enabled", False)
 

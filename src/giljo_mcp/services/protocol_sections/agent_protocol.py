@@ -149,6 +149,7 @@ Before calling `complete_job()`, you MUST verify:
 **Resolve action tags:** Before completing, check if any `action_required` tagged items from
 360 memory were addressed by your work (visible in fetch_context memory_360 under `action_required_items`).
 If so, include `resolved_action_items: ["<description>"]` in your result dict to clear them.
+When you finish work and a follow-up is needed, create a task via `mcp__giljo_mcp__create_task` — or a project via `mcp__giljo_mcp__create_project` if it's multi-step — and cite the returned ID in `decisions_made` when you call `close_project_and_update_memory`. Do not use `action_required:` tags or `action_required` 360 entries; they are deprecated.
 
 Final steps:
 1. Call `receive_messages()` - Final message check
@@ -251,11 +252,9 @@ Concrete examples (one per category):
   capture a new layered boundary (e.g. EventBus introduced between CE and SaaS).
 - Worker `discovery`: `write_360_memory(entry_type="discovery", ...)` for a
   surprising finding (e.g. "Alembic skips offline migrations on PG18 boot").
-- Orchestrator `action_required`: `write_360_memory(entry_type="action_required", ...)`
-  to flag a deferred follow-up that future agents must pick up.
+- Orchestrator deferred work: create a follow-up task via `mcp__giljo_mcp__create_task` (or a project via `mcp__giljo_mcp__create_project` for multi-step work) and cite the returned ID in `decisions_made` at closeout. Do not use `action_required:` tags or write `action_required` 360 entries; they are deprecated. (See INF-5025.)
 
-Use `discovery` for one-off findings worth remembering; use `action_required`
-only when the entry MUST trigger future work (orchestrator-only).
+Use `discovery` for one-off findings worth remembering.
 ---
 **Your Identifiers:**
 - job_id (work order): `{job_id}` - Use for mission, progress, completion

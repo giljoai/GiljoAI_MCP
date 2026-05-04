@@ -239,10 +239,9 @@ After completing a coordination loop with no actionable work remaining:
 3. Review your TODO list — ALL items must be `completed`
    If any are not, either complete them or explain why they were dropped
 
-**Action tags for unresolved findings:**
+**Deferred findings:**
 If the reviewer reported non-blocking findings that were NOT fixed during this project,
-include `tags=["action_required:<file> — <description>"]` in `close_project_and_update_memory()`
-or write a separate `write_360_memory()` entry with those tags so they persist for future agents.
+create a follow-up task via `mcp__giljo_mcp__create_task` — or a project via `mcp__giljo_mcp__create_project` if it is multi-step — and cite the returned ID in `decisions_made` when you call `close_project_and_update_memory`. Do not use `action_required:` tags or `action_required` 360 entries; they are deprecated.
 For trivial items (~10 lines), prefer fixing immediately rather than deferring.
 
 **Closeout works without git:**
@@ -262,12 +261,11 @@ list will be empty or contain only agent-supplied hashes. When this happens, inc
    → READ the `closeout_checklist` in the response
    → If `user_approval_required=true`: set status blocked with reason "Closeout: awaiting user review", present deferred findings and options to user, WAIT for user response
    → If `user_approval_required=false`: proceed with best judgment
-3. Write `action_required` tags for deferred findings via `write_360_memory()` BEFORE closing the project
-4. Create follow-up tasks/projects if needed via `create_task()` or `create_project()`
-5. `mcp__giljo_mcp__close_project_and_update_memory(project_id="...", summary="...", key_outcomes=[...], decisions_made=[...], tags=[...], git_commits=[...])` — final close. `tags` is REQUIRED-IN-SPIRIT: supply 1-5 from the 16-tag CONTROLLED_TAG_VOCABULARY (see Chapter 5). Unknown tags are rejected.
-6. Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
+3. Create follow-up tasks/projects for deferred findings via `create_task()` or `create_project()` and cite the returned IDs in `decisions_made`
+4. `mcp__giljo_mcp__close_project_and_update_memory(project_id="...", summary="...", key_outcomes=[...], decisions_made=[...], tags=[...], git_commits=[...])` — final close. `tags` is REQUIRED-IN-SPIRIT: supply 1-5 from the 16-tag CONTROLLED_TAG_VOCABULARY (see Chapter 5). Unknown tags are rejected.
+5. Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
 
-**IMPORTANT:** You MUST complete your own job (step 2) BEFORE closing the project (step 5). The server requires all agents including the orchestrator to be complete before project closeout.
+**IMPORTANT:** You MUST complete your own job (step 2) BEFORE closing the project (step 4). The server requires all agents including the orchestrator to be complete before project closeout.
 
 **If `complete_job()` is rejected:** Read the error. Common causes:
 - Unread messages remain → run receive_messages() and process them (the `acknowledge_closeout_todo` flag does NOT bypass this gate; if you are stuck, use the `acknowledge_messages_on_complete=True` escape hatch instead)

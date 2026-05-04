@@ -548,7 +548,7 @@ test.describe('GitHub Integration Toggle', () => {
   test('github enabled: shows commits in closeout modal', async ({ page }) => {
     // Enable GitHub integration
     await navigateToSettings(page, 'integrations')
-    const githubToggle = page.locator('[data-testid="github-integration-toggle"]')
+    const githubToggle = page.locator('[data-testid="git-integration-toggle"]')
     await githubToggle.check()
     await expectToastWithText(page, 'GitHub integration enabled')
 
@@ -568,7 +568,7 @@ test.describe('GitHub Integration Toggle', () => {
   test('github disabled: shows manual summary only', async ({ page }) => {
     // Disable GitHub integration
     await navigateToSettings(page, 'integrations')
-    const githubToggle = page.locator('[data-testid="github-integration-toggle"]')
+    const githubToggle = page.locator('[data-testid="git-integration-toggle"]')
     await githubToggle.uncheck()
     await expectToastWithText(page, 'GitHub integration disabled')
 

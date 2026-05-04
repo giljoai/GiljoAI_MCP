@@ -306,9 +306,9 @@ async def close_project_and_update_memory(
         key_outcomes <= 5 items, each <= 200 chars
         decisions_made <= 5 items, each <= 250 chars
         tags <= 8 items, each from the 16-tag CONTROLLED_TAG_VOCABULARY in
-            MemoryEntryWriteSchema (or an ``action_required:<title>`` free-form
-            tag). Invalid tags trigger a structured MemoryEntryWriteValidationError
+            MemoryEntryWriteSchema. Invalid tags trigger a structured MemoryEntryWriteValidationError
             carrying the offending tag and the full allowed enum.
+            DEPRECATED: do not use ``action_required:<title>`` free-form tags for new work.
 
     Args:
         tags: Orchestrator-supplied controlled-vocabulary tags for the
@@ -320,6 +320,8 @@ async def close_project_and_update_memory(
             (no auto-extraction from prose).
         git_commits: Agent-supplied commits from local git log. When provided,
             skips the GitHub API fetch entirely (passive server model).
+
+    DEPRECATED: do not use `action_required:` tag prefixes or write `action_required` 360 entries for new work. Create a follow-up task via `mcp__giljo_mcp__create_task` (or a project via `mcp__giljo_mcp__create_project` for multi-step work) and cite the returned ID in `decisions_made` at closeout.
 
     Raises:
         MemoryEntryWriteValidationError: structured rejection when caps are
