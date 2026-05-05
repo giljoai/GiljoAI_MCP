@@ -918,8 +918,16 @@ def start_frontend_server(verbose: bool = False) -> subprocess.Popen | None:
             print_warning("npm not found in PATH - skipping frontend server")
             return None
 
-        # Check if node_modules is properly installed (.package-lock.json is written by npm install)
-        if not (frontend_dir / "node_modules" / ".package-lock.json").exists():
+        # Run npm install if node_modules is missing OR package-lock.json is newer than
+        # the install marker (deps were updated since the last install). The previous
+        # check looked only at marker existence, so dependency upgrades shipped via
+        # `git pull` were silently ignored on subsequent restarts.
+        node_modules_marker = frontend_dir / "node_modules" / ".package-lock.json"
+        package_lock = frontend_dir / "package-lock.json"
+        needs_install = not node_modules_marker.exists() or (
+            package_lock.exists() and package_lock.stat().st_mtime > node_modules_marker.stat().st_mtime
+        )
+        if needs_install:
             print_info("Installing frontend dependencies...")
             subprocess.run([npm_executable, "install"], cwd=str(frontend_dir), check=True)
 
@@ -1547,8 +1555,14 @@ def run_startup(
                 return 1
         else:
             print_info("Rebuilding frontend...")
-            # Ensure node_modules exist
-            if not (frontend_dir / "node_modules" / ".package-lock.json").exists():
+            # Ensure node_modules exist AND match package-lock.json (catches dep upgrades
+            # that shipped via `git pull` since the last install).
+            node_modules_marker = frontend_dir / "node_modules" / ".package-lock.json"
+            package_lock = frontend_dir / "package-lock.json"
+            needs_install = not node_modules_marker.exists() or (
+                package_lock.exists() and package_lock.stat().st_mtime > node_modules_marker.stat().st_mtime
+            )
+            if needs_install:
                 print_info("Installing frontend dependencies...")
                 subprocess.run([npm_cmd, "install"], cwd=str(frontend_dir), check=True)
             build_result = subprocess.run(
