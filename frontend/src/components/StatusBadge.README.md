@@ -76,7 +76,7 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
 
 | Prop          | Type   | Required | Default          | Description                                                                                                  |
 | ------------- | ------ | -------- | ---------------- | ------------------------------------------------------------------------------------------------------------ |
-| `status`      | String | Yes      | -                | Current project status. Must be one of: `inactive`, `active`, `paused`, `completed`, `cancelled`, `archived` |
+| `status`      | String | Yes      | -                | Current project status. Must be one of: `inactive`, `active`, `completed`, `cancelled`, `archived` |
 | `projectId`   | String | Yes      | -                | Unique project identifier for API calls                                                                      |
 | `projectName` | String | No       | `'this project'` | Project name used in confirmation dialogs                                                                    |
 
@@ -94,7 +94,6 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
 | --------- | --------- | ------- | ------------------ |
 | active    | Green     | #4CAF50 | mdi-play-circle    |
 | inactive  | Grey      | #9E9E9E | mdi-circle-outline |
-| paused    | Amber     | #FFC107 | mdi-pause-circle   |
 | completed | Blue      | #2196F3 | mdi-check-circle   |
 | cancelled | Red       | #F44336 | mdi-cancel         |
 | archived  | Dark Grey | -       | mdi-archive        |
@@ -103,9 +102,8 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
 
 | Current Status | Available Actions                                  |
 | -------------- | -------------------------------------------------- |
-| inactive       | Activate, Pause, Complete, Cancel, Archive, Delete |
-| active         | Pause, Complete, Cancel, Deactivate, Delete        |
-| paused         | Resume, Complete, Cancel, Deactivate, Delete       |
+| inactive       | Activate, Complete, Cancel, Archive, Delete        |
+| active         | Complete, Cancel, Deactivate, Delete               |
 | completed      | Reopen, Archive, Delete                            |
 | cancelled      | Reopen, Archive, Delete                            |
 | archived       | Restore, Delete                                    |
@@ -114,7 +112,7 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
 
 **Non-Destructive Actions** (no confirmation):
 
-- Activate, Deactivate, Pause, Resume, Reopen, Restore
+- Activate, Deactivate, Reopen, Restore
 
 **Requires Confirmation**:
 
@@ -216,29 +214,6 @@ describe('StatusBadge', () => {
 
     expect(wrapper.find('.v-chip').classes()).toContain('bg-success')
     expect(wrapper.text()).toContain('Active')
-  })
-
-  it('emits action event when menu item clicked', async () => {
-    const wrapper = mount(StatusBadge, {
-      global: { plugins: [vuetify] },
-      props: {
-        status: 'active',
-        projectId: '123',
-      },
-    })
-
-    // Click badge to open menu
-    await wrapper.find('.status-badge-chip').trigger('click')
-
-    // Click "Pause" action
-    await wrapper.findAll('.v-list-item')[0].trigger('click')
-
-    expect(wrapper.emitted('action')).toBeTruthy()
-    expect(wrapper.emitted('action')[0][0]).toEqual({
-      action: 'pause',
-      newStatus: 'paused',
-      projectId: '123',
-    })
   })
 
   it('shows confirmation dialog for destructive actions', async () => {

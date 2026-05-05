@@ -171,9 +171,6 @@ class Project(Base):
         default=None,
         comment="Timestamp when user clicked Implement button. NULL = staging only.",
     )
-    paused_at = Column(
-        DateTime(timezone=True), nullable=True, comment="Timestamp when project was last paused/deactivated"
-    )
     deleted_at = Column(
         DateTime(timezone=True),
         nullable=True,

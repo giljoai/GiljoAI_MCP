@@ -18,8 +18,8 @@ management, and multi-product isolation support.
 
 ### 2. Status Filtering
 
-- **Filter Tabs**: Quick-select chips for: All, Active, Inactive, Paused,
-  Completed, Cancelled
+- **Filter Tabs**: Quick-select chips for: All, Active, Inactive, Completed,
+  Cancelled
 - **Dynamic Counts**: Each tab shows count of projects in that status
 - **Visual Indication**: Currently selected filter is highlighted with primary
   color
@@ -37,7 +37,6 @@ management, and multi-product isolation support.
 Using the new **StatusBadge** component:
 
 - **Activate**: Change inactive projects to active
-- **Pause**: Pause active projects temporarily
 - **Complete**: Mark projects as completed
 - **Cancel**: Cancel in-progress projects
 - **Restore**: Restore completed/cancelled projects to inactive
@@ -78,7 +77,6 @@ Real-time statistics for active product:
 
 - **Total Projects**: Count of all projects
 - **Active**: Count of active projects
-- **Paused**: Count of paused projects
 - **Completed**: Count of completed projects
 
 ### 8. Product Isolation
@@ -124,7 +122,7 @@ None (self-contained with store integration)
 
 ```javascript
 {
-  status: 'active|inactive|paused|completed|cancelled',    // Required
+  status: 'active|inactive|completed|cancelled',           // Required
   projectId: String,                                        // Required
   disabled: Boolean                                         // Optional, default: false
 }
@@ -134,7 +132,7 @@ None (self-contained with store integration)
 
 ```javascript
 emit('action', {
-  action: 'activate|pause|complete|cancel|restore|delete',
+  action: 'activate|complete|cancel|restore|delete',
   projectId: String,
 })
 ```
@@ -153,7 +151,6 @@ deleteProject(id) // Soft-delete project
 
 // Status Actions
 activateProject(id) // Change status to 'active'
-pauseProject(id) // Change status to 'paused'
 completeProject(id) // Change status to 'completed'
 cancelProject(id) // Change status to 'cancelled'
 restoreProject(id) // Change status to 'inactive' and clear deleted_at
@@ -179,7 +176,6 @@ deletedCount // Number of deleted projects
 // UI State
 statusCounts.active // Active project count
 statusCounts.inactive // Inactive project count
-statusCounts.paused // Paused project count
 statusCounts.completed // Completed project count
 statusCounts.cancelled // Cancelled project count
 ```
@@ -220,7 +216,7 @@ searchQuery // ref - current search term
 ```javascript
 async handleStatusAction({ action, projectId })
   // Routes status actions to appropriate store methods
-  // Actions: activate, pause, complete, cancel, restore, delete
+  // Actions: activate, complete, cancel, restore, delete
 ```
 
 ### Form Management
@@ -370,7 +366,6 @@ const statusOptions = [
   // Available statuses
   'active',
   'inactive',
-  'paused',
   'completed',
   'cancelled',
 ]

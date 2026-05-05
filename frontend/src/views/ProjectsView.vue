@@ -615,7 +615,6 @@ const isProjectStaged = (project) =>
 
 // Normalize legacy status values
 function normalizeStatus(status) {
-  if (status === 'paused') return 'inactive'
   return status || 'inactive'
 }
 

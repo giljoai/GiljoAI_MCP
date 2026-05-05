@@ -918,18 +918,21 @@ def start_frontend_server(verbose: bool = False) -> subprocess.Popen | None:
             print_warning("npm not found in PATH - skipping frontend server")
             return None
 
-        # Run npm install if node_modules is missing OR package-lock.json is newer than
-        # the install marker (deps were updated since the last install). The previous
-        # check looked only at marker existence, so dependency upgrades shipped via
-        # `git pull` were silently ignored on subsequent restarts.
+        # Run `npm ci` if node_modules is missing OR package-lock.json is newer than
+        # the install marker (deps were updated since the last install). `npm ci`
+        # is read-only against package-lock.json: it installs exactly what's locked
+        # and refuses to mutate the lockfile, so a `git pull` of new deps never
+        # leaves a dirty working tree on machines like dogfood. If package.json
+        # and the lockfile drift apart, `npm ci` errors out -- that's the desired
+        # signal to fix upstream, not a silent local mutation.
         node_modules_marker = frontend_dir / "node_modules" / ".package-lock.json"
         package_lock = frontend_dir / "package-lock.json"
         needs_install = not node_modules_marker.exists() or (
             package_lock.exists() and package_lock.stat().st_mtime > node_modules_marker.stat().st_mtime
         )
         if needs_install:
-            print_info("Installing frontend dependencies...")
-            subprocess.run([npm_executable, "install"], cwd=str(frontend_dir), check=True)
+            print_info("Installing frontend dependencies (npm ci)...")
+            subprocess.run([npm_executable, "ci"], cwd=str(frontend_dir), check=True)
 
         # Configure process creation for verbose mode
         popen_kwargs = {
@@ -1556,15 +1559,17 @@ def run_startup(
         else:
             print_info("Rebuilding frontend...")
             # Ensure node_modules exist AND match package-lock.json (catches dep upgrades
-            # that shipped via `git pull` since the last install).
+            # that shipped via `git pull` since the last install). Use `npm ci`
+            # (read-only against the lockfile) so production-style restarts never
+            # leave a dirty working tree.
             node_modules_marker = frontend_dir / "node_modules" / ".package-lock.json"
             package_lock = frontend_dir / "package-lock.json"
             needs_install = not node_modules_marker.exists() or (
                 package_lock.exists() and package_lock.stat().st_mtime > node_modules_marker.stat().st_mtime
             )
             if needs_install:
-                print_info("Installing frontend dependencies...")
-                subprocess.run([npm_cmd, "install"], cwd=str(frontend_dir), check=True)
+                print_info("Installing frontend dependencies (npm ci)...")
+                subprocess.run([npm_cmd, "ci"], cwd=str(frontend_dir), check=True)
             build_result = subprocess.run(
                 [npm_cmd, "run", "build"],
                 cwd=str(frontend_dir),
