@@ -341,24 +341,13 @@ async def _get_360_memory_impl(
     has_more = (offset + returned_projects) < total_projects
     next_offset = offset + returned_projects if has_more else None
 
-    # Fetch action_required tagged entries beyond depth window
-    depth_entry_ids = {str(e.id) for e in entries}
-    tagged_entries = await memory_service.get_entries_by_tag_prefix(
-        product_id=product_id,
-        prefix="action_required",
-        session=session,
-    )
-    # Deduplicate: exclude entries already in depth-limited results
-    extra_tagged = [e for e in tagged_entries if str(e.id) not in depth_entry_ids]
-    # Action-required extras serialize in headline mode regardless of depth
-    # so the count stays bounded; they're a side-channel surfaced for follow-up.
-    action_required_items = [_serialize_headline(e) for e in extra_tagged]
+    # action_required tagged-extras fetch removed in INF-5025b
 
     # Calculate token estimate
     total_tokens = estimate_tokens(paginated_history)
 
     logger.info(
-        "360_memory_fetched product_id=%s tenant_key=%s depth=%s offset=%s total_projects=%s returned_projects=%s returned_entries=%s has_more=%s estimated_tokens=%s action_required_count=%s",
+        "360_memory_fetched product_id=%s tenant_key=%s depth=%s offset=%s total_projects=%s returned_projects=%s returned_entries=%s has_more=%s estimated_tokens=%s",
         product_id,
         tenant_key,
         last_n_projects,
@@ -368,10 +357,9 @@ async def _get_360_memory_impl(
         len(paginated_history),
         has_more,
         total_tokens,
-        len(action_required_items),
     )
 
-    result = {
+    return {
         "source": "360_memory",
         "depth": last_n_projects,
         "data": paginated_history,
@@ -387,13 +375,3 @@ async def _get_360_memory_impl(
             "next_offset": next_offset,
         },
     }
-
-    # INF-WriteShape: surface action_required extras DISTINCTLY from
-    # returned_projects (today they were conflated). The count is always
-    # present (even when zero) so consumers can rely on the key.
-    result["metadata"]["action_required_extras"] = len(action_required_items)
-    if action_required_items:
-        result["action_required_items"] = action_required_items
-        result["metadata"]["action_required_count"] = len(action_required_items)
-
-    return result

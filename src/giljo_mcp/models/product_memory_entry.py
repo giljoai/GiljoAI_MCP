@@ -90,7 +90,6 @@ class ProductMemoryEntry(Base):
             "project_completion (orchestrator project closeout); "
             "handover_closeout (legacy/explicit handover entry, preserved for back-compat); "
             "session_handover (orchestrator-to-orchestrator handover across sessions); "
-            "action_required (deferred follow-up flagged for future agents); "
             "baseline (initial seeding -- architecture snapshot, foundation context); "
             "decision (a specific choice with rationale); "
             "architecture (structural notes about the system); "

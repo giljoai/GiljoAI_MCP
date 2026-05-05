@@ -12,7 +12,7 @@ are routed through this repository.
 
 Tenant isolation: All query methods accept tenant_key and apply it when
 provided. Callers SHOULD always pass tenant_key; None is accepted only for
-backward compatibility during incremental migration (see action_required tag).
+backward compatibility during incremental migration.
 """
 
 from __future__ import annotations

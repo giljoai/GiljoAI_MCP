@@ -425,8 +425,8 @@ Domain    (7):  frontend, backend, database, api, infrastructure, ui-ux, integra
 Operational(1): migration
 
 Pick 1-3 from change-type AND 1-3 from domain. Use 'migration' for schema
-changes. Anything outside this list is rejected. 'action_required:<title>'
-free-form tags are preserved for back-compat but DEPRECATED — use create_task instead.
+changes. Anything outside this list is rejected. For deferred follow-ups,
+create a task via create_task instead of tagging the memory entry.
 
 DELIBERATELY EXCLUDED (do NOT request additions in passing):
 - saas / ce / demo (edition routing belongs in release metadata)

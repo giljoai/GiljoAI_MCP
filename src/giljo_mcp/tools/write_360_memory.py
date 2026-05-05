@@ -56,11 +56,11 @@ SKIP_STATUSES = {"decommissioned", "closed"}
 
 # BE-5028 Fix B: Per-entry-type authorization matrix.
 # Workers may only write background/discovery-style entries when explicitly
-# assigned. Closeout-shaped entries (project_completion, session_handover,
-# action_required) are ORCHESTRATOR-ONLY because they document team-wide state
-# that only the orchestrator can attest to.
+# assigned. Closeout-shaped entries (project_completion, session_handover)
+# are ORCHESTRATOR-ONLY because they document team-wide state that only the
+# orchestrator can attest to.
 WORKER_ALLOWED_ENTRY_TYPES = frozenset({"baseline", "decision", "architecture", "discovery"})
-ORCHESTRATOR_ONLY_ENTRY_TYPES = frozenset({"project_completion", "session_handover", "action_required"})
+ORCHESTRATOR_ONLY_ENTRY_TYPES = frozenset({"project_completion", "session_handover"})
 
 
 async def _resolve_project_and_product(
@@ -383,7 +383,7 @@ async def _check_closeout_readiness(
             "blockers": blockers,
             "summary": summary,
             "message": f"Closeout blocked: {len(blockers)} unresolved blocker(s) found",
-            "action_required": "Resolve all blockers before closeout. Use set_agent_status(status='blocked') if unable to resolve.",
+            "next_steps": "Resolve all blockers before closeout. Use set_agent_status(status='blocked') if unable to resolve.",
         }
 
     return True, {
@@ -460,7 +460,7 @@ async def write_360_memory(
     # INF-WriteShape: single validated write boundary -- shared with
     # close_project_and_update_memory. Caps:
     #   summary <= 500, key_outcomes <= 5x200, decisions_made <= 5x250,
-    #   deliverables <= 10x150, tags <= 8x30 (^[a-z0-9-]+$ or action_required:<title>)
+    #   deliverables <= 10x150, tags <= 8x30 (controlled vocabulary)
     # Raises MemoryEntryWriteValidationError (structured rejection) on failure;
     # the caller-level except clause filters and re-raises so MCP surfaces it.
     validated = validate_memory_entry_write(
@@ -491,7 +491,6 @@ async def write_360_memory(
             "project_completion",
             "handover_closeout",
             "session_handover",
-            "action_required",
             "baseline",
             "decision",
             "architecture",

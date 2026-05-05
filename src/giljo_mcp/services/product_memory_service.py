@@ -406,38 +406,7 @@ class ProductMemoryService:
                 include_deleted=include_deleted,
             )
 
-    async def get_entries_by_tag_prefix(
-        self,
-        product_id: str,
-        prefix: str,
-        session: AsyncSession | None = None,
-    ) -> list:
-        """Fetch memory entries matching a tag prefix.
-
-        BE-5022b: Service wrapper for ProductMemoryRepository.get_entries_by_tag_prefix().
-
-        Args:
-            product_id: Product UUID
-            prefix: Tag prefix to match (e.g. "action_required")
-            session: Optional existing session
-
-        Returns:
-            List of ProductMemoryEntry instances matching the tag prefix
-        """
-        if session is not None:
-            return await self._repo.get_entries_by_tag_prefix(
-                session=session,
-                product_id=product_id,
-                tenant_key=self.tenant_key,
-                prefix=prefix,
-            )
-        async with self._get_session() as new_session:
-            return await self._repo.get_entries_by_tag_prefix(
-                session=new_session,
-                product_id=product_id,
-                tenant_key=self.tenant_key,
-                prefix=prefix,
-            )
+    # get_entries_by_tag_prefix removed in INF-5025b
 
     async def get_git_history(
         self,
@@ -509,7 +478,6 @@ class ProductMemoryService:
         """Create a new product memory entry.
 
         BE-5022b: Service wrapper for ProductMemoryRepository.create_entry().
-        BE-5022f: Post-write hook creates tasks from action_required tags.
 
         Args:
             params: MemoryEntryCreateParams with all required fields
@@ -519,82 +487,8 @@ class ProductMemoryService:
             Created ProductMemoryEntry instance
         """
         if session is not None:
-            entry = await self._repo.create_entry(session=session, params=params)
-            await self._create_action_required_tasks(params, session)
-            return entry
+            return await self._repo.create_entry(session=session, params=params)
         async with self._get_session() as new_session:
-            entry = await self._repo.create_entry(session=new_session, params=params)
-            await self._create_action_required_tasks(params, new_session)
-            return entry
+            return await self._repo.create_entry(session=new_session, params=params)
 
-    async def _create_action_required_tasks(
-        self,
-        params: MemoryEntryCreateParams,
-        session: AsyncSession,
-    ) -> None:
-        """Scan tags for action_required: prefix and create tasks idempotently.
-
-        BE-5022f: Post-write hook. For each tag starting with 'action_required:',
-        creates a task via TaskService if one doesn't already exist.
-
-        Args:
-            params: The memory entry params (contains tags, tenant_key, product_id)
-            session: Active database session
-        """
-        if not params.tags:
-            return
-
-        action_tags = [t for t in params.tags if t.startswith("action_required:")]
-        if not action_tags:
-            return
-
-        from giljo_mcp.repositories.task_repository import TaskRepository
-        from giljo_mcp.services.task_service import TaskService
-
-        task_repo = TaskRepository()
-        task_svc = TaskService(
-            db_manager=self.db_manager,
-            tenant_manager=None,
-            session=session,
-        )
-        product_id_str = str(params.product_id)
-        project_name = params.project_name or "unknown"
-        sequence = params.sequence
-
-        for tag in action_tags:
-            title = tag[len("action_required:") :].strip()
-            if not title:
-                continue
-            title = title[:255]
-
-            try:
-                existing = await task_repo.find_by_category_and_title(
-                    session=session,
-                    tenant_key=params.tenant_key,
-                    product_id=product_id_str,
-                    category="360",
-                    title=title,
-                )
-                if existing:
-                    self._logger.debug("Skipping duplicate action_required task: %s", title)
-                    continue
-
-                description = (
-                    f"Auto-created from 360 Memory action tag (project: {project_name}, sequence: {sequence})."
-                )
-                task_id = await task_svc.log_task(
-                    content=title,
-                    title=title,
-                    description=description,
-                    priority="medium",
-                    category="360",
-                    product_id=product_id_str,
-                    tenant_key=params.tenant_key,
-                )
-                self._logger.info("Created action_required task %s: %s", task_id, title)
-            except Exception as _exc:  # noqa: BLE001
-                self._logger.warning(
-                    "Failed to create action_required task: %s",
-                    title,
-                    exc_info=True,
-                )
+    # _create_action_required_tasks removed in INF-5025b

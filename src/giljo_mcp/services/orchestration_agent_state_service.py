@@ -147,37 +147,7 @@ class OrchestrationAgentStateService:
                         "knowledge for future orchestrators."
                     )
 
-        # Resolve action_required tags if result includes resolved_action_items
-        resolved_items = result.get("resolved_action_items")
-        if resolved_items and isinstance(resolved_items, list) and job.project_id:
-            try:
-                # Get product_id from the project
-                proj = await self._job_repo.get_project_by_id(session, tenant_key, str(job.project_id))
-
-                if proj and proj.product_id:
-                    from uuid import UUID
-
-                    from giljo_mcp.repositories.product_memory_repository import (
-                        ProductMemoryRepository,
-                    )
-
-                    mem_repo = ProductMemoryRepository()
-                    tags_removed = await mem_repo.resolve_action_tags(
-                        session=session,
-                        product_id=UUID(str(proj.product_id)),
-                        tenant_key=tenant_key,
-                        resolved_items=[str(item) for item in resolved_items[:20]],
-                    )
-                    if tags_removed > 0:
-                        self._logger.info(
-                            f"Resolved {tags_removed} action tags on job completion "
-                            f"(job_id={job.job_id}, product_id={proj.product_id})"
-                        )
-            except Exception as _exc:  # noqa: BLE001 - Non-critical side effect: tag resolution failure should not block completion
-                self._logger.warning(
-                    f"Failed to resolve action tags for job {job.job_id}",
-                    exc_info=True,
-                )
+        # action_required tag resolution removed in INF-5025b
 
         # 0497b: Auto-generate completion message to orchestrator
         if job.project_id and execution.agent_display_name != "orchestrator":

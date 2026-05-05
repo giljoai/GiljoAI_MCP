@@ -167,8 +167,11 @@ class JobCompletionService:
             if execution:
                 await self._broadcast_completion(tenant_key, job_id, job, execution, old_status, duration_seconds)
 
-            if execution and job:
-                await self._resolve_action_items(result, tenant_key, job)
+            if execution and job and result and "resolved_action_items" in result:
+                # INF-5025b: warn-and-ignore for one release; INF-5025d removes the key entirely
+                self._logger.warning(
+                    "resolved_action_items is deprecated; cite task/project IDs in decisions_made instead"
+                )
 
             closeout_checklist = None
             if job and getattr(job, "job_type", "") == "orchestrator":
@@ -202,9 +205,7 @@ class JobCompletionService:
                     # Smart HITL: only require approval when there are actual
                     # deferred findings to review. Clean closeouts proceed
                     # automatically even in HITL mode.
-                    has_deferred = bool(
-                        (result or {}).get("deferred_findings") or (result or {}).get("action_required_tags")
-                    )
+                    has_deferred = bool((result or {}).get("deferred_findings"))
                     closeout_checklist = self._build_closeout_checklist(
                         user_approval_required=(closeout_mode == "hitl") and has_deferred,
                     )
@@ -439,68 +440,7 @@ class JobCompletionService:
                 session, job, execution, result, tenant_key, warnings
             )
 
-    async def _resolve_action_items(
-        self,
-        result: dict[str, Any],
-        tenant_key: str,
-        job: "AgentJob",
-    ) -> None:
-        """Auto-resolve action_required tasks when agent reports them resolved.
-
-        BE-5022f: Scans result['resolved_action_items'] for matching tasks
-        with category='360' and marks them completed.
-
-        Args:
-            result: Job completion result dict
-            tenant_key: Tenant key for isolation
-            job: The completing job (provides product_id)
-        """
-        resolved_items = result.get("resolved_action_items")
-        if not resolved_items or not isinstance(resolved_items, list):
-            return
-
-        product_id = getattr(job, "product_id", None)
-        if not product_id:
-            return
-
-        product_id_str = str(product_id)
-
-        from giljo_mcp.repositories.task_repository import TaskRepository
-        from giljo_mcp.services.task_service import TaskService
-
-        task_repo = TaskRepository()
-        task_svc = TaskService(
-            db_manager=self.db_manager,
-            tenant_manager=self.tenant_manager,
-        )
-
-        for item_title in resolved_items:
-            if not isinstance(item_title, str) or not item_title.strip():
-                continue
-            try:
-                async with self._get_session() as session:
-                    task = await task_repo.find_pending_by_category_and_title(
-                        session=session,
-                        tenant_key=tenant_key,
-                        product_id=product_id_str,
-                        category="360",
-                        title=item_title.strip(),
-                    )
-                    if task:
-                        task_id_str = str(task.id)
-                if task:
-                    await task_svc.change_status(task_id_str, "completed")
-                    self._logger.info(
-                        "Auto-resolved action item task %s: %s",
-                        task_id_str,
-                        item_title,
-                    )
-            except Exception as _exc:  # noqa: BLE001
-                self._logger.warning(
-                    "Failed to auto-resolve action item: %s",
-                    item_title,
-                    exc_info=True,
-                )
+    # _resolve_action_items removed in INF-5025b
 
     @staticmethod
     def _build_closeout_checklist(*, user_approval_required: bool) -> dict[str, Any]:
@@ -515,11 +455,6 @@ class JobCompletionService:
             "Otherwise: proceed with best judgment on tags and follow-ups."
         )
         return {
-            "action_required_tags": (
-                "Review all agent results for deferred findings. "
-                "Write action_required tags via write_360_memory() "
-                "BEFORE calling close_project_and_update_memory()."
-            ),
             "follow_up_items": ("Create tasks/projects for any deferred work via create_task() or create_project()."),
             "user_approval_required": user_approval_required,
             "instruction": instruction,

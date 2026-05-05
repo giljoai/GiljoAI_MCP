@@ -93,8 +93,7 @@ class TaskRepository:
     ) -> Task | None:
         """Find a task by category and title with tenant isolation.
 
-        Used for idempotent task creation (e.g., action_required tags).
-        BE-5022f.
+        Used for idempotent task creation.
 
         Args:
             session: Active database session
