@@ -229,7 +229,10 @@ COMMON ERRORS AND RESPONSES:
 ── MCP Connection Lost ─────────────────────────────────────────────────────
 Symptom: Tools not responding, timeouts
 Action: Abort staging immediately
-Notify: Call set_agent_status(job_id, status="blocked", reason="MCP connection lost")
+Notify: Tell the USER inline via your CLI ("MCP connection lost — staging
+        aborted"). During staging, set_agent_status is server-locked for
+        the orchestrator (returns 403 STAGING_LOCK), so the inline ask
+        IS the notification.
 Do NOT: Attempt to continue spawning agents
 
 ── Invalid Agent Name ──────────────────────────────────────────────────────
@@ -240,7 +243,8 @@ Fix: Use exact agent_name from get_orchestrator_instructions() response
 
 ── Spawn Failure ───────────────────────────────────────────────────────────
 Symptom: spawn_job() fails for any reason
-Action: Log via set_agent_status(status="blocked"), do NOT continue spawning
+Action: Tell the USER inline; do NOT continue spawning. set_agent_status
+        is locked during staging so the inline ask IS the log.
 Why: Partial spawns create incomplete agent teams
 Recovery: User must fix issue and restart staging
 
@@ -257,28 +261,44 @@ Action: Report to user - template configuration required
 Fix: User must activate templates in My Settings → Agent Templates
 
 ── STATUS TRANSITIONS ──────────────────────────────────────────────────────
-waiting  ─[get_agent_mission()]──────────────→ working (auto on first fetch)
-working  ─[report_progress()]────────────────→ working (updates progress/todos)
-working  ─[complete_job()]───────────────────→ complete
-working  ─[set_agent_status("blocked")]──────→ blocked
-working  ─[set_agent_status("idle")]─────────→ idle
-working  ─[set_agent_status("sleeping")]─────→ sleeping
-idle     ─[report_progress()/any active MCP]─→ working (auto-wake)
-sleeping ─[report_progress()/any active MCP]─→ working (auto-wake)
-blocked  ─[report_progress()]────────────────→ working (auto-wake)
-blocked  ─[complete_job()]───────────────────→ complete
-complete ─[message received]────────────────→ blocked  (auto, Handover 0827b)
-blocked  ─[reactivate_job()]───────────────→ working  (resume path)
-blocked  ─[dismiss_reactivation()]──────────→ complete (informational msg)
 
-Note: Use set_agent_status(status="blocked", reason="BLOCKED: <reason>")
-when asking for clarification vs actual errors.
+Staging phase (orchestrator only, project.staging_status != 'staging_complete'):
+  waiting  ─[get_agent_mission()]──────────────→ working (auto on first fetch)
+  working  ─[report_progress()]────────────────→ working (updates progress/todos)
+  working  ─[complete_job()]───────────────────→ complete
+  ⚠ set_agent_status is SERVER-LOCKED for the orchestrator during staging
+    (returns 403 STAGING_LOCK). Use the inline-ask + report_progress pattern
+    instead — see "If Requirements Are Unclear" in your identity prompt.
+
+Implementation phase (all agents, post-staging-complete):
+  waiting  ─[get_agent_mission()]──────────────→ working (auto on first fetch)
+  working  ─[report_progress()]────────────────→ working (updates progress/todos)
+  working  ─[complete_job()]───────────────────→ complete
+  working  ─[set_agent_status("blocked")]──────→ blocked
+  working  ─[set_agent_status("idle")]─────────→ idle
+  working  ─[set_agent_status("sleeping")]─────→ sleeping
+  idle     ─[report_progress()/any active MCP]─→ working (auto-wake)
+  sleeping ─[report_progress()/any active MCP]─→ working (auto-wake)
+  blocked  ─[report_progress()]────────────────→ working (auto-wake)
+  blocked  ─[complete_job()]───────────────────→ complete
+  complete ─[message received]────────────────→ blocked  (auto, Handover 0827b)
+  blocked  ─[reactivate_job()]───────────────→ working  (resume path)
+  blocked  ─[dismiss_reactivation()]──────────→ complete (informational msg)
+
+Note: Spawned non-orchestrator agents (implementer/tester/analyzer/documenter/
+reviewer) bypass the staging lock entirely — the implementation-phase diagram
+applies to them at all times.
 
 GENERAL ERROR PROTOCOL:
 
 1. Log error with context (agent_id, job_id, tenant_key)
-2. Call set_agent_status(status="blocked", reason="...") to persist error state
-3. Send broadcast message to notify user
+2. Persist error state:
+     - Implementation phase OR you are NOT the orchestrator:
+         call set_agent_status(status="blocked", reason="...")
+     - Staging phase AND you are the orchestrator:
+         tell the USER inline via your CLI; set_agent_status is locked
+         (403 STAGING_LOCK) until staging completes
+3. Send broadcast message to notify user (when applicable)
 4. Do NOT attempt to continue workflow after critical errors
 5. Wait for user intervention
 

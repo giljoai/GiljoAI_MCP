@@ -280,7 +280,7 @@ class ApiKeyIpLog(Base):
     and detecting potential key sharing/abuse.
 
     Upsert pattern: INSERT ON CONFLICT (api_key_id, ip_address)
-    DO UPDATE SET last_seen_at = NOW(), request_count = request_count + 1
+    DO UPDATE SET request_count = request_count + 1
     """
 
     __tablename__ = "api_key_ip_log"
@@ -288,8 +288,6 @@ class ApiKeyIpLog(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     api_key_id = Column(String(36), ForeignKey("api_keys.id", ondelete="CASCADE"), nullable=False)
     ip_address = Column(String(45), nullable=False)
-    first_seen_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    last_seen_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     request_count = Column(Integer, nullable=False, default=1)
 
     # Relationships
@@ -298,7 +296,6 @@ class ApiKeyIpLog(Base):
     __table_args__ = (
         UniqueConstraint("api_key_id", "ip_address", name="uq_api_key_ip"),
         Index("idx_api_key_ip_log_key_id", "api_key_id"),
-        Index("idx_api_key_ip_log_last_seen", "last_seen_at"),
     )
 
     def __repr__(self) -> str:

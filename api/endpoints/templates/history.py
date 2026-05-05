@@ -106,7 +106,7 @@ async def restore_template(
         archived_by=current_user.username,
     )
 
-    await template_service.restore_template_from_archive(session, template, archive)
+    await template_service.restore_template_from_archive(session, template, archive, restored_by=current_user.username)
 
     await template_service.commit_and_refresh_template(session, template)
 

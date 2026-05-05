@@ -7,8 +7,8 @@
 TemplateRepository - Data access layer for AgentTemplate and related entities.
 
 BE-5022c: Extracted from template_service.py to enforce the service->repository
-boundary. All database writes for AgentTemplate, TemplateArchive, and
-TemplateUsageStats are routed through this repository.
+boundary. All database writes for AgentTemplate and TemplateArchive are routed
+through this repository.
 
 Tenant isolation is enforced at the query level on every operation.
 """
@@ -23,7 +23,7 @@ from sqlalchemy import delete as sql_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.models.agent_identity import AgentJob
-from giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
+from giljo_mcp.models.templates import AgentTemplate, TemplateArchive
 from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 
 
@@ -108,16 +108,6 @@ class TemplateRepository:
             template_id: Template UUID
         """
         await session.execute(update(AgentJob).where(AgentJob.template_id == template_id).values(template_id=None))
-
-    async def delete_usage_stats(self, session: AsyncSession, template_id: str) -> None:
-        """
-        Delete TemplateUsageStats records for a template.
-
-        Args:
-            session: Active database session
-            template_id: Template UUID
-        """
-        await session.execute(sql_delete(TemplateUsageStats).where(TemplateUsageStats.template_id == template_id))
 
     async def delete_archives(self, session: AsyncSession, template_id: str) -> None:
         """

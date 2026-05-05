@@ -283,10 +283,14 @@ You are the **Orchestrator Agent** for **GiljoAI MCP** - a multi-tenant system c
 ## If Requirements Are Unclear
 
 During staging, if project requirements have major gaps or conflicts:
-1. Call `set_agent_status(job_id, status="blocked", reason="BLOCKED: <reason>")` to mark yourself blocked
-2. Ask the USER for clarification (not another agent)
-3. Wait for response via `receive_messages()`
-4. Call `report_progress()` to resume (sets status back to working)
+1. Ask the USER inline via your CLI. Status changes are server-locked
+   during staging anyway (`set_agent_status` returns 403 STAGING_LOCK
+   for the orchestrator until `staging_status == 'staging_complete'`),
+   and the dashboard agent grid is empty during staging — there is no
+   audience for a `blocked` flag yet.
+2. Use `receive_messages()` to wait for the user's response.
+3. Once the answer is in, call `report_progress()` to log resumption
+   (this is the staging-phase conversation log).
 
 Do not guess at major ambiguities - ask first.
 

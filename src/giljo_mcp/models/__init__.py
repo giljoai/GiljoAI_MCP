@@ -40,10 +40,10 @@ src/giljo_mcp/models/
 ├── products.py        → Product, VisionDocument, Vision
 ├── projects.py        → Project, ProjectType
 ├── agent_identity.py  → AgentJob, AgentExecution (Handover 0366a)
-├── templates.py       → AgentTemplate, TemplateArchive, TemplateUsageStats
+├── templates.py       → AgentTemplate, TemplateArchive
 ├── tasks.py           → Task, Message
 ├── context.py         → MCPContextIndex
-└── config.py          → Configuration, GitCommit, SetupState, DownloadToken, ApiMetrics
+└── config.py          → Configuration, SetupState, DownloadToken, ApiMetrics
 
 Migration Strategy:
 -------------------
@@ -89,7 +89,6 @@ from .config import (
     ApiMetrics,
     Configuration,
     DownloadToken,
-    GitCommit,
     SetupState,
 )
 
@@ -152,7 +151,6 @@ from .tasks import (
 from .templates import (
     AgentTemplate,
     TemplateArchive,
-    TemplateUsageStats,
 )
 
 
@@ -170,7 +168,6 @@ __all__ = [
     # Config
     "Configuration",
     "DownloadToken",
-    "GitCommit",
     # Context
     "MCPContextIndex",
     "MCPSession",
@@ -202,7 +199,6 @@ __all__ = [
     # Tasks
     "Task",
     "TemplateArchive",
-    "TemplateUsageStats",
     # Auth
     "User",
     "UserFieldPriority",

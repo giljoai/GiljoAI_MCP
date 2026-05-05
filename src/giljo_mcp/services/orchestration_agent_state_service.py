@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.domain.project_status import IMMUTABLE_PROJECT_STATUSES
 from giljo_mcp.exceptions import (
+    AuthorizationError,
     OrchestrationError,
     ProjectStateError,
     ResourceNotFoundError,
@@ -563,6 +564,28 @@ class OrchestrationAgentStateService:
                 # TENANT ISOLATION: Filter by tenant_key
                 job = await self._job_repo.get_agent_job_by_job_id(session, tenant_key, job_id)
 
+                # Staging-phase status lock: orchestrator may not flip its own
+                # status while project.staging_status != 'staging_complete'.
+                # report_progress is the only allowed signal in that window;
+                # spawned non-orchestrator agents bypass the lock entirely.
+                if execution.agent_display_name == "orchestrator" and job and job.project_id:
+                    project = await self._job_repo.get_project_by_id(session, tenant_key, str(job.project_id))
+                    if project is not None and project.staging_status != "staging_complete":
+                        raise AuthorizationError(
+                            message=(
+                                "Status changes are server-locked during staging. "
+                                "Ask the user inline; the dashboard agent grid is empty "
+                                "during staging anyway."
+                            ),
+                            error_code="STAGING_LOCK",
+                            context={
+                                "code": "STAGING_LOCK",
+                                "job_id": job_id,
+                                "agent_display_name": execution.agent_display_name,
+                                "staging_status": project.staging_status,
+                            },
+                        )
+
                 old_status = execution.status
                 execution.status = status
                 execution.block_reason = block_reason if block_reason else None
@@ -597,7 +620,7 @@ class OrchestrationAgentStateService:
                 status=status,
                 block_reason=block_reason or reason,
             )
-        except (ValidationError, ResourceNotFoundError):
+        except (ValidationError, ResourceNotFoundError, AuthorizationError):
             raise
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to set agent status")

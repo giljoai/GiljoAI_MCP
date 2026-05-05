@@ -716,3 +716,351 @@ class TestGetOrchestratorInstructionsRedirectBranches:
         assert identity["job_id"] == job_id
         assert identity["project_id"] == str(project.id)
         assert identity["project_name"] == project.name
+
+
+# ---------------------------------------------------------------------------
+# BE-staging-lock Layer 2: Decouple downstream consumers from AgentExecution.status
+# ---------------------------------------------------------------------------
+
+
+class TestImplementationPromptGateUsesProjectFlags:
+    """get_implementation_prompt is gated on durable project flags, not transient
+    AgentExecution.status (BE-staging-lock Layer 2).
+    """
+
+    def _source(self) -> str:
+        import inspect
+
+        from api.endpoints import prompts
+
+        return inspect.getsource(prompts.get_implementation_prompt)
+
+    def test_orchestrator_query_uses_terminal_status_exclusion_not_active_inclusion(self):
+        """Orchestrator selection no longer gates on active status — it only excludes
+        terminal statuses. The spawned-agent fallback may still use status.in_ separately;
+        this test is scoped to the orchestrator query block.
+        """
+        src = self._source()
+        idx = src.find('agent_display_name == "orchestrator"')
+        assert idx >= 0, "orchestrator query block missing"
+        orchestrator_block = src[idx : idx + 400]
+        assert 'status.in_(["waiting", "working"])' not in orchestrator_block
+        assert "status.not_in" in orchestrator_block
+        assert "complete" in orchestrator_block
+        assert "closed" in orchestrator_block
+        assert "decommissioned" in orchestrator_block
+
+    def test_gate_checks_staging_complete_flag(self):
+        src = self._source()
+        assert "staging_status" in src
+        assert "staging_complete" in src
+
+    def test_gate_checks_implementation_launched_at(self):
+        src = self._source()
+        assert "implementation_launched_at" in src
+
+    @pytest.mark.asyncio
+    async def test_gate_returns_404_when_staging_incomplete(self):
+        from fastapi import HTTPException
+
+        from api.endpoints import prompts
+
+        project = MagicMock()
+        project.staging_status = "staging"
+        project.implementation_launched_at = None
+        project.execution_mode = "claude_code_cli"
+
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = project
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=result)
+
+        user = MagicMock()
+        user.tenant_key = "tenant-test"
+
+        with pytest.raises(HTTPException) as exc_info:
+            await prompts.get_implementation_prompt(project_id="proj-1", current_user=user, db=db)
+        assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_gate_returns_404_when_implementation_not_launched(self):
+        from fastapi import HTTPException
+
+        from api.endpoints import prompts
+
+        project = MagicMock()
+        project.staging_status = "staging_complete"
+        project.implementation_launched_at = None
+        project.execution_mode = "claude_code_cli"
+
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = project
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=result)
+
+        user = MagicMock()
+        user.tenant_key = "tenant-test"
+
+        with pytest.raises(HTTPException) as exc_info:
+            await prompts.get_implementation_prompt(project_id="proj-1", current_user=user, db=db)
+        assert exc_info.value.status_code == 404
+
+
+class TestStagingDirectiveUsesProjectFlag:
+    """_check_staging_broadcast_directive keys is_staging on project.staging_status,
+    not sender_execution.status (BE-staging-lock Layer 2).
+    """
+
+    def _source(self) -> str:
+        import inspect
+
+        from giljo_mcp.services.message_routing_service import MessageRoutingService
+
+        return inspect.getsource(MessageRoutingService._check_staging_broadcast_directive)
+
+    def test_is_staging_no_longer_keyed_on_execution_status_waiting(self):
+        src = self._source()
+        assert 'sender_execution.status == "waiting"' not in src
+        assert "sender_execution.status == 'waiting'" not in src
+
+    def test_is_staging_keyed_on_project_staging_status(self):
+        src = self._source()
+        assert "project.staging_status" in src
+        assert "staging_complete" in src
+
+    @pytest.mark.asyncio
+    async def test_directive_fires_for_idle_orchestrator_pre_complete(self):
+        from giljo_mcp.schemas.service_responses import SendMessageResult
+        from giljo_mcp.services.message_routing_service import MessageRoutingService
+
+        db_manager = MagicMock()
+        tenant = MagicMock()
+        tenant.get_current_tenant = MagicMock(return_value="tenant-test")
+        service = MessageRoutingService(db_manager, tenant)
+
+        sender_exec = MagicMock()
+        sender_exec.agent_name = "orchestrator"
+        sender_exec.status = "idle"
+        sender_exec.job_id = "j1"
+
+        sender_job = MagicMock()
+        sender_job.project_id = "p1"
+
+        service._repo.get_execution_by_agent_id = AsyncMock(return_value=sender_exec)
+        service._repo.get_agent_job_by_job_id = AsyncMock(return_value=sender_job)
+
+        project = MagicMock()
+        project.staging_status = "staging"
+
+        response = SendMessageResult(message_id="m1", to_agents=["a", "b"])
+        session = AsyncMock()
+
+        await service._check_staging_broadcast_directive(
+            session=session,
+            response=response,
+            resolved_to_agents=["a", "b"],
+            to_agents=["all"],
+            from_agent="orch-agent-id",
+            tenant_key="tenant-test",
+            project=project,
+        )
+
+        assert response.staging_directive is not None
+        assert response.staging_directive.action == "STOP"
+        assert project.staging_status == "staging_complete"
+
+    @pytest.mark.asyncio
+    async def test_directive_fires_for_blocked_orchestrator_pre_complete(self):
+        from giljo_mcp.schemas.service_responses import SendMessageResult
+        from giljo_mcp.services.message_routing_service import MessageRoutingService
+
+        db_manager = MagicMock()
+        tenant = MagicMock()
+        tenant.get_current_tenant = MagicMock(return_value="tenant-test")
+        service = MessageRoutingService(db_manager, tenant)
+
+        sender_exec = MagicMock()
+        sender_exec.agent_name = "orchestrator"
+        sender_exec.status = "blocked"
+        sender_exec.job_id = "j1"
+
+        sender_job = MagicMock()
+        sender_job.project_id = "p1"
+
+        service._repo.get_execution_by_agent_id = AsyncMock(return_value=sender_exec)
+        service._repo.get_agent_job_by_job_id = AsyncMock(return_value=sender_job)
+
+        project = MagicMock()
+        project.staging_status = None
+
+        response = SendMessageResult(message_id="m1", to_agents=["a", "b"])
+        session = AsyncMock()
+
+        await service._check_staging_broadcast_directive(
+            session=session,
+            response=response,
+            resolved_to_agents=["a", "b"],
+            to_agents=["all"],
+            from_agent="orch-agent-id",
+            tenant_key="tenant-test",
+            project=project,
+        )
+
+        assert response.staging_directive is not None
+        assert response.staging_directive.action == "STOP"
+
+    @pytest.mark.asyncio
+    async def test_directive_does_not_fire_post_staging_complete(self):
+        from giljo_mcp.schemas.service_responses import SendMessageResult
+        from giljo_mcp.services.message_routing_service import MessageRoutingService
+
+        db_manager = MagicMock()
+        tenant = MagicMock()
+        tenant.get_current_tenant = MagicMock(return_value="tenant-test")
+        service = MessageRoutingService(db_manager, tenant)
+
+        sender_exec = MagicMock()
+        sender_exec.agent_name = "orchestrator"
+        sender_exec.status = "working"
+        sender_exec.job_id = "j1"
+
+        sender_job = MagicMock()
+        sender_job.project_id = "p1"
+
+        service._repo.get_execution_by_agent_id = AsyncMock(return_value=sender_exec)
+        service._repo.get_agent_job_by_job_id = AsyncMock(return_value=sender_job)
+
+        project = MagicMock()
+        project.staging_status = "staging_complete"
+
+        response = SendMessageResult(message_id="m1", to_agents=["a", "b"])
+        session = AsyncMock()
+
+        await service._check_staging_broadcast_directive(
+            session=session,
+            response=response,
+            resolved_to_agents=["a", "b"],
+            to_agents=["all"],
+            from_agent="orch-agent-id",
+            tenant_key="tenant-test",
+            project=project,
+        )
+
+        assert response.staging_directive is None
+
+
+# ---------------------------------------------------------------------------
+# BE-staging-lock Layer 3: Protocol injection rewrites (snapshot tests)
+# ---------------------------------------------------------------------------
+
+
+class TestStagingLockProtocolRewrites:
+    """Snapshot/contains assertions on the rewritten protocol text.
+
+    See docs/protocol_injection_audit_2026_05_05.md for the full audit and the
+    REWRITE / REFRAME / ADD-LOCK-NOTE classification.
+    """
+
+    def test_orchestrator_template_unclear_reqs_uses_inline_ask(self):
+        """orchestrator template's 'If Requirements Are Unclear' replaces the
+        set_agent_status call with inline-ask + report_progress."""
+        from giljo_mcp.template_seeder import _get_default_templates_v103
+
+        orch = next(t for t in _get_default_templates_v103() if t["role"] == "orchestrator")
+        body = orch["user_instructions"]
+
+        unclear_idx = body.find("## If Requirements Are Unclear")
+        assert unclear_idx >= 0, "missing 'If Requirements Are Unclear' section"
+        next_section_idx = body.find("##", unclear_idx + 5)
+        section = body[unclear_idx:next_section_idx] if next_section_idx > 0 else body[unclear_idx:]
+
+        assert 'set_agent_status(job_id, status="blocked"' not in section, (
+            "old set_agent_status instruction must be removed from orchestrator staging section"
+        )
+        assert "inline" in section.lower()
+        assert "STAGING_LOCK" in section
+        assert "report_progress" in section
+        assert "receive_messages" in section
+
+    def test_ch4_error_handling_splits_staging_vs_implementation(self):
+        """CH4 ERROR HANDLING status diagram splits into staging vs implementation
+        and removes the working→blocked arrow from the staging variant."""
+        from giljo_mcp.services.protocol_sections.chapters_reference import _build_ch4_error_handling
+
+        ch4 = _build_ch4_error_handling()
+
+        assert "Staging phase" in ch4
+        assert "Implementation phase" in ch4
+        assert "STAGING_LOCK" in ch4
+
+        staging_idx = ch4.find("Staging phase")
+        implementation_idx = ch4.find("Implementation phase")
+        assert staging_idx < implementation_idx, "staging phase should come first"
+        staging_block = ch4[staging_idx:implementation_idx]
+        # The forbidden working→blocked arrow MUST NOT appear in the staging block.
+        assert 'set_agent_status("blocked")' not in staging_block
+        assert 'set_agent_status("idle")' not in staging_block
+        assert 'set_agent_status("sleeping")' not in staging_block
+
+        implementation_block = ch4[implementation_idx:]
+        # The full transition set is only in the implementation variant.
+        assert 'set_agent_status("blocked")' in implementation_block
+        assert 'set_agent_status("idle")' in implementation_block
+        assert 'set_agent_status("sleeping")' in implementation_block
+
+    def test_ch4_error_actions_no_longer_call_set_agent_status_during_staging(self):
+        """The 'MCP Connection Lost' and 'Spawn Failure' actions no longer instruct
+        the orchestrator to call set_agent_status during staging."""
+        from giljo_mcp.services.protocol_sections.chapters_reference import _build_ch4_error_handling
+
+        ch4 = _build_ch4_error_handling()
+
+        # Bracket each section by the next "──" line that opens a NEW section.
+        # The opening dashes after the section title aren't followed by another title,
+        # so search for the next " ── " preceded by a newline.
+        def _section(text: str, title: str) -> str:
+            start = text.find(title)
+            assert start >= 0, f"section {title!r} not found"
+            end = text.find("\n── ", start + len(title))
+            return text[start : end if end > 0 else len(text)]
+
+        mcp_block = _section(ch4, "MCP Connection Lost")
+        # No instruction to CALL set_agent_status — the tool may still be
+        # mentioned (to explain the lock).
+        assert "Call set_agent_status(" not in mcp_block
+        assert 'set_agent_status(job_id, status="blocked"' not in mcp_block
+        assert "STAGING_LOCK" in mcp_block or "inline" in mcp_block.lower()
+
+        spawn_block = _section(ch4, "Spawn Failure")
+        assert 'set_agent_status(status="blocked")' not in spawn_block
+        assert "Log via set_agent_status" not in spawn_block
+        assert "inline" in spawn_block.lower() or "USER" in spawn_block
+
+    def test_ch4_general_error_protocol_carves_out_staging(self):
+        """GENERAL ERROR PROTOCOL step 2 must carve out the staging-orchestrator path."""
+        from giljo_mcp.services.protocol_sections.chapters_reference import _build_ch4_error_handling
+
+        ch4 = _build_ch4_error_handling()
+        general_idx = ch4.find("GENERAL ERROR PROTOCOL")
+        assert general_idx >= 0
+        general_block = ch4[general_idx : general_idx + 800]
+        assert "Staging phase" in general_block or "STAGING_LOCK" in general_block
+        assert "Implementation phase" in general_block or "implementation" in general_block.lower()
+
+    def test_mcp_tool_description_includes_staging_lock_note(self):
+        """mcp_tools_available description for set_agent_status mentions the lock."""
+        import re
+        from pathlib import Path
+
+        src = Path("api/endpoints/mcp_sdk_server.py").read_text(encoding="utf-8")
+        # Find the @mcp.tool(...) block immediately preceding `async def set_agent_status`
+        match = re.search(
+            r"@mcp\.tool\(\s*description=\((.*?)\)\s*,?\s*\)\s*async def set_agent_status",
+            src,
+            re.DOTALL,
+        )
+        assert match is not None, "set_agent_status @mcp.tool description block not found"
+        description = match.group(1)
+        assert "STAGING_LOCK" in description
+        assert "staging" in description.lower()
+        assert "report_progress" in description

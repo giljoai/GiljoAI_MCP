@@ -17,7 +17,6 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Index,
-    Integer,
     String,
     Text,
     UniqueConstraint,
@@ -152,13 +151,6 @@ class Message(Base):
         server_default="false",
         comment="True if recipient must take action. False for informational messages.",
     )
-
-    # MessageQueue system fields
-    processing_started_at = Column(DateTime(timezone=True), nullable=True)
-    retry_count = Column(Integer, default=0)
-    max_retries = Column(Integer, default=3)
-    backoff_seconds = Column(Integer, default=60)
-    circuit_breaker_status = Column(String(20), nullable=True)
 
     # Relationships
     project = relationship("Project", back_populates="messages")

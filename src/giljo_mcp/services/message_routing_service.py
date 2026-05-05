@@ -375,13 +375,14 @@ class MessageRoutingService:
         if not sender_job:
             return
 
+        # BE-staging-lock Layer 2: keyed on durable project flag, not transient
+        # AgentExecution.status (orchestrator may be working/idle/blocked during staging).
         is_orchestrator = sender_execution.agent_name == "orchestrator"
-        is_staging = sender_execution.status == "waiting"
+        is_staging = project.staging_status != "staging_complete" and is_orchestrator
 
-        if is_orchestrator and is_staging:
-            if project.staging_status != "staging_complete":
-                project.staging_status = "staging_complete"
-                project.updated_at = datetime.now(UTC)
+        if is_staging:
+            project.staging_status = "staging_complete"
+            project.updated_at = datetime.now(UTC)
 
             response.staging_directive = StagingDirective(
                 status="STAGING_SESSION_COMPLETE",

@@ -88,8 +88,6 @@ class AgentTemplate(Base):
     tools = Column(String(50))  # Tool selection (null = inherit all)
 
     # Usage tracking
-    usage_count = Column(Integer, default=0)
-    last_used_at = Column(DateTime(timezone=True), nullable=True)
     avg_generation_ms = Column(Float, nullable=True)  # Performance tracking
 
     # Export tracking (Handover 0335)
@@ -112,7 +110,6 @@ class AgentTemplate(Base):
     # Relationships
     organization = relationship("Organization", back_populates="templates")
     archives = relationship("TemplateArchive", back_populates="template", cascade="all, delete-orphan")
-    usage_stats = relationship("TemplateUsageStats", back_populates="template", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint("tenant_key", "name", "version", name="uq_template_tenant_name_version"),
@@ -211,43 +208,3 @@ class TemplateArchive(Base):
 
     def __repr__(self) -> str:
         return f"<TemplateArchive(id={self.id}, template_id='{self.template_id}', version={self.version})>"
-
-
-class TemplateUsageStats(Base):
-    """
-    Template Usage Stats model - tracks template usage for optimization and recommendations.
-    Helps identify which templates are most effective and need optimization.
-    """
-
-    __tablename__ = "template_usage_stats"
-
-    id = Column(String(36), primary_key=True, default=generate_uuid)
-    tenant_key = Column(String(36), nullable=False)
-    template_id = Column(String(36), ForeignKey("agent_templates.id"), nullable=False)
-    project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)
-
-    # Usage details
-    used_at = Column(DateTime(timezone=True), server_default=func.now())
-    generation_ms = Column(Integer, nullable=True)  # Time to generate
-    variables_used = Column(JSONB, default=dict)  # Actual variables substituted
-    augmentations_applied = Column(JSONB, default=list)  # List of augmentation IDs
-
-    # Outcome tracking
-    agent_completed = Column(Boolean, nullable=True)
-    agent_success_rate = Column(Float, nullable=True)
-    tokens_used = Column(Integer, nullable=True)
-
-    # Relationships
-    template = relationship("AgentTemplate", back_populates="usage_stats")
-    # agent relationship removed (Handover 0116) - Agent model eliminated
-    project = relationship("Project", backref="template_usage_stats")
-
-    __table_args__ = (
-        Index("idx_usage_tenant", "tenant_key"),
-        Index("idx_usage_template", "template_id"),
-        Index("idx_usage_project", "project_id"),
-        Index("idx_usage_date", "used_at"),
-    )
-
-    def __repr__(self) -> str:
-        return f"<TemplateUsageStats(id={self.id}, template_id='{self.template_id}')>"

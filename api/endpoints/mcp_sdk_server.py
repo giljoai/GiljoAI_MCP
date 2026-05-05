@@ -870,7 +870,11 @@ async def dismiss_reactivation(
         "Set agent resting or blocked status. Valid statuses: 'blocked' (need human help, "
         "shows 'Needs Input'), 'idle' (monitoring, shows 'Monitoring'), 'sleeping' "
         "(periodic auto-check, shows 'Sleeping'). All three auto-wake back to 'working' "
-        "when report_progress() is called."
+        "when report_progress() is called. "
+        "During staging, this tool is server-locked for the orchestrator "
+        "(returns 403 STAGING_LOCK until project.staging_status == 'staging_complete'); "
+        "use report_progress to log conversation state and ask the user inline instead. "
+        "Spawned non-orchestrator agents bypass the lock."
     ),
 )
 async def set_agent_status(

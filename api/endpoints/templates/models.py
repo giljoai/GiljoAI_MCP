@@ -113,7 +113,6 @@ class TemplateResponse(BaseModel):
     category: str | None = None
     variables: list[str] = []
     version: str = "1.0.0"
-    usage_count: int = 0
     avg_generation_ms: float | None = None
     created_by: str | None = None
     is_system_role: bool = Field(default=False, description="True when template is system managed")

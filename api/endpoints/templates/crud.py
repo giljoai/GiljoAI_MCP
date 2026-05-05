@@ -108,7 +108,6 @@ def _convert_to_response(template: AgentTemplate) -> TemplateResponse:
         category=template.category,
         variables=template.variables or [],
         version=template.version or "1.0.0",
-        usage_count=template.usage_count or 0,
         avg_generation_ms=template.avg_generation_ms,
         created_by=template.created_by,
         is_system_role=_is_system_managed_role(template.role),
@@ -371,7 +370,6 @@ async def delete_template(
     Hard delete a template and all related records.
 
     Deletes:
-    - TemplateUsageStats records
     - TemplateArchive records (version history)
     - Sets AgentJob.template_id to NULL for historical jobs
     - The template itself
