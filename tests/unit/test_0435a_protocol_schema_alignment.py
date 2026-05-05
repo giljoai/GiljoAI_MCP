@@ -31,14 +31,11 @@ class TestEntryTypeAliasNormalization:
         # The alias map is inline in the function. We verify the logic by
         # checking that the alias dict pattern works correctly.
         aliases = {"project_closeout": "project_completion"}
-        # BE-5028 Phase 2: vocabulary extended so the orchestrator/worker
-        # authorization matrix is fully exercised. Mirrors the frozenset in
-        # write_360_memory.py.
+        # Mirrors the frozenset in write_360_memory.py.
         valid = {
             "project_completion",
             "handover_closeout",
             "session_handover",
-            "action_required",
             "baseline",
             "decision",
             "architecture",
@@ -53,14 +50,11 @@ class TestEntryTypeAliasNormalization:
     def test_canonical_values_unchanged(self):
         """Canonical entry_type values should pass through unchanged."""
         aliases = {"project_closeout": "project_completion"}
-        # BE-5028 Phase 2: vocabulary extended so the orchestrator/worker
-        # authorization matrix is fully exercised. Mirrors the frozenset in
-        # write_360_memory.py.
+        # Mirrors the frozenset in write_360_memory.py.
         valid = {
             "project_completion",
             "handover_closeout",
             "session_handover",
-            "action_required",
             "baseline",
             "decision",
             "architecture",

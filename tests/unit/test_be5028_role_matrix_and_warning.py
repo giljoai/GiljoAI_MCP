@@ -140,8 +140,7 @@ def _mock_db_manager(db_session):
 # ---- 1 + 2: Matrix coverage + structured rejection shape -------------------
 
 
-# Matrix entry_types partitioned by allowed-role. Count loosened in
-# INF-5025b (action_required removed); INF-5025c will rewrite the suite.
+# Matrix entry_types partitioned by allowed-role. Count loosened in INF-5025b.
 ALL_MATRIX_ENTRY_TYPES = sorted(WORKER_ALLOWED_ENTRY_TYPES | ORCHESTRATOR_ONLY_ENTRY_TYPES)
 assert len(ALL_MATRIX_ENTRY_TYPES) >= 6, "Matrix sanity: at least 4 worker + 2 orchestrator"
 
@@ -371,7 +370,7 @@ async def test_caller_role_unknown_when_job_lookup_returns_none(db_session, test
             summary="unknown caller",
             key_outcomes=["k"],
             decisions_made=["d"],
-            entry_type="action_required",
+            entry_type="project_completion",
             author_job_id=bogus_job_id,
             git_commits=[],
             tags=[],
@@ -579,7 +578,6 @@ class TestValidEntryTypeFrozenset:
         "project_completion",
         "handover_closeout",
         "session_handover",
-        "action_required",
         "baseline",
         "decision",
         "architecture",
@@ -600,7 +598,7 @@ class TestValidEntryTypeFrozenset:
 
         We use an orchestrator caller so the matrix gate also passes; if Fix D
         is reverted, write_360_memory raises ValidationError on the new types
-        (decision/architecture/discovery/baseline/action_required) BEFORE
+        (decision/architecture/discovery/baseline) BEFORE
         reaching the matrix gate, and this test fails.
         """
         mock_mgr = _mock_db_manager(db_session)

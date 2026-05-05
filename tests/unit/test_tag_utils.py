@@ -61,7 +61,7 @@ class TestSanitizeTag:
         assert sanitize_tag("fastapi") == "fastapi"
 
     def test_preserves_internal_punctuation(self):
-        assert sanitize_tag("action_required:fix_auth") == "action_required:fix_auth"
+        assert sanitize_tag("bug_fix:auth_timeout") == "bug_fix:auth_timeout"
 
     def test_strips_colons_from_ends(self):
         assert sanitize_tag(":tagged:") == "tagged"
@@ -127,10 +127,10 @@ class TestCleanTags:
         result = clean_tags([])
         assert result == []
 
-    def test_preserves_action_required_tags(self):
-        tags = ["action_required:fix auth timeout", "refactor"]
+    def test_preserves_tags_with_internal_colon(self):
+        tags = ["bug_fix:auth_timeout", "refactor"]
         result = clean_tags(tags)
-        assert "action_required:fix auth timeout" in result
+        assert "bug_fix:auth_timeout" in result
 
     def test_combined_pipeline(self):
         """Stopwords removed, punctuation stripped, deduped, capped."""

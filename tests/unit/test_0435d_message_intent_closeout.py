@@ -70,7 +70,7 @@ class TestRequiresActionAutoBlock:
         mock_session.execute.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_action_required_message_proceeds_to_check(self, routing_service):
+    async def test_requires_action_true_proceeds_to_check(self, routing_service):
         """requires_action=True should proceed past the guard and check agent status."""
         mock_session = AsyncMock()
         mock_project = MagicMock()

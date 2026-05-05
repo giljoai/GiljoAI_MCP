@@ -114,7 +114,6 @@ async def test_complete_job_orchestrator_includes_closeout_checklist(
     assert result.closeout_checklist is not None
 
     checklist = result.closeout_checklist
-    assert "action_required_tags" in checklist
     assert "follow_up_items" in checklist
     assert "user_approval_required" in checklist
     assert "instruction" in checklist
@@ -131,7 +130,7 @@ async def test_complete_job_orchestrator_checklist_defaults_to_hitl(
         result={"summary": "Done"},
         tenant_key=test_tenant_key,
     )
-    # No deferred_findings or action_required_tags → approval not required
+    # No deferred_findings → approval not required
     assert result.closeout_checklist["user_approval_required"] is False
 
 
@@ -143,19 +142,6 @@ async def test_complete_job_orchestrator_hitl_with_deferred_findings(
     result = await completion_service.complete_job(
         job_id=orchestrator_job.job_id,
         result={"summary": "Done", "deferred_findings": ["Reviewer found unused import"]},
-        tenant_key=test_tenant_key,
-    )
-    assert result.closeout_checklist["user_approval_required"] is True
-
-
-@pytest.mark.asyncio
-async def test_complete_job_orchestrator_hitl_with_action_required_tags(
-    completion_service, orchestrator_job, test_tenant_key
-):
-    """HITL mode WITH action_required_tags requires approval."""
-    result = await completion_service.complete_job(
-        job_id=orchestrator_job.job_id,
-        result={"summary": "Done", "action_required_tags": ["action_required:fix auth"]},
         tenant_key=test_tenant_key,
     )
     assert result.closeout_checklist["user_approval_required"] is True
@@ -224,7 +210,7 @@ def test_orchestrator_protocol_references_closeout_checklist():
     )
     assert "closeout_checklist" in body
     assert "user_approval_required" in body
-    assert "action_required" in body
+    assert "complete_job" in body
 
 
 # ---- Task 5: write_360_memory works after complete_job ----
@@ -324,7 +310,7 @@ async def test_write_360_memory_callable_after_complete_job(db_session, test_ten
             entry_type="handover_closeout",
             author_job_id=job_id,
             git_commits=[],
-            tags=["action_required:review closeout patterns"],
+            tags=["chore"],
             db_manager=mock_db_manager,
             session=db_session,
         )

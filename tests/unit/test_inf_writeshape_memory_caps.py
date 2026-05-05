@@ -8,8 +8,7 @@
 TDD-first: these tests are written BEFORE the implementation. They cover the
 single shared validator (used by both write_360_memory and
 close_project_and_update_memory), the headlines-only default for fetch_context,
-the 30K-char graceful field-drop, and the action_required_extras metadata
-surface.
+and the 30K-char graceful field-drop.
 
 Acceptance criteria (12 tests):
 1. summary > 500 chars -> structured rejection
@@ -23,8 +22,7 @@ Acceptance criteria (12 tests):
 8. fetch_context(memory_360) default returns headlines-only shape
 9. fetch_context(memory_360, depth_config={"memory_360": "full"}) returns full
 10. > 30K-char synthetic payload triggers graceful field-drop
-11. get_360_memory metadata splits returned_projects vs action_required_extras
-12. tenant isolation regression: oversize-write rejection still scoped by
+11. tenant isolation regression: oversize-write rejection still scoped by
     tenant_key (no info leak across tenants).
 """
 
@@ -47,7 +45,6 @@ from giljo_mcp.services.product_memory_service import (
     MemoryEntryWriteValidationError,
 )
 from giljo_mcp.tools.context_tools.fetch_context import fetch_context
-from giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
 from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 from giljo_mcp.tools.write_360_memory import write_360_memory
 
@@ -383,114 +380,6 @@ async def test_fetch_context_30k_char_ceiling_graceful_drop(db_session, test_ten
     )
     # At least one entry must be marked truncated
     assert any(item.get("truncated") is True for item in result["data"]["memory_360"])
-
-
-# ---- get_360_memory metadata: split returned vs action_required_extras -----
-
-
-@pytest.mark.asyncio
-async def test_get_360_memory_splits_action_required_extras(db_session, test_tenant_key, test_product, linked_project):
-    """Test 11: 5 requested + 4 action_required extras report distinctly."""
-    from datetime import timedelta
-
-    base_time = datetime.now(UTC)
-
-    # OLDER project carrying 4 action_required extras (out-of-window).
-    older_proj = Project(
-        id=str(uuid.uuid4()),
-        name="ActionRequiredProj",
-        description="x",
-        mission="x",
-        status="completed",
-        tenant_key=test_tenant_key,
-        product_id=test_product.id,
-        series_number=random.randint(1, 999999),
-    )
-    db_session.add(older_proj)
-    await db_session.commit()
-
-    seq = 0
-    for i in range(4):
-        seq += 1
-        db_session.add(
-            ProductMemoryEntry(
-                id=str(uuid.uuid4()),
-                tenant_key=test_tenant_key,
-                product_id=test_product.id,
-                project_id=older_proj.id,
-                sequence=seq,
-                entry_type="handover_closeout",
-                source="test",
-                timestamp=base_time - timedelta(days=30 - i),  # OLD timestamps
-                project_name=older_proj.name,
-                summary=f"Action-required extra {i}",
-                key_outcomes=["k"],
-                decisions_made=["d"],
-                git_commits=[],
-                deliverables=["dlv"],
-                metrics={},
-                priority=2,
-                significance_score=0.5,
-                token_estimate=10,
-                tags=[f"action_required:thing-{i}"],
-            )
-        )
-    await db_session.commit()
-
-    # 5 in-window (recent) project closeouts on distinct projects.
-    other_projects = []
-    for i in range(5):
-        proj = Project(
-            id=str(uuid.uuid4()),
-            name=f"WindowProj-{i}",
-            description="x",
-            mission="x",
-            status="completed",
-            tenant_key=test_tenant_key,
-            product_id=test_product.id,
-            series_number=random.randint(1, 999999),
-        )
-        db_session.add(proj)
-        other_projects.append(proj)
-    await db_session.commit()
-
-    for i, proj in enumerate(other_projects):
-        seq += 1
-        db_session.add(
-            ProductMemoryEntry(
-                id=str(uuid.uuid4()),
-                tenant_key=test_tenant_key,
-                product_id=test_product.id,
-                project_id=proj.id,
-                sequence=seq,
-                entry_type="project_closeout",
-                source="test",
-                timestamp=base_time - timedelta(minutes=5 - i),  # RECENT timestamps
-                project_name=proj.name,
-                summary="In-window summary",
-                key_outcomes=["k"],
-                decisions_made=["d"],
-                git_commits=[],
-                deliverables=["dlv"],
-                metrics={},
-                priority=2,
-                significance_score=0.5,
-                token_estimate=10,
-                tags=["bug-fix"],
-            )
-        )
-    await db_session.commit()
-
-    result = await get_360_memory(
-        product_id=str(test_product.id),
-        tenant_key=test_tenant_key,
-        last_n_projects=5,
-        session=db_session,
-    )
-
-    md = result["metadata"]
-    assert md["returned_projects"] == 5
-    assert md.get("action_required_extras") == 4
 
 
 # ---- Tenant isolation regression -------------------------------------------
