@@ -511,7 +511,7 @@ A project moves through three phases during its lifetime:
    entry from the session summary and marks the project closed. The next project
    inherits this accumulated context.
 
-Project statuses: `staging`, `active`, `inactive`, `cancelled`.
+Project statuses (canonical 6, BE-5039): `inactive`, `active`, `completed`, `cancelled`, `terminated`, `deleted`.
 
 ### Agent Job Statuses
 

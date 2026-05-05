@@ -144,6 +144,9 @@ class ToolAccessor:
         completed_before: Any = None,
         include_completed: bool = False,
         hidden: bool | None = None,
+        # BE-5042 agent-facing projection mode
+        mode: str | None = None,
+        memory_limit: int | None = None,
     ) -> dict[str, Any]:
         """List projects for active product (v1.2.1: server-side filtering).
 
@@ -170,6 +173,8 @@ class ToolAccessor:
             completed_before=completed_before,
             include_completed=include_completed,
             hidden=hidden,
+            mode=mode,
+            memory_limit=memory_limit,
         )
 
     async def update_project_metadata(

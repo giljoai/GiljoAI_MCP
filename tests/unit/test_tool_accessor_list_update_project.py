@@ -217,16 +217,23 @@ class TestListProjectsBehavior:
 
         captured: list = []
 
-        async def fake_build(projects, depth, tk):
+        async def fake_build(projects, depth, tk, **_kwargs):
             captured.extend(projects)
             return [{"project_id": p.id, "status": p.status} for p in projects]
+
+        async def _fake_list_projects(*_args, **kwargs):
+            st = kwargs.get("status")
+            rows = [active_proj, inactive_proj]
+            if st is None:
+                return rows
+            allowed = {st} if isinstance(st, str) else set(st)
+            return [r for r in rows if r.status in allowed]
 
         with (
             patch.object(
                 accessor._project_service,
                 "list_projects",
-                new_callable=AsyncMock,
-                return_value=[active_proj, inactive_proj],
+                new=AsyncMock(side_effect=_fake_list_projects),
             ),
             patch(_PRODUCT_SERVICE_PATH) as mock_product_svc,
             patch.object(accessor._project_service, "_build_mcp_project_list", new=AsyncMock(side_effect=fake_build)),
@@ -277,7 +284,7 @@ class TestListProjectsBehavior:
         completed_proj.created_at = "2026-01-01T00:00:00+00:00"
         completed_proj.completed_at = "2026-01-02T00:00:00+00:00"
 
-        async def fake_build(projects, depth, tk):
+        async def fake_build(projects, depth, tk, **_kwargs):
             return [{"project_id": p.id, "status": p.status} for p in projects]
 
         with (

@@ -59,7 +59,10 @@ class JWTManager:
         """
         Get JWT secret key from environment variables.
 
-        Loads dynamically to ensure .env file has been processed.
+        Reads from os.environ only. .env loading is the responsibility of
+        the application entry point (api.app lifespan, startup.py, install.py).
+        Calling load_dotenv() here was a runtime side effect that mutated
+        os.environ during request handling — relocated alongside seq 100 / 97.
 
         Returns:
             Secret key string
@@ -67,20 +70,7 @@ class JWTManager:
         Raises:
             RuntimeError: If no secret key is found
         """
-        # Try multiple environment variable names
         secret_key = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY") or os.getenv("SECRET_KEY")
-
-        if not secret_key:
-            # Try to load .env file if not already loaded
-            try:
-                from dotenv import load_dotenv
-
-                load_dotenv(override=False)  # Don't override existing values
-
-                # Try again after loading .env
-                secret_key = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY") or os.getenv("SECRET_KEY")
-            except ImportError:
-                pass  # dotenv not available
 
         if not secret_key:
             raise RuntimeError(

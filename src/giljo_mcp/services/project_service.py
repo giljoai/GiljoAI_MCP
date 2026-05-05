@@ -26,7 +26,7 @@ Design Principles:
 import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, ClassVar
 from uuid import uuid4
 
 from sqlalchemy.exc import IntegrityError
@@ -432,7 +432,7 @@ class ProjectService:
 
     async def list_projects(
         self,
-        status: str | None = None,
+        status: str | list[str] | None = None,
         tenant_key: str | None = None,
         include_cancelled: bool = False,
         product_id: str | None = None,
@@ -847,6 +847,9 @@ class ProjectService:
     # BE-5039 Phase 2b: legacy filter sets now derive from the canonical
     # ProjectStatus enum metadata. ``_VALID_STATUS_FILTERS`` keeps the
     # extra ``"all"`` sentinel that means "do not filter".
+    # NOTE (seq 161): the legacy ``status_filter`` kwarg path uses this set,
+    # which excludes ``terminated`` and ``deleted`` (lifecycle-only statuses).
+    # Use ``status`` (read-side) with ``_VALID_FILTER_STATUSES`` to query those.
     _VALID_STATUS_FILTERS = frozenset({s.value for s in _DOMAIN_VALID_UPDATE_STATUSES} | {"all"})
     # Writes via update_project remain limited to user-mutable statuses
     # (``is_user_mutable_via_mcp=True`` in PROJECT_STATUS_META).
@@ -858,6 +861,15 @@ class ProjectService:
     # VALID_PROJECT_STATUSES.
     _VALID_FILTER_STATUSES = frozenset(s.value for s in VALID_PROJECT_STATUSES)
     _VALID_DEPTH_LEVELS = frozenset({0, 1, 2, 3})
+    # BE-5042: agent-facing mode names map to (depth, headlines, memory_limit).
+    # ``mode`` wins over numeric ``depth`` when both are passed.
+    _MODE_TO_PROJECTION: ClassVar[dict[str, tuple[int, bool, int | None]]] = {
+        "triage": (0, False, None),
+        "planning": (1, False, None),
+        "audit": (2, True, 5),
+        "forensic": (3, False, None),
+    }
+    _MEMORY_LIMIT_CAP = 50
 
     async def create_project_for_mcp(
         self,
@@ -985,6 +997,9 @@ class ProjectService:
         completed_before: datetime | None = None,
         include_completed: bool = False,
         hidden: bool | None = None,
+        # BE-5042 agent-facing projection mode
+        mode: str | None = None,
+        memory_limit: int | None = None,
     ) -> dict[str, Any]:
         """List projects via MCP tool with server-side filtering (v1.2.1).
 
@@ -996,6 +1011,14 @@ class ProjectService:
 
         Combination semantics: different fields AND together; multi-value
         within a field ORs together.
+
+        BE-5042 — projection ``mode`` (agent-facing surface):
+            ``triage`` (~depth 0), ``planning`` (~depth 1), ``audit``
+            (~depth 2 with memory headlines + agent summaries, default last 5
+            memory entries), ``forensic`` (~depth 3, full bodies, no cap).
+            ``mode`` wins over numeric ``depth`` when both are passed; numeric
+            ``depth`` stays as a back-compat path. ``memory_limit`` (default 5,
+            cap 50) tunes audit; forensic ignores the cap unless overridden.
         """
         # ----- Legacy status_filter back-compat -----
         # Existing callers pass status_filter ("all" | status). When the new
@@ -1019,6 +1042,29 @@ class ProjectService:
                 f"Invalid depth '{depth}'. Must be an integer 0-3.",
                 context={"operation": "list_projects"},
             )
+
+        # BE-5042: mode is the agent-facing surface; translate to internal
+        # (depth, headlines, memory_limit). When both mode and numeric depth
+        # are passed, mode wins.
+        headlines = False
+        resolved_memory_limit: int | None = None
+        if mode is not None:
+            if mode not in self._MODE_TO_PROJECTION:
+                raise ValidationError(
+                    f"Invalid mode '{mode}'. Must be one of: {', '.join(sorted(self._MODE_TO_PROJECTION))}.",
+                    context={"operation": "list_projects", "mode": mode},
+                )
+            depth, headlines, default_limit = self._MODE_TO_PROJECTION[mode]
+            # Mode implies a full projection pass; override summary_only=True default.
+            summary_only = False
+            if mode == "audit":
+                effective_limit = memory_limit if memory_limit is not None else default_limit
+                resolved_memory_limit = min(effective_limit, self._MEMORY_LIMIT_CAP)
+            elif mode == "forensic":
+                # Forensic has no default cap; honor an explicit caller override.
+                resolved_memory_limit = min(memory_limit, self._MEMORY_LIMIT_CAP) if memory_limit is not None else None
+            else:
+                resolved_memory_limit = default_limit
 
         # ----- Normalize status to list[str] | None -----
         status_list: list[str] | None = None
@@ -1080,15 +1126,25 @@ class ProjectService:
                 context={"tenant_key": effective_tenant_key, "operation": "list_projects"},
             )
 
-        # ----- Compute lifecycle-finished default (v1.2.1 BREAKING) -----
-        # Explicit status wins; else if include_completed=False, exclude finished.
-        # We pass include_cancelled=True to the inner repo and apply the lifecycle
-        # filter ourselves, so we have a single decision point.
-        all_projects = await self.list_projects(
-            status=None,
-            tenant_key=effective_tenant_key,
-            include_cancelled=True,
-        )
+        # ----- Seq 161: SQL pushdown for the status filter -----
+        # When the agent passes status=..., push it to SQL via the repo's IN
+        # clause instead of fetching every row and filtering in Python. The
+        # lifecycle-finished default (when status_list is None and
+        # include_completed=False) still happens post-fetch because it depends
+        # on the LIFECYCLE_FINISHED_STATUSES constant living in this layer.
+        if status_list is not None:
+            inner_status: str | list[str] = status_list[0] if len(status_list) == 1 else status_list
+            all_projects = await self.list_projects(
+                status=inner_status,
+                tenant_key=effective_tenant_key,
+                include_cancelled=True,
+            )
+        else:
+            all_projects = await self.list_projects(
+                status=None,
+                tenant_key=effective_tenant_key,
+                include_cancelled=True,
+            )
 
         # Active product scoping (existing behavior)
         product_projects = [p for p in all_projects if p.product_id == active_product.id]
@@ -1099,11 +1155,9 @@ class ProjectService:
         # is bounded by projects-per-product (small N).
         filtered: list = []
         for p in product_projects:
-            # Status filter
-            if status_list is not None:
-                if p.status not in status_list:
-                    continue
-            elif not include_completed and p.status in LIFECYCLE_FINISHED_STATUSES:
+            # Status: pushed to SQL when status_list is set; only the default
+            # lifecycle exclusion remains as a post-fetch filter.
+            if status_list is None and not include_completed and p.status in LIFECYCLE_FINISHED_STATUSES:
                 continue
 
             # Hidden filter (None = both)
@@ -1139,23 +1193,39 @@ class ProjectService:
 
         effective_depth = 0 if summary_only else depth
 
-        projects_out = await self._build_mcp_project_list(filtered, effective_depth, effective_tenant_key)
+        projects_out = await self._build_mcp_project_list(
+            filtered,
+            effective_depth,
+            effective_tenant_key,
+            headlines=headlines,
+            memory_limit=resolved_memory_limit,
+        )
 
-        return {
+        response: dict[str, Any] = {
             "success": True,
             "product_id": active_product.id,
             "count": len(projects_out),
             "depth": effective_depth,
             "projects": projects_out,
         }
+        if mode is not None:
+            response["mode"] = mode
+        return response
 
     async def _build_mcp_project_list(
         self,
         projects: list,
         depth: int,
         tenant_key: str,
+        headlines: bool = False,
+        memory_limit: int | None = None,
     ) -> list[dict[str, Any]]:
-        """Build project list dicts with graduated detail based on depth level."""
+        """Build project list dicts with graduated detail based on depth level.
+
+        BE-5042: ``headlines`` and ``memory_limit`` propagate to the query
+        service so audit mode can request a lean projection without forking
+        the read path.
+        """
         results = []
         for p in projects:
             item: dict[str, Any] = {
@@ -1178,15 +1248,19 @@ class ProjectService:
                 )
                 item["agent_summary"] = agent_summary
 
+            memory_entries: list = []
             if depth >= 2:
                 memory_entries = await self.query.get_project_memory_entries(
                     project_id=p.id,
                     tenant_key=tenant_key,
+                    headlines=headlines,
+                    limit=memory_limit,
                 )
                 item["memory_entries"] = memory_entries
                 agent_details = await self.query.get_project_agent_details(
                     project_id=p.id,
                     tenant_key=tenant_key,
+                    headlines=headlines,
                 )
                 item["agent_details"] = agent_details
 

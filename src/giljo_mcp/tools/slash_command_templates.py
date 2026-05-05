@@ -16,7 +16,7 @@ Also provides bootstrap prompt templates for one-time CLI onboarding.
 
 # Semver for the skills/commands package. Bumped when slash command templates change.
 # Referenced by health_check so the frontend can compare installed vs available.
-SKILLS_VERSION = "1.1.11"
+SKILLS_VERSION = "1.1.12"
 
 # =============================================================================
 # CLAUDE CODE TEMPLATES
@@ -137,17 +137,19 @@ description: "Add, update, or read tasks and projects in the GiljoAI dashboard. 
 **Tool sequence (cheap-first — pick the smallest path that answers the question):**
 1. **Find the project_id by name/alias** → `mcp__giljo_mcp__list_projects(summary_only=true)`. Returns ~150 lines of metadata (project_id, name, taxonomy_alias, status, timestamps). Lightweight. Match by `name` or `taxonomy_alias` to grab the project_id.
 2. **Read one project deeply** → `mcp__giljo_mcp__fetch_context(product_id=..., project_id=..., categories=["project"])`. Returns ~300 tokens for one project: project_name, project_alias, project_description, orchestrator_mission, status, staging_status. This is the right tool when the user wants description/mission for ONE project.
-3. **Bulk read many projects (only if the user pastes multiple UUIDs and needs full fields for all)** → `mcp__giljo_mcp__list_projects(summary_only=false, depth=2)`. Heavy (can be multi-MB on busy products); the harness auto-saves to a tool-result file. Filter with jq:
+3. **Bulk read many projects (only if the user pastes multiple UUIDs and needs full fields for all)** → `mcp__giljo_mcp__list_projects(mode="planning")` for description+mission, or `mode="audit"` if memory headlines are also needed. The harness auto-saves the tool result to a file when large. Filter with jq:
    ```bash
    jq '.projects[] | select(.project_id == "UUID-HERE") | {project_id, name, taxonomy_alias, status, description, mission}' /path/to/saved-tool-result.json
    ```
 
+**Modes (preferred over numeric depth):** `triage` (id+name+status+dates), `planning` (+ description, mission, agent counts), `audit` (+ memory headlines + agent summaries), `forensic` (+ full memory bodies, agent results). `mode="forensic"` is the heavy archaeology call — only use it when you actually need full memory bodies.
+
 **Response shapes:**
 - `fetch_context(["project"])`: `project_name`, `project_alias`, `project_description`, `orchestrator_mission`, `status`, `staging_status`
-- `list_projects` row (depth=2): `project_id`, `name`, `taxonomy_alias`, `status`, `project_type`, `series_number`, `description`, `mission`, `agent_summary`, `created_at`, `completed_at`
+- `list_projects` row (`mode="planning"`): `project_id`, `name`, `taxonomy_alias`, `status`, `project_type`, `series_number`, `description`, `mission`, `agent_summary`, `created_at`, `completed_at`
 
 **Worked example:**
-> User asks "what's IMP-0019 about?" → call `list_projects(summary_only=true)` → match `taxonomy_alias=="IMP-0019"` → grab `project_id` → call `fetch_context(product_id, project_id, ["project"])` → return description + mission. No multi-MB pull.
+> User asks "what's IMP-0019 about?" → call `list_projects(mode="triage")` → match `taxonomy_alias=="IMP-0019"` → grab `project_id` → call `fetch_context(product_id, project_id, ["project"])` → return description + mission. No multi-MB pull.
 
 ## Rules
 - Never pass `tenant_key` (auto-injected by security layer)
@@ -317,17 +319,19 @@ GOTCHA: the project identifier field is project_id, NOT id. Filtering on .id ret
 IDs you already have: tenant_key is auto-injected from auth. product_id appears in tool responses (cache it once you see it). You only need project_id — get it from step 1 or the user's paste.
 
 Tool sequence (cheap-first — pick the smallest path that answers the question):
-1. Find the project_id by name/alias: call list_projects with summary_only=true. Returns ~150 lines of metadata only (project_id, name, taxonomy_alias, status, timestamps). Match by name or taxonomy_alias to grab the project_id.
+1. Find the project_id by name/alias: call list_projects with mode="triage". Returns ~150 lines of metadata only (project_id, name, taxonomy_alias, status, timestamps). Match by name or taxonomy_alias to grab the project_id.
 2. Read one project deeply: call fetch_context with product_id, project_id, and categories=["project"]. Returns ~300 tokens for that single project (project_name, project_alias, project_description, orchestrator_mission, status, staging_status). This is the right tool for "what's project X about?" / "show me the mission for X".
-3. Bulk read many projects (only if user pastes multiple UUIDs and needs full fields for all): call list_projects with summary_only=false and depth=2. Heavy (multi-MB on busy products); harness auto-saves to a tool-result file. Filter with jq via run_shell_command:
+3. Bulk read many projects (only if user pastes multiple UUIDs and needs full fields for all): call list_projects with mode="planning" for description+mission, or mode="audit" if memory headlines are also needed. Harness auto-saves large results to a tool-result file. Filter with jq via run_shell_command:
    jq '.projects[] | select(.project_id == "UUID-HERE") | {project_id, name, taxonomy_alias, status, description, mission}' /path/to/saved-tool-result.json
+
+Modes (preferred over numeric depth): triage (id+name+status+dates), planning (+ description, mission, agent counts), audit (+ memory headlines + agent summaries), forensic (+ full memory bodies, agent results). Use forensic only when full memory bodies are genuinely needed.
 
 Response shapes:
 - fetch_context(["project"]): project_name, project_alias, project_description, orchestrator_mission, status, staging_status
-- list_projects row (depth=2): project_id, name, taxonomy_alias, status, project_type, series_number, description, mission, agent_summary, created_at, completed_at
+- list_projects row (mode="planning"): project_id, name, taxonomy_alias, status, project_type, series_number, description, mission, agent_summary, created_at, completed_at
 
 Worked example:
-User asks "what's IMP-0019 about?" → call list_projects(summary_only=true) → match taxonomy_alias=="IMP-0019" → grab project_id → call fetch_context(product_id, project_id, ["project"]) → return description + mission. No multi-MB pull.
+User asks "what's IMP-0019 about?" → call list_projects(mode="triage") → match taxonomy_alias=="IMP-0019" → grab project_id → call fetch_context(product_id, project_id, ["project"]) → return description + mission. No multi-MB pull.
 
 ## Rules
 - Never pass tenant_key (auto-injected by security layer)
@@ -605,16 +609,18 @@ description: "Add, update, or read tasks and projects in the GiljoAI dashboard. 
 **IDs you already have:** `tenant_key` is auto-injected from auth. `product_id` is in your session context the moment any tool response surfaces it. You only need `project_id` — get it from step 1 or the user's paste.
 
 **Tool sequence (cheap-first — pick the smallest path that answers the question):**
-1. **Find the project_id by name/alias** → call `list_projects` with `summary_only=true`. Returns ~150 lines of metadata only (project_id, name, taxonomy_alias, status, timestamps). Match by `name` or `taxonomy_alias` to grab the project_id.
+1. **Find the project_id by name/alias** → call `list_projects` with `mode="triage"`. Returns ~150 lines of metadata only (project_id, name, taxonomy_alias, status, timestamps). Match by `name` or `taxonomy_alias` to grab the project_id.
 2. **Read one project deeply** → call `fetch_context` with `product_id`, `project_id`, and `categories=["project"]`. Returns ~300 tokens for one project (project_name, project_alias, project_description, orchestrator_mission, status, staging_status). Right tool for "what's project X about?" / "show mission for X".
-3. **Bulk read many projects (only if user pastes multiple UUIDs and needs full fields for all)** → call `list_projects` with `summary_only=false` and `depth=2`. Heavy (multi-MB on busy products); Codex auto-saves to a tool-result file. Filter with `jq`:
+3. **Bulk read many projects (only if user pastes multiple UUIDs and needs full fields for all)** → call `list_projects` with `mode="planning"` for description+mission, or `mode="audit"` if memory headlines are also needed. Codex auto-saves large results to a tool-result file. Filter with `jq`:
    ```
    jq '.projects[] | select(.project_id == "UUID-HERE") | {project_id, name, taxonomy_alias, status, description, mission}' /path/to/saved-tool-result.json
    ```
 
+**Modes (preferred over numeric depth):** `triage` (id+name+status+dates), `planning` (+ description, mission, agent counts), `audit` (+ memory headlines + agent summaries), `forensic` (+ full memory bodies, agent results). Use `forensic` only when full memory bodies are genuinely needed.
+
 **Response shapes:**
 - `fetch_context(["project"])`: `project_name`, `project_alias`, `project_description`, `orchestrator_mission`, `status`, `staging_status`
-- `list_projects` row (depth=2): `project_id`, `name`, `taxonomy_alias`, `status`, `project_type`, `series_number`, `description`, `mission`, `agent_summary`, `created_at`, `completed_at`
+- `list_projects` row (`mode="planning"`): `project_id`, `name`, `taxonomy_alias`, `status`, `project_type`, `series_number`, `description`, `mission`, `agent_summary`, `created_at`, `completed_at`
 
 **Menu prompts:** When asking which projects to expand, or whether to show summary vs full, use `request_user_input` (1-3 questions per call) with structured options. Never ask via plain text. Example shape:
 ```json
@@ -634,7 +640,7 @@ description: "Add, update, or read tasks and projects in the GiljoAI dashboard. 
 ```
 
 **Worked example:**
-> User pastes 5 UUIDs. Skill runs `list_projects(summary_only=false, depth=2)`, jq-filters the saved tool-result file with `select(.project_id == "<uuid>")` for each UUID, and returns a compact summary table — one row per project: `taxonomy_alias`, `name`, `status`, one-line description.
+> User pastes 5 UUIDs. Skill runs `list_projects(mode="planning")`, jq-filters the saved tool-result file with `select(.project_id == "<uuid>")` for each UUID, and returns a compact summary table — one row per project: `taxonomy_alias`, `name`, `status`, one-line description.
 
 ## Rules
 - Never pass `tenant_key` (auto-injected by security layer)

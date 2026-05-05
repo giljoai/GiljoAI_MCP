@@ -22,9 +22,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info("Loading FastAPI application...")
 
-from dotenv import load_dotenv
-
-
 try:
     from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
     from fastapi.exceptions import WebSocketException
@@ -36,25 +33,16 @@ except ImportError as e:
     logger.error(f"Failed to import FastAPI dependencies: {e}", exc_info=True)
     raise
 
-# Load environment variables from .env file
-# Ensure we load from project root (parent of api directory)
-project_root = Path(__file__).parent.parent
-env_path = project_root / ".env"
-load_dotenv(dotenv_path=env_path)
-logger.info(f"Environment variables loaded from .env file: {env_path}")
-
-# Edition detection: canonical source is api.app_state
+# Edition detection: canonical source is api.app_state.
+# NOTE: GILJO_MODE is read from os.environ at api.app_state import time.
+# .env loading has been deferred to the FastAPI lifespan (closes seq 100),
+# so GILJO_MODE here reflects only the process-level environment, not .env.
+# Operators who need GILJO_MODE driven by .env must export it before launch
+# or re-resolve it inside the lifespan after _load_env_from_dotfile() runs.
 from api.app_state import GILJO_MODE
 
 
 logger.info(f"GILJO_MODE: {GILJO_MODE}")
-
-# Log JWT secret availability for debugging
-jwt_secret = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY") or os.getenv("SECRET_KEY")
-if jwt_secret:
-    logger.info("JWT secret key found in environment")
-else:
-    logger.error("JWT secret key NOT found in environment - authentication will fail")
 
 # Ensure project root is on sys.path for module resolution
 # (api/ is not a pip package — it needs the project root on sys.path)
@@ -137,9 +125,34 @@ except ImportError as e:
 from api.app_state import APIState, state  # noqa: F401 — canonical source, re-exported
 
 
+def _load_env_from_dotfile() -> None:
+    """Load .env into os.environ. Invoked from the FastAPI lifespan, never at import.
+
+    Uses ``override=False`` so a process-level environment variable always wins
+    over a .env entry. This relocation closes audit seq 100 (load_dotenv at
+    module-import) and seq 97 (api/__init__.py import-time DATABASE_URL
+    mutation — the mutation came from this same load_dotenv call propagating
+    DATABASE_URL via the api package).
+    """
+    from dotenv import load_dotenv
+
+    project_root = Path(__file__).parent.parent
+    env_path = project_root / ".env"
+    load_dotenv(dotenv_path=env_path, override=False)
+    logger.info(f"Environment variables loaded from .env file: {env_path}")
+
+    jwt_secret = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY") or os.getenv("SECRET_KEY")
+    if jwt_secret:
+        logger.info("JWT secret key found in environment")
+    else:
+        logger.error("JWT secret key NOT found in environment - authentication will fail")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager - orchestrates startup and shutdown"""
+    _load_env_from_dotfile()
+
     from api.startup import (
         init_background_tasks,
         init_core_services,

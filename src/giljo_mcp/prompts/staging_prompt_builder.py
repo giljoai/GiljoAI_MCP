@@ -92,7 +92,6 @@ WORKFLOW:
    → Returns configured context (vision, tech stack, architecture, memory, git history, templates)
    → User toggle/depth configuration automatically applied server-side
    → Depth configuration (chunking, commit count, etc.) pre-configured
-   → Note: tenant_key auto-injected by server from your API key session
 3. Create condensed mission plan from fetched context
 4. Persist mission: mcp__giljo_mcp__update_project_mission('{project_id}', mission)
 5. Spawn specialist agents: mcp__giljo_mcp__spawn_job(agent_display_name, agent_name, mission, '{project_id}')
@@ -111,7 +110,7 @@ CRITICAL DISTINCTIONS:
 - Project.mission = YOUR OUTPUT (condensed execution plan you CREATE in Step 2)
 - Agent jobs = Specialist agents who will DO THE ACTUAL WORK (you coordinate them)
 
-MCP CORE TOOLS (Always Available - tenant_key auto-injected by server):
+MCP CORE TOOLS (Always Available):
 ✓ mcp__giljo_mcp__health_check() - Verify MCP connection
 ✓ mcp__giljo_mcp__get_orchestrator_instructions('{orchestrator_id}') - Fetch complete prioritized context
 ✓ mcp__giljo_mcp__update_project_mission('{project_id}', mission) - Save mission plan
@@ -156,7 +155,6 @@ YOUR IDENTITY (use these in all MCP calls):
   THE Project ID: {project_id}
 
 MCP Server: {mcp_url}
-Note: tenant_key is auto-injected by server from your API key session (secure server-side isolation)
 
 START NOW:
 1. Verify MCP: mcp__giljo_mcp__health_check()

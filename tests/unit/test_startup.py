@@ -256,21 +256,24 @@ class TestConfigurationLoading:
         assert loaded_config["services"]["api"]["port"] == 7272
 
     def test_dotenv_loading(self, tmp_path, monkeypatch):
-        """Test .env file loading."""
-        # Create temporary .env file
+        """Test .env file parses without mutating os.environ."""
+        import os
+
+        from dotenv import dotenv_values
+
         env_file = tmp_path / ".env"
         env_file.write_text("DATABASE_URL=postgresql://localhost/test\n")
 
-        # Test that dotenv can load it
-        from dotenv import load_dotenv
+        dotenv_keys = ["DATABASE_URL"]
+        pre_snapshot = {key: os.environ.get(key) for key in dotenv_keys}
 
         monkeypatch.chdir(tmp_path)
-        load_dotenv(env_file)
+        parsed = dotenv_values(env_file)
 
-        # Verify environment variable is set
-        import os
+        assert parsed.get("DATABASE_URL") == "postgresql://localhost/test"
 
-        assert os.getenv("DATABASE_URL") is not None
+        post_snapshot = {key: os.environ.get(key) for key in dotenv_keys}
+        assert post_snapshot == pre_snapshot, "dotenv_values must not mutate os.environ"
 
 
 class TestColoredOutput:

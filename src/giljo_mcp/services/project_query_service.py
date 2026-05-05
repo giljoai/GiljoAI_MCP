@@ -146,14 +146,23 @@ class ProjectQueryService:
             self._logger.warning("Failed to get agent summary for project %s: %s", project_id, e)
             return {"agent_count": 0, "job_types": []}
 
-    async def get_project_agent_details(self, project_id: str, tenant_key: str) -> list[dict]:
-        """Get detailed agent job info for a project (depth 2).
+    async def get_project_agent_details(
+        self,
+        project_id: str,
+        tenant_key: str,
+        headlines: bool = False,
+    ) -> list[dict]:
+        """Get detailed agent job info for a project.
 
-        Returns agent display names, statuses, and results.
+        BE-5042: ``headlines=True`` returns the lean projection used by audit
+        mode (drops result blob and full mission text); the full projection
+        remains the default for back-compat and forensic mode.
 
         Args:
             project_id: Project UUID.
             tenant_key: Tenant isolation key (required).
+            headlines: When True, return only {job_id, display_name, status,
+                completed_at} per job.
 
         Returns:
             List of agent job detail dicts.
@@ -161,6 +170,16 @@ class ProjectQueryService:
         try:
             async with self._get_session() as session:
                 pairs = await self._repo.get_agent_details_for_project(session, tenant_key, project_id)
+                if headlines:
+                    return [
+                        {
+                            "job_id": job.job_id,
+                            "display_name": execution.agent_display_name,
+                            "status": execution.status,
+                            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                        }
+                        for job, execution in pairs
+                    ]
                 return [
                     {
                         "job_id": job.job_id,
@@ -179,19 +198,45 @@ class ProjectQueryService:
             self._logger.warning("Failed to get agent details for project %s: %s", project_id, e)
             return []
 
-    async def get_project_memory_entries(self, project_id: str, tenant_key: str) -> list[dict]:
-        """Get 360 memory entries for a project (depth 2).
+    async def get_project_memory_entries(
+        self,
+        project_id: str,
+        tenant_key: str,
+        headlines: bool = False,
+        limit: int | None = None,
+    ) -> list[dict]:
+        """Get 360 memory entries for a project.
+
+        BE-5042: ``headlines=True`` returns a lean projection (drops
+        ``key_outcomes``, ``decisions_made``, ``git_commits``, ``project_name``)
+        used by audit mode; ``limit`` caps the trailing window so callers can
+        request the most recent N entries. Full bodies + full history remain
+        the default for back-compat and forensic mode.
 
         Args:
             project_id: Project UUID.
             tenant_key: Tenant isolation key (required).
+            headlines: When True, return only {id, sequence, entry_type,
+                summary, timestamp} per entry.
+            limit: Most recent N entries to return; None means full history.
 
         Returns:
-            List of memory entry dicts with summary, outcomes, decisions, and git_commits.
+            List of memory entry dicts.
         """
         try:
             async with self._get_session() as session:
-                entries = await self._repo.get_memory_entries_for_project(session, tenant_key, project_id)
+                entries = await self._repo.get_memory_entries_for_project(session, tenant_key, project_id, limit=limit)
+                if headlines:
+                    return [
+                        {
+                            "id": str(entry.id),
+                            "sequence": entry.sequence,
+                            "entry_type": entry.entry_type,
+                            "summary": entry.summary,
+                            "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
+                        }
+                        for entry in entries
+                    ]
                 return [
                     {
                         "id": str(entry.id),

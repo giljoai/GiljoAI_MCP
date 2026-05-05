@@ -43,6 +43,104 @@ async def test_get_workflow_status_raises_for_missing_project(wf_service, test_t
 
 
 @pytest.mark.asyncio
+async def test_get_workflow_status_todo_counts_are_fresh_after_direct_write(db_session, db_manager, test_tenant_key):
+    """Seq 124 regression: get_workflow_status TODO counts must NOT be stale.
+
+    Concern: dashboard reports observed in audit suggested TODO counts could
+    lag behind direct DB writes. The read path uses fresh sessions and a live
+    SQL aggregate (AgentOperationsRepository.get_todo_counts_by_job), so this
+    test pins the contract that two consecutive calls across a direct insert
+    reflect the new count immediately — no caching layer may be introduced
+    without invalidation.
+    """
+    import uuid
+
+    from giljo_mcp.models import AgentExecution, AgentJob, Project
+    from giljo_mcp.models.agent_identity import AgentTodoItem
+
+    project = Project(
+        id=str(uuid.uuid4()),
+        name="Stale TODOs WF",
+        description="Seq 124 staleness pin",
+        mission="Test mission",
+        status="active",
+        tenant_key=test_tenant_key,
+        series_number=99124,
+    )
+    db_session.add(project)
+    await db_session.flush()
+
+    job_id = str(uuid.uuid4())
+    db_session.add(
+        AgentJob(
+            job_id=job_id,
+            project_id=project.id,
+            tenant_key=test_tenant_key,
+            job_type="implementer",
+            mission="Test mission",
+        )
+    )
+    await db_session.flush()
+
+    db_session.add(
+        AgentExecution(
+            job_id=job_id,
+            agent_id=str(uuid.uuid4()),
+            tenant_key=test_tenant_key,
+            status="working",
+            agent_name="impl",
+            agent_display_name="implementer",
+        )
+    )
+    await db_session.commit()
+
+    service = WorkflowStatusService(
+        db_manager=db_manager,
+        tenant_manager=MagicMock(),
+        test_session=db_session,
+    )
+
+    first = await service.get_workflow_status(project.id, test_tenant_key)
+    assert first.total_agents == 1
+    first_agent = first.agents[0]
+    assert first_agent.todos.completed == 0
+    assert first_agent.todos.in_progress == 0
+    assert first_agent.todos.pending == 0
+
+    db_session.add(
+        AgentTodoItem(
+            id=str(uuid.uuid4()),
+            job_id=job_id,
+            tenant_key=test_tenant_key,
+            content="Direct-write TODO",
+            status="completed",
+            sequence=1,
+        )
+    )
+    db_session.add(
+        AgentTodoItem(
+            id=str(uuid.uuid4()),
+            job_id=job_id,
+            tenant_key=test_tenant_key,
+            content="Direct-write TODO 2",
+            status="pending",
+            sequence=2,
+        )
+    )
+    await db_session.commit()
+
+    second = await service.get_workflow_status(project.id, test_tenant_key)
+    assert second.total_agents == 1
+    second_agent = second.agents[0]
+    assert second_agent.todos.completed == 1, (
+        f"Seq 124: completed count must reflect the direct insert immediately; got {second_agent.todos.completed}"
+    )
+    assert second_agent.todos.pending == 1, (
+        f"Seq 124: pending count must reflect the direct insert immediately; got {second_agent.todos.pending}"
+    )
+
+
+@pytest.mark.asyncio
 async def test_get_workflow_status_empty_project(db_session, db_manager, test_tenant_key):
     """A project with zero executions returns 'Not started' stage and 0 progress."""
     import uuid

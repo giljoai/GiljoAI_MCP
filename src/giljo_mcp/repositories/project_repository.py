@@ -220,20 +220,35 @@ class ProjectRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-        status: str | None = None,
+        status: str | list[str] | None = None,
         include_cancelled: bool = False,
         product_id: str | None = None,
     ) -> list[Project]:
-        """List projects for a tenant with optional filters."""
+        """List projects for a tenant with optional filters.
+
+        ``status`` accepts a single value or a list (SQL ``IN`` pushdown). When a
+        list contains ``"deleted"``, the soft-delete clause widens to
+        ``deleted_at IS NOT NULL`` for that bucket only when ``status`` is
+        exactly ``["deleted"]``; mixed lists keep the default ``IS NULL``
+        guard (mirrors the pre-existing single-string semantics).
+        """
         query = select(Project).options(selectinload(Project.project_type)).where(Project.tenant_key == tenant_key)
 
         if product_id:
             query = query.where(Project.product_id == product_id)
 
         if status:
-            query = query.where(Project.status == status)
-            if status == "deleted":
-                query = query.where(Project.deleted_at.isnot(None))
+            status_list = [status] if isinstance(status, str) else list(status)
+            if len(status_list) == 1:
+                only = status_list[0]
+                query = query.where(Project.status == only)
+                if only == "deleted":
+                    query = query.where(Project.deleted_at.isnot(None))
+                else:
+                    query = query.where(Project.deleted_at.is_(None))
+            else:
+                query = query.where(Project.status.in_(status_list))
+                query = query.where(Project.deleted_at.is_(None))
         else:
             query = query.where(Project.deleted_at.is_(None))
             if not include_cancelled:
@@ -321,8 +336,30 @@ class ProjectRepository:
         session: AsyncSession,
         tenant_key: str,
         project_id: str,
+        limit: int | None = None,
     ) -> list[ProductMemoryEntry]:
-        """Get 360 memory entries for a project."""
+        """Get 360 memory entries for a project.
+
+        When ``limit`` is set, returns the most recent ``limit`` entries
+        (highest sequence first), then re-orders ascending so callers see a
+        chronological view of the trailing window. When unset, returns the
+        full chronological history.
+        """
+        if limit is not None:
+            query = (
+                select(ProductMemoryEntry)
+                .where(
+                    ProductMemoryEntry.project_id == project_id,
+                    ProductMemoryEntry.tenant_key == tenant_key,
+                )
+                .order_by(ProductMemoryEntry.sequence.desc())
+                .limit(limit)
+            )
+            result = await session.execute(query)
+            entries = list(result.scalars().all())
+            entries.reverse()
+            return entries
+
         query = (
             select(ProductMemoryEntry)
             .where(
