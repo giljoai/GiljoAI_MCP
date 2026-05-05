@@ -549,9 +549,14 @@ class ProjectService:
                         context={"project_id": project_id, "status": project.status.value},
                     )
 
-                # Handover 0425: Also set staging_status to 'staging' when mission is updated
+                # Handover 0425: set staging_status to 'staging' on initial mission writes.
+                # BE-fix-staging-revert: Don't downgrade once staging is complete --
+                # orchestrators legitimately rewrite the project mission after agents
+                # have spawned (scope clarifications, deferrals, plan refinements), and
+                # rewinding staging breaks the implementation prompt endpoint with 404.
                 project.mission = mission
-                project.staging_status = "staging"
+                if project.staging_status != "staging_complete":
+                    project.staging_status = "staging"
                 project.updated_at = datetime.now(UTC)
 
                 await self._repo.commit(session)
