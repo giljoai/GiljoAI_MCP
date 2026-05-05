@@ -209,7 +209,7 @@ async def create_project(
         "declutter and does NOT affect default visibility -- agent sees hidden "
         "and non-hidden alike. Pass include_completed=true to retrieve archived "
         "projects. Pass hidden=true|false to filter explicitly when needed (rare). "
-        "Use summary_only=false with depth 1-3 for progressively more detail. "
+        "Prefer mode=triage|planning|audit|forensic over numeric depth (BE-5042). "
         "Requires an active product to be set."
     ),
 )
@@ -226,6 +226,8 @@ async def list_projects(
     summary_only: bool = True,
     depth: int = 0,
     status_filter: str = "",
+    mode: str = "",
+    memory_limit: int = 0,
     ctx: Context = None,
 ) -> dict:
     """List projects for the active product (v1.2.1 server-side filtering).
@@ -266,6 +268,15 @@ async def list_projects(
             3 = + message history, git commits from 360 memory.
         status_filter: Legacy parameter -- prefer `status`. Accepts "all" or a single
             status string. Honored only when `status` is unset.
+        mode: BE-5042 agent-facing projection (preferred over numeric depth).
+            "triage"   = id+name+status+dates (cheapest).
+            "planning" = + description, mission, agent counts.
+            "audit"    = + memory headlines + agent summaries (default last 5
+                         memory entries).
+            "forensic" = + full memory bodies, agent results (no cap).
+            When set, mode wins over numeric `depth`. Empty string = use depth.
+        memory_limit: Cap memory entries returned (audit mode default 5, max 50).
+            0 = use mode default. Forensic ignores the cap unless explicitly set.
     """
     # Normalize status -> list[str] | None
     status_arg: list[str] | str | None
@@ -324,6 +335,8 @@ async def list_projects(
             "completed_before": _maybe(completed_before),
             "include_completed": include_completed,
             "hidden": hidden_arg,
+            "mode": mode or None,
+            "memory_limit": memory_limit or None,
         },
     )
 
