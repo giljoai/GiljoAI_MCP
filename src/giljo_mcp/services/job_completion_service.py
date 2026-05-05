@@ -168,7 +168,8 @@ class JobCompletionService:
                 await self._broadcast_completion(tenant_key, job_id, job, execution, old_status, duration_seconds)
 
             if execution and job and result and "resolved_action_items" in result:
-                # INF-5025b: warn-and-ignore for one release; INF-5025d removes the key entirely
+                # INF-5025b: warn-and-ignore for one release. Cutover deferred to BE-5054
+                # (after 2026-06-05) -- not removed in INF-5025d; only the prose was finalized then.
                 self._logger.warning(
                     "resolved_action_items is deprecated; cite task/project IDs in decisions_made instead"
                 )

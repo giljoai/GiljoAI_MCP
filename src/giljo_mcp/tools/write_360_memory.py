@@ -425,8 +425,9 @@ async def write_360_memory(
         entry_type: Type of entry. Workers may write ``baseline``, ``decision``,
             ``architecture``, ``discovery``. Orchestrator-only types (rejected
             with ``ORCHESTRATOR_ONLY_ENTRY_TYPE`` for workers): ``project_completion``,
-            ``session_handover``, ``action_required``. ``handover_closeout`` is
-            preserved for back-compat.
+            ``session_handover``. ``handover_closeout`` is preserved for back-compat.
+            ``action_required`` is no longer accepted (INF-5025) -- use
+            ``mcp__giljo_mcp__create_task`` / ``create_project`` for deferred follow-ups.
         author_job_id: Job ID of agent writing entry (optional)
         git_commits: Agent-supplied commits from local git log. When provided,
             skips the GitHub API fetch entirely (passive server model).

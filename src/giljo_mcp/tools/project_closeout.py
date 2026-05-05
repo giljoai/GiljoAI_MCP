@@ -456,8 +456,9 @@ async def close_project_and_update_memory(
         decisions_made <= 5 items, each <= 250 chars
         tags <= 8 items, each from the 16-tag CONTROLLED_TAG_VOCABULARY in
             MemoryEntryWriteSchema. Invalid tags trigger a structured MemoryEntryWriteValidationError
-            carrying the offending tag and the full allowed enum.
-            DEPRECATED: do not use ``action_required:<title>`` free-form tags for new work.
+            carrying the offending tag and the full allowed enum. The legacy
+            ``action_required:<title>`` free-form prefix was retired in INF-5025;
+            use ``mcp__giljo_mcp__create_task`` / ``create_project`` for deferred follow-ups.
 
     Args:
         tags: Orchestrator-supplied controlled-vocabulary tags for the

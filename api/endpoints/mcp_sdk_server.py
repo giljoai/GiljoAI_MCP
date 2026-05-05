@@ -1194,9 +1194,10 @@ async def write_360_memory(
                 "discovery (surprising finding worth remembering). "
                 "Orchestrator-only (rejected with ORCHESTRATOR_ONLY_ENTRY_TYPE for workers): "
                 "project_completion (project closeout); "
-                "session_handover (orchestrator-to-orchestrator across sessions); "
-                "action_required (deferred follow-up). "
-                "Legacy: handover_closeout (preserved for back-compat)."
+                "session_handover (orchestrator-to-orchestrator across sessions). "
+                "Legacy: handover_closeout (preserved for back-compat). "
+                "DEPRECATED: action_required entry_type is no longer accepted -- "
+                "use mcp__giljo_mcp__create_task or create_project for deferred follow-ups (INF-5025)."
             )
         ),
     ] = "project_completion",
