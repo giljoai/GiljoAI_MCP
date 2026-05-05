@@ -1406,7 +1406,7 @@ class ProjectService:
             check_type_id = project_type if project_type is not None else project.project_type_id
             check_series = series_number if series_number is not None else project.series_number
             check_subseries = subseries if subseries is not None else project.subseries
-            async with self.db_manager.session() as session:
+            async with self.db_manager.get_session_async() as session:
                 is_dup = await self._repo.check_duplicate_taxonomy(
                     session,
                     effective_tenant_key,
