@@ -276,6 +276,155 @@ async def _resolve_git_commits(
     return git_commits, git_warning, git_unavailable_reason
 
 
+def _validate_closeout_inputs(
+    *,
+    project_id: str,
+    summary: str,
+    key_outcomes: list[str] | None,
+    decisions_made: list[str] | None,
+    tags: list[str] | None,
+    db_manager: DatabaseManager | None,
+) -> tuple[str, list[str], list[str], list[str]]:
+    """Validate required closeout args and run the shared INF-WriteShape boundary.
+
+    Returns the normalised ``(summary, key_outcomes, decisions_made, validated_tags)``
+    tuple. Raises ``ValidationError`` for missing required args and propagates the
+    structured ``MemoryEntryWriteValidationError`` from ``validate_memory_entry_write``
+    untouched.
+    """
+    if not project_id:
+        raise ValidationError("project_id is required")
+
+    if not summary or not summary.strip():
+        raise ValidationError("summary is required")
+
+    if db_manager is None:
+        raise ValidationError("db_manager is required")
+
+    key_outcomes = key_outcomes or []
+    decisions_made = decisions_made or []
+
+    validated = validate_memory_entry_write(
+        {
+            "summary": summary,
+            "key_outcomes": key_outcomes,
+            "decisions_made": decisions_made,
+            "deliverables": [],
+            "tags": tags or [],
+        }
+    )
+    return (
+        validated.summary,
+        validated.key_outcomes,
+        validated.decisions_made,
+        validated.tags,
+    )
+
+
+async def _build_and_persist_memory_entry(
+    session: AsyncSession,
+    *,
+    product: Any,
+    project: Any,
+    tenant_key: str,
+    summary: str,
+    key_outcomes: list[str],
+    decisions_made: list[str],
+    validated_tags: list[str],
+    git_commits: list[dict[str, Any]],
+    db_manager: DatabaseManager,
+) -> tuple[Any, int]:
+    """Allocate sequence number, build params, persist the closeout memory entry.
+
+    Returns ``(entry, sequence_number)``. Session lifecycle stays with the caller.
+    """
+    memory_service = ProductMemoryService(
+        db_manager=db_manager,
+        tenant_key=tenant_key,
+    )
+    sequence_number = await memory_service.get_next_sequence(
+        product_id=product.id,
+        session=session,
+    )
+
+    # Step C double-write fix (analyzer 2026-04-25): _extract_deliverables
+    # was returning a deduplicated copy of key_outcomes -- 89.4% of
+    # historical entries were byte-identical to key_outcomes as a
+    # result. deliverables is a drop-cap field (3x100, full removal
+    # scheduled post-demo); stop synthesizing it from key_outcomes.
+    # TODO(post-demo): remove the deliverables column entirely.
+    deliverables: list[str] = []
+    priority = _derive_priority(project, summary, key_outcomes)
+    significance_score = _calculate_significance(project, key_outcomes, git_commits)
+    token_estimate = _estimate_tokens(summary, key_outcomes, decisions_made)
+    metrics = _build_metrics(git_commits)
+
+    params = MemoryEntryCreateParams(
+        tenant_key=tenant_key,
+        product_id=product.id,
+        project_id=project.id,
+        sequence=sequence_number,
+        entry_type="project_closeout",
+        source="closeout_v1",
+        timestamp=datetime.now(UTC),
+        project_name=project.name,
+        summary=summary,
+        key_outcomes=key_outcomes,
+        decisions_made=decisions_made,
+        git_commits=git_commits,
+        deliverables=deliverables,
+        metrics=metrics,
+        priority=priority,
+        significance_score=significance_score,
+        token_estimate=token_estimate,
+        tags=validated_tags,
+    )
+    entry = await memory_service.create_entry(
+        params=params,
+        session=session,
+    )
+    return entry, sequence_number
+
+
+async def _finalize_closeout_response(
+    entry: Any,
+    sequence_number: int,
+    git_commits: list[dict[str, Any]],
+    git_warning: str | None,
+    git_unavailable_reason: str | None,
+    tenant_key: str,
+    product_id: Any,
+) -> dict[str, Any]:
+    """Log success, emit the WebSocket event, and build the response dict."""
+    logger.info(
+        f"Updated 360 Memory for product {product_id} "
+        f"(entry: {entry.id}, sequence: {sequence_number}, commits: {len(git_commits) if git_commits else 0})"
+    )
+
+    await emit_websocket_event(
+        event_type="product:memory:updated",
+        tenant_key=tenant_key,
+        product_id=str(product_id),
+        data={"entry": entry.to_dict()},
+    )
+
+    response: dict[str, Any] = {
+        "entry_id": str(entry.id),
+        "sequence_number": sequence_number,
+        "git_commits_count": len(git_commits),
+        "message": "Project closed and 360 Memory updated successfully",
+    }
+    if git_warning:
+        response["git_warning"] = git_warning
+    if git_unavailable_reason:
+        # Wave 1 IMP-0019 Item 5: explicit signal when git history was
+        # not collected (demo server / non-git repo / git binary
+        # missing). Closeout still succeeds; this just tells callers.
+        response["git_unavailable"] = True
+        response["git_unavailable_reason"] = git_unavailable_reason
+    return response
+
+
 async def close_project_and_update_memory(
     project_id: str,
     summary: str,
@@ -328,35 +477,18 @@ async def close_project_and_update_memory(
             exceeded or any supplied tag is outside the controlled vocabulary
             (single shared validator with write_360_memory).
     """
-    if not project_id:
-        raise ValidationError("project_id is required")
-
-    if not summary or not summary.strip():
-        raise ValidationError("summary is required")
-
-    if db_manager is None:
-        raise ValidationError("db_manager is required")
-
-    key_outcomes = key_outcomes or []
-    decisions_made = decisions_made or []
-
     # INF-WriteShape: shared validated write boundary (same as write_360_memory).
     # BE-5032: tags are now an agent-supplied parameter, validated against
     # CONTROLLED_TAG_VOCABULARY here. The previous behaviour word-split the
     # summary into junk tokens; that path is gone.
-    validated = validate_memory_entry_write(
-        {
-            "summary": summary,
-            "key_outcomes": key_outcomes,
-            "decisions_made": decisions_made,
-            "deliverables": [],
-            "tags": tags or [],
-        }
+    summary, key_outcomes, decisions_made, validated_tags = _validate_closeout_inputs(
+        project_id=project_id,
+        summary=summary,
+        key_outcomes=key_outcomes,
+        decisions_made=decisions_made,
+        tags=tags,
+        db_manager=db_manager,
     )
-    summary = validated.summary
-    key_outcomes = validated.key_outcomes
-    decisions_made = validated.decisions_made
-    validated_tags = validated.tags
 
     try:
         owns_session = session is None
@@ -420,86 +552,31 @@ async def close_project_and_update_memory(
                 project=project,
             )
 
-            # Use service for atomic sequence generation and entry creation
-            memory_service = ProductMemoryService(
-                db_manager=db_manager,
+            entry, sequence_number = await _build_and_persist_memory_entry(
+                active_session,
+                product=product,
+                project=project,
                 tenant_key=tenant_key,
-            )
-            sequence_number = await memory_service.get_next_sequence(
-                product_id=product.id,
-                session=active_session,
-            )
-
-            # Step C double-write fix (analyzer 2026-04-25): _extract_deliverables
-            # was returning a deduplicated copy of key_outcomes -- 89.4% of
-            # historical entries were byte-identical to key_outcomes as a
-            # result. deliverables is a drop-cap field (3x100, full removal
-            # scheduled post-demo); stop synthesizing it from key_outcomes.
-            # TODO(post-demo): remove the deliverables column entirely.
-            deliverables: list[str] = []
-            tags = validated_tags
-            priority = _derive_priority(project, summary, key_outcomes)
-            significance_score = _calculate_significance(project, key_outcomes, git_commits)
-            token_estimate = _estimate_tokens(summary, key_outcomes, decisions_made)
-            metrics = _build_metrics(git_commits)
-
-            # Create entry in product_memory_entries table
-            params = MemoryEntryCreateParams(
-                tenant_key=tenant_key,
-                product_id=product.id,
-                project_id=project.id,
-                sequence=sequence_number,
-                entry_type="project_closeout",
-                source="closeout_v1",
-                timestamp=datetime.now(UTC),
-                project_name=project.name,
                 summary=summary,
                 key_outcomes=key_outcomes,
                 decisions_made=decisions_made,
+                validated_tags=validated_tags,
                 git_commits=git_commits,
-                deliverables=deliverables,
-                metrics=metrics,
-                priority=priority,
-                significance_score=significance_score,
-                token_estimate=token_estimate,
-                tags=tags,
-            )
-            entry = await memory_service.create_entry(
-                params=params,
-                session=active_session,
+                db_manager=db_manager,
             )
 
             # Session commit handled by db_manager.get_session_async() context manager
             # when owns_session=True; flush already done by repo.create_entry()
 
-            logger.info(
-                f"Updated 360 Memory for product {product.id} "
-                f"(entry: {entry.id}, sequence: {sequence_number}, commits: {len(git_commits) if git_commits else 0})"
-            )
-
-            # Emit WebSocket event (Handover 0390c Phase 4)
-            await emit_websocket_event(
-                event_type="product:memory:updated",
+            return await _finalize_closeout_response(
+                entry=entry,
+                sequence_number=sequence_number,
+                git_commits=git_commits,
+                git_warning=git_warning,
+                git_unavailable_reason=git_unavailable_reason,
                 tenant_key=tenant_key,
-                product_id=str(product.id),
-                data={"entry": entry.to_dict()},
+                product_id=product.id,
             )
-
-            response: dict[str, Any] = {
-                "entry_id": str(entry.id),
-                "sequence_number": sequence_number,
-                "git_commits_count": len(git_commits),
-                "message": "Project closed and 360 Memory updated successfully",
-            }
-            if git_warning:
-                response["git_warning"] = git_warning
-            if git_unavailable_reason:
-                # Wave 1 IMP-0019 Item 5: explicit signal when git history was
-                # not collected (demo server / non-git repo / git binary
-                # missing). Closeout still succeeds; this just tells callers.
-                response["git_unavailable"] = True
-                response["git_unavailable_reason"] = git_unavailable_reason
-            return response
 
     except Exception as exc:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to close project and update memory", extra={"error": str(exc)})

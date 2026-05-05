@@ -21,7 +21,6 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.exceptions import ValidationError
 from giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 from giljo_mcp.services.dto import MemoryEntryCreateParams
 
@@ -71,52 +70,6 @@ class TestWriteTagsPersistence:
             ),
         )
         assert entry.tags == []
-
-
-class TestTagsValidation:
-    """WI-1: Tags input validation (untrusted agent input)."""
-
-    @pytest.mark.asyncio
-    async def test_tags_validation_too_many(self):
-        """More than 10 tags raises ValidationError."""
-        from giljo_mcp.tools.write_360_memory import _validate_tags
-
-        tags = [f"tag_{i}" for i in range(11)]
-        with pytest.raises(ValidationError, match="maximum 10 tags"):
-            _validate_tags(tags)
-
-    @pytest.mark.asyncio
-    async def test_tags_validation_too_long(self):
-        """Tag exceeding 200 chars raises ValidationError."""
-        from giljo_mcp.tools.write_360_memory import _validate_tags
-
-        tags = ["a" * 201]
-        with pytest.raises(ValidationError, match="200 characters"):
-            _validate_tags(tags)
-
-    @pytest.mark.asyncio
-    async def test_tags_validation_wrong_type(self):
-        """Non-string items in tags raises ValidationError."""
-        from giljo_mcp.tools.write_360_memory import _validate_tags
-
-        with pytest.raises(ValidationError, match="must be strings"):
-            _validate_tags([123, "valid_tag"])
-
-    @pytest.mark.asyncio
-    async def test_tags_validation_valid(self):
-        """Valid tags pass validation without error."""
-        from giljo_mcp.tools.write_360_memory import _validate_tags
-
-        tags = ["action_required:fix bug", "priority:high"]
-        result = _validate_tags(tags)
-        assert result == tags
-
-    @pytest.mark.asyncio
-    async def test_tags_validation_none_returns_empty(self):
-        """None tags returns empty list."""
-        from giljo_mcp.tools.write_360_memory import _validate_tags
-
-        assert _validate_tags(None) == []
 
 
 class TestGetEntriesByTagPrefix:
@@ -382,66 +335,6 @@ class TestResolveActionTags:
             resolved_items=["fix bug"],
         )
         assert count == 0
-
-
-class TestTagsValidationEdgeCases:
-    """Additional edge-case tests for tags validation."""
-
-    @pytest.mark.asyncio
-    async def test_tags_validation_empty_list_accepted(self):
-        """Empty list [] is valid and passes without error."""
-        from giljo_mcp.tools.write_360_memory import _validate_tags
-
-        result = _validate_tags([])
-        assert result == []
-
-    @pytest.mark.asyncio
-    async def test_tags_validation_non_list_type_rejected(self):
-        """Non-list type (string) raises ValidationError."""
-        from giljo_mcp.tools.write_360_memory import _validate_tags
-
-        with pytest.raises(ValidationError, match="must be a list"):
-            _validate_tags("not_a_list")
-
-    @pytest.mark.asyncio
-    async def test_tags_with_colons_and_special_chars(self):
-        """Tags containing colons, slashes, and other special chars are valid."""
-        from giljo_mcp.tools.write_360_memory import _validate_tags
-
-        tags = [
-            "action_required:fix auth/regression",
-            "priority:high:urgent",
-            "scope:backend/api",
-        ]
-        result = _validate_tags(tags)
-        assert result == tags
-
-    @pytest.mark.asyncio
-    async def test_tags_with_unicode_characters(self):
-        """Tags with unicode characters pass validation."""
-        from giljo_mcp.tools.write_360_memory import _validate_tags
-
-        tags = ["action_required:fix regression", "note:uppgift"]
-        result = _validate_tags(tags)
-        assert result == tags
-
-    @pytest.mark.asyncio
-    async def test_tags_at_exact_max_count(self):
-        """Exactly 10 tags (the maximum) is accepted."""
-        from giljo_mcp.tools.write_360_memory import _validate_tags
-
-        tags = [f"tag_{i}" for i in range(10)]
-        result = _validate_tags(tags)
-        assert len(result) == 10
-
-    @pytest.mark.asyncio
-    async def test_tags_at_exact_max_length(self):
-        """Tag at exactly 200 characters (the maximum) is accepted."""
-        from giljo_mcp.tools.write_360_memory import _validate_tags
-
-        tags = ["a" * 200]
-        result = _validate_tags(tags)
-        assert len(result[0]) == 200
 
 
 class TestGetEntriesByTagPrefixEdgeCases:

@@ -62,49 +62,6 @@ SKIP_STATUSES = {"decommissioned", "closed"}
 WORKER_ALLOWED_ENTRY_TYPES = frozenset({"baseline", "decision", "architecture", "discovery"})
 ORCHESTRATOR_ONLY_ENTRY_TYPES = frozenset({"project_completion", "session_handover", "action_required"})
 
-# INF-WriteShape: the production write path validates via
-# product_memory_service.validate_memory_entry_write() (strict caps + tag
-# vocabulary). The MAX_TAGS / MAX_TAG_LENGTH / _validate_tags() symbols below
-# are retained ONLY as a legacy helper surface that pre-existing tests still
-# import. Production code does NOT call _validate_tags() any more.
-MAX_TAGS = 10
-MAX_TAG_LENGTH = 200
-
-
-def _validate_tags(tags: list[str] | None) -> list[str]:
-    """Legacy helper: kept for test backward compatibility.
-
-    Production write path now uses
-    ``product_memory_service.validate_memory_entry_write`` (single validated
-    write boundary, strict caps + tag vocabulary). This helper preserves the
-    pre-INF-WriteShape behavior (lenient cleanup) so that existing tests
-    pinning that surface continue to pass.
-    """
-    from giljo_mcp.utils.tag_utils import strip_tag_punctuation
-
-    if tags is None:
-        return []
-
-    if not isinstance(tags, list):
-        raise ValidationError("tags must be a list")
-
-    if len(tags) > MAX_TAGS:
-        raise ValidationError(f"Too many tags: maximum {MAX_TAGS} tags allowed, got {len(tags)}")
-
-    cleaned: list[str] = []
-    for tag in tags:
-        if not isinstance(tag, str):
-            raise ValidationError("All tags must be strings")
-        if not tag.strip():
-            raise ValidationError("Tags must not be empty or whitespace-only")
-        if len(tag) > MAX_TAG_LENGTH:
-            raise ValidationError(
-                f"Tag too long: maximum {MAX_TAG_LENGTH} characters per tag, got {len(tag)} characters"
-            )
-        cleaned.append(strip_tag_punctuation(tag))
-
-    return [t for t in cleaned if t]
-
 
 async def _resolve_project_and_product(
     session: AsyncSession,
