@@ -326,7 +326,17 @@ class ThinClientPromptGenerator:
         Returns:
             Dict with orchestrator_id and thin_prompt
         """
-        project_stmt = select(Project).where(and_(Project.id == project_id, Project.tenant_key == self.tenant_key))
+        # Eager-load project_type so the staging-prompt builder can read
+        # project.taxonomy_alias (which dereferences project.project_type) after
+        # the session-scoped lazy-loader is no longer reachable. Post-merge
+        # regression: the task-parity-taxonomy rename promoted taxonomy_alias to
+        # a Python property accessing the relationship, but this fetch path was
+        # left without an eager load, producing MissingGreenlet at prompt build.
+        project_stmt = (
+            select(Project)
+            .where(and_(Project.id == project_id, Project.tenant_key == self.tenant_key))
+            .options(joinedload(Project.project_type))
+        )
         project_result = await self.db.execute(project_stmt)
         project = project_result.scalar_one_or_none()
 
