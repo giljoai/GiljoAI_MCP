@@ -558,7 +558,7 @@ CRITICAL: Auto-generate content from your knowledge.
 This atomically closes the project and writes 360 memory to the product timeline.
 
 ── STEP 3: User Guidance ──────────────────────────────────────────────────
-Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
+Tell user: "Project complete. Use `/gil_add` to create follow-ups, `/gil_get` to look up existing project/task state."
 
 ────────────────────────────────────────────────────────────────────────────
 

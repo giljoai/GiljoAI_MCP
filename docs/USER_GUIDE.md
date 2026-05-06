@@ -283,6 +283,8 @@ The filter bar provides search by title, filter by status, and filter by priorit
 
 Tasks can also be created from your CLI tool using `/gil_add add task ...`. The tool passes title, description, status, priority, and category.
 
+To look up tasks or projects without leaving your CLI session, use `/gil_get`. Examples: `/gil_get what BE tasks are open?` or `/gil_get show project BE-5040`.
+
 ---
 
 ## Tools

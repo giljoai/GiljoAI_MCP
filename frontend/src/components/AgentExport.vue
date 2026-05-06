@@ -15,8 +15,8 @@
         <div>
           Once the MCP server is registered in your AI coding tool, run <code>giljo_setup</code> to install agents and skills in one step.
           <br /><br />
-          After setup, use <code>/gil_get_agents</code> to update agent templates and
-          <code>/gil_add</code> to create tasks and projects from your AI coding agent.
+          After setup, use <code>/gil_get_agents</code> to update agent templates,
+          <code>/gil_add</code> to create tasks and projects, and <code>/gil_get</code> to read them back from your AI coding agent.
         </div>
       </v-tooltip>
     </div>

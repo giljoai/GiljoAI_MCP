@@ -36,12 +36,19 @@ Before calling `complete_job()`, commit your work:
     gil_add_block = ""
     if execution_mode == "multi_terminal":
         # Handover 0841: Platform-aware command syntax in closeout signoff
-        gil_add_cmd = "$gil-add" if tool == "codex" else "/gil_add"
+        # INF-5026: also surface /gil_get for read-side intent
+        if tool == "codex":
+            gil_add_cmd = "$gil-add"
+            gil_get_cmd = "$gil-get"
+        else:
+            gil_add_cmd = "/gil_add"
+            gil_get_cmd = "/gil_get"
         gil_add_block = f"""
 ### User Guidance (Multi-Terminal)
 After completing your work, tell the user:
 "My work is complete. If you discovered technical debt or follow-up work,
-tell me and I'll use {gil_add_cmd} to save it to your dashboard."
+tell me and I'll use {gil_add_cmd} to save it to your dashboard.
+If you want to look up an existing project or task, ask me to use {gil_get_cmd}."
 """
 
     return git_commit_block, gil_add_block

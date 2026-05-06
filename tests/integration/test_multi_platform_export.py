@@ -48,15 +48,21 @@ class TestSlashCommandPlatformAwareness:
             assert filename.endswith(".md"), f"Expected .md, got {filename}"
 
     def test_gemini_returns_toml_files(self):
-        """Gemini CLI templates are .toml files."""
+        """Gemini CLI templates are .toml files. INF-5026: agent reference cheat
+        sheet is shipped as plain .md alongside; everything else must be .toml."""
         result = get_all_templates(platform="gemini_cli")
         for filename in result:
+            if filename.endswith("_reference.md"):
+                continue
             assert filename.endswith(".toml"), f"Expected .toml, got {filename}"
 
     def test_codex_returns_skill_md_files(self):
-        """Codex CLI templates are SKILL.md files in subdirectories."""
+        """Codex CLI templates are SKILL.md files in subdirectories. INF-5026:
+        the agent reference cheat sheet ships as <skill>/reference.md."""
         result = get_all_templates(platform="codex_cli")
         for filename in result:
+            if filename.endswith("/reference.md"):
+                continue
             assert filename.endswith("SKILL.md"), f"Expected SKILL.md, got {filename}"
 
     def test_default_returns_claude_format(self):
@@ -74,6 +80,33 @@ class TestSlashCommandPlatformAwareness:
             has_add = any("add" in f for f in filenames)
             assert has_get_agents, f"{platform} missing get_agents command"
             assert has_add, f"{platform} missing gil_add command"
+
+    def test_all_platforms_have_gil_get_skill(self):
+        """INF-5026: each platform ships /gil_get (read-only fork of /gil_add)."""
+        per_platform = {
+            "claude_code": ("gil_get.md", "gil_get_reference.md"),
+            "gemini_cli": ("gil_get.toml", "gil_get_reference.md"),
+            "codex_cli": ("gil-get/SKILL.md", "gil-get/reference.md"),
+        }
+        for platform, expected in per_platform.items():
+            result = get_all_templates(platform=platform)
+            for fname in expected:
+                assert fname in result, f"{platform} bundle missing {fname}"
+                assert result[fname].strip(), f"{platform} {fname} is empty"
+
+    def test_gil_get_skill_is_read_only(self):
+        """The /gil_get skill must NOT instruct write tools (create_*/update_*)."""
+        for platform in ("claude_code", "gemini_cli", "codex_cli"):
+            result = get_all_templates(platform=platform)
+            gil_get_body = next(
+                (content for fname, content in result.items() if "gil_get" in fname or "gil-get" in fname),
+                None,
+            )
+            assert gil_get_body is not None, f"{platform} missing gil_get body"
+            for forbidden in ("create_project", "create_task", "update_project", "update_task"):
+                assert f"call `{forbidden}`" not in gil_get_body or "never call" in gil_get_body, (
+                    f"{platform} gil_get appears to invite write call {forbidden}"
+                )
 
 
 class TestGilAddConsistency:

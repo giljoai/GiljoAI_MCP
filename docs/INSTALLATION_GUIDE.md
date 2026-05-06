@@ -253,7 +253,7 @@ The final step shows three action cards:
 - **Define Your Product:** Create a product to organize projects, tasks, and agent
   configurations.
 - **Start a Project:** Create your first project to begin orchestrating AI agents.
-- **Track Your Work:** Add tasks and ideas using `/gil_add`.
+- **Track Your Work:** Add tasks and ideas using `/gil_add`. Look up projects and tasks using `/gil_get`.
 
 Click any card to navigate to the corresponding section, or click "Go to Home" to
 go to the dashboard home page.

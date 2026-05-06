@@ -262,7 +262,7 @@ list will be empty or contain only agent-supplied hashes. When this happens, inc
    → When the closeout has deferred findings, call `mcp__giljo_mcp__request_approval(...)` (see CH4) — your execution status will be flipped to `awaiting_user` automatically, and `complete_job` will refuse until the user decides via `POST /api/approvals/{id}/decide`. Otherwise proceed with best judgment.
 3. Create follow-up tasks/projects for deferred findings via `create_task()` or `create_project()` and cite the returned IDs in `decisions_made`
 4. `mcp__giljo_mcp__close_project_and_update_memory(project_id="...", summary="...", key_outcomes=[...], decisions_made=[...], tags=[...], git_commits=[...])` — final close. `tags` is REQUIRED-IN-SPIRIT: supply 1-5 from the 16-tag CONTROLLED_TAG_VOCABULARY (see Chapter 5). Unknown tags are rejected.
-5. Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
+5. Tell user: "Project complete. Use `/gil_add` to create follow-ups, `/gil_get` to look up existing project/task state."
 
 **IMPORTANT:** You MUST complete your own job (step 2) BEFORE closing the project (step 4). The server requires all agents including the orchestrator to be complete before project closeout.
 

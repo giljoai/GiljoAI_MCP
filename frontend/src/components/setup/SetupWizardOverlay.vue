@@ -316,8 +316,8 @@ const LEARNING_SECTIONS = [
     icon: 'mdi-slash-forward-box',
     title: 'Skills and Agent Templates',
     content: [
-      'Two skills are installed on your machine during setup: /gil_add and /gil_get_agents (Claude Code, Gemini CLI) or $gil-add and $gil-get-agents (Codex CLI).',
-      'Use /gil_add to capture tasks or create projects mid-session without breaking flow. Use /gil_get_agents to fetch agent templates into your workspace for subagent spawning.',
+      'Three skills are installed on your machine during setup: /gil_add, /gil_get, and /gil_get_agents (Claude Code, Gemini CLI) or $gil-add, $gil-get, and $gil-get-agents (Codex CLI).',
+      'Use /gil_add to capture tasks or create projects mid-session without breaking flow. Use /gil_get to look up existing projects and tasks (read-only). Use /gil_get_agents to fetch agent templates into your workspace for subagent spawning.',
       'The Agent Template Manager lets you browse, customize, and create agent profiles with roles, expertise, and chain strategies. Templates export automatically for the right platform.',
     ],
   },

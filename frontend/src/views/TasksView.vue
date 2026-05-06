@@ -5,7 +5,7 @@
       <v-col>
         <h1 class="text-h4">Tasks</h1>
         <p class="text-body-2 text-muted-a11y mt-1">
-          Use MCP tool /gil_add to have the AI coding agent add ideas and thoughts to Task dashboard.
+          Use MCP tool /gil_add to have the AI coding agent add ideas and thoughts to the Task dashboard, or /gil_get to read tasks back (filter by status, task_type, or priority).
           <v-tooltip location="bottom start" max-width="600">
             <template #activator="{ props }">
               <v-icon v-bind="props" size="16" class="help-icon">mdi-help-circle-outline</v-icon>
@@ -21,8 +21,9 @@
               <div class="ml-2 text-caption">low · medium · high · critical</div>
               <div class="mt-1"><span class="font-weight-medium">task_type (optional):</span></div>
               <div class="ml-2 text-caption">Taxonomy abbreviation (e.g. BE, FE, INF)</div>
-              <div class="mt-2"><span class="font-weight-medium">Example:</span></div>
+              <div class="mt-2"><span class="font-weight-medium">Examples:</span></div>
               <div class="ml-2 text-caption">/gil_add add task ... description ...</div>
+              <div class="ml-2 text-caption">/gil_get list tasks status=pending task_type=BE</div>
             </div>
           </v-tooltip>
         </p>

@@ -55,7 +55,8 @@ Two skills are installed on your machine during setup. Use them from your CLI wi
 
 | Skill | Claude Code | Codex CLI | Gemini CLI | What it does |
 |---|---|---|---|---|
-| **Add task or project** | `/gil_add` | `$gil-add` | `/gil_add` | Capture tasks, create projects, or log ideas mid-session |
+| **Add task or project** | `/gil_add` | `$gil-add` | `/gil_add` | Capture tasks, create projects, or update existing items mid-session |
+| **Look up projects and tasks** | `/gil_get` | `$gil-get` | `/gil_get` | Read projects by name/alias/UUID and filter tasks by type, priority, or status |
 | **Fetch agent templates** | `/gil_get_agents` | `$gil-get-agents` | `/gil_get_agents` | Download agent profiles into your workspace for subagent spawning |
 
 The Agent Template Manager in the dashboard lets you browse, customize, and create agent profiles with roles, expertise, and chain strategies. Templates export automatically in the correct format for your connected platform.

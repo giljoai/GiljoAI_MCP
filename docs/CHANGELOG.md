@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-05-06 — INF-5026 /gil_get skill + /gil_add read-mode strip
+
+### Added
+- **`/gil_get` slash command skill** (`~/.claude/commands/gil_get.md`). Read-only companion to `/gil_add` covering project lookups (by name, alias, or UUID), task lookups (with `mode`, `task_type`, and `filters` parameters), and cross-cutting views that run project + task reads in parallel. Cheap-first tool sequence: `list_projects(summary_only)` → `fetch_context(["project"])` for projects; `list_tasks(mode="summary")` → `fetch_context(["tasks"])` for tasks.
+- **`docs/archive/user_guides/gil_get_command.md`** — user-facing reference guide for the new `/gil_get` skill, parallel to the existing `gil_add_command.md`.
+
+### Changed
+- **`/gil_add` skill** (`~/.claude/commands/gil_add.md`): removed read-mode section; description frontmatter updated to "Add or update"; pointer added directing reads to `/gil_get`; `task_type` parameter documented (BE-5053).
+- **`docs/archive/user_guides/gil_add_command.md`**: updated to reflect writes-only scope; pointer to `gil_get_command.md` added; `/gil_get` added to Related Commands.
+
 ## [1.1.9.2] — 2026-04-26 — Test Configuration Refactor
 
 Patch release on top of v1.1.9.1. The Playwright E2E suite and several developer scripts now read user and database credentials from environment variables. No runtime code paths or end-user features change.
