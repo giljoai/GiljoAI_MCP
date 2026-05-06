@@ -1260,7 +1260,29 @@ def _check_and_stamp_migration_version() -> None:
                 _heal_schema_to_v37(session)
                 return
 
-            # Any revision that is not baseline_v37 needs stamping forward
+            # If `current` is a revision the alembic chain still recognizes
+            # (e.g. baseline_v37, ce_0001..ce_0016), do NOT stamp it backward.
+            # Doing so would force `alembic upgrade head` to re-run migrations
+            # that already executed -- and any non-idempotent step would fail.
+            # We bridge ONLY when `current` is a legacy revision the squash
+            # removed (i.e. not present in versions/).
+            from pathlib import Path as _Path
+
+            versions_dir = _Path(__file__).parent / "migrations" / "versions"
+            known_revisions: set[str] = {"baseline_v37"}
+            if versions_dir.is_dir():
+                for entry in versions_dir.glob("*.py"):
+                    if entry.name == "__init__.py":
+                        continue
+                    # Alembic revision filenames are <rev_id>_<slug>.py; the
+                    # full revision ID is the stem.
+                    known_revisions.add(entry.stem)
+
+            if current in known_revisions:
+                # Modern revision -- alembic upgrade head will handle it.
+                return
+
+            # Legacy revision the squash removed -- bridge to baseline_v37.
             print_info(f"Stamping migration: {current} -> baseline_v37")
             _heal_schema_to_v37(session)
             session.execute(text("UPDATE alembic_version SET version_num = 'baseline_v37'"))
