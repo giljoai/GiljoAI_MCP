@@ -126,10 +126,12 @@ async def simple_handover(
     if not job:
         raise HTTPException(status_code=500, detail="Job not found")
 
-    # Load project + product for git closeout commit gating
+    # Load project + product for git closeout commit gating.
+    # BE-5058: ``project_type`` no longer needs eager loading -- ``taxonomy_alias``
+    # is a SELECT-time column_property.
     project_stmt = (
         select(Project)
-        .options(joinedload(Project.product), joinedload(Project.project_type))
+        .options(joinedload(Project.product))
         .where(Project.id == job.project_id, Project.tenant_key == current_user.tenant_key)
     )
     project_result = await db.execute(project_stmt)

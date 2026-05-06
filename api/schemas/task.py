@@ -77,6 +77,14 @@ class TaskUpdate(BaseModel):
     parent_task_id: str | None = Field(None, description="Parent task ID for hierarchy changes")
     product_id: str | None = Field(None, description="Update product scope")
     project_id: str | None = Field(None, description="Update associated project")
+    completion_notes: str | None = Field(
+        None,
+        description=(
+            "Audit-trail notes appended to the task description when status transitions to "
+            "'completed'. Silently ignored for any other status. Mirrors the MCP "
+            "complete_task tool's completion_notes parameter (no length cap)."
+        ),
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -2,9 +2,9 @@
   <span
     class="task-status-badge smooth-border"
     :style="badgeStyle"
-    :aria-label="`Task status: ${label}`"
+    :aria-label="`Task status: ${statusLabel}`"
   >
-    {{ label }}
+    {{ statusLabel }}
   </span>
 </template>
 
@@ -13,28 +13,34 @@
  * TaskStatusBadge — renders a task's lifecycle status as a tinted,
  * square-cornered (8px) pill.
  *
- * Mirrors the project-side StatusBadge.vue pattern verbatim
- * (`smooth-border` + `rgba(color, 0.15)` background + full-brightness
- * color text + `border-radius: 8px`), but uses a local mapping for the
- * six canonical task statuses defined in the backend `TaskUpdate` schema:
- *   pending, in_progress, completed, blocked, cancelled, converted.
+ * Single source of truth (FE-5041 Phase 2): label, color, and validity
+ * all derive from `taskStatusesStore`, which mirrors the backend
+ * `TaskStatus` enum via `GET /api/v1/task-statuses/`. The store is
+ * fetched once at app boot from `DefaultLayout.onMounted`; this
+ * component never calls the API itself.
  *
- * Tasks do not (yet) expose a /api/v1/task-statuses/ SSOT endpoint the
- * way projects do (BE-5039). Once that lands, this component should be
- * collapsed onto a shared store-driven implementation.
+ * Color resolution: each status carries a `color_token` string (e.g.
+ * `color-agent-researcher`). At render time we read the matching CSS
+ * custom property (`--color-agent-researcher`) declared in `main.scss`,
+ * which mirrors the SCSS token in `design-tokens.scss`. No hex literals
+ * live in this file — the Luminous Pastel palette in `design-tokens.scss`
+ * is the single source of color truth.
  *
- * Color choices (Luminous Pastels palette, all WCAG AA on `#12202e`):
- *   - pending     -> --color-text-muted (neutral, 4.98:1)
- *   - in_progress -> --color-agent-implementer (#6DB3E4, 6.64:1)
- *   - completed   -> #5EC48E (mint, 7.03:1)
- *   - blocked     -> #E07872 (coral, 5.11:1)
- *   - cancelled   -> --color-text-muted (intentional same as pending —
- *                     terminal/inert state)
- *   - converted   -> #AC80CC (lavender, 4.84:1)
+ * Mirrors `StatusBadge.vue` (the project-side equivalent) line-for-line;
+ * the only differences are (a) the store dependency, (b) the
+ * `aria-label` prefix ("Task status:" vs "Project status:"), and
+ * (c) the `smooth-border` class with a tinted `--smooth-border-color`
+ * for inset border styling on the rounded element.
+ *
+ * Design-system anatomy (`frontend/design-system-sample-v2.html`):
+ * - `rgba(color, 0.15)` background with full-brightness color text
+ * - `border-radius: 8px` (square-cornered pill)
+ * - `smooth-border` (inset box-shadow) — never CSS `border` on rounded
  */
 import { computed } from 'vue'
 
 import { hexToRgba } from '@/utils/colorUtils'
+import { useTaskStatusesStore } from '@/stores/taskStatusesStore'
 
 const props = defineProps({
   status: {
@@ -43,33 +49,60 @@ const props = defineProps({
   },
 })
 
-// Hex literals are intentional here: tasks don't yet have a backend SSOT
-// for status metadata, and these match the Luminous Pastel tokens in
-// `design-tokens.scss` (kept in lockstep with `--color-agent-*` /
-// `--color-status-*` custom properties).
-const STATUS_META = {
-  pending: { label: 'Pending', hex: '#9e9e9e' },
-  in_progress: { label: 'In Progress', hex: '#6db3e4' },
-  completed: { label: 'Completed', hex: '#5ec48e' },
-  blocked: { label: 'Blocked', hex: '#e07872' },
-  cancelled: { label: 'Cancelled', hex: '#8895a8' },
-  converted: { label: 'Converted', hex: '#ac80cc' },
+const statusesStore = useTaskStatusesStore()
+
+// Fallback hex used when the store hasn't loaded yet (first-paint window
+// before DefaultLayout's onMounted resolves) or when an unknown status
+// value slips through (orphan WebSocket payload during a deploy). This
+// matches `--color-text-muted` in `main.scss` so the visual fallback is
+// the same as the canonical PENDING/CANCELLED states (also muted).
+const FALLBACK_HEX = '#9e9e9e'
+const FALLBACK_LABEL_FORMATTER = (value) =>
+  value ? value.charAt(0).toUpperCase() + value.slice(1) : 'Unknown'
+
+const meta = computed(() => statusesStore.getMeta(props.status))
+
+const statusLabel = computed(() =>
+  meta.value ? meta.value.label : FALLBACK_LABEL_FORMATTER(props.status),
+)
+
+/**
+ * Resolve a SCSS color token name (e.g. `color-agent-researcher`) to its
+ * hex value via the corresponding CSS custom property
+ * `--color-agent-researcher` declared at `:root` in `main.scss`.
+ *
+ * Falls back to the muted hex when the property is missing (jsdom test
+ * environment, SSR, or before stylesheets have applied).
+ */
+function resolveColorToken(token) {
+  if (!token) return FALLBACK_HEX
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return FALLBACK_HEX
+  }
+  try {
+    const value = getComputedStyle(document.documentElement)
+      .getPropertyValue(`--${token}`)
+      .trim()
+    if (!value) return FALLBACK_HEX
+    return value
+  } catch {
+    return FALLBACK_HEX
+  }
 }
 
-const FALLBACK = { label: 'Unknown', hex: '#9e9e9e' }
-
-const meta = computed(() => STATUS_META[props.status] || FALLBACK)
-
-const label = computed(() => meta.value.label)
+const colorHex = computed(() =>
+  meta.value ? resolveColorToken(meta.value.color_token) : FALLBACK_HEX,
+)
 
 const badgeStyle = computed(() => ({
-  background: hexToRgba(meta.value.hex, 0.15),
-  color: meta.value.hex,
+  background: hexToRgba(colorHex.value, 0.15),
+  color: colorHex.value,
   borderRadius: '8px',
-  '--smooth-border-color': hexToRgba(meta.value.hex, 0.35),
+  '--smooth-border-color': hexToRgba(colorHex.value, 0.35),
 }))
 
-defineExpose({ label, meta })
+// Exposed for tests that need to assert internal computed state.
+defineExpose({ statusLabel, meta, colorHex })
 </script>
 
 <style lang="scss" scoped>

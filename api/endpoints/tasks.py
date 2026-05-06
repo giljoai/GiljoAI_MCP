@@ -323,6 +323,7 @@ async def update_task(
     # Translate task_type abbreviation -> task_type_id at this boundary so the
     # service-layer field allowlist stays focused on FK ids only.
     update_data = task_update.dict(exclude_unset=True)
+    completion_notes = update_data.pop("completion_notes", None)
     if "task_type" in update_data:
         from api.app_state import state as _app_state
         from giljo_mcp.auth.dependencies import get_db_session  # noqa: F401  (typing only)
@@ -336,6 +337,9 @@ async def update_task(
         else:
             update_data["task_type_id"] = None
     await task_service.update_task(task_id, **update_data)
+
+    if completion_notes and update_data.get("status") == "completed":
+        await task_service.append_completion_notes(task_id, completion_notes)
 
     logger.info("Updated task %s by user %s", sanitize(task_id), sanitize(current_user.username))
 

@@ -297,6 +297,14 @@ export const api = {
     list: () => apiClient.get('/api/v1/project-statuses/'),
   },
 
+  // Task Statuses (FE-5041: Task Status SSOT, mirrors BE-5039 shape)
+  // Read-only — the canonical six statuses live in the backend
+  // `TaskStatus` enum. Endpoint returns metadata (label, color_token,
+  // is_lifecycle_finished) consumed by `TaskStatusBadge` / Phase 2 store.
+  taskStatuses: {
+    list: () => apiClient.get('/api/v1/task-statuses/'),
+  },
+
   // Projects
   projects: {
     list: (params) => apiClient.get('/api/v1/projects/', { params }),

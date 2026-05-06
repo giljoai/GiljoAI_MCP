@@ -93,6 +93,7 @@ try:
         slash_commands,
         statistics,
         system_prompts,
+        task_statuses,
         tasks,
         taxonomy_types,
         templates,
@@ -524,6 +525,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(taxonomy_types.router)
     # BE-5039: Project status metadata module (frontend SSoT for badge labels/colors)
     app.include_router(project_statuses.router)
+    # FE-5041: Task status metadata module (frontend SSoT for task badge labels/colors)
+    app.include_router(task_statuses.router)
     app.include_router(claude_export.router, prefix="/api", tags=["claude-export"])
     app.include_router(downloads.router, tags=["downloads"])
     app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])

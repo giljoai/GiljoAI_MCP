@@ -17,14 +17,20 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
     UniqueConstraint,
+    and_,
+    case,
+    literal,
+    select,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import column_property, relationship
 from sqlalchemy.sql import func
 
 from .base import Base, generate_uuid
+from .projects import TaxonomyType
 
 
 class Task(Base):
@@ -84,6 +90,19 @@ class Task(Base):
         nullable=True,
         comment="FK to taxonomy_types for task classification",
     )
+    # BE-5058: parity with Project taxonomy fields so tasks can carry the
+    # same structured naming (e.g. BE-0001a). Migration ce_0017 creates the
+    # columns + index in the CE chain.
+    series_number = Column(
+        Integer,
+        nullable=True,
+        comment="Sequential number within a task type (e.g., 1 in BE-0001)",
+    )
+    subseries = Column(
+        String(1),
+        nullable=True,
+        comment="Single-letter subseries suffix (e.g., 'a' in BE-0001a)",
+    )
     status = Column(String(50), default="pending")  # pending, in_progress, completed, blocked, cancelled, converted
     priority = Column(String(20), default="medium")  # low, medium, high, critical
     estimated_effort = Column(Float, nullable=True)  # Hours
@@ -121,6 +140,44 @@ class Task(Base):
 
     def __repr__(self) -> str:
         return f"<Task(id={self.id}, title='{self.title}', status='{self.status}')>"
+
+
+# BE-5058: SELECT-time taxonomy_alias mirror for Task. Tasks have no random
+# 6-char fallback alias (unlike Project), so the no-taxonomy case resolves to
+# an empty string. Tenant-scoped correlated subquery keeps tenant isolation
+# enforced at the model layer.
+_task_abbr_subq = (
+    select(TaxonomyType.abbreviation)
+    .where(
+        TaxonomyType.id == Task.task_type_id,
+        TaxonomyType.tenant_key == Task.tenant_key,
+    )
+    .correlate(Task)
+    .scalar_subquery()
+)
+
+Task.taxonomy_alias = column_property(
+    case(
+        (
+            and_(Task.task_type_id.is_(None), Task.series_number.is_(None)),
+            literal(""),
+        ),
+        (
+            Task.series_number.is_(None),
+            func.coalesce(_task_abbr_subq, literal("")),
+        ),
+        else_=(
+            func.coalesce(_task_abbr_subq, literal(""))
+            + case(
+                (_task_abbr_subq.is_not(None), literal("-")),
+                else_=literal(""),
+            )
+            + func.lpad(func.cast(Task.series_number, String), 4, literal("0"))
+            + func.coalesce(Task.subseries, literal(""))
+        ),
+    ),
+    deferred=False,
+)
 
 
 class Message(Base):

@@ -45,6 +45,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.domain.task_status import VALID_TASK_STATUSES
 from giljo_mcp.exceptions import (
     AuthorizationError,
     BaseGiljoError,
@@ -77,10 +78,6 @@ _ALLOWED_TASK_UPDATE_FIELDS: frozenset[str] = frozenset(
         "parent_task_id",
         "converted_to_project_id",
     }
-)
-
-_VALID_TASK_STATUSES: frozenset[str] = frozenset(
-    {"pending", "in_progress", "completed", "blocked", "cancelled", "converted"}
 )
 
 
@@ -932,13 +929,14 @@ class TaskService:
                 context={"operation": "update_task_for_mcp", "task_id": task_id},
             )
 
-        if status is not None and status not in _VALID_TASK_STATUSES:
+        if status is not None and status not in VALID_TASK_STATUSES:
+            valid_status_values = sorted(s.value for s in VALID_TASK_STATUSES)
             raise ValidationError(
-                message=f"Unknown task status '{status}'. Valid statuses: {sorted(_VALID_TASK_STATUSES)}",
+                message=f"Unknown task status '{status}'. Valid statuses: {valid_status_values}",
                 context={
                     "operation": "update_task_for_mcp",
                     "task_id": task_id,
-                    "valid_statuses": sorted(_VALID_TASK_STATUSES),
+                    "valid_statuses": valid_status_values,
                 },
             )
 
@@ -1139,6 +1137,21 @@ class TaskService:
         async with self._get_session() as session:
             return await _do(session)
 
+    async def append_completion_notes(self, task_id: str, notes: str) -> None:
+        """Public entry point for appending completion notes (REST PATCH path).
+
+        Resolves tenant from TenantManager (matches the rest of the public
+        TaskService surface). Delegates to ``_append_completion_notes`` so the
+        REST and MCP paths share a single audit-trail format.
+        """
+        tenant_key = self.tenant_manager.get_current_tenant()
+        if not tenant_key:
+            raise ValidationError(
+                message="tenant_key is required",
+                context={"operation": "append_completion_notes", "task_id": task_id},
+            )
+        await self._append_completion_notes(task_id, tenant_key, notes)
+
     async def _append_completion_notes(self, task_id: str, tenant_key: str, notes: str) -> None:
         """Append completion notes to the task description (audit trail)."""
 
@@ -1227,5 +1240,4 @@ class TaskService:
             "started_at": task.started_at.isoformat() if task.started_at else None,
             "completed_at": task.completed_at.isoformat() if task.completed_at else None,
             "created_at": task.created_at.isoformat() if task.created_at else None,
-            "updated_at": task.updated_at.isoformat() if task.updated_at else None,
         }

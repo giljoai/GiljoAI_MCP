@@ -22,13 +22,17 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    and_,
+    case,
+    literal,
+    select,
     text,
 )
 from sqlalchemy import (
     Enum as SQLAlchemyEnum,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import column_property, relationship
 from sqlalchemy.sql import func
 
 from giljo_mcp.domain.project_status import ProjectStatus
@@ -276,24 +280,44 @@ class Project(Base):
         ),
     )
 
-    @property
-    def taxonomy_alias(self) -> str:
-        """Generate a structured taxonomy alias from independent fields.
-
-        Supports any combination: type-only ("BE"), serial-only ("0042"),
-        type+serial ("BE-0042"), or full ("BE-0042a").
-        Falls back to the random 6-char alias if no taxonomy fields are set.
-        """
-        parts = []
-        if self.project_type_id and self.project_type:
-            parts.append(self.project_type.abbreviation)
-        if self.series_number:
-            if parts:
-                parts.append("-")
-            parts.append(f"{self.series_number:04d}")
-            if self.subseries:
-                parts.append(self.subseries)
-        return "".join(parts) if parts else self.alias
-
     def __repr__(self) -> str:
         return f"<Project(id={self.id}, name='{self.name}', product_id='{self.product_id}')>"
+
+
+# BE-5058: ``taxonomy_alias`` is a SELECT-time correlated expression so sync
+# consumers can read it on a project fetched without ``joinedload(project_type)``
+# without triggering an async lazy load (the prior ``@property`` form crashed
+# as MissingGreenlet from non-greenlet contexts). The correlated subquery is
+# tenant-scoped to keep the model layer's defense-in-depth boundary intact.
+_project_abbr_subq = (
+    select(TaxonomyType.abbreviation)
+    .where(
+        TaxonomyType.id == Project.project_type_id,
+        TaxonomyType.tenant_key == Project.tenant_key,
+    )
+    .correlate(Project)
+    .scalar_subquery()
+)
+
+Project.taxonomy_alias = column_property(
+    case(
+        (
+            and_(Project.project_type_id.is_(None), Project.series_number.is_(None)),
+            Project.alias,
+        ),
+        (
+            Project.series_number.is_(None),
+            func.coalesce(_project_abbr_subq, literal("")),
+        ),
+        else_=(
+            func.coalesce(_project_abbr_subq, literal(""))
+            + case(
+                (_project_abbr_subq.is_not(None), literal("-")),
+                else_=literal(""),
+            )
+            + func.lpad(func.cast(Project.series_number, String), 4, literal("0"))
+            + func.coalesce(Project.subseries, literal(""))
+        ),
+    ),
+    deferred=False,
+)

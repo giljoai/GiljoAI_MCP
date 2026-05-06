@@ -516,10 +516,12 @@ async def get_implementation_prompt(
     """
     from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
-    # 1. Fetch project with multi-tenant filtering (eager-load product + project_type for git closeout)
+    # 1. Fetch project with multi-tenant filtering (eager-load product for git closeout).
+    # BE-5058: ``project_type`` no longer needs eager loading -- ``taxonomy_alias``
+    # is a SELECT-time column_property.
     project_stmt = (
         select(Project)
-        .options(joinedload(Project.product), joinedload(Project.project_type))
+        .options(joinedload(Project.product))
         .where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
     )
     project_result = await db.execute(project_stmt)
