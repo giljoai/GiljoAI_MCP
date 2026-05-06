@@ -120,7 +120,7 @@ async def get_current_user(
         'admin'
     """
     # DIAGNOSTIC: Log incoming auth attempt
-    logger.info(
+    logger.debug(
         "[AUTH] get_current_user called - path: %s, cookie: %s, api_key: %s, auth_header: %s",
         request.url.path,
         bool(access_token),
@@ -130,11 +130,11 @@ async def get_current_user(
 
     # Try JWT cookie first (web users)
     if access_token:
-        logger.info("[AUTH] Attempting JWT cookie authentication")
+        logger.debug("[AUTH] Attempting JWT cookie authentication")
         try:
             payload = JWTManager.verify_token(access_token)
             user_id = payload["sub"]  # Keep as string - User.id is String(36), not UUID
-            logger.info(f"[AUTH] JWT valid - user_id: {user_id}")
+            logger.debug(f"[AUTH] JWT valid - user_id: {user_id}")
 
             # Query user from database
             from sqlalchemy import select
@@ -144,7 +144,7 @@ async def get_current_user(
             user = result.scalar_one_or_none()
 
             if user:
-                logger.info(f"[AUTH] JWT SUCCESS - User: {user.username}, Tenant: {user.tenant_key}")
+                logger.debug(f"[AUTH] JWT SUCCESS - User: {user.username}, Tenant: {user.tenant_key}")
                 return user
             logger.warning(f"[AUTH] JWT FAILED - User not found: {user_id}")
         except HTTPException as e:
@@ -159,7 +159,7 @@ async def get_current_user(
         bearer_token = str(authorization).split(" ", 1)[1].strip()
 
     if bearer_token and not access_token:
-        logger.info("[AUTH] Attempting Authorization Bearer JWT authentication")
+        logger.debug("[AUTH] Attempting Authorization Bearer JWT authentication")
         try:
             payload = JWTManager.verify_token(bearer_token)
             user_id = payload["sub"]
@@ -170,7 +170,7 @@ async def get_current_user(
             user = result.scalar_one_or_none()
 
             if user:
-                logger.info("[AUTH] Bearer JWT SUCCESS - User: %s, Tenant: %s", user.username, user.tenant_key)
+                logger.debug("[AUTH] Bearer JWT SUCCESS - User: %s, Tenant: %s", user.username, user.tenant_key)
                 return user
             logger.warning("[AUTH] Bearer JWT FAILED - User not found: %s", user_id)
         except HTTPException as e:

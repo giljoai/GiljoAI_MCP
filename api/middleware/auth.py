@@ -80,7 +80,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 )
 
         # DIAGNOSTIC: Log incoming request details
-        logger.info(
+        logger.debug(
             "auth_request_received method=%s path=%s ip=%s has_cookie=%s has_auth=%s",
             request.method,
             request.url.path,
@@ -92,7 +92,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         auth_result = await auth_manager.authenticate_request(request)
 
         # DIAGNOSTIC: Log auth result
-        logger.info(
+        logger.debug(
             "auth_result authenticated=%s user=%s error=%s is_auto_login=%s",
             auth_result.get("authenticated"),
             auth_result.get("user"),
