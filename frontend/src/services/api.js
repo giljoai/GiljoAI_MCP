@@ -278,12 +278,14 @@ export const api = {
       apiClient.post(`/api/v1/products/${productId}/tuning/generate-prompt`, { sections }),
   },
 
-  // Project Types (Handover 0440b: Taxonomy system)
-  projectTypes: {
-    list: () => apiClient.get('/api/v1/project-types/'),
-    create: (data) => apiClient.post('/api/v1/project-types/', data),
-    update: (id, data) => apiClient.put(`/api/v1/project-types/${id}`, data),
-    delete: (id) => apiClient.delete(`/api/v1/project-types/${id}`),
+  // Taxonomy Types (renamed from project-types in Phase A of task agent-parity
+  // taxonomy unification — the same taxonomy now serves both projects and
+  // tasks, hence the rename. URL: /api/v1/taxonomy-types/.)
+  taxonomyTypes: {
+    list: () => apiClient.get('/api/v1/taxonomy-types/'),
+    create: (data) => apiClient.post('/api/v1/taxonomy-types/', data),
+    update: (id, data) => apiClient.put(`/api/v1/taxonomy-types/${id}`, data),
+    delete: (id) => apiClient.delete(`/api/v1/taxonomy-types/${id}`),
   },
 
   // Project Statuses (BE-5039: Project Status SSOT)

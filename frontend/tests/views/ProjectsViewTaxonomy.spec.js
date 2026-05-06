@@ -10,7 +10,7 @@ import { useAgentJobsStore as useAgentStore } from '@/stores/agentJobsStore'
 // Mock api service at module level (overrides global mock from setup.js)
 vi.mock('@/services/api', () => ({
   default: {
-    projectTypes: {
+    taxonomyTypes: {
       list: vi.fn(() => Promise.resolve({ data: [] })),
     },
     projects: {

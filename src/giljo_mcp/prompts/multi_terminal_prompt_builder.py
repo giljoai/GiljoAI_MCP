@@ -12,6 +12,13 @@ server-side.
 """
 
 
+def _project_title(project) -> str:
+    has_taxonomy = bool(getattr(project, "project_type_id", None) or getattr(project, "series_number", None))
+    if has_taxonomy:
+        return f"{project.taxonomy_alias} {project.name}"
+    return project.name
+
+
 class MultiTerminalPromptBuilder:
     """Builds platform-agnostic multi-terminal orchestrator prompts."""
 
@@ -31,7 +38,7 @@ class MultiTerminalPromptBuilder:
             "mcp__giljo_mcp__health_check()",
             "```",
             "",
-            f"You are the ORCHESTRATOR for project '{project.name}'.",
+            f"You are the ORCHESTRATOR for project '{_project_title(project)}'.",
             f"Job ID: `{orchestrator_id}` | Project ID: `{project.id}`",
             "",
             "Call `get_agent_mission` to receive your current team state and operating protocol:",

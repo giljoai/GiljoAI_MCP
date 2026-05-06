@@ -89,16 +89,16 @@ class TestAutoAssignSeriesNumber:
         self, project_service: ProjectService, test_tenant_key: str, db_session
     ):
         """Auto-series counts independently per project_type_id."""
-        from giljo_mcp.models.projects import ProjectType
+        from giljo_mcp.models.projects import TaxonomyType
 
         # Create two project types
-        pt1 = ProjectType(
+        pt1 = TaxonomyType(
             id=str(uuid4()),
             tenant_key=test_tenant_key,
             label="Frontend",
             abbreviation="FE",
         )
-        pt2 = ProjectType(
+        pt2 = TaxonomyType(
             id=str(uuid4()),
             tenant_key=test_tenant_key,
             label="Backend",

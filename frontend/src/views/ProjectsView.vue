@@ -901,7 +901,7 @@ onMounted(async () => {
       projectStore.fetchDeletedProjects(),
     ])
     try {
-      const typesResponse = await api.projectTypes.list()
+      const typesResponse = await api.taxonomyTypes.list()
       projectTypes.value = typesResponse.data || []
     } catch {
       console.error('Failed to load project types')

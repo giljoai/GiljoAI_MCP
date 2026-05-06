@@ -85,7 +85,6 @@ try:
         oauth,
         products,
         project_statuses,
-        project_types,
         projects,
         prompts,
         serena,
@@ -95,6 +94,7 @@ try:
         statistics,
         system_prompts,
         tasks,
+        taxonomy_types,
         templates,
         user_settings,
         users,
@@ -520,8 +520,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(vision_documents.router, prefix="/api/vision-documents", tags=["vision-documents"])
     # Handover 0125: Modular projects module (prefix and tags defined in module __init__.py)
     app.include_router(projects.router)
-    # Handover 0440a: Project type taxonomy module (prefix and tags defined in module __init__.py)
-    app.include_router(project_types.router)
+    # Handover 0440a + Phase A (2026-05): Taxonomy types module (prefix and tags defined in module __init__.py)
+    app.include_router(taxonomy_types.router)
     # BE-5039: Project status metadata module (frontend SSoT for badge labels/colors)
     app.include_router(project_statuses.router)
     app.include_router(claude_export.router, prefix="/api", tags=["claude-export"])

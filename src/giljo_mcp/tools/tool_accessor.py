@@ -295,20 +295,85 @@ class ToolAccessor:
         title: str,
         description: str,
         priority: str = "medium",
-        category: str | None = None,
+        task_type: str | None = None,
         assigned_to: str | None = None,
         tenant_key: str | None = None,
     ) -> dict[str, Any]:
-        """Create a task bound to active product. Sprint 002f: delegates to TaskService."""
+        """Create a task bound to active product. Phase B: task_type replaces category."""
         return await self._task_service.create_task_for_mcp(
             title=title,
             description=description,
             priority=priority,
-            category=category,
+            task_type=task_type,
             assigned_to=assigned_to,
             tenant_key=tenant_key,
             db_manager=self.db_manager,
             websocket_manager=self._websocket_manager,
+        )
+
+    async def update_task(
+        self,
+        task_id: str,
+        tenant_key: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+        status: str | None = None,
+        priority: str | None = None,
+        task_type: str | None = None,
+        due_date: Any = None,
+        project_id: str | None = None,
+        estimated_effort: float | None = None,
+        actual_effort: float | None = None,
+    ) -> dict[str, Any]:
+        """Update one or more task fields. Phase C; TaskService-routed."""
+        return await self._task_service.update_task_for_mcp(
+            task_id=task_id,
+            tenant_key=tenant_key,
+            title=title,
+            description=description,
+            status=status,
+            priority=priority,
+            task_type=task_type,
+            due_date=due_date,
+            project_id=project_id,
+            estimated_effort=estimated_effort,
+            actual_effort=actual_effort,
+        )
+
+    async def complete_task(
+        self,
+        task_id: str,
+        tenant_key: str | None = None,
+        completion_notes: str | None = None,
+    ) -> dict[str, Any]:
+        """Mark a task completed. Phase C; TaskService-routed."""
+        return await self._task_service.complete_task_for_mcp(
+            task_id=task_id,
+            tenant_key=tenant_key,
+            completion_notes=completion_notes,
+        )
+
+    async def list_tasks(
+        self,
+        tenant_key: str | None = None,
+        mode: str = "summary",
+        status: str | None = None,
+        priority: str | None = None,
+        task_type: str | None = None,
+        due_before: Any = None,
+        summary_only: bool | None = None,
+        memory_limit: int | None = None,
+    ) -> dict[str, Any]:
+        """List tasks for the current tenant. Phase D; summary/full modes."""
+        return await self._task_service.list_tasks_for_mcp(
+            tenant_key=tenant_key,
+            mode=mode,
+            status=status,
+            priority=priority,
+            task_type=task_type,
+            due_before=due_before,
+            summary_only=summary_only,
+            memory_limit=memory_limit,
         )
 
     # Orchestration Tools

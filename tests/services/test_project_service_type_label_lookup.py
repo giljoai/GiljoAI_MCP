@@ -6,14 +6,14 @@
 """
 Integration tests for ProjectService.get_project_type_by_label() (Handover 0837b).
 
-Verifies case-insensitive lookup of ProjectType by label within a tenant.
+Verifies case-insensitive lookup of TaxonomyType by label within a tenant.
 """
 
 from uuid import uuid4
 
 import pytest
 
-from giljo_mcp.models.projects import ProjectType
+from giljo_mcp.models.projects import TaxonomyType
 from giljo_mcp.services.project_service import ProjectService
 
 
@@ -22,13 +22,13 @@ async def project_service(project_service_with_session):
     return project_service_with_session
 
 
-class TestGetProjectTypeByLabel:
-    """Test case-insensitive ProjectType label lookup."""
+class TestGetTaxonomyTypeByLabel:
+    """Test case-insensitive TaxonomyType label lookup."""
 
     @pytest.mark.asyncio
     async def test_exact_match(self, project_service: ProjectService, test_tenant_key: str, db_session):
-        """Exact label match returns the ProjectType."""
-        pt = ProjectType(
+        """Exact label match returns the TaxonomyType."""
+        pt = TaxonomyType(
             id=str(uuid4()),
             tenant_key=test_tenant_key,
             label="Frontend",
@@ -45,7 +45,7 @@ class TestGetProjectTypeByLabel:
     @pytest.mark.asyncio
     async def test_case_insensitive_match(self, project_service: ProjectService, test_tenant_key: str, db_session):
         """Lowercase input matches capitalized label."""
-        pt = ProjectType(
+        pt = TaxonomyType(
             id=str(uuid4()),
             tenant_key=test_tenant_key,
             label="Backend",
@@ -61,7 +61,7 @@ class TestGetProjectTypeByLabel:
     @pytest.mark.asyncio
     async def test_uppercase_input_matches(self, project_service: ProjectService, test_tenant_key: str, db_session):
         """All-caps input matches mixed-case label."""
-        pt = ProjectType(
+        pt = TaxonomyType(
             id=str(uuid4()),
             tenant_key=test_tenant_key,
             label="DevOps",
@@ -84,7 +84,7 @@ class TestGetProjectTypeByLabel:
     async def test_tenant_isolation(self, project_service: ProjectService, test_tenant_key: str, db_session):
         """Type from another tenant is not visible."""
         other_tenant = f"tk_{uuid4().hex}"
-        pt = ProjectType(
+        pt = TaxonomyType(
             id=str(uuid4()),
             tenant_key=other_tenant,
             label="Frontend",

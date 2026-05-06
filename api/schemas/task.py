@@ -34,7 +34,11 @@ class TaskCreate(BaseModel):
     priority: Literal["low", "medium", "high", "critical"] | None = Field(
         None, description="Task priority: low, medium, high, critical"
     )
-    category: str | None = Field(None, max_length=100, description="Task category")
+    task_type: str | None = Field(
+        None,
+        max_length=4,
+        description="Taxonomy type abbreviation (e.g. BE, FE, INF). Replaces the legacy category field.",
+    )
     product_id: str = Field(..., description="Product ID (required - Handover 0433)")
     project_id: str | None = Field(None, description="Associated project ID")
     parent_task_id: str | None = Field(None, description="Parent task ID for hierarchy")
@@ -61,7 +65,11 @@ class TaskUpdate(BaseModel):
     priority: Literal["low", "medium", "high", "critical"] | None = Field(
         None, description="Task priority: low, medium, high, critical"
     )
-    category: str | None = Field(None, max_length=100, description="Task category")
+    task_type: str | None = Field(
+        None,
+        max_length=4,
+        description="Taxonomy type abbreviation (e.g. BE, FE, INF). Replaces the legacy category field.",
+    )
     # Handover 0076: Removed assigned_to_user_id field
     estimated_effort: float | None = Field(None, ge=0, description="Estimated effort in hours")
     actual_effort: float | None = Field(None, ge=0, description="Actual effort in hours")
@@ -119,7 +127,8 @@ class TaskResponse(BaseModel):
     id: str = Field(..., description="Task ID")
     title: str = Field(..., description="Task title")
     description: str | None = Field(None, description="Task description")
-    category: str | None = Field(None, description="Task category")
+    task_type: str | None = Field(None, description="Taxonomy type abbreviation (BE, FE, INF, ...)")
+    task_type_id: str | None = Field(None, description="FK to taxonomy_types row")
     status: str = Field(..., description="Task status")
     priority: str = Field(..., description="Task priority")
     product_id: str | None = Field(None, description="Product ID for isolation")

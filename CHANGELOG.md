@@ -4,7 +4,13 @@ All notable changes to this project are recorded here. Versions follow `MAJOR.MI
 
 ## [Unreleased]
 
-_No pending work yet — v1.2.4+ entries will land here._
+### Task taxonomy unification + agent-parity MCP tools
+
+`tasks.category` (freewrite string) replaced with `tasks.task_type_id` FK to the unified `taxonomy_types` table (renamed from `project_types`). On upgrade, tasks whose old `category` value did not exact-match a taxonomy abbreviation or label arrive with no type — re-tag via the TasksView Type dropdown, or ask an agent to set them via the new `update_task` MCP tool.
+
+New agent surface: `update_task`, `update_task_status`, `complete_task`, `list_tasks` (summary/full modes), `fetch_context(categories=["tasks"])`. REST endpoint path `/api/v1/project-types` renamed to `/api/v1/taxonomy-types` (router file moved + path updated; backend sweep complete).
+
+CE migrations: `ce_0014_rename_project_types_to_taxonomy_types`, `ce_0015_tasks_add_task_type_id` (adds FK + backfills from category), `ce_0016_tasks_drop_category` (removes the legacy column). All idempotent.
 
 ## [1.2.4] — 2026-05-03
 

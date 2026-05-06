@@ -1,15 +1,18 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
 # Licensed under the GiljoAI Community License v1.1.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition - source-available, single-user use only.
 
 """
-Pydantic schemas for Project Type taxonomy endpoints - Handover 0440a Phase 2
+Pydantic schemas for taxonomy type endpoints.
+
+Renamed from project type schemas in Phase A of the agent-parity + unified
+Type taxonomy project. Same shape; new names reflect the unified taxonomy.
 
 Schemas:
-- ProjectTypeCreate: Validated input for creating a new project type
-- ProjectTypeUpdate: Partial update (label, color, sort_order only)
-- ProjectTypeResponse: Full response model with project_count
+- TaxonomyTypeCreate: Validated input for creating a new taxonomy type
+- TaxonomyTypeUpdate: Partial update (label, color, sort_order only)
+- TaxonomyTypeResponse: Full response model with project_count
 """
 
 from datetime import datetime
@@ -17,8 +20,8 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class ProjectTypeCreate(BaseModel):
-    """Request model for creating a project type."""
+class TaxonomyTypeCreate(BaseModel):
+    """Request model for creating a taxonomy type."""
 
     abbreviation: str = Field(
         ...,
@@ -41,16 +44,16 @@ class ProjectTypeCreate(BaseModel):
     sort_order: int = Field(default=0, description="Display ordering in UI dropdowns")
 
 
-class ProjectTypeUpdate(BaseModel):
-    """Request model for updating a project type (partial)."""
+class TaxonomyTypeUpdate(BaseModel):
+    """Request model for updating a taxonomy type (partial)."""
 
     label: str | None = Field(None, min_length=1, max_length=50)
     color: str | None = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
     sort_order: int | None = None
 
 
-class ProjectTypeResponse(BaseModel):
-    """Response model for project type details."""
+class TaxonomyTypeResponse(BaseModel):
+    """Response model for taxonomy type details."""
 
     id: str
     tenant_key: str

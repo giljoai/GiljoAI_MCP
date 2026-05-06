@@ -4,42 +4,42 @@
 # [CE] Community Edition — source-available, single-user use only.
 
 """
-Tests for giljo_mcp.services.project_type_ops
+Tests for giljo_mcp.services.taxonomy_ops
 
-Validates that ensure_default_types_seeded and list_project_types
-were correctly extracted from api/endpoints/project_types/crud_ops.py
-and function identically at the new canonical location.
+Validates that ensure_default_types_seeded and list_taxonomy_types
+behave correctly at the canonical location after the Phase A rename
+(taxonomy_ops -> taxonomy_ops).
 """
 
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from giljo_mcp.services.project_type_ops import (
-    DEFAULT_PROJECT_TYPES,
+from giljo_mcp.services.taxonomy_ops import (
+    DEFAULT_TAXONOMY_TYPES,
     ensure_default_types_seeded,
-    list_project_types,
+    list_taxonomy_types,
 )
 
 
-class TestDefaultProjectTypes:
-    """Verify the DEFAULT_PROJECT_TYPES constant is intact after extraction."""
+class TestDefaultTaxonomyTypes:
+    """Verify the DEFAULT_TAXONOMY_TYPES constant is intact after extraction."""
 
     def test_has_expected_count(self):
-        assert len(DEFAULT_PROJECT_TYPES) == 8
+        assert len(DEFAULT_TAXONOMY_TYPES) == 8
 
     def test_each_has_required_keys(self):
-        for pt in DEFAULT_PROJECT_TYPES:
+        for pt in DEFAULT_TAXONOMY_TYPES:
             assert "abbr" in pt
             assert "label" in pt
             assert "color" in pt
 
     def test_abbreviations_are_unique(self):
-        abbrs = [pt["abbr"] for pt in DEFAULT_PROJECT_TYPES]
+        abbrs = [pt["abbr"] for pt in DEFAULT_TAXONOMY_TYPES]
         assert len(abbrs) == len(set(abbrs))
 
     def test_colors_are_hex(self):
-        for pt in DEFAULT_PROJECT_TYPES:
+        for pt in DEFAULT_TAXONOMY_TYPES:
             assert pt["color"].startswith("#")
             assert len(pt["color"]) == 7
 
@@ -72,7 +72,7 @@ class TestEnsureDefaultTypesSeeded:
 
         await ensure_default_types_seeded(session, "tenant_abc")
 
-        assert session.add.call_count == len(DEFAULT_PROJECT_TYPES)
+        assert session.add.call_count == len(DEFAULT_TAXONOMY_TYPES)
         session.flush.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -90,7 +90,7 @@ class TestEnsureDefaultTypesSeeded:
         assert call_args is not None
 
 
-class TestListProjectTypes:
+class TestListTaxonomyTypes:
     """Tests for the list function."""
 
     @pytest.mark.asyncio
@@ -101,7 +101,7 @@ class TestListProjectTypes:
         mock_result.all.return_value = []
         session.execute.return_value = mock_result
 
-        result = await list_project_types(session, "tenant_abc")
+        result = await list_taxonomy_types(session, "tenant_abc")
 
         assert isinstance(result, list)
         assert len(result) == 0
@@ -116,29 +116,29 @@ class TestListProjectTypes:
         mock_result.all.return_value = [mock_row]
         session.execute.return_value = mock_result
 
-        result = await list_project_types(session, "tenant_abc")
+        result = await list_taxonomy_types(session, "tenant_abc")
 
         assert len(result) == 1
         assert result[0].project_count == 7
 
 
 class TestReExportCompatibility:
-    """Verify that api/endpoints/project_types/crud_ops.py re-exports work."""
+    """Verify that api/endpoints/taxonomy_types/crud_ops.py re-exports work."""
 
     def test_crud_ops_reexports_ensure_default(self):
-        from api.endpoints.project_types.crud_ops import ensure_default_types_seeded as reexported
-        from giljo_mcp.services.project_type_ops import ensure_default_types_seeded as canonical
+        from api.endpoints.taxonomy_types.crud_ops import ensure_default_types_seeded as reexported
+        from giljo_mcp.services.taxonomy_ops import ensure_default_types_seeded as canonical
 
         assert reexported is canonical
 
     def test_crud_ops_reexports_list(self):
-        from api.endpoints.project_types.crud_ops import list_project_types as reexported
-        from giljo_mcp.services.project_type_ops import list_project_types as canonical
+        from api.endpoints.taxonomy_types.crud_ops import list_taxonomy_types as reexported
+        from giljo_mcp.services.taxonomy_ops import list_taxonomy_types as canonical
 
         assert reexported is canonical
 
     def test_crud_ops_reexports_defaults(self):
-        from api.endpoints.project_types.crud_ops import DEFAULT_PROJECT_TYPES as REEXPORTED
-        from giljo_mcp.services.project_type_ops import DEFAULT_PROJECT_TYPES as CANONICAL
+        from api.endpoints.taxonomy_types.crud_ops import DEFAULT_TAXONOMY_TYPES as REEXPORTED
+        from giljo_mcp.services.taxonomy_ops import DEFAULT_TAXONOMY_TYPES as CANONICAL
 
         assert REEXPORTED is CANONICAL

@@ -8,7 +8,7 @@ Regression tests for the post-6f702526a contract change:
 
 `ProjectService.list_projects_for_mcp()` no longer embeds the
 `project_types` taxonomy in its response. Callers must use the
-`GET /api/project-types/` endpoint for taxonomy discovery.
+`GET /api/taxonomy-types/` endpoint for taxonomy discovery.
 
 The `_get_valid_project_types` helper is intentionally retained so
 `update_project_metadata_for_mcp` can still surface a "Valid types: ..."
@@ -176,7 +176,7 @@ class TestGetValidProjectTypesHelperRetained:
         service = _make_service(tenant_key=_TENANT_A)
 
         # Simulate the helper's downstream calls via patching at the import site
-        # used inside the helper (giljo_mcp.services.project_type_ops).
+        # used inside the helper (giljo_mcp.services.taxonomy_ops).
         fake_type = Mock()
         fake_type.abbreviation = "AAA"
         fake_type.label = "Alpha"
@@ -184,11 +184,11 @@ class TestGetValidProjectTypesHelperRetained:
 
         with (
             patch(
-                "giljo_mcp.services.project_type_ops.ensure_default_types_seeded",
+                "giljo_mcp.services.taxonomy_ops.ensure_default_types_seeded",
                 new_callable=AsyncMock,
             ),
             patch(
-                "giljo_mcp.services.project_type_ops.list_project_types",
+                "giljo_mcp.services.taxonomy_ops.list_taxonomy_types",
                 new_callable=AsyncMock,
                 return_value=[fake_type],
             ),

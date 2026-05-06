@@ -309,7 +309,7 @@ vi.mock('@/services/api', () => {
       restoreProduct: vi.fn(() => Promise.resolve({ data: { success: true } })),
       getMemoryEntries: vi.fn(() => Promise.resolve({ data: [] })),
     },
-    projectTypes: {
+    taxonomyTypes: {
       list: vi.fn(() => Promise.resolve({ data: [] })),
       create: vi.fn(() => Promise.resolve({ data: {} })),
       update: vi.fn(() => Promise.resolve({ data: {} })),

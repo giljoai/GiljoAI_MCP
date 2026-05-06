@@ -20,6 +20,13 @@ from giljo_mcp.models import Product, Project
 logger = logging.getLogger(__name__)
 
 
+def _project_title(project: Any) -> str:
+    has_taxonomy = bool(getattr(project, "project_type_id", None) or getattr(project, "series_number", None))
+    if has_taxonomy:
+        return f"{project.taxonomy_alias} {project.name}"
+    return project.name
+
+
 class StagingPromptBuilder:
     """Builds staging-phase prompts and handles mission regeneration."""
 
@@ -63,7 +70,7 @@ class StagingPromptBuilder:
         api_key_configured = bool(config.server.api_key)
         auth_note = "(authenticated)" if api_key_configured else "(check config.yaml for API key)"
 
-        return f"""I am Orchestrator for GiljoAI Project "{project.name}".
+        return f"""I am Orchestrator for GiljoAI Project "{_project_title(project)}".
 
 IDENTITY:
 - Orchestrator Agent ID: {agent_id}
@@ -147,7 +154,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         Returns:
             Thin staging prompt (~113 tokens)
         """
-        return f"""You are the ORCHESTRATOR for project "{project.name}"
+        return f"""You are the ORCHESTRATOR for project "{_project_title(project)}"
 
 YOUR IDENTITY (use these in all MCP calls):
   YOUR Agent ID: {agent_id}

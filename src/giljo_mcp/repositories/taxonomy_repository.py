@@ -1,13 +1,15 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
 # Licensed under the GiljoAI Community License v1.1.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition - source-available, single-user use only.
 
 """
-ProjectTypeRepository - Data access layer for ProjectType entity.
+TaxonomyRepository - data access for the unified taxonomy_types table.
 
-BE-5022c: Extracted from project_type_ops.py to enforce the service->repository
-boundary. All database writes for ProjectType are routed through this repository.
+Renamed from ``ProjectTypeRepository`` in Phase A of the agent-parity +
+unified Type taxonomy project (2026-05). The same physical table now backs
+both project classification and task classification (see migrations
+ce_0014 and ce_0015).
 
 Tenant isolation is enforced at the query level on every operation.
 """
@@ -20,15 +22,14 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.models.projects import Project, ProjectType
+from giljo_mcp.models.projects import Project, TaxonomyType
 
 
 logger = logging.getLogger(__name__)
 
 
-class ProjectTypeRepository:
-    """
-    Repository for ProjectType database operations.
+class TaxonomyRepository:
+    """Repository for taxonomy_types database operations.
 
     Methods accept an AsyncSession parameter (session-in pattern) so the
     calling service controls transaction boundaries.
@@ -38,38 +39,18 @@ class ProjectTypeRepository:
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     async def count_for_tenant(self, session: AsyncSession, tenant_key: str) -> int:
-        """
-        Count project types for a tenant.
-
-        Args:
-            session: Active database session
-            tenant_key: Tenant key for isolation
-
-        Returns:
-            Number of project types
-        """
+        """Count taxonomy types for a tenant."""
         result = await session.execute(
-            select(func.count()).select_from(ProjectType).where(ProjectType.tenant_key == tenant_key)
+            select(func.count()).select_from(TaxonomyType).where(TaxonomyType.tenant_key == tenant_key)
         )
         return result.scalar() or 0
 
-    async def add_project_type(self, session: AsyncSession, project_type: ProjectType) -> None:
-        """
-        Add a project type to the session (no commit).
-
-        Args:
-            session: Active database session
-            project_type: Fully constructed ProjectType ORM instance
-        """
-        session.add(project_type)
+    async def add_taxonomy_type(self, session: AsyncSession, taxonomy_type: TaxonomyType) -> None:
+        """Add a taxonomy type to the session (no commit)."""
+        session.add(taxonomy_type)
 
     async def flush(self, session: AsyncSession) -> None:
-        """
-        Flush the current session (write to DB without committing).
-
-        Args:
-            session: Active database session
-        """
+        """Flush the current session (write to DB without committing)."""
         await session.flush()
 
     async def get_by_abbreviation(
@@ -77,22 +58,12 @@ class ProjectTypeRepository:
         session: AsyncSession,
         tenant_key: str,
         abbreviation: str,
-    ) -> ProjectType | None:
-        """
-        Get a project type by abbreviation within a tenant.
-
-        Args:
-            session: Active database session
-            tenant_key: Tenant key for isolation
-            abbreviation: ProjectType abbreviation
-
-        Returns:
-            ProjectType ORM instance or None
-        """
+    ) -> TaxonomyType | None:
+        """Get a taxonomy type by abbreviation within a tenant."""
         result = await session.execute(
-            select(ProjectType).where(
-                ProjectType.tenant_key == tenant_key,
-                ProjectType.abbreviation == abbreviation,
+            select(TaxonomyType).where(
+                TaxonomyType.tenant_key == tenant_key,
+                TaxonomyType.abbreviation == abbreviation,
             )
         )
         return result.scalar_one_or_none()
@@ -102,81 +73,52 @@ class ProjectTypeRepository:
         session: AsyncSession,
         tenant_key: str,
         type_id: str,
-    ) -> ProjectType | None:
-        """
-        Get a project type by ID within a tenant.
-
-        Args:
-            session: Active database session
-            tenant_key: Tenant key for isolation
-            type_id: ProjectType UUID
-
-        Returns:
-            ProjectType ORM instance or None
-        """
+    ) -> TaxonomyType | None:
+        """Get a taxonomy type by ID within a tenant."""
         result = await session.execute(
-            select(ProjectType).where(
-                ProjectType.id == type_id,
-                ProjectType.tenant_key == tenant_key,
+            select(TaxonomyType).where(
+                TaxonomyType.id == type_id,
+                TaxonomyType.tenant_key == tenant_key,
             )
         )
         return result.scalar_one_or_none()
 
-    async def flush_and_refresh(self, session: AsyncSession, project_type: ProjectType) -> ProjectType:
-        """
-        Flush pending changes and refresh the project type.
-
-        Args:
-            session: Active database session
-            project_type: ProjectType ORM instance
-
-        Returns:
-            Refreshed ProjectType instance
-        """
+    async def flush_and_refresh(self, session: AsyncSession, taxonomy_type: TaxonomyType) -> TaxonomyType:
+        """Flush pending changes and refresh the taxonomy type."""
         await session.flush()
-        await session.refresh(project_type)
-        return project_type
+        await session.refresh(taxonomy_type)
+        return taxonomy_type
 
-    async def delete_project_type(self, session: AsyncSession, project_type: ProjectType) -> None:
-        """
-        Delete a project type and flush.
-
-        Args:
-            session: Active database session
-            project_type: ProjectType ORM instance to delete
-        """
-        await session.delete(project_type)
+    async def delete_taxonomy_type(self, session: AsyncSession, taxonomy_type: TaxonomyType) -> None:
+        """Delete a taxonomy type and flush."""
+        await session.delete(taxonomy_type)
         await session.flush()
-
-    # ============================================================================
-    # Read Operations — BE-5022d: Moved from project_type_ops.py
-    # ============================================================================
 
     async def list_with_project_counts(
         self,
         session: AsyncSession,
         tenant_key: str,
     ) -> list[Any]:
-        """List all project types with project counts, ordered by sort_order.
+        """List all taxonomy types with project counts, ordered by sort_order.
 
         Returns:
-            List of (ProjectType, project_count) tuples.
+            List of (TaxonomyType, project_count) tuples.
         """
         project_count_subq = (
             select(func.count(Project.id))
             .where(
-                Project.project_type_id == ProjectType.id,
+                Project.project_type_id == TaxonomyType.id,
                 Project.tenant_key == tenant_key,
             )
-            .correlate(ProjectType)
+            .correlate(TaxonomyType)
             .scalar_subquery()
             .label("project_count")
         )
 
         stmt = (
-            select(ProjectType, project_count_subq)
-            .where(ProjectType.tenant_key == tenant_key)
-            .order_by(ProjectType.sort_order, ProjectType.abbreviation)
+            select(TaxonomyType, project_count_subq)
+            .where(TaxonomyType.tenant_key == tenant_key)
+            .order_by(TaxonomyType.sort_order, TaxonomyType.abbreviation)
         )
 
         result = await session.execute(stmt)
@@ -188,16 +130,7 @@ class ProjectTypeRepository:
         tenant_key: str,
         type_id: str,
     ) -> int:
-        """Count projects assigned to a project type.
-
-        Args:
-            session: Active database session
-            tenant_key: Tenant key for isolation
-            type_id: Project type ID
-
-        Returns:
-            Number of projects assigned to this type
-        """
+        """Count projects assigned to a taxonomy type."""
         result = await session.execute(
             select(func.count(Project.id)).where(
                 Project.project_type_id == type_id,
@@ -213,7 +146,7 @@ class ProjectTypeRepository:
         type_id: str,
         product_id: str | None = None,
     ) -> int:
-        """Get the next available series number for a project type within a product.
+        """Get the next available series number for a taxonomy type within a product.
 
         Returns max(series_number) + 1, or 1 if no projects exist.
         """
@@ -235,11 +168,7 @@ class ProjectTypeRepository:
         type_id: str,
         product_id: str | None = None,
     ) -> set[int]:
-        """Get all used series numbers for a project type within a product.
-
-        Returns:
-            Set of used series numbers.
-        """
+        """Get all used series numbers for a taxonomy type within a product."""
         query = (
             select(Project.series_number)
             .where(
@@ -265,11 +194,7 @@ class ProjectTypeRepository:
         exclude_project_id: str | None = None,
         product_id: str | None = None,
     ) -> bool:
-        """Check if a series number combination is available within a product.
-
-        Returns:
-            True if available, False if already taken.
-        """
+        """Check if a series number combination is available within a product."""
         query = select(Project.id).where(
             Project.tenant_key == tenant_key,
             Project.series_number == series_number,
@@ -302,11 +227,7 @@ class ProjectTypeRepository:
         exclude_project_id: str | None = None,
         product_id: str | None = None,
     ) -> list[str]:
-        """Get all used subseries letters for a type + series_number within a product.
-
-        Returns:
-            Sorted list of used subseries letters.
-        """
+        """Get all used subseries letters for a type + series_number within a product."""
         query = select(Project.subseries).where(
             Project.tenant_key == tenant_key,
             Project.series_number == series_number,

@@ -11,7 +11,7 @@ The frontend ``StatusBadge.vue`` consumes this endpoint to render labels
 and resolve color tokens, replacing the hardcoded literal at
 ``frontend/src/components/StatusBadge.vue:21``.
 
-Mirrors the existing ``api/endpoints/project_types`` pattern.
+Mirrors the existing ``api/endpoints/taxonomy_types`` pattern.
 """
 
 from fastapi import APIRouter

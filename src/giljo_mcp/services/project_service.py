@@ -58,7 +58,7 @@ from giljo_mcp.exceptions import (
 
 # Import Pattern: Use modular imports from models package (Post-0128a)
 # See models/__init__.py for migration guidance
-from giljo_mcp.models.projects import Project, ProjectType
+from giljo_mcp.models.projects import Project, TaxonomyType
 from giljo_mcp.repositories.project_repository import ProjectRepository
 from giljo_mcp.schemas.service_responses import (
     ProjectCompleteResult,
@@ -314,7 +314,7 @@ class ProjectService:
                 message=f"Failed to create project: {e!s}", context={"name": name, "tenant_key": tenant_key}
             ) from e
 
-    async def get_project_type_by_label(self, label: str, tenant_key: str) -> ProjectType | None:
+    async def get_project_type_by_label(self, label: str, tenant_key: str) -> TaxonomyType | None:
         """Resolve a project type by label or abbreviation (case-insensitive).
 
         Tries label first, then abbreviation. This allows agents to use either
@@ -325,7 +325,7 @@ class ProjectService:
             tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
-            ProjectType if found, None otherwise
+            TaxonomyType if found, None otherwise
         """
         async with self._get_session() as session:
             # Try label match first (Handover 0837b)
@@ -1292,11 +1292,11 @@ class ProjectService:
 
     async def _get_valid_project_types(self, tenant_key: str) -> list[dict[str, Any]]:
         """Return available project types for a tenant."""
-        from giljo_mcp.services.project_type_ops import ensure_default_types_seeded, list_project_types
+        from giljo_mcp.services.taxonomy_ops import ensure_default_types_seeded, list_taxonomy_types
 
         async with self.db_manager.get_session_async() as session:
             await ensure_default_types_seeded(session, tenant_key)
-            types = await list_project_types(session, tenant_key)
+            types = await list_taxonomy_types(session, tenant_key)
             return [{"abbreviation": t.abbreviation, "label": t.label, "color": t.color} for t in types]
 
     async def update_project_metadata_for_mcp(

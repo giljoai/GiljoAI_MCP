@@ -305,7 +305,7 @@ async def next_series_number(
     project_service: ProjectService = Depends(get_project_service),
 ):
     """Get the next available series number for a project type (scoped to active product)."""
-    from api.endpoints.project_types.crud_ops import get_next_series_number
+    from api.endpoints.taxonomy_types.crud_ops import get_next_series_number
     from giljo_mcp.services.product_service import ProductService
 
     product_service = ProductService(
@@ -328,7 +328,7 @@ async def available_series_numbers(
     project_service: ProjectService = Depends(get_project_service),
 ):
     """Get available series numbers (gaps + next) for a project type (scoped to active product)."""
-    from api.endpoints.project_types.crud_ops import get_available_series_numbers
+    from api.endpoints.taxonomy_types.crud_ops import get_available_series_numbers
     from giljo_mcp.services.product_service import ProductService
 
     product_service = ProductService(
@@ -353,7 +353,7 @@ async def check_series_number(
     project_service: ProjectService = Depends(get_project_service),
 ):
     """Check if a specific series number is available (scoped to active product)."""
-    from api.endpoints.project_types.crud_ops import check_series_available
+    from api.endpoints.taxonomy_types.crud_ops import check_series_available
     from giljo_mcp.services.product_service import ProductService
 
     product_service = ProductService(
@@ -384,7 +384,7 @@ async def used_subseries(
     project_service: ProjectService = Depends(get_project_service),
 ):
     """Get subseries letters already used for a type + series_number (scoped to active product)."""
-    from api.endpoints.project_types.crud_ops import get_used_subseries
+    from api.endpoints.taxonomy_types.crud_ops import get_used_subseries
     from giljo_mcp.services.product_service import ProductService
 
     product_service = ProductService(

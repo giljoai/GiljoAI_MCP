@@ -156,7 +156,7 @@ async function handleSubmit() {
   submitError.value = null
 
   try {
-    const { data } = await api.projectTypes.create({
+    const { data } = await api.taxonomyTypes.create({
       abbreviation: abbreviation.value,
       label: label.value,
       color: color.value,

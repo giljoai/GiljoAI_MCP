@@ -6,9 +6,10 @@
 """
 Project and session-related models for GiljoAI MCP.
 
-This module contains models for projects, project types, and development sessions.
-Projects are work initiatives that belong to products. Project types define
-taxonomy categories (e.g., Backend, Frontend, API) for structured project naming.
+This module contains models for projects and taxonomy types. Projects are work
+initiatives that belong to products. Taxonomy types define classification
+categories (e.g., Backend, Frontend, API) shared by projects (for structured
+naming like BE-0001) and tasks.
 """
 
 from sqlalchemy import (
@@ -35,17 +36,20 @@ from giljo_mcp.domain.project_status import ProjectStatus
 from .base import Base, generate_project_alias, generate_uuid
 
 
-class ProjectType(Base):
+class TaxonomyType(Base):
     """
-    Project type model - taxonomy categories for structured project naming.
+    Taxonomy type model - unified taxonomy categories for projects and tasks.
 
-    Each project type defines an abbreviation (e.g., "BE" for Backend, "FE" for Frontend)
-    that is used to generate taxonomy aliases like BE-0001, FE-0002a.
+    Each taxonomy type defines an abbreviation (e.g., "BE" for Backend, "FE" for Frontend)
+    used to generate project taxonomy aliases (BE-0001, FE-0002a) and to classify tasks.
 
-    Handover 0440a: Initial implementation for project taxonomy system.
+    Handover 0440a: Initial implementation for project taxonomy system (as ProjectType).
+    Phase A (agent-parity, 2026-05): Renamed to TaxonomyType to reflect that the same
+    classification table now serves both projects and tasks. Table renamed
+    project_types -> taxonomy_types in migration ce_0014.
     """
 
-    __tablename__ = "project_types"
+    __tablename__ = "taxonomy_types"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, index=True)
@@ -63,12 +67,12 @@ class ProjectType(Base):
     projects = relationship("Project", back_populates="project_type")
 
     __table_args__ = (
-        UniqueConstraint("tenant_key", "abbreviation", name="uq_project_type_abbr"),
-        Index("idx_project_type_tenant", "tenant_key"),
+        UniqueConstraint("tenant_key", "abbreviation", name="uq_taxonomy_type_abbr"),
+        Index("idx_taxonomy_type_tenant", "tenant_key"),
     )
 
     def __repr__(self) -> str:
-        return f"<ProjectType(id={self.id}, abbreviation='{self.abbreviation}', label='{self.label}')>"
+        return f"<TaxonomyType(id={self.id}, abbreviation='{self.abbreviation}', label='{self.label}')>"
 
 
 class Project(Base):
@@ -135,9 +139,9 @@ class Project(Base):
     # Handover 0440a: Project taxonomy fields
     project_type_id = Column(
         String(36),
-        ForeignKey("project_types.id", ondelete="SET NULL"),
+        ForeignKey("taxonomy_types.id", ondelete="SET NULL"),
         nullable=True,
-        comment="FK to project_types for taxonomy classification",
+        comment="FK to taxonomy_types for taxonomy classification",
     )
     series_number = Column(
         Integer,
@@ -231,7 +235,7 @@ class Project(Base):
 
     # Relationships
     product = relationship("Product", back_populates="projects")
-    project_type = relationship("ProjectType", back_populates="projects")
+    project_type = relationship("TaxonomyType", back_populates="projects")
     agent_jobs_v2 = relationship("AgentJob", back_populates="project", cascade="all, delete-orphan")  # Handover 0366a
     messages = relationship("Message", back_populates="project", cascade="all, delete-orphan")
     tasks = relationship(

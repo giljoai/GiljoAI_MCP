@@ -24,7 +24,7 @@ from sqlalchemy.orm import selectinload
 from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
-from giljo_mcp.models.projects import Project, ProjectType
+from giljo_mcp.models.projects import Project, TaxonomyType
 from giljo_mcp.models.tasks import Message
 
 
@@ -175,12 +175,12 @@ class ProjectRepository:
         session: AsyncSession,
         tenant_key: str,
         label: str,
-    ) -> ProjectType | None:
+    ) -> TaxonomyType | None:
         """Resolve a project type by label (case-insensitive)."""
         result = await session.execute(
-            select(ProjectType).where(
-                ProjectType.tenant_key == tenant_key,
-                func.lower(ProjectType.label) == label.lower(),
+            select(TaxonomyType).where(
+                TaxonomyType.tenant_key == tenant_key,
+                func.lower(TaxonomyType.label) == label.lower(),
             )
         )
         return result.scalar_one_or_none()
@@ -190,12 +190,12 @@ class ProjectRepository:
         session: AsyncSession,
         tenant_key: str,
         abbreviation: str,
-    ) -> ProjectType | None:
+    ) -> TaxonomyType | None:
         """Resolve a project type by abbreviation (case-insensitive)."""
         result = await session.execute(
-            select(ProjectType).where(
-                ProjectType.tenant_key == tenant_key,
-                func.upper(ProjectType.abbreviation) == abbreviation.upper(),
+            select(TaxonomyType).where(
+                TaxonomyType.tenant_key == tenant_key,
+                func.upper(TaxonomyType.abbreviation) == abbreviation.upper(),
             )
         )
         return result.scalar_one_or_none()

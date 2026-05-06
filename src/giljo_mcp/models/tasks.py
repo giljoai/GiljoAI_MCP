@@ -75,7 +75,15 @@ class Task(Base):
 
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    category = Column(String(100), nullable=True)
+    # Phase B (agent-parity, 2026-05): replaced free-form category with FK to
+    # taxonomy_types so tasks share the project taxonomy. Migrations
+    # ce_0015 (add+backfill) and ce_0016 (drop category) handle the schema move.
+    task_type_id = Column(
+        String(36),
+        ForeignKey("taxonomy_types.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="FK to taxonomy_types for task classification",
+    )
     status = Column(String(50), default="pending")  # pending, in_progress, completed, blocked, cancelled, converted
     priority = Column(String(20), default="medium")  # low, medium, high, critical
     estimated_effort = Column(Float, nullable=True)  # Hours
@@ -92,6 +100,7 @@ class Task(Base):
     )  # Specify FK to avoid ambiguity with converted_to_project_id
     subtasks = relationship("Task", back_populates="parent_task", foreign_keys="Task.parent_task_id")
     parent_task = relationship("Task", back_populates="subtasks", remote_side="Task.id")
+    task_type = relationship("TaxonomyType", foreign_keys=[task_type_id])
 
     # Phase 4: User relationships (Handover 0076: removed assigned_to_user)
     created_by_user = relationship("User", foreign_keys=[created_by_user_id], back_populates="created_tasks")
@@ -103,6 +112,7 @@ class Task(Base):
         Index("idx_task_project", "project_id"),
         Index("idx_task_status", "status"),
         Index("idx_task_priority", "priority"),
+        Index("idx_task_task_type_id", "task_type_id"),
         # Phase 4: User assignment indexes (Handover 0076: removed assignment indexes)
         Index("idx_task_created_by_user", "created_by_user_id"),
         Index("idx_task_tenant_created_user", "tenant_key", "created_by_user_id"),  # Composite for "Created by Me"

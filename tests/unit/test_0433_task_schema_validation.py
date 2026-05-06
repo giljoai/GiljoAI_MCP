@@ -110,7 +110,7 @@ def test_task_create_with_all_fields():
         description="Full task data",
         status="in_progress",
         priority="critical",
-        category="bug",
+        task_type="BUG",
         product_id="product-xyz",
         project_id="project-123",
         parent_task_id="parent-456",
@@ -123,7 +123,7 @@ def test_task_create_with_all_fields():
     assert task.description == "Full task data"
     assert task.status == "in_progress"
     assert task.priority == "critical"
-    assert task.category == "bug"
+    assert task.task_type == "BUG"
     assert task.product_id == "product-xyz"
     assert task.project_id == "project-123"
     assert task.parent_task_id == "parent-456"

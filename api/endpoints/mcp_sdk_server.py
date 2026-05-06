@@ -571,7 +571,15 @@ async def inspect_messages(
 
 
 @mcp.tool(
-    description="Create a new task (technical debt/TODO) bound to the active product. Requires an active product to be set.",
+    description=(
+        "Create a new task (technical debt/TODO) bound to the active product. "
+        "Tasks are classified by task_type, a taxonomy abbreviation (e.g. BE, FE, INF) "
+        "that must match a configured taxonomy_types row for the tenant. "
+        "Unknown task_type values are rejected with a ValidationError whose context "
+        "includes valid_types: a list of {abbreviation, label} pairs. "
+        "Omitting task_type is allowed; the success response then includes the same hint. "
+        "Requires an active product to be set."
+    ),
 )
 async def create_task(
     title: Annotated[str, Field(description="Task title (required). Short, actionable description.")],
@@ -579,17 +587,119 @@ async def create_task(
     priority: Annotated[
         str, Field(description="Priority: 'low', 'medium', 'high', or 'critical'. Default: 'medium'.")
     ] = "medium",
-    category: Annotated[str, Field(description="Optional category label for grouping.")] = "",
+    task_type: Annotated[
+        str,
+        Field(description="Taxonomy type abbreviation (e.g. BE, FE, INF). Must match a configured taxonomy_types row."),
+    ] = "",
     assigned_to: Annotated[str, Field(description="Optional assignee name.")] = "",
     ctx: Context = None,
 ) -> dict:
     """Create a new task bound to the active product."""
     kwargs: dict[str, Any] = {"title": title, "description": description, "priority": priority}
-    if category:
-        kwargs["category"] = category
+    if task_type:
+        kwargs["task_type"] = task_type
     if assigned_to:
         kwargs["assigned_to"] = assigned_to
     return await _call_tool(ctx, "create_task", kwargs)
+
+
+@mcp.tool(
+    description=(
+        "Update task metadata (title, description, status, priority, task_type, due_date). "
+        "Only provided fields are written; omit fields to leave them unchanged. "
+        "Pass empty string for task_type to clear the FK (set to NULL). "
+        "Unknown task_type abbreviations are rejected; the ValidationError context "
+        "carries valid_types. Tenant-scoped; cross-tenant task_ids return "
+        "ResourceNotFoundError."
+    ),
+)
+async def update_task(
+    task_id: Annotated[str, Field(description="Task UUID (required).")],
+    title: Annotated[str, Field(description="New title; empty string keeps current.")] = "",
+    description: Annotated[str, Field(description="New description; empty string keeps current.")] = "",
+    status: Annotated[
+        str,
+        Field(description="New status: pending|in_progress|completed|blocked|cancelled|converted."),
+    ] = "",
+    priority: Annotated[str, Field(description="New priority: low|medium|high|critical.")] = "",
+    task_type: Annotated[str, Field(description="Taxonomy abbreviation (e.g. BE, FE). Empty string clears type.")] = "",
+    due_date: Annotated[str, Field(description="ISO 8601 due date; empty string keeps current.")] = "",
+    ctx: Context = None,
+) -> dict:
+    """Update task metadata fields. Mirrors update_project."""
+    params: dict[str, Any] = {"task_id": task_id}
+    if title:
+        params["title"] = title
+    if description:
+        params["description"] = description
+    if status:
+        params["status"] = status
+    if priority:
+        params["priority"] = priority
+    if task_type:
+        params["task_type"] = task_type
+    if due_date:
+        params["due_date"] = due_date
+    return await _call_tool(ctx, "update_task", params)
+
+
+@mcp.tool(
+    description=(
+        "Mark a task completed. Sets status=completed and completed_at=now(). "
+        "Optional completion_notes are appended to the task description as an "
+        "audit trail entry. Tenant-scoped."
+    ),
+)
+async def complete_task(
+    task_id: Annotated[str, Field(description="Task UUID (required).")],
+    completion_notes: Annotated[str, Field(description="Optional notes appended to the task's audit trail.")] = "",
+    ctx: Context = None,
+) -> dict:
+    """Mark a task completed with optional notes."""
+    kwargs: dict[str, Any] = {"task_id": task_id}
+    if completion_notes:
+        kwargs["completion_notes"] = completion_notes
+    return await _call_tool(ctx, "complete_task", kwargs)
+
+
+@mcp.tool(
+    description=(
+        "List tasks for the current tenant. Two projection modes: "
+        "'summary' (id, title, status, priority, task_type, due_date, created_at) "
+        "and 'full' (every column plus embedded task_type block; description "
+        "is truncated to memory_limit chars when set). "
+        "Filters: status, priority, task_type (abbreviation), due_before. "
+        "Every query is tenant-scoped."
+    ),
+)
+async def list_tasks(
+    mode: Annotated[
+        Literal["summary", "full"],
+        Field(description="Projection mode. Default 'summary'."),
+    ] = "summary",
+    status: Annotated[str, Field(description="Filter by exact status (e.g. 'pending').")] = "",
+    priority: Annotated[str, Field(description="Filter by priority (low/medium/high/critical).")] = "",
+    task_type: Annotated[str, Field(description="Filter by taxonomy abbreviation (e.g. 'BE').")] = "",
+    due_before: Annotated[str, Field(description="ISO date; tasks with due_date < value.")] = "",
+    summary_only: Annotated[bool, Field(description="Alias for mode='summary'.")] = False,
+    memory_limit: Annotated[int, Field(description="Truncate description in 'full' mode.")] = 0,
+    ctx: Context = None,
+) -> dict:
+    """List tasks for the current tenant."""
+    kwargs: dict[str, Any] = {"mode": mode}
+    if status:
+        kwargs["status"] = status
+    if priority:
+        kwargs["priority"] = priority
+    if task_type:
+        kwargs["task_type"] = task_type
+    if due_before:
+        kwargs["due_before"] = due_before
+    if summary_only:
+        kwargs["summary_only"] = True
+    if memory_limit:
+        kwargs["memory_limit"] = memory_limit
+    return await _call_tool(ctx, "list_tasks", kwargs)
 
 
 @mcp.tool(description="Check MCP server health status")

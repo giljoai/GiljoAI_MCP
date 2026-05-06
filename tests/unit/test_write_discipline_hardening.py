@@ -284,7 +284,7 @@ class TestTaskUpdateAllowlist:
     def test_allowlist_contains_expected_fields(self):
         from giljo_mcp.services.task_service import _ALLOWED_TASK_UPDATE_FIELDS
 
-        expected_fields = {"title", "description", "status", "priority", "category"}
+        expected_fields = {"title", "description", "status", "priority", "task_type_id"}
         assert expected_fields.issubset(_ALLOWED_TASK_UPDATE_FIELDS)
 
     def test_allowlist_excludes_dangerous_fields(self):
