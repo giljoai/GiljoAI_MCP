@@ -409,6 +409,52 @@ def validate_settings_by_category(category: str, data: dict) -> dict:
     return validator_cls(**data).model_dump(exclude_none=False)
 
 
+# --- UserApproval JSONB columns (BE-5029 Phase A) ---
+
+
+class UserApprovalOption(BaseModel):
+    """Validates one entry in user_approvals.options."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(..., min_length=1, max_length=100)
+    label: str = Field(..., min_length=1, max_length=200)
+
+
+def validate_user_approval_options(data: list[dict]) -> list[dict]:
+    """Validate user_approvals.options at the service write boundary.
+
+    Raises pydantic.ValidationError on shape mismatch and ValueError on duplicate ids.
+    """
+    if not isinstance(data, list) or not data:
+        raise ValueError("options must be a non-empty list")
+    validated = [UserApprovalOption(**opt).model_dump() for opt in data]
+    ids = [opt["id"] for opt in validated]
+    if len(ids) != len(set(ids)):
+        raise ValueError("options must have unique ids")
+    return validated
+
+
+def validate_user_approval_context(data: dict | None) -> dict | None:
+    """Validate user_approvals.context at the service write boundary.
+
+    Context is intentionally extensible (deferred-findings payloads vary), but
+    must be a JSON-serializable dict (or None) and must not exceed a soft size cap.
+    """
+    if data is None:
+        return None
+    if not isinstance(data, dict):
+        raise TypeError("context must be a dict or None")
+    # Soft cap: keep context payloads small enough that JSONB indexes stay healthy.
+    # 16 KB serialized is generous for any realistic deferred-findings list.
+    import json
+
+    serialized = json.dumps(data)
+    if len(serialized) > 16_384:
+        raise ValueError("context exceeds 16384 byte soft cap")
+    return data
+
+
 # --- New convenience validators (sprint 002) ---
 
 

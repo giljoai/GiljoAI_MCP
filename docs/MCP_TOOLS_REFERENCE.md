@@ -1,10 +1,10 @@
 # GiljoAI MCP: Tools Reference
 
-*Last updated: 2026-04-16*
+*Last updated: 2026-05-06*
 
 ## Overview
 
-GiljoAI MCP exposes 28 tools to connected AI coding tools. Every tool requires a
+GiljoAI MCP exposes 29 tools to connected AI coding tools. Every tool requires a
 valid API key passed as a Bearer token. Tenant isolation is enforced server-side;
 agents cannot cross tenant boundaries.
 
@@ -304,6 +304,38 @@ result that the orchestrator can retrieve via `get_agent_result()`.
 | result | dict | Yes | Structured result containing `summary`, `artifacts`, and `commits`. |
 
 **Returns:** Confirmation of job completion.
+
+---
+
+### request_approval
+
+**Description:** Request a user decision before continuing. Creates a `user_approvals`
+row and atomically flips the calling agent's execution status to `awaiting_user`.
+Used at HITL gates — typically when a closeout has deferred findings that require
+human sign-off before the agent can proceed. Replaces the former prose-contract
+boolean `user_approval_required`. The calling agent's `complete_job` will be refused
+until a user resolves the approval via the dashboard or `POST /api/approvals/{id}/decide`.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| job_id | str | Yes | Calling agent's `job_id` (UUID). |
+| project_id | str | Yes | Project UUID the approval belongs to. |
+| reason | str | Yes | Plain-English explanation shown to the user (max 2000 chars). |
+| options | list[dict] | Yes | List of `{id, label}` option dicts (1-10 items, unique ids). |
+| context | dict | No | Optional structured payload (e.g. deferred findings). Max 16 KB serialized. |
+
+**Returns:** `{approval_id: str, status: str}` — the new approval row ID and its
+initial status (`pending`).
+
+**Notes:**
+- The transition is atomic: DB row insert + status flip + WebSocket broadcast occur
+  in one transaction; any failure rolls back completely.
+- `awaiting_user` cannot be set directly by an agent via `set_agent_status`; only
+  this tool can produce it.
+- A single execution may have at most one `pending` approval at a time; calling this
+  tool twice without resolving the first will raise a `ValidationError`.
 
 ---
 
@@ -677,11 +709,11 @@ plan. Token estimate: approximately 4,500 with context exclusions applied.
 |----------|-------|
 | Discovery | health_check |
 | Project Management | create_project, list_projects, update_project_mission, close_project_and_update_memory |
-| Agent Lifecycle | spawn_job, get_pending_jobs, get_agent_mission, update_agent_mission, set_agent_status, report_progress, complete_job, get_agent_result, get_workflow_status, reactivate_job, dismiss_reactivation |
+| Agent Lifecycle | spawn_job, get_pending_jobs, get_agent_mission, update_agent_mission, set_agent_status, report_progress, complete_job, request_approval, get_agent_result, get_workflow_status, reactivate_job, dismiss_reactivation |
 | Messaging | send_message, receive_messages, inspect_messages |
 | Context and Memory | fetch_context (batch: multiple categories per call), write_360_memory |
 | Vision Documents | get_vision_doc, update_product_fields |
 | Tasks | create_task |
 | Setup and Export | giljo_setup, generate_download_token, list_agent_templates, submit_tuning_review |
 | Orchestrator Context | get_orchestrator_instructions |
-| **Total** | **28** |
+| **Total** | **29** |

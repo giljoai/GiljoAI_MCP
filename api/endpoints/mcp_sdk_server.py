@@ -702,6 +702,41 @@ async def list_tasks(
     return await _call_tool(ctx, "list_tasks", kwargs)
 
 
+@mcp.tool(
+    description=(
+        "Request a user approval before continuing. Creates a user_approvals row "
+        "and flips the calling agent to status='awaiting_user' atomically. "
+        "Used at HITL gates (closeout with deferred findings, ambiguous decisions). "
+        "Replaces the prose user_approval_required boolean. "
+        "options is a list of {id, label} dicts presented to the user. "
+        "Returns {approval_id, status}. Tenant-scoped."
+    ),
+)
+async def request_approval(
+    job_id: Annotated[str, Field(description="Calling agent's job_id (UUID).")],
+    project_id: Annotated[str, Field(description="Project UUID the approval belongs to.")],
+    reason: Annotated[str, Field(description="Plain-English explanation shown to the user (<= 2000 chars).")],
+    options: Annotated[
+        list[dict],
+        Field(description="List of {id, label} option dicts (1-10 items, unique ids)."),
+    ],
+    context: Annotated[
+        dict | None,
+        Field(description="Optional structured payload (deferred findings, etc). <= 16 KB serialized."),
+    ] = None,
+    ctx: Context = None,
+) -> dict:
+    """Create a pending user approval. Atomic: insert row + flip status + broadcast."""
+    kwargs: dict[str, Any] = {
+        "job_id": job_id,
+        "project_id": project_id,
+        "reason": reason,
+        "options": options,
+        "context": context,
+    }
+    return await _call_tool(ctx, "request_approval", kwargs)
+
+
 @mcp.tool(description="Check MCP server health status")
 async def health_check(ctx: Context = None) -> dict:
     """Check MCP server health status."""

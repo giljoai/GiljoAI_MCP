@@ -192,15 +192,33 @@
 
       <v-divider />
 
+      <!-- HITL Closeout: When orchestrator is awaiting_user, render ApprovalCard inline.
+           BE-5029 + FE-5017 Phase C: replaced the static "Decision Required" alert
+           with the live request_approval surface. The card hits
+           POST /api/approvals/{id}/decide via useApprovalsStore. -->
+      <div v-if="orchestratorCloseoutBlocked && pendingOrchestratorApproval" class="closeout-approval-wrap">
+        <ApprovalCard
+          :approval="pendingOrchestratorApproval"
+          data-testid="closeout-approval-card"
+          @decided="handleApprovalDecided"
+        />
+      </div>
+
       <!-- Modal actions -->
       <div class="dlg-footer">
-        <!-- HITL Closeout: When orchestrator is closeout-blocked, show amber indicator -->
         <template v-if="orchestratorCloseoutBlocked">
           <div class="closeout-blocked-indicator" data-testid="closeout-blocked-indicator">
             <v-icon icon="mdi-clipboard-check-outline" size="18" class="closeout-blocked-icon" />
             <div class="closeout-blocked-text">
               <span class="closeout-blocked-label">Decision Required</span>
-              <span class="closeout-blocked-note">The orchestrator is reviewing deferred findings. Please respond in the orchestrator terminal.</span>
+              <span class="closeout-blocked-note">
+                <template v-if="pendingOrchestratorApproval">
+                  Choose an option above to resume the orchestrator.
+                </template>
+                <template v-else>
+                  Loading the orchestrator's request — please wait.
+                </template>
+              </span>
             </div>
           </div>
           <v-spacer />
@@ -260,6 +278,8 @@ import { useRouter } from 'vue-router'
 import { useFormatDate } from '@/composables/useFormatDate'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
+import ApprovalCard from '@/components/orchestration/ApprovalCard.vue'
+import { useApprovalsStore } from '@/stores/useApprovalsStore'
 
 const { formatDateTime } = useFormatDate()
 const router = useRouter()
@@ -290,9 +310,30 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  // FE-5017 Phase C: orchestrator job_id is needed to look up the pending
+  // user_approval row in the approvals store. Optional for backwards compat —
+  // when absent, the awaiting_user banner renders without an inline card.
+  orchestratorJobId: {
+    type: String,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['close', 'continue', 'closeout'])
+
+// FE-5017 Phase C: pending user_approval lookup for inline ApprovalCard.
+const approvalsStore = useApprovalsStore()
+const pendingOrchestratorApproval = computed(() => {
+  if (!props.orchestratorJobId) return null
+  return approvalsStore.findByJobId(props.orchestratorJobId)
+})
+
+const handleApprovalDecided = () => {
+  // The store has already removed the row optimistically; the WebSocket
+  // resume event will flip the orchestrator status back to 'working'.
+  // No further action needed here — the modal closes naturally when
+  // orchestratorCloseoutBlocked goes false.
+}
 
 // Vuetify display breakpoints
 const { mobile } = useDisplay()
@@ -314,6 +355,11 @@ watch(
       loadMemoryEntries()
       // Expand first entry by default
       expandedPanels.value = [0]
+      // FE-5017 Phase C: hydrate pending approvals so the inline ApprovalCard
+      // can render the moment the modal opens. WebSocket events keep it fresh
+      // afterwards. Errors are swallowed — they surface via store.error and
+      // the banner falls back to the "Loading…" copy.
+      approvalsStore.fetchPending().catch(() => {})
     } else {
       resetState()
     }

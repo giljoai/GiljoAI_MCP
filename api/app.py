@@ -71,6 +71,7 @@ try:
     from .endpoints import (
         agent_jobs,
         ai_tools,
+        approvals,
         auth,
         auth_pin_recovery,
         claude_export,
@@ -531,6 +532,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(downloads.router, tags=["downloads"])
     app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])
     app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
+    # BE-5059 Phase B: user_approvals decide endpoint
+    app.include_router(approvals.router, prefix="/api/approvals", tags=["approvals"])
     # Handover 0124: Consolidated agent_jobs module (includes orchestration endpoints)
     app.include_router(agent_jobs.router)  # Prefix and tags defined in module __init__.py
     # Handover 0107: Job operations (cancel, force-fail, health) at /api/jobs prefix

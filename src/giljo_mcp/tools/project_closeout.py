@@ -31,6 +31,7 @@ from giljo_mcp.services.product_memory_service import (
     validate_memory_entry_write,
 )
 from giljo_mcp.services.project_closeout_service import ProjectCloseoutService
+from giljo_mcp.services.user_approval_service import build_awaiting_user_blocker
 from giljo_mcp.tenant import TenantManager
 from giljo_mcp.tools._memory_helpers import (
     _fetch_github_commits,
@@ -615,6 +616,7 @@ async def _check_agent_readiness(
         "still_working": 0,
         "with_unread_messages": 0,
         "with_incomplete_todos": 0,
+        "awaiting_user_approval": 0,
     }
 
     for execution in executions:
@@ -629,6 +631,11 @@ async def _check_agent_readiness(
         agent_name = execution.agent_name or execution.agent_display_name
         job_id = execution.job_id
         messages_waiting = execution.messages_waiting_count or 0
+
+        if execution.status == "awaiting_user":
+            blockers.append(await build_awaiting_user_blocker(session, execution, tenant_key))
+            summary["awaiting_user_approval"] += 1
+            continue
 
         summary["still_working"] += 1
         if messages_waiting > 0:

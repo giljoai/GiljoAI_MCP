@@ -412,6 +412,10 @@ vi.mock('@/services/api', () => {
       getSystem: vi.fn(() => Promise.resolve({ data: {} })),
       getCallCounts: vi.fn(() => Promise.resolve({ data: {} })),
     },
+    approvals: {
+      listPending: vi.fn(() => Promise.resolve({ data: { items: [], count: 0 } })),
+      decide: vi.fn(() => Promise.resolve({ data: { approval_id: 'mock-id', status: 'decided', decided_option_id: 'opt', job_id: 'job', project_id: 'proj' } })),
+    },
   }
   return {
     api: apiObj,

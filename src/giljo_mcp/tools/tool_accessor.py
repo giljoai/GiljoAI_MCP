@@ -31,6 +31,7 @@ from giljo_mcp.services.message_service import MessageService
 from giljo_mcp.services.orchestration_service import OrchestrationService
 from giljo_mcp.services.project_service import ProjectService
 from giljo_mcp.services.task_service import TaskService
+from giljo_mcp.services.user_approval_service import UserApprovalService
 from giljo_mcp.tenant import TenantManager
 from giljo_mcp.tools.setup_instructions import build_setup_instructions
 
@@ -75,6 +76,14 @@ class ToolAccessor:
             db_manager,
             tenant_manager,
             message_service=self._message_service,
+            test_session=test_session,
+        )
+
+        # BE-5029: User approval primitive
+        self._user_approval_service = UserApprovalService(
+            db_manager,
+            tenant_manager,
+            websocket_manager=websocket_manager,
             test_session=test_session,
         )
 
@@ -287,6 +296,48 @@ class ToolAccessor:
         return await self._message_service.list_messages(
             project_id=project_id, status=status, agent_id=agent_id, tenant_key=tenant_key, limit=limit
         )
+
+    # User Approval Tools (BE-5029)
+
+    async def request_approval(
+        self,
+        job_id: str,
+        project_id: str,
+        reason: str,
+        options: list[dict],
+        context: dict | None = None,
+        tenant_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a pending user approval and flip the calling agent to awaiting_user.
+
+        Input is validated through ``RequestApprovalInput`` (closed schema, length
+        caps, unique option ids) before reaching the service. The service performs
+        the insert + status flip + WebSocket broadcast atomically.
+        """
+        from giljo_mcp.schemas.user_approval import RequestApprovalInput
+
+        if tenant_key is None:
+            raise ValidationError("tenant_key is required")
+
+        validated = RequestApprovalInput(
+            job_id=job_id,
+            project_id=project_id,
+            reason=reason,
+            options=options,
+            context=context,
+        )
+        approval = await self._user_approval_service.create_pending(
+            tenant_key=tenant_key,
+            job_id=validated.job_id,
+            project_id=validated.project_id,
+            reason=validated.reason,
+            options=[opt.model_dump() for opt in validated.options],
+            context=validated.context,
+        )
+        return {
+            "approval_id": approval.id,
+            "status": approval.status,
+        }
 
     # Task Tools
 

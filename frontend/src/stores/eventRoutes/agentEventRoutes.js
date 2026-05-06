@@ -1,5 +1,6 @@
 import { useAgentJobsStore } from '../agentJobsStore'
 import { useNotificationStore } from '../notifications'
+import { useApprovalsStore } from '../useApprovalsStore'
 
 /**
  * Agent and orchestrator event route definitions.
@@ -17,7 +18,27 @@ export const AGENT_EVENT_ROUTES = {
       agentJobsStore.handleRealtimeUpdate?.(payload)
     },
   },
-  'agent:status_changed': { store: 'agentJobs', action: 'handleStatusChanged' },
+  'agent:status_changed': {
+    handler: async (payload, { storeRegistry } = {}) => {
+      const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
+      agentJobsStore.handleStatusChanged?.(payload)
+
+      // FE-5017 Phase C: surface user_approval transitions to the inbox store.
+      // Backend rides the existing 'agent:status_changed' channel — no new
+      // event type — adding `user_approval_id` (on awaiting_user) and
+      // `decided_option_id` (on resume) to the payload.
+      if (payload?.user_approval_id || payload?.decided_option_id) {
+        try {
+          const approvalsStore = useApprovalsStore()
+          await approvalsStore.handleStatusEvent(payload)
+        } catch (err) {
+          // Don't break the agent UI if the approvals store hiccups.
+          // eslint-disable-next-line no-console
+          console.debug('[agentEventRoutes] approvals handleStatusEvent failed:', err?.message)
+        }
+      }
+    },
+  },
   'agent:spawn': {
     handler: async (payload, { storeRegistry } = {}) => {
       const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()

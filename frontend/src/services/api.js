@@ -599,6 +599,16 @@ export const api = {
     resetOrchestratorPrompt: () => apiClient.post('/api/v1/system/orchestrator-prompt/reset'),
   },
 
+  // User Approvals (FE-5017 Phase C)
+  // Backend: api/endpoints/approvals.py — POST /api/approvals/{id}/decide
+  // List endpoint (GET /api/approvals) is added by the backend implementer in
+  // the same phase; consumed here by useApprovalsStore for the dashboard inbox.
+  approvals: {
+    listPending: (params) => apiClient.get('/api/approvals', { params: { status: 'pending', ...(params || {}) } }),
+    decide: (approvalId, optionId) =>
+      apiClient.post(`/api/approvals/${approvalId}/decide`, { option_id: optionId }),
+  },
+
   // Statistics
   stats: {
     getSystem: () => apiClient.get('/api/v1/stats/system'),

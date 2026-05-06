@@ -153,9 +153,17 @@ from .templates import (
     TemplateArchive,
 )
 
+# User approval primitive (BE-5029 Phase A)
+from .user_approval import (
+    VALID_USER_APPROVAL_STATUSES,
+    UserApproval,
+)
+
 
 # Export all for backward compatibility
 __all__ = [
+    "VALID_USER_APPROVAL_STATUSES",
+    # Auth
     "APIKey",
     "AgentExecution",
     "AgentJob",
@@ -199,8 +207,8 @@ __all__ = [
     "Task",
     "TaxonomyType",
     "TemplateArchive",
-    # Auth
     "User",
+    "UserApproval",
     "UserFieldPriority",
     "VisionDocument",
     "VisionDocumentSummary",
