@@ -86,8 +86,8 @@ export function usePlayButton(project, getProjectState, clipboardCopy) {
 
         const agentCount = response?.data?.agent_count ?? 0
         const successMsg = isCliMode
-          ? `Implementation prompt copied to clipboard. ${agentCount + 1} jobs ready to launch (1 orchestrator, ${agentCount} specialists).`
-          : `Implementation prompt copied to clipboard. ${agentCount} specialists ready to launch.`
+          ? `Implementation prompt copied. ${agentCount + 1} jobs ready to launch (1 orchestrator, ${agentCount} specialists).`
+          : `Orchestrator prompt copied. ${agentCount} specialists ready to launch.`
         showToast({ message: successMsg, type: 'success', timeout: 5000 })
         return
       }
