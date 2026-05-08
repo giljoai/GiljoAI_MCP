@@ -138,7 +138,7 @@ The Jobs page shows real-time agent activity: status, step progress, duration, a
 <img src="docs/images/section-edition.png" alt="Edition" width="100%">
 </div>
 
-This is the **GiljoAI MCP Community Edition**, free for single-user use under the [GiljoAI Community License v1.1](LICENSE).
+This is the **GiljoAI MCP Community Edition**, free for single-user use under the [Elastic License 2.0](LICENSE).
 
 | Community Edition (Free) | SaaS Edition |
 |---|---|
@@ -248,7 +248,7 @@ python startup.py --verbose    # Detailed logging
 
 - **Issues:** [github.com/giljoai/GiljoAI_MCP/issues](https://github.com/giljoai/GiljoAI_MCP/issues)
 - **Website:** [giljo.ai](https://giljo.ai)
-- **License:** [GiljoAI Community License v1.1](LICENSE)
+- **License:** [Elastic License 2.0](LICENSE)
 - **Contributing:** See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 <br>

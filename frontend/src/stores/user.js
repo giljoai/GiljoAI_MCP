@@ -7,6 +7,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api, { setTenantKey } from '@/services/api'
+import { setSentryTenantKey } from '@/sentry'
 
 export const useUserStore = defineStore('user', () => {
   // State
@@ -64,6 +65,8 @@ export const useUserStore = defineStore('user', () => {
       // Update API client tenant key after successful auth
       if (currentUser.value?.tenant_key) {
         setTenantKey(currentUser.value.tenant_key)
+        // INF-5063: refresh Sentry tenant_key tag (no-op when Sentry inactive).
+        setSentryTenantKey(currentUser.value.tenant_key)
       }
 
       return true
@@ -161,6 +164,8 @@ export const useUserStore = defineStore('user', () => {
       // Update API client tenant key after successful auth
       if (currentUser.value?.tenant_key) {
         setTenantKey(currentUser.value.tenant_key)
+        // INF-5063: refresh Sentry tenant_key tag (no-op when Sentry inactive).
+        setSentryTenantKey(currentUser.value.tenant_key)
       }
 
       return true

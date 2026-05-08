@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 License validation module.
@@ -50,10 +50,14 @@ class LicenseValidator:
     def validate(self) -> LicenseResult:
         # [CE] CE always returns valid CE mode. Do not modify this return value.
         # Commercial builds replace this method with cryptographic validation.
+        # Under Elastic License 2.0 there is no per-user gate; seat_limit=None
+        # signals "unlimited within the bounds of the ELv2 restrictions"
+        # (no managed-service redistribution, no license-key tampering, no
+        # notice removal).
         return LicenseResult(
             edition=LicenseEdition.CE,
             valid=True,
-            seat_limit=1,
+            seat_limit=None,
             licensee=None,
-            message="GiljoAI MCP Community Edition — single-user use only.",
+            message="GiljoAI MCP Community Edition — Elastic License 2.0.",
         )

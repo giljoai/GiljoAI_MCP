@@ -1,0 +1,445 @@
+
+\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557
+\u2551  \u2713 DATABASE SAFETY CHECK PASSED                                  \u2551
+\u2551    Environment appears safe for testing                         \u2551
+\u2551    Target database: giljo_mcp_test                              \u2551
+\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d
+
+........................................................................ [  4%]
+........................................................................ [  8%]
+........................................................................ [ 13%]
+........................................................................ [ 17%]
+........................................................................ [ 21%]
+........................................................................ [ 26%]
+........................................................................ [ 30%]
+........................................................................ [ 35%]
+........F.....................................F......................... [ 39%]
+........................................................................ [ 43%]
+........................................................................ [ 48%]
+........................................................................ [ 52%]
+........................................................................ [ 57%]
+........................................................................ [ 61%]
+........................................................................ [ 65%]
+........................................................................ [ 70%]
+........................................................................ [ 74%]
+........................................................................ [ 78%]
+........................................................................ [ 83%]
+........................................................................ [ 87%]
+.......EEEEEE.......................................................FF.. [ 92%]
+......................................FFF............................... [ 96%]
+..........................................................
+ERROR: Coverage failure: total of 48.05 is less than fail-under=80.00
+                                                                         [100%]
+=================================== ERRORS ====================================
+_ ERROR at setup of TestSaasMigrationBootstrap.test_cold_demo_init_brings_up_both_chains _
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "giljo_test_bootstrap" does not exist
+
+The above exception was the direct cause of the following exception:
+E   sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "giljo_test_bootstrap" does not exist
+    
+    (Background on this error at: https://sqlalche.me/e/20/e3q8)
+___ ERROR at setup of TestSaasMigrationBootstrap.test_warm_demo_idempotent ____
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "giljo_test_bootstrap" does not exist
+
+The above exception was the direct cause of the following exception:
+E   sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "giljo_test_bootstrap" does not exist
+    
+    (Background on this error at: https://sqlalche.me/e/20/e3q8)
+_ ERROR at setup of TestSaasMigrationBootstrap.test_cold_ce_init_has_no_saas_tables _
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "giljo_test_bootstrap" does not exist
+
+The above exception was the direct cause of the following exception:
+E   sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "giljo_test_bootstrap" does not exist
+    
+    (Background on this error at: https://sqlalche.me/e/20/e3q8)
+_ ERROR at setup of TestSaasMigrationBootstrap.test_warm_ce_at_baseline_v37_applies_ce_0003_then_idempotent _
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "giljo_test_bootstrap" does not exist
+
+The above exception was the direct cause of the following exception:
+E   sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "giljo_test_bootstrap" does not exist
+    
+    (Background on this error at: https://sqlalche.me/e/20/e3q8)
+_ ERROR at setup of TestSaasMigrationBootstrap.test_pre_stamp_widen_is_idempotent_on_already_wide_column _
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "giljo_test_bootstrap" does not exist
+
+The above exception was the direct cause of the following exception:
+E   sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "giljo_test_bootstrap" does not exist
+    
+    (Background on this error at: https://sqlalche.me/e/20/e3q8)
+_ ERROR at setup of TestSaasMigrationBootstrap.test_pre_stamp_bootstrap_creates_table_with_varchar_64 _
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "giljo_test_bootstrap" does not exist
+
+The above exception was the direct cause of the following exception:
+E   sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "giljo_test_bootstrap" does not exist
+    
+    (Background on this error at: https://sqlalche.me/e/20/e3q8)
+================================== FAILURES ===================================
+E   AssertionError: assert 'GiljoAI Community License' in '#Requires -Version 5.1\n\n# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.\n# Licensed under the Elastic L...    Show-Completion -TargetDir $targetDir -Version $release.Version\n}\n\n# Run the installer\nInvoke-GiljoInstaller\n'
+     +  where '#Requires -Version 5.1\n\n# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.\n# Licensed under the Elastic L...    Show-Completion -TargetDir $targetDir -Version $release.Version\n}\n\n# Run the installer\nInvoke-GiljoInstaller\n' = <tests.unit.test_install_script.TestInstallPs1Structure object at 0x000001EC5D8D0AF0>.content
+F:\GiljoAI_MCP_Private\tests\unit\test_install_script.py:104: AssertionError: assert 'GiljoAI Community License' in '#Requires -Version 5.1\n\n# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.\n# Licensed under the Elastic L...    Show-Completion -TargetDir $targetDir -Version $release.Version\n}\n\n# Run the installer\nInvoke-GiljoInstaller\n'
+E   assert 'GiljoAI Community License' in '#!/usr/bin/env bash\n\n# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.\n# Licensed under the Elastic Lice... "$target_dir"\n    fi\n\n    # Phase 6 -- First run\n    first_run "$target_dir" "$RELEASE_VERSION"\n}\n\nmain "$@"\n'
+     +  where '#!/usr/bin/env bash\n\n# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.\n# Licensed under the Elastic Lice... "$target_dir"\n    fi\n\n    # Phase 6 -- First run\n    first_run "$target_dir" "$RELEASE_VERSION"\n}\n\nmain "$@"\n' = <tests.unit.test_install_sh.TestInstallShHeader object at 0x000001EC5D92D350>.content
+F:\GiljoAI_MCP_Private\tests\unit\test_install_sh.py:50: assert 'GiljoAI Community License' in '#!/usr/bin/env bash\n\n# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.\n# Licensed under the Elastic Lice... "$target_dir"\n    fi\n\n    # Phase 6 -- First run\n    first_run "$target_dir" "$RELEASE_VERSION"\n}\n\nmain "$@"\n'
+E   asyncpg.exceptions.InvalidTextRepresentationError: invalid input value for enum project_status: "waiting"
+
+The above exception was the direct cause of the following exception:
+E   sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.Error: <class 'asyncpg.exceptions.InvalidTextRepresentationError'>: invalid input value for enum project_status: "waiting"
+
+The above exception was the direct cause of the following exception:
+E   sqlalchemy.exc.DBAPIError: (sqlalchemy.dialects.postgresql.asyncpg.Error) <class 'asyncpg.exceptions.InvalidTextRepresentationError'>: invalid input value for enum project_status: "waiting"
+    [SQL: INSERT INTO projects (id, tenant_key, product_id, name, alias, description, mission, status, staging_status, project_type_id, series_number, subseries, hidden, completed_at, activated_at, implementation_launched_at, deleted_at, cancellation_reason, d ... 1551 characters truncated ... VARCHAR, $80::BOOLEAN, $81::INTEGER) RETURNING projects.created_at, projects.updated_at, projects.id]
+    [parameters: ('6725252a-c46d-42e7-9fb0-3137f920d20a', '616037d5-57cb-45f2-a8f3-96f2804645d3', '5a0ac505-31e1-45d8-9a83-003ea495bac5', 'Project 1', '1T49AN', 'Project 1 description', 'Mission 1', 'waiting', None, None, 1, None, False, None, None, None, None, None, None, False, None, None, None, '[]', 'multi_terminal', False, 10, 'cd05d71f-1507-49d9-b8d8-72b67d6dd5a7', '616037d5-57cb-45f2-a8f3-96f2804645d3', '5a0ac505-31e1-45d8-9a83-003ea495bac5', 'Project 2', 'VEJPYL', 'Project 2 description', 'Mission 2', 'waiting', None, None, 2, None, False, None, None, None, None, None, None, False, None, None, None, '[]', 'multi_terminal', False, 10, 'a307cc3a-6d1e-4da7-8082-a2c3564f77b7', '616037d5-57cb-45f2-a8f3-96f2804645d3', '5a0ac505-31e1-45d8-9a83-003ea495bac5', 'Project 3', 'ZOO4E6', 'Project 3 description', 'Mission 3', 'waiting', None, None, 3, None, False, None, None, None, None, None, None, False, None, None, None, '[]', 'multi_terminal', False, 10)]
+    (Background on this error at: https://sqlalche.me/e/20/dbapi)
+---------------------------- Captured stdout call -----------------------------
+Created product 5a0ac505-31e1-45d8-9a83-003ea495bac5 for tenant 616037d5-57cb-45f2-a8f3-96f2804645d3
+------------------------------ Captured log call ------------------------------
+INFO     giljo_mcp.services.product_service.ProductService:product_service.py:256 Created product 5a0ac505-31e1-45d8-9a83-003ea495bac5 for tenant 616037d5-57cb-45f2-a8f3-96f2804645d3
+F:\GiljoAI_MCP_Private\.venv\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py:797: sqlalchemy.exc.DBAPIError: (sqlalchemy.dialects.postgresql.asyncpg.Error) <class 'asyncpg.exceptions.InvalidTextRepresentationError'>: invalid input value for enum project_status: "waiting"
+E   asyncpg.exceptions.InvalidTextRepresentationError: invalid input value for enum project_status: "waiting"
+
+The above exception was the direct cause of the following exception:
+E   sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.Error: <class 'asyncpg.exceptions.InvalidTextRepresentationError'>: invalid input value for enum project_status: "waiting"
+
+The above exception was the direct cause of the following exception:
+E   sqlalchemy.exc.DBAPIError: (sqlalchemy.dialects.postgresql.asyncpg.Error) <class 'asyncpg.exceptions.InvalidTextRepresentationError'>: invalid input value for enum project_status: "waiting"
+    [SQL: INSERT INTO projects (id, tenant_key, product_id, name, alias, description, mission, status, staging_status, project_type_id, series_number, subseries, hidden, completed_at, activated_at, implementation_launched_at, deleted_at, cancellation_reason, deactivation_reason, early_termination, orchestrator_summary, closeout_prompt, closeout_executed_at, closeout_checklist, execution_mode, auto_checkin_enabled, auto_checkin_interval) VALUES ($1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR, $7::VARCHAR, $8::project_status, $9::VARCHAR, $10::VARCHAR, $11::INTEGER, $12::VARCHAR, $13::BOOLEAN, $14::TIMESTAMP WITH TIME ZONE, $15::TIMESTAMP WITH TIME ZONE, $16::TIMESTAMP WITH TIME ZONE, $17::TIMESTAMP WITH TIME ZONE, $18::VARCHAR, $19::VARCHAR, $20::BOOLEAN, $21::VARCHAR, $22::VARCHAR, $23::TIMESTAMP WITH TIME ZONE, $24::JSONB, $25::VARCHAR, $26::BOOLEAN, $27::INTEGER) RETURNING projects.created_at, projects.updated_at]
+    [parameters: ('266a5ff8-c917-4a55-8485-4e2ac9a0173f', '34f32d69-5b4b-44b7-b57b-d64fe559b16b', 'b74811ef-14da-4e63-8b52-98ede80f5b75', 'Related Project', 'J1QZC6', 'Project description', 'Project mission', 'waiting', None, None, 851659, None, False, None, None, None, None, None, None, False, None, None, None, '[]', 'multi_terminal', False, 10)]
+    (Background on this error at: https://sqlalche.me/e/20/dbapi)
+---------------------------- Captured stdout call -----------------------------
+Created product b74811ef-14da-4e63-8b52-98ede80f5b75 for tenant 34f32d69-5b4b-44b7-b57b-d64fe559b16b
+------------------------------ Captured log call ------------------------------
+INFO     giljo_mcp.services.product_service.ProductService:product_service.py:256 Created product b74811ef-14da-4e63-8b52-98ede80f5b75 for tenant 34f32d69-5b4b-44b7-b57b-d64fe559b16b
+F:\GiljoAI_MCP_Private\.venv\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py:797: sqlalchemy.exc.DBAPIError: (sqlalchemy.dialects.postgresql.asyncpg.Error) <class 'asyncpg.exceptions.InvalidTextRepresentationError'>: invalid input value for enum project_status: "waiting"
+E   assert 4 == 2
+     +  where 4 = len({'gil_add.md': '---\ndescription: "Add, update, or read tasks and projects in the GiljoAI dashboard. Routes by intent ...erver-side. If you see "No active product", tell the\n  user to activate one in the dashboard rather than retrying.\n'})
+F:\GiljoAI_MCP_Private\tests\integration\test_slash_command_templates.py:34: assert 4 == 2
+E   assert 4 == 2
+     +  where 4 = len({'gil_add.toml': 'description = "Add, update, or read tasks and projects in the GiljoAI dashboard. Routes by intent (c...erver-side. If you see "No active product", tell the\n  user to activate one in the dashboard rather than retrying.\n'})
+F:\GiljoAI_MCP_Private\tests\integration\test_slash_command_templates.py:39: assert 4 == 2
+E   assert 4 == 2
+     +  where 4 = len({'gil-add/SKILL.md': '---\nname: gil-add\ndescription: "Add, update, or read tasks and projects in the GiljoAI dashboa...erver-side. If you see "No active product", tell the\n  user to activate one in the dashboard rather than retrying.\n'})
+F:\GiljoAI_MCP_Private\tests\integration\test_slash_command_templates.py:44: assert 4 == 2
+============================== warnings summary ===============================
+api\endpoints\agent_jobs\models.py:286
+  F:\GiljoAI_MCP_Private\api\endpoints\agent_jobs\models.py:286: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AgentExecutionResponse(BaseModel):
+
+api\endpoints\organizations\models.py:42
+  F:\GiljoAI_MCP_Private\api\endpoints\organizations\models.py:42: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MemberResponse(BaseModel):
+
+api\endpoints\organizations\models.py:55
+  F:\GiljoAI_MCP_Private\api\endpoints\organizations\models.py:55: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class OrganizationResponse(BaseModel):
+
+tests/unit/test_auth_hardening.py::TestCreateAccessTokenRequiresTenantKey::test_create_access_token_with_tenant_key_succeeds
+tests/unit/test_auth_hardening.py::TestValidateJwtTokenTenantKeyRequired::test_jwt_without_tenant_key_claim_rejected
+tests/unit/test_auth_hardening.py::TestValidateJwtTokenTenantKeyRequired::test_valid_jwt_with_tenant_key_accepted
+tests/unit/test_auth_middleware.py::TestTokenExpInAuthResult::test_jwt_auth_result_includes_exp
+  F:\GiljoAI_MCP_Private\.venv\Lib\site-packages\jwt\api_jwt.py:147: InsecureKeyLengthWarning: The HMAC key is 15 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    return self._jws.encode(
+
+tests/unit/test_auth_hardening.py::TestCreateAccessTokenRequiresTenantKey::test_create_access_token_with_tenant_key_succeeds
+tests/unit/test_auth_hardening.py::TestValidateJwtTokenTenantKeyRequired::test_jwt_without_tenant_key_claim_rejected
+tests/unit/test_auth_hardening.py::TestValidateJwtTokenTenantKeyRequired::test_valid_jwt_with_tenant_key_accepted
+tests/unit/test_auth_middleware.py::TestTokenExpInAuthResult::test_jwt_auth_result_includes_exp
+  F:\GiljoAI_MCP_Private\.venv\Lib\site-packages\jwt\api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 15 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    decoded = self.decode_complete(
+
+tests/unit/test_be5028_role_matrix_and_warning.py: 36 warnings
+tests/unit/test_hitl_closeout_checkpoint.py: 4 warnings
+tests/unit/test_inf_writeshape_memory_caps.py: 14 warnings
+tests/unit/test_saas_009b_gate_loosening.py: 4 warnings
+tests/unit/test_saas_009b_optional_commit_fields.py: 8 warnings
+  F:\GiljoAI_MCP_Private\.venv\Lib\site-packages\sqlalchemy\sql\schema.py:3624: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+tests/unit/test_jwt_token_refresh.py::TestVerifyTokenAllowExpired::test_wrong_signature_returns_none
+tests/unit/test_jwt_verify_token_allow_expired.py::TestVerifyTokenAllowExpired::test_tampered_token_returns_none
+  F:\GiljoAI_MCP_Private\.venv\Lib\site-packages\jwt\api_jwt.py:147: InsecureKeyLengthWarning: The HMAC key is 16 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    return self._jws.encode(
+
+tests/unit/test_jwt_verify_token_allow_expired.py: 12 warnings
+  F:\GiljoAI_MCP_Private\.venv\Lib\site-packages\jwt\api_jwt.py:147: InsecureKeyLengthWarning: The HMAC key is 30 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    return self._jws.encode(
+
+tests/unit/test_jwt_verify_token_allow_expired.py: 13 warnings
+  F:\GiljoAI_MCP_Private\.venv\Lib\site-packages\jwt\api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 30 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    decoded = self.decode_complete(
+
+tests/unit/test_jwt_verify_token_allow_expired.py::TestVerifyTokenAllowExpired::test_missing_secret_key_returns_none
+  F:\GiljoAI_MCP_Private\.venv\Lib\site-packages\jwt\api_jwt.py:147: InsecureKeyLengthWarning: The HMAC key is 7 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    return self._jws.encode(
+
+tests/unit/test_taxonomy_ops.py::TestEnsureDefaultTypesSeeded::test_seeds_when_no_types
+  F:\GiljoAI_MCP_Private\src\giljo_mcp\repositories\taxonomy_repository.py:50: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    session.add(taxonomy_type)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/integration/test_decide_endpoint.py::test_decide_invalid_option_returns_422
+tests/integration/test_decide_endpoint.py::test_list_rejects_unsupported_status
+  F:\GiljoAI_MCP_Private\.venv\Lib\site-packages\fastapi\routing.py:328: DeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+    return await dependant.call(**values)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.13.11-final-0 _______________
+
+Name                                                                Stmts   Miss Branch BrPart   Cover   Missing
+----------------------------------------------------------------------------------------------------------------
+src\giljo_mcp\auth\ip_logger.py                                        13     13      0      0   0.00%   15-63
+src\giljo_mcp\download_tokens.py                                      133    133     20      0   0.00%   36-388
+src\giljo_mcp\downloads\__init__.py                                     2      2      0      0   0.00%   13-16
+src\giljo_mcp\downloads\token_manager.py                                2      2      0      0   0.00%   13-16
+src\giljo_mcp\licensing\__init__.py                                     2      2      0      0   0.00%   6-9
+src\giljo_mcp\licensing\validator.py                                   14     14      0      0   0.00%   17-57
+src\giljo_mcp\port_manager.py                                         146    146     56      0   0.00%   17-359
+src\giljo_mcp\prompt_generation\__init__.py                             2      2      0      0   0.00%   13-16
+src\giljo_mcp\prompt_generation\serena_instructions.py                  6      6      2      0   0.00%   13-32
+src\giljo_mcp\saas\account_status_service.py                           19     19      6      0   0.00%   12-92
+src\giljo_mcp\saas\auth\models.py                                      22     22      0      0   0.00%   13-70
+src\giljo_mcp\saas\cli\admin_bootstrap.py                              86     86     12      0   0.00%   27-199
+src\giljo_mcp\saas\deletion\models.py                                  32     32      2      0   0.00%   16-92
+src\giljo_mcp\saas\deletion\reaper.py                                  81     81     14      0   0.00%   16-282
+src\giljo_mcp\saas\deletion\service.py                                130    130     26      0   0.00%   15-429
+src\giljo_mcp\saas\email\__init__.py                                    3      3      0      0   0.00%   13-17
+src\giljo_mcp\saas\email\base.py                                        3      3      0      0   0.00%   8-13
+src\giljo_mcp\saas\email\resend_provider.py                            26     26      4      0   0.00%   8-85
+src\giljo_mcp\saas\email\sendgrid_provider.py                          28     28      4      0   0.00%   8-87
+src\giljo_mcp\saas\email\service.py                                    34     34      6      0   0.00%   20-119
+src\giljo_mcp\saas\email\smtp_provider.py                              36     36      4      0   0.00%   13-100
+src\giljo_mcp\saas\email\templates.py                                  24     24      0      0   0.00%   12-264
+src\giljo_mcp\saas\exceptions.py                                        8      8      0      0   0.00%   12-27
+src\giljo_mcp\saas\provisioning\__init__.py                             3      3      0      0   0.00%   12-15
+src\giljo_mcp\saas\provisioning\schemas.py                             21     21      4      0   0.00%   8-50
+src\giljo_mcp\saas\provisioning\service.py                             95     95      8      0   0.00%   13-229
+src\giljo_mcp\saas\trial\__init__.py                                    3      3      0      0   0.00%   11-15
+src\giljo_mcp\saas\trial\models.py                                     16     16      0      0   0.00%   8-34
+src\giljo_mcp\saas\trial\reaper.py                                     41     41      4      0   0.00%   12-112
+src\giljo_mcp\saas\trial\service.py                                   116    116     22      0   0.00%   12-291
+src\giljo_mcp\services\agent_job_manager.py                            82     82      4      0   0.00%   27-374
+src\giljo_mcp\services\tenant_configuration_service.py                 48     48      6      0   0.00%   16-146
+src\giljo_mcp\system_prompts\__init__.py                                2      2      0      0   0.00%   8-11
+src\giljo_mcp\system_prompts\service.py                                97     97     26      0   0.00%   13-225
+src\giljo_mcp\tools\context.py                                         30     30      6      0   0.00%   11-96
+src\giljo_mcp\tools\submit_tuning_review.py                            43     43     28      0   0.00%   16-135
+src\giljo_mcp\tools\vision_analysis.py                                187    187     76      0   0.00%   15-559
+src\giljo_mcp\validation\__init__.py                                    3      3      0      0   0.00%   29-39
+src\giljo_mcp\validation\rules.py                                      72     72     16      0   0.00%   18-287
+src\giljo_mcp\validation\template_validator.py                         95     95     26      0   0.00%   19-323
+src\giljo_mcp\services\protocol_sections\team_context.py               43     40     14      0   5.26%   43-146
+src\giljo_mcp\services\protocol_sections\chapters_startup.py           57     52     22      0   6.33%   20-27, 108-226, 256-310
+src\giljo_mcp\tools\context_tools\get_vision_document.py              169    146     58      0  10.13%   51-54, 60-62, 67-69, 91-110, 144-276, 373-404, 425-437, 478-559, 585-607, 620-771
+src\giljo_mcp\auth\dependencies.py                                    110     96     28      0  10.14%   67-87, 123-238, 266-281, 305-309, 324-327, 360-369
+src\giljo_mcp\mission_planner.py                                       45     38     24      0  10.14%   38, 65-173
+src\giljo_mcp\services\user_service.py                                287    248     76      0  10.74%   67-74, 84-92, 119-127, 138-146, 163-171, 182-189, 224-238, 259-297, 316-324, 338-382, 395-403, 411-418, 441-471, 483-490, 496-522, 526-533, 541-593, 600-607, 613-623, 640-661, 667-674, 678-682, 693-700, 706-744, 767-789
+src\giljo_mcp\services\product_tuning_service.py                      202    172     70      0  11.03%   242-249, 252-260, 263-269, 273-303, 307-313, 317-353, 376-409, 418-421, 428-495, 522-569, 582-603, 612-627
+src\giljo_mcp\services\message_service.py                             237    200     80      0  11.67%   98-107, 144-198, 236-306, 321-360, 374-506, 516-544, 567-588, 607-658, 662-679, 711-781, 802-832
+src\giljo_mcp\services\mission_service.py                             237    196     72      0  13.27%   93-95, 100, 107-115, 135-255, 275-285, 294-309, 323-352, 367-397, 413-498, 517-587, 610, 634-729
+src\giljo_mcp\prompts\staging_prompt_builder.py                        53     42     24      0  14.29%   24-27, 64-73, 157, 190-231
+src\giljo_mcp\template_cache.py                                       100     81     32      0  14.39%   50-59, 73-75, 94-141, 150-170, 174-180, 193-206, 212-214, 218-221, 225-227, 231-235
+src\giljo_mcp\services\auth_service.py                                214    177     34      0  14.92%   90-94, 104-112, 139-148, 161-193, 221-229, 233-240, 267-273, 279-284, 313-319, 323-325, 363-371, 379-417, 442-450, 456-466, 506-514, 529-588, 627-649, 693-701, 714-809, 845-863
+src\giljo_mcp\monitoring\agent_health_monitor.py                      137    109     30      0  16.77%   57-62, 66-72, 76-81, 85-91, 95-116, 129-143, 156-202, 235-312, 328-396, 407-458, 471-475, 487-497, 511-527
+src\giljo_mcp\setup\state_manager.py                                  112     87     34      0  17.12%   66-79, 101-109, 124-144, 148-153, 157-173, 177, 194-205, 209-213, 218-240, 249-259, 268-281, 294-297
+src\giljo_mcp\services\protocol_sections\user_config.py                51     39     18      0  17.39%   46-56, 77-145
+src\giljo_mcp\repositories\job_statistics_repository.py                93     72     26      0  17.65%   35, 56-58, 81-90, 107-110, 127-132, 149-154, 177-193, 212-215, 234-239, 258, 281-284, 303-307, 339-434
+src\giljo_mcp\repositories\product_statistics_repository.py           133    100     36      0  19.53%   36, 57-58, 77-80, 88-94, 113, 136-143, 162-167, 186-189, 208-211, 230-235, 254, 279-280, 299-302, 323-332, 355-364, 385-386, 403-406, 429-437, 459-491, 513-574, 595-615, 646-650, 669-677, 694-706
+src\giljo_mcp\services\org_service.py                                 248    192     46      6  20.41%   88-131, 167-179, 197-209, 231-251, 291, 296, 303, 308, 316-323, 325-342, 346, 357-370, 386-399, 428-469, 486-511, 533-566, 584-613, 631-636, 655-660, 666-667, 675-676, 680-681, 685-686, 690-691, 699
+src\giljo_mcp\services\protocol_sections\chapters_reference.py         28     21      6      0  20.59%   24-147, 223, 343, 357, 627-628
+src\giljo_mcp\tools\context_tools\get_git_history.py                   42     31     10      0  21.15%   37-40, 104-114, 125-219
+src\giljo_mcp\services\product_agent_assignment_service.py             96     73     12      0  21.30%   71-75, 79-87, 104-110, 139-165, 182-185, 213-277, 303-322, 337-349
+src\giljo_mcp\security\upload_guard.py                                 59     40     30      0  21.35%   114-118, 140-178, 207-217, 226-227
+src\giljo_mcp\tools\context_tools\get_tech_stack.py                    35     26      6      0  21.95%   28-31, 55-112
+src\giljo_mcp\template_manager.py                                      98     68     40      1  22.46%   41-62, 83-108, 144-145, 606-647, 660-666, 678-683, 695-703, 715-812
+src\giljo_mcp\services\oauth_service.py                                84     57     30      0  23.68%   63, 90-103, 130-154, 180-228, 249-256, 264-278, 290-293
+src\giljo_mcp\tools\context_tools\get_architecture.py                  30     21      6      0  25.00%   28-31, 53-111
+src\giljo_mcp\tools\_memory_helpers.py                                 45     31     14      1  25.42%   23-26, 54, 75-130
+src\giljo_mcp\services\project_closeout_service.py                    156    111     34      0  25.79%   63-70, 101-163, 223-238, 258-265, 279-285, 300-309, 324-333, 342-360, 378-396, 415-464, 475-485, 498
+src\giljo_mcp\tools\context_tools\get_product_context.py               27     19      4      0  25.81%   31-34, 56-101
+src\giljo_mcp\thin_prompt_generator.py                                165    114     36      1  25.87%   76-82, 165-183, 332-395, 412-456, 472-561, 572-596, 600-606, 620, 636-667, 698, 711
+src\giljo_mcp\file_staging.py                                         162    110     52      3  27.57%   55, 65-87, 127-140, 162-182, 215, 230-232, 247, 269-278, 303-382, 398-414, 419-421
+src\giljo_mcp\tools\context_tools\get_testing.py                       28     19      4      0  28.12%   32-35, 55-98
+src\giljo_mcp\repositories\agent_job_repository.py                    132     88     20      0  28.95%   73, 108-127, 156-161, 184-189, 244-253, 276-287, 306-317, 340-351, 400-411, 455-464, 483-496, 523-542, 563-570, 578, 600-605, 628-642, 660-687, 707-718
+src\giljo_mcp\tools\context_tools\get_tasks.py                         30     19      8      0  28.95%   31-33, 43-68, 93-111
+src\giljo_mcp\tools\agent_coordination.py                              43     27     12      0  29.09%   40-42, 51, 78-83, 119-138, 167-185
+src\giljo_mcp\tools\context_tools\get_self_identity.py                 31     20      6      0  29.73%   42-43, 98-108, 118-163
+src\giljo_mcp\services\project_launch_service.py                       96     61     20      0  30.17%   89-97, 127-140, 174-185, 205-241, 262, 274-279, 313-372, 393
+src\giljo_mcp\services\protocol_sections\agent_lifecycle.py            17     10      6      0  30.43%   26-100, 311-312
+src\giljo_mcp\auth_manager.py                                         172    110     52     10  32.14%   63-70, 77-78, 88-91, 95-132, 137-160, 166-171, 226-236, 239->245, 241->245, 264-276, 280-281, 286-299, 312-347
+src\giljo_mcp\repositories\auth_repository.py                          97     64      4      0  32.67%   44, 61-63, 86-88, 112-115, 128-130, 141-142, 154-156, 173-175, 185, 208-213, 226-235, 248-251, 265-267, 283-285, 302-304, 317-319, 335-337, 350-352, 369-371, 381, 394-398, 412-414, 423
+src\giljo_mcp\services\orchestration_agent_state_service.py           206    131     78     11  33.10%   75-83, 95-114, 131-171, 200-298, 320-387, 412, 414, 437-451, 461-463, 496, 499, 502, 505, 512, 520, 529, 568-584, 595-597
+src\giljo_mcp\repositories\taxonomy_repository.py                      76     44     18      0  34.04%   69, 78-84, 88-90, 94-95, 134-140, 153-162, 172-185, 198-219, 231-248
+src\giljo_mcp\network_detector.py                                      88     54     34      7  35.25%   46-47, 54->51, 58-63, 80-93, 96-97, 104-105, 108-109, 114-116, 120-160
+src\giljo_mcp\services\taxonomy_ops.py                                 82     47     28      0  37.27%   104-124, 140-153, 162-177, 182, 189, 196-215, 228-231, 243-244
+src\giljo_mcp\services\statistics_service.py                           73     45      2      0  37.33%   45-49, 53-60, 80-81, 120-121, 140-141, 181-182, 196-197, 201-202, 206-207, 211-212, 216-217, 221-222, 234-235, 241-242, 246-247, 251-252, 256-257, 277-278, 300-301
+src\giljo_mcp\repositories\product_agent_assignment_repository.py      62     35     12      1  37.84%   62-76, 97-105, 130-145, 180-205, 224-231, 253-260
+src\giljo_mcp\services\task_service.py                                374    214    160     34  38.58%   127-136, 196-213, 249, 253, 259, 269-273, 299, 343, 393-429, 452-489, 524-532, 547, 554-582, 586-588, 615-625, 637-650, 674-684, 697-727, 731, 757-767, 779-806, 810, 881-888, 927, 945, 947, 951, 953, 955, 957, 959, 963, 969, 972, 983->985, 987-990, 1011, 1018, 1021, 1056, 1062, 1064, 1066, 1073-1077, 1089-1104, 1120-1130, 1132-1133, 1137-1138, 1147-1153, 1160-1163, 1168-1170, 1189, 1191, 1193, 1195, 1198, 1215->1217
+src\giljo_mcp\api_key_utils.py                                         13      7      2      0  40.00%   60-61, 87, 111, 135-137
+src\giljo_mcp\services\mission_orchestration_service.py               162     95     44      2  40.29%   77, 174-177, 181-183, 219-305, 332-354, 393-528
+src\giljo_mcp\tools\tool_accessor.py                                  197    110     16      1  41.31%   103-112, 216-217, 221, 237, 274, 296, 320, 337, 449-500, 514-564, 584-628, 632, 659-662, 666, 672, 680, 697, 745, 749, 755, 767, 855-858, 902-904, 939-941, 960-962, 978-980
+src\giljo_mcp\tenant.py                                                95     47     26      4  42.98%   62, 81, 88-99, 113, 132, 145-148, 161-177, 191-195, 214-225, 240-251, 261, 266, 271, 276, 281
+src\giljo_mcp\repositories\configuration_repository.py                 32     18      0      0  43.75%   35, 54-57, 74-75, 94-97, 114-115, 129, 141, 160-161, 180-184
+src\giljo_mcp\repositories\mission_repository.py                       58     31      2      0  45.00%   54-62, 71-83, 92-95, 104-114, 123-131, 144-165, 169, 173, 186-197, 230-237, 246-251, 260-275
+src\giljo_mcp\services\vision_summarizer.py                            84     43     22      5  45.28%   83, 115, 137-167, 188-209, 225-233, 267->273, 280
+src\giljo_mcp\repositories\org_repository.py                           65     33     12      1  45.45%   58-60, 82->84, 88, 104-109, 130, 149, 158, 183-192, 202, 212, 228-236, 252-266
+src\giljo_mcp\template_seeder.py                                      117     58     26      2  46.85%   66-104, 132-133, 177-178, 217-223, 712-729, 840, 857, 891, 923-935, 964-967, 992-994, 1020
+src\giljo_mcp\repositories\template_repository.py                      92     47      4      0  46.88%   69-72, 94-96, 110, 120, 130, 144, 169-181, 269-275, 294-298, 317-325, 342-350, 367-369, 388-400, 419-428, 449-455, 472-474
+src\giljo_mcp\repositories\base.py                                     34     17      2      0  47.22%   58-61, 77-80, 95-96, 112-116, 129-132, 146-149
+src\giljo_mcp\services\project_staging_service.py                      87     40     22      3  47.71%   66, 117-155, 186-201, 222-268
+src\giljo_mcp\services\product_memory_service.py                      125     63     30     11  48.39%   94-98, 121, 141-145, 166-193, 216-229, 258-260, 262-264, 269-271, 276-278, 281, 284-288, 341-360, 399-400, 429-437, 466-467, 491-492
+src\giljo_mcp\repositories\vision_document_repository.py              104     49     14      3  49.15%   97, 157-166, 189-210, 226-244, 280->exit, 287->290, 329-349, 368-377, 401-416, 440-458, 508, 521
+src\giljo_mcp\services\progress_service.py                            191     86     76     18  49.81%   103-104, 158, 161, 164, 168, 205->207, 207->211, 218, 235-237, 251-284, 299-311, 321-326, 328, 333, 340, 372, 390, 408-432, 440-477, 481, 493-530, 557-558
+src\giljo_mcp\utils\log_sanitizer.py                                   12      5      6      0  50.00%   38-42
+src\giljo_mcp\services\orchestration_service.py                       104     44     14      0  50.85%   115-117, 122, 126-135, 148-152, 161, 174, 182, 190, 194, 225-267, 303-310, 314, 326
+src\giljo_mcp\services\product_vision_service.py                      123     57     14      3  51.82%   82-86, 164, 182-183, 189-191, 208-244, 265, 282-283, 307-308, 330-339, 374-388, 416-424, 462-463, 493-494, 514-515, 540-541, 564-565
+src\giljo_mcp\services\product_lifecycle_service.py                   173     76     26      6  54.77%   81-85, 104-118, 142, 197-205, 213-217, 241, 261-265, 305-307, 331, 346-350, 373-395, 414-416, 439-477
+src\giljo_mcp\tools\context_tools\fetch_context.py                    224     87    104     31  54.88%   108, 125-139, 182-206, 303-304, 314-315, 329-330, 338->348, 342, 356->362, 359-360, 379-383, 391-396, 405-410, 427, 430, 469, 473->517, 482->480, 487, 492, 498, 509, 517->522, 546-550, 554-562, 566-569, 572-575, 586-590, 592->619, 594->619, 597-616
+src\giljo_mcp\services\job_query_service.py                            94     38     20      2  56.14%   56, 151-153, 180-204, 232->239, 234-235, 261-265, 285-289, 309-313, 333-337
+src\giljo_mcp\repositories\context_repository.py                       28     10      4      0  56.25%   52-89
+src\giljo_mcp\services\taxonomy_service.py                             48     17     16      5  56.25%   59, 65-66, 75, 80, 88-91, 94-102, 114-129, 140
+src\giljo_mcp\services\project_deletion_service.py                    164     65     52      9  56.48%   70, 127-135, 199->206, 216, 222, 228, 235-245, 267-278, 288-326, 356-377, 412-452
+src\giljo_mcp\services\settings_service.py                             40     15      8      1  58.33%   81, 127-147
+src\giljo_mcp\repositories\message_repository.py                      114     45     14      0  58.59%   72-85, 110-123, 229-239, 325-339, 511-519, 533, 552-558, 579-580, 594, 611-612, 629-630, 649-651, 670-682, 701-709, 726-729, 746-749
+src\giljo_mcp\events\schemas.py                                        69     28      6      3  58.67%   78, 82, 84, 103-116, 125-135, 210-236, 254-279, 294-311, 316-325, 330-339, 344-352
+src\giljo_mcp\services\message_routing_service.py                     253     94     84     20  59.05%   95-99, 225, 227-228, 238, 240, 248, 275, 281-289, 303->309, 307->309, 346-347, 371, 376, 427, 440->443, 446->444, 449->457, 500, 507->503, 516-529, 536->539, 559-634, 665-716, 740-773
+src\giljo_mcp\services\project_lifecycle_service.py                   217     87     50     11  59.55%   75, 135->155, 142-152, 159->162, 170-178, 193-195, 231-235, 251-269, 342-350, 356, 360, 364, 368, 406-420, 433-435, 456-519, 566-568, 629-631, 640-652, 664-666, 679-702
+src\giljo_mcp\services\protocol_builder.py                             20      8      0      0  60.00%   104-125
+src\giljo_mcp\repositories\product_memory_repository.py               118     39     18      3  60.29%   118-135, 170->174, 191, 203->208, 228-233, 283-304, 327-334, 355-369, 554-580, 589, 603
+src\giljo_mcp\database.py                                             150     51     44     14  60.31%   67->69, 69->72, 77, 102-103, 106, 108, 110, 112, 132, 148, 163, 167-170, 174-178, 189-200, 217, 226, 229, 234-235, 244->247, 249-250, 258, 265, 288-291, 304-308, 319-321, 339, 359-361
+src\giljo_mcp\repositories\agent_operations_repository.py             118     42     36      3  60.39%   68-71, 124->exit, 216-224, 278, 322-334, 352-366, 408, 440-478
+src\giljo_mcp\repositories\user_repository.py                          65     24      4      1  60.87%   62-67, 89, 136-139, 152-154, 173-174, 197-204, 214, 224, 279-292
+src\giljo_mcp\services\template_service.py                            187     67     52     10  61.09%   103-107, 137->140, 167-169, 202->205, 206, 382->385, 386, 405, 407, 409, 411, 456, 493-523, 551, 572, 591, 615, 632, 666-681, 709, 735, 763-783, 804-809, 827-830, 873, 902-917, 941, 961
+src\giljo_mcp\services\silence_detector.py                            110     39     20      1  61.54%   70-76, 80-85, 89-95, 99-108, 180-181, 188->191, 237-238, 288-289, 314-322
+src\giljo_mcp\services\product_service.py                             191     67     64     12  62.75%   149-161, 205-207, 249, 262-264, 303-305, 335-337, 362-364, 388, 390, 392, 394, 403, 409, 411, 416->415, 429-430, 439-441, 476-478, 511-562
+src\giljo_mcp\repositories\project_repository.py                      169     54     22      5  62.83%   54, 80-88, 98-107, 119-134, 142-145, 180-186, 195-201, 210-217, 238, 243-248, 253-255, 286-290, 299-301, 349-361, 576, 587-593
+src\giljo_mcp\services\project_service.py                             440    159    194     28  63.25%   89, 91, 93, 100-101, 179, 218-313, 330-337, 357-429, 455-499, 524-577, 595, 607, 617, 638, 730, 736, 748-751, 763-769, 774, 780->791, 788-789, 801, 822-843, 896, 960-967, 1046, 1107, 1112, 1195, 1247->1256, 1257->1272, 1288-1290, 1339, 1368, 1385-1391, 1399, 1404, 1411-1424, 1437, 1439, 1441
+src\giljo_mcp\services\job_completion_service.py                      175     54     56     14  63.64%   78, 114, 117, 169->172, 175, 193, 200-205, 217-219, 228, 235-238, 277-278, 298-303, 308-331, 336-349, 352-373, 395->397, 413->exit, 445, 452
+src\giljo_mcp\tools\write_360_memory.py                               184     57     64     17  65.32%   86, 89, 92, 95, 104, 107, 141, 160-171, 188-216, 275-331, 350->381, 360-364, 382, 450, 453, 456, 562-567, 575, 585-586, 608, 706-708
+src\giljo_mcp\services\task_conversion_service.py                     114     38     38      6  65.79%   93-102, 151-152, 158-160, 226-273, 308-309, 313-315, 333, 357->361, 362->339
+src\giljo_mcp\services\user_approval_service.py                       107     28     28      8  65.93%   57, 92, 113, 132, 134, 173, 216, 218, 231, 255-263, 274-276, 283-285, 291-300, 314, 330-331, 363-364
+src\giljo_mcp\__init__.py                                               6      2      0      0  66.67%   15-16
+src\giljo_mcp\models\products.py                                      196     46     26      0  67.57%   220, 241-253, 259-261, 270-277, 285-292, 300-304, 312-319, 327-334
+src\giljo_mcp\repositories\agent_completion_repository.py              79     21      6      0  68.24%   169-189, 262-266, 296-306
+src\giljo_mcp\repositories\user_approval_repository.py                 36     10      2      0  68.42%   66, 90, 106, 138-143, 145
+src\giljo_mcp\config_manager.py                                       393    104    144     41  69.27%   98-124, 149-152, 234-235, 326, 330, 334, 344, 359->361, 385-390, 393-398, 401->429, 417-418, 471-472, 476-480, 484-489, 493-499, 503, 506->exit, 511-513, 521, 524, 527, 530, 533, 536, 539, 542, 546, 549, 552, 566->570, 571, 575, 578, 582-585, 600, 608, 619, 623, 627, 630, 636-637, 646-648, 653, 667-670, 674, 756-762, 771-776, 781, 785, 789, 807-824, 871
+src\giljo_mcp\repositories\product_repository.py                      124     28     38      9  69.75%   82->85, 180, 268-274, 298, 339, 362->375, 390-398, 417->434, 420-422, 436-449, 453-460
+src\giljo_mcp\services\project_query_service.py                        81     24     10      3  70.33%   57, 81-82, 94-123, 145-147, 197-199, 254-256, 281-283
+src\giljo_mcp\context_management\chunker.py                           135     38     48     10  70.49%   55-57, 83-86, 128->125, 148, 176, 202, 212, 288-290, 298-300, 307-323, 325->333, 328-331, 334-336, 348-350
+src\giljo_mcp\services\memory_entry_write_validator.py                124     26     54      9  71.35%   103, 105, 172-183, 205, 215, 225, 245, 276-278, 297-329
+src\giljo_mcp\repositories\progress_repository.py                      47     13      0      0  72.34%   109-114, 123-129, 138, 144, 153-158, 168-174, 183-188, 204
+src\giljo_mcp\services\job_lifecycle_service.py                       137     34     42      8  73.18%   98, 180-261, 279-281, 380, 385, 469, 533, 536->559, 539->559, 708-740, 747-770
+src\giljo_mcp\discovery.py                                             88     21     22      4  73.64%   71-73, 77-81, 113-128, 134->137, 141-142, 153
+src\giljo_mcp\services\protocol_sections\agent_protocol.py             28      5     10      5  73.68%   27, 37->54, 41-42, 350, 356
+src\giljo_mcp\repositories\task_repository.py                          61     16      0      0  73.77%   111-119, 176-178, 197-205, 219, 260, 270-271, 285, 294, 304
+src\giljo_mcp\tools\slash_command_templates.py                         35      7     12      1  74.47%   549-554, 597
+src\giljo_mcp\slash_commands\__init__.py                                4      1      0      0  75.00%   22
+src\giljo_mcp\tools\context_tools\get_agent_templates.py               40      8     12      5  75.00%   100-101, 115->134, 125-128, 135-136, 150
+src\giljo_mcp\repositories\project_lifecycle_repository.py             74     17      4      0  75.64%   301-314, 360-373, 377, 386-398, 407-410, 419-429
+src\giljo_mcp\models\config.py                                         82     15      4      0  77.91%   160, 190-193, 224-236, 310, 315
+src\giljo_mcp\_config_io.py                                            23      5      2      0  80.00%   71-75
+src\giljo_mcp\protocols\websocket.py                                    6      0      4      2  80.00%   27->exit, 35->exit
+src\giljo_mcp\logging\__init__.py                                      45      6      8      4  81.13%   49-52, 112, 115->119, 143, 167->exit
+src\giljo_mcp\tools\project_closeout.py                               228     28     84     24  81.41%   72, 75, 78, 81, 90, 93, 162->exit, 241-243, 258, 297, 300, 303, 546, 635->636, 637-638, 642, 655, 660, 662, 714, 717, 742, 745-746, 755, 758-759
+src\giljo_mcp\services\user_auth_service.py                           107     20     20      2  82.68%   89, 119-121, 175-177, 216-220, 249-253, 290-292, 324->331
+src\giljo_mcp\tools\context_tools\get_360_memory.py                    69      9     18      6  82.76%   135, 252-253, 256, 259, 281-282, 315-316
+src\giljo_mcp\app_registry\service_registry.py                          6      1      0      0  83.33%   34
+src\giljo_mcp\domain\task_status.py                                    34      5      2      1  83.33%   81, 85, 140-142
+src\giljo_mcp\services\heartbeat.py                                    10      1      2      1  83.33%   38
+src\giljo_mcp\template_renderer.py                                    152     19     54      7  83.50%   60-72, 108, 113, 167->171, 174-177, 289->295, 297-300
+src\giljo_mcp\repositories\settings_repository.py                      19      3      0      0  84.21%   69, 78, 88
+src\giljo_mcp\schemas\jsonb_validators.py                             210     24     64      4  84.67%   358-365, 370-377, 406-409, 430, 434, 447, 454
+src\giljo_mcp\services\workflow_status_service.py                      74      9     24      4  84.69%   59, 118, 122, 125-128, 176-178
+src\giljo_mcp\tools\context_tools\get_project.py                       28      3      6      2  85.29%   95-98, 116
+src\giljo_mcp\tools\agent_template_assembler.py                        46      6     18      1  85.94%   89, 169-180
+src\giljo_mcp\auth\jwt_manager.py                                      62      9     10      1  86.11%   150-151, 160, 164-169, 215-216
+src\giljo_mcp\domain\project_status.py                                 44      5      2      1  86.96%   114, 120, 194-196
+src\giljo_mcp\services\consolidation_service.py                        46      4      6      2  88.46%   60-61, 70-73
+src\giljo_mcp\models\templates.py                                      77      3      8      3  92.94%   143, 146, 150
+src\giljo_mcp\tools\chunking.py                                        90      3     38      6  92.97%   82, 106->116, 116->104, 124, 172->169, 208
+src\giljo_mcp\events\models.py                                        171     10      4      0  93.14%   46-50, 114-118
+src\giljo_mcp\template_validation.py                                   11      0      4      1  93.33%   26->28
+src\giljo_mcp\services\version_service.py                             102      4     24      4  93.65%   95, 127->139, 132->134, 134->139, 136-137, 146
+src\giljo_mcp\prompts\gemini_prompt_builder.py                         15      0      2      1  94.12%   63->81
+src\giljo_mcp\prompts\codex_prompt_builder.py                          17      0      2      1  94.74%   86->108
+src\giljo_mcp\models\auth.py                                          101      3      2      0  95.15%   364-366
+src\giljo_mcp\prompts\execution_prompt_base.py                         44      2      8      0  96.15%   165, 169
+src\giljo_mcp\monitoring\health_config.py                              27      1      0      0  96.30%   64
+src\giljo_mcp\services\project_summary_service.py                      47      1     10      1  96.49%   82
+src\giljo_mcp\logging\error_codes.py                                   59      2      0      0  96.61%   114, 181
+src\giljo_mcp\exceptions.py                                            67      1      2      0  98.55%   55
+src\giljo_mcp\app_registry\__init__.py                                  2      0      0      0 100.00%
+src\giljo_mcp\auth\__init__.py                                          4      0      0      0 100.00%
+src\giljo_mcp\codex_defaults.py                                         2      0      0      0 100.00%
+src\giljo_mcp\config\defaults.py                                        6      0      0      0 100.00%
+src\giljo_mcp\context_management\__init__.py                            2      0      0      0 100.00%
+src\giljo_mcp\domain\__init__.py                                        2      0      0      0 100.00%
+src\giljo_mcp\events\__init__.py                                        2      0      0      0 100.00%
+src\giljo_mcp\http\url_resolver.py                                      3      0      0      0 100.00%
+src\giljo_mcp\models\__init__.py                                       17      0      0      0 100.00%
+src\giljo_mcp\models\agent_identity.py                                 65      0      0      0 100.00%
+src\giljo_mcp\models\base.py                                           10      0      0      0 100.00%
+src\giljo_mcp\models\context.py                                        20      0      0      0 100.00%
+src\giljo_mcp\models\oauth.py                                          18      0      0      0 100.00%
+src\giljo_mcp\models\organizations.py                                  37      0      0      0 100.00%
+src\giljo_mcp\models\product_agent_assignment.py                       16      0      0      0 100.00%
+src\giljo_mcp\models\product_memory_entry.py                           40      0      0      0 100.00%
+src\giljo_mcp\models\projects.py                                       59      0      0      0 100.00%
+src\giljo_mcp\models\schemas.py                                        40      0      0      0 100.00%
+src\giljo_mcp\models\settings.py                                       13      0      0      0 100.00%
+src\giljo_mcp\models\system_setting.py                                  8      0      0      0 100.00%
+src\giljo_mcp\models\tasks.py                                          87      0      0      0 100.00%
+src\giljo_mcp\models\user_approval.py                                  21      0      0      0 100.00%
+src\giljo_mcp\monitoring\__init__.py                                    3      0      0      0 100.00%
+src\giljo_mcp\prompts\__init__.py                                       7      0      0      0 100.00%
+src\giljo_mcp\prompts\claude_prompt_builder.py                         26      0      2      0 100.00%
+src\giljo_mcp\prompts\multi_terminal_prompt_builder.py                  9      0      2      0 100.00%
+src\giljo_mcp\protocols\__init__.py                                     2      0      0      0 100.00%
+src\giljo_mcp\repositories\__init__.py                                 24      0      0      0 100.00%
+src\giljo_mcp\repositories\statistics_repository.py                     4      0      0      0 100.00%
+src\giljo_mcp\schemas\responses\__init__.py                            10      0      0      0 100.00%
+src\giljo_mcp\schemas\responses\auth.py                                46      0      0      0 100.00%
+src\giljo_mcp\schemas\responses\consolidation.py                       29      0      0      0 100.00%
+src\giljo_mcp\schemas\responses\message.py                             43      0      0      0 100.00%
+src\giljo_mcp\schemas\responses\orchestration.py                      120      0      0      0 100.00%
+src\giljo_mcp\schemas\responses\product.py                             44      0      0      0 100.00%
+src\giljo_mcp\schemas\responses\project.py                            188      0      0      0 100.00%
+src\giljo_mcp\schemas\responses\shared.py                              17      0      0      0 100.00%
+src\giljo_mcp\schemas\responses\task.py                                20      0      0      0 100.00%
+src\giljo_mcp\schemas\responses\template.py                            28      0      0      0 100.00%
+src\giljo_mcp\schemas\service_responses.py                              1      0      0      0 100.00%
+src\giljo_mcp\schemas\user_approval.py                                 48      0      2      0 100.00%
+src\giljo_mcp\security\__init__.py                                      2      0      0      0 100.00%
+src\giljo_mcp\services\__init__.py                                     20      0      0      0 100.00%
+src\giljo_mcp\services\_predecessor_context.py                         17      0      8      0 100.00%
+src\giljo_mcp\services\config_service.py                               33      0      4      0 100.00%
+src\giljo_mcp\services\dto.py                                          54      0      0      0 100.00%
+src\giljo_mcp\services\project_helpers.py                               2      0      0      0 100.00%
+src\giljo_mcp\services\protocol_sections\__init__.py                    7      0      0      0 100.00%
+src\giljo_mcp\system_roles.py                                           2      0      0      0 100.00%
+src\giljo_mcp\tools\__init__.py                                         1      0      0      0 100.00%
+src\giljo_mcp\tools\context_tools\__init__.py                          12      0      0      0 100.00%
+src\giljo_mcp\tools\setup_instructions.py                               9      0      6      0 100.00%
+src\giljo_mcp\utils\db_retry.py                                        41      0     12      0 100.00%
+src\giljo_mcp\utils\tag_utils.py                                       27      0     12      0 100.00%
+----------------------------------------------------------------------------------------------------------------
+TOTAL                                                               17412   8365   4116    512  48.05%
+
+15 empty files skipped.
+Coverage HTML written to dir htmlcov
+FAIL Required test coverage of 80.0% not reached. Total coverage: 48.05%
+=========================== short test summary info ===========================
+ERROR tests/integration/migrations/test_saas_migration_bootstrap.py::TestSaasMigrationBootstrap::test_cold_demo_init_brings_up_both_chains
+ERROR tests/integration/migrations/test_saas_migration_bootstrap.py::TestSaasMigrationBootstrap::test_warm_demo_idempotent
+ERROR tests/integration/migrations/test_saas_migration_bootstrap.py::TestSaasMigrationBootstrap::test_cold_ce_init_has_no_saas_tables
+ERROR tests/integration/migrations/test_saas_migration_bootstrap.py::TestSaasMigrationBootstrap::test_warm_ce_at_baseline_v37_applies_ce_0003_then_idempotent
+ERROR tests/integration/migrations/test_saas_migration_bootstrap.py::TestSaasMigrationBootstrap::test_pre_stamp_widen_is_idempotent_on_already_wide_column
+ERROR tests/integration/migrations/test_saas_migration_bootstrap.py::TestSaasMigrationBootstrap::test_pre_stamp_bootstrap_creates_table_with_varchar_64
+FAILED tests/unit/test_install_script.py::TestInstallPs1Structure::test_license_header
+FAILED tests/unit/test_install_sh.py::TestInstallShHeader::test_license_header
+FAILED tests/integration/test_product_service_integration_crud.py::TestProductProjectCascade::test_product_with_projects_cascade_impact
+FAILED tests/integration/test_product_service_integration_crud.py::TestProductProjectCascade::test_delete_product_with_projects
+FAILED tests/integration/test_slash_command_templates.py::TestGetAllTemplatesRegistry::test_claude_code_file_count
+FAILED tests/integration/test_slash_command_templates.py::TestGetAllTemplatesRegistry::test_gemini_cli_file_count
+FAILED tests/integration/test_slash_command_templates.py::TestGetAllTemplatesRegistry::test_codex_cli_file_count
+7 failed, 1629 passed, 108 warnings, 6 errors in 217.35s (0:03:37)

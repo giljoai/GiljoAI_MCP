@@ -1,5 +1,19 @@
 # Changelog
 
+## License Change — 2026-05-07
+
+**Switched from GiljoAI Community License v1.1 to Elastic License 2.0 (ELv2).**
+
+The retired v1.1 license gated commercial conversion at the second user (any team install required a paid Commercial License). ELv2 retires that gate; CE is now free for any internal team/company use. ELv2 restricts only:
+1. providing the software to third parties as a hosted/managed service,
+2. tampering with license-key functionality,
+3. removing or altering license/copyright notices.
+
+Code-level enforcement of the v1.1 single-user limit was removed in the same change (api/endpoints/auth.py, src/giljo_mcp/licensing/validator.py, frontend Terms + license copy). Legal posture and code now agree.
+
+Lawyer review of v1.1 was cancelled (task `70080c68`); ELv2 is already lawyer-vetted by Elastic and widely adopted (Elasticsearch, Redis, Sentry, MariaDB MaxScale). No further legal review required for the CE distribution.
+
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),

@@ -874,6 +874,9 @@ async function handleLaunchJobs() {
 
     // Auto-switch to Jobs/Implement tab after launch (Handover 0243e)
     activeTab.value = 'jobs'
+    if (route.query.via !== 'jobs') {
+      router.replace({ query: { ...route.query, via: 'jobs' } })
+    }
   } catch (error) {
     console.error('Launch jobs failed:', error)
     const msg = error.response?.data?.detail || error.message || 'Failed to launch jobs'

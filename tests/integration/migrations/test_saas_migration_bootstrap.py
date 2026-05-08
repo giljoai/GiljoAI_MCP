@@ -1,5 +1,5 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
 # [SAAS] SaaS Edition - includes demo bootstrap behavior verification.
 
@@ -216,8 +216,78 @@ def _alembic_version_column_length(engine: sa.Engine) -> int | None:
 # ---------------------------------------------------------------------------
 
 
+def _superuser_password() -> str:
+    """Resolve the postgres superuser password from env or .env file.
+
+    Required because the configured ADMIN_USER (giljo_owner) typically lacks
+    CREATEDB privilege; the bootstrap superuser does. Supports
+    POSTGRES_SUPERUSER_PASSWORD (explicit) and falls back to .env on disk.
+    """
+    pw = os.environ.get("POSTGRES_SUPERUSER_PASSWORD", "")
+    if pw:
+        return pw
+    env_path = PROJECT_ROOT / ".env"
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            if line.startswith("POSTGRES_SUPERUSER_PASSWORD="):
+                return line.split("=", 1)[1].strip()
+    return ""
+
+
+def _ensure_scratch_database_exists() -> None:
+    """Create the scratch DB if missing so the suite is portable.
+
+    Strategy:
+      1. Try connecting as ADMIN_USER (giljo_owner) to admin DB 'postgres' and
+         issue CREATE DATABASE. Works on any environment where the configured
+         user has CREATEDB.
+      2. If that fails with InsufficientPrivilege, fall back to the postgres
+         superuser using POSTGRES_SUPERUSER_PASSWORD. Owner of the new DB is
+         still ADMIN_USER so subsequent test connections work.
+
+    Uses AUTOCOMMIT — CREATE DATABASE cannot run inside a transaction block.
+    """
+    scratch = _scratch_db_url()
+    prefix, _, _ = scratch.rpartition("/")
+    owner_admin_url = f"{prefix}/postgres"
+
+    def _try_create(url: str) -> bool:
+        eng = sa.create_engine(url, poolclass=sa.pool.NullPool, isolation_level="AUTOCOMMIT")
+        try:
+            with eng.connect() as conn:
+                existing = conn.execute(
+                    text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                    {"name": SCRATCH_DB},
+                ).scalar()
+                if existing:
+                    return True
+                conn.execute(text(f'CREATE DATABASE "{SCRATCH_DB}" OWNER "{ADMIN_USER}"'))
+                return True
+        except sa.exc.ProgrammingError as exc:
+            if "InsufficientPrivilege" in str(exc) or "permission denied" in str(exc):
+                return False
+            raise
+        finally:
+            eng.dispose()
+
+    if _try_create(owner_admin_url):
+        return
+
+    superuser_pw = _superuser_password()
+    if not superuser_pw:
+        raise RuntimeError(
+            f"Cannot create scratch DB '{SCRATCH_DB}': configured user "
+            f"'{ADMIN_USER}' lacks CREATEDB and POSTGRES_SUPERUSER_PASSWORD "
+            "is not set. Either grant CREATEDB to the user or set the env var."
+        )
+    superuser_url = f"postgresql://postgres:{superuser_pw}@{DB_HOST}:{DB_PORT}/postgres"
+    if not _try_create(superuser_url):
+        raise RuntimeError(f"Failed to create scratch DB '{SCRATCH_DB}' even as superuser.")
+
+
 @pytest.fixture(scope="module")
 def scratch_engine():
+    _ensure_scratch_database_exists()
     eng = _scratch_engine()
     with eng.connect() as conn:
         conn.execute(text("SELECT 1"))
@@ -332,7 +402,13 @@ class TestSaasMigrationBootstrap:
             f"Upgrade from baseline_v37 to head failed:\n{upgrade_to_head.stdout}\n{upgrade_to_head.stderr}"
         )
         head_versions = _stamped_versions(empty_scratch_db)
-        assert "ce_0003_widen_alembic_version" in head_versions, f"ce_0003 not stamped: {head_versions}"
+        # Chain head advances over time; assert *some* ce_* head is stamped
+        # rather than pinning to a specific revision name. The behavioural
+        # contract under test is that ce_0003's column-widening reached the
+        # DB, verified directly by _alembic_version_column_length below.
+        assert any(v.startswith("ce_") for v in head_versions), (
+            f"No ce_* head stamped after warm-CE upgrade: {head_versions}"
+        )
         col_len = _alembic_version_column_length(empty_scratch_db)
         assert col_len is not None and col_len >= 64, f"alembic_version.version_num expected >= 64 chars, got {col_len}"
 

@@ -4,6 +4,8 @@ import router from './router'
 import { pinia } from './stores'
 import { initializeApiConfig } from './config/api'
 import configService from './services/configService'
+import setupService from './services/setupService'
+import { initSentry } from './sentry'
 
 // Vuetify
 import 'vuetify/styles'
@@ -67,6 +69,24 @@ async function bootstrap() {
     await initializeApiConfig()
   } catch (error) {
     console.warn('[MAIN] Failed to initialize API config, using fallback:', error)
+  }
+
+  // INF-5063: initialize Sentry BEFORE app.mount() so it can attach the Vue
+  // error handler before any component renders. Gated on a non-null DSN from
+  // the backend setup-status response — CE returns null and skips entirely
+  // (no @sentry/vue load, no network calls). Errors here must never block
+  // bootstrap.
+  try {
+    const status = await setupService.checkEnhancedStatus()
+    if (status?.sentryDsn) {
+      await initSentry(app, {
+        dsn: status.sentryDsn,
+        environment: status.environment || status.mode || 'unknown',
+        tenantKey: null, // tag refreshed post-login from user store
+      })
+    }
+  } catch (error) {
+    console.warn('[MAIN] Sentry init skipped:', error)
   }
 
   // Register edition-specific routes BEFORE mount.

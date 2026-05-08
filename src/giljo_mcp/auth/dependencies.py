@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 FastAPI dependencies for authentication.
@@ -271,6 +271,12 @@ async def get_current_active_user(current_user: User | None = Depends(get_curren
 
     if not current_user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User account is inactive")
+
+    # INF-5063: tag Sentry scope with tenant_key for SaaS/Demo error tracking.
+    # No-op in CE (set_tenant_context returns early when sentry_sdk isn't initialized).
+    from api.observability.sentry_init import set_tenant_context
+
+    set_tenant_context(tenant_key=current_user.tenant_key, user_id=str(current_user.id))
 
     return current_user
 

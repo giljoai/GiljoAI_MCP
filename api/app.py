@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 FastAPI application for GiljoAI MCP
@@ -177,6 +177,12 @@ async def lifespan(app: FastAPI):
         "v1.2.1: MCP list_projects now hides completed/cancelled by default; "
         "use include_completed=true to retrieve archived projects."
     )
+
+    # Phase 0a: Sentry init (SaaS/Demo only — INF-5063).
+    # init_sentry() short-circuits in CE; the gate IS the CE/SaaS boundary here.
+    from api.observability.sentry_init import init_sentry
+
+    init_sentry(mode=GILJO_MODE)
 
     # Phase 0: License validation
     # [CE] License validation — CE always passes. Commercial builds enforce here.
@@ -984,7 +990,7 @@ def create_app() -> FastAPI:
             "email": "infoteam@giljo.ai",
         },
         license_info={
-            "name": "GiljoAI Community License v1.1",
+            "name": "Elastic License 2.0",
             "url": "https://github.com/giljoai/GiljoAI_MCP/blob/master/LICENSE",
         },
     )

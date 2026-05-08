@@ -49,6 +49,7 @@ nltk>=3.8                  # Natural language processing (tokenization, stopword
 resend>=2.30.0              # Transactional email via Resend API (SAAS-006)
 aiosmtplib>=3.0.0          # Async SMTP client for SmtpProvider (Mailpit/local capture, EMAIL_BACKEND=smtp)
 jinja2>=3.1.6                # Templating for Ops Panel HTML views (ops_panel/main.py); ~200 KB total SaaS overhead on CE
+sentry-sdk[fastapi]>=2.0.0   # Backend error tracking for SaaS/Demo (INF-5063); init gated by GILJO_MODE in api/observability/sentry_init.py
 
 # Platform-Specific
 # pywin32 removed in Handover 0394 - no usage found in codebase

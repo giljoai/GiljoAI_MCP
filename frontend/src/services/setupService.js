@@ -73,6 +73,11 @@ class SetupService {
           show_public_landing: data.show_public_landing || false,
           route_signal: data.route_signal,
           mode: data.mode,
+          // INF-5063: Sentry telemetry config. Backend returns sentryDsn=null
+          // for CE; non-null only in saas/demo with telemetry configured.
+          // main.js reads these to gate the Sentry init call.
+          sentryDsn: data.sentryDsn ?? null,
+          environment: data.environment,
         }
         this._statusCache = result
         this._statusCacheTime = Date.now()
