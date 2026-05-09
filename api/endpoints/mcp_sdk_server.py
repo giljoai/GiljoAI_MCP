@@ -25,7 +25,8 @@ from starlette.requests import Request as StarletteRequest
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from giljo_mcp.auth.jwt_manager import JWTManager
+from giljo_mcp.auth.jwt_manager import JWTAudienceMismatchError, JWTManager
+from giljo_mcp.http.url_resolver import get_canonical_mcp_resource_uri_from_scope
 
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,86 @@ mcp = FastMCP(
     # 127.0.0.1 (localhost HTTP) or LAN IP (HTTPS only), configured at install.
     transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
 )
+
+
+# ---------------------------------------------------------------------------
+# Tool scope registry (API-0021b): scope-aware MCP tool gating
+#
+# Single source of truth for both list_tools advertise filter and call_tool
+# dispatch gate. Three scopes:
+#   - mcp:read   : pure-read tools, no DB writes, no agent-state mutation
+#   - mcp:write  : writes confined to user-owned product/project/task/memory
+#   - mcp:agent  : orchestration primitives (spawn, complete_job, send_message,
+#                  status mutations, mission edits, …). Privilege-escalation
+#                  surface — NEVER grantable through OAuth /authorize.
+#
+# Defense-in-depth: the dispatch gate enforces server-side. Hiding from
+# tools/list alone is insufficient — a JWT caller can still craft tools/call.
+# ---------------------------------------------------------------------------
+
+SCOPE_READ = "mcp:read"
+SCOPE_WRITE = "mcp:write"
+SCOPE_AGENT = "mcp:agent"
+
+TOOL_SCOPES: dict[str, str] = {
+    "create_project": SCOPE_WRITE,
+    "list_projects": SCOPE_READ,
+    "update_project": SCOPE_WRITE,
+    "update_project_mission": SCOPE_AGENT,
+    "update_agent_mission": SCOPE_AGENT,
+    "get_orchestrator_instructions": SCOPE_READ,
+    "send_message": SCOPE_AGENT,
+    "receive_messages": SCOPE_AGENT,
+    "inspect_messages": SCOPE_READ,
+    "create_task": SCOPE_WRITE,
+    "update_task": SCOPE_WRITE,
+    "complete_task": SCOPE_WRITE,
+    "list_tasks": SCOPE_READ,
+    "request_approval": SCOPE_AGENT,
+    "health_check": SCOPE_READ,
+    "giljo_setup": SCOPE_WRITE,
+    "generate_download_token": SCOPE_WRITE,
+    "list_agent_templates": SCOPE_READ,
+    "get_pending_jobs": SCOPE_AGENT,
+    "report_progress": SCOPE_AGENT,
+    "complete_job": SCOPE_AGENT,
+    "close_job": SCOPE_AGENT,
+    "reactivate_job": SCOPE_AGENT,
+    "dismiss_reactivation": SCOPE_AGENT,
+    "set_agent_status": SCOPE_AGENT,
+    "get_agent_mission": SCOPE_AGENT,
+    "spawn_job": SCOPE_AGENT,
+    "get_agent_result": SCOPE_AGENT,
+    "get_workflow_status": SCOPE_AGENT,
+    "fetch_context": SCOPE_READ,
+    "close_project_and_update_memory": SCOPE_AGENT,
+    "write_360_memory": SCOPE_AGENT,
+    "submit_tuning_review": SCOPE_WRITE,
+    "get_vision_doc": SCOPE_READ,
+    "update_product_fields": SCOPE_WRITE,
+}
+
+
+def _scopes_from_request(request: StarletteRequest | None) -> set[str] | None:
+    """Resolve the caller's effective scope set from the ASGI request state.
+
+    Returns:
+        - None if the caller authenticated via API key (full bypass — API keys
+          remain the only path to mcp:agent tools).
+        - set[str] of scope tokens otherwise. Empty set means "no scopes
+          granted" (advertise nothing, gate everything).
+    """
+    if request is None:
+        # In-memory test transport has no HTTP request. Tests monkeypatch this
+        # function directly when they want scope filtering exercised.
+        return None
+    state = request.scope.get("state", {}) if hasattr(request, "scope") else {}
+    if state.get("auth_method") == "api_key":
+        return None
+    scopes = state.get("scopes")
+    if not scopes:
+        return set()
+    return set(scopes)
 
 
 # ---------------------------------------------------------------------------
@@ -1517,6 +1598,93 @@ async def write_product_from_analysis(
 # ---------------------------------------------------------------------------
 
 
+def _build_www_authenticate_header(scope: Scope) -> str:
+    """Construct the RFC 6750 WWW-Authenticate value for /mcp 401s.
+
+    Includes the RFC 9728 `resource_metadata` parameter pointing at the
+    protected-resource document. Spec-compliant clients (Claude.ai, MCP CLI)
+    use it to bootstrap themselves after a 401 instead of failing closed.
+    """
+    canonical = get_canonical_mcp_resource_uri_from_scope(scope)
+    base, _, _ = canonical.rpartition("/mcp")
+    metadata_url = f"{base}/.well-known/oauth-protected-resource"
+    return f'Bearer realm="MCP", resource_metadata="{metadata_url}"'
+
+
+def _unauthenticated_response(scope: Scope, error: str, status_code: int = 401) -> JSONResponse:
+    """Build a 401/403 JSONResponse with the spec-required WWW-Authenticate header."""
+    return JSONResponse(
+        {"error": error},
+        status_code=status_code,
+        headers={"WWW-Authenticate": _build_www_authenticate_header(scope)},
+    )
+
+
+# ---------------------------------------------------------------------------
+# API-0021b: scope-aware tools/list filter + tools/call dispatch gate
+#
+# Re-registers the SDK's ListToolsRequest and CallToolRequest handlers so that
+# JWT-authenticated callers only see (and can only invoke) tools whose registered
+# scope is in the token's scope set. API-key callers bypass entirely.
+#
+# The lowlevel server captures handler references at FastMCP.__init__ time,
+# so re-registration must call the SDK's own decorator (which rebuilds the
+# request_handlers entry) rather than monkey-patching `mcp.list_tools`.
+# ---------------------------------------------------------------------------
+
+
+def _request_from_context() -> StarletteRequest | None:
+    """Best-effort resolve the StarletteRequest for the active MCP request.
+
+    Returns None when called outside an HTTP request (e.g. the in-memory test
+    transport). Tests that exercise the scope filter monkeypatch
+    `_scopes_from_request` directly.
+    """
+    try:
+        ctx = mcp.get_context()
+        return ctx.request_context.request
+    except (LookupError, ValueError, AttributeError):
+        return None
+
+
+_orig_list_tools = mcp.list_tools
+_orig_call_tool = mcp.call_tool
+
+
+async def _scope_filtered_list_tools():
+    """Replacement for FastMCP.list_tools that filters by token scope."""
+    tools = await _orig_list_tools()
+    scopes = _scopes_from_request(_request_from_context())
+    if scopes is None:
+        return tools
+    return [t for t in tools if TOOL_SCOPES.get(t.name) in scopes]
+
+
+async def _scope_gated_call_tool(name, arguments):
+    """Replacement for FastMCP.call_tool that rejects out-of-scope dispatches.
+
+    Defense-in-depth: the tools/list filter hides agent-only tools from the
+    advertised list, but a JWT caller can still craft tools/call against a
+    hidden name. This gate ensures such calls fail with a transport-layer
+    error rather than silently executing.
+    """
+    scopes = _scopes_from_request(_request_from_context())
+    if scopes is not None:
+        tool_scope = TOOL_SCOPES.get(name)
+        if tool_scope not in scopes:
+            from mcp.server.fastmcp.exceptions import ToolError
+
+            raise ToolError(f"Tool '{name}' not authorized for this token's scope")
+    return await _orig_call_tool(name, arguments)
+
+
+# Re-register against the lowlevel MCP server. _setup_handlers() ran during
+# FastMCP.__init__ and bound `self.list_tools` / `self.call_tool` into
+# request_handlers; calling the SDK decorators again replaces those entries.
+mcp._mcp_server.list_tools()(_scope_filtered_list_tools)
+mcp._mcp_server.call_tool(validate_input=False)(_scope_gated_call_tool)
+
+
 class MCPAuthMiddleware:
     """
     ASGI middleware that validates Bearer token (JWT or API key) and injects
@@ -1524,9 +1692,17 @@ class MCPAuthMiddleware:
 
     Auth flow:
     1. Extract Authorization: Bearer <token> or X-API-Key header
-    2. Try JWT validation first (fast, stateless)
+    2. Try JWT validation first (fast, stateless). For Bearer JWTs, the
+       canonical MCP URI is supplied as expected_audience — tokens carrying
+       a foreign aud claim are rejected outright (RFC 8707 / API-0021a).
+       Aud-less JWTs still authenticate during the transition window with a
+       deprecation warning.
     3. Fall back to API key via MCPSessionManager (stateful, PostgreSQL)
     4. Attach tenant_key + user_id to scope["state"]
+
+    All 401 responses include `WWW-Authenticate: Bearer realm="MCP",
+    resource_metadata="<URL>"` so clients can self-discover the resource
+    metadata document (RFC 6750 + RFC 9728).
     """
 
     def __init__(self, app: ASGIApp):
@@ -1540,7 +1716,6 @@ class MCPAuthMiddleware:
 
         request = StarletteRequest(scope, receive)
 
-        # Extract credentials from headers
         api_key_value: str | None = request.headers.get("x-api-key")
         bearer_token: str | None = None
 
@@ -1550,27 +1725,51 @@ class MCPAuthMiddleware:
                 bearer_token = auth_header[7:]
 
         if not api_key_value and not bearer_token:
-            resp = JSONResponse(
-                {"error": "Authentication required (Authorization: Bearer or X-API-Key)"},
-                status_code=401,
-            )
+            resp = _unauthenticated_response(scope, "Authentication required (Authorization: Bearer or X-API-Key)")
             await resp(scope, receive, send)
             return
 
-        # Resolve tenant from credentials
         tenant_key: str | None = None
         user_id: str | None = None
         api_key_id: int | None = None
+        auth_method: str | None = None
+        token_scopes: list[str] | None = None
 
-        # Path 1: JWT token
+        # Path 1: JWT token (with audience binding per API-0021a).
         if bearer_token and not api_key_value:
+            expected_audience = get_canonical_mcp_resource_uri_from_scope(scope)
             try:
-                payload = JWTManager.verify_token(bearer_token)
+                payload = JWTManager.verify_token(bearer_token, expected_audience=expected_audience)
                 tenant_key = payload["tenant_key"]
                 user_id = payload["sub"]
+                auth_method = "jwt"
+                # API-0021b: parse scope claim. Default for legacy/cookie JWTs
+                # without a scope claim is mcp:read+mcp:write — covers the
+                # dashboard cookie path and pre-API-0021b OAuth-issued tokens.
+                # mcp:agent is never granted by default and never grantable via
+                # /authorize, so the default is safe to widen to read+write.
+                raw_scope = payload.get("scope")
+                if raw_scope is None:
+                    token_scopes = ["mcp:read", "mcp:write"]
+                else:
+                    token_scopes = [s for s in str(raw_scope).split() if s]
+                if "aud" not in payload:
+                    logger.warning(
+                        "Legacy aud-less token accepted on /mcp; client should rotate to aud-bound token (sub=%s)",
+                        payload.get("sub", "unknown"),
+                    )
+            except JWTAudienceMismatchError as exc:
+                # Token presents a valid signature but for a different resource
+                # server. Reject outright — do NOT fall back to API-key path.
+                logger.warning("Rejecting JWT with foreign aud on /mcp: %s", exc)
+                resp = _unauthenticated_response(scope, "Invalid token audience")
+                await resp(scope, receive, send)
+                return
             except (ValueError, KeyError, RuntimeError, HTTPException):
-                # Not a valid JWT -- treat as API key (backward compatibility)
+                # Not a valid JWT -- treat as API key (backward compatibility).
                 api_key_value = bearer_token
+                auth_method = None
+                token_scopes = None
 
         # Path 2: API key (via MCPSessionManager for DB lookup)
         if not tenant_key and api_key_value:
@@ -1591,6 +1790,7 @@ class MCPAuthMiddleware:
                         tenant_key = session.tenant_key
                         user_id = getattr(session, "user_id", None)
                         api_key_id = session.api_key_id
+                        auth_method = "api_key"
 
                         # Passive IP logging (non-blocking)
                         if api_key_id:
@@ -1603,7 +1803,7 @@ class MCPAuthMiddleware:
                 logger.exception("API key authentication failed")
 
         if not tenant_key:
-            resp = JSONResponse({"error": "Invalid credentials"}, status_code=401)
+            resp = _unauthenticated_response(scope, "Invalid credentials")
             await resp(scope, receive, send)
             return
 
@@ -1612,6 +1812,11 @@ class MCPAuthMiddleware:
             scope["state"] = {}
         scope["state"]["tenant_key"] = tenant_key
         scope["state"]["user_id"] = user_id
+        # API-0021b: stamp auth discriminator + token scopes for the
+        # tools/list filter and tools/call dispatch gate.
+        scope["state"]["auth_method"] = auth_method
+        if token_scopes is not None:
+            scope["state"]["scopes"] = token_scopes
 
         # Handover 0855b: Emit setup:tool_connected on FIRST MCP auth per key
         # (replaces emission from deleted mcp_http.py after 0846 SDK migration)

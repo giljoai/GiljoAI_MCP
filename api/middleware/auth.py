@@ -207,6 +207,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/download/temp",  # Public download with token auth (one-time tokens)
             "/api/oauth/token",  # OAuth token exchange (public, PKCE-protected)
             "/api/oauth/.well-known/oauth-authorization-server",  # OAuth server metadata
+            "/.well-known/oauth-authorization-server",  # RFC 8414 root mirror (API-0021a)
+            "/.well-known/oauth-protected-resource",  # RFC 9728 resource metadata (API-0021a)
             "/api/version/",  # Version check (installers need this before auth exists)
             "/api/saas/register",  # SaaS self-serve registration (public, pre-auth)
             "/api/saas/password-reset/",  # SaaS password reset (public, pre-auth)

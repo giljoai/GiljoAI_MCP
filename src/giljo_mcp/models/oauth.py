@@ -44,7 +44,7 @@ class OAuthAuthorizationCode(Base):
     redirect_uri = Column(String(2048), nullable=False)
     code_challenge = Column(String(128), nullable=False)
     code_challenge_method = Column(String(10), default="S256")
-    scope = Column(String(512), default="mcp")
+    scope = Column(String(512), default="mcp:read mcp:write")
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -24,12 +24,25 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.http.url_resolver import (
+    get_canonical_mcp_resource_uri,
+    get_public_base_url,
+)
 from giljo_mcp.models import User
-from giljo_mcp.services.oauth_service import OAuthService
+from giljo_mcp.services.oauth_service import (
+    DEFAULT_OAUTH_SCOPE,
+    OAUTH_GRANTABLE_SCOPES,
+    OAuthService,
+)
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Root-level well-known router (no prefix). RFC 8414 + RFC 9728 require these
+# documents to be reachable from the host root, not from a /api/oauth subtree —
+# Claude.ai / MCP clients probe `<host>/.well-known/...` per spec.
+well_known_router = APIRouter()
 
 
 class AuthorizeRequest(BaseModel):
@@ -39,7 +52,14 @@ class AuthorizeRequest(BaseModel):
     redirect_uri: str = Field(..., description="URI to redirect after authorization")
     code_challenge: str = Field(..., description="PKCE S256 code challenge")
     code_challenge_method: str = Field(default="S256", description="PKCE challenge method (must be S256)")
-    scope: str = Field(default="mcp", description="Requested OAuth scope")
+    scope: str = Field(
+        default=DEFAULT_OAUTH_SCOPE,
+        description=(
+            "Requested OAuth scope. Must be a subset of "
+            f"{sorted(OAUTH_GRANTABLE_SCOPES)}. The orchestration scope "
+            "(`mcp:agent`) is intentionally non-grantable via /authorize."
+        ),
+    )
     state: str = Field(default="", description="Opaque state value for CSRF protection")
     response_type: str = Field(default="code", description="OAuth response type (must be code)")
 
@@ -61,6 +81,15 @@ class OAuthMetadataResponse(BaseModel):
     response_types_supported: list[str]
     code_challenge_methods_supported: list[str]
     grant_types_supported: list[str]
+
+
+class ProtectedResourceMetadataResponse(BaseModel):
+    """OAuth 2.0 Protected Resource metadata (RFC 9728)."""
+
+    resource: str
+    authorization_servers: list[str]
+    scopes_supported: list[str]
+    bearer_methods_supported: list[str]
 
 
 @router.post("/authorize", tags=["oauth"])
@@ -133,6 +162,7 @@ async def authorize(
 
 @router.post("/token", response_model=TokenResponse, tags=["oauth"])
 async def token(
+    request: Request,
     grant_type: str = Form(...),
     code: str = Form(...),
     client_id: str = Form(...),
@@ -174,6 +204,7 @@ async def token(
             client_id=client_id,
             code_verifier=code_verifier,
             redirect_uri=redirect_uri,
+            audience=get_canonical_mcp_resource_uri(request),
         )
     except ValueError as exc:
         logger.warning("OAuth token exchange failed: %s", exc)
@@ -206,7 +237,7 @@ async def oauth_metadata(request: Request):
     Returns:
         OAuthMetadataResponse with server metadata.
     """
-    base_url = str(request.base_url).rstrip("/")
+    base_url = get_public_base_url(request)
 
     return OAuthMetadataResponse(
         issuer=base_url,
@@ -215,4 +246,39 @@ async def oauth_metadata(request: Request):
         response_types_supported=["code"],
         code_challenge_methods_supported=["S256"],
         grant_types_supported=["authorization_code"],
+    )
+
+
+@well_known_router.get(
+    "/.well-known/oauth-authorization-server",
+    response_model=OAuthMetadataResponse,
+    tags=["oauth"],
+)
+async def oauth_metadata_root_mirror(request: Request):
+    """RFC 8414 root-path mirror of `/api/oauth/.well-known/oauth-authorization-server`.
+
+    Spec-compliant clients (Claude.ai, MCP CLI tooling) probe the root path
+    first. Body is identical to the `/api/oauth/...` route — same handler
+    invoked for a single source of truth.
+    """
+    return await oauth_metadata(request)
+
+
+@well_known_router.get(
+    "/.well-known/oauth-protected-resource",
+    response_model=ProtectedResourceMetadataResponse,
+    tags=["oauth"],
+)
+async def oauth_protected_resource_metadata(request: Request):
+    """Return OAuth 2.0 Protected Resource metadata for `/mcp` (RFC 9728).
+
+    Tells clients which authorization server issues tokens for this resource
+    and how to present them. The `WWW-Authenticate` header on `/mcp` 401s
+    points here so a client that just got rejected can self-bootstrap.
+    """
+    return ProtectedResourceMetadataResponse(
+        resource=get_canonical_mcp_resource_uri(request),
+        authorization_servers=[get_public_base_url(request)],
+        scopes_supported=sorted(OAUTH_GRANTABLE_SCOPES),
+        bearer_methods_supported=["header"],
     )

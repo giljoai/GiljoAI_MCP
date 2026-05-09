@@ -47,6 +47,13 @@ ALLOWED_REDIRECT_URI_PATTERNS = [
     r"^http://\[::1\](:\d+)?/",
 ]
 
+# OAuth-grantable scopes for the MCP resource server (API-0021b).
+# `mcp:agent` is intentionally NOT grantable through /authorize — orchestration
+# tools (spawn_job, complete_job, send_message, …) must never be reachable by
+# OAuth clients. API keys remain the only path to mcp:agent surface.
+OAUTH_GRANTABLE_SCOPES: frozenset[str] = frozenset({"mcp:read", "mcp:write"})
+DEFAULT_OAUTH_SCOPE: str = "mcp:read mcp:write"
+
 
 class OAuthService:
     """OAuth 2.1 Authorization Code flow with PKCE support.
@@ -82,7 +89,9 @@ class OAuthService:
             code_challenge: Base64url-encoded S256 challenge (non-empty).
             code_challenge_method: Must be "S256".
             response_type: Must be "code".
-            scope: Requested scope (informational, not enforced here).
+            scope: Requested scope. Must be a subset of OAUTH_GRANTABLE_SCOPES.
+                Any token outside that set (notably `mcp:agent`) is rejected
+                outright — orchestration scope is never grantable via OAuth.
 
         Raises:
             ValueError: If any parameter fails validation.
@@ -102,6 +111,33 @@ class OAuthService:
         if not self.validate_redirect_uri(redirect_uri):
             raise ValueError(f"Invalid redirect_uri: '{redirect_uri}' does not match allowed patterns")
 
+        self._validate_scope_string(scope)
+
+    @staticmethod
+    def _validate_scope_string(scope: str) -> None:
+        """Reject any scope token outside OAUTH_GRANTABLE_SCOPES.
+
+        Empty / whitespace-only `scope` is treated as the default grant
+        (caller's choice — the route layer supplies DEFAULT_OAUTH_SCOPE as the
+        Pydantic default). Non-empty values must contain only `mcp:read` and
+        `mcp:write`. `mcp:agent` is the canonical privilege-escalation token
+        and is never grantable through /authorize.
+
+        Args:
+            scope: Space-separated scope string from the OAuth client.
+
+        Raises:
+            ValueError: If any token in `scope` is not in OAUTH_GRANTABLE_SCOPES.
+        """
+        if not scope or not scope.strip():
+            return
+        requested = {token for token in scope.split() if token}
+        forbidden = requested - OAUTH_GRANTABLE_SCOPES
+        if forbidden:
+            raise ValueError(
+                f"Scope contains non-grantable token(s): {sorted(forbidden)}. Allowed: {sorted(OAUTH_GRANTABLE_SCOPES)}"
+            )
+
     async def generate_authorization_code(
         self,
         user_id: str,
@@ -109,7 +145,7 @@ class OAuthService:
         client_id: str,
         redirect_uri: str,
         code_challenge: str,
-        scope: str = "mcp",
+        scope: str = DEFAULT_OAUTH_SCOPE,
     ) -> str:
         """Generate and store a cryptographically random authorization code.
 
@@ -122,7 +158,7 @@ class OAuthService:
             client_id: Client identifier (must be validated before calling).
             redirect_uri: Redirect URI registered for this request.
             code_challenge: Base64url-encoded S256 PKCE challenge.
-            scope: Requested scope (default "mcp").
+            scope: Requested scope (default DEFAULT_OAUTH_SCOPE = "mcp:read mcp:write").
 
         Returns:
             The generated authorization code string.
@@ -159,6 +195,7 @@ class OAuthService:
         client_id: str,
         code_verifier: str,
         redirect_uri: str,
+        audience: str | None = None,
     ) -> dict:
         """Exchange an authorization code for a JWT access token.
 
@@ -170,6 +207,10 @@ class OAuthService:
             client_id: Client ID (must match the code's client_id).
             code_verifier: PKCE code verifier to prove possession.
             redirect_uri: Must match the URI used during authorization.
+            audience: Canonical MCP resource URI to bake into the JWT `aud`
+                claim. The router computes this from the incoming request via
+                :func:`giljo_mcp.http.url_resolver.get_canonical_mcp_resource_uri`.
+                Omit only for tests that want a legacy aud-less token.
 
         Returns:
             Dict with access_token, token_type, and expires_in.
@@ -217,6 +258,8 @@ class OAuthService:
             username=user.username,
             role=user.role,
             tenant_key=user.tenant_key,
+            audience=audience,
+            scope=auth_code.scope,
         )
 
         logger.info(

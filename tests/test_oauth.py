@@ -83,7 +83,7 @@ class TestValidateAuthorizeRequest:
             code_challenge=challenge,
             code_challenge_method="S256",
             response_type="code",
-            scope="mcp",
+            scope="mcp:read mcp:write",
         )
 
     def test_invalid_client_id_rejected(self, oauth_service):
@@ -96,7 +96,7 @@ class TestValidateAuthorizeRequest:
                 code_challenge=challenge,
                 code_challenge_method="S256",
                 response_type="code",
-                scope="mcp",
+                scope="mcp:read mcp:write",
             )
 
     def test_invalid_response_type_rejected(self, oauth_service):
@@ -109,7 +109,7 @@ class TestValidateAuthorizeRequest:
                 code_challenge=challenge,
                 code_challenge_method="S256",
                 response_type="token",
-                scope="mcp",
+                scope="mcp:read mcp:write",
             )
 
     def test_invalid_challenge_method_rejected(self, oauth_service):
@@ -122,7 +122,7 @@ class TestValidateAuthorizeRequest:
                 code_challenge=challenge,
                 code_challenge_method="plain",
                 response_type="code",
-                scope="mcp",
+                scope="mcp:read mcp:write",
             )
 
     def test_empty_code_challenge_rejected(self, oauth_service):
@@ -134,7 +134,7 @@ class TestValidateAuthorizeRequest:
                 code_challenge="",
                 code_challenge_method="S256",
                 response_type="code",
-                scope="mcp",
+                scope="mcp:read mcp:write",
             )
 
     def test_disallowed_redirect_uri_rejected(self, oauth_service):
@@ -147,7 +147,7 @@ class TestValidateAuthorizeRequest:
                 code_challenge=challenge,
                 code_challenge_method="S256",
                 response_type="code",
-                scope="mcp",
+                scope="mcp:read mcp:write",
             )
 
 
@@ -216,7 +216,7 @@ class TestGenerateAuthorizationCode:
             client_id="giljo-mcp-default",
             redirect_uri="http://localhost:3000/callback",
             code_challenge=challenge,
-            scope="mcp",
+            scope="mcp:read mcp:write",
         )
 
         assert isinstance(code, str)
@@ -230,7 +230,7 @@ class TestGenerateAuthorizationCode:
         assert stored.redirect_uri == "http://localhost:3000/callback"
         assert stored.code_challenge == challenge
         assert stored.code_challenge_method == "S256"
-        assert stored.scope == "mcp"
+        assert stored.scope == "mcp:read mcp:write"
         assert stored.used is False
         assert stored.expires_at > datetime.now(UTC)
 

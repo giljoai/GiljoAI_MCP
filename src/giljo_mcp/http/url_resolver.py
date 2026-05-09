@@ -15,6 +15,11 @@ branching.
 """
 
 from fastapi import Request
+from starlette.requests import Request as StarletteRequest
+from starlette.types import Scope
+
+
+MCP_RESOURCE_PATH = "/mcp"
 
 
 def get_public_base_url(request: Request) -> str:
@@ -32,3 +37,31 @@ def get_public_base_url(request: Request) -> str:
         Base URL string like "https://demo.giljo.ai" or "http://localhost:7272".
     """
     return str(request.base_url).rstrip("/")
+
+
+def get_canonical_mcp_resource_uri(request: Request) -> str:
+    """
+    Return the canonical MCP resource URI for the current request (RFC 9728).
+
+    This is the absolute, public-facing URL of the MCP transport endpoint
+    (`/mcp`). Used as:
+    - the `aud` claim baked into JWTs minted for MCP Bearer auth
+    - the `resource` field in `/.well-known/oauth-protected-resource`
+    - the audience the MCP middleware checks tokens against
+
+    Single source of truth for "what URL identifies this MCP server" so the
+    issuer and the validator can never drift.
+    """
+    return f"{get_public_base_url(request)}{MCP_RESOURCE_PATH}"
+
+
+def get_canonical_mcp_resource_uri_from_scope(scope: Scope) -> str:
+    """ASGI-scope variant of :func:`get_canonical_mcp_resource_uri`.
+
+    The MCP Bearer middleware runs at the ASGI layer with no FastAPI Request
+    object yet constructed. Wrapping the scope in a Starlette Request lets us
+    reuse the same X-Forwarded-Host / X-Forwarded-Proto resolution that
+    :func:`get_public_base_url` relies on.
+    """
+    request = StarletteRequest(scope)
+    return f"{str(request.base_url).rstrip('/')}{MCP_RESOURCE_PATH}"

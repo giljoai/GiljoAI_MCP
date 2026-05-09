@@ -97,7 +97,7 @@ class TestOAuthAuthorizationCodeModel:
 
     def test_scope_default(self):
         col = OAuthAuthorizationCode.__table__.c.scope
-        assert col.default.arg == "mcp"
+        assert col.default.arg == "mcp:read mcp:write"
 
     def test_used_default(self):
         col = OAuthAuthorizationCode.__table__.c.used

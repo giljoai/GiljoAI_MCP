@@ -553,6 +553,11 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
     app.include_router(auth_pin_recovery.router, prefix="/api/auth", tags=["auth"])
     app.include_router(oauth.router, prefix="/api/oauth", tags=["oauth"])
+    # Root-level well-known documents (RFC 8414 + RFC 9728). Spec-compliant
+    # clients (Claude.ai, MCP CLI) probe `<host>/.well-known/...` per
+    # API-0021a. Body of the AS-metadata mirror matches the /api/oauth/...
+    # route exactly (same handler reused).
+    app.include_router(oauth.well_known_router, tags=["oauth"])
     # Handover 0506: Fixed user endpoint path to /api/v1/users
     app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
     # v3: authenticated user-scoped settings
