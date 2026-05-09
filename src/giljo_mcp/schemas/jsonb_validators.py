@@ -302,6 +302,32 @@ class APIKeyPermissions(BaseModel):
         return v
 
 
+# --- OAuthClient.redirect_uris (SaaS, API-0021c) ---
+
+
+class OAuthClientRedirectUris(BaseModel):
+    """Validates oauth_clients.redirect_uris JSONB.
+
+    Stored as a JSON array of registered redirect URIs (RFC 7591 §2).
+    Schemes are validated by the service layer (HTTPS or http://localhost
+    in dev) — this model enforces structural shape and length caps.
+    """
+
+    items: list[str] = Field(default_factory=list, max_length=10, min_length=1)
+
+    @field_validator("items")
+    @classmethod
+    def validate_items(cls, v: list[str]) -> list[str]:
+        for uri in v:
+            if not isinstance(uri, str):
+                raise TypeError(f"redirect_uris items must be strings, got {type(uri).__name__}")
+            if not uri:
+                raise ValueError("redirect_uris items must be non-empty")
+            if len(uri) > 2048:
+                raise ValueError(f"redirect_uri exceeds 2048 characters: {uri[:40]}...")
+        return v
+
+
 # --- MCPContextIndex.keywords ---
 
 
@@ -484,6 +510,16 @@ def validate_context_keywords(data: list | None) -> list | None:
     if data is None:
         return None
     return ContextIndexKeywords(items=data).items
+
+
+def validate_oauth_client_redirect_uris(data: list) -> list[str]:
+    """Validate OAuthClient.redirect_uris — list of registered URIs.
+
+    Required (non-empty) per RFC 7591 §2; max 10 entries to keep storage
+    bounded. Scheme/host policy is enforced separately at the service
+    layer where dev-vs-prod posture (allow http://localhost) is known.
+    """
+    return OAuthClientRedirectUris(items=data).items
 
 
 def validate_string_list(

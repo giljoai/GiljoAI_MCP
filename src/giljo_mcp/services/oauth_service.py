@@ -18,13 +18,22 @@ Design Principles:
 - Exception-based errors: Raises ValueError on validation failures
 - Stateless: Each method operates on the provided DB session
 - PKCE-only: No client_secret, S256 challenge method required
+
+API-0021c: client lookup is performed through a pluggable
+``ClientResolver`` (Callable). CE ships a built-in single-client resolver
+that preserves identical pre-0021c behavior. SaaS replaces it at startup
+via ``set_client_resolver()`` to look up clients in the ``oauth_clients``
+table populated by RFC 7591 Dynamic Client Registration.
 """
 
 import base64
 import hashlib
+import inspect
 import logging
 import re
 import secrets
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -55,6 +64,92 @@ OAUTH_GRANTABLE_SCOPES: frozenset[str] = frozenset({"mcp:read", "mcp:write"})
 DEFAULT_OAUTH_SCOPE: str = "mcp:read mcp:write"
 
 
+# ---------------------------------------------------------------------------
+# Client resolver seam (API-0021c)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ResolvedClient:
+    """OAuth client metadata returned by a ``ClientResolver``.
+
+    ``redirect_uris`` semantics:
+      - ``None`` → the validator falls back to :data:`ALLOWED_REDIRECT_URI_PATTERNS`
+        (used by the CE built-in single-client default; preserves localhost
+        regex matching for unchanged behavior).
+      - ``list[str]`` → exact-match validation against the registered URIs
+        (used by SaaS DCR clients per RFC 7591 §2).
+
+    ``client_secret_hash`` is None for PKCE-only public clients (built-in
+    case). DCR-registered confidential clients store a bcrypt hash; matching
+    plaintext-secret verification at /token is out of scope for API-0021c
+    (PKCE remains the proof-of-possession mechanism).
+    """
+
+    client_id: str
+    client_name: str
+    redirect_uris: list[str] | None
+    client_secret_hash: str | None
+
+
+# Resolver contract (post-API-0021c): positional ``(client_id, tenant_key)``.
+# Tenant-scoping the lookup is a hard rule (CLAUDE.md: every DB query filters
+# by tenant_key). The CE built-in is global and ignores ``tenant_key``; SaaS
+# DB-backed resolvers MUST apply it as a SQL ``WHERE`` clause.
+#
+# A resolver may return either ``ResolvedClient | None`` directly (sync) or
+# an awaitable yielding the same (async). ``validate_authorize_request`` is
+# async and awaits whichever shape the active resolver returns — this lets
+# CE keep its sync built-in default while SaaS does a true cache-miss DB
+# round-trip via :func:`giljo_mcp.saas.auth.oauth_client.lookup_client`.
+ClientResolver = Callable[
+    [str, str],
+    "ResolvedClient | None | Awaitable[ResolvedClient | None]",
+]
+
+
+def _builtin_single_client_resolver(client_id: str, tenant_key: str) -> ResolvedClient | None:
+    """CE default: only the built-in MCP client is recognized.
+
+    The built-in client is global (CE has no multi-tenant DB lookup); the
+    ``tenant_key`` argument is part of the ``ClientResolver`` contract so
+    SaaS resolvers can scope by tenant without changing the signature, but
+    CE ignores it. Returns ``None`` for any other ``client_id``, producing
+    the same ``ValueError("Invalid client_id")`` that the previous hardcoded
+    constant comparison raised.
+    """
+    _ = tenant_key  # contract-required positional arg; CE built-in is global
+    if client_id != BUILTIN_CLIENT_ID:
+        return None
+    return ResolvedClient(
+        client_id=BUILTIN_CLIENT_ID,
+        client_name="GiljoAI MCP (built-in)",
+        redirect_uris=None,
+        client_secret_hash=None,
+    )
+
+
+_resolver: ClientResolver = _builtin_single_client_resolver
+
+
+def set_client_resolver(resolver: ClientResolver) -> None:
+    """Install a process-wide ``ClientResolver``.
+
+    SaaS bootstrap calls this once at startup with a DB-backed resolver that
+    queries the ``oauth_clients`` table and falls back to the built-in
+    resolver when no row matches. CE leaves the default in place.
+    """
+    if not callable(resolver):
+        raise TypeError(f"ClientResolver must be callable, got {type(resolver).__name__}")
+    global _resolver  # noqa: PLW0603 — the seam IS the process-wide state
+    _resolver = resolver
+
+
+def get_client_resolver() -> ClientResolver:
+    """Return the currently active ``ClientResolver``."""
+    return _resolver
+
+
 class OAuthService:
     """OAuth 2.1 Authorization Code flow with PKCE support.
 
@@ -69,7 +164,7 @@ class OAuthService:
     def __init__(self, db_session: AsyncSession) -> None:
         self._db = db_session
 
-    def validate_authorize_request(
+    async def validate_authorize_request(
         self,
         client_id: str,
         redirect_uri: str,
@@ -77,6 +172,8 @@ class OAuthService:
         code_challenge_method: str,
         response_type: str,
         scope: str,
+        *,
+        tenant_key: str,
     ) -> None:
         """Validate an OAuth authorization request.
 
@@ -84,20 +181,39 @@ class OAuthService:
         This is a synchronous validation step before any DB interaction.
 
         Args:
-            client_id: Must match BUILTIN_CLIENT_ID.
-            redirect_uri: Must match an allowed localhost pattern.
+            client_id: Resolved through the active ``ClientResolver``.
+                CE default: only ``BUILTIN_CLIENT_ID`` is recognized. SaaS:
+                any client registered through DCR (RFC 7591) under the
+                authenticated user's ``tenant_key``, with the built-in
+                client preserved as a global fallback.
+            redirect_uri: Validated against the resolved client's registered
+                URIs (exact match) when ``ResolvedClient.redirect_uris`` is
+                a list, or against ``ALLOWED_REDIRECT_URI_PATTERNS`` when
+                None (built-in client localhost fallback).
             code_challenge: Base64url-encoded S256 challenge (non-empty).
             code_challenge_method: Must be "S256".
             response_type: Must be "code".
             scope: Requested scope. Must be a subset of OAUTH_GRANTABLE_SCOPES.
                 Any token outside that set (notably `mcp:agent`) is rejected
                 outright — orchestration scope is never grantable via OAuth.
+            tenant_key: Tenant scope of the authenticated user. The router
+                MUST plumb this from ``current_user.tenant_key``; the
+                resolver applies it as the DB lookup's tenant filter so a
+                client registered under tenant A cannot be discovered from
+                tenant B (CLAUDE.md tenant-isolation rule).
 
         Raises:
             ValueError: If any parameter fails validation.
         """
-        if client_id != BUILTIN_CLIENT_ID:
-            raise ValueError(f"Invalid client_id: expected '{BUILTIN_CLIENT_ID}', got '{client_id}'")
+        if not tenant_key:
+            raise ValueError("tenant_key is required for authorize-request validation")
+        resolver_result = _resolver(client_id, tenant_key)
+        if inspect.isawaitable(resolver_result):
+            resolved = await resolver_result
+        else:
+            resolved = resolver_result
+        if resolved is None:
+            raise ValueError(f"Invalid client_id: no client registered for '{client_id}'")
 
         if response_type != "code":
             raise ValueError(f"Invalid response_type: expected 'code', got '{response_type}'")
@@ -108,10 +224,25 @@ class OAuthService:
         if not code_challenge:
             raise ValueError("code_challenge is required and must be non-empty")
 
-        if not self.validate_redirect_uri(redirect_uri):
-            raise ValueError(f"Invalid redirect_uri: '{redirect_uri}' does not match allowed patterns")
+        if not self._redirect_uri_matches(resolved, redirect_uri):
+            raise ValueError(f"Invalid redirect_uri: '{redirect_uri}' is not registered for this client")
 
         self._validate_scope_string(scope)
+
+    @staticmethod
+    def _redirect_uri_matches(resolved: ResolvedClient, redirect_uri: str) -> bool:
+        """Apply the right redirect_uri policy for the resolved client.
+
+        DCR clients (``redirect_uris`` is a concrete list) require exact match
+        per RFC 7591 §3 / §3.2. The built-in single client (``redirect_uris``
+        is None) keeps the legacy localhost-pattern behavior for backwards
+        compatibility with existing CE OAuth flows.
+        """
+        if resolved.redirect_uris is None:
+            return OAuthService.validate_redirect_uri(redirect_uri)
+        if not redirect_uri:
+            return False
+        return redirect_uri in resolved.redirect_uris
 
     @staticmethod
     def _validate_scope_string(scope: str) -> None:

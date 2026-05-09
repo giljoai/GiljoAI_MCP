@@ -71,83 +71,90 @@ async def oauth_service(db_session) -> OAuthService:
     return OAuthService(db_session=db_session)
 
 
+@pytest.mark.asyncio
 class TestValidateAuthorizeRequest:
     """Tests for validate_authorize_request validation logic."""
 
-    def test_valid_request_passes(self, oauth_service):
+    async def test_valid_request_passes(self, oauth_service, test_tenant_key):
         """A fully valid authorize request should not raise."""
         _verifier, challenge = _generate_pkce_pair()
-        oauth_service.validate_authorize_request(
+        await oauth_service.validate_authorize_request(
             client_id="giljo-mcp-default",
             redirect_uri="http://localhost:3000/callback",
             code_challenge=challenge,
             code_challenge_method="S256",
             response_type="code",
             scope="mcp:read mcp:write",
+            tenant_key=test_tenant_key,
         )
 
-    def test_invalid_client_id_rejected(self, oauth_service):
+    async def test_invalid_client_id_rejected(self, oauth_service, test_tenant_key):
         """An unknown client_id must be rejected."""
         _verifier, challenge = _generate_pkce_pair()
         with pytest.raises(ValueError, match="client_id"):
-            oauth_service.validate_authorize_request(
+            await oauth_service.validate_authorize_request(
                 client_id="unknown-client",
                 redirect_uri="http://localhost:3000/callback",
                 code_challenge=challenge,
                 code_challenge_method="S256",
                 response_type="code",
                 scope="mcp:read mcp:write",
+                tenant_key=test_tenant_key,
             )
 
-    def test_invalid_response_type_rejected(self, oauth_service):
+    async def test_invalid_response_type_rejected(self, oauth_service, test_tenant_key):
         """Only response_type='code' is allowed."""
         _verifier, challenge = _generate_pkce_pair()
         with pytest.raises(ValueError, match="response_type"):
-            oauth_service.validate_authorize_request(
+            await oauth_service.validate_authorize_request(
                 client_id="giljo-mcp-default",
                 redirect_uri="http://localhost:3000/callback",
                 code_challenge=challenge,
                 code_challenge_method="S256",
                 response_type="token",
                 scope="mcp:read mcp:write",
+                tenant_key=test_tenant_key,
             )
 
-    def test_invalid_challenge_method_rejected(self, oauth_service):
+    async def test_invalid_challenge_method_rejected(self, oauth_service, test_tenant_key):
         """Only code_challenge_method='S256' is allowed."""
         _verifier, challenge = _generate_pkce_pair()
         with pytest.raises(ValueError, match="code_challenge_method"):
-            oauth_service.validate_authorize_request(
+            await oauth_service.validate_authorize_request(
                 client_id="giljo-mcp-default",
                 redirect_uri="http://localhost:3000/callback",
                 code_challenge=challenge,
                 code_challenge_method="plain",
                 response_type="code",
                 scope="mcp:read mcp:write",
+                tenant_key=test_tenant_key,
             )
 
-    def test_empty_code_challenge_rejected(self, oauth_service):
+    async def test_empty_code_challenge_rejected(self, oauth_service, test_tenant_key):
         """An empty code_challenge must be rejected."""
         with pytest.raises(ValueError, match="code_challenge"):
-            oauth_service.validate_authorize_request(
+            await oauth_service.validate_authorize_request(
                 client_id="giljo-mcp-default",
                 redirect_uri="http://localhost:3000/callback",
                 code_challenge="",
                 code_challenge_method="S256",
                 response_type="code",
                 scope="mcp:read mcp:write",
+                tenant_key=test_tenant_key,
             )
 
-    def test_disallowed_redirect_uri_rejected(self, oauth_service):
+    async def test_disallowed_redirect_uri_rejected(self, oauth_service, test_tenant_key):
         """A redirect_uri not matching allowed patterns must be rejected."""
         _verifier, challenge = _generate_pkce_pair()
         with pytest.raises(ValueError, match="redirect_uri"):
-            oauth_service.validate_authorize_request(
+            await oauth_service.validate_authorize_request(
                 client_id="giljo-mcp-default",
                 redirect_uri="https://evil.example.com/callback",
                 code_challenge=challenge,
                 code_challenge_method="S256",
                 response_type="code",
                 scope="mcp:read mcp:write",
+                tenant_key=test_tenant_key,
             )
 
 

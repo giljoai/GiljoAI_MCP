@@ -42,6 +42,13 @@
   // Brand gradients
   --gradient-brand: linear-gradient(45deg, #ffd93d, #6bcf7f);
   --gradient-orchestrator-card: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+  // Permission-icon colors (API-0021c) — used by the OAuth consent screens to
+  // distinguish read-vs-write permission scopes. `--color-permission-write` is
+  // Material amber 300; intentionally NOT the brand yellow (`--color-accent-primary`)
+  // which is reserved for the read scope. Keeps a clear visual delta between the
+  // two icons on the consent dialog.
+  --color-permission-write: #ffb74d;
 }
 
 // Base styles

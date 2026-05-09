@@ -454,7 +454,8 @@ class TestS10AuthorizeRejectsAgentScope:
     the api_client fixture in its own conftest tree.
     """
 
-    def test_validate_authorize_request_rejects_mcp_agent_scope(self, db_session):
+    @pytest.mark.asyncio
+    async def test_validate_authorize_request_rejects_mcp_agent_scope(self, db_session):
         from giljo_mcp.services.oauth_service import (
             BUILTIN_CLIENT_ID,
             OAUTH_GRANTABLE_SCOPES,
@@ -463,17 +464,19 @@ class TestS10AuthorizeRejectsAgentScope:
 
         service = OAuthService(db_session=db_session)
         with pytest.raises(ValueError, match="mcp:agent"):
-            service.validate_authorize_request(
+            await service.validate_authorize_request(
                 client_id=BUILTIN_CLIENT_ID,
                 redirect_uri="http://localhost:8080/callback",
                 code_challenge="E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
                 code_challenge_method="S256",
                 response_type="code",
                 scope="mcp:read mcp:agent",
+                tenant_key="tk_scope_filter_test",
             )
         assert "mcp:agent" not in OAUTH_GRANTABLE_SCOPES
 
-    def test_validate_authorize_request_accepts_default_scope(self, db_session):
+    @pytest.mark.asyncio
+    async def test_validate_authorize_request_accepts_default_scope(self, db_session):
         from giljo_mcp.services.oauth_service import (
             BUILTIN_CLIENT_ID,
             DEFAULT_OAUTH_SCOPE,
@@ -482,13 +485,14 @@ class TestS10AuthorizeRejectsAgentScope:
 
         service = OAuthService(db_session=db_session)
         # Should not raise.
-        service.validate_authorize_request(
+        await service.validate_authorize_request(
             client_id=BUILTIN_CLIENT_ID,
             redirect_uri="http://localhost:8080/callback",
             code_challenge="E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
             code_challenge_method="S256",
             response_type="code",
             scope=DEFAULT_OAUTH_SCOPE,
+            tenant_key="tk_scope_filter_test",
         )
 
 

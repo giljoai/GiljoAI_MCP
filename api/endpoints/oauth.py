@@ -120,13 +120,14 @@ async def authorize(
     oauth_service = OAuthService(db_session=db)
 
     try:
-        oauth_service.validate_authorize_request(
+        await oauth_service.validate_authorize_request(
             client_id=body.client_id,
             redirect_uri=body.redirect_uri,
             code_challenge=body.code_challenge,
             code_challenge_method=body.code_challenge_method,
             response_type=body.response_type,
             scope=body.scope,
+            tenant_key=current_user.tenant_key,
         )
     except ValueError as exc:
         logger.warning("OAuth authorize validation failed: %s", exc)

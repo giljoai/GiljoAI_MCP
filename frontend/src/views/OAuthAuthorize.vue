@@ -116,75 +116,97 @@
           </v-card-text>
 
           <!-- Consent Form (shown when authenticated) -->
+          <!--
+            Extension seam (API-0021c): when an override component is provided
+            (via the `overrideConsentComponent` prop OR the runtime SaaS glob
+            below), it replaces this whole consent body. The override receives
+            `client`, `scopes`, and `authorizing` props and emits `allow` /
+            `deny` — same contract as DemoConsentScreen.vue. CE never imports
+            the SaaS file; the glob resolves to {} when frontend/src/saas/ is
+            absent (post-export). Pattern matches Login.vue's
+            ForgotPasswordEmail injection.
+          -->
           <v-card-text v-else class="pa-6">
-            <!-- Client info -->
-            <div class="d-flex align-center mb-4">
-              <v-avatar color="primary" size="48" class="mr-4">
-                <v-icon size="24" color="white">mdi-application</v-icon>
-              </v-avatar>
-              <div>
-                <p class="text-subtitle-1 font-weight-medium">{{ clientDisplayName }}</p>
-                <p class="text-caption text-muted-a11y">wants to access your account</p>
+            <component
+              :is="resolvedOverrideComponent"
+              v-if="resolvedOverrideComponent"
+              data-testid="consent-override"
+              :client="seamClient"
+              :scopes="scopeDescriptions"
+              :authorizing="authorizing"
+              @allow="handleAuthorize"
+              @deny="handleDeny"
+            />
+            <template v-else>
+              <!-- Client info -->
+              <div class="d-flex align-center mb-4">
+                <v-avatar color="primary" size="48" class="mr-4">
+                  <v-icon size="24" color="white">mdi-application</v-icon>
+                </v-avatar>
+                <div>
+                  <p class="text-subtitle-1 font-weight-medium">{{ clientDisplayName }}</p>
+                  <p class="text-caption text-muted-a11y">wants to access your account</p>
+                </div>
               </div>
-            </div>
 
-            <v-divider class="mb-4" />
+              <v-divider class="mb-4" />
 
-            <!-- Requested permissions -->
-            <p class="text-subtitle-2 font-weight-medium mb-2">Requested permissions</p>
-            <v-list density="compact" class="mb-4 bg-transparent">
-              <v-list-item
-                v-for="permission in scopeDescriptions"
-                :key="permission.scope"
-                class="px-0"
-              >
-                <template #prepend>
-                  <v-icon color="primary" size="20" class="mr-3">{{ permission.icon }}</v-icon>
-                </template>
-                <v-list-item-title class="text-body-2">
-                  {{ permission.label }}
-                </v-list-item-title>
-                <v-list-item-subtitle class="text-caption">
-                  {{ permission.description }}
-                </v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
+              <!-- Requested permissions -->
+              <p class="text-subtitle-2 font-weight-medium mb-2">Requested permissions</p>
+              <v-list density="compact" class="mb-4 bg-transparent">
+                <v-list-item
+                  v-for="permission in scopeDescriptions"
+                  :key="permission.scope"
+                  class="px-0"
+                >
+                  <template #prepend>
+                    <v-icon color="primary" size="20" class="mr-3">{{ permission.icon }}</v-icon>
+                  </template>
+                  <v-list-item-title class="text-body-2">
+                    {{ permission.label }}
+                  </v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">
+                    {{ permission.description }}
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
 
-            <v-divider class="mb-4" />
+              <v-divider class="mb-4" />
 
-            <!-- User identity -->
-            <div class="d-flex align-center mb-4">
-              <v-icon size="18" class="mr-2 text-muted-a11y">mdi-account-circle</v-icon>
-              <span class="text-body-2 text-muted-a11y">
-                Signed in as <strong>{{ currentUser?.username }}</strong>
-              </span>
-            </div>
+              <!-- User identity -->
+              <div class="d-flex align-center mb-4">
+                <v-icon size="18" class="mr-2 text-muted-a11y">mdi-account-circle</v-icon>
+                <span class="text-body-2 text-muted-a11y">
+                  Signed in as <strong>{{ currentUser?.username }}</strong>
+                </span>
+              </div>
 
-            <!-- Action buttons -->
-            <div class="d-flex ga-3">
-              <v-btn
-                variant="outlined"
-                size="large"
-                class="flex-grow-1"
-                :disabled="authorizing"
-                aria-label="Deny authorization and return to the application"
-                @click="handleDeny"
-              >
-                Deny
-              </v-btn>
-              <v-btn
-                color="primary"
-                size="large"
-                class="flex-grow-1"
-                :loading="authorizing"
-                :disabled="authorizing"
-                aria-label="Authorize this application to access your account"
-                @click="handleAuthorize"
-              >
-                <v-icon v-if="!authorizing" start>mdi-check</v-icon>
-                {{ authorizing ? 'Authorizing...' : 'Authorize' }}
-              </v-btn>
-            </div>
+              <!-- Action buttons -->
+              <div class="d-flex ga-3">
+                <v-btn
+                  variant="outlined"
+                  size="large"
+                  class="flex-grow-1"
+                  :disabled="authorizing"
+                  aria-label="Deny authorization and return to the application"
+                  @click="handleDeny"
+                >
+                  Deny
+                </v-btn>
+                <v-btn
+                  color="primary"
+                  size="large"
+                  class="flex-grow-1"
+                  :loading="authorizing"
+                  :disabled="authorizing"
+                  aria-label="Authorize this application to access your account"
+                  @click="handleAuthorize"
+                >
+                  <v-icon v-if="!authorizing" start>mdi-check</v-icon>
+                  {{ authorizing ? 'Authorizing...' : 'Authorize' }}
+                </v-btn>
+              </div>
+            </template>
           </v-card-text>
 
           <v-divider />
@@ -203,11 +225,38 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, shallowRef, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import { apiClient } from '@/services/api'
+import configService from '@/services/configService'
+
+// API-0021c — Extension seam contract:
+//
+// Optional `overrideConsentComponent` prop allows a parent (or test) to inject
+// a consent body component directly. In production, the SaaS glob below loads
+// `@/saas/components/DemoConsentScreen.vue` lazily when GILJO_MODE != 'ce'.
+//
+// The override receives:
+//   - client: { id: string, name: string }   — display data only
+//   - scopes: Array<{ scope, label, description, icon }>  — already mapped
+//   - authorizing: boolean                                — async lock state
+//
+// And emits:
+//   - 'allow'  → triggers handleAuthorize()
+//   - 'deny'   → triggers handleDeny()
+//
+// CE never imports from frontend/src/saas/. The import.meta.glob pattern is
+// CE-export safe: when the saas/ directory is stripped, the glob returns {}
+// and the loader silently no-ops. Same pattern as Login.vue's
+// ForgotPasswordEmail and DefaultLayout's TrialBanner.
+const props = defineProps({
+  overrideConsentComponent: {
+    type: [Object, Function],
+    default: null,
+  },
+})
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -260,11 +309,44 @@ const clientDisplayName = computed(() => {
   return knownClients[clientId] || clientId
 })
 
-// Map scope strings to descriptive permission entries
+// Seam payload for the override component. Single object so future fields
+// (e.g. logo URL once DCR lands per API-0021c backend) can be added without
+// changing the prop signature.
+const seamClient = computed(() => ({
+  id: oauthParams.value.client_id,
+  name: clientDisplayName.value,
+}))
+
+// Holds a SaaS-injected override loaded via import.meta.glob (see onMounted).
+// shallowRef avoids Vue making the component definition deeply reactive.
+const saasOverrideComponent = shallowRef(null)
+
+// Combined resolution: explicit prop wins over the runtime SaaS glob. The
+// prop is what tests use; the glob is what production demo/saas builds use.
+const resolvedOverrideComponent = computed(
+  () => props.overrideConsentComponent || saasOverrideComponent.value,
+)
+
+// Map scope strings to descriptive permission entries.
+// Grantable scopes per API-0021b: `mcp:read`, `mcp:write`. Legacy `mcp` /
+// `read` / `write` strings are kept as fallbacks for older clients during
+// the rollout, but new flows will surface the namespaced form.
 const scopeDescriptions = computed(() => {
-  const scopeStr = oauthParams.value.scope || 'mcp'
+  const scopeStr = oauthParams.value.scope || 'mcp:read mcp:write'
   const scopes = scopeStr.split(' ').filter(Boolean)
   const descriptions = {
+    'mcp:read': {
+      scope: 'mcp:read',
+      label: 'MCP Read Access',
+      description: 'Read your projects, tasks, and agent state via the MCP protocol',
+      icon: 'mdi-eye',
+    },
+    'mcp:write': {
+      scope: 'mcp:write',
+      label: 'MCP Write Access',
+      description: 'Create and modify projects, tasks, and agent state via the MCP protocol',
+      icon: 'mdi-pencil',
+    },
     mcp: {
       scope: 'mcp',
       label: 'MCP Tool Access',
@@ -373,6 +455,31 @@ onMounted(async () => {
       await userStore.fetchCurrentUser()
     } catch {
       // Not authenticated -- will show login form
+    }
+  }
+
+  // Dynamically load the SaaS consent override when not in CE mode.
+  // Uses import.meta.glob (Vite-aware) so the file bundles into a chunk for
+  // SaaS/private builds and is silently absent in CE builds where the saas/
+  // directory has been stripped by the export pipeline. CE-export safety:
+  // glob returns {} → loader is undefined → seam stays inert.
+  let mode = 'ce'
+  try {
+    await configService.fetchConfig()
+    mode = configService.getGiljoMode()
+  } catch {
+    // Default to CE on config failure.
+  }
+  if (mode !== 'ce') {
+    const overrideLoaders = import.meta.glob('@/saas/components/DemoConsentScreen.vue')
+    const [loader] = Object.values(overrideLoaders)
+    if (loader) {
+      try {
+        const mod = await loader()
+        saasOverrideComponent.value = mod.default
+      } catch (error) {
+        console.warn('[OAuthAuthorize] DemoConsentScreen failed to load:', error)
+      }
     }
   }
 })
