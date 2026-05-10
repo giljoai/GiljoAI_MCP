@@ -287,9 +287,14 @@ class OAuthService:
 
         Three cases:
           1. Auth-code carries a resource (new flow, post-API-0021d): the
-             client's asserted resource MUST equal the bound value. Mismatch
-             is invalid_grant per RFC 8707 §2.2; missing-when-required is
-             invalid_request.
+             bound value is authoritative. If the client also asserts
+             ``resource`` at /token, it MUST equal the bound value
+             (mismatch → invalid_grant per RFC 8707 §2.2). If the client
+             omits ``resource`` at /token, RFC 8707 §2 says the server
+             SHOULD use the value provided at /authorize — we do. API-0021e
+             Phase 1.4: ChatGPT-class clients legitimately rely on this
+             fallback; claude.ai-class clients echo the value (still
+             verified to match).
           2. Auth-code has no resource (pre-API-0021d in-flight code) but
              the client asserted one: accept the client's value as
              authoritative for binding. Bounded validation (URI shape,
@@ -301,9 +306,7 @@ class OAuthService:
              the back-compat at /mcp closes.
         """
         if code_resource is not None:
-            if client_resource is None:
-                raise ValueError("resource is required for this token request")
-            if client_resource != code_resource:
+            if client_resource is not None and client_resource != code_resource:
                 raise ValueError("resource does not match the value bound to the authorization code")
             return code_resource
         if client_resource is not None:

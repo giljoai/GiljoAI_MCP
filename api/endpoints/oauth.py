@@ -314,11 +314,13 @@ async def token(
             PKCE as alternative proof-of-possession mechanisms). When a
             confidential client DOES include a verifier, it must match the
             stored challenge (defense-in-depth). API-0021e Phase 1.1.
-        resource: RFC 8707 resource indicator. Required when the auth-code
-            record carries one (i.e. /authorize was called with `resource`);
-            in that case the value here MUST equal the bound value or the
-            request is rejected as ``invalid_grant`` (401). Optional only for
-            pre-API-0021d in-flight codes that have no bound resource.
+        resource: RFC 8707 resource indicator. Optional at /token: when
+            the auth-code record carries a bound resource, the bound value
+            is authoritative — if the client asserts ``resource`` here it
+            MUST equal the bound value (mismatch → ``invalid_grant`` 401);
+            if the client omits it, the server falls back to the bound
+            value per RFC 8707 §2 (SHOULD use the value from /authorize).
+            API-0021e Phase 1.4 (ChatGPT compat).
         client_secret: Plaintext client secret for confidential clients
             registered via RFC 7591 DCR. Required when the resolved client
             carries a ``client_secret_hash``; rejected as ``invalid_client``

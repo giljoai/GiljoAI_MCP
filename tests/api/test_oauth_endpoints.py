@@ -416,15 +416,27 @@ class TestResourceIndicatorBinding:
     """
 
     @pytest.mark.asyncio
-    async def test_token_without_resource_when_code_bound_returns_400(self, api_client, db_manager):
-        """Auth-code carries `resource`; client omits it at /token → 400 invalid_request."""
+    async def test_token_uses_bound_resource_when_request_omits_it(self, api_client, db_manager):
+        """RFC 8707 §2 (Phase 1.4): when /token omits `resource`, server SHOULD use the
+        value bound at /authorize. ChatGPT compat — claude.ai echoes resource at /token,
+        ChatGPT does not. Both are spec-legitimate.
+
+        Pre-Phase-1.4: 400 invalid_request "resource is required for this token request".
+        Post-Phase-1.4: 200, JWT.aud equals the auth-code's bound resource.
+
+        Replaces the Phase-2 contract test that locked in the strict-required behavior
+        (commit `f130868a2`). Demo prod evidence 2026-05-10 15:19:16 EDT.
+        """
+        import jwt as _jwt
+
         verifier, challenge = _generate_pkce_pair()
         code_value = secrets.token_urlsafe(64)
+        bound_resource = "https://demo.giljo.ai/mcp"
         await _seed_user_and_code(
             db_manager,
             challenge=challenge,
             code_value=code_value,
-            resource="https://demo.giljo.ai/mcp",
+            resource=bound_resource,
         )
 
         response = await api_client.post(
@@ -435,13 +447,13 @@ class TestResourceIndicatorBinding:
                 "client_id": BUILTIN_CLIENT_ID,
                 "code_verifier": verifier,
                 "redirect_uri": "http://localhost:3000/callback",
-                # no resource
+                # client omits resource — server falls back to bound value
             },
         )
-        assert response.status_code == 400, response.text
+        assert response.status_code == 200, response.text
         body = response.json()
-        detail_text = body.get("detail", body.get("message", ""))
-        assert "invalid_request" in detail_text.lower()
+        decoded = _jwt.decode(body["access_token"], options={"verify_signature": False})
+        assert decoded.get("aud") == bound_resource, decoded
 
     @pytest.mark.asyncio
     async def test_token_resource_mismatch_returns_401_invalid_grant(self, api_client, db_manager):
