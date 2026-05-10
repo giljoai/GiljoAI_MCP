@@ -49,9 +49,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from giljo_mcp.auth.jwt_manager import JWTManager
 from giljo_mcp.models.auth import User
 from giljo_mcp.models.oauth import OAuthAuthorizationCode
+from giljo_mcp.services import oauth_token_idempotency as _idem
 
 
 logger = logging.getLogger(__name__)
+
 
 BUILTIN_CLIENT_ID = "giljo-mcp-default"
 AUTHORIZATION_CODE_LIFETIME_MINUTES = 10
@@ -538,17 +540,8 @@ class OAuthService:
         if auth_code is None:
             raise ValueError("Authorization code not found")
 
-        if auth_code.used:
-            raise ValueError("Authorization code has already been used")
-
-        if auth_code.expires_at < datetime.now(UTC):
-            raise ValueError("Authorization code has expired")
-
         if auth_code.client_id != client_id:
             raise ValueError(f"client_id mismatch: expected '{auth_code.client_id}', got '{client_id}'")
-
-        if auth_code.redirect_uri != redirect_uri:
-            raise ValueError(f"redirect_uri mismatch: expected '{auth_code.redirect_uri}', got '{redirect_uri}'")
 
         # API-0021e Phase 1: client authentication for confidential clients.
         # Looks up the client through the active resolver under the auth-code's
@@ -556,11 +549,47 @@ class OAuthService:
         # ``client_secret_hash`` on the resolved record IS the auth-method
         # signal: hash present → confidential (secret required), hash absent →
         # public PKCE-only (secret forbidden).
+        #
+        # API-0021l: client authentication runs BEFORE the used/expired
+        # checks so a retry with a wrong client_secret produces a clean
+        # 401 invalid_client (RFC 6749 §5.2 semantics) regardless of
+        # whether the auth-code has already been consumed by a sibling
+        # request inside the idempotency window.
         resolved_client = await self._verify_client_authentication(
             client_id=client_id,
             tenant_key=tenant_key_hint or auth_code.tenant_key,
             client_secret=client_secret,
         )
+
+        # API-0021l: idempotency-window cache check. If a sibling request
+        # inside the window has the SAME (tenant, code, client_id, proof,
+        # redirect_uri) signature, return the previously-issued token pair
+        # so concurrent retries from the same client see a consistent 200
+        # instead of one 200 + one 400. Mismatched signature falls through
+        # to the existing fail-closed path.
+        idem_proof = client_secret if resolved_client.client_secret_hash is not None else (code_verifier or "")
+        idem_key = (auth_code.tenant_key, code)
+        idem_signature = _idem.compute_body_signature(
+            client_id=client_id,
+            proof=idem_proof or "",
+            redirect_uri=redirect_uri,
+        )
+        cached = _idem.cache_get(idem_key, now=datetime.now(UTC))
+        if cached is not None and cached.body_signature == idem_signature:
+            logger.info(
+                "oauth_token_idempotency_hit tenant=%s",
+                auth_code.tenant_key[:12] if auth_code.tenant_key else "",
+            )
+            return dict(cached.response_body)
+
+        if auth_code.used:
+            raise ValueError("Authorization code has already been used")
+
+        if auth_code.expires_at < datetime.now(UTC):
+            raise ValueError("Authorization code has expired")
+
+        if auth_code.redirect_uri != redirect_uri:
+            raise ValueError(f"redirect_uri mismatch: expected '{auth_code.redirect_uri}', got '{redirect_uri}'")
 
         # API-0021e Phase 1.1: PKCE branching by client type.
         # RFC 6749 §6 / RFC 7636: client_secret and PKCE are alternative
@@ -646,6 +675,19 @@ class OAuthService:
             )
             response["refresh_token"] = refresh_token
             response["refresh_expires_in"] = REFRESH_TOKEN_LIFETIME_SECONDS
+
+        # API-0021l: write the response into the idempotency cache so a
+        # concurrent retry that arrives microseconds later sees the same
+        # token pair instead of a 400 from the spec-strict single-use
+        # auth-code enforcement.
+        _idem.cache_put(
+            idem_key,
+            _idem.IdempotencyEntry(
+                response_body=dict(response),
+                body_signature=idem_signature,
+                expires_at=datetime.now(UTC) + timedelta(seconds=_idem.OAUTH_TOKEN_IDEMPOTENCY_WINDOW_SECONDS),
+            ),
+        )
 
         return response
 

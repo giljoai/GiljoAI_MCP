@@ -1202,3 +1202,406 @@ class TestAuthorizeAcceptsClaudeComRedirectUri:
         assert response.status_code in (200, 302), response.text
         data = response.json()
         assert data["redirect_uri"].startswith("https://claude.com/api/mcp/auth_callback")
+
+
+# ---------------------------------------------------------------------------
+# API-0021l — 5-second idempotency window for confidential-client retry races
+# ---------------------------------------------------------------------------
+#
+# Live evidence: demo.giljo.ai 2026-05-10 15:41:48 EDT logs show ChatGPT's
+# connector backend issuing TWO concurrent POST /api/oauth/token from
+# different Azure egress IPs (20.169.78.85, 20.169.78.90) within the same
+# second using the same auth-code. Spec-strict single-use enforcement
+# returned 200 for the first and 400 "Authorization code has already been
+# used" for the second. The second response made the UI flash "Something
+# went wrong" before reading success. Auth0/Okta/AWS Cognito all implement
+# a short idempotency window for confidential clients to absorb honest
+# retries — this class locks in our equivalent at the FastAPI layer
+# (CLAUDE.md: regression test at the failing layer).
+
+
+class TestTokenIdempotency:
+    """API-0021l: confidential-client retries inside the cache window must
+    succeed with the SAME token pair. Outside the window OR with mismatched
+    bound parameters they must fail closed exactly like before.
+
+    Tests run through the FastAPI route — the bug occurred at the HTTP
+    boundary (two concurrent POSTs from different Azure egress IPs), so
+    the regression must exercise that boundary, not the service directly.
+    """
+
+    @pytest.mark.asyncio
+    async def test_concurrent_same_code_returns_same_token_pair(self, api_client, db_manager):
+        """Two near-simultaneous POSTs with identical bodies → both 200 with
+        byte-identical access_token + refresh_token. Reproduces the ChatGPT
+        connector race verbatim.
+        """
+        verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        client_id, plaintext_secret, _tenant_key, secret_hash = await _seed_confidential_dcr_code(
+            db_manager, challenge=challenge, code_value=code_value
+        )
+
+        restore = _install_confidential_resolver(client_id, secret_hash, "http://localhost:3000/callback")
+        try:
+            payload = {
+                "grant_type": "authorization_code",
+                "code": code_value,
+                "client_id": client_id,
+                "code_verifier": verifier,
+                "redirect_uri": "http://localhost:3000/callback",
+                "client_secret": plaintext_secret,
+            }
+            first = await api_client.post("/api/oauth/token", data=payload)
+            second = await api_client.post("/api/oauth/token", data=payload)
+        finally:
+            restore()
+
+        assert first.status_code == 200, first.text
+        assert second.status_code == 200, second.text
+        body1 = first.json()
+        body2 = second.json()
+        assert body1["access_token"] == body2["access_token"], (body1, body2)
+        assert body1.get("refresh_token") == body2.get("refresh_token"), (body1, body2)
+
+    @pytest.mark.asyncio
+    async def test_post_window_same_code_rejected(self, api_client, db_manager, monkeypatch):
+        """Outside the idempotency window the second POST must fail closed.
+        TTL is monkeypatched to 1 second so the test sleeps 1.5s then retries.
+        """
+        import time as _time
+
+        from giljo_mcp.services import oauth_token_idempotency as _idem_svc
+
+        monkeypatch.setattr(_idem_svc, "OAUTH_TOKEN_IDEMPOTENCY_WINDOW_SECONDS", 1)
+
+        verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        client_id, plaintext_secret, _tenant_key, secret_hash = await _seed_confidential_dcr_code(
+            db_manager, challenge=challenge, code_value=code_value
+        )
+
+        restore = _install_confidential_resolver(client_id, secret_hash, "http://localhost:3000/callback")
+        try:
+            payload = {
+                "grant_type": "authorization_code",
+                "code": code_value,
+                "client_id": client_id,
+                "code_verifier": verifier,
+                "redirect_uri": "http://localhost:3000/callback",
+                "client_secret": plaintext_secret,
+            }
+            first = await api_client.post("/api/oauth/token", data=payload)
+            assert first.status_code == 200, first.text
+            _time.sleep(1.5)
+            second = await api_client.post("/api/oauth/token", data=payload)
+        finally:
+            restore()
+
+        assert second.status_code == 400, second.text
+        body0 = second.json()
+        detail_text0 = body0.get("detail", body0.get("message", "")).lower()
+        assert "invalid_request" in detail_text0 or "already been used" in detail_text0, body0
+
+    @pytest.mark.asyncio
+    async def test_same_code_different_secret_rejected_in_window(self, api_client, db_manager):
+        """Inside the window with a WRONG client_secret on the second POST
+        must NOT serve the cached 200 — body_signature mismatches, the cache
+        is bypassed, and the existing fail-closed path returns 401
+        invalid_client (the auth-code is already consumed, but
+        client-authentication runs first and rejects).
+        """
+        verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        client_id, plaintext_secret, _tenant_key, secret_hash = await _seed_confidential_dcr_code(
+            db_manager, challenge=challenge, code_value=code_value
+        )
+
+        restore = _install_confidential_resolver(client_id, secret_hash, "http://localhost:3000/callback")
+        try:
+            base_payload = {
+                "grant_type": "authorization_code",
+                "code": code_value,
+                "client_id": client_id,
+                "code_verifier": verifier,
+                "redirect_uri": "http://localhost:3000/callback",
+            }
+            first = await api_client.post(
+                "/api/oauth/token",
+                data={**base_payload, "client_secret": plaintext_secret},
+            )
+            assert first.status_code == 200, first.text
+            second = await api_client.post(
+                "/api/oauth/token",
+                data={**base_payload, "client_secret": "totally-wrong-secret"},
+            )
+        finally:
+            restore()
+
+        assert second.status_code == 401, second.text
+        body = second.json()
+        detail_text = body.get("detail", body.get("message", "")).lower()
+        assert "invalid_client" in detail_text, body
+
+    @pytest.mark.asyncio
+    async def test_same_code_different_redirect_rejected_in_window(self, api_client, db_manager):
+        """Inside the window with a different redirect_uri must fail closed.
+        The cache key is (tenant, code) but the body_signature includes
+        redirect_uri, so a mismatch falls through to the existing logic which
+        rejects (auth-code already consumed → invalid_request 400).
+        """
+        verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        client_id, plaintext_secret, _tenant_key, secret_hash = await _seed_confidential_dcr_code(
+            db_manager, challenge=challenge, code_value=code_value
+        )
+
+        # Resolver has to recognize BOTH redirect URIs as registered, otherwise
+        # the second call would fail at /token with "redirect_uri mismatch"
+        # for the wrong reason (validation-against-registered-list, not
+        # idempotency-bypass). The bug we're guarding against is the cache
+        # serving a 200 even though the asserted redirect_uri changed.
+        from giljo_mcp.services import oauth_service as svc
+
+        prior = svc.get_client_resolver()
+
+        def _resolver(cid: str, tenant_key: str):
+            assert tenant_key
+            if cid != client_id:
+                return None
+            return svc.ResolvedClient(
+                client_id=cid,
+                client_name="DCR Confidential Test Client",
+                redirect_uris=[
+                    "http://localhost:3000/callback",
+                    "http://localhost:3000/other",
+                ],
+                client_secret_hash=secret_hash,
+            )
+
+        svc.set_client_resolver(_resolver)
+        try:
+            base_payload = {
+                "grant_type": "authorization_code",
+                "code": code_value,
+                "client_id": client_id,
+                "code_verifier": verifier,
+                "client_secret": plaintext_secret,
+            }
+            first = await api_client.post(
+                "/api/oauth/token",
+                data={**base_payload, "redirect_uri": "http://localhost:3000/callback"},
+            )
+            assert first.status_code == 200, first.text
+            second = await api_client.post(
+                "/api/oauth/token",
+                data={**base_payload, "redirect_uri": "http://localhost:3000/other"},
+            )
+        finally:
+            svc.set_client_resolver(prior)
+
+        assert second.status_code == 400, second.text
+        body = second.json()
+        detail_text = body.get("detail", body.get("message", "")).lower()
+        assert "invalid_request" in detail_text, body
+
+    @pytest.mark.asyncio
+    async def test_concurrent_refresh_returns_same_new_pair(self, api_client, db_manager):
+        """/refresh equivalent of test #1: a confidential client that retries
+        the same refresh_token inside the window must get the SAME rotated
+        pair, not a second rotation that revokes the first.
+        """
+        import bcrypt as _bcrypt
+
+        verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        from uuid import uuid4 as _uuid4
+
+        client_id = str(_uuid4())
+        plaintext_secret = secrets.token_urlsafe(48)
+        secret_hash = _bcrypt.hashpw(plaintext_secret.encode("utf-8"), _bcrypt.gensalt()).decode("ascii")
+        redirect_uri = "http://localhost:3000/callback"
+
+        # Seed user + auth-code via the existing helper (it accepts client_id).
+        from giljo_mcp.models.auth import User
+        from giljo_mcp.models.oauth import OAuthAuthorizationCode
+        from giljo_mcp.models.organizations import Organization
+        from giljo_mcp.tenant import TenantManager
+
+        tenant_key = TenantManager.generate_tenant_key()
+        async with db_manager.get_session_async() as session:
+            org = Organization(
+                name=f"Idem Refresh Org {_uuid4().hex[:6]}",
+                slug=f"idem-refresh-{_uuid4().hex[:8]}",
+                tenant_key=tenant_key,
+                is_active=True,
+            )
+            session.add(org)
+            await session.flush()
+
+            user = User(
+                id=str(_uuid4()),
+                username=f"idem_refresh_{_uuid4().hex[:8]}",
+                email=f"idem_refresh_{_uuid4().hex[:8]}@example.com",
+                role="developer",
+                tenant_key=tenant_key,
+                is_active=True,
+                org_id=org.id,
+            )
+            session.add(user)
+            await session.flush()
+
+            session.add(
+                OAuthAuthorizationCode(
+                    code=code_value,
+                    client_id=client_id,
+                    user_id=user.id,
+                    tenant_key=tenant_key,
+                    redirect_uri=redirect_uri,
+                    code_challenge=challenge,
+                    code_challenge_method="S256",
+                    scope="mcp:read mcp:write",
+                    resource=None,
+                    expires_at=datetime.now(UTC) + timedelta(minutes=10),
+                    used=False,
+                )
+            )
+            await session.commit()
+
+        restore = _install_confidential_resolver(client_id, secret_hash, redirect_uri)
+        try:
+            initial = await api_client.post(
+                "/api/oauth/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code_value,
+                    "client_id": client_id,
+                    "code_verifier": verifier,
+                    "redirect_uri": redirect_uri,
+                    "client_secret": plaintext_secret,
+                },
+            )
+            assert initial.status_code == 200, initial.text
+            r1 = initial.json()["refresh_token"]
+
+            refresh_payload = {
+                "grant_type": "refresh_token",
+                "refresh_token": r1,
+                "client_id": client_id,
+                "client_secret": plaintext_secret,
+            }
+            first = await api_client.post("/api/oauth/refresh", data=refresh_payload)
+            second = await api_client.post("/api/oauth/refresh", data=refresh_payload)
+        finally:
+            restore()
+
+        assert first.status_code == 200, first.text
+        assert second.status_code == 200, second.text
+        body1 = first.json()
+        body2 = second.json()
+        assert body1["access_token"] == body2["access_token"], (body1, body2)
+        assert body1["refresh_token"] == body2["refresh_token"], (body1, body2)
+
+    @pytest.mark.asyncio
+    async def test_post_window_refresh_triggers_reuse_detection(self, api_client, db_manager, monkeypatch):
+        """/refresh equivalent of test #2: outside the window the second
+        POST hits the existing reuse-detection path (the first call already
+        rotated and revoked r1) and returns 401 invalid_grant.
+        """
+        import time as _time
+        from uuid import uuid4 as _uuid4
+
+        import bcrypt as _bcrypt
+
+        from giljo_mcp.services import oauth_refresh_service as _refresh_svc
+
+        monkeypatch.setattr(_refresh_svc, "OAUTH_REFRESH_IDEMPOTENCY_WINDOW_SECONDS", 1)
+
+        verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        client_id = str(_uuid4())
+        plaintext_secret = secrets.token_urlsafe(48)
+        secret_hash = _bcrypt.hashpw(plaintext_secret.encode("utf-8"), _bcrypt.gensalt()).decode("ascii")
+        redirect_uri = "http://localhost:3000/callback"
+
+        from giljo_mcp.models.auth import User
+        from giljo_mcp.models.oauth import OAuthAuthorizationCode
+        from giljo_mcp.models.organizations import Organization
+        from giljo_mcp.tenant import TenantManager
+
+        tenant_key = TenantManager.generate_tenant_key()
+        async with db_manager.get_session_async() as session:
+            org = Organization(
+                name=f"Idem Refresh Window Org {_uuid4().hex[:6]}",
+                slug=f"idem-refresh-win-{_uuid4().hex[:8]}",
+                tenant_key=tenant_key,
+                is_active=True,
+            )
+            session.add(org)
+            await session.flush()
+
+            user = User(
+                id=str(_uuid4()),
+                username=f"idem_refresh_win_{_uuid4().hex[:8]}",
+                email=f"idem_refresh_win_{_uuid4().hex[:8]}@example.com",
+                role="developer",
+                tenant_key=tenant_key,
+                is_active=True,
+                org_id=org.id,
+            )
+            session.add(user)
+            await session.flush()
+
+            session.add(
+                OAuthAuthorizationCode(
+                    code=code_value,
+                    client_id=client_id,
+                    user_id=user.id,
+                    tenant_key=tenant_key,
+                    redirect_uri=redirect_uri,
+                    code_challenge=challenge,
+                    code_challenge_method="S256",
+                    scope="mcp:read mcp:write",
+                    resource=None,
+                    expires_at=datetime.now(UTC) + timedelta(minutes=10),
+                    used=False,
+                )
+            )
+            await session.commit()
+
+        restore = _install_confidential_resolver(client_id, secret_hash, redirect_uri)
+        try:
+            initial = await api_client.post(
+                "/api/oauth/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code_value,
+                    "client_id": client_id,
+                    "code_verifier": verifier,
+                    "redirect_uri": redirect_uri,
+                    "client_secret": plaintext_secret,
+                },
+            )
+            assert initial.status_code == 200, initial.text
+            r1 = initial.json()["refresh_token"]
+
+            refresh_payload = {
+                "grant_type": "refresh_token",
+                "refresh_token": r1,
+                "client_id": client_id,
+                "client_secret": plaintext_secret,
+            }
+            first = await api_client.post("/api/oauth/refresh", data=refresh_payload)
+            assert first.status_code == 200, first.text
+
+            _time.sleep(1.5)
+            second = await api_client.post("/api/oauth/refresh", data=refresh_payload)
+        finally:
+            restore()
+
+        # Outside the window r1 has been rotated + revoked, so the second
+        # call hits the existing reuse-detection path: 401 invalid_grant.
+        assert second.status_code == 401, second.text
+        body = second.json()
+        detail_text = body.get("detail", body.get("message", "")).lower()
+        assert "invalid_grant" in detail_text, body

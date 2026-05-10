@@ -314,8 +314,21 @@ class TestExchangeCodeForToken:
                 redirect_uri="http://localhost:3000/callback",
             )
 
-    async def test_exchange_used_code_rejected(self, oauth_service, test_user, test_tenant_key):
-        """A code that has already been used must be rejected."""
+    async def test_exchange_used_code_rejected(self, oauth_service, test_user, test_tenant_key, monkeypatch):
+        """A code that has already been used must be rejected OUTSIDE the
+        idempotency window. API-0021l introduced a 5s in-window retry hatch
+        for confidential-client races; this test asserts the strict
+        single-use contract STILL applies once the window closes. Inside
+        the window the retry is idempotent (covered by
+        test_oauth_endpoints.TestTokenIdempotency).
+        """
+        import time as _time
+
+        from giljo_mcp.services import oauth_token_idempotency as _idem_svc
+
+        # Collapse the window so the second call falls outside.
+        monkeypatch.setattr(_idem_svc, "OAUTH_TOKEN_IDEMPOTENCY_WINDOW_SECONDS", 0)
+
         verifier, challenge = _generate_pkce_pair()
         code = await oauth_service.generate_authorization_code(
             user_id=test_user.id,
@@ -333,7 +346,11 @@ class TestExchangeCodeForToken:
             redirect_uri="http://localhost:3000/callback",
         )
 
-        # Second exchange must fail
+        # Window=0 means the cache entry expires immediately; sleep a tick
+        # to make sure we're past the boundary on every clock resolution.
+        _time.sleep(0.05)
+
+        # Second exchange must fail with the strict single-use error.
         with pytest.raises(ValueError, match="used"):
             await oauth_service.exchange_code_for_token(
                 code=code,

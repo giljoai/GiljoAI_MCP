@@ -175,8 +175,19 @@ class TestRefreshTokenGrant:
     """API-0021e Phase 2: /refresh rotation + family reuse detection."""
 
     @pytest.mark.asyncio
-    async def test_refresh_rotates_token(self, api_client, db_manager):
-        """Valid refresh -> new access + new refresh; old refresh rejected on second use."""
+    async def test_refresh_rotates_token(self, api_client, db_manager, monkeypatch):
+        """Valid refresh -> new access + new refresh; old refresh rejected on second use.
+
+        API-0021l introduced a 5s in-window idempotency hatch for /refresh.
+        This test asserts the OUTSIDE-window contract still holds:
+        replaying a rotated refresh_token after the window closes is the
+        reuse-detection path, not the idempotency path. The idempotency
+        contract itself is covered in test_oauth_endpoints.TestTokenIdempotency.
+        """
+        from giljo_mcp.services import oauth_refresh_service as _refresh_svc
+
+        monkeypatch.setattr(_refresh_svc, "OAUTH_REFRESH_IDEMPOTENCY_WINDOW_SECONDS", 0)
+
         verifier, challenge = _generate_pkce_pair()
         code_value = secrets.token_urlsafe(64)
         client_id = str(uuid4())
@@ -243,8 +254,18 @@ class TestRefreshTokenGrant:
             restore()
 
     @pytest.mark.asyncio
-    async def test_refresh_token_reuse_revokes_family(self, api_client, db_manager):
-        """Replaying a rotated refresh -> entire family revoked; r2 also rejected."""
+    async def test_refresh_token_reuse_revokes_family(self, api_client, db_manager, monkeypatch):
+        """Replaying a rotated refresh -> entire family revoked; r2 also rejected.
+
+        API-0021l: collapse the idempotency window to 0 so this test
+        exercises the reuse-detection path rather than the in-window
+        idempotency hatch. Inside the window the replay would be
+        idempotent (covered separately in TestTokenIdempotency).
+        """
+        from giljo_mcp.services import oauth_refresh_service as _refresh_svc
+
+        monkeypatch.setattr(_refresh_svc, "OAUTH_REFRESH_IDEMPOTENCY_WINDOW_SECONDS", 0)
+
         verifier, challenge = _generate_pkce_pair()
         code_value = secrets.token_urlsafe(64)
         client_id = str(uuid4())

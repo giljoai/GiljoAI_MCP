@@ -26,7 +26,9 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import secrets
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -45,6 +47,75 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+# API-0021l: 5-second idempotency window for /refresh retries. Same shape as
+# the /token primitive in oauth_service. The cache hit suppresses the
+# existing reuse-detection alarm INSIDE the window — that's the whole point:
+# concurrent retries from the same client are not malicious replays.
+#
+# TODO: replace with Redis/DB-backed cache when SaaS goes multi-worker —
+# the current single-worker assumption breaks under uvicorn --workers > 1.
+OAUTH_REFRESH_IDEMPOTENCY_WINDOW_SECONDS = int(os.environ.get("OAUTH_REFRESH_IDEMPOTENCY_WINDOW_SECONDS", "5"))
+_REFRESH_IDEMPOTENCY_CACHE_MAX_ENTRIES = 1000
+_REFRESH_IDEMPOTENCY_FIELD_SEP = b"\x1f"
+
+
+@dataclass(frozen=True)
+class _RefreshIdempotencyEntry:
+    response_body: dict
+    body_signature: str
+    expires_at: datetime
+
+
+_refresh_idempotency_cache: dict[tuple[str, str], _RefreshIdempotencyEntry] = {}
+
+
+def _refresh_idempotency_cache_get(
+    key: tuple[str, str],
+    *,
+    now: datetime,
+) -> _RefreshIdempotencyEntry | None:
+    entry = _refresh_idempotency_cache.get(key)
+    if entry is None:
+        return None
+    if entry.expires_at <= now:
+        _refresh_idempotency_cache.pop(key, None)
+        return None
+    return entry
+
+
+def _refresh_idempotency_cache_put(
+    key: tuple[str, str],
+    entry: _RefreshIdempotencyEntry,
+) -> None:
+    cache = _refresh_idempotency_cache
+    if len(cache) >= _REFRESH_IDEMPOTENCY_CACHE_MAX_ENTRIES and key not in cache:
+        oldest_key = min(cache, key=lambda k: cache[k].expires_at)
+        cache.pop(oldest_key, None)
+    cache[key] = entry
+
+
+def _compute_refresh_body_signature(
+    *,
+    client_id: str,
+    client_secret_hash: str,
+    refresh_token_hash: str,
+) -> str:
+    """Canonical body-signature for the /refresh idempotency check.
+
+    Uses the stored ``client_secret_hash`` rather than the plaintext secret
+    so the signature stays deterministic across retries even though the
+    same caller might present its plaintext secret with cosmetic
+    whitespace differences (it doesn't, but the hash is the canonical
+    server-side identity anyway).
+    """
+    h = hashlib.sha256()
+    h.update(client_id.encode("utf-8"))
+    h.update(_REFRESH_IDEMPOTENCY_FIELD_SEP)
+    h.update(client_secret_hash.encode("utf-8"))
+    h.update(_REFRESH_IDEMPOTENCY_FIELD_SEP)
+    h.update(refresh_token_hash.encode("utf-8"))
+    return h.hexdigest()
 
 
 def hash_refresh_token(raw_token: str) -> str:
@@ -207,6 +278,30 @@ async def refresh_token_grant(
 
     now = datetime.now(UTC)
 
+    # API-0021l: idempotency-window cache check. Concurrent retries of the
+    # SAME refresh_token from the SAME confidential client must yield the
+    # SAME rotated pair, otherwise the second call would either rotate
+    # twice (issuing two access_tokens, leaving one orphaned) or trip the
+    # reuse-detection alarm and revoke the entire family. The cache hit
+    # path SUPPRESSES the reuse-detection alarm by short-circuiting before
+    # the ``row.revoked`` branch — that's intentional: in-window retries
+    # are not malicious replays. Mismatched signature falls through to
+    # existing reuse-detection unchanged.
+    refresh_idem_key = (row.tenant_key, token_hash)
+    refresh_idem_signature = _compute_refresh_body_signature(
+        client_id=client_id,
+        client_secret_hash=resolved.client_secret_hash,
+        refresh_token_hash=token_hash,
+    )
+    cached = _refresh_idempotency_cache_get(refresh_idem_key, now=now)
+    if cached is not None and cached.body_signature == refresh_idem_signature:
+        logger.info(
+            "oauth_refresh_idempotency_hit family_id=%s tenant=%s",
+            row.family_id,
+            row.tenant_key[:12] if row.tenant_key else "",
+        )
+        return dict(cached.response_body)
+
     if row.revoked:
         revoked_count = await revoke_family(db, family_id=row.family_id, tenant_key=row.tenant_key)
         # Commit BEFORE raising. The router maps ValueError to an
@@ -267,10 +362,25 @@ async def refresh_token_grant(
         row.user_id,
     )
 
-    return {
+    response: dict = {
         "access_token": new_access,
         "token_type": "bearer",
         "expires_in": access_token_lifetime_seconds,
         "refresh_token": new_refresh,
         "refresh_expires_in": refresh_token_lifetime_seconds,
     }
+
+    # API-0021l: cache the rotated pair so a concurrent retry inside the
+    # window receives the SAME pair instead of triggering a second rotation
+    # (which would either orphan an access_token or trip reuse-detection
+    # and revoke the family).
+    _refresh_idempotency_cache_put(
+        refresh_idem_key,
+        _RefreshIdempotencyEntry(
+            response_body=dict(response),
+            body_signature=refresh_idem_signature,
+            expires_at=datetime.now(UTC) + timedelta(seconds=OAUTH_REFRESH_IDEMPOTENCY_WINDOW_SECONDS),
+        ),
+    )
+
+    return response
