@@ -476,7 +476,7 @@ class OAuthService:
         self,
         code: str,
         client_id: str,
-        code_verifier: str,
+        code_verifier: str | None,
         redirect_uri: str,
         audience: str | None = None,
         resource: str | None = None,
@@ -485,14 +485,19 @@ class OAuthService:
     ) -> dict:
         """Exchange an authorization code for a JWT access token.
 
-        Validates the code, verifies PKCE + (for confidential clients)
-        ``client_secret``, marks the code as used, and issues a JWT via
-        JWTManager.
+        Validates the code, performs client authentication (PKCE for public
+        clients, ``client_secret`` for confidential clients per RFC 6749 §6),
+        marks the code as used, and issues a JWT via JWTManager.
 
         Args:
             code: The authorization code to exchange.
             client_id: Client ID (must match the code's client_id).
-            code_verifier: PKCE code verifier to prove possession.
+            code_verifier: PKCE code verifier (RFC 7636). Required for public
+                clients (no ``client_secret_hash`` on the resolved record);
+                optional for confidential clients that authenticate via
+                ``client_secret``. When a confidential client DOES send a
+                verifier, it must match the stored challenge (defense-in-
+                depth). API-0021e Phase 1.1.
             redirect_uri: Must match the URI used during authorization.
             audience: Fallback ``aud`` value used only when neither the
                 client-asserted ``resource`` nor the auth-code record
@@ -542,9 +547,6 @@ class OAuthService:
         if auth_code.redirect_uri != redirect_uri:
             raise ValueError(f"redirect_uri mismatch: expected '{auth_code.redirect_uri}', got '{redirect_uri}'")
 
-        if not self.verify_pkce(code_verifier, auth_code.code_challenge):
-            raise ValueError("PKCE verification failed: code_verifier does not match challenge")
-
         # API-0021e Phase 1: client authentication for confidential clients.
         # Looks up the client through the active resolver under the auth-code's
         # tenant_key (server-side, trustworthy). The presence of a
@@ -556,6 +558,21 @@ class OAuthService:
             tenant_key=tenant_key_hint or auth_code.tenant_key,
             client_secret=client_secret,
         )
+
+        # API-0021e Phase 1.1: PKCE branching by client type.
+        # RFC 6749 §6 / RFC 7636: client_secret and PKCE are alternative
+        # proof-of-possession mechanisms. Public clients (no client_secret_hash)
+        # MUST present code_verifier — there is no other authentication.
+        # Confidential clients (client_secret_hash present + already verified
+        # above) MAY omit code_verifier; if they include it, it must verify
+        # against the stored challenge (defense-in-depth).
+        if resolved_client.client_secret_hash is None:
+            if code_verifier is None:
+                raise ValueError("code_verifier is required for public clients")
+            if not self.verify_pkce(code_verifier, auth_code.code_challenge):
+                raise ValueError("PKCE verification failed: code_verifier does not match challenge")
+        elif code_verifier is not None and not self.verify_pkce(code_verifier, auth_code.code_challenge):
+            raise ValueError("PKCE verification failed: code_verifier does not match challenge")
 
         bound_resource = self._resolve_bound_resource(
             client_resource=resource,

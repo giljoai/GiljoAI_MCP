@@ -199,8 +199,8 @@ async def token(
     grant_type: str = Form(...),
     code: str = Form(...),
     client_id: str = Form(...),
-    code_verifier: str = Form(...),
     redirect_uri: str = Form(...),
+    code_verifier: str | None = Form(default=None, max_length=512),
     resource: str | None = Form(default=None, max_length=2048),
     client_secret: str | None = Form(default=None, max_length=512),
     db=Depends(get_db_session),
@@ -214,8 +214,14 @@ async def token(
         grant_type: Must be "authorization_code".
         code: The authorization code from the authorize step.
         client_id: OAuth client identifier.
-        code_verifier: PKCE code verifier to prove possession.
         redirect_uri: Must match the URI used during authorization.
+        code_verifier: PKCE code verifier (RFC 7636). Required for public
+            clients (no ``client_secret_hash`` on the resolved record),
+            optional for confidential clients that authenticate via
+            ``client_secret`` (RFC 6749 §6 treats client authentication and
+            PKCE as alternative proof-of-possession mechanisms). When a
+            confidential client DOES include a verifier, it must match the
+            stored challenge (defense-in-depth). API-0021e Phase 1.1.
         resource: RFC 8707 resource indicator. Required when the auth-code
             record carries one (i.e. /authorize was called with `resource`);
             in that case the value here MUST equal the bound value or the

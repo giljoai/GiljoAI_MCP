@@ -846,6 +846,118 @@ class TestTokenClientSecretVerification:
         )
         assert response.status_code == 200, response.text
 
+    # API-0021e Phase 1.1: code_verifier is OPTIONAL for confidential clients
+    # per RFC 6749 §6 (client_secret is the alternative authentication). The
+    # original Phase 1 work shipped with code_verifier still required at the
+    # FastAPI Form level, so ChatGPT (which sends client_secret_post but no
+    # PKCE per RFC 6749 §4.1.3) was hitting HTTP 422 from Pydantic before any
+    # handler logic ran. Live evidence on demo.giljo.ai 2026-05-10 09:28:06
+    # UTC: ChatGPT POSTed /token twice with no code_verifier and got
+    # {"loc":["body","code_verifier"],"msg":"Field required","type":"missing"}.
+
+    @pytest.mark.asyncio
+    async def test_token_exchange_confidential_client_no_pkce_succeeds(self, api_client, db_manager):
+        """A confidential DCR client that authenticates with client_secret MUST
+        be able to exchange a code WITHOUT presenting code_verifier. RFC 6749
+        §6 treats client authentication and PKCE as alternative proof-of-
+        possession mechanisms; OAuth 2.1 §7.4 prefers both, but the spec text
+        in API-0021e called for client_secret as an "alternative to PKCE".
+
+        The auth-code record still carries a code_challenge (set at
+        /authorize), but the /token side does not require the verifier when
+        the client has authenticated via secret.
+        """
+        verifier, challenge = _generate_pkce_pair()
+        del verifier  # We deliberately do NOT send a verifier; challenge stays on the auth-code row.
+        code_value = secrets.token_urlsafe(64)
+        client_id, plaintext_secret, _tenant_key, secret_hash = await _seed_confidential_dcr_code(
+            db_manager, challenge=challenge, code_value=code_value
+        )
+
+        restore = _install_confidential_resolver(client_id, secret_hash, "http://localhost:3000/callback")
+        try:
+            response = await api_client.post(
+                "/api/oauth/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code_value,
+                    "client_id": client_id,
+                    "redirect_uri": "http://localhost:3000/callback",
+                    "client_secret": plaintext_secret,
+                    # no code_verifier — confidential client uses secret as auth
+                },
+            )
+        finally:
+            restore()
+
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert "access_token" in data
+        assert data["token_type"] == "bearer"
+        assert data["access_token"].count(".") == 2
+
+    @pytest.mark.asyncio
+    async def test_token_exchange_confidential_client_with_wrong_pkce_rejected(self, api_client, db_manager):
+        """Defense-in-depth: if a confidential client DOES present a
+        code_verifier, it MUST verify against the stored challenge. Sending
+        client_secret + a wrong verifier is suspicious and rejected as
+        invalid_grant. Belt-and-suspenders is fine; mismatched belt is not.
+        """
+        _good_verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        client_id, plaintext_secret, _tenant_key, secret_hash = await _seed_confidential_dcr_code(
+            db_manager, challenge=challenge, code_value=code_value
+        )
+
+        wrong_verifier, _wrong_challenge = _generate_pkce_pair()
+
+        restore = _install_confidential_resolver(client_id, secret_hash, "http://localhost:3000/callback")
+        try:
+            response = await api_client.post(
+                "/api/oauth/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code_value,
+                    "client_id": client_id,
+                    "code_verifier": wrong_verifier,
+                    "redirect_uri": "http://localhost:3000/callback",
+                    "client_secret": plaintext_secret,
+                },
+            )
+        finally:
+            restore()
+
+        assert response.status_code == 400, response.text
+        body = response.json()
+        detail_text = body.get("detail", body.get("message", ""))
+        assert "invalid_request" in detail_text.lower() or "invalid_grant" in detail_text.lower(), body
+
+    @pytest.mark.asyncio
+    async def test_token_exchange_public_client_no_pkce_rejected(self, api_client, db_manager):
+        """A public PKCE-only client (no client_secret_hash) MUST still
+        present a code_verifier — without it, nothing authenticates the
+        client. The pre-Phase-1.1 wire surfaced this as HTTP 422 from
+        Pydantic; post-fix it MUST be a clean OAuth invalid_request (400).
+        """
+        _verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        await _seed_user_and_code(db_manager, challenge=challenge, code_value=code_value, resource=None)
+
+        response = await api_client.post(
+            "/api/oauth/token",
+            data={
+                "grant_type": "authorization_code",
+                "code": code_value,
+                "client_id": BUILTIN_CLIENT_ID,
+                "redirect_uri": "http://localhost:3000/callback",
+                # no code_verifier — public client has no other auth, must fail
+            },
+        )
+        assert response.status_code == 400, response.text
+        body = response.json()
+        detail_text = body.get("detail", body.get("message", ""))
+        assert "invalid_request" in detail_text.lower(), body
+
 
 class TestAuthorizeAcceptsClaudeComRedirectUri:
     """API-0021d Phase 3: /authorize accepts a claude.com redirect when the
