@@ -959,6 +959,183 @@ class TestTokenClientSecretVerification:
         assert "invalid_request" in detail_text.lower(), body
 
 
+class TestTokenAcceptsJsonAndBasicAuth:
+    """API-0021e Phase 1.2: /token accepts JSON body and HTTP Basic Auth.
+
+    ChatGPT connector posts ``application/json`` to /token (verified live on
+    demo.giljo.ai 2026-05-10 10:06:12 EDT, Azure 172.212.159.67/.68). The
+    pre-Phase-1.2 handler used FastAPI ``Form(...)`` parameters which only
+    parse ``application/x-www-form-urlencoded`` -- every JSON request
+    surfaced as a 422 with "Field required" on every field.
+
+    RFC 6749 §3.2 specifies form-encoded for /token, but the major OAuth
+    providers (Google, GitHub, Auth0, Okta) accept both. claude.ai still
+    sends form-encoded; we must keep that path working AND start accepting
+    JSON. We also accept HTTP Basic Auth for ``client_secret_basic`` clients
+    per RFC 6749 §2.3.1.
+    """
+
+    @pytest.mark.asyncio
+    async def test_token_exchange_accepts_json_content_type(self, api_client, db_manager):
+        """POST /token with Content-Type: application/json + JSON body must succeed.
+
+        MUST FAIL before Phase 1.2 fix: pre-fix returns 422 because Form(...)
+        parameters don't parse JSON.
+        """
+        verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        client_id, plaintext_secret, _tenant_key, secret_hash = await _seed_confidential_dcr_code(
+            db_manager, challenge=challenge, code_value=code_value
+        )
+
+        restore = _install_confidential_resolver(client_id, secret_hash, "http://localhost:3000/callback")
+        try:
+            response = await api_client.post(
+                "/api/oauth/token",
+                json={
+                    "grant_type": "authorization_code",
+                    "code": code_value,
+                    "client_id": client_id,
+                    "code_verifier": verifier,
+                    "redirect_uri": "http://localhost:3000/callback",
+                    "client_secret": plaintext_secret,
+                },
+            )
+        finally:
+            restore()
+
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert "access_token" in data
+        assert data["token_type"] == "bearer"
+        assert data["access_token"].count(".") == 2
+
+    @pytest.mark.asyncio
+    async def test_token_exchange_accepts_basic_auth_header(self, api_client, db_manager):
+        """POST /token with Authorization: Basic <b64(client_id:client_secret)> works.
+
+        Body carries grant_type+code+redirect_uri only; credentials live
+        in the header per RFC 6749 §2.3.1 (``client_secret_basic``).
+
+        MUST FAIL before Phase 1.2 fix: handler ignored Authorization header
+        so the request looked like a confidential client missing its
+        secret -> 401 invalid_client.
+        """
+        import base64 as _b64
+
+        verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        client_id, plaintext_secret, _tenant_key, secret_hash = await _seed_confidential_dcr_code(
+            db_manager, challenge=challenge, code_value=code_value
+        )
+
+        basic = _b64.b64encode(f"{client_id}:{plaintext_secret}".encode("ascii")).decode("ascii")
+
+        restore = _install_confidential_resolver(client_id, secret_hash, "http://localhost:3000/callback")
+        try:
+            response = await api_client.post(
+                "/api/oauth/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code_value,
+                    "client_id": client_id,
+                    "code_verifier": verifier,
+                    "redirect_uri": "http://localhost:3000/callback",
+                },
+                headers={"Authorization": f"Basic {basic}"},
+            )
+        finally:
+            restore()
+
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert "access_token" in data
+        assert data["token_type"] == "bearer"
+
+    @pytest.mark.asyncio
+    async def test_token_exchange_form_encoded_still_works(self, api_client, db_manager):
+        """REGRESSION: form-encoded path must NOT regress (claude.ai compat)."""
+        verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        client_id, plaintext_secret, _tenant_key, secret_hash = await _seed_confidential_dcr_code(
+            db_manager, challenge=challenge, code_value=code_value
+        )
+
+        restore = _install_confidential_resolver(client_id, secret_hash, "http://localhost:3000/callback")
+        try:
+            response = await api_client.post(
+                "/api/oauth/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code_value,
+                    "client_id": client_id,
+                    "code_verifier": verifier,
+                    "redirect_uri": "http://localhost:3000/callback",
+                    "client_secret": plaintext_secret,
+                },
+            )
+        finally:
+            restore()
+
+        assert response.status_code == 200, response.text
+        assert response.json()["token_type"] == "bearer"
+
+    @pytest.mark.asyncio
+    async def test_token_exchange_basic_auth_header_overrides_body(self, api_client, db_manager):
+        """RFC 6749 §2.3.1: Basic Auth header takes precedence over body.
+
+        Body contains a WRONG client_secret; header has the correct one.
+        Header should win -> 200.
+
+        MUST FAIL before Phase 1.2 fix: handler reads body only, sees the
+        wrong secret -> 401 invalid_client.
+        """
+        import base64 as _b64
+
+        verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        client_id, plaintext_secret, _tenant_key, secret_hash = await _seed_confidential_dcr_code(
+            db_manager, challenge=challenge, code_value=code_value
+        )
+
+        basic = _b64.b64encode(f"{client_id}:{plaintext_secret}".encode("ascii")).decode("ascii")
+
+        restore = _install_confidential_resolver(client_id, secret_hash, "http://localhost:3000/callback")
+        try:
+            response = await api_client.post(
+                "/api/oauth/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code_value,
+                    "client_id": client_id,
+                    "code_verifier": verifier,
+                    "redirect_uri": "http://localhost:3000/callback",
+                    "client_secret": "wrong-secret-in-body",
+                },
+                headers={"Authorization": f"Basic {basic}"},
+            )
+        finally:
+            restore()
+
+        assert response.status_code == 200, response.text
+
+    @pytest.mark.asyncio
+    async def test_token_exchange_malformed_json_body(self, api_client):
+        """Content-Type: application/json + malformed JSON -> 400 invalid_request.
+
+        Must NOT be 422 (Pydantic schema artifact) and MUST NOT be 500.
+        """
+        response = await api_client.post(
+            "/api/oauth/token",
+            content=b"{not json",
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 400, response.text
+        body = response.json()
+        detail_text = body.get("detail", body.get("message", ""))
+        assert "invalid_request" in detail_text.lower(), body
+
+
 class TestAuthorizeAcceptsClaudeComRedirectUri:
     """API-0021d Phase 3: /authorize accepts a claude.com redirect when the
     resolver knows the client. Pairs with the SaaS-side DCR test in

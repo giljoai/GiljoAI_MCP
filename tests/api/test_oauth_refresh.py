@@ -444,3 +444,112 @@ class TestRefreshTokenGrant:
             assert "invalid_client" in detail.lower(), body
         finally:
             restore()
+
+
+class TestRefreshAcceptsJsonAndBasicAuth:
+    """API-0021e Phase 1.2: /refresh accepts JSON body and HTTP Basic Auth.
+
+    Same parsing rules as /token. ChatGPT shape compatibility.
+    """
+
+    @pytest.mark.asyncio
+    async def test_refresh_accepts_json_content_type(self, api_client, db_manager):
+        """Issue refresh+access via /token, then POST /refresh with JSON -> 200.
+
+        MUST FAIL before Phase 1.2 fix: pre-fix returns 422.
+        """
+        verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        client_id = str(uuid4())
+        plaintext_secret = secrets.token_urlsafe(48)
+        secret_hash = _bcrypt_hash(plaintext_secret)
+        redirect_uri = "http://localhost:3000/callback"
+
+        await _seed_user_and_code(
+            db_manager,
+            challenge=challenge,
+            code_value=code_value,
+            client_id=client_id,
+        )
+
+        restore = _install_confidential_resolver((client_id, secret_hash, [redirect_uri]))
+        try:
+            initial = await _exchange_code_for_token_pair(
+                api_client,
+                code_value=code_value,
+                client_id=client_id,
+                client_secret=plaintext_secret,
+                code_verifier=verifier,
+                redirect_uri=redirect_uri,
+            )
+            r1 = initial["refresh_token"]
+
+            response = await api_client.post(
+                "/api/oauth/refresh",
+                json={
+                    "grant_type": "refresh_token",
+                    "refresh_token": r1,
+                    "client_id": client_id,
+                    "client_secret": plaintext_secret,
+                },
+            )
+            assert response.status_code == 200, response.text
+            body = response.json()
+            assert "access_token" in body
+            assert "refresh_token" in body
+            assert body["refresh_token"] != r1
+        finally:
+            restore()
+
+    @pytest.mark.asyncio
+    async def test_refresh_accepts_basic_auth_header(self, api_client, db_manager):
+        """Client credentials via HTTP Basic Auth header -> 200.
+
+        MUST FAIL before Phase 1.2 fix: pre-fix ignores Authorization header
+        and treats body as missing client_secret -> 401 invalid_client.
+        """
+        import base64 as _b64
+
+        verifier, challenge = _generate_pkce_pair()
+        code_value = secrets.token_urlsafe(64)
+        client_id = str(uuid4())
+        plaintext_secret = secrets.token_urlsafe(48)
+        secret_hash = _bcrypt_hash(plaintext_secret)
+        redirect_uri = "http://localhost:3000/callback"
+
+        await _seed_user_and_code(
+            db_manager,
+            challenge=challenge,
+            code_value=code_value,
+            client_id=client_id,
+        )
+
+        basic = _b64.b64encode(f"{client_id}:{plaintext_secret}".encode("ascii")).decode("ascii")
+
+        restore = _install_confidential_resolver((client_id, secret_hash, [redirect_uri]))
+        try:
+            initial = await _exchange_code_for_token_pair(
+                api_client,
+                code_value=code_value,
+                client_id=client_id,
+                client_secret=plaintext_secret,
+                code_verifier=verifier,
+                redirect_uri=redirect_uri,
+            )
+            r1 = initial["refresh_token"]
+
+            response = await api_client.post(
+                "/api/oauth/refresh",
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": r1,
+                    "client_id": client_id,
+                },
+                headers={"Authorization": f"Basic {basic}"},
+            )
+            assert response.status_code == 200, response.text
+            body = response.json()
+            assert "access_token" in body
+            assert body["refresh_token"] != r1
+        finally:
+            restore()

@@ -17,11 +17,14 @@ The token and metadata endpoints are public (no authentication required).
 Handover 0828 Phase 3.
 """
 
+import base64
+import binascii
+import json
 import logging
 import os
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
@@ -193,27 +196,116 @@ async def authorize(
     return {"redirect_uri": redirect_target}
 
 
+# Field length caps mirror the original FastAPI ``Form(max_length=...)`` on
+# /token + /refresh. Replicated here because Phase 1.2 replaces ``Form(...)``
+# parameters with manual body parsing — the validation must move with them
+# (agent input is untrusted; raise 400, not let the service produce a 500).
+_OAUTH_FIELD_MAX_LENGTHS = {
+    "client_secret": 512,
+    "resource": 2048,
+    "code_verifier": 512,
+    "refresh_token": 512,
+}
+
+
+async def _parse_oauth_body(request: Request) -> dict:
+    """Parse an OAuth /token or /refresh body.
+
+    Accepts ``application/x-www-form-urlencoded`` (RFC 6749 §3.2 canonical)
+    or ``application/json`` (de-facto modern client behavior — Google,
+    GitHub, Auth0, Okta all accept it; ChatGPT requires it). Defaults to
+    form-encoded when the content-type header is missing or unrecognized.
+
+    Raises HTTPException 400 (``invalid_request``) on malformed JSON or a
+    JSON body that is not an object.
+    """
+    content_type = request.headers.get("content-type", "").lower()
+    if "application/json" in content_type:
+        try:
+            data = await request.json()
+        except (json.JSONDecodeError, ValueError, UnicodeDecodeError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="invalid_request: malformed JSON body",
+            ) from exc
+        if not isinstance(data, dict):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="invalid_request: body must be a JSON object",
+            )
+        return data
+
+    form = await request.form()
+    return dict(form.items())
+
+
+def _extract_basic_auth(request: Request) -> tuple[str | None, str | None]:
+    """Return ``(client_id, client_secret)`` from HTTP Basic Auth, or ``(None, None)``.
+
+    Implements RFC 6749 §2.3.1 (``client_secret_basic``). When the header is
+    absent or malformed, both values are ``None`` and the caller falls back
+    to body credentials. Empty fields after the colon are treated as
+    missing — a Basic header carrying no credentials is no header.
+    """
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("basic "):
+        return None, None
+    try:
+        decoded = base64.b64decode(auth[6:].strip(), validate=False).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError):
+        return None, None
+    if ":" not in decoded:
+        return None, None
+    cid, _, csec = decoded.partition(":")
+    return (cid or None), (csec or None)
+
+
+def _enforce_oauth_field_caps(**fields: str | None) -> None:
+    """Reject oversized OAuth body fields with 400 ``invalid_request``.
+
+    Mirrors the per-field ``max_length`` that ``Form(...)`` enforced before
+    Phase 1.2. Untrusted agent input must produce 422/400 responses, never
+    flow to the service layer where a DB constraint would 500.
+    """
+    for name, value in fields.items():
+        if value is None:
+            continue
+        cap = _OAUTH_FIELD_MAX_LENGTHS.get(name)
+        if cap is not None and len(value) > cap:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"invalid_request: {name} exceeds maximum length {cap}",
+            )
+
+
 @router.post("/token", response_model=TokenResponse, tags=["oauth"])
 async def token(
     request: Request,
-    grant_type: str = Form(...),
-    code: str = Form(...),
-    client_id: str = Form(...),
-    redirect_uri: str = Form(...),
-    code_verifier: str | None = Form(default=None, max_length=512),
-    resource: str | None = Form(default=None, max_length=2048),
-    client_secret: str | None = Form(default=None, max_length=512),
     db=Depends(get_db_session),
 ):
     """Exchange an authorization code for a JWT access token.
 
-    This is a public endpoint (no authentication required). Accepts
-    application/x-www-form-urlencoded per the OAuth 2.1 specification.
+    Public endpoint (no authentication required). Accepts THREE request
+    shapes (API-0021e Phase 1.2):
 
-    Args:
+    1. ``application/x-www-form-urlencoded`` body — RFC 6749 §3.2 canonical
+       (claude.ai uses this).
+    2. ``application/json`` body — pragmatic norm matching Google / GitHub /
+       Auth0 / Okta. ChatGPT connector uses this (live evidence on demo
+       2026-05-10 10:06:12 EDT, Azure CIDR 172.212.159.x).
+    3. HTTP Basic Auth header (``Authorization: Basic
+       <b64(client_id:client_secret)>``) for ``client_secret_basic`` clients
+       — RFC 6749 §2.3.1. Header credentials take precedence over body
+       values when both are supplied.
+
+    The handler logic (validation, PKCE branching, secret verification) is
+    identical regardless of input shape; only parsing differs.
+
+    Body fields (form or JSON):
         grant_type: Must be "authorization_code".
         code: The authorization code from the authorize step.
-        client_id: OAuth client identifier.
+        client_id: OAuth client identifier (optional if Basic Auth header
+            supplies it).
         redirect_uri: Must match the URI used during authorization.
         code_verifier: PKCE code verifier (RFC 7636). Required for public
             clients (no ``client_secret_hash`` on the resolved record),
@@ -228,24 +320,54 @@ async def token(
             request is rejected as ``invalid_grant`` (401). Optional only for
             pre-API-0021d in-flight codes that have no bound resource.
         client_secret: Plaintext client secret for confidential clients
-            registered via RFC 7591 DCR (token_endpoint_auth_method =
-            ``client_secret_post``). Required when the resolved client carries
-            a ``client_secret_hash``; rejected as ``invalid_client`` (401)
-            when missing or wrong. Public PKCE-only clients (built-in CE)
-            MUST omit this field — sending it on a public client is also
+            registered via RFC 7591 DCR. Required when the resolved client
+            carries a ``client_secret_hash``; rejected as ``invalid_client``
+            (401) when missing or wrong. Public PKCE-only clients (built-in
+            CE) MUST omit this field — sending it on a public client is also
             ``invalid_request`` (400). API-0021e Phase 1.
-        db: Database session.
 
     Returns:
         TokenResponse with access_token, token_type, and expires_in.
 
     Raises:
-        HTTPException 400: If grant_type is invalid or token exchange fails
-            for non-resource reasons (PKCE, expiry, code reuse, …).
-        HTTPException 401: If the resource indicator does not match the
-            value bound to the auth-code record (``invalid_grant``), or the
-            confidential client failed secret verification (``invalid_client``).
+        HTTPException 400: ``invalid_request`` (malformed body, missing
+            required field, wrong grant_type, PKCE/expiry/code-reuse).
+        HTTPException 401: ``invalid_grant`` (resource mismatch) or
+            ``invalid_client`` (confidential auth failed).
     """
+    data = await _parse_oauth_body(request)
+    basic_id, basic_secret = _extract_basic_auth(request)
+
+    grant_type = data.get("grant_type")
+    code = data.get("code")
+    code_verifier = data.get("code_verifier")
+    redirect_uri = data.get("redirect_uri")
+    resource = data.get("resource")
+    client_id = basic_id or data.get("client_id")
+    client_secret = basic_secret or data.get("client_secret")
+
+    _enforce_oauth_field_caps(
+        client_secret=client_secret,
+        resource=resource,
+        code_verifier=code_verifier,
+    )
+
+    missing = [
+        name
+        for name, val in (
+            ("grant_type", grant_type),
+            ("code", code),
+            ("client_id", client_id),
+            ("redirect_uri", redirect_uri),
+        )
+        if not val
+    ]
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"invalid_request: missing required field(s): {', '.join(missing)}",
+        )
+
     if grant_type != "authorization_code":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -300,25 +422,28 @@ async def token(
 
 @router.post("/refresh", response_model=TokenResponse, response_model_exclude_none=True, tags=["oauth"])
 async def refresh(
-    grant_type: str = Form(...),
-    refresh_token: str = Form(..., max_length=512),
-    client_id: str = Form(...),
-    client_secret: str | None = Form(default=None, max_length=512),
+    request: Request,
     db=Depends(get_db_session),
 ):
     """Exchange a refresh token for a new access+refresh pair (API-0021e Phase 2).
 
-    Public endpoint; ``client_secret_post`` confidential clients only. Public
-    PKCE clients never receive a refresh token at /token, so /refresh
-    intentionally rejects them as ``invalid_client``.
+    Public endpoint; ``client_secret_post`` and ``client_secret_basic``
+    confidential clients only. Public PKCE clients never receive a refresh
+    token at /token, so /refresh intentionally rejects them as
+    ``invalid_client``.
 
-    Args:
+    Accepts the same three request shapes as /token (API-0021e Phase 1.2):
+    form-encoded body, JSON body, or HTTP Basic Auth header for the client
+    credentials.
+
+    Body fields (form or JSON):
         grant_type: Must be ``"refresh_token"`` (RFC 6749 §6).
         refresh_token: Plaintext refresh token from the prior /token or
             /refresh response.
-        client_id: Client identifier (DCR-registered).
-        client_secret: Confidential client secret (required + verified).
-        db: Database session.
+        client_id: Client identifier (DCR-registered) — optional when
+            supplied via Basic Auth header.
+        client_secret: Confidential client secret (required + verified) —
+            optional when supplied via Basic Auth header.
 
     Returns:
         TokenResponse with new ``access_token`` + rotated ``refresh_token``.
@@ -330,6 +455,34 @@ async def refresh(
         HTTPException 401: ``invalid_client`` (auth failed) or
             ``invalid_grant`` (token unknown / revoked / expired).
     """
+    data = await _parse_oauth_body(request)
+    basic_id, basic_secret = _extract_basic_auth(request)
+
+    grant_type = data.get("grant_type")
+    refresh_token = data.get("refresh_token")
+    client_id = basic_id or data.get("client_id")
+    client_secret = basic_secret or data.get("client_secret")
+
+    _enforce_oauth_field_caps(
+        client_secret=client_secret,
+        refresh_token=refresh_token,
+    )
+
+    missing = [
+        name
+        for name, val in (
+            ("grant_type", grant_type),
+            ("refresh_token", refresh_token),
+            ("client_id", client_id),
+        )
+        if not val
+    ]
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"invalid_request: missing required field(s): {', '.join(missing)}",
+        )
+
     if grant_type != "refresh_token":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
