@@ -278,7 +278,11 @@ const rules = {
   password: (value) => !!value || 'Password is required',
 }
 
-// OAuth parameters from URL query
+// OAuth parameters from URL query.
+// `resource` (RFC 8707) is forwarded from claude.com / claude.ai connector
+// popups so the backend can persist it onto the auth-code record. Phase 2
+// of API-0021d enforces this on the backend; without forwarding here, the
+// downstream /token exchange fails 401 invalid_grant.
 const oauthParams = computed(() => ({
   client_id: route.query.client_id || '',
   redirect_uri: route.query.redirect_uri || '',
@@ -287,6 +291,7 @@ const oauthParams = computed(() => ({
   code_challenge_method: route.query.code_challenge_method || '',
   scope: route.query.scope || '',
   state: route.query.state || '',
+  resource: route.query.resource || '',
 }))
 
 // Check if required OAuth parameters are present
@@ -414,6 +419,11 @@ async function handleAuthorize() {
       code_challenge_method: oauthParams.value.code_challenge_method,
       scope: oauthParams.value.scope,
       state: oauthParams.value.state,
+      // RFC 8707 — forward through to the backend so it can persist the
+      // resource indicator onto the auth-code record. Phase 2 of API-0021d
+      // enforces validation; dropping this here breaks claude.com / claude.ai
+      // connector flows with 401 invalid_grant on /token exchange.
+      resource: oauthParams.value.resource,
     })
 
     // Backend returns a redirect URL with the authorization code

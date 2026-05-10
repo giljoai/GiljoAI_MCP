@@ -18,6 +18,7 @@ Handover 0828 Phase 3.
 """
 
 import logging
+import os
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
@@ -62,6 +63,19 @@ class AuthorizeRequest(BaseModel):
     )
     state: str = Field(default="", description="Opaque state value for CSRF protection")
     response_type: str = Field(default="code", description="OAuth response type (must be code)")
+    # RFC 8707 — caps the URI length defensively at the route boundary; the
+    # service layer re-validates shape (scheme/host/no-fragment) before any DB
+    # write. Optional during the API-0021d transition window so older clients
+    # that don't yet forward `resource` still complete /authorize.
+    resource: str | None = Field(
+        default=None,
+        max_length=2048,
+        description=(
+            "RFC 8707 resource indicator. Identifies the target resource "
+            "server (typically the canonical MCP URI). When supplied, it is "
+            "persisted onto the auth-code record and re-asserted at /token."
+        ),
+    )
 
 
 class TokenResponse(BaseModel):
@@ -70,10 +84,18 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int = 86400
+    refresh_token: str | None = None
+    refresh_expires_in: int | None = None
 
 
 class OAuthMetadataResponse(BaseModel):
-    """OAuth 2.1 authorization server metadata (RFC 8414)."""
+    """OAuth 2.1 authorization server metadata (RFC 8414).
+
+    All endpoint URLs are absolute (per RFC 8414 §2). The optional
+    ``registration_endpoint`` is advertised only when DCR is available
+    (SaaS/demo edition); CE omits the field rather than advertising a
+    404 path.
+    """
 
     issuer: str
     authorization_endpoint: str
@@ -81,15 +103,23 @@ class OAuthMetadataResponse(BaseModel):
     response_types_supported: list[str]
     code_challenge_methods_supported: list[str]
     grant_types_supported: list[str]
+    registration_endpoint: str | None = None
 
 
 class ProtectedResourceMetadataResponse(BaseModel):
-    """OAuth 2.0 Protected Resource metadata (RFC 9728)."""
+    """OAuth 2.0 Protected Resource metadata (RFC 9728).
+
+    Per RFC 8707 §3, advertises ``resource_indicators_supported: true`` so
+    spec-aware clients (claude.ai connector backend) know they MUST send
+    ``resource`` to /authorize and /token. API-0021d Phase 2 enforces that
+    binding server-side.
+    """
 
     resource: str
     authorization_servers: list[str]
     scopes_supported: list[str]
     bearer_methods_supported: list[str]
+    resource_indicators_supported: bool = True
 
 
 @router.post("/authorize", tags=["oauth"])
@@ -128,6 +158,7 @@ async def authorize(
             response_type=body.response_type,
             scope=body.scope,
             tenant_key=current_user.tenant_key,
+            resource=body.resource,
         )
     except ValueError as exc:
         logger.warning("OAuth authorize validation failed: %s", exc)
@@ -143,6 +174,7 @@ async def authorize(
         redirect_uri=body.redirect_uri,
         code_challenge=body.code_challenge,
         scope=body.scope,
+        resource=body.resource,
     )
 
     params = {"code": code}
@@ -169,6 +201,8 @@ async def token(
     client_id: str = Form(...),
     code_verifier: str = Form(...),
     redirect_uri: str = Form(...),
+    resource: str | None = Form(default=None, max_length=2048),
+    client_secret: str | None = Form(default=None, max_length=512),
     db=Depends(get_db_session),
 ):
     """Exchange an authorization code for a JWT access token.
@@ -182,14 +216,29 @@ async def token(
         client_id: OAuth client identifier.
         code_verifier: PKCE code verifier to prove possession.
         redirect_uri: Must match the URI used during authorization.
+        resource: RFC 8707 resource indicator. Required when the auth-code
+            record carries one (i.e. /authorize was called with `resource`);
+            in that case the value here MUST equal the bound value or the
+            request is rejected as ``invalid_grant`` (401). Optional only for
+            pre-API-0021d in-flight codes that have no bound resource.
+        client_secret: Plaintext client secret for confidential clients
+            registered via RFC 7591 DCR (token_endpoint_auth_method =
+            ``client_secret_post``). Required when the resolved client carries
+            a ``client_secret_hash``; rejected as ``invalid_client`` (401)
+            when missing or wrong. Public PKCE-only clients (built-in CE)
+            MUST omit this field — sending it on a public client is also
+            ``invalid_request`` (400). API-0021e Phase 1.
         db: Database session.
 
     Returns:
         TokenResponse with access_token, token_type, and expires_in.
 
     Raises:
-        HTTPException 400: If grant_type is invalid, code exchange fails,
-            or PKCE verification fails.
+        HTTPException 400: If grant_type is invalid or token exchange fails
+            for non-resource reasons (PKCE, expiry, code reuse, …).
+        HTTPException 401: If the resource indicator does not match the
+            value bound to the auth-code record (``invalid_grant``), or the
+            confidential client failed secret verification (``invalid_client``).
     """
     if grant_type != "authorization_code":
         raise HTTPException(
@@ -206,24 +255,121 @@ async def token(
             code_verifier=code_verifier,
             redirect_uri=redirect_uri,
             audience=get_canonical_mcp_resource_uri(request),
+            resource=resource,
+            client_secret=client_secret,
+            tenant_key_hint=None,
         )
     except ValueError as exc:
+        message = str(exc)
+        # RFC 6749 §5.2: failed client authentication is invalid_client (401).
+        # RFC 8707 §2.2: a resource mismatch at /token is invalid_grant (401).
+        # All other validation failures (PKCE, code reuse, expired, missing
+        # resource when required) stay invalid_request (400).
+        if "invalid_client" in message:
+            logger.warning("OAuth token client authentication failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_client",
+            ) from exc
+        if "resource does not match" in message:
+            logger.warning("OAuth token resource mismatch: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_grant",
+            ) from exc
         logger.warning("OAuth token exchange failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid token exchange request.",
+            detail="invalid_request",
         ) from exc
 
     return TokenResponse(
         access_token=result["access_token"],
         token_type=result["token_type"],
         expires_in=result["expires_in"],
+        refresh_token=result.get("refresh_token"),
+        refresh_expires_in=result.get("refresh_expires_in"),
+    )
+
+
+@router.post("/refresh", response_model=TokenResponse, response_model_exclude_none=True, tags=["oauth"])
+async def refresh(
+    grant_type: str = Form(...),
+    refresh_token: str = Form(..., max_length=512),
+    client_id: str = Form(...),
+    client_secret: str | None = Form(default=None, max_length=512),
+    db=Depends(get_db_session),
+):
+    """Exchange a refresh token for a new access+refresh pair (API-0021e Phase 2).
+
+    Public endpoint; ``client_secret_post`` confidential clients only. Public
+    PKCE clients never receive a refresh token at /token, so /refresh
+    intentionally rejects them as ``invalid_client``.
+
+    Args:
+        grant_type: Must be ``"refresh_token"`` (RFC 6749 §6).
+        refresh_token: Plaintext refresh token from the prior /token or
+            /refresh response.
+        client_id: Client identifier (DCR-registered).
+        client_secret: Confidential client secret (required + verified).
+        db: Database session.
+
+    Returns:
+        TokenResponse with new ``access_token`` + rotated ``refresh_token``.
+        The previous refresh token is marked revoked; reuse triggers
+        family-wide revocation per RFC 6749 §10.4.
+
+    Raises:
+        HTTPException 400: ``invalid_request`` (grant_type wrong, missing field).
+        HTTPException 401: ``invalid_client`` (auth failed) or
+            ``invalid_grant`` (token unknown / revoked / expired).
+    """
+    if grant_type != "refresh_token":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported grant_type: expected 'refresh_token', got '{grant_type}'",
+        )
+
+    oauth_service = OAuthService(db_session=db)
+    try:
+        result = await oauth_service.refresh_token_grant(
+            refresh_token=refresh_token,
+            client_id=client_id,
+            client_secret=client_secret,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if message.startswith("invalid_client"):
+            logger.warning("OAuth refresh client authentication failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_client",
+            ) from exc
+        if message.startswith("invalid_grant"):
+            logger.warning("OAuth refresh invalid_grant: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_grant",
+            ) from exc
+        logger.warning("OAuth refresh request invalid: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="invalid_request",
+        ) from exc
+
+    return TokenResponse(
+        access_token=result["access_token"],
+        token_type=result["token_type"],
+        expires_in=result["expires_in"],
+        refresh_token=result.get("refresh_token"),
+        refresh_expires_in=result.get("refresh_expires_in"),
     )
 
 
 @router.get(
     "/.well-known/oauth-authorization-server",
     response_model=OAuthMetadataResponse,
+    response_model_exclude_none=True,  # CE omits registration_endpoint cleanly
     tags=["oauth"],
 )
 async def oauth_metadata(request: Request):
@@ -240,19 +386,42 @@ async def oauth_metadata(request: Request):
     """
     base_url = get_public_base_url(request)
 
+    # RFC 8414 §2 — absolute endpoint URLs. Pre-fix returned bare paths
+    # ("/oauth/authorize"); some clients (claude.ai) coped via issuer-resolution
+    # but others fail or skip optional endpoints when paths aren't absolute.
+    authorization_endpoint = f"{base_url}/oauth/authorize"
+    token_endpoint = f"{base_url}/api/oauth/token"
+
+    # RFC 7591 dynamic client registration endpoint — advertised ONLY when the
+    # SaaS/demo edition is active. The DCR endpoint lives under saas_endpoints/
+    # which is stripped on CE export, so CE omits this field. claude.ai and
+    # other DCR-using clients pick up `registration_endpoint` here; without it
+    # they fall back to the conventional `<issuer>/register` (which 404s here)
+    # and the connector setup fails before consent.
+    giljo_mode = os.environ.get("GILJO_MODE", "").lower()
+    registration_endpoint: str | None = None
+    if giljo_mode in ("demo", "saas"):
+        registration_endpoint = f"{base_url}/api/saas/oauth/register"
+
     return OAuthMetadataResponse(
         issuer=base_url,
-        authorization_endpoint="/oauth/authorize",
-        token_endpoint="/api/oauth/token",
+        authorization_endpoint=authorization_endpoint,
+        token_endpoint=token_endpoint,
         response_types_supported=["code"],
         code_challenge_methods_supported=["S256"],
-        grant_types_supported=["authorization_code"],
+        # API-0021e Phase 3: advertise the refresh_token grant. Confidential
+        # DCR clients receive a refresh_token at /token and rotate it via
+        # /api/oauth/refresh. Public PKCE-only clients can still only use
+        # authorization_code (the refresh path rejects them server-side).
+        grant_types_supported=["authorization_code", "refresh_token"],
+        registration_endpoint=registration_endpoint,
     )
 
 
 @well_known_router.get(
     "/.well-known/oauth-authorization-server",
     response_model=OAuthMetadataResponse,
+    response_model_exclude_none=True,  # CE omits registration_endpoint cleanly
     tags=["oauth"],
 )
 async def oauth_metadata_root_mirror(request: Request):

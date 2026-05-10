@@ -100,6 +100,7 @@ from .context import (
 # OAuth models
 from .oauth import (
     OAuthAuthorizationCode,
+    OAuthRefreshToken,
 )
 
 # Organization models (Handover 0424a)
@@ -185,6 +186,7 @@ __all__ = [
     "MessageRecipient",
     # OAuth
     "OAuthAuthorizationCode",
+    "OAuthRefreshToken",
     "OrgMembership",
     # Organizations (Handover 0424a)
     "Organization",

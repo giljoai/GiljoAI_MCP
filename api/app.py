@@ -433,6 +433,17 @@ def _configure_middleware(app: FastAPI) -> None:
             cors_origins.extend(https_origins)
             logger.info(f"Added HTTPS CORS origins for SSL mode: {https_origins}")
 
+    # API-0021d F4: Anthropic connector first-party origins (claude.ai +
+    # claude.com). Hardcoded as a defensive fallback so a future config.yaml
+    # typo or deploy regression cannot drop them and silently break the
+    # claude connector handshake. The values are first-party and stable per
+    # Anthropic's published connector docs; admins can still extend the
+    # allowlist via config.yaml — duplicates are filtered below.
+    anthropic_connector_origins = ("https://claude.ai", "https://claude.com")
+    for origin in anthropic_connector_origins:
+        if origin not in cors_origins:
+            cors_origins.append(origin)
+
     logger.info(f"Configuring CORS with origins: {cors_origins}")
 
     # Add middleware in reverse order of execution
@@ -479,7 +490,9 @@ def _configure_middleware(app: FastAPI) -> None:
             "/api/saas/account/confirm-deletion",  # Account deletion confirm (token-auth, SAAS-022)
             "/api/saas/account/cancel-deletion",  # Account deletion cancel (token-auth, SAAS-022)
             "/api/oauth/token",  # OAuth token exchange (external MCP clients, PKCE-protected)
+            "/api/oauth/refresh",  # OAuth refresh-token grant (external MCP clients, secret-protected)
             "/api/oauth/.well-known/",  # OAuth metadata (public GET)
+            "/api/saas/oauth/",  # SaaS OAuth surface (DCR /register; called by external clients without CSRF cookie)
             "/api/setup/",  # Setup wizard (runs before auth is configured)
             "/mcp",  # MCP-over-HTTP (API key auth, not cookie-based)
             "/api/download/",  # Public download endpoints
@@ -511,7 +524,19 @@ def _configure_middleware(app: FastAPI) -> None:
         allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "X-API-Key", "X-Tenant-Key", "X-CSRF-Token"],
+        # API-0021d F5: MCP-Protocol-Version + Mcp-Session-Id are MCP
+        # Streamable HTTP spec headers (2025-06-18 §"Protocol Version
+        # Header"). Without them the browser preflight to /mcp returns 400
+        # before the spec request reaches the auth middleware.
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "X-API-Key",
+            "X-Tenant-Key",
+            "X-CSRF-Token",
+            "MCP-Protocol-Version",
+            "Mcp-Session-Id",
+        ],
     )
 
 

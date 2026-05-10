@@ -209,8 +209,14 @@ class TestErrorDetailLeaks:
         self._assert_no_internal_leak("Invalid authorization request parameters.")
 
     def test_oauth_token_detail_is_generic(self):
-        """OAuth token exchange endpoint should not leak internal details."""
-        self._assert_no_internal_leak("Invalid token exchange request.")
+        """OAuth token exchange endpoint should not leak internal details.
+
+        Post-API-0021d the endpoint surfaces RFC 6749 §5.2 error codes
+        (``invalid_request`` / ``invalid_grant``) instead of prose. Both are
+        spec-defined opaque tokens and contain no internal information.
+        """
+        self._assert_no_internal_leak("invalid_request")
+        self._assert_no_internal_leak("invalid_grant")
 
     def test_system_prompt_validation_detail_is_generic(self):
         """System prompt update should not leak ValueError content."""

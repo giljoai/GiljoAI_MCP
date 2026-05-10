@@ -206,7 +206,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/download/agent-templates.zip",  # Optional-auth downloads (handles own auth logic)
             "/api/download/temp",  # Public download with token auth (one-time tokens)
             "/api/oauth/token",  # OAuth token exchange (public, PKCE-protected)
+            "/api/oauth/refresh",  # OAuth refresh-token grant (public, secret-protected)
             "/api/oauth/.well-known/oauth-authorization-server",  # OAuth server metadata
+            "/api/saas/oauth/",  # SaaS OAuth surface (DCR /register; RFC 7591 public per spec)
             "/.well-known/oauth-authorization-server",  # RFC 8414 root mirror (API-0021a)
             "/.well-known/oauth-protected-resource",  # RFC 9728 resource metadata (API-0021a)
             "/api/version/",  # Version check (installers need this before auth exists)
