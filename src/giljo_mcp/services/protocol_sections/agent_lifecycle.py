@@ -273,7 +273,9 @@ list will be empty or contain only agent-supplied hashes. When this happens, inc
 ## ORCHESTRATOR CONSTRAINTS
 - **Git commit requirement does NOT apply.** You coordinate, you do not commit.
 - **Handover-on-context-exhaustion does NOT apply.** If context is exhausted, tell the user.
-- **If uncertain what to do, ask the user.** You are user-mediated by design.
+- **You operate with the user's delegated authority.** Decide and document in
+  `decisions_made`. Escalate via `request_approval` only when the choice is
+  irreversible, materially changes scope, or has no clear default.
 - **Your TODO list is your authority.** The mission describes what needs to happen.
   Your TODOs are the structured breakdown. Work them systematically.
 

@@ -4,6 +4,10 @@ All notable changes to this project are recorded here. Versions follow `MAJOR.MI
 
 ## [Unreleased]
 
+### API-0022a — Claude.ai handshake PR labeler + manual-test runbook
+
+PRs touching the Claude.ai → demo OAuth handshake path (oauth endpoints, MCP SDK server, authGuard, OAuthAuthorize, DemoConsentScreen, oauth_service, saas/auth, demo seed) now automatically receive the `manual-test:claude-ai-handshake` label and a sticky PR comment linking to the runbook. Runbook at `scripts/conformance/claude_ai_handshake.md` covers pre-requisites, 9-step test sequence, pass/fail criteria, and a copy-paste Claude Code prompt for browser-driven verification via `mcp__claude-in-chrome__*` tools. Workflow is private-only (excluded from CE export). To activate: create the `manual-test:claude-ai-handshake` and `manual-test:verified` labels on the repo (see `gh label create` one-liner in the runbook footer), then configure the branch-protection rule in GitHub Settings → Rules → Rulesets to require `manual-test:verified` before merge on PRs carrying `manual-test:claude-ai-handshake`.
+
 ### Task taxonomy unification + agent-parity MCP tools
 
 `tasks.category` (freewrite string) replaced with `tasks.task_type_id` FK to the unified `taxonomy_types` table (renamed from `project_types`). On upgrade, tasks whose old `category` value did not exact-match a taxonomy abbreviation or label arrive with no type — re-tag via the TasksView Type dropdown, or ask an agent to set them via the new `update_task` MCP tool.
