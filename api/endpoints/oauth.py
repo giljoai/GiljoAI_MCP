@@ -49,6 +49,18 @@ router = APIRouter()
 well_known_router = APIRouter()
 
 
+# API-0021h — Declared MCP spec versions, single source of truth.
+# Advertised in two places, both reading this constant: the AS-metadata
+# `mcp_spec_versions_supported` custom claim (RFC 8414 §2 permits additional
+# claims) and the GET /.well-known/mcp-server-info conformance discovery
+# endpoint. Test file imports the same symbol so a drift between the constant,
+# the advertised list, and the documented set fails CI immediately.
+# Conformance verdicts and evidence are tracked in CONFORMANCE.md (see the
+# project's drift-tracking process). 2025-11-25 is declared even though CIMD
+# is unimplemented — the gap is documented explicitly rather than hidden.
+MCP_SPEC_VERSIONS_SUPPORTED: list[str] = ["2025-03-26", "2025-06-18", "2025-11-25"]
+
+
 class AuthorizeRequest(BaseModel):
     """Request body for the OAuth authorize (consent) endpoint."""
 
@@ -107,6 +119,14 @@ class OAuthMetadataResponse(BaseModel):
     code_challenge_methods_supported: list[str]
     grant_types_supported: list[str]
     registration_endpoint: str | None = None
+    # API-0021h: custom claim advertising the MCP protocol versions this server
+    # implements. RFC 8414 §2 permits additional metadata claims; spec-aware MCP
+    # clients (claude.ai connector, Inspector) read this to negotiate version
+    # without a round-trip through `initialize`.
+    mcp_spec_versions_supported: list[str] = Field(
+        default_factory=list,
+        description="MCP protocol versions implemented by this server (API-0021h).",
+    )
 
 
 class ProtectedResourceMetadataResponse(BaseModel):
@@ -576,6 +596,10 @@ async def oauth_metadata(request: Request):
         # authorization_code (the refresh path rejects them server-side).
         grant_types_supported=["authorization_code", "refresh_token"],
         registration_endpoint=registration_endpoint,
+        # API-0021h: copy (not reference) the declared-versions list so any
+        # downstream mutation of the response payload cannot poison the
+        # module-level constant.
+        mcp_spec_versions_supported=list(MCP_SPEC_VERSIONS_SUPPORTED),
     )
 
 
@@ -612,4 +636,53 @@ async def oauth_protected_resource_metadata(request: Request):
         authorization_servers=[get_public_base_url(request)],
         scopes_supported=sorted(OAUTH_GRANTABLE_SCOPES),
         bearer_methods_supported=["header"],
+    )
+
+
+class McpServerInfoResponse(BaseModel):
+    """MCP spec-version + capability discovery document (API-0021h).
+
+    Lightweight companion to OAuth AS-metadata: exposes the declared MCP
+    spec-version list, the server identity, and a capability snapshot read
+    from the canonical FastMCP tool registry. Surface for conformance
+    discovery without forcing the client through `initialize`.
+    """
+
+    spec_versions: list[str]
+    capabilities: dict
+    server_name: str
+    server_version: str
+
+
+@well_known_router.get(
+    "/.well-known/mcp-server-info",
+    response_model=McpServerInfoResponse,
+    tags=["oauth"],
+)
+async def mcp_server_info():
+    """Return MCP spec-version + capability discovery document (API-0021h).
+
+    Public, unauthenticated endpoint. Capability data is read from canonical
+    sources — `TOOL_SCOPES` (defined alongside the FastMCP instance) for the
+    scope-per-tool map, `giljo_mcp.__version__` for `server_version`. No
+    duplicate registries.
+    """
+    # Local import avoids the api.endpoints.mcp_sdk_server ↔ api.endpoints.oauth
+    # cycle at module load. FastMCP setup transitively imports modules that
+    # depend on api.app; the lazy import keeps oauth.py importable in any order.
+    from api.endpoints.mcp_sdk_server import TOOL_SCOPES, mcp
+    from giljo_mcp import __version__ as giljo_version
+
+    capabilities: dict = {
+        "tools": {
+            "count": len(TOOL_SCOPES),
+            "scopes": dict(TOOL_SCOPES),
+        }
+    }
+
+    return McpServerInfoResponse(
+        spec_versions=list(MCP_SPEC_VERSIONS_SUPPORTED),
+        capabilities=capabilities,
+        server_name=mcp.name,
+        server_version=giljo_version,
     )

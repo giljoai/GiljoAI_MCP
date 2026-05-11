@@ -211,6 +211,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/saas/oauth/",  # SaaS OAuth surface (DCR /register; RFC 7591 public per spec)
             "/.well-known/oauth-authorization-server",  # RFC 8414 root mirror (API-0021a)
             "/.well-known/oauth-protected-resource",  # RFC 9728 resource metadata (API-0021a)
+            "/.well-known/mcp-server-info",  # MCP spec-version + capability discovery (API-0021h)
             "/api/version/",  # Version check (installers need this before auth exists)
             "/api/saas/register",  # SaaS self-serve registration (public, pre-auth)
             "/api/saas/password-reset/",  # SaaS password reset (public, pre-auth)

@@ -4,6 +4,10 @@ All notable changes to this project are recorded here. Versions follow `MAJOR.MI
 
 ## [Unreleased]
 
+### API-0021h — Declare MCP spec-version conformance
+
+GiljoAI MCP now formally declares conformance to MCP spec versions `2025-03-26`, `2025-06-18` (default), and `2025-11-25` (PARTIAL — CIMD deferred). The declaration ships in two places: a new `mcp_spec_versions_supported` custom claim on `/.well-known/oauth-authorization-server` (RFC 8414 §2 permits additional claims), and a new public `GET /.well-known/mcp-server-info` endpoint returning `{spec_versions, capabilities, server_name, server_version}` where capabilities iterate the canonical `TOOL_SCOPES` registry. A 20-test regression suite (`tests/api/test_spec_conformance.py`) drives both endpoints via the FastAPI route layer to lock the declaration to CI — every PASS verdict in `docs/CONFORMANCE.md` cites a test file in the public suite. Single-source-of-truth constant in `api/endpoints/oauth.py` keeps the metadata, endpoint, and tests in lockstep. Public conformance audit + drift-tracking process documented in `docs/CONFORMANCE.md`. Edition Scope: Both.
+
 ### API-0022a — Claude.ai handshake PR labeler + manual-test runbook
 
 PRs touching the Claude.ai → demo OAuth handshake path (oauth endpoints, MCP SDK server, authGuard, OAuthAuthorize, DemoConsentScreen, oauth_service, saas/auth, demo seed) now automatically receive the `manual-test:claude-ai-handshake` label and a sticky PR comment linking to the runbook. Runbook at `scripts/conformance/claude_ai_handshake.md` covers pre-requisites, 9-step test sequence, pass/fail criteria, and a copy-paste Claude Code prompt for browser-driven verification via `mcp__claude-in-chrome__*` tools. Workflow is private-only (excluded from CE export). To activate: create the `manual-test:claude-ai-handshake` and `manual-test:verified` labels on the repo (see `gh label create` one-liner in the runbook footer), then configure the branch-protection rule in GitHub Settings → Rules → Rulesets to require `manual-test:verified` before merge on PRs carrying `manual-test:claude-ai-handshake`.
