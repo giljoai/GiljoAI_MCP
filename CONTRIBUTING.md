@@ -100,6 +100,10 @@ cd frontend && npx eslint src/ --fix
 - Coverage target: >80% for new code
 - Tests use PostgreSQL with transaction rollback for isolation
 
+### Manual testing for OAuth / MCP paths
+
+PRs that touch the Claude.ai → demo OAuth handshake (oauth endpoints, authGuard, OAuthAuthorize, DemoConsentScreen, oauth_service, saas/auth, demo seed data) require a manual end-to-end verification before merging. A sticky PR comment will appear automatically when the `manual-test:claude-ai-handshake` label is applied. Follow the runbook at [`scripts/conformance/claude_ai_handshake.md`](scripts/conformance/claude_ai_handshake.md), then add the `manual-test:verified` label once the handshake passes.
+
 ## Architecture
 
 - **Service layer**: Business logic in `src/giljo_mcp/services/`. Services raise domain exceptions from `src/giljo_mcp/exceptions.py`.
