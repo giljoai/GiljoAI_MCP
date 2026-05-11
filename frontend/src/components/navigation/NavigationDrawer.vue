@@ -355,20 +355,7 @@
             {{ aboutEditionLabel }}<br />
             License: {{ aboutLicenseLabel }}<br /><br />
 
-            <template v-if="giljoMode === 'demo'">
-              Demo trial accounts are read-mostly and reset periodically.
-              Sign up for a full account to keep your data.<br /><br />
-            </template>
-
-            <template v-else-if="giljoMode === 'saas'">
-              Hosted by GiljoAI under your active subscription.<br /><br />
-            </template>
-
-            <template v-else>
-              GiljoAI Community License v1.1<br />
-              Free for single-user use. Multi-user deployments require a Commercial License.
-              Commercial Licenses may be obtained at no cost at GiljoAI LLC's discretion.<br /><br />
-            </template>
+            {{ aboutLongDescription }}<br /><br />
 
             <a
               href="https://www.giljo.ai"
@@ -445,6 +432,7 @@ import { defineAsyncComponent } from 'vue'
 const ConnectionDebugDialog = defineAsyncComponent(() => import('@/components/navigation/ConnectionDebugDialog.vue'))
 import RoleBadge from '@/components/common/RoleBadge.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import { getLicenseCopy } from '@/i18n/licenseCopy'
 
 const props = defineProps({
   modelValue: {
@@ -616,13 +604,11 @@ const editionFooterLabel = computed(() => {
 })
 
 // About dialog: edition label (always full name, no rail variant)
-const aboutEditionLabel = computed(() => {
-  switch (giljoMode.value) {
-    case 'demo': return 'Demo Edition'
-    case 'saas': return 'SaaS Edition'
-    default: return 'Community Edition'
-  }
-})
+// About dialog: edition label sourced from the single licenseCopy module so
+// CE / Demo / SaaS framing stays consistent with RegisterView and any future
+// install screens.
+const aboutEditionLabel = computed(() => getLicenseCopy(giljoMode.value).editionLabel)
+const aboutLongDescription = computed(() => getLicenseCopy(giljoMode.value).longDescription)
 
 // About dialog: version label, falls back gracefully if backend didn't supply one
 const versionLabel = computed(() =>

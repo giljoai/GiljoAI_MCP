@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Unified context fetcher for GiljoAI MCP.
@@ -35,6 +35,7 @@ from giljo_mcp.tools.context_tools.get_git_history import get_git_history
 from giljo_mcp.tools.context_tools.get_product_context import get_product_context
 from giljo_mcp.tools.context_tools.get_project import get_project
 from giljo_mcp.tools.context_tools.get_self_identity import get_self_identity
+from giljo_mcp.tools.context_tools.get_tasks import get_tasks
 from giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
 from giljo_mcp.tools.context_tools.get_testing import get_testing
 from giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
@@ -54,6 +55,7 @@ CATEGORY_TOOLS = {
     "agent_templates": get_agent_templates,
     "project": get_project,
     "self_identity": get_self_identity,
+    "tasks": get_tasks,
 }
 
 # Derive from canonical source (defaults.py) - single source of truth (Handover 0823)
@@ -70,6 +72,7 @@ DEFAULT_DEPTHS = {
     "agent_templates": _CANONICAL_DEPTHS.get("agent_templates", "basic"),
     "project": None,
     "self_identity": None,
+    "tasks": None,
 }
 
 ALL_CATEGORIES = list(CATEGORY_TOOLS.keys())
@@ -100,7 +103,7 @@ async def _is_category_enabled(
         True if enabled or no toggle exists, False if explicitly disabled.
     """
     # Categories that are always on (no toggle)
-    always_on = {"product_core", "project", "self_identity", "agent_templates"}
+    always_on = {"product_core", "project", "self_identity", "agent_templates", "tasks"}
     if category in always_on:
         return True
 
@@ -601,6 +604,12 @@ async def _fetch_category(
         kwargs["product_id"] = product_id
         kwargs["tenant_key"] = tenant_key
         # No depth param (Handover 0351)
+
+    elif category == "tasks":
+        kwargs["product_id"] = product_id
+        kwargs["tenant_key"] = tenant_key
+        if depth and isinstance(depth, int):
+            kwargs["limit"] = depth
 
     else:  # product_core
         kwargs["product_id"] = product_id

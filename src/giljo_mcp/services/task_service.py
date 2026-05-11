@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 TaskService - Dedicated service for task management
@@ -42,8 +42,10 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.domain.task_status import VALID_TASK_STATUSES
 from giljo_mcp.exceptions import (
     AuthorizationError,
     BaseGiljoError,
@@ -66,7 +68,7 @@ _ALLOWED_TASK_UPDATE_FIELDS: frozenset[str] = frozenset(
     {
         "title",
         "description",
-        "category",
+        "task_type_id",
         "status",
         "priority",
         "estimated_effort",
@@ -140,7 +142,7 @@ class TaskService:
     async def log_task(
         self,
         content: str,
-        category: str | None = None,
+        task_type_id: str | None = None,
         priority: str = "medium",
         project_id: str | None = None,
         product_id: str | None = None,
@@ -152,7 +154,7 @@ class TaskService:
 
         Args:
             content: Task content (used as fallback for title and description)
-            category: Optional category/classification
+            task_type_id: Optional taxonomy_types FK (resolved upstream from abbreviation)
             priority: Task priority (default: "medium")
             project_id: Optional project ID to attach task to
             product_id: Required product ID (task must belong to a product)
@@ -171,7 +173,7 @@ class TaskService:
         Example:
             >>> task_id = await service.log_task(
             ...     content="Fix authentication bug",
-            ...     category="bug",
+            ...     task_type_id="abc-123",
             ...     priority="high",
             ...     product_id="prod-123",
             ...     tenant_key="tenant-abc"
@@ -183,7 +185,7 @@ class TaskService:
                 return await self._log_task_impl(
                     self._session,
                     content,
-                    category,
+                    task_type_id,
                     priority,
                     project_id,
                     product_id,
@@ -195,7 +197,7 @@ class TaskService:
                 return await self._log_task_impl(
                     session,
                     content,
-                    category,
+                    task_type_id,
                     priority,
                     project_id,
                     product_id,
@@ -214,7 +216,7 @@ class TaskService:
         self,
         session: AsyncSession,
         content: str,
-        category: str | None,
+        task_type_id: str | None,
         priority: str,
         project_id: str | None,
         product_id: str | None,
@@ -227,7 +229,7 @@ class TaskService:
         Args:
             session: Database session
             content: Task content (used as fallback for title and description)
-            category: Optional category/classification
+            task_type_id: Optional taxonomy_types FK (resolved upstream from abbreviation)
             priority: Task priority
             project_id: Optional project ID
             product_id: Required product ID
@@ -284,7 +286,7 @@ class TaskService:
             project_id=str(project.id) if project else None,
             title=task_title,
             description=task_description,
-            category=category,
+            task_type_id=task_type_id,
             priority=priority,
             status="pending",
         )
@@ -309,6 +311,7 @@ class TaskService:
         project_id: str | None = None,
         product_id: str | None = None,
         tenant_key: str | None = None,
+        task_type_id: str | None = None,
     ) -> str:
         """
         Create a new task with full details.
@@ -345,6 +348,7 @@ class TaskService:
             project_id=project_id,
             product_id=product_id,
             tenant_key=tenant_key,
+            task_type_id=task_type_id,
         )
 
     # ============================================================================
@@ -443,8 +447,9 @@ class TaskService:
         Raises:
             ValidationError: No tenant context
         """
-        # Start with tenant-scoped base query
-        query = select(Task).where(Task.tenant_key == tenant_key)
+        # Start with tenant-scoped base query, eager-load task_type so callers
+        # can read task.task_type.abbreviation outside the session.
+        query = select(Task).options(selectinload(Task.task_type)).where(Task.tenant_key == tenant_key)
 
         # Handle special filter types (product-scoped filtering)
         if filter_type == "product_tasks":
@@ -813,7 +818,7 @@ class TaskService:
         title: str,
         description: str,
         priority: str = "medium",
-        category: str | None = None,
+        task_type: str | None = None,
         assigned_to: str | None = None,
         tenant_key: str | None = None,
         db_manager: Any | None = None,
@@ -821,17 +826,29 @@ class TaskService:
     ) -> dict[str, Any]:
         """Create a task via MCP tool (validation + active product resolution).
 
-        Pushed down from ToolAccessor.create_task (sprint 002f).
+        Phase B (agent-parity): ``task_type`` replaces the old ``category``
+        free-form string. Validation goes through TaxonomyService; unknown
+        abbreviations raise ValidationError with the valid_types payload.
         """
         effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
         effective_db = db_manager or self.db_manager
 
         from giljo_mcp.services.product_service import ProductService
+        from giljo_mcp.services.taxonomy_service import TaxonomyService
+
+        task_type_id: str | None = None
+        resolved_type_label = ""
+        if task_type and task_type.strip():
+            taxonomy = TaxonomyService(db_manager=effective_db, session=self._session)
+            resolved_type = await taxonomy.validate(task_type.strip(), effective_tenant_key)
+            task_type_id = resolved_type.id
+            resolved_type_label = resolved_type.abbreviation
 
         product_service = ProductService(
             db_manager=effective_db,
             tenant_key=effective_tenant_key,
             websocket_manager=websocket_manager,
+            test_session=self._session,
         )
         active_product = await product_service.get_active_product()
 
@@ -842,13 +859,12 @@ class TaskService:
             )
 
         product_id = active_product.id
-        effective_category = category or "general"
 
         task_id = await self.log_task(
             content=title,
             title=title,
             description=description,
-            category=effective_category,
+            task_type_id=task_type_id,
             priority=priority,
             product_id=product_id,
             tenant_key=effective_tenant_key,
@@ -871,12 +887,357 @@ class TaskService:
             except (RuntimeError, ValueError, OSError) as e:
                 self._logger.warning(f"Failed to broadcast task:created event: {e}")
 
-        return {
+        response: dict[str, Any] = {
             "success": True,
             "task_id": task_id,
             "title": title,
             "priority": priority,
-            "category": effective_category,
+            "task_type": resolved_type_label,
             "product_id": product_id,
             "message": f"Task '{title}' created successfully",
+        }
+        if not task_type:
+            taxonomy = TaxonomyService(db_manager=effective_db, session=self._session)
+            response["valid_types"] = await taxonomy._valid_types_payload(effective_tenant_key)
+        return response
+
+    async def update_task_for_mcp(
+        self,
+        task_id: str,
+        tenant_key: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+        status: str | None = None,
+        priority: str | None = None,
+        task_type: str | None = None,
+        due_date: Any = None,
+        project_id: str | None = None,
+        estimated_effort: float | None = None,
+        actual_effort: float | None = None,
+    ) -> dict[str, Any]:
+        """Update a task via the MCP surface. Phase C; mirrors update_project.
+
+        Only fields actually supplied (non-None) are written; the underlying
+        ``update_task`` enforces the field allowlist (post-0962 write
+        discipline). Unknown ``task_type`` abbreviations are rejected via
+        TaxonomyService.validate before any write happens.
+        """
+        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+        if not effective_tenant_key:
+            raise ValidationError(
+                message="tenant_key is required",
+                context={"operation": "update_task_for_mcp", "task_id": task_id},
+            )
+
+        if status is not None and status not in VALID_TASK_STATUSES:
+            valid_status_values = sorted(s.value for s in VALID_TASK_STATUSES)
+            raise ValidationError(
+                message=f"Unknown task status '{status}'. Valid statuses: {valid_status_values}",
+                context={
+                    "operation": "update_task_for_mcp",
+                    "task_id": task_id,
+                    "valid_statuses": valid_status_values,
+                },
+            )
+
+        update_kwargs: dict[str, Any] = {}
+        if title is not None:
+            update_kwargs["title"] = title
+        if description is not None:
+            update_kwargs["description"] = description
+        if status is not None:
+            update_kwargs["status"] = status
+        if priority is not None:
+            update_kwargs["priority"] = priority
+        if due_date is not None:
+            update_kwargs["due_date"] = due_date
+        if project_id is not None:
+            update_kwargs["project_id"] = project_id
+        if estimated_effort is not None:
+            update_kwargs["estimated_effort"] = estimated_effort
+        if actual_effort is not None:
+            update_kwargs["actual_effort"] = actual_effort
+
+        if task_type is not None:
+            if task_type == "":
+                update_kwargs["task_type_id"] = None
+            else:
+                from giljo_mcp.services.taxonomy_service import TaxonomyService
+
+                taxonomy = TaxonomyService(db_manager=self.db_manager, session=self._session)
+                resolved = await taxonomy.validate(task_type.strip(), effective_tenant_key)
+                update_kwargs["task_type_id"] = resolved.id
+
+        if not update_kwargs:
+            return {
+                "task_id": task_id,
+                "updated_fields": [],
+                "message": "No fields supplied; nothing to update.",
+            }
+
+        # Route through update_task; it owns the allowlist and timestamp logic.
+        # update_task pulls tenant from tenant_manager — set it explicitly so
+        # tenant_key parameter wins on the MCP-tool path.
+        previous = self.tenant_manager.get_current_tenant() if self.tenant_manager else None
+        try:
+            if self.tenant_manager:
+                self.tenant_manager.set_current_tenant(effective_tenant_key)
+            result = await self.update_task(task_id, **update_kwargs)
+        finally:
+            if self.tenant_manager and previous is not None:
+                self.tenant_manager.set_current_tenant(previous)
+
+        return {
+            "task_id": result.task_id,
+            "updated_fields": list(result.updated_fields),
+            "message": f"Task {result.task_id} updated: {sorted(result.updated_fields)}",
+        }
+
+    async def complete_task_for_mcp(
+        self,
+        task_id: str,
+        tenant_key: str | None = None,
+        completion_notes: str | None = None,
+    ) -> dict[str, Any]:
+        """Mark a task completed (status + completed_at + optional notes).
+
+        Phase C of agent-parity. Tenant-scoped, TaskService-routed; identical
+        write discipline to ``update_task_for_mcp``. ``completion_notes``,
+        when provided, is appended to the description so the audit trail keeps
+        a record without introducing a new column.
+        """
+        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+        if not effective_tenant_key:
+            raise ValidationError(
+                message="tenant_key is required",
+                context={"operation": "complete_task", "task_id": task_id},
+            )
+
+        task = await self._change_status_with_tenant(task_id, "completed", effective_tenant_key)
+
+        if completion_notes:
+            await self._append_completion_notes(task_id, effective_tenant_key, completion_notes)
+
+        return {
+            "task_id": task_id,
+            "status": task.status,
+            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+            "completion_notes": completion_notes,
+            "message": f"Task {task_id} marked completed",
+        }
+
+    async def list_tasks_for_mcp(
+        self,
+        tenant_key: str | None = None,
+        mode: str = "summary",
+        status: str | None = None,
+        priority: str | None = None,
+        task_type: str | None = None,
+        due_before: Any = None,
+        summary_only: bool | None = None,
+        memory_limit: int | None = None,
+    ) -> dict[str, Any]:
+        """List tasks for the current tenant with summary/full projection modes.
+
+        Phase D of agent-parity. Two modes only:
+
+        - ``summary``: id, title, status, priority, task_type, due_date,
+          created_at — keeps the response under ~80 lines for a typical
+          ~50-task corpus.
+        - ``full``: every column on Task plus an embedded task_type block.
+          ``memory_limit`` truncates description if set.
+
+        Filters: status, priority, task_type (abbreviation), due_before.
+        Every query filters by tenant_key; cross-tenant tasks are never
+        visible.
+        """
+        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+        if not effective_tenant_key:
+            raise ValidationError(
+                message="tenant_key is required",
+                context={"operation": "list_tasks_for_mcp"},
+            )
+
+        if summary_only is True:
+            mode = "summary"
+        elif summary_only is False:
+            mode = "full"
+        if mode not in {"summary", "full"}:
+            raise ValidationError(
+                message=f"Unknown mode '{mode}'. Valid modes: summary, full",
+                context={"operation": "list_tasks_for_mcp", "mode": mode},
+            )
+
+        task_type_id: str | None = None
+        if task_type:
+            from giljo_mcp.services.taxonomy_service import TaxonomyService
+
+            taxonomy = TaxonomyService(db_manager=self.db_manager, session=self._session)
+            resolved = await taxonomy.validate(task_type.strip(), effective_tenant_key)
+            task_type_id = resolved.id
+
+        if self._session:
+            tasks = await self._list_tasks_for_mcp_impl(
+                self._session,
+                effective_tenant_key,
+                status=status,
+                priority=priority,
+                task_type_id=task_type_id,
+                due_before=due_before,
+            )
+        else:
+            async with self._get_session() as session:
+                tasks = await self._list_tasks_for_mcp_impl(
+                    session,
+                    effective_tenant_key,
+                    status=status,
+                    priority=priority,
+                    task_type_id=task_type_id,
+                    due_before=due_before,
+                )
+
+        if mode == "summary":
+            rows = [self._task_to_summary_row(t) for t in tasks]
+        else:
+            rows = [self._task_to_full_row(t, memory_limit=memory_limit) for t in tasks]
+
+        return {
+            "tasks": rows,
+            "count": len(rows),
+            "mode": mode,
+            "tenant_key": effective_tenant_key,
+        }
+
+    # ------------------------------------------------------------------
+    # MCP-task helpers (private)
+    # ------------------------------------------------------------------
+
+    async def _change_status_with_tenant(self, task_id: str, new_status: str, tenant_key: str) -> Task:
+        """Tenant-explicit variant of change_status. Routes through repo."""
+
+        async def _do(session: AsyncSession) -> Task:
+            task = await self._repo.get_task_by_id(session, task_id, tenant_key)
+            if not task:
+                raise ResourceNotFoundError(
+                    message="Task not found",
+                    context={"task_id": task_id, "tenant_key": tenant_key},
+                )
+            task.status = new_status
+            now = datetime.now(UTC)
+            if new_status == "in_progress" and not task.started_at:
+                task.started_at = now
+            elif new_status in ("completed", "cancelled") and not task.completed_at:
+                task.completed_at = now
+            await self._repo.commit_and_refresh(session, task)
+            self._logger.info("Task %s status -> %s (tenant=%s)", task_id, new_status, tenant_key)
+            return task
+
+        if self._session:
+            return await _do(self._session)
+        async with self._get_session() as session:
+            return await _do(session)
+
+    async def append_completion_notes(self, task_id: str, notes: str) -> None:
+        """Public entry point for appending completion notes (REST PATCH path).
+
+        Resolves tenant from TenantManager (matches the rest of the public
+        TaskService surface). Delegates to ``_append_completion_notes`` so the
+        REST and MCP paths share a single audit-trail format.
+        """
+        tenant_key = self.tenant_manager.get_current_tenant()
+        if not tenant_key:
+            raise ValidationError(
+                message="tenant_key is required",
+                context={"operation": "append_completion_notes", "task_id": task_id},
+            )
+        await self._append_completion_notes(task_id, tenant_key, notes)
+
+    async def _append_completion_notes(self, task_id: str, tenant_key: str, notes: str) -> None:
+        """Append completion notes to the task description (audit trail)."""
+
+        async def _do(session: AsyncSession) -> None:
+            task = await self._repo.get_task_by_id(session, task_id, tenant_key)
+            if not task:
+                return
+            stamped = f"\n\n[completed {datetime.now(UTC).isoformat()}] {notes}"
+            task.description = (task.description or "") + stamped
+            await self._repo.commit_and_refresh(session, task)
+
+        if self._session:
+            await _do(self._session)
+            return
+        async with self._get_session() as session:
+            await _do(session)
+
+    async def _list_tasks_for_mcp_impl(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        *,
+        status: str | None,
+        priority: str | None,
+        task_type_id: str | None,
+        due_before: Any,
+    ) -> list[Task]:
+        stmt = (
+            select(Task)
+            .options(selectinload(Task.task_type))
+            .where(Task.tenant_key == tenant_key)
+            .order_by(Task.created_at.desc())
+        )
+        if status:
+            stmt = stmt.where(Task.status == status)
+        if priority:
+            stmt = stmt.where(Task.priority == priority)
+        if task_type_id:
+            stmt = stmt.where(Task.task_type_id == task_type_id)
+        if due_before is not None:
+            stmt = stmt.where(Task.due_date < due_before)
+
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    @staticmethod
+    def _task_to_summary_row(task: Task) -> dict[str, Any]:
+        return {
+            "task_id": str(task.id),
+            "title": task.title,
+            "status": task.status,
+            "priority": task.priority,
+            "task_type": task.task_type.abbreviation if task.task_type else None,
+            "due_date": task.due_date.isoformat() if task.due_date else None,
+            "created_at": task.created_at.isoformat() if task.created_at else None,
+        }
+
+    @staticmethod
+    def _task_to_full_row(task: Task, *, memory_limit: int | None) -> dict[str, Any]:
+        description = task.description or ""
+        if memory_limit and len(description) > memory_limit:
+            description = description[:memory_limit] + "..."
+        return {
+            "task_id": str(task.id),
+            "title": task.title,
+            "description": description,
+            "status": task.status,
+            "priority": task.priority,
+            "task_type": (
+                {
+                    "id": task.task_type.id,
+                    "abbreviation": task.task_type.abbreviation,
+                    "label": task.task_type.label,
+                    "color": task.task_type.color,
+                }
+                if task.task_type
+                else None
+            ),
+            "task_type_id": task.task_type_id,
+            "product_id": task.product_id,
+            "project_id": task.project_id,
+            "parent_task_id": task.parent_task_id,
+            "estimated_effort": task.estimated_effort,
+            "actual_effort": task.actual_effort,
+            "due_date": task.due_date.isoformat() if task.due_date else None,
+            "started_at": task.started_at.isoformat() if task.started_at else None,
+            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+            "created_at": task.created_at.isoformat() if task.created_at else None,
         }

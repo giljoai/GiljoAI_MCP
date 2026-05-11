@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Unit tests for OAuthAuthorizationCode model.
@@ -97,7 +97,7 @@ class TestOAuthAuthorizationCodeModel:
 
     def test_scope_default(self):
         col = OAuthAuthorizationCode.__table__.c.scope
-        assert col.default.arg == "mcp"
+        assert col.default.arg == "mcp:read mcp:write"
 
     def test_used_default(self):
         col = OAuthAuthorizationCode.__table__.c.used

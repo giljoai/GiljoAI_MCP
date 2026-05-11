@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """Multi-terminal (platform-agnostic) orchestrator prompt builder.
 
@@ -10,6 +10,13 @@ Builds the thinnest possible implementation prompt — identity + single
 instruction to call get_agent_mission(). All behavioral protocol lives
 server-side.
 """
+
+
+def _project_title(project) -> str:
+    has_taxonomy = bool(getattr(project, "project_type_id", None) or getattr(project, "series_number", None))
+    if has_taxonomy:
+        return f"{project.taxonomy_alias} {project.name}"
+    return project.name
 
 
 class MultiTerminalPromptBuilder:
@@ -31,7 +38,7 @@ class MultiTerminalPromptBuilder:
             "mcp__giljo_mcp__health_check()",
             "```",
             "",
-            f"You are the ORCHESTRATOR for project '{project.name}'.",
+            f"You are the ORCHESTRATOR for project '{_project_title(project)}'.",
             f"Job ID: `{orchestrator_id}` | Project ID: `{project.id}`",
             "",
             "Call `get_agent_mission` to receive your current team state and operating protocol:",

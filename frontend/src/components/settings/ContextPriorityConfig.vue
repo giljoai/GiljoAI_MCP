@@ -28,7 +28,7 @@
         <div>
           <strong>Git History is disabled</strong>
           <br />
-          GitHub integration is currently disabled. Enable it in the
+          Git integration is currently disabled. Enable it in the
           <a
             @click="navigateToIntegrations"
             class="text-decoration-underline cursor-pointer"
@@ -122,7 +122,7 @@
               color="primary"
               :aria-label="
                 isContextDisabled(context.key)
-                  ? `${context.label} disabled - GitHub integration required`
+                  ? `${context.label} disabled - Git integration required`
                   : `Toggle ${context.label}`
               "
               class="ml-2"

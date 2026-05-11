@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Tests for per-product taxonomy series numbering (commit 5ca1c43ff).
@@ -18,7 +18,7 @@ import pytest
 
 from giljo_mcp.exceptions import AlreadyExistsError
 from giljo_mcp.models.products import Product
-from giljo_mcp.models.projects import ProjectType
+from giljo_mcp.models.projects import TaxonomyType
 from giljo_mcp.services.project_service import ProjectService
 from giljo_mcp.tenant import TenantManager
 
@@ -54,9 +54,9 @@ async def _make_product(db_session, tenant_key: str) -> Product:
     return product
 
 
-async def _make_project_type(db_session, tenant_key: str, label: str, abbreviation: str) -> ProjectType:
-    """Helper: create a ProjectType row directly in the DB."""
-    pt = ProjectType(
+async def _make_project_type(db_session, tenant_key: str, label: str, abbreviation: str) -> TaxonomyType:
+    """Helper: create a TaxonomyType row directly in the DB."""
+    pt = TaxonomyType(
         id=str(uuid4()),
         tenant_key=tenant_key,
         label=label,

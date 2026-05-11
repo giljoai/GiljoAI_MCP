@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Tests for Handover 0435d: Message Intent Flag & Closeout Validation.
@@ -70,7 +70,7 @@ class TestRequiresActionAutoBlock:
         mock_session.execute.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_action_required_message_proceeds_to_check(self, routing_service):
+    async def test_requires_action_true_proceeds_to_check(self, routing_service):
         """requires_action=True should proceed past the guard and check agent status."""
         mock_session = AsyncMock()
         mock_project = MagicMock()

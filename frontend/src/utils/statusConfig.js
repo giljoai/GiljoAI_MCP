@@ -89,37 +89,38 @@ const statusConfig = {
 }
 
 /**
- * Check if an agent is in closeout-blocked state.
- * Closeout-blocked: status is "blocked" AND block_reason starts with "Closeout".
+ * Check if an agent is awaiting a user-approval decision.
+ * BE-5029 / FE-5017 Phase C: replaced the legacy
+ * (status === 'blocked' && blockReason.startsWith('Closeout')) heuristic
+ * with the canonical 'awaiting_user' status flipped server-side by
+ * UserApprovalService.create_pending().
+ *
  * @param {string} status - Agent status value
- * @param {string|null|undefined} blockReason - Block reason text
  * @returns {boolean}
  */
-export const isCloseoutBlocked = (status, blockReason) => {
-  return status === 'blocked' && typeof blockReason === 'string' && blockReason.startsWith('Closeout')
+export const isAwaitingUser = (status) => {
+  return status === 'awaiting_user'
 }
 
 /**
  * Get human-readable label for status.
- * When the agent is closeout-blocked, returns "Decision Required" instead of "Needs Input".
+ * When the agent is awaiting_user, returns "Decision Required" instead of "Needs Input".
  * @param {string} status - Agent status value
- * @param {string|null|undefined} blockReason - Optional block reason for closeout detection
  * @returns {string} Display label
  */
-export const getStatusLabel = (status, blockReason) => {
-  if (isCloseoutBlocked(status, blockReason)) return 'Decision Required'
+export const getStatusLabel = (status) => {
+  if (isAwaitingUser(status)) return 'Decision Required'
   return statusConfig[status]?.label || 'Unknown'
 }
 
 /**
  * Get color for status display.
- * Closeout-blocked uses amber (#ffc107) to distinguish from generic blocked orange.
+ * awaiting_user uses amber (#ffc107) to distinguish from generic blocked orange.
  * @param {string} status - Agent status value
- * @param {string|null|undefined} blockReason - Optional block reason for closeout detection
  * @returns {string} Hex color code
  */
-export const getStatusColor = (status, blockReason) => {
-  if (isCloseoutBlocked(status, blockReason)) return STATUS_COLORS.CLOSEOUT
+export const getStatusColor = (status) => {
+  if (isAwaitingUser(status)) return STATUS_COLORS.CLOSEOUT
   return statusConfig[status]?.color || STATUS_COLORS.FALLBACK
 }
 
@@ -132,12 +133,12 @@ export const isStatusItalic = (status) => {
   return statusConfig[status]?.italic || false
 }
 
-// Closeout-blocked config for StatusChip (legacy config format)
-const CLOSEOUT_BLOCKED_CONFIG = {
+// awaiting_user config for StatusChip — agent has requested user decision
+const AWAITING_USER_CONFIG = {
   icon: 'mdi-clipboard-check-outline',
   color: 'amber-darken-1',
   label: 'Decision Required',
-  description: 'Orchestrator is awaiting user review before project closeout',
+  description: 'Agent is awaiting your decision on a request_approval prompt',
 }
 
 // Legacy status config for other components
@@ -247,8 +248,8 @@ const HEALTH_CONFIG = {
 
 const STALENESS_THRESHOLD = 10 // minutes
 
-export function getStatusConfig(status, blockReason) {
-  if (isCloseoutBlocked(status, blockReason)) return CLOSEOUT_BLOCKED_CONFIG
+export function getStatusConfig(status) {
+  if (isAwaitingUser(status)) return AWAITING_USER_CONFIG
   return STATUS_CONFIG[status] || STATUS_CONFIG.waiting
 }
 

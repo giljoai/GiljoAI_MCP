@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 JWT token generation and validation for web dashboard sessions.
@@ -46,6 +46,17 @@ import jwt
 from fastapi import HTTPException, status
 
 
+class JWTAudienceMismatchError(Exception):
+    """Raised when a JWT carries an `aud` claim that does not match the expected audience.
+
+    Distinct from jwt.InvalidTokenError so the MCP Bearer middleware can react
+    differently: an aud mismatch is a positive auth signal that the token was
+    issued for a different resource server. We reject outright (no fallback to
+    API-key path) and emit RFC 6750 WWW-Authenticate so the client knows where
+    to find the resource metadata.
+    """
+
+
 class JWTManager:
     """Manage JWT tokens for user sessions"""
 
@@ -59,7 +70,10 @@ class JWTManager:
         """
         Get JWT secret key from environment variables.
 
-        Loads dynamically to ensure .env file has been processed.
+        Reads from os.environ only. .env loading is the responsibility of
+        the application entry point (api.app lifespan, startup.py, install.py).
+        Calling load_dotenv() here was a runtime side effect that mutated
+        os.environ during request handling — relocated alongside seq 100 / 97.
 
         Returns:
             Secret key string
@@ -67,20 +81,7 @@ class JWTManager:
         Raises:
             RuntimeError: If no secret key is found
         """
-        # Try multiple environment variable names
         secret_key = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY") or os.getenv("SECRET_KEY")
-
-        if not secret_key:
-            # Try to load .env file if not already loaded
-            try:
-                from dotenv import load_dotenv
-
-                load_dotenv(override=False)  # Don't override existing values
-
-                # Try again after loading .env
-                secret_key = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY") or os.getenv("SECRET_KEY")
-            except ImportError:
-                pass  # dotenv not available
 
         if not secret_key:
             raise RuntimeError(
@@ -92,7 +93,15 @@ class JWTManager:
         return secret_key
 
     @classmethod
-    def create_access_token(cls, user_id: UUID, username: str, role: str, tenant_key: str) -> str:
+    def create_access_token(
+        cls,
+        user_id: UUID,
+        username: str,
+        role: str,
+        tenant_key: str,
+        audience: str | None = None,
+        scope: str | None = None,
+    ) -> str:
         """
         Create JWT access token for authenticated user.
 
@@ -101,59 +110,70 @@ class JWTManager:
             username: User's username
             role: User's role (admin, developer, viewer)
             tenant_key: Tenant key for multi-tenant isolation (required)
+            audience: RFC 7519 `aud` claim value. When set (e.g. canonical MCP
+                server URI), the token is bound to that resource server and
+                will be rejected at any other resource. Omit to issue a legacy
+                aud-less token (transition window only — see API-0021a).
+            scope: Space-separated OAuth 2.0 scope string (RFC 6749 §3.3). When
+                set, the JWT carries a `scope` claim consumed by the MCP
+                transport's tool-gating layer (API-0021b). Omit for cookie/login
+                tokens — the MCP middleware then defaults missing-claim JWTs to
+                `mcp:read mcp:write` for transport-side gating.
 
         Returns:
             Encoded JWT token string
-
-        Example:
-            >>> token = JWTManager.create_access_token(
-            ...     user_id=UUID("123e4567-e89b-12d3-a456-426614174000"),
-            ...     username="admin",
-            ...     role="admin",
-            ...     tenant_key="tk_abc123"
-            ... )
-            >>> token.startswith("eyJ")  # JWT format
-            True
         """
         secret_key = cls._get_secret_key()
 
         expire = datetime.now(UTC) + timedelta(hours=cls.ACCESS_TOKEN_EXPIRE_HOURS)
-        payload = {
-            "sub": str(user_id),  # Subject (user ID)
+        payload: dict = {
+            "sub": str(user_id),
             "username": username,
             "role": role,
             "tenant_key": tenant_key,
-            "exp": expire,  # Expiration time
-            "iat": datetime.now(UTC),  # Issued at
-            "type": "access",  # Token type
+            "exp": expire,
+            "iat": datetime.now(UTC),
+            "type": "access",
         }
+        if audience is not None:
+            payload["aud"] = audience
+        if scope is not None:
+            payload["scope"] = scope
         return jwt.encode(payload, secret_key, algorithm=cls.ALGORITHM)
 
     @classmethod
-    def verify_token(cls, token: str) -> dict:
+    def verify_token(cls, token: str, expected_audience: str | None = None) -> dict:
         """
         Verify and decode JWT token.
 
+        Audience-binding semantics (RFC 7519 §4.1.3 + RFC 6750 §3) — applies
+        only when `expected_audience` is supplied (caller is a specific resource
+        server such as the MCP Bearer middleware):
+
+        - Token has no `aud` claim → ACCEPT (legacy back-compat). Caller is
+          expected to log a deprecation warning. This window closes once
+          all clients have rotated to aud-bound tokens.
+        - Token has `aud == expected_audience` → ACCEPT.
+        - Token has `aud != expected_audience` → raise
+          :class:`JWTAudienceMismatchError`. Caller must respond 401 with a
+          `WWW-Authenticate: Bearer` header pointing at the resource metadata.
+
+        When `expected_audience` is None (e.g. dashboard cookie auth), the
+        `aud` claim is ignored entirely.
+
         Args:
-            token: JWT token string to verify
+            token: JWT token string to verify.
+            expected_audience: When set, treat this validator as a resource
+                server and apply the audience-binding semantics above.
 
         Returns:
-            Decoded token payload containing:
-                - sub: User ID (as string UUID)
-                - username: User's username
-                - role: User's role
-                - tenant_key: Tenant key
-                - exp: Expiration timestamp
-                - iat: Issued at timestamp
+            Decoded token payload.
 
         Raises:
-            HTTPException: If token is invalid or expired
-
-        Example:
-            >>> token = JWTManager.create_access_token(...)
-            >>> payload = JWTManager.verify_token(token)
-            >>> payload["username"]
-            'admin'
+            HTTPException: 401 for invalid/expired/wrong-type tokens, 500 for
+                config errors.
+            JWTAudienceMismatchError: token's `aud` claim is present but does
+                not match `expected_audience`.
         """
         try:
             secret_key = cls._get_secret_key()
@@ -163,11 +183,25 @@ class JWTManager:
             ) from e
 
         try:
-            payload = jwt.decode(token, secret_key, algorithms=[cls.ALGORITHM])
+            # Decode without audience verification — we apply our own semantics
+            # below (legacy aud-less tokens must still authenticate during the
+            # transition window).
+            payload = jwt.decode(
+                token,
+                secret_key,
+                algorithms=[cls.ALGORITHM],
+                options={"verify_aud": False},
+            )
 
-            # Verify token type (if present)
             if payload.get("type") != "access":
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
+
+            if expected_audience is not None:
+                token_aud = payload.get("aud")
+                if token_aud is not None and token_aud != expected_audience:
+                    raise JWTAudienceMismatchError(
+                        f"JWT aud '{token_aud}' does not match expected '{expected_audience}'"
+                    )
 
             return payload
 

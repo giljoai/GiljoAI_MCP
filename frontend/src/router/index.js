@@ -263,6 +263,32 @@ const routes = [
     },
   },
   {
+    path: '/privacy',
+    name: 'Privacy',
+    component: () => import('@/views/Privacy.vue'),
+    meta: {
+      layout: 'auth',
+      title: 'Privacy Policy',
+      showInNav: false,
+      requiresAuth: false,
+      requiresSetup: false,
+      requiresPasswordChange: false,
+    },
+  },
+  {
+    path: '/terms',
+    name: 'Terms',
+    component: () => import('@/views/Terms.vue'),
+    meta: {
+      layout: 'auth',
+      title: 'Terms of Service',
+      showInNav: false,
+      requiresAuth: false,
+      requiresSetup: false,
+      requiresPasswordChange: false,
+    },
+  },
+  {
     path: '/server-down',
     name: 'ServerDown',
     component: () => import('@/views/ServerDownView.vue'),

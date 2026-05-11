@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 SetupStateManager - Manages setup state with hybrid file/database storage.
@@ -179,19 +179,8 @@ class SetupStateManager:
             "database_initialized": False,
             "database_initialized_at": None,
             "setup_version": None,
-            "database_version": None,
             "python_version": None,
-            "node_version": None,
-            "features_configured": {},
-            "tools_enabled": [],
-            "config_snapshot": None,
-            "validation_passed": True,
             "validation_failures": [],
-            "validation_warnings": [],
-            "last_validation_at": None,
-            "installer_version": None,
-            "install_mode": None,
-            "install_path": None,
         }
 
     def update_state(self, **kwargs) -> None:
@@ -282,16 +271,6 @@ class SetupStateManager:
         # Check version compatibility
         if self.current_version and state.get("setup_version") and state["setup_version"] != self.current_version:
             errors.append(f"Setup version mismatch: stored={state['setup_version']}, current={self.current_version}")
-
-        # Check database version
-        if (
-            self.required_db_version
-            and state.get("database_version")
-            and state["database_version"] != self.required_db_version
-        ):
-            errors.append(
-                f"Database version mismatch: stored={state['database_version']}, required={self.required_db_version}"
-            )
 
         # Check validation failures
         validation_failures = state.get("validation_failures", [])

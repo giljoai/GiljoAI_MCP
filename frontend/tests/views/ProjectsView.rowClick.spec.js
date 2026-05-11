@@ -41,7 +41,7 @@ vi.mock('@/services/api', () => ({
       archive: vi.fn().mockResolvedValue({ data: {} }),
       restore: vi.fn().mockResolvedValue({ data: {} }),
     },
-    projectTypes: {
+    taxonomyTypes: {
       list: vi.fn().mockResolvedValue({ data: [] }),
     },
   },

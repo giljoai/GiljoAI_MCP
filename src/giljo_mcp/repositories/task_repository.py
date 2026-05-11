@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 TaskRepository - Data access layer for Task entities.
@@ -61,7 +61,13 @@ class TaskRepository:
         Returns:
             Task ORM instance or None
         """
-        stmt = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
+        from sqlalchemy.orm import selectinload
+
+        stmt = (
+            select(Task)
+            .options(selectinload(Task.task_type))
+            .where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
+        )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -82,74 +88,6 @@ class TaskRepository:
         """
         result = await session.execute(query)
         return list(result.scalars().all())
-
-    async def find_by_category_and_title(
-        self,
-        session: AsyncSession,
-        tenant_key: str,
-        product_id: str,
-        category: str,
-        title: str,
-    ) -> Task | None:
-        """Find a task by category and title with tenant isolation.
-
-        Used for idempotent task creation (e.g., action_required tags).
-        BE-5022f.
-
-        Args:
-            session: Active database session
-            tenant_key: Tenant key for isolation
-            product_id: Product scope
-            category: Task category to match
-            title: Task title to match (exact, case-sensitive)
-
-        Returns:
-            Task ORM instance or None if not found
-        """
-        stmt = select(Task).where(
-            and_(
-                Task.tenant_key == tenant_key,
-                Task.product_id == product_id,
-                Task.category == category,
-                Task.title == title,
-            )
-        )
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def find_pending_by_category_and_title(
-        self,
-        session: AsyncSession,
-        tenant_key: str,
-        product_id: str,
-        category: str,
-        title: str,
-    ) -> Task | None:
-        """Find a non-completed task by category and title.
-
-        Used for auto-resolving action items on job completion (BE-5022f).
-
-        Args:
-            session: Active database session
-            tenant_key: Tenant key for isolation
-            product_id: Product scope
-            category: Task category to match
-            title: Task title to match (exact, case-sensitive)
-
-        Returns:
-            Task ORM instance or None if not found or already completed
-        """
-        stmt = select(Task).where(
-            and_(
-                Task.tenant_key == tenant_key,
-                Task.product_id == product_id,
-                Task.category == category,
-                Task.title == title,
-                Task.status != "completed",
-            )
-        )
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none()
 
     async def get_project_by_id(
         self,

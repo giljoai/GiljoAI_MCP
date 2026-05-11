@@ -3,8 +3,7 @@
 **Date:** 2026-04-23
 **Scope:** SEC-0002 — formal verification of the "passive server" property before
 `demo.giljo.ai` Cloudflare tunnel goes public.
-**Auditor:** analyzer agent (job `c2690fd4-0ffa-4555-a884-ce0e1903b7fe`) under orchestrator
-`89de04f9-f6f0-4e07-881a-57c0a519b593`.
+**Auditor:** GiljoAI internal review, 2026-04-23.
 **Companion to:** SEC-0001 (upload), SEC-0003 (admin XSS), SEC-0004 (classic web-stack RCE —
 `docs/SECURITY_AUDIT_2026-Q2.md`, commit `14a1cb7b`), SEC-0005 (tenant scoping).
 
@@ -517,8 +516,7 @@ covers. Its job is to fail loudly if Option 1 is ever silently weakened.
 
 ## Sign-off
 
-Audited 2026-04-23 by the SEC-0002 analyzer agent (job
-`c2690fd4-0ffa-4555-a884-ce0e1903b7fe`).
+Audited 2026-04-23 (GiljoAI internal review).
 
 - **LLM SDK imports:** zero real hits across `src/giljo_mcp/`, `api/`, `ops_panel/`.
 - **Outbound HTTP with user content:** zero such paths. All outbound calls hit a

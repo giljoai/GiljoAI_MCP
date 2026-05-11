@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """Claude Code CLI execution prompt builder.
 
@@ -71,7 +71,6 @@ class ClaudePromptBuilder(ExecutionPromptBuilderBase):
             "    You are {agent_name} (job_id: {job_id})",
             "    ",
             '    First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{job_id}")',
-            "    Note: tenant_key is auto-injected by server from your API key session",
             "    This returns your `mission` and `full_protocol`.",
             "    Follow `full_protocol` for all lifecycle behavior",
             "    (startup, planning, progress, messaging, completion, error handling).",
@@ -93,7 +92,6 @@ class ClaudePromptBuilder(ExecutionPromptBuilderBase):
                     f"    You are {first.agent_name} (job_id: {first.job_id})",
                     "    ",
                     f'    First action: Call mcp__giljo_mcp__get_agent_mission(job_id="{first.job_id}")',
-                    "    Note: tenant_key is auto-injected by server from your API key session",
                     "    This returns your `mission` and `full_protocol`.",
                     "    Follow `full_protocol` for all lifecycle behavior",
                     "    (startup, planning, progress, messaging, completion, error handling).",
@@ -143,7 +141,6 @@ class ClaudePromptBuilder(ExecutionPromptBuilderBase):
             "**WARNING: MCP Communication Only**",
             "- All agents run in THIS terminal (Claude Code CLI mode)",
             "- Coordination happens via MCP server (not direct communication)",
-            "- All MCP tools have tenant_key auto-injected by server from API key session",
             "",
         ]
 

@@ -33,10 +33,22 @@
   --color-text-muted: #9e9e9e;            // matches $color-text-muted
   --color-agent-implementer: #6db3e4;     // matches $color-agent-implementor
   --color-agent-analyzer: #e07872;        // matches $color-agent-analyzer
+  // FE-5041: additional agent-color mirrors used by TaskStatus metadata
+  // (completed -> researcher mint, converted -> reviewer lavender). Kept in
+  // lockstep with the SCSS tokens in design-tokens.scss.
+  --color-agent-researcher: #5ec48e;      // matches $color-agent-researcher
+  --color-agent-reviewer: #ac80cc;        // matches $color-agent-reviewer
 
   // Brand gradients
   --gradient-brand: linear-gradient(45deg, #ffd93d, #6bcf7f);
   --gradient-orchestrator-card: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+  // Permission-icon colors (API-0021c) — used by the OAuth consent screens to
+  // distinguish read-vs-write permission scopes. `--color-permission-write` is
+  // Material amber 300; intentionally NOT the brand yellow (`--color-accent-primary`)
+  // which is reserved for the read scope. Keeps a clear visual delta between the
+  // two icons on the consent dialog.
+  --color-permission-write: #ffb74d;
 }
 
 // Base styles

@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Unit tests for TemplateService - History and Archive Management
@@ -132,13 +132,48 @@ async def test_restore_template_from_archive(db_session, template_service, sampl
     db_session.add(archive)
     await db_session.commit()
 
-    await template_service.restore_template_from_archive(db_session, sample_template, archive)
+    await template_service.restore_template_from_archive(db_session, sample_template, archive, restored_by="test-user")
+    await db_session.commit()
+    await db_session.refresh(archive)
 
     # Note: system_instructions is NOT restored by this method (by design)
     assert sample_template.variables == ["var1", "var2"]
     assert sample_template.behavioral_rules == ["rule1"]
     assert sample_template.success_criteria == ["criteria1"]
     assert sample_template.version == "2.0.0"
+    # Audit trail (P2 cleanup wire-up): restored_at + restored_by are stamped.
+    assert archive.restored_by == "test-user"
+    assert archive.restored_at is not None
+
+
+@pytest.mark.asyncio
+async def test_restore_template_from_archive_without_user(db_session, template_service, sample_template):
+    """When no user is supplied, restored_at is still stamped, restored_by is NULL."""
+    archive = TemplateArchive(
+        tenant_key=sample_template.tenant_key,
+        template_id=sample_template.id,
+        product_id=sample_template.product_id,
+        name=sample_template.name,
+        category=sample_template.category,
+        role=sample_template.role,
+        system_instructions="Archived content",
+        variables=[],
+        behavioral_rules=[],
+        success_criteria=[],
+        version="3.0.0",
+        archive_reason="Test",
+        archive_type="manual",
+        archived_by="test-user",
+    )
+    db_session.add(archive)
+    await db_session.commit()
+
+    await template_service.restore_template_from_archive(db_session, sample_template, archive)
+    await db_session.commit()
+    await db_session.refresh(archive)
+
+    assert archive.restored_at is not None
+    assert archive.restored_by is None
 
 
 @pytest.mark.asyncio

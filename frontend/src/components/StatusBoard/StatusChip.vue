@@ -71,12 +71,17 @@ const props = defineProps({
         'waiting',
         'working',
         'blocked',
+        'awaiting_user',
         'complete',
         'silent',
         'decommissioned',
         'handed_over',
       ].includes(value),
   },
+  // Retained for backwards compatibility with parents that still pass it.
+  // No longer consulted by getStatusConfig (FE-5017 Phase C re-keyed on
+  // status === 'awaiting_user'); kept to avoid prop-validation warnings
+  // until all call sites are updated.
   blockReason: {
     type: String,
     default: null,
@@ -96,7 +101,7 @@ const props = defineProps({
   },
 })
 
-const statusConfig = computed(() => getStatusConfig(props.status, props.blockReason))
+const statusConfig = computed(() => getStatusConfig(props.status))
 const healthConfig = computed(() => getHealthConfig(props.healthStatus))
 
 const isStale = computed(() => {

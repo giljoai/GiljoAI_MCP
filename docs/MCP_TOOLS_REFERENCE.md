@@ -1,10 +1,10 @@
 # GiljoAI MCP: Tools Reference
 
-*Last updated: 2026-04-16*
+*Last updated: 2026-05-06*
 
 ## Overview
 
-GiljoAI MCP exposes 28 tools to connected AI coding tools. Every tool requires a
+GiljoAI MCP exposes 29 tools to connected AI coding tools. Every tool requires a
 valid API key passed as a Bearer token. Tenant isolation is enforced server-side;
 agents cannot cross tenant boundaries.
 
@@ -73,20 +73,33 @@ progressively more detail.
 | completed_before | str | No | `""` | ISO-8601 datetime upper bound on completion time. |
 | include_completed | bool | No | `false` | When `true`, include archived projects (completed/cancelled). Ignored when `status` is explicitly set. |
 | hidden | str | No | `""` | Tri-state: `"true"` to return only hidden rows, `"false"` to exclude them, `""` for no filter (default — hidden and non-hidden rows both appear). |
-| summary_only | bool | No | `true` | When `true`, return only summary fields. When `false`, include detail controlled by `depth`. |
-| depth | int | No | `0` | Detail level 0-3 (only used when `summary_only=false`). |
+| mode | str | No | `""` | **Preferred agent-facing surface.** Named projection: `"triage"`, `"planning"`, `"audit"`, or `"forensic"` (see Mode table below). When set, `mode` overrides numeric `depth` and `summary_only`. |
+| memory_limit | int | No | `5` | Caps the trailing-window of 360 memory entries returned per project in audit mode. Maximum 50 (values above clamp to 50). Forensic mode returns the full history unless `memory_limit` is supplied explicitly. |
+| summary_only | bool | No | `true` | **Back-compat.** When `true`, return only summary fields. When `false`, include detail controlled by `depth`. Ignored when `mode` is supplied. |
+| depth | int | No | `0` | **Back-compat.** Numeric detail level 0-3 (only used when `summary_only=false` and `mode` is unset). Prefer `mode`. |
 | status_filter | str | No | `""` | **Legacy.** Prefer `status`. Accepts `"all"` or a single status string. Honored only when `status` is unset. `"all"` implies `include_completed=True`. |
 
-**Depth levels:**
+**Modes (preferred agent-facing surface — BE-5042):**
 
-| Level | Fields included |
-|-------|----------------|
-| 0 | `project_id`, `name`, `status`, `project_type`, `series_number`, `taxonomy_alias`, `created_at`, `completed_at` |
-| 1 | Depth 0 + `description`, `mission`, `agent_summary` (types spawned, counts) |
-| 2 | Depth 1 + `memory_entries` (360 memory for this project), `agent_details` (display names, status, result) |
-| 3 | Depth 2 + `message_history`, `git_commits` (extracted from 360 memory) |
+| Mode | Returns | Use when |
+|------|---------|----------|
+| `triage` | id, name, status, type, series, alias, dates | picking which project to act on |
+| `planning` | + description, mission, agent counts | scoping or prioritizing |
+| `audit` | + memory headlines (last 5) + agent summaries | investigating one project's history |
+| `forensic` | + full memory bodies, agent results, message history | deep root-cause / archaeology |
 
-**Returns:** Dict with `projects` list, `count`, and `depth`.
+`mode` overrides numeric `depth` when both are passed. `memory_limit` (default 5, max 50) tunes the audit-mode trailing window. Audit-mode payloads are roughly 80% smaller than the equivalent `depth=2` call because `memory_entries` are returned as headlines and `agent_details` drop the full `result`/`mission` blobs.
+
+**Numeric depth (back-compat — prefer `mode`):**
+
+| Level | Fields included | Equivalent mode |
+|-------|----------------|-----------------|
+| 0 | `project_id`, `name`, `status`, `project_type`, `series_number`, `taxonomy_alias`, `created_at`, `completed_at` | `triage` |
+| 1 | Depth 0 + `description`, `mission`, `agent_summary` (types spawned, counts) | `planning` |
+| 2 | Depth 1 + `memory_entries` (full bodies), `agent_details` (display names, status, result) | (heavier than `audit` — prefer `audit` unless full bodies are needed) |
+| 3 | Depth 2 + `message_history`, `git_commits` (extracted from 360 memory) | `forensic` |
+
+**Returns:** Dict with `projects` list, `count`, `depth`, and `mode` (when supplied).
 
 **Examples:**
 
@@ -97,13 +110,22 @@ list_projects()
 # Include completed and cancelled projects
 list_projects(include_completed=True)
 
-# Full data for all active projects
-list_projects(summary_only=False, depth=1)
+# Pick which project to act on (cheap)
+list_projects(mode="triage")
 
-# Deep dive with memory and agent results
-list_projects(summary_only=False, depth=2)
+# Scope or prioritize — adds description, mission, agent counts
+list_projects(mode="planning")
 
-# Only active projects, summary only (explicit status)
+# Investigate one project's history — memory headlines + agent summaries
+list_projects(mode="audit")
+
+# Tune the trailing-memory window (default 5, max 50)
+list_projects(mode="audit", memory_limit=10)
+
+# Deep root-cause / archaeology — full memory bodies, full agent results
+list_projects(mode="forensic")
+
+# Only active projects (explicit status filter)
 list_projects(status="active")
 
 # Multiple types, active only
@@ -111,6 +133,9 @@ list_projects(project_type="BE,FE")
 
 # Projects created in a date range
 list_projects(created_after="2026-04-01T00:00:00Z", created_before="2026-04-30T23:59:59Z")
+
+# Back-compat: numeric depth still works (prefer `mode`)
+list_projects(summary_only=False, depth=1)  # equivalent to mode="planning"
 
 # Legacy callers — still works
 list_projects(status_filter="active")
@@ -279,6 +304,38 @@ result that the orchestrator can retrieve via `get_agent_result()`.
 | result | dict | Yes | Structured result containing `summary`, `artifacts`, and `commits`. |
 
 **Returns:** Confirmation of job completion.
+
+---
+
+### request_approval
+
+**Description:** Request a user decision before continuing. Creates a `user_approvals`
+row and atomically flips the calling agent's execution status to `awaiting_user`.
+Used at HITL gates — typically when a closeout has deferred findings that require
+human sign-off before the agent can proceed. Replaces the former prose-contract
+boolean `user_approval_required`. The calling agent's `complete_job` will be refused
+until a user resolves the approval via the dashboard or `POST /api/approvals/{id}/decide`.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| job_id | str | Yes | Calling agent's `job_id` (UUID). |
+| project_id | str | Yes | Project UUID the approval belongs to. |
+| reason | str | Yes | Plain-English explanation shown to the user (max 2000 chars). |
+| options | list[dict] | Yes | List of `{id, label}` option dicts (1-10 items, unique ids). |
+| context | dict | No | Optional structured payload (e.g. deferred findings). Max 16 KB serialized. |
+
+**Returns:** `{approval_id: str, status: str}` — the new approval row ID and its
+initial status (`pending`).
+
+**Notes:**
+- The transition is atomic: DB row insert + status flip + WebSocket broadcast occur
+  in one transaction; any failure rolls back completely.
+- `awaiting_user` cannot be set directly by an agent via `set_agent_status`; only
+  this tool can produce it.
+- A single execution may have at most one `pending` approval at a time; calling this
+  tool twice without resolving the first will raise a `ValidationError`.
 
 ---
 
@@ -652,11 +709,11 @@ plan. Token estimate: approximately 4,500 with context exclusions applied.
 |----------|-------|
 | Discovery | health_check |
 | Project Management | create_project, list_projects, update_project_mission, close_project_and_update_memory |
-| Agent Lifecycle | spawn_job, get_pending_jobs, get_agent_mission, update_agent_mission, set_agent_status, report_progress, complete_job, get_agent_result, get_workflow_status, reactivate_job, dismiss_reactivation |
+| Agent Lifecycle | spawn_job, get_pending_jobs, get_agent_mission, update_agent_mission, set_agent_status, report_progress, complete_job, request_approval, get_agent_result, get_workflow_status, reactivate_job, dismiss_reactivation |
 | Messaging | send_message, receive_messages, inspect_messages |
 | Context and Memory | fetch_context (batch: multiple categories per call), write_360_memory |
 | Vision Documents | get_vision_doc, update_product_fields |
 | Tasks | create_task |
 | Setup and Export | giljo_setup, generate_download_token, list_agent_templates, submit_tuning_review |
 | Orchestrator Context | get_orchestrator_instructions |
-| **Total** | **28** |
+| **Total** | **29** |

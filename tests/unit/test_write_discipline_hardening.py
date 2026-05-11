@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """Tests for write discipline hardening: JSONB validators + field allowlists.
 
@@ -284,7 +284,7 @@ class TestTaskUpdateAllowlist:
     def test_allowlist_contains_expected_fields(self):
         from giljo_mcp.services.task_service import _ALLOWED_TASK_UPDATE_FIELDS
 
-        expected_fields = {"title", "description", "status", "priority", "category"}
+        expected_fields = {"title", "description", "status", "priority", "task_type_id"}
         assert expected_fields.issubset(_ALLOWED_TASK_UPDATE_FIELDS)
 
     def test_allowlist_excludes_dangerous_fields(self):

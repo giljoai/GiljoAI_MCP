@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 JobCompletionService - Agent job completion orchestration.
@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional
 
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +24,7 @@ from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import OrchestrationError, ResourceNotFoundError, ValidationError
 from giljo_mcp.models import AgentExecution, AgentJob
 from giljo_mcp.models.tasks import MessageAcknowledgment
+from giljo_mcp.models.user_approval import UserApproval
 from giljo_mcp.repositories.agent_completion_repository import AgentCompletionRepository
 from giljo_mcp.schemas.service_responses import CompleteJobResult
 from giljo_mcp.tenant import TenantManager
@@ -167,8 +169,12 @@ class JobCompletionService:
             if execution:
                 await self._broadcast_completion(tenant_key, job_id, job, execution, old_status, duration_seconds)
 
-            if execution and job:
-                await self._resolve_action_items(result, tenant_key, job)
+            if execution and job and result and "resolved_action_items" in result:
+                # INF-5025b: warn-and-ignore for one release. Cutover deferred to BE-5054
+                # (after 2026-06-05) -- not removed in INF-5025d; only the prose was finalized then.
+                self._logger.warning(
+                    "resolved_action_items is deprecated; cite task/project IDs in decisions_made instead"
+                )
 
             closeout_checklist = None
             if job and getattr(job, "job_type", "") == "orchestrator":
@@ -182,11 +188,6 @@ class JobCompletionService:
                             "git_integration",
                             {},
                         )
-                        general_settings = await settings_svc.get_setting_value(
-                            "general",
-                            "closeout_mode",
-                            "hitl",
-                        )
                     git_enabled = git_settings.get("enabled", False)
                     if git_enabled and "commits" not in (result or {}):
                         warnings.append(
@@ -195,28 +196,13 @@ class JobCompletionService:
                             "before writing 360 memory."
                         )
 
-                    closeout_mode = general_settings if isinstance(general_settings, str) else "hitl"
-                    if closeout_mode not in ("hitl", "autonomous"):
-                        closeout_mode = "hitl"
-
-                    # Smart HITL: only require approval when there are actual
-                    # deferred findings to review. Clean closeouts proceed
-                    # automatically even in HITL mode.
-                    has_deferred = bool(
-                        (result or {}).get("deferred_findings") or (result or {}).get("action_required_tags")
-                    )
-                    closeout_checklist = self._build_closeout_checklist(
-                        user_approval_required=(closeout_mode == "hitl") and has_deferred,
-                    )
+                    closeout_checklist = self._build_closeout_checklist()
                 except Exception as _exc:  # noqa: BLE001
                     logger.warning(
                         "Failed to build closeout checklist during job completion",
                         exc_info=True,
                     )
-                    # Provide a safe default checklist on failure
-                    closeout_checklist = self._build_closeout_checklist(
-                        user_approval_required=True,
-                    )
+                    closeout_checklist = self._build_closeout_checklist()
 
             return CompleteJobResult(
                 status="success",
@@ -277,6 +263,34 @@ class JobCompletionService:
         The two flags are independent: each drains its own gate. Combining them
         is conjunctive (both gates use their own flag).
         """
+        # BE-5059 Phase B: refuse completion when this execution is parked on a
+        # pending user_approval. The TODOs/messages gates do not catch this --
+        # an agent in awaiting_user has by definition deferred a decision to the
+        # human and cannot self-complete.
+        if execution.status == "awaiting_user":
+            pending_stmt = select(UserApproval).where(
+                UserApproval.tenant_key == tenant_key,
+                UserApproval.agent_execution_id == execution.id,
+                UserApproval.status == "pending",
+            )
+            pending_approval = (await session.execute(pending_stmt)).scalar_one_or_none()
+            approval_id = pending_approval.id if pending_approval is not None else None
+            raise ValidationError(
+                message=(
+                    "COMPLETION_BLOCKED: Agent is awaiting user approval. "
+                    "Resolve via POST /api/approvals/{id}/decide before calling complete_job()."
+                ),
+                error_code="AWAITING_USER_APPROVAL",
+                context={
+                    "job_id": job_id,
+                    "approval_id": approval_id,
+                    "agent_status": "awaiting_user",
+                    "reasons": [
+                        "Agent has a pending user_approval; user must decide before completion is allowed.",
+                    ],
+                },
+            )
+
         repo = AgentCompletionRepository()
         all_unread = await repo.get_unread_messages_for_agent(session, tenant_key, job.project_id, execution.agent_id)
 
@@ -439,88 +453,26 @@ class JobCompletionService:
                 session, job, execution, result, tenant_key, warnings
             )
 
-    async def _resolve_action_items(
-        self,
-        result: dict[str, Any],
-        tenant_key: str,
-        job: "AgentJob",
-    ) -> None:
-        """Auto-resolve action_required tasks when agent reports them resolved.
-
-        BE-5022f: Scans result['resolved_action_items'] for matching tasks
-        with category='360' and marks them completed.
-
-        Args:
-            result: Job completion result dict
-            tenant_key: Tenant key for isolation
-            job: The completing job (provides product_id)
-        """
-        resolved_items = result.get("resolved_action_items")
-        if not resolved_items or not isinstance(resolved_items, list):
-            return
-
-        product_id = getattr(job, "product_id", None)
-        if not product_id:
-            return
-
-        product_id_str = str(product_id)
-
-        from giljo_mcp.repositories.task_repository import TaskRepository
-        from giljo_mcp.services.task_service import TaskService
-
-        task_repo = TaskRepository()
-        task_svc = TaskService(
-            db_manager=self.db_manager,
-            tenant_manager=self.tenant_manager,
-        )
-
-        for item_title in resolved_items:
-            if not isinstance(item_title, str) or not item_title.strip():
-                continue
-            try:
-                async with self._get_session() as session:
-                    task = await task_repo.find_pending_by_category_and_title(
-                        session=session,
-                        tenant_key=tenant_key,
-                        product_id=product_id_str,
-                        category="360",
-                        title=item_title.strip(),
-                    )
-                    if task:
-                        task_id_str = str(task.id)
-                if task:
-                    await task_svc.change_status(task_id_str, "completed")
-                    self._logger.info(
-                        "Auto-resolved action item task %s: %s",
-                        task_id_str,
-                        item_title,
-                    )
-            except Exception as _exc:  # noqa: BLE001
-                self._logger.warning(
-                    "Failed to auto-resolve action item: %s",
-                    item_title,
-                    exc_info=True,
-                )
+    # _resolve_action_items removed in INF-5025b
 
     @staticmethod
-    def _build_closeout_checklist(*, user_approval_required: bool) -> dict[str, Any]:
-        """Build the HITL closeout checklist for orchestrator jobs.
+    def _build_closeout_checklist() -> dict[str, Any]:
+        """Build the closeout checklist for orchestrator jobs.
 
-        Returns a dict with instructions for the orchestrator agent to follow
-        between complete_job() and close_project_and_update_memory().
+        Returns instructions for the orchestrator to follow between
+        ``complete_job()`` and ``close_project_and_update_memory()``. When the
+        orchestrator needs user input on deferred findings it must call
+        ``mcp__giljo_mcp__request_approval`` -- see CH4 for the tool reference.
+        The agent's status is flipped to ``awaiting_user`` automatically and
+        ``complete_job`` will refuse until the user decides via
+        ``POST /api/approvals/{id}/decide``.
         """
-        instruction = (
-            "If user_approval_required: set status blocked with reason "
-            "'Closeout: awaiting user review' and present closure options to user. "
-            "Otherwise: proceed with best judgment on tags and follow-ups."
-        )
         return {
-            "action_required_tags": (
-                "Review all agent results for deferred findings. "
-                "Write action_required tags via write_360_memory() "
-                "BEFORE calling close_project_and_update_memory()."
-            ),
             "follow_up_items": ("Create tasks/projects for any deferred work via create_task() or create_project()."),
-            "user_approval_required": user_approval_required,
-            "instruction": instruction,
+            "instruction": (
+                "When the closeout has deferred findings to review, call "
+                "request_approval(...) -- your status will be flipped to "
+                "awaiting_user automatically; complete_job will refuse until "
+                "the user decides."
+            ),
         }

@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 FastAPI application for GiljoAI MCP
@@ -22,9 +22,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info("Loading FastAPI application...")
 
-from dotenv import load_dotenv
-
-
 try:
     from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
     from fastapi.exceptions import WebSocketException
@@ -36,25 +33,16 @@ except ImportError as e:
     logger.error(f"Failed to import FastAPI dependencies: {e}", exc_info=True)
     raise
 
-# Load environment variables from .env file
-# Ensure we load from project root (parent of api directory)
-project_root = Path(__file__).parent.parent
-env_path = project_root / ".env"
-load_dotenv(dotenv_path=env_path)
-logger.info(f"Environment variables loaded from .env file: {env_path}")
-
-# Edition detection: canonical source is api.app_state
+# Edition detection: canonical source is api.app_state.
+# NOTE: GILJO_MODE is read from os.environ at api.app_state import time.
+# .env loading has been deferred to the FastAPI lifespan (closes seq 100),
+# so GILJO_MODE here reflects only the process-level environment, not .env.
+# Operators who need GILJO_MODE driven by .env must export it before launch
+# or re-resolve it inside the lifespan after _load_env_from_dotfile() runs.
 from api.app_state import GILJO_MODE
 
 
 logger.info(f"GILJO_MODE: {GILJO_MODE}")
-
-# Log JWT secret availability for debugging
-jwt_secret = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY") or os.getenv("SECRET_KEY")
-if jwt_secret:
-    logger.info("JWT secret key found in environment")
-else:
-    logger.error("JWT secret key NOT found in environment - authentication will fail")
 
 # Ensure project root is on sys.path for module resolution
 # (api/ is not a pip package — it needs the project root on sys.path)
@@ -83,6 +71,7 @@ try:
     from .endpoints import (
         agent_jobs,
         ai_tools,
+        approvals,
         auth,
         auth_pin_recovery,
         claude_export,
@@ -97,7 +86,6 @@ try:
         oauth,
         products,
         project_statuses,
-        project_types,
         projects,
         prompts,
         serena,
@@ -106,7 +94,9 @@ try:
         slash_commands,
         statistics,
         system_prompts,
+        task_statuses,
         tasks,
+        taxonomy_types,
         templates,
         user_settings,
         users,
@@ -137,9 +127,34 @@ except ImportError as e:
 from api.app_state import APIState, state  # noqa: F401 — canonical source, re-exported
 
 
+def _load_env_from_dotfile() -> None:
+    """Load .env into os.environ. Invoked from the FastAPI lifespan, never at import.
+
+    Uses ``override=False`` so a process-level environment variable always wins
+    over a .env entry. This relocation closes audit seq 100 (load_dotenv at
+    module-import) and seq 97 (api/__init__.py import-time DATABASE_URL
+    mutation — the mutation came from this same load_dotenv call propagating
+    DATABASE_URL via the api package).
+    """
+    from dotenv import load_dotenv
+
+    project_root = Path(__file__).parent.parent
+    env_path = project_root / ".env"
+    load_dotenv(dotenv_path=env_path, override=False)
+    logger.info(f"Environment variables loaded from .env file: {env_path}")
+
+    jwt_secret = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY") or os.getenv("SECRET_KEY")
+    if jwt_secret:
+        logger.info("JWT secret key found in environment")
+    else:
+        logger.error("JWT secret key NOT found in environment - authentication will fail")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager - orchestrates startup and shutdown"""
+    _load_env_from_dotfile()
+
     from api.startup import (
         init_background_tasks,
         init_core_services,
@@ -162,6 +177,12 @@ async def lifespan(app: FastAPI):
         "v1.2.1: MCP list_projects now hides completed/cancelled by default; "
         "use include_completed=true to retrieve archived projects."
     )
+
+    # Phase 0a: Sentry init (SaaS/Demo only — INF-5063).
+    # init_sentry() short-circuits in CE; the gate IS the CE/SaaS boundary here.
+    from api.observability.sentry_init import init_sentry
+
+    init_sentry(mode=GILJO_MODE)
 
     # Phase 0: License validation
     # [CE] License validation — CE always passes. Commercial builds enforce here.
@@ -412,6 +433,17 @@ def _configure_middleware(app: FastAPI) -> None:
             cors_origins.extend(https_origins)
             logger.info(f"Added HTTPS CORS origins for SSL mode: {https_origins}")
 
+    # API-0021d F4: Anthropic connector first-party origins (claude.ai +
+    # claude.com). Hardcoded as a defensive fallback so a future config.yaml
+    # typo or deploy regression cannot drop them and silently break the
+    # claude connector handshake. The values are first-party and stable per
+    # Anthropic's published connector docs; admins can still extend the
+    # allowlist via config.yaml — duplicates are filtered below.
+    anthropic_connector_origins = ("https://claude.ai", "https://claude.com")
+    for origin in anthropic_connector_origins:
+        if origin not in cors_origins:
+            cors_origins.append(origin)
+
     logger.info(f"Configuring CORS with origins: {cors_origins}")
 
     # Add middleware in reverse order of execution
@@ -458,7 +490,9 @@ def _configure_middleware(app: FastAPI) -> None:
             "/api/saas/account/confirm-deletion",  # Account deletion confirm (token-auth, SAAS-022)
             "/api/saas/account/cancel-deletion",  # Account deletion cancel (token-auth, SAAS-022)
             "/api/oauth/token",  # OAuth token exchange (external MCP clients, PKCE-protected)
+            "/api/oauth/refresh",  # OAuth refresh-token grant (external MCP clients, secret-protected)
             "/api/oauth/.well-known/",  # OAuth metadata (public GET)
+            "/api/saas/oauth/",  # SaaS OAuth surface (DCR /register; called by external clients without CSRF cookie)
             "/api/setup/",  # Setup wizard (runs before auth is configured)
             "/mcp",  # MCP-over-HTTP (API key auth, not cookie-based)
             "/api/download/",  # Public download endpoints
@@ -490,7 +524,19 @@ def _configure_middleware(app: FastAPI) -> None:
         allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "X-API-Key", "X-Tenant-Key", "X-CSRF-Token"],
+        # API-0021d F5: MCP-Protocol-Version + Mcp-Session-Id are MCP
+        # Streamable HTTP spec headers (2025-06-18 §"Protocol Version
+        # Header"). Without them the browser preflight to /mcp returns 400
+        # before the spec request reaches the auth middleware.
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "X-API-Key",
+            "X-Tenant-Key",
+            "X-CSRF-Token",
+            "MCP-Protocol-Version",
+            "Mcp-Session-Id",
+        ],
     )
 
 
@@ -507,14 +553,18 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(vision_documents.router, prefix="/api/vision-documents", tags=["vision-documents"])
     # Handover 0125: Modular projects module (prefix and tags defined in module __init__.py)
     app.include_router(projects.router)
-    # Handover 0440a: Project type taxonomy module (prefix and tags defined in module __init__.py)
-    app.include_router(project_types.router)
+    # Handover 0440a + Phase A (2026-05): Taxonomy types module (prefix and tags defined in module __init__.py)
+    app.include_router(taxonomy_types.router)
     # BE-5039: Project status metadata module (frontend SSoT for badge labels/colors)
     app.include_router(project_statuses.router)
+    # FE-5041: Task status metadata module (frontend SSoT for task badge labels/colors)
+    app.include_router(task_statuses.router)
     app.include_router(claude_export.router, prefix="/api", tags=["claude-export"])
     app.include_router(downloads.router, tags=["downloads"])
     app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])
     app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
+    # BE-5059 Phase B: user_approvals decide endpoint
+    app.include_router(approvals.router, prefix="/api/approvals", tags=["approvals"])
     # Handover 0124: Consolidated agent_jobs module (includes orchestration endpoints)
     app.include_router(agent_jobs.router)  # Prefix and tags defined in module __init__.py
     # Handover 0107: Job operations (cancel, force-fail, health) at /api/jobs prefix
@@ -528,6 +578,11 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
     app.include_router(auth_pin_recovery.router, prefix="/api/auth", tags=["auth"])
     app.include_router(oauth.router, prefix="/api/oauth", tags=["oauth"])
+    # Root-level well-known documents (RFC 8414 + RFC 9728). Spec-compliant
+    # clients (Claude.ai, MCP CLI) probe `<host>/.well-known/...` per
+    # API-0021a. Body of the AS-metadata mirror matches the /api/oauth/...
+    # route exactly (same handler reused).
+    app.include_router(oauth.well_known_router, tags=["oauth"])
     # Handover 0506: Fixed user endpoint path to /api/v1/users
     app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
     # v3: authenticated user-scoped settings
@@ -965,7 +1020,7 @@ def create_app() -> FastAPI:
             "email": "infoteam@giljo.ai",
         },
         license_info={
-            "name": "GiljoAI Community License v1.1",
+            "name": "Elastic License 2.0",
             "url": "https://github.com/giljoai/GiljoAI_MCP/blob/master/LICENSE",
         },
     )

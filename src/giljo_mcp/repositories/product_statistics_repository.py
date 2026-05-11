@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """Product and project statistics repository — projects, messages, tasks, dashboard analytics."""
 
@@ -14,7 +14,7 @@ from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.models import Message, Project, Task
 from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from giljo_mcp.models.products import Product
-from giljo_mcp.models.projects import ProjectType
+from giljo_mcp.models.projects import TaxonomyType
 
 
 class ProductStatisticsRepository:
@@ -455,20 +455,20 @@ class ProductStatisticsRepository:
         Returns:
             List of dicts with keys: label, color, count
         """
-        # Typed projects: join ProjectType, group by label + color
+        # Typed projects: join TaxonomyType, group by label + color
         typed_stmt = (
             select(
-                ProjectType.label,
-                ProjectType.color,
+                TaxonomyType.label,
+                TaxonomyType.color,
                 func.count(Project.id).label("count"),
             )
-            .join(ProjectType, Project.project_type_id == ProjectType.id)
+            .join(TaxonomyType, Project.project_type_id == TaxonomyType.id)
             .where(
                 Project.tenant_key == tenant_key,
                 Project.project_type_id.is_not(None),
                 Project.deleted_at.is_(None),
             )
-            .group_by(ProjectType.label, ProjectType.color)
+            .group_by(TaxonomyType.label, TaxonomyType.color)
         )
         if product_id:
             typed_stmt = typed_stmt.where(Project.product_id == product_id)
@@ -522,11 +522,11 @@ class ProductStatisticsRepository:
                 Project.series_number,
                 Project.subseries,
                 Project.product_id,
-                ProjectType.abbreviation.label("type_abbreviation"),
-                ProjectType.color.label("project_type_color"),
+                TaxonomyType.abbreviation.label("type_abbreviation"),
+                TaxonomyType.color.label("project_type_color"),
                 Product.name.label("product_name"),
             )
-            .outerjoin(ProjectType, Project.project_type_id == ProjectType.id)
+            .outerjoin(TaxonomyType, Project.project_type_id == TaxonomyType.id)
             .outerjoin(Product, Project.product_id == Product.id)
             .where(
                 Project.tenant_key == tenant_key,

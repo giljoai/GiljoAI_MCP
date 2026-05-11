@@ -80,11 +80,11 @@ describe('GitIntegrationCard.vue', () => {
       expect(html).toContain('v-tooltip')
     })
 
-    it('displays GitHub setup guide link', () => {
+    it('displays Git setup guide link', () => {
       wrapper = mountComponent()
       const html = wrapper.html()
-      expect(html).toContain('github.com')
-      expect(wrapper.text()).toContain('GitHub Setup Guide')
+      expect(html).toContain('git-scm.com')
+      expect(wrapper.text()).toContain('Git Setup Guide')
     })
   })
 
@@ -92,7 +92,7 @@ describe('GitIntegrationCard.vue', () => {
     it('has enable/disable toggle button', () => {
       wrapper = mountComponent()
       const html = wrapper.html()
-      expect(html).toContain('data-testid="github-integration-toggle"')
+      expect(html).toContain('data-testid="git-integration-toggle"')
     })
 
     it('toggle emits update:enabled event', async () => {
@@ -122,17 +122,17 @@ describe('GitIntegrationCard.vue', () => {
     })
   })
 
-  describe('GitHub Setup Guide Link', () => {
-    it('displays GitHub Setup Guide link button', () => {
+  describe('Git Setup Guide Link', () => {
+    it('displays Git Setup Guide link button', () => {
       wrapper = mountComponent()
       const text = wrapper.text()
-      expect(text).toContain('GitHub Setup Guide')
+      expect(text).toContain('Git Setup Guide')
     })
 
-    it('link points to GitHub docs', () => {
+    it('link points to git-scm.com docs', () => {
       wrapper = mountComponent()
       const html = wrapper.html()
-      expect(html).toContain('docs.github.com')
+      expect(html).toContain('git-scm.com')
     })
 
     it('link opens in new tab', () => {
@@ -198,7 +198,7 @@ describe('GitIntegrationCard.vue', () => {
     it('toggle button exists', () => {
       wrapper = mountComponent()
       const html = wrapper.html()
-      expect(html).toContain('data-testid="github-integration-toggle"')
+      expect(html).toContain('data-testid="git-integration-toggle"')
     })
 
     it('buttons are accessible', () => {

@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Prompt Generation API endpoints for Handover 0073: Static Agent Grid.
@@ -516,10 +516,12 @@ async def get_implementation_prompt(
     """
     from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
-    # 1. Fetch project with multi-tenant filtering (eager-load product + project_type for git closeout)
+    # 1. Fetch project with multi-tenant filtering (eager-load product for git closeout).
+    # BE-5058: ``project_type`` no longer needs eager loading -- ``taxonomy_alias``
+    # is a SELECT-time column_property.
     project_stmt = (
         select(Project)
-        .options(joinedload(Project.product), joinedload(Project.project_type))
+        .options(joinedload(Project.product))
         .where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
     )
     project_result = await db.execute(project_stmt)
@@ -538,14 +540,30 @@ async def get_implementation_prompt(
             detail=f"Unsupported execution mode: {project.execution_mode}",
         )
 
-    # 3. Fetch orchestrator execution (waiting after staging, or working during execution)
+    # 3. Phase gate: project-level flags are the source of truth
+    # (BE-staging-lock Layer 2: decoupled from transient AgentExecution.status).
+    # The orchestrator query no longer filters by status — durable project flags
+    # decide whether the implementation prompt is available.
+    if project.staging_status != "staging_complete":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No orchestrator found for this project. Please ensure staging has been completed.",
+        )
+    if project.implementation_launched_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Implementation has not been launched yet for this project.",
+        )
+
+    # 4. Fetch orchestrator execution (any non-terminal status — gate is on the
+    # project, not the agent state).
     orchestrator_stmt = (
         select(AgentExecution)
         .options(joinedload(AgentExecution.job))
         .where(
             AgentExecution.tenant_key == current_user.tenant_key,
             AgentExecution.agent_display_name == "orchestrator",
-            AgentExecution.status.in_(["waiting", "working"]),
+            AgentExecution.status.not_in(["complete", "closed", "decommissioned", "failed"]),
         )
         .join(
             AgentJob,

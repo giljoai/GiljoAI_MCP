@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Unit tests for TemplateService - Retrieval, Deletion, Cross-Tenant, and Tenant Isolation
@@ -17,7 +17,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
-from giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
+from giljo_mcp.models.templates import AgentTemplate, TemplateArchive
 
 
 # ============================================================================
@@ -203,16 +203,7 @@ async def test_hard_delete_template_success(db_session, template_service, test_t
 async def test_hard_delete_template_cascades(
     db_session, template_service, test_tenant_key, sample_template, test_project_id
 ):
-    """Test that hard delete cascades to related records"""
-    # Add related records - use real project_id to satisfy FK constraint
-    usage_stat = TemplateUsageStats(
-        tenant_key=test_tenant_key,
-        template_id=sample_template.id,
-        project_id=test_project_id,
-        generation_ms=150,
-    )
-    db_session.add(usage_stat)
-
+    """Test that hard delete cascades to related TemplateArchive records."""
     archive = TemplateArchive(
         tenant_key=test_tenant_key,
         template_id=sample_template.id,
@@ -231,16 +222,9 @@ async def test_hard_delete_template_cascades(
 
     template_id = sample_template.id
 
-    # Delete template
     deleted = await template_service.hard_delete_template(db_session, template_id, test_tenant_key)
 
     assert deleted is True
-
-    # Verify all related records are deleted
-    stat_result = await db_session.execute(
-        select(TemplateUsageStats).where(TemplateUsageStats.template_id == template_id)
-    )
-    assert stat_result.scalar_one_or_none() is None
 
     archive_result = await db_session.execute(select(TemplateArchive).where(TemplateArchive.template_id == template_id))
     assert archive_result.scalar_one_or_none() is None

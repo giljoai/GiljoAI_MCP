@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Integration tests for ProductService — CRUD workflows and project cascade behavior.
@@ -169,7 +169,7 @@ class TestProductProjectCascade:
                     name=f"Project {i + 1}",
                     description=f"Project {i + 1} description",
                     mission=f"Mission {i + 1}",
-                    status="waiting",
+                    status="inactive",
                     product_id=product_id,
                     tenant_key=tenant_key,
                     series_number=i + 1,
@@ -198,7 +198,7 @@ class TestProductProjectCascade:
                 name="Related Project",
                 description="Project description",
                 mission="Project mission",
-                status="waiting",
+                status="inactive",
                 product_id=product_id,
                 tenant_key=tenant_key,
                 series_number=random.randint(1, 999999),

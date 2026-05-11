@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 GiljoAI MCP - Unified Startup Script
@@ -918,10 +918,21 @@ def start_frontend_server(verbose: bool = False) -> subprocess.Popen | None:
             print_warning("npm not found in PATH - skipping frontend server")
             return None
 
-        # Check if node_modules is properly installed (.package-lock.json is written by npm install)
-        if not (frontend_dir / "node_modules" / ".package-lock.json").exists():
-            print_info("Installing frontend dependencies...")
-            subprocess.run([npm_executable, "install"], cwd=str(frontend_dir), check=True)
+        # Run `npm ci` if node_modules is missing OR package-lock.json is newer than
+        # the install marker (deps were updated since the last install). `npm ci`
+        # is read-only against package-lock.json: it installs exactly what's locked
+        # and refuses to mutate the lockfile, so a `git pull` of new deps never
+        # leaves a dirty working tree on machines like dogfood. If package.json
+        # and the lockfile drift apart, `npm ci` errors out -- that's the desired
+        # signal to fix upstream, not a silent local mutation.
+        node_modules_marker = frontend_dir / "node_modules" / ".package-lock.json"
+        package_lock = frontend_dir / "package-lock.json"
+        needs_install = not node_modules_marker.exists() or (
+            package_lock.exists() and package_lock.stat().st_mtime > node_modules_marker.stat().st_mtime
+        )
+        if needs_install:
+            print_info("Installing frontend dependencies (npm ci)...")
+            subprocess.run([npm_executable, "ci"], cwd=str(frontend_dir), check=True)
 
         # Configure process creation for verbose mode
         popen_kwargs = {
@@ -1249,7 +1260,29 @@ def _check_and_stamp_migration_version() -> None:
                 _heal_schema_to_v37(session)
                 return
 
-            # Any revision that is not baseline_v37 needs stamping forward
+            # If `current` is a revision the alembic chain still recognizes
+            # (e.g. baseline_v37, ce_0001..ce_0016), do NOT stamp it backward.
+            # Doing so would force `alembic upgrade head` to re-run migrations
+            # that already executed -- and any non-idempotent step would fail.
+            # We bridge ONLY when `current` is a legacy revision the squash
+            # removed (i.e. not present in versions/).
+            from pathlib import Path as _Path
+
+            versions_dir = _Path(__file__).parent / "migrations" / "versions"
+            known_revisions: set[str] = {"baseline_v37"}
+            if versions_dir.is_dir():
+                for entry in versions_dir.glob("*.py"):
+                    if entry.name == "__init__.py":
+                        continue
+                    # Alembic revision filenames are <rev_id>_<slug>.py; the
+                    # full revision ID is the stem.
+                    known_revisions.add(entry.stem)
+
+            if current in known_revisions:
+                # Modern revision -- alembic upgrade head will handle it.
+                return
+
+            # Legacy revision the squash removed -- bridge to baseline_v37.
             print_info(f"Stamping migration: {current} -> baseline_v37")
             _heal_schema_to_v37(session)
             session.execute(text("UPDATE alembic_version SET version_num = 'baseline_v37'"))
@@ -1547,10 +1580,18 @@ def run_startup(
                 return 1
         else:
             print_info("Rebuilding frontend...")
-            # Ensure node_modules exist
-            if not (frontend_dir / "node_modules" / ".package-lock.json").exists():
-                print_info("Installing frontend dependencies...")
-                subprocess.run([npm_cmd, "install"], cwd=str(frontend_dir), check=True)
+            # Ensure node_modules exist AND match package-lock.json (catches dep upgrades
+            # that shipped via `git pull` since the last install). Use `npm ci`
+            # (read-only against the lockfile) so production-style restarts never
+            # leave a dirty working tree.
+            node_modules_marker = frontend_dir / "node_modules" / ".package-lock.json"
+            package_lock = frontend_dir / "package-lock.json"
+            needs_install = not node_modules_marker.exists() or (
+                package_lock.exists() and package_lock.stat().st_mtime > node_modules_marker.stat().st_mtime
+            )
+            if needs_install:
+                print_info("Installing frontend dependencies (npm ci)...")
+                subprocess.run([npm_cmd, "ci"], cwd=str(frontend_dir), check=True)
             build_result = subprocess.run(
                 [npm_cmd, "run", "build"],
                 cwd=str(frontend_dir),

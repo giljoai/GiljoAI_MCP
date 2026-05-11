@@ -1,12 +1,12 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Configuration and system-related models for GiljoAI MCP.
 
-This module contains models for system configuration, git commits, setup state,
+This module contains models for system configuration, setup state,
 download tokens, and API metrics.
 """
 
@@ -29,7 +29,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
 from .base import Base, generate_uuid
@@ -50,7 +50,6 @@ class Configuration(Base):
     value = Column(JSONB, nullable=False)
     category = Column(String(100), default="general")
     description = Column(Text, nullable=True)
-    is_secret = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -62,67 +61,6 @@ class Configuration(Base):
 
     def __repr__(self) -> str:
         return f"<Configuration(id={self.id}, key='{self.key}', category='{self.category}')>"
-
-
-class GitCommit(Base):
-    """
-    Git Commit model - tracks commits made through the orchestrator.
-    Provides audit trail and enables commit history viewing in dashboard.
-    """
-
-    __tablename__ = "git_commits"
-
-    id = Column(String(36), primary_key=True, default=generate_uuid)
-    tenant_key = Column(String(36), nullable=False)
-    product_id = Column(String(36), nullable=False)
-    project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)  # Associated project if any
-
-    # Commit details
-    commit_hash = Column(String(40), nullable=False, unique=True)
-    commit_message = Column(Text, nullable=False)
-    author_name = Column(String(100), nullable=False)
-    author_email = Column(String(255), nullable=False)
-    branch_name = Column(String(100), nullable=False)
-
-    # Files and changes
-    files_changed = Column(JSONB, default=list)  # List of file paths
-    insertions = Column(Integer, default=0)  # Lines added
-    deletions = Column(Integer, default=0)  # Lines deleted
-
-    # Orchestrator context
-    triggered_by = Column(String(50), nullable=True)  # 'auto_commit', 'manual', 'project_completion'
-    commit_type = Column(String(50), nullable=True)  # 'feature', 'fix', 'docs', 'refactor', etc.
-
-    # Status tracking
-    push_status = Column(String(20), default="pending")  # 'pending', 'pushed', 'failed'
-    push_error = Column(Text, nullable=True)
-    webhook_triggered = Column(Boolean, default=False)
-    webhook_response = Column(JSONB, nullable=True)
-
-    # Timestamps
-    committed_at = Column(DateTime(timezone=True), nullable=False)
-    pushed_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # Relationships
-    project = relationship("Project", backref="git_commits")
-    # agent relationship removed (Handover 0116) - Agent model eliminated
-
-    __table_args__ = (
-        Index("idx_git_commit_tenant", "tenant_key"),
-        Index("idx_git_commit_product", "product_id"),
-        Index("idx_git_commit_project", "project_id"),
-        Index("idx_git_commit_hash", "commit_hash"),
-        Index("idx_git_commit_date", "committed_at"),
-        Index("idx_git_commit_trigger", "triggered_by"),
-        CheckConstraint(
-            "push_status IN ('pending', 'pushed', 'failed')",
-            name="ck_git_commit_push_status",
-        ),
-    )
-
-    def __repr__(self) -> str:
-        return f"<GitCommit(id={self.id}, commit_hash='{self.commit_hash[:8] if self.commit_hash else None}')>"
 
 
 class SetupState(Base):
@@ -151,9 +89,7 @@ class SetupState(Base):
 
     # Version tracking
     setup_version = Column(String(20), nullable=True)  # e.g., "2.0.0"
-    database_version = Column(String(20), nullable=True)  # PostgreSQL version
     python_version = Column(String(20), nullable=True)
-    node_version = Column(String(20), nullable=True)
 
     # REMOVED (Handover 0034): Default password tracking fields removed
     # Fresh install now creates admin via CreateAdminAccount.vue
@@ -172,28 +108,8 @@ class SetupState(Base):
         DateTime(timezone=True), nullable=True, comment="Timestamp when first admin account was created"
     )
 
-    # Feature and tool configuration (JSONB for performance)
-    features_configured = Column(
-        JSONB,
-        default=dict,
-        nullable=False,
-        comment="Nested dict of configured features: {database: true, api: {enabled: true, port: 7272}}",
-    )
-    tools_enabled = Column(JSONB, default=list, nullable=False, comment="Array of enabled MCP tool names")
-
-    # Configuration snapshot
-    config_snapshot = Column(JSONB, nullable=True, comment="Snapshot of config.yaml at setup completion")
-
     # Validation tracking
-    validation_passed = Column(Boolean, default=True, nullable=False)
     validation_failures = Column(JSONB, default=list, nullable=False, comment="Array of validation failure messages")
-    validation_warnings = Column(JSONB, default=list, nullable=False, comment="Array of validation warning messages")
-    last_validation_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Installation metadata
-    installer_version = Column(String(20), nullable=True)
-    install_mode = Column(String(20), nullable=True, comment="Installation mode: localhost, server, lan, wan")
-    install_path = Column(Text, nullable=True, comment="Installation directory path")
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -204,15 +120,6 @@ class SetupState(Base):
         CheckConstraint(
             "setup_version IS NULL OR setup_version ~ '^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9\\.\\-]+)?$'",
             name="ck_setup_version_format",
-        ),
-        CheckConstraint(
-            "database_version IS NULL OR database_version ~ '^[0-9]+(\\.([0-9]+|[0-9]+\\.[0-9]+))?$'",
-            name="ck_database_version_format",
-        ),
-        # Install mode constraint
-        CheckConstraint(
-            "install_mode IS NULL OR install_mode IN ('localhost', 'server', 'lan', 'wan')",
-            name="ck_install_mode_values",
         ),
         # Database initialized timestamp must be set when database_initialized=true
         CheckConstraint(
@@ -227,10 +134,6 @@ class SetupState(Base):
         # Regular indexes
         Index("idx_setup_tenant", "tenant_key"),  # Primary lookup index
         Index("idx_setup_database_initialized", "database_initialized"),  # Filter by database init status
-        Index("idx_setup_mode", "install_mode"),  # Filter by installation mode
-        # GIN indexes for JSONB columns (enables efficient queries on nested JSON)
-        Index("idx_setup_features_gin", "features_configured", postgresql_using="gin"),
-        Index("idx_setup_tools_gin", "tools_enabled", postgresql_using="gin"),
         # Partial index for incomplete database initialization (frequently queried)
         Index(
             "idx_setup_database_incomplete",
@@ -262,23 +165,12 @@ class SetupState(Base):
             if self.database_initialized_at
             else None,
             "setup_version": self.setup_version,
-            "database_version": self.database_version,
             "python_version": self.python_version,
-            "node_version": self.node_version,
             # REMOVED (Handover 0034): default_password_active and password_changed_at fields
             # ADDED (Handover 0035): First admin creation tracking
             "first_admin_created": self.first_admin_created,
             "first_admin_created_at": self.first_admin_created_at.isoformat() if self.first_admin_created_at else None,
-            "features_configured": self.features_configured,
-            "tools_enabled": self.tools_enabled,
-            "config_snapshot": self.config_snapshot,
-            "validation_passed": self.validation_passed,
             "validation_failures": self.validation_failures,
-            "validation_warnings": self.validation_warnings,
-            "last_validation_at": self.last_validation_at.isoformat() if self.last_validation_at else None,
-            "installer_version": self.installer_version,
-            "install_mode": self.install_mode,
-            "install_path": self.install_path,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -306,21 +198,10 @@ class SetupState(Base):
             "database_initialized",
             "database_initialized_at",
             "setup_version",
-            "database_version",
             "python_version",
-            "node_version",
             "first_admin_created",
             "first_admin_created_at",
-            "features_configured",
-            "tools_enabled",
-            "config_snapshot",
-            "validation_passed",
             "validation_failures",
-            "validation_warnings",
-            "last_validation_at",
-            "installer_version",
-            "install_mode",
-            "install_path",
         }
     )
 

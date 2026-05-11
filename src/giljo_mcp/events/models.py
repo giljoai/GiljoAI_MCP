@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 WebSocket Event Pydantic models.
@@ -163,7 +163,17 @@ class AgentStatusChangedData(BaseModel):
     @classmethod
     def validate_status_transition(cls, v: str, info) -> str:
         """Validate status is a known agent status value."""
-        valid_statuses = {"waiting", "working", "blocked", "complete", "silent", "decommissioned", "idle", "sleeping"}
+        valid_statuses = {
+            "waiting",
+            "working",
+            "blocked",
+            "complete",
+            "silent",
+            "decommissioned",
+            "idle",
+            "sleeping",
+            "awaiting_user",
+        }
         if v not in valid_statuses:
             raise ValueError(f"Invalid agent status: {v}. Must be one of {valid_statuses}")
         return v

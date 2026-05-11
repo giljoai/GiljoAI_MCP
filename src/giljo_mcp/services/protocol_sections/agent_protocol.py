@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """Agent 5-phase lifecycle protocol generation."""
 
@@ -36,12 +36,19 @@ Before calling `complete_job()`, commit your work:
     gil_add_block = ""
     if execution_mode == "multi_terminal":
         # Handover 0841: Platform-aware command syntax in closeout signoff
-        gil_add_cmd = "$gil-add" if tool == "codex" else "/gil_add"
+        # INF-5026: also surface /gil_get for read-side intent
+        if tool == "codex":
+            gil_add_cmd = "$gil-add"
+            gil_get_cmd = "$gil-get"
+        else:
+            gil_add_cmd = "/gil_add"
+            gil_get_cmd = "/gil_get"
         gil_add_block = f"""
 ### User Guidance (Multi-Terminal)
 After completing your work, tell the user:
 "My work is complete. If you discovered technical debt or follow-up work,
-tell me and I'll use {gil_add_cmd} to save it to your dashboard."
+tell me and I'll use {gil_add_cmd} to save it to your dashboard.
+If you want to look up an existing project or task, ask me to use {gil_get_cmd}."
 """
 
     return git_commit_block, gil_add_block
@@ -146,9 +153,7 @@ Before calling `complete_job()`, you MUST verify:
 1. All TODO items completed (your TodoWrite list is fully marked completed)
 2. All messages read (queue empty after `receive_messages()`)
 
-**Resolve action tags:** Before completing, check if any `action_required` tagged items from
-360 memory were addressed by your work (visible in fetch_context memory_360 under `action_required_items`).
-If so, include `resolved_action_items: ["<description>"]` in your result dict to clear them.
+**Follow-up work:** When you finish work and a follow-up is needed, create a task via `mcp__giljo_mcp__create_task` — or a project via `mcp__giljo_mcp__create_project` if it's multi-step — and cite the returned ID in `decisions_made` when you call `close_project_and_update_memory`. The legacy `action_required` tag system was retired in INF-5025; do not use `action_required:` tag prefixes, `action_required` 360 entries, or `resolved_action_items` result keys.
 
 Final steps:
 1. Call `receive_messages()` - Final message check
@@ -237,10 +242,11 @@ Your job is to send the orchestrator everything it needs to decide what happens 
    job_id) or write a handover memory entry itself.
 
 Workers may write `baseline`, `decision`, `architecture`, and `discovery` entries
-when their mission explicitly assigns them. Workers MUST NOT write `project_completion`,
-`session_handover`, or `action_required` entries — the tool will reject those with
+when their mission explicitly assigns them. Workers MUST NOT write `project_completion`
+or `session_handover` entries — the tool will reject those with
 `ORCHESTRATOR_ONLY_ENTRY_TYPE`. To record those, send a HANDOVER or progress message
-to your orchestrator with the content.
+to your orchestrator with the content. (`action_required` was removed in INF-5025;
+use `mcp__giljo_mcp__create_task` / `create_project` for deferred follow-ups.)
 
 Concrete examples (one per category):
 - Worker `baseline`: `write_360_memory(entry_type="baseline", ...)` after seeding
@@ -251,11 +257,9 @@ Concrete examples (one per category):
   capture a new layered boundary (e.g. EventBus introduced between CE and SaaS).
 - Worker `discovery`: `write_360_memory(entry_type="discovery", ...)` for a
   surprising finding (e.g. "Alembic skips offline migrations on PG18 boot").
-- Orchestrator `action_required`: `write_360_memory(entry_type="action_required", ...)`
-  to flag a deferred follow-up that future agents must pick up.
+- Orchestrator deferred work: create a follow-up task via `mcp__giljo_mcp__create_task` (or a project via `mcp__giljo_mcp__create_project` for multi-step work) and cite the returned ID in `decisions_made` at closeout. Do not use `action_required:` tags or write `action_required` 360 entries; they are deprecated. (See INF-5025.)
 
-Use `discovery` for one-off findings worth remembering; use `action_required`
-only when the entry MUST trigger future work (orchestrator-only).
+Use `discovery` for one-off findings worth remembering.
 ---
 **Your Identifiers:**
 - job_id (work order): `{job_id}` - Use for mission, progress, completion

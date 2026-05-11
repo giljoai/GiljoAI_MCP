@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """Thin Client Prompt Generator (Handover 0088, 0315, 0950g)
 
@@ -326,6 +326,9 @@ class ThinClientPromptGenerator:
         Returns:
             Dict with orchestrator_id and thin_prompt
         """
+        # BE-5058: ``Project.taxonomy_alias`` is now a SELECT-time
+        # column_property, so no eager-load of ``project_type`` is required
+        # for sync consumers to read the alias.
         project_stmt = select(Project).where(and_(Project.id == project_id, Project.tenant_key == self.tenant_key))
         project_result = await self.db.execute(project_stmt)
         project = project_result.scalar_one_or_none()

@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Simple Handover Endpoint - Handover 0461c (Updated: Two-Stage Retirement Flow)
@@ -126,10 +126,12 @@ async def simple_handover(
     if not job:
         raise HTTPException(status_code=500, detail="Job not found")
 
-    # Load project + product for git closeout commit gating
+    # Load project + product for git closeout commit gating.
+    # BE-5058: ``project_type`` no longer needs eager loading -- ``taxonomy_alias``
+    # is a SELECT-time column_property.
     project_stmt = (
         select(Project)
-        .options(joinedload(Project.product), joinedload(Project.project_type))
+        .options(joinedload(Project.product))
         .where(Project.id == job.project_id, Project.tenant_key == current_user.tenant_key)
     )
     project_result = await db.execute(project_stmt)

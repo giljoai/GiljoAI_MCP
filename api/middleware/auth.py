@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Authentication Middleware
@@ -80,7 +80,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 )
 
         # DIAGNOSTIC: Log incoming request details
-        logger.info(
+        logger.debug(
             "auth_request_received method=%s path=%s ip=%s has_cookie=%s has_auth=%s",
             request.method,
             request.url.path,
@@ -92,7 +92,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         auth_result = await auth_manager.authenticate_request(request)
 
         # DIAGNOSTIC: Log auth result
-        logger.info(
+        logger.debug(
             "auth_result authenticated=%s user=%s error=%s is_auto_login=%s",
             auth_result.get("authenticated"),
             auth_result.get("user"),
@@ -206,7 +206,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/download/agent-templates.zip",  # Optional-auth downloads (handles own auth logic)
             "/api/download/temp",  # Public download with token auth (one-time tokens)
             "/api/oauth/token",  # OAuth token exchange (public, PKCE-protected)
+            "/api/oauth/refresh",  # OAuth refresh-token grant (public, secret-protected)
             "/api/oauth/.well-known/oauth-authorization-server",  # OAuth server metadata
+            "/api/saas/oauth/",  # SaaS OAuth surface (DCR /register; RFC 7591 public per spec)
+            "/.well-known/oauth-authorization-server",  # RFC 8414 root mirror (API-0021a)
+            "/.well-known/oauth-protected-resource",  # RFC 9728 resource metadata (API-0021a)
+            "/.well-known/mcp-server-info",  # MCP spec-version + capability discovery (API-0021h)
+            "/.well-known/openid-configuration",  # OIDC discovery probe — handler returns 404 (API-0021i)
             "/api/version/",  # Version check (installers need this before auth exists)
             "/api/saas/register",  # SaaS self-serve registration (public, pre-auth)
             "/api/saas/password-reset/",  # SaaS password reset (public, pre-auth)

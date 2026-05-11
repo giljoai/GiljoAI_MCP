@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Unit tests for AuthMiddleware (api/middleware/auth.py)
@@ -53,6 +53,21 @@ class TestPublicEndpoints:
         """Verify that non-public endpoints are not treated as public."""
         middleware = self._make_middleware()
         assert middleware._is_public_endpoint("/api/projects") is False
+
+    def test_saas_oauth_dcr_endpoint_is_public(self):
+        """REGRESSION (API-0021c live-fix): /api/saas/oauth/register must be
+        public. RFC 7591 DCR is by spec called by external clients (claude.ai,
+        Gemini CLI, etc.) without prior auth. Pre-fix, the auth middleware
+        rejected with 'Authentication required for network access' even though
+        CSRF was already exempted, blocking the entire DCR pipeline.
+        """
+        middleware = self._make_middleware()
+        assert middleware._is_public_endpoint("/api/saas/oauth/register") is True
+        # Future SaaS OAuth public endpoints (refresh/revoke per RFC 6749 §6,
+        # RFC 7009) inherit the same exemption via the prefix.
+        assert middleware._is_public_endpoint("/api/saas/oauth/anything") is True
+        # Sanity: non-saas-oauth path still requires auth
+        assert middleware._is_public_endpoint("/api/saas/projects") is False
 
 
 class TestTokenExpiryHeader:

@@ -39,11 +39,11 @@ export function useVisionAnalysis(patchProductForm) {
 
     if (didCopy) {
       analysisPromptCopied.value = true
-      showToast({ message: 'Analysis prompt copied — paste into your AI coding agent', type: 'success', timeout: 4000 })
+      showToast({ message: 'Discovery prompt copied. Paste into your AI agent to analyze your vision doc.', type: 'success', timeout: 4000 })
       setTimeout(() => { analysisPromptCopied.value = false }, 3000)
     } else {
       promptFallbackText.value = prompt
-      showToast({ message: 'Clipboard unavailable — copy the prompt manually below', type: 'warning', timeout: 5000 })
+      showToast({ message: 'Clipboard blocked. Select the prompt below and press Ctrl+C.', type: 'warning', timeout: 5000 })
     }
 
     analysisInProgress.value = true

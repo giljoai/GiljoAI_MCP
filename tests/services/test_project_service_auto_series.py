@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Tests for ProjectService auto-assign series_number (Handover 0837a).
@@ -89,16 +89,16 @@ class TestAutoAssignSeriesNumber:
         self, project_service: ProjectService, test_tenant_key: str, db_session
     ):
         """Auto-series counts independently per project_type_id."""
-        from giljo_mcp.models.projects import ProjectType
+        from giljo_mcp.models.projects import TaxonomyType
 
         # Create two project types
-        pt1 = ProjectType(
+        pt1 = TaxonomyType(
             id=str(uuid4()),
             tenant_key=test_tenant_key,
             label="Frontend",
             abbreviation="FE",
         )
-        pt2 = ProjectType(
+        pt2 = TaxonomyType(
             id=str(uuid4()),
             tenant_key=test_tenant_key,
             label="Backend",

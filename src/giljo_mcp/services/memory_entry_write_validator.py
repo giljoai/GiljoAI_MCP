@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition -- source-available, single-user use only.
+# [CE] Community Edition.
 
 """INF-WriteShape: shared write-side validator for product_memory_entries.
 
@@ -16,7 +16,6 @@ Caps (Step C ratified by analyzer 2026-04-25):
   decisions_made    : <= 5 items, each <= 250 chars
   deliverables      : <= 3 items, each <= 100 chars   [drop-cap]
   tags              : <= 8 items, drawn from CONTROLLED_TAG_VOCABULARY
-                      OR ``action_required:<title>``  (free-form follow-up)
 
 ## DELIBERATELY NOT IN VOCABULARY (Step C, 2026-04-25)
 
@@ -84,9 +83,6 @@ CONTROLLED_TAG_VOCABULARY: frozenset[str] = frozenset(
 )
 
 
-_ACTION_REQUIRED_PREFIX = "action_required:"
-
-
 class _UnknownTagError(ValueError):
     """Internal carrier so the pydantic validator surfaces the bad tag verbatim."""
 
@@ -98,21 +94,13 @@ class _UnknownTagError(ValueError):
 def _validate_tag_token(tag: str) -> str:
     """Tag-vocabulary gate.
 
-    Accepts:
-      * ``action_required:<free-form title>`` (preserved for task creation)
-      * Any tag in CONTROLLED_TAG_VOCABULARY (length already <= cap)
-
+    Accepts any tag in CONTROLLED_TAG_VOCABULARY (length already <= cap).
     Raises ValueError on anything else (Pydantic converts to a field error).
     """
     if not isinstance(tag, str):
         # Pydantic field_validators convert ValueError to a clean field
         # error; TypeError bypasses that handling, so we keep ValueError.
         raise ValueError("tag must be a string")  # noqa: TRY004
-    if tag.startswith(_ACTION_REQUIRED_PREFIX):
-        title = tag[len(_ACTION_REQUIRED_PREFIX) :]
-        if not title.strip():
-            raise ValueError("action_required tag must include a non-empty title after ':'")
-        return tag
     if len(tag) > MEMORY_TAG_MAX_LEN:
         raise ValueError(f"tag '{tag[:20]}...' exceeds {MEMORY_TAG_MAX_LEN} characters")
     if tag not in CONTROLLED_TAG_VOCABULARY:
@@ -286,11 +274,7 @@ def _translate_pydantic_error(exc: ValidationError, payload: dict[str, Any]) -> 
             invalid_tag = underlying.tag
         elif isinstance(raw, list) and len(loc) > 1 and isinstance(loc[1], int) and 0 <= loc[1] < len(raw):
             candidate = raw[loc[1]]
-            if (
-                isinstance(candidate, str)
-                and candidate not in CONTROLLED_TAG_VOCABULARY
-                and not candidate.startswith(_ACTION_REQUIRED_PREFIX)
-            ):
+            if isinstance(candidate, str) and candidate not in CONTROLLED_TAG_VOCABULARY:
                 invalid_tag = candidate
 
         count_cap, item_cap = cap_map[field]

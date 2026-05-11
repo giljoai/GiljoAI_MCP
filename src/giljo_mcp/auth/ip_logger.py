@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 API Key IP address logging.
@@ -14,7 +14,6 @@ This is a standalone async function with no api/ dependencies.
 
 import logging
 
-from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -25,8 +24,8 @@ async def log_api_key_ip(db: AsyncSession, api_key_id: str, ip_address: str) -> 
     """Log IP address for API key usage tracking (passive, non-blocking).
 
     Uses PostgreSQL upsert (INSERT ... ON CONFLICT) to either create a new
-    entry or increment the request_count and update last_seen_at for an
-    existing api_key + ip_address pair.
+    entry or increment the request_count for an existing api_key + ip_address
+    pair.
 
     This function is designed to never raise exceptions. All errors are
     caught and logged as warnings so that IP logging never blocks or
@@ -54,7 +53,6 @@ async def log_api_key_ip(db: AsyncSession, api_key_id: str, ip_address: str) -> 
             .on_conflict_do_update(
                 constraint="uq_api_key_ip",
                 set_={
-                    "last_seen_at": func.now(),
                     "request_count": ApiKeyIpLog.request_count + 1,
                 },
             )

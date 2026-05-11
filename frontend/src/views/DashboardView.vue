@@ -472,6 +472,9 @@ const fetchSystemStats = async () => {
 // Re-fetch dashboard when product filter changes
 watch(selectedProductId, () => fetchDashboardData())
 
+// Poll cadence for live counters (Agent Roles, API Calls, MCP Calls).
+// 30s is enough; the WebSocket broker pushes events for everything else.
+const POLL_INTERVAL_MS = 30_000
 let fetchInterval = null
 
 const checkSetupStatus = async () => {
@@ -610,7 +613,7 @@ onMounted(async () => {
   fetchInterval = setInterval(() => {
     fetchCallCounts()
     fetchSystemStats()
-  }, 5000)
+  }, POLL_INTERVAL_MS)
 })
 
 onUnmounted(() => {

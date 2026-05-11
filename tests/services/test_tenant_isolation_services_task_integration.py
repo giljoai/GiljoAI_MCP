@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 TDD Tests for Tenant Isolation - TaskService and Integration Workflows
@@ -54,7 +54,6 @@ async def test_task_service_log_task_blocks_cross_tenant_project(db_session, two
             product_id=product_a.id,  # Required per 0433
             project_id=project_b.id,  # Tenant B's project!
             content="Malicious task creation attempt",
-            category="Cross-tenant task",
             tenant_key=tenant_a,
         )
 
@@ -82,7 +81,6 @@ async def test_task_service_log_task_same_tenant_succeeds(db_session, two_tenant
         product_id=product_a.id,  # Required per 0433
         project_id=project_a.id,
         content="Valid task creation",
-        category="Same-tenant task",
         tenant_key=tenant_a,
     )
 
@@ -144,7 +142,6 @@ async def test_full_tenant_isolation_workflow(db_session, two_tenant_service_set
             product_id=product_a.id,  # Required per 0433
             project_id=project_b.id,
             content="Cross-tenant attack",
-            category="Malicious task",
             tenant_key=tenant_a,
         )
         violations.append("log_task() allowed cross-tenant creation - no exception raised")
@@ -193,7 +190,6 @@ async def test_tenant_isolation_does_not_break_normal_access(db_session, two_ten
             product_id=product_a.id,  # Required per 0433
             project_id=project_a.id,
             content="Same-tenant task",
-            category="Valid task",
             tenant_key=tenant_a,
         )
         if result is None:

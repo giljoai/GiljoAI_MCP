@@ -283,6 +283,8 @@ The filter bar provides search by title, filter by status, and filter by priorit
 
 Tasks can also be created from your CLI tool using `/gil_add add task ...`. The tool passes title, description, status, priority, and category.
 
+To look up tasks or projects without leaving your CLI session, use `/gil_get`. Examples: `/gil_get what BE tasks are open?` or `/gil_get show project BE-5040`.
+
 ---
 
 ## Tools
@@ -319,21 +321,15 @@ Five tabs are available:
 
 ---
 
-## 360 Memory and Action Tags
+## 360 Memory and Follow-up Work
 
 360 Memory entries are written by agents at project closeout. They capture what was built, decisions made, patterns found, and outcomes. Each subsequent project starts with this accumulated history available to the agent team.
 
-### Action Tags
+### Reporting Follow-up Work
 
-When an agent writes a 360 Memory entry, it can mark specific findings with an `action_required:` tag. This flags an item that needs follow-up — a technical debt item, a known issue, or a decision deferred to a future project.
+When an agent discovers a deferred item — technical debt, a known issue, or a decision that cannot be resolved in the current project — it creates an explicit follow-up using `mcp__giljo_mcp__create_task` (for single-step items) or `mcp__giljo_mcp__create_project` (for multi-step work). The returned ID is cited in `decisions_made` at closeout so the audit trail is intact.
 
-Action tags are visible on the Dashboard under the 360 Memories panel. They persist across projects until resolved.
-
-### Auto-Tasks from Action Tags
-
-When an agent writes a 360 Memory entry with an `action_required:` tag, a task is automatically created on your Task Board. The task title and description come from the tagged finding. When the project that originated the tag completes, the task is automatically resolved.
-
-This means important follow-up items are never lost between projects — they surface on your Task Board without any manual effort.
+Follow-up tasks and projects appear on your Task Board immediately and carry forward as first-class work items rather than passive tags.
 
 ---
 

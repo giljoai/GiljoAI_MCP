@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 import os
 import sys
@@ -64,6 +64,16 @@ target_metadata = Base.metadata
 # --- Dual-chain migration support (SAAS-002) ---
 # Always include CE migrations. Conditionally include SaaS migrations
 # when the directory exists AND GILJO_MODE is not "ce".
+#
+# CLI GOTCHA: alembic's `current`, `heads`, and other enumeration commands
+# build ScriptDirectory from alembic.ini's static version_locations BEFORE
+# env.py runs, so the dynamic SaaS-chain inclusion below ONLY takes effect
+# for migration-execution commands invoked through env.py (i.e. when run via
+# startup.py / startup_demo.py). Direct `alembic current` invocations against
+# a SaaS-stamped DB will fail with "Can't locate revision" because the CLI
+# only sees the CE chain. Use scripts/alembic_cli.py for a wrapper that loads
+# both chains for CLI debugging, or trust that startup_demo.py / startup.py
+# is the supported migration entry point.
 giljo_mode = os.environ.get("GILJO_MODE", "ce").lower()
 migrations_dir = Path(__file__).parent
 

@@ -17,6 +17,7 @@ Define your product once. Every agent that connects gets the full picture.
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL%2018-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/GiljoAI%20Community%20v1.1-ffc300?style=flat-square&labelColor=0e1c2d)](LICENSE)
 [![Setup](https://img.shields.io/badge/Setup-6--10%20min-6bcf7f?style=flat-square&labelColor=0e1c2d)](docs/INSTALLATION_GUIDE.md)
+[![MCP Conformance](https://img.shields.io/badge/MCP%20Spec-Conformance-3a8ee6?style=flat-square&labelColor=0e1c2d)](docs/CONFORMANCE.md)
 [![Backend CI](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/ci.yml)
 [![Frontend CI](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/frontend.yml/badge.svg)](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/frontend.yml)
 [![CodeQL](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/codeql.yml/badge.svg)](https://github.com/giljoai/GiljoAI_MCP/actions/workflows/codeql.yml)
@@ -138,7 +139,7 @@ The Jobs page shows real-time agent activity: status, step progress, duration, a
 <img src="docs/images/section-edition.png" alt="Edition" width="100%">
 </div>
 
-This is the **GiljoAI MCP Community Edition**, free for single-user use under the [GiljoAI Community License v1.1](LICENSE).
+This is the **GiljoAI MCP Community Edition**, free for single-user use under the [Elastic License 2.0](LICENSE).
 
 | Community Edition (Free) | SaaS Edition |
 |---|---|
@@ -248,7 +249,7 @@ python startup.py --verbose    # Detailed logging
 
 - **Issues:** [github.com/giljoai/GiljoAI_MCP/issues](https://github.com/giljoai/GiljoAI_MCP/issues)
 - **Website:** [giljo.ai](https://giljo.ai)
-- **License:** [GiljoAI Community License v1.1](LICENSE)
+- **License:** [Elastic License 2.0](LICENSE)
 - **Contributing:** See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 <br>

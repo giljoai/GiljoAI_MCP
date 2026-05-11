@@ -127,6 +127,13 @@ $gil_get_agents   # Codex CLI
 /gil_add a project for the authentication gaps, mark it as backend work
 ```
 
+**Look up projects and tasks from the CLI:**
+
+```
+/gil_get what's BE-5040 about?
+/gil_get show me open FE tasks
+```
+
 ---
 
 ## Troubleshooting

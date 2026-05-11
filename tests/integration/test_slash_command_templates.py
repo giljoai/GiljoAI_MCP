@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """Integration tests for slash command templates across platforms.
 
@@ -29,19 +29,19 @@ class TestGetAllTemplatesRegistry:
     """Test the get_all_templates() registry function."""
 
     def test_claude_code_file_count(self):
-        """Claude Code returns exactly 2 files (get_agents, add)."""
+        """Claude Code returns exactly 4 files (get_agents, add, get, get_reference)."""
         result = get_all_templates(platform="claude_code")
-        assert len(result) == 2
+        assert len(result) == 4
 
     def test_gemini_cli_file_count(self):
-        """Gemini CLI returns exactly 2 files (get_agents, add)."""
+        """Gemini CLI returns exactly 4 files (get_agents, add, get, get_reference)."""
         result = get_all_templates(platform="gemini_cli")
-        assert len(result) == 2
+        assert len(result) == 4
 
     def test_codex_cli_file_count(self):
-        """Codex CLI returns exactly 2 files (get_agents, add)."""
+        """Codex CLI returns exactly 4 files (get_agents, add, get, get_reference)."""
         result = get_all_templates(platform="codex_cli")
-        assert len(result) == 2
+        assert len(result) == 4
 
     def test_invalid_platform_raises_value_error(self):
         """Invalid platform raises ValueError."""

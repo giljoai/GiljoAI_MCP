@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition -- source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 BE-5032 verification: edge-case coverage for the agent-supplied `tags` parameter
@@ -17,8 +17,6 @@ Covers items the implementer's primary suite did not pin:
     MemoryEntryWriteSchema).
   * Whitespace-padded tags ['  refactor  '] are rejected (str_strip_whitespace=False
     on the shared schema; matches write_360_memory).
-  * action_required:<title> free-form prefix is accepted (preserves the deferred-
-    finding workflow described in the closeout protocol prose).
   * Production call path: ToolAccessor.close_project_and_update_memory threads
     `tags` through to the underlying tool function. This is the surface used by
     project_lifecycle_service.execute_closeout(), so a regression here would
@@ -245,55 +243,6 @@ async def test_whitespace_padded_tags_are_rejected():
 
     assert exc_info.value.field == "tags"
     assert exc_info.value.invalid_tag == "  refactor  "
-    assert "params" not in captured
-
-
-# ---------------------------------------------------------------------------
-# 5. action_required:<title> free-form prefix is accepted
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_action_required_prefix_tag_is_accepted():
-    """`action_required:<title>` is the documented free-form escape hatch.
-
-    Closeout protocol prose (agent_lifecycle.py:218-220) tells orchestrators to
-    use these tags for deferred findings. The validator must accept them so the
-    documented workflow does not break.
-    """
-    tenant_key = "test-tenant"
-    _, db_manager, project_id = _build_session_mocks(tenant_key)
-    captured: dict = {}
-
-    tag = "action_required:src/foo.py -- ruff RUF100 cleanup"
-    await _run_closeout(
-        project_id=project_id,
-        db_manager=db_manager,
-        tenant_key=tenant_key,
-        tags=[tag, "chore"],
-        captured=captured,
-    )
-
-    assert captured["params"].tags == [tag, "chore"]
-
-
-@pytest.mark.asyncio
-async def test_action_required_prefix_with_empty_title_is_rejected():
-    """`action_required:` with no title after the colon must fail validation."""
-    tenant_key = "test-tenant"
-    _, db_manager, project_id = _build_session_mocks(tenant_key)
-    captured: dict = {}
-
-    with pytest.raises(MemoryEntryWriteValidationError) as exc_info:
-        await _run_closeout(
-            project_id=project_id,
-            db_manager=db_manager,
-            tenant_key=tenant_key,
-            tags=["action_required:"],
-            captured=captured,
-        )
-
-    assert exc_info.value.field == "tags"
     assert "params" not in captured
 
 

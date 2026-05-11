@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Agent state management methods extracted from OrchestrationService.
@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.domain.project_status import IMMUTABLE_PROJECT_STATUSES
 from giljo_mcp.exceptions import (
+    AuthorizationError,
     OrchestrationError,
     ProjectStateError,
     ResourceNotFoundError,
@@ -146,37 +147,7 @@ class OrchestrationAgentStateService:
                         "knowledge for future orchestrators."
                     )
 
-        # Resolve action_required tags if result includes resolved_action_items
-        resolved_items = result.get("resolved_action_items")
-        if resolved_items and isinstance(resolved_items, list) and job.project_id:
-            try:
-                # Get product_id from the project
-                proj = await self._job_repo.get_project_by_id(session, tenant_key, str(job.project_id))
-
-                if proj and proj.product_id:
-                    from uuid import UUID
-
-                    from giljo_mcp.repositories.product_memory_repository import (
-                        ProductMemoryRepository,
-                    )
-
-                    mem_repo = ProductMemoryRepository()
-                    tags_removed = await mem_repo.resolve_action_tags(
-                        session=session,
-                        product_id=UUID(str(proj.product_id)),
-                        tenant_key=tenant_key,
-                        resolved_items=[str(item) for item in resolved_items[:20]],
-                    )
-                    if tags_removed > 0:
-                        self._logger.info(
-                            f"Resolved {tags_removed} action tags on job completion "
-                            f"(job_id={job.job_id}, product_id={proj.product_id})"
-                        )
-            except Exception as _exc:  # noqa: BLE001 - Non-critical side effect: tag resolution failure should not block completion
-                self._logger.warning(
-                    f"Failed to resolve action tags for job {job.job_id}",
-                    exc_info=True,
-                )
+        # action_required tag resolution removed in INF-5025b
 
         # 0497b: Auto-generate completion message to orchestrator
         if job.project_id and execution.agent_display_name != "orchestrator":
@@ -563,6 +534,28 @@ class OrchestrationAgentStateService:
                 # TENANT ISOLATION: Filter by tenant_key
                 job = await self._job_repo.get_agent_job_by_job_id(session, tenant_key, job_id)
 
+                # Staging-phase status lock: orchestrator may not flip its own
+                # status while project.staging_status != 'staging_complete'.
+                # report_progress is the only allowed signal in that window;
+                # spawned non-orchestrator agents bypass the lock entirely.
+                if execution.agent_display_name == "orchestrator" and job and job.project_id:
+                    project = await self._job_repo.get_project_by_id(session, tenant_key, str(job.project_id))
+                    if project is not None and project.staging_status != "staging_complete":
+                        raise AuthorizationError(
+                            message=(
+                                "Status changes are server-locked during staging. "
+                                "Ask the user inline; the dashboard agent grid is empty "
+                                "during staging anyway."
+                            ),
+                            error_code="STAGING_LOCK",
+                            context={
+                                "code": "STAGING_LOCK",
+                                "job_id": job_id,
+                                "agent_display_name": execution.agent_display_name,
+                                "staging_status": project.staging_status,
+                            },
+                        )
+
                 old_status = execution.status
                 execution.status = status
                 execution.block_reason = block_reason if block_reason else None
@@ -597,7 +590,7 @@ class OrchestrationAgentStateService:
                 status=status,
                 block_reason=block_reason or reason,
             )
-        except (ValidationError, ResourceNotFoundError):
+        except (ValidationError, ResourceNotFoundError, AuthorizationError):
             raise
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to set agent status")

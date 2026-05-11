@@ -4,7 +4,17 @@ All notable changes to this project are recorded here. Versions follow `MAJOR.MI
 
 ## [Unreleased]
 
-_No pending work yet — v1.2.4+ entries will land here._
+This release adopts the [Keep a Changelog](https://keepachangelog.com/) format going forward — entries are grouped by change type (Added / Changed / Fixed / Removed / Security), with optional internal project IDs in parentheses for traceability. Historical releases below remain in their original narrative format.
+
+### Added
+
+- **Declare MCP spec-version conformance.** New `mcp_spec_versions_supported` custom claim on `/.well-known/oauth-authorization-server`, plus a new public `GET /.well-known/mcp-server-info` endpoint returning `{spec_versions, capabilities, server_name, server_version}`. Declared: `2025-03-26`, `2025-06-18` (default), `2025-11-25` (PARTIAL — CIMD deferred). A 20-test regression suite locks the declaration to CI; full audit and drift-tracking process in [docs/CONFORMANCE.md](docs/CONFORMANCE.md). (API-0021h)
+- **Claude.ai handshake PR labeler + manual-test runbook.** PRs touching the Claude.ai → demo OAuth handshake path are now auto-labeled `manual-test:claude-ai-handshake` and receive a sticky comment linking to the 9-step manual runbook at `scripts/conformance/claude_ai_handshake.md`. Activation requires `gh label create` for the two labels plus a GitHub Rulesets entry; see the runbook footer. Workflow is private-only (excluded from CE export). (API-0022a)
+- **Agent-parity MCP tools for tasks.** New tools `update_task`, `update_task_status`, `complete_task`, and `list_tasks` (summary/full modes). `fetch_context` now accepts `categories=["tasks"]`.
+
+### Changed
+
+- **Task taxonomy unified.** `tasks.category` (freewrite string) replaced with `tasks.task_type_id` foreign key to the renamed `taxonomy_types` table (was `project_types`). REST path `/api/v1/project-types` → `/api/v1/taxonomy-types`. On upgrade, tasks whose old `category` value did not exact-match a taxonomy abbreviation or label arrive untyped — re-tag via the TasksView Type dropdown or via `update_task`. CE migrations `ce_0014`–`ce_0016` apply the rename, FK backfill, and legacy-column drop; all idempotent.
 
 ## [1.2.4] — 2026-05-03
 

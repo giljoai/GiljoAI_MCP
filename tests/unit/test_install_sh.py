@@ -1,6 +1,6 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
-# [CE] Community Edition -- source-available, single-user use only.
+# Licensed under the Elastic License 2.0.
+# [CE] Community Edition.
 
 """
 Python-based validation tests for install.sh.
@@ -47,7 +47,7 @@ class TestInstallShHeader:
         assert "set -euo pipefail" in self.content
 
     def test_license_header(self):
-        assert "GiljoAI Community License" in self.content
+        assert "Elastic License 2.0" in self.content
 
 
 class TestInstallShParameters:

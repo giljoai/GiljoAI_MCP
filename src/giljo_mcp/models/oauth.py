@@ -1,23 +1,28 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 OAuth 2.1 authorization models.
 
 This module contains models for OAuth 2.1 Authorization Code flow with PKCE:
 - OAuthAuthorizationCode: Short-lived authorization codes exchanged for tokens
+- OAuthRefreshToken: Long-lived refresh tokens with family rotation +
+  reuse detection (API-0021e Phase 2)
 """
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Column,
     DateTime,
     ForeignKey,
     Index,
     String,
+    Text,
 )
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.sql import func
 
 from .base import Base, generate_uuid
@@ -44,7 +49,11 @@ class OAuthAuthorizationCode(Base):
     redirect_uri = Column(String(2048), nullable=False)
     code_challenge = Column(String(128), nullable=False)
     code_challenge_method = Column(String(10), default="S256")
-    scope = Column(String(512), default="mcp")
+    scope = Column(String(512), default="mcp:read mcp:write")
+    # RFC 8707 resource indicator asserted at /authorize, validated at /token,
+    # baked into the JWT `aud`. Nullable for backwards-compat with codes minted
+    # before API-0021d (one-release transition window).
+    resource = Column(String(2048), nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -58,3 +67,58 @@ class OAuthAuthorizationCode(Base):
 
     def __repr__(self) -> str:
         return f"<OAuthAuthorizationCode(id={self.id}, client_id={self.client_id}, tenant_key={self.tenant_key})>"
+
+
+class OAuthRefreshToken(Base):
+    """OAuth 2.1 refresh token with rotation + family reuse detection (API-0021e Phase 2).
+
+    Refresh tokens are issued alongside the access token at /token (and
+    rotated on every /refresh call). Each token is bound to a ``family_id``
+    that groups every token derived from the same initial authorization-code
+    grant. When a previously-rotated/revoked token is presented, the entire
+    family is revoked and the security event is logged (RFC 6749 §10.4 +
+    OAuth 2.1 Security BCP).
+
+    Security contract:
+      - The raw refresh token is NEVER persisted; only ``token_hash`` (sha256
+        hex) is stored. Lookups go ``hash(presented) -> WHERE token_hash =``.
+      - ``tenant_key`` is NOT NULL + indexed and is derived server-side from
+        the resolved client at /refresh — never from the request body.
+      - ``revoked`` is a one-way flip. To rotate, we mark the prior row
+        ``revoked=true`` and insert a fresh row with the same ``family_id``.
+
+    See ``OAuthService.refresh_token_grant`` for the runtime contract.
+    """
+
+    __tablename__ = "oauth_refresh_tokens"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    token_hash = Column(String(64), nullable=False, unique=True)
+    family_id = Column(PG_UUID(as_uuid=False), nullable=False)
+    client_id = Column(String(64), nullable=False)
+    tenant_key = Column(String(64), nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    scope = Column(Text, nullable=True)
+    aud = Column(Text, nullable=False)
+    issued_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    revoked = Column(Boolean, nullable=False, default=False)
+
+    # Explicit __table_args__ indices match the migration (ce_0020). We don't
+    # use ``index=True`` on the columns because that would create a second
+    # index with the same auto-generated name, breaking ``create_all`` in tests.
+    __table_args__ = (
+        Index("ix_oauth_refresh_tokens_family_id", "family_id"),
+        Index("ix_oauth_refresh_tokens_tenant_key", "tenant_key"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            "<OAuthRefreshToken("
+            f"id={self.id}, family_id={self.family_id}, "
+            f"client_id={self.client_id}, tenant_key={self.tenant_key}, "
+            f"revoked={self.revoked})>"
+        )
+
+
+__all__ = ["OAuthAuthorizationCode", "OAuthRefreshToken"]

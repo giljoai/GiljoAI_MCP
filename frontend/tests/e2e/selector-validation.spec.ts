@@ -10,7 +10,7 @@
  * 3. MessageItem.vue - message-item, message-from, message-to, message-content
  * 4. UserSettings.vue - context-settings-tab, agent-templates-settings-tab, integrations-settings-tab
  * 5. ContextPriorityConfig.vue - dynamic priority-*, depth-* selectors
- * 6. GitIntegrationCard.vue - github-integration-toggle
+ * 6. GitIntegrationCard.vue - git-integration-toggle
  * 7. TemplateManager.vue - dynamic template-toggle-* selectors
  * 8. ProjectsView.vue - project-status
  */
@@ -289,7 +289,7 @@ test.describe('Data-TestID Selector Validation', () => {
   // GitIntegrationCard.vue Tests
   // ========================================
 
-  test('GitIntegrationCard - github-integration-toggle selector exists', async ({ page }) => {
+  test('GitIntegrationCard - git-integration-toggle selector exists', async ({ page }) => {
     await navigateToSettings(page)
 
     // Click on integrations tab
@@ -297,17 +297,17 @@ test.describe('Data-TestID Selector Validation', () => {
     await integrationsTab.click()
     await page.waitForLoadState('networkidle')
 
-    const selector = page.locator('[data-testid="github-integration-toggle"]')
+    const selector = page.locator('[data-testid="git-integration-toggle"]')
     const count = await selector.count()
 
-    console.log(`[INFO] github-integration-toggle count: ${count}`)
+    console.log(`[INFO] git-integration-toggle count: ${count}`)
 
     if (count > 0) {
-      console.log('[PASS] GitIntegrationCard github-integration-toggle selector found')
+      console.log('[PASS] GitIntegrationCard git-integration-toggle selector found')
       expect(count).toBeGreaterThan(0)
       await expect(selector).toBeVisible()
     } else {
-      console.log('[SKIP] GitIntegrationCard github-integration-toggle - not visible in integrations tab')
+      console.log('[SKIP] GitIntegrationCard git-integration-toggle - not visible in integrations tab')
     }
   })
 

@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Setup-status / fresh-install detection endpoint (IMP-0011 hardened).
@@ -24,6 +24,7 @@ and imports nothing from ``saas/``. Passes the Deletion Test.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -114,6 +115,8 @@ async def get_setup_security_status(db: AsyncSession = Depends(get_db_session)):
       * route_signal             ('create_admin' | 'login' | 'public_landing')
       * total_users_count        (int)
       * mode                     (echoed for frontend debugging)
+      * sentryDsn                (camelCase; SENTRY_DSN_FRONTEND in saas/demo, else null)
+      * environment              (camelCase; echoes GILJO_MODE, defaulting to 'ce')
     """
     try:
         # Count total users and admin users in a single round-trip.
@@ -148,6 +151,8 @@ async def get_setup_security_status(db: AsyncSession = Depends(get_db_session)):
             "route_signal": signal["route_signal"],
             "total_users_count": total_users_count,
             "mode": GILJO_MODE,
+            "sentryDsn": _resolve_sentry_dsn(GILJO_MODE),
+            "environment": _resolve_environment(GILJO_MODE),
         }
 
     except (ValueError, KeyError):
@@ -162,4 +167,18 @@ async def get_setup_security_status(db: AsyncSession = Depends(get_db_session)):
             "show_public_landing": True,
             "route_signal": "public_landing",
             "mode": GILJO_MODE,
+            "sentryDsn": _resolve_sentry_dsn(GILJO_MODE),
+            "environment": _resolve_environment(GILJO_MODE),
         }
+
+
+def _resolve_sentry_dsn(mode: str) -> str | None:
+    """Return SENTRY_DSN_FRONTEND only in saas/demo modes (INF-5063)."""
+    if (mode or "").strip().lower() in ("saas", "demo"):
+        return os.environ.get("SENTRY_DSN_FRONTEND") or None
+    return None
+
+
+def _resolve_environment(mode: str) -> str:
+    """Echo GILJO_MODE for the frontend Sentry init, defaulting to 'ce'."""
+    return (mode or "").strip().lower() or "ce"

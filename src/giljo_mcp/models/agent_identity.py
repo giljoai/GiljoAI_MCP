@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Agent Identity Models - AgentJob and AgentExecution.
@@ -181,7 +181,10 @@ class AgentExecution(Base):
         String(50),
         default="waiting",
         nullable=False,
-        comment="Execution status: waiting, working, blocked, idle, sleeping, complete, closed, silent, decommissioned",
+        comment=(
+            "Execution status: waiting, working, blocked, idle, sleeping, complete, closed, "
+            "silent, decommissioned, awaiting_user (BE-5029: system-set when user approval pending)"
+        ),
     )
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
@@ -309,7 +312,10 @@ class AgentExecution(Base):
         Index("idx_agent_executions_health", "health_status"),
         Index("idx_agent_executions_last_progress", "last_progress_at"),
         CheckConstraint(
-            "status IN ('waiting', 'working', 'blocked', 'complete', 'closed', 'silent', 'decommissioned', 'idle', 'sleeping')",
+            (
+                "status IN ('waiting', 'working', 'blocked', 'complete', 'closed', 'silent', "
+                "'decommissioned', 'idle', 'sleeping', 'awaiting_user')"
+            ),
             name="ck_agent_execution_status",
         ),
         CheckConstraint(

@@ -9,7 +9,7 @@ import AddTypeModal from '@/components/projects/AddTypeModal.vue'
 
 vi.mock('@/services/api', () => ({
   default: {
-    projectTypes: {
+    taxonomyTypes: {
       list: vi.fn().mockResolvedValue({ data: [] }),
       create: vi.fn().mockResolvedValue({
         data: { id: 'type-new', abbreviation: 'TST', label: 'Testing', color: '#E91E63' },
@@ -155,14 +155,14 @@ describe('AddTypeModal.vue', () => {
       await nextTick()
 
       // Call the API directly to simulate what handleSubmit does
-      const { data } = await api.projectTypes.create({
+      const { data } = await api.taxonomyTypes.create({
         abbreviation: 'TST',
         label: 'Testing',
         color: '#E91E63',
       })
 
       // Verify API was called with correct payload
-      expect(api.projectTypes.create).toHaveBeenCalledWith({
+      expect(api.taxonomyTypes.create).toHaveBeenCalledWith({
         abbreviation: 'TST',
         label: 'Testing',
         color: '#E91E63',
@@ -196,7 +196,7 @@ describe('AddTypeModal.vue', () => {
   describe('Error Handling', () => {
     it('shows error message on API 409 conflict', async () => {
       // Override the mock for this test to return a 409
-      api.projectTypes.create.mockRejectedValueOnce({
+      api.taxonomyTypes.create.mockRejectedValueOnce({
         response: {
           status: 409,
           data: { detail: 'Abbreviation already exists' },

@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 OAuth 2.1 Authorization Code endpoints with PKCE.
@@ -17,19 +17,48 @@ The token and metadata endpoints are public (no authentication required).
 Handover 0828 Phase 3.
 """
 
+import base64
+import binascii
+import json
 import logging
+import os
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.http.url_resolver import (
+    get_canonical_mcp_resource_uri,
+    get_public_base_url,
+)
 from giljo_mcp.models import User
-from giljo_mcp.services.oauth_service import OAuthService
+from giljo_mcp.services.oauth_service import (
+    DEFAULT_OAUTH_SCOPE,
+    OAUTH_GRANTABLE_SCOPES,
+    OAuthService,
+)
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Root-level well-known router (no prefix). RFC 8414 + RFC 9728 require these
+# documents to be reachable from the host root, not from a /api/oauth subtree —
+# Claude.ai / MCP clients probe `<host>/.well-known/...` per spec.
+well_known_router = APIRouter()
+
+
+# API-0021h — Declared MCP spec versions, single source of truth.
+# Advertised in two places, both reading this constant: the AS-metadata
+# `mcp_spec_versions_supported` custom claim (RFC 8414 §2 permits additional
+# claims) and the GET /.well-known/mcp-server-info conformance discovery
+# endpoint. Test file imports the same symbol so a drift between the constant,
+# the advertised list, and the documented set fails CI immediately.
+# Conformance verdicts and evidence are tracked in CONFORMANCE.md (see the
+# project's drift-tracking process). 2025-11-25 is declared even though CIMD
+# is unimplemented — the gap is documented explicitly rather than hidden.
+MCP_SPEC_VERSIONS_SUPPORTED: list[str] = ["2025-03-26", "2025-06-18", "2025-11-25"]
 
 
 class AuthorizeRequest(BaseModel):
@@ -39,9 +68,29 @@ class AuthorizeRequest(BaseModel):
     redirect_uri: str = Field(..., description="URI to redirect after authorization")
     code_challenge: str = Field(..., description="PKCE S256 code challenge")
     code_challenge_method: str = Field(default="S256", description="PKCE challenge method (must be S256)")
-    scope: str = Field(default="mcp", description="Requested OAuth scope")
+    scope: str = Field(
+        default=DEFAULT_OAUTH_SCOPE,
+        description=(
+            "Requested OAuth scope. Must be a subset of "
+            f"{sorted(OAUTH_GRANTABLE_SCOPES)}. The orchestration scope "
+            "(`mcp:agent`) is intentionally non-grantable via /authorize."
+        ),
+    )
     state: str = Field(default="", description="Opaque state value for CSRF protection")
     response_type: str = Field(default="code", description="OAuth response type (must be code)")
+    # RFC 8707 — caps the URI length defensively at the route boundary; the
+    # service layer re-validates shape (scheme/host/no-fragment) before any DB
+    # write. Optional during the API-0021d transition window so older clients
+    # that don't yet forward `resource` still complete /authorize.
+    resource: str | None = Field(
+        default=None,
+        max_length=2048,
+        description=(
+            "RFC 8707 resource indicator. Identifies the target resource "
+            "server (typically the canonical MCP URI). When supplied, it is "
+            "persisted onto the auth-code record and re-asserted at /token."
+        ),
+    )
 
 
 class TokenResponse(BaseModel):
@@ -50,10 +99,18 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int = 86400
+    refresh_token: str | None = None
+    refresh_expires_in: int | None = None
 
 
 class OAuthMetadataResponse(BaseModel):
-    """OAuth 2.1 authorization server metadata (RFC 8414)."""
+    """OAuth 2.1 authorization server metadata (RFC 8414).
+
+    All endpoint URLs are absolute (per RFC 8414 §2). The optional
+    ``registration_endpoint`` is advertised only when DCR is available
+    (SaaS/demo edition); CE omits the field rather than advertising a
+    404 path.
+    """
 
     issuer: str
     authorization_endpoint: str
@@ -61,6 +118,44 @@ class OAuthMetadataResponse(BaseModel):
     response_types_supported: list[str]
     code_challenge_methods_supported: list[str]
     grant_types_supported: list[str]
+    # API-0021i: RFC 8414 §3.2 RECOMMENDED. Mirrors the protected-resource
+    # document's scopes_supported so AS-metadata-first clients (claude.ai,
+    # MCP Inspector) discover grantable scopes without a second probe.
+    scopes_supported: list[str] = Field(
+        default_factory=list,
+        description="OAuth scopes this authorization server grants (RFC 8414 §3.2).",
+    )
+    # API-0021i: RFC 8414 §3.2. Declares the credential-presentation shapes
+    # accepted by /token after API-0021e Phase 1.1+1.2 (2026-05-10).
+    token_endpoint_auth_methods_supported: list[str] = Field(
+        default_factory=list,
+        description="Client auth methods supported by /token (RFC 8414 §3.2).",
+    )
+    registration_endpoint: str | None = None
+    # API-0021h: custom claim advertising the MCP protocol versions this server
+    # implements. RFC 8414 §2 permits additional metadata claims; spec-aware MCP
+    # clients (claude.ai connector, Inspector) read this to negotiate version
+    # without a round-trip through `initialize`.
+    mcp_spec_versions_supported: list[str] = Field(
+        default_factory=list,
+        description="MCP protocol versions implemented by this server (API-0021h).",
+    )
+
+
+class ProtectedResourceMetadataResponse(BaseModel):
+    """OAuth 2.0 Protected Resource metadata (RFC 9728).
+
+    Per RFC 8707 §3, advertises ``resource_indicators_supported: true`` so
+    spec-aware clients (claude.ai connector backend) know they MUST send
+    ``resource`` to /authorize and /token. API-0021d Phase 2 enforces that
+    binding server-side.
+    """
+
+    resource: str
+    authorization_servers: list[str]
+    scopes_supported: list[str]
+    bearer_methods_supported: list[str]
+    resource_indicators_supported: bool = True
 
 
 @router.post("/authorize", tags=["oauth"])
@@ -91,13 +186,15 @@ async def authorize(
     oauth_service = OAuthService(db_session=db)
 
     try:
-        oauth_service.validate_authorize_request(
+        await oauth_service.validate_authorize_request(
             client_id=body.client_id,
             redirect_uri=body.redirect_uri,
             code_challenge=body.code_challenge,
             code_challenge_method=body.code_challenge_method,
             response_type=body.response_type,
             scope=body.scope,
+            tenant_key=current_user.tenant_key,
+            resource=body.resource,
         )
     except ValueError as exc:
         logger.warning("OAuth authorize validation failed: %s", exc)
@@ -113,6 +210,7 @@ async def authorize(
         redirect_uri=body.redirect_uri,
         code_challenge=body.code_challenge,
         scope=body.scope,
+        resource=body.resource,
     )
 
     params = {"code": code}
@@ -131,35 +229,180 @@ async def authorize(
     return {"redirect_uri": redirect_target}
 
 
+# Field length caps mirror the original FastAPI ``Form(max_length=...)`` on
+# /token + /refresh. Replicated here because Phase 1.2 replaces ``Form(...)``
+# parameters with manual body parsing — the validation must move with them
+# (agent input is untrusted; raise 400, not let the service produce a 500).
+_OAUTH_FIELD_MAX_LENGTHS = {
+    "client_secret": 512,
+    "resource": 2048,
+    "code_verifier": 512,
+    "refresh_token": 512,
+}
+
+
+async def _parse_oauth_body(request: Request) -> dict:
+    """Parse an OAuth /token or /refresh body.
+
+    Accepts ``application/x-www-form-urlencoded`` (RFC 6749 §3.2 canonical)
+    or ``application/json`` (de-facto modern client behavior — Google,
+    GitHub, Auth0, Okta all accept it; ChatGPT requires it). Defaults to
+    form-encoded when the content-type header is missing or unrecognized.
+
+    Raises HTTPException 400 (``invalid_request``) on malformed JSON or a
+    JSON body that is not an object.
+    """
+    content_type = request.headers.get("content-type", "").lower()
+    if "application/json" in content_type:
+        try:
+            data = await request.json()
+        except (json.JSONDecodeError, ValueError, UnicodeDecodeError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="invalid_request: malformed JSON body",
+            ) from exc
+        if not isinstance(data, dict):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="invalid_request: body must be a JSON object",
+            )
+        return data
+
+    form = await request.form()
+    return dict(form.items())
+
+
+def _extract_basic_auth(request: Request) -> tuple[str | None, str | None]:
+    """Return ``(client_id, client_secret)`` from HTTP Basic Auth, or ``(None, None)``.
+
+    Implements RFC 6749 §2.3.1 (``client_secret_basic``). When the header is
+    absent or malformed, both values are ``None`` and the caller falls back
+    to body credentials. Empty fields after the colon are treated as
+    missing — a Basic header carrying no credentials is no header.
+    """
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("basic "):
+        return None, None
+    try:
+        decoded = base64.b64decode(auth[6:].strip(), validate=False).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError):
+        return None, None
+    if ":" not in decoded:
+        return None, None
+    cid, _, csec = decoded.partition(":")
+    return (cid or None), (csec or None)
+
+
+def _enforce_oauth_field_caps(**fields: str | None) -> None:
+    """Reject oversized OAuth body fields with 400 ``invalid_request``.
+
+    Mirrors the per-field ``max_length`` that ``Form(...)`` enforced before
+    Phase 1.2. Untrusted agent input must produce 422/400 responses, never
+    flow to the service layer where a DB constraint would 500.
+    """
+    for name, value in fields.items():
+        if value is None:
+            continue
+        cap = _OAUTH_FIELD_MAX_LENGTHS.get(name)
+        if cap is not None and len(value) > cap:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"invalid_request: {name} exceeds maximum length {cap}",
+            )
+
+
 @router.post("/token", response_model=TokenResponse, tags=["oauth"])
 async def token(
-    grant_type: str = Form(...),
-    code: str = Form(...),
-    client_id: str = Form(...),
-    code_verifier: str = Form(...),
-    redirect_uri: str = Form(...),
+    request: Request,
     db=Depends(get_db_session),
 ):
     """Exchange an authorization code for a JWT access token.
 
-    This is a public endpoint (no authentication required). Accepts
-    application/x-www-form-urlencoded per the OAuth 2.1 specification.
+    Public endpoint (no authentication required). Accepts THREE request
+    shapes (API-0021e Phase 1.2):
 
-    Args:
+    1. ``application/x-www-form-urlencoded`` body — RFC 6749 §3.2 canonical
+       (claude.ai uses this).
+    2. ``application/json`` body — pragmatic norm matching Google / GitHub /
+       Auth0 / Okta. ChatGPT connector uses this (live evidence on demo
+       2026-05-10 10:06:12 EDT, Azure CIDR 172.212.159.x).
+    3. HTTP Basic Auth header (``Authorization: Basic
+       <b64(client_id:client_secret)>``) for ``client_secret_basic`` clients
+       — RFC 6749 §2.3.1. Header credentials take precedence over body
+       values when both are supplied.
+
+    The handler logic (validation, PKCE branching, secret verification) is
+    identical regardless of input shape; only parsing differs.
+
+    Body fields (form or JSON):
         grant_type: Must be "authorization_code".
         code: The authorization code from the authorize step.
-        client_id: OAuth client identifier.
-        code_verifier: PKCE code verifier to prove possession.
+        client_id: OAuth client identifier (optional if Basic Auth header
+            supplies it).
         redirect_uri: Must match the URI used during authorization.
-        db: Database session.
+        code_verifier: PKCE code verifier (RFC 7636). Required for public
+            clients (no ``client_secret_hash`` on the resolved record),
+            optional for confidential clients that authenticate via
+            ``client_secret`` (RFC 6749 §6 treats client authentication and
+            PKCE as alternative proof-of-possession mechanisms). When a
+            confidential client DOES include a verifier, it must match the
+            stored challenge (defense-in-depth). API-0021e Phase 1.1.
+        resource: RFC 8707 resource indicator. Optional at /token: when
+            the auth-code record carries a bound resource, the bound value
+            is authoritative — if the client asserts ``resource`` here it
+            MUST equal the bound value (mismatch → ``invalid_grant`` 401);
+            if the client omits it, the server falls back to the bound
+            value per RFC 8707 §2 (SHOULD use the value from /authorize).
+            API-0021e Phase 1.4 (ChatGPT compat).
+        client_secret: Plaintext client secret for confidential clients
+            registered via RFC 7591 DCR. Required when the resolved client
+            carries a ``client_secret_hash``; rejected as ``invalid_client``
+            (401) when missing or wrong. Public PKCE-only clients (built-in
+            CE) MUST omit this field — sending it on a public client is also
+            ``invalid_request`` (400). API-0021e Phase 1.
 
     Returns:
         TokenResponse with access_token, token_type, and expires_in.
 
     Raises:
-        HTTPException 400: If grant_type is invalid, code exchange fails,
-            or PKCE verification fails.
+        HTTPException 400: ``invalid_request`` (malformed body, missing
+            required field, wrong grant_type, PKCE/expiry/code-reuse).
+        HTTPException 401: ``invalid_grant`` (resource mismatch) or
+            ``invalid_client`` (confidential auth failed).
     """
+    data = await _parse_oauth_body(request)
+    basic_id, basic_secret = _extract_basic_auth(request)
+
+    grant_type = data.get("grant_type")
+    code = data.get("code")
+    code_verifier = data.get("code_verifier")
+    redirect_uri = data.get("redirect_uri")
+    resource = data.get("resource")
+    client_id = basic_id or data.get("client_id")
+    client_secret = basic_secret or data.get("client_secret")
+
+    _enforce_oauth_field_caps(
+        client_secret=client_secret,
+        resource=resource,
+        code_verifier=code_verifier,
+    )
+
+    missing = [
+        name
+        for name, val in (
+            ("grant_type", grant_type),
+            ("code", code),
+            ("client_id", client_id),
+            ("redirect_uri", redirect_uri),
+        )
+        if not val
+    ]
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"invalid_request: missing required field(s): {', '.join(missing)}",
+        )
+
     if grant_type != "authorization_code":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -174,24 +417,153 @@ async def token(
             client_id=client_id,
             code_verifier=code_verifier,
             redirect_uri=redirect_uri,
+            audience=get_canonical_mcp_resource_uri(request),
+            resource=resource,
+            client_secret=client_secret,
+            tenant_key_hint=None,
         )
     except ValueError as exc:
+        message = str(exc)
+        # RFC 6749 §5.2: failed client authentication is invalid_client (401).
+        # RFC 8707 §2.2: a resource mismatch at /token is invalid_grant (401).
+        # All other validation failures (PKCE, code reuse, expired, missing
+        # resource when required) stay invalid_request (400).
+        if "invalid_client" in message:
+            logger.warning("OAuth token client authentication failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_client",
+            ) from exc
+        if "resource does not match" in message:
+            logger.warning("OAuth token resource mismatch: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_grant",
+            ) from exc
         logger.warning("OAuth token exchange failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid token exchange request.",
+            detail="invalid_request",
         ) from exc
 
     return TokenResponse(
         access_token=result["access_token"],
         token_type=result["token_type"],
         expires_in=result["expires_in"],
+        refresh_token=result.get("refresh_token"),
+        refresh_expires_in=result.get("refresh_expires_in"),
+    )
+
+
+@router.post("/refresh", response_model=TokenResponse, response_model_exclude_none=True, tags=["oauth"])
+async def refresh(
+    request: Request,
+    db=Depends(get_db_session),
+):
+    """Exchange a refresh token for a new access+refresh pair (API-0021e Phase 2).
+
+    Public endpoint; ``client_secret_post`` and ``client_secret_basic``
+    confidential clients only. Public PKCE clients never receive a refresh
+    token at /token, so /refresh intentionally rejects them as
+    ``invalid_client``.
+
+    Accepts the same three request shapes as /token (API-0021e Phase 1.2):
+    form-encoded body, JSON body, or HTTP Basic Auth header for the client
+    credentials.
+
+    Body fields (form or JSON):
+        grant_type: Must be ``"refresh_token"`` (RFC 6749 §6).
+        refresh_token: Plaintext refresh token from the prior /token or
+            /refresh response.
+        client_id: Client identifier (DCR-registered) — optional when
+            supplied via Basic Auth header.
+        client_secret: Confidential client secret (required + verified) —
+            optional when supplied via Basic Auth header.
+
+    Returns:
+        TokenResponse with new ``access_token`` + rotated ``refresh_token``.
+        The previous refresh token is marked revoked; reuse triggers
+        family-wide revocation per RFC 6749 §10.4.
+
+    Raises:
+        HTTPException 400: ``invalid_request`` (grant_type wrong, missing field).
+        HTTPException 401: ``invalid_client`` (auth failed) or
+            ``invalid_grant`` (token unknown / revoked / expired).
+    """
+    data = await _parse_oauth_body(request)
+    basic_id, basic_secret = _extract_basic_auth(request)
+
+    grant_type = data.get("grant_type")
+    refresh_token = data.get("refresh_token")
+    client_id = basic_id or data.get("client_id")
+    client_secret = basic_secret or data.get("client_secret")
+
+    _enforce_oauth_field_caps(
+        client_secret=client_secret,
+        refresh_token=refresh_token,
+    )
+
+    missing = [
+        name
+        for name, val in (
+            ("grant_type", grant_type),
+            ("refresh_token", refresh_token),
+            ("client_id", client_id),
+        )
+        if not val
+    ]
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"invalid_request: missing required field(s): {', '.join(missing)}",
+        )
+
+    if grant_type != "refresh_token":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported grant_type: expected 'refresh_token', got '{grant_type}'",
+        )
+
+    oauth_service = OAuthService(db_session=db)
+    try:
+        result = await oauth_service.refresh_token_grant(
+            refresh_token=refresh_token,
+            client_id=client_id,
+            client_secret=client_secret,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if message.startswith("invalid_client"):
+            logger.warning("OAuth refresh client authentication failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_client",
+            ) from exc
+        if message.startswith("invalid_grant"):
+            logger.warning("OAuth refresh invalid_grant: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_grant",
+            ) from exc
+        logger.warning("OAuth refresh request invalid: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="invalid_request",
+        ) from exc
+
+    return TokenResponse(
+        access_token=result["access_token"],
+        token_type=result["token_type"],
+        expires_in=result["expires_in"],
+        refresh_token=result.get("refresh_token"),
+        refresh_expires_in=result.get("refresh_expires_in"),
     )
 
 
 @router.get(
     "/.well-known/oauth-authorization-server",
     response_model=OAuthMetadataResponse,
+    response_model_exclude_none=True,  # CE omits registration_endpoint cleanly
     tags=["oauth"],
 )
 async def oauth_metadata(request: Request):
@@ -206,13 +578,157 @@ async def oauth_metadata(request: Request):
     Returns:
         OAuthMetadataResponse with server metadata.
     """
-    base_url = str(request.base_url).rstrip("/")
+    base_url = get_public_base_url(request)
+
+    # RFC 8414 §2 — absolute endpoint URLs. Pre-fix returned bare paths
+    # ("/oauth/authorize"); some clients (claude.ai) coped via issuer-resolution
+    # but others fail or skip optional endpoints when paths aren't absolute.
+    authorization_endpoint = f"{base_url}/oauth/authorize"
+    token_endpoint = f"{base_url}/api/oauth/token"
+
+    # RFC 7591 dynamic client registration endpoint — advertised ONLY when the
+    # SaaS/demo edition is active. The DCR endpoint lives under saas_endpoints/
+    # which is stripped on CE export, so CE omits this field. claude.ai and
+    # other DCR-using clients pick up `registration_endpoint` here; without it
+    # they fall back to the conventional `<issuer>/register` (which 404s here)
+    # and the connector setup fails before consent.
+    giljo_mode = os.environ.get("GILJO_MODE", "").lower()
+    registration_endpoint: str | None = None
+    if giljo_mode in ("demo", "saas"):
+        registration_endpoint = f"{base_url}/api/saas/oauth/register"
 
     return OAuthMetadataResponse(
         issuer=base_url,
-        authorization_endpoint="/oauth/authorize",
-        token_endpoint="/api/oauth/token",
+        authorization_endpoint=authorization_endpoint,
+        token_endpoint=token_endpoint,
         response_types_supported=["code"],
         code_challenge_methods_supported=["S256"],
-        grant_types_supported=["authorization_code"],
+        # API-0021e Phase 3: advertise the refresh_token grant. Confidential
+        # DCR clients receive a refresh_token at /token and rotate it via
+        # /api/oauth/refresh. Public PKCE-only clients can still only use
+        # authorization_code (the refresh path rejects them server-side).
+        grant_types_supported=["authorization_code", "refresh_token"],
+        # API-0021i: same source of truth as the protected-resource document
+        # at /.well-known/oauth-protected-resource (RFC 9728).
+        scopes_supported=sorted(OAUTH_GRANTABLE_SCOPES),
+        # API-0021i: reflects /token's real client-auth surface after
+        # API-0021e Phase 1.1+1.2 — JSON/form body, HTTP Basic, and PKCE-only
+        # public clients with `none`.
+        token_endpoint_auth_methods_supported=[
+            "client_secret_post",
+            "client_secret_basic",
+            "none",
+        ],
+        registration_endpoint=registration_endpoint,
+        # API-0021h: copy (not reference) the declared-versions list so any
+        # downstream mutation of the response payload cannot poison the
+        # module-level constant.
+        mcp_spec_versions_supported=list(MCP_SPEC_VERSIONS_SUPPORTED),
+    )
+
+
+@well_known_router.get(
+    "/.well-known/oauth-authorization-server",
+    response_model=OAuthMetadataResponse,
+    response_model_exclude_none=True,  # CE omits registration_endpoint cleanly
+    tags=["oauth"],
+)
+async def oauth_metadata_root_mirror(request: Request):
+    """RFC 8414 root-path mirror of `/api/oauth/.well-known/oauth-authorization-server`.
+
+    Spec-compliant clients (Claude.ai, MCP CLI tooling) probe the root path
+    first. Body is identical to the `/api/oauth/...` route — same handler
+    invoked for a single source of truth.
+    """
+    return await oauth_metadata(request)
+
+
+@well_known_router.get(
+    "/.well-known/oauth-protected-resource",
+    response_model=ProtectedResourceMetadataResponse,
+    tags=["oauth"],
+)
+async def oauth_protected_resource_metadata(request: Request):
+    """Return OAuth 2.0 Protected Resource metadata for `/mcp` (RFC 9728).
+
+    Tells clients which authorization server issues tokens for this resource
+    and how to present them. The `WWW-Authenticate` header on `/mcp` 401s
+    points here so a client that just got rejected can self-bootstrap.
+    """
+    return ProtectedResourceMetadataResponse(
+        resource=get_canonical_mcp_resource_uri(request),
+        authorization_servers=[get_public_base_url(request)],
+        scopes_supported=sorted(OAUTH_GRANTABLE_SCOPES),
+        bearer_methods_supported=["header"],
+    )
+
+
+# API-0021i: spec-aware clients (claude.ai, OIDC libraries) probe the OIDC
+# discovery document opportunistically when bootstrapping against an unknown
+# issuer. We don't implement OIDC, so the correct signal is 404 ("path not
+# found"), not 401 ("path exists but you're unauthenticated"). The explicit
+# registration is also load-bearing: without it, the SPA-fallback 404 handler
+# in api/app.py would intercept this path and return index.html (200 HTML),
+# misleading clients into parsing an OAuth-irrelevant body.
+@well_known_router.get(
+    "/.well-known/openid-configuration",
+    include_in_schema=False,
+    tags=["oauth"],
+)
+async def oidc_configuration_not_supported():
+    """Return 404 for the OIDC discovery document — OIDC is not implemented."""
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=404,
+        content={"error": "OIDC not supported on this server"},
+    )
+
+
+class McpServerInfoResponse(BaseModel):
+    """MCP spec-version + capability discovery document (API-0021h).
+
+    Lightweight companion to OAuth AS-metadata: exposes the declared MCP
+    spec-version list, the server identity, and a capability snapshot read
+    from the canonical FastMCP tool registry. Surface for conformance
+    discovery without forcing the client through `initialize`.
+    """
+
+    spec_versions: list[str]
+    capabilities: dict
+    server_name: str
+    server_version: str
+
+
+@well_known_router.get(
+    "/.well-known/mcp-server-info",
+    response_model=McpServerInfoResponse,
+    tags=["oauth"],
+)
+async def mcp_server_info():
+    """Return MCP spec-version + capability discovery document (API-0021h).
+
+    Public, unauthenticated endpoint. Capability data is read from canonical
+    sources — `TOOL_SCOPES` (defined alongside the FastMCP instance) for the
+    scope-per-tool map, `giljo_mcp.__version__` for `server_version`. No
+    duplicate registries.
+    """
+    # Local import avoids the api.endpoints.mcp_sdk_server ↔ api.endpoints.oauth
+    # cycle at module load. FastMCP setup transitively imports modules that
+    # depend on api.app; the lazy import keeps oauth.py importable in any order.
+    from api.endpoints.mcp_sdk_server import TOOL_SCOPES, mcp
+    from giljo_mcp import __version__ as giljo_version
+
+    capabilities: dict = {
+        "tools": {
+            "count": len(TOOL_SCOPES),
+            "scopes": dict(TOOL_SCOPES),
+        }
+    }
+
+    return McpServerInfoResponse(
+        spec_versions=list(MCP_SPEC_VERSIONS_SUPPORTED),
+        capabilities=capabilities,
+        server_name=mcp.name,
+        server_version=giljo_version,
     )

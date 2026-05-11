@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Unit tests asserting Read-mode keywords appear in /gil_add slash command templates.
@@ -50,17 +50,18 @@ def test_gil_add_template_contains_read_mode_keyword(constant_name: str, templat
 
 
 def test_skills_version_bumped_for_frontmatter_description_sync() -> None:
-    """SKILLS_VERSION must be 1.1.11 after the frontmatter description was
+    """SKILLS_VERSION must be >= 1.1.11 after the frontmatter description was
     updated to advertise Read mode alongside Add/Update.
 
     1.1.9 added Read mode (BE-5033). 1.1.10 fixed the cheap-first routing
     inside the body. 1.1.11 syncs the frontmatter description so agents
     discover the Read capability from the available-skills list (without
     that, fresh sessions saw "Add a task or project..." and reasonably
-    concluded /gil_add couldn't read).
+    concluded /gil_add couldn't read). Future bumps stay green.
     """
-    assert SKILLS_VERSION == "1.1.11", (
-        f"SKILLS_VERSION is {SKILLS_VERSION!r}; expected '1.1.11' after frontmatter description sync."
+    version_tuple = tuple(int(p) for p in SKILLS_VERSION.split("."))
+    assert version_tuple >= (1, 1, 11), (
+        f"SKILLS_VERSION is {SKILLS_VERSION!r}; expected >= '1.1.11' after frontmatter description sync."
     )
 
 

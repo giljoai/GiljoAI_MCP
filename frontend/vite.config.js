@@ -5,6 +5,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { resolve } from 'path'
 import fs from 'fs'
 import yaml from 'js-yaml'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 // Load frontend port from environment or use default
 const FRONTEND_PORT = parseInt(process.env.VITE_FRONTEND_PORT || process.env.GILJO_FRONTEND_PORT || '7274', 10)
@@ -56,12 +57,43 @@ try {
 const apiProtocol = sslEnabled ? 'https' : 'http'
 const API_TARGET = `${apiProtocol}://${apiHost}:${apiPort}`
 
-export default defineConfig({
+// Build Sentry vite plugin config — only active in production SaaS/Demo builds
+// when SENTRY_AUTH_TOKEN is present. No-ops silently otherwise.
+function buildSentryPlugin(mode) {
+  const authToken = process.env.SENTRY_AUTH_TOKEN
+  const giljoMode = process.env.GILJO_MODE
+  const org = process.env.SENTRY_ORG
+  const project = process.env.SENTRY_PROJECT
+  if (
+    mode !== 'production' ||
+    !authToken ||
+    !giljoMode ||
+    giljoMode === 'ce'
+  ) {
+    return null
+  }
+  return sentryVitePlugin({
+    org,
+    project,
+    authToken,
+    sourcemaps: {
+      assets: ['./dist/**'],
+      // Delete local .map files after upload — keeps them out of public CDN
+      filesToDeleteAfterUpload: ['./dist/**/*.map'],
+    },
+  })
+}
+
+export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
     vuetify({ autoImport: true }),
-  ],
+    buildSentryPlugin(mode),
+  ].filter(Boolean),
   build: {
+    // Source maps required for Sentry symbolication. The vite plugin deletes
+    // the .map files from dist/ after upload, so they are never served publicly.
+    sourcemap: true,
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html')
@@ -177,4 +209,4 @@ export default defineConfig({
       ]
     }
   }
-})
+}))

@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Task and message-related models for GiljoAI MCP.
@@ -21,11 +21,16 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    and_,
+    case,
+    literal,
+    select,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import column_property, relationship
 from sqlalchemy.sql import func
 
 from .base import Base, generate_uuid
+from .projects import TaxonomyType
 
 
 class Task(Base):
@@ -76,7 +81,28 @@ class Task(Base):
 
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    category = Column(String(100), nullable=True)
+    # Phase B (agent-parity, 2026-05): replaced free-form category with FK to
+    # taxonomy_types so tasks share the project taxonomy. Migrations
+    # ce_0015 (add+backfill) and ce_0016 (drop category) handle the schema move.
+    task_type_id = Column(
+        String(36),
+        ForeignKey("taxonomy_types.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="FK to taxonomy_types for task classification",
+    )
+    # BE-5058: parity with Project taxonomy fields so tasks can carry the
+    # same structured naming (e.g. BE-0001a). Migration ce_0017 creates the
+    # columns + index in the CE chain.
+    series_number = Column(
+        Integer,
+        nullable=True,
+        comment="Sequential number within a task type (e.g., 1 in BE-0001)",
+    )
+    subseries = Column(
+        String(1),
+        nullable=True,
+        comment="Single-letter subseries suffix (e.g., 'a' in BE-0001a)",
+    )
     status = Column(String(50), default="pending")  # pending, in_progress, completed, blocked, cancelled, converted
     priority = Column(String(20), default="medium")  # low, medium, high, critical
     estimated_effort = Column(Float, nullable=True)  # Hours
@@ -93,6 +119,7 @@ class Task(Base):
     )  # Specify FK to avoid ambiguity with converted_to_project_id
     subtasks = relationship("Task", back_populates="parent_task", foreign_keys="Task.parent_task_id")
     parent_task = relationship("Task", back_populates="subtasks", remote_side="Task.id")
+    task_type = relationship("TaxonomyType", foreign_keys=[task_type_id])
 
     # Phase 4: User relationships (Handover 0076: removed assigned_to_user)
     created_by_user = relationship("User", foreign_keys=[created_by_user_id], back_populates="created_tasks")
@@ -104,6 +131,7 @@ class Task(Base):
         Index("idx_task_project", "project_id"),
         Index("idx_task_status", "status"),
         Index("idx_task_priority", "priority"),
+        Index("idx_task_task_type_id", "task_type_id"),
         # Phase 4: User assignment indexes (Handover 0076: removed assignment indexes)
         Index("idx_task_created_by_user", "created_by_user_id"),
         Index("idx_task_tenant_created_user", "tenant_key", "created_by_user_id"),  # Composite for "Created by Me"
@@ -112,6 +140,44 @@ class Task(Base):
 
     def __repr__(self) -> str:
         return f"<Task(id={self.id}, title='{self.title}', status='{self.status}')>"
+
+
+# BE-5058: SELECT-time taxonomy_alias mirror for Task. Tasks have no random
+# 6-char fallback alias (unlike Project), so the no-taxonomy case resolves to
+# an empty string. Tenant-scoped correlated subquery keeps tenant isolation
+# enforced at the model layer.
+_task_abbr_subq = (
+    select(TaxonomyType.abbreviation)
+    .where(
+        TaxonomyType.id == Task.task_type_id,
+        TaxonomyType.tenant_key == Task.tenant_key,
+    )
+    .correlate(Task)
+    .scalar_subquery()
+)
+
+Task.taxonomy_alias = column_property(
+    case(
+        (
+            and_(Task.task_type_id.is_(None), Task.series_number.is_(None)),
+            literal(""),
+        ),
+        (
+            Task.series_number.is_(None),
+            func.coalesce(_task_abbr_subq, literal("")),
+        ),
+        else_=(
+            func.coalesce(_task_abbr_subq, literal(""))
+            + case(
+                (_task_abbr_subq.is_not(None), literal("-")),
+                else_=literal(""),
+            )
+            + func.lpad(func.cast(Task.series_number, String), 4, literal("0"))
+            + func.coalesce(Task.subseries, literal(""))
+        ),
+    ),
+    deferred=False,
+)
 
 
 class Message(Base):
@@ -152,13 +218,6 @@ class Message(Base):
         server_default="false",
         comment="True if recipient must take action. False for informational messages.",
     )
-
-    # MessageQueue system fields
-    processing_started_at = Column(DateTime(timezone=True), nullable=True)
-    retry_count = Column(Integer, default=0)
-    max_retries = Column(Integer, default=3)
-    backoff_seconds = Column(Integer, default=60)
-    circuit_breaker_status = Column(String(20), nullable=True)
 
     # Relationships
     project = relationship("Project", back_populates="messages")

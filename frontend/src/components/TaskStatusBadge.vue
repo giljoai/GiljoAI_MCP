@@ -1,0 +1,123 @@
+<template>
+  <span
+    class="task-status-badge smooth-border"
+    :style="badgeStyle"
+    :aria-label="`Task status: ${statusLabel}`"
+  >
+    {{ statusLabel }}
+  </span>
+</template>
+
+<script setup>
+/**
+ * TaskStatusBadge — renders a task's lifecycle status as a tinted,
+ * square-cornered (8px) pill.
+ *
+ * Single source of truth (FE-5041 Phase 2): label, color, and validity
+ * all derive from `taskStatusesStore`, which mirrors the backend
+ * `TaskStatus` enum via `GET /api/v1/task-statuses/`. The store is
+ * fetched once at app boot from `DefaultLayout.onMounted`; this
+ * component never calls the API itself.
+ *
+ * Color resolution: each status carries a `color_token` string (e.g.
+ * `color-agent-researcher`). At render time we read the matching CSS
+ * custom property (`--color-agent-researcher`) declared in `main.scss`,
+ * which mirrors the SCSS token in `design-tokens.scss`. No hex literals
+ * live in this file — the Luminous Pastel palette in `design-tokens.scss`
+ * is the single source of color truth.
+ *
+ * Mirrors `StatusBadge.vue` (the project-side equivalent) line-for-line;
+ * the only differences are (a) the store dependency, (b) the
+ * `aria-label` prefix ("Task status:" vs "Project status:"), and
+ * (c) the `smooth-border` class with a tinted `--smooth-border-color`
+ * for inset border styling on the rounded element.
+ *
+ * Design-system anatomy (`frontend/design-system-sample-v2.html`):
+ * - `rgba(color, 0.15)` background with full-brightness color text
+ * - `border-radius: 8px` (square-cornered pill)
+ * - `smooth-border` (inset box-shadow) — never CSS `border` on rounded
+ */
+import { computed } from 'vue'
+
+import { hexToRgba } from '@/utils/colorUtils'
+import { useTaskStatusesStore } from '@/stores/taskStatusesStore'
+
+const props = defineProps({
+  status: {
+    type: String,
+    required: true,
+  },
+})
+
+const statusesStore = useTaskStatusesStore()
+
+// Fallback hex used when the store hasn't loaded yet (first-paint window
+// before DefaultLayout's onMounted resolves) or when an unknown status
+// value slips through (orphan WebSocket payload during a deploy). This
+// matches `--color-text-muted` in `main.scss` so the visual fallback is
+// the same as the canonical PENDING/CANCELLED states (also muted).
+const FALLBACK_HEX = '#9e9e9e'
+const FALLBACK_LABEL_FORMATTER = (value) =>
+  value ? value.charAt(0).toUpperCase() + value.slice(1) : 'Unknown'
+
+const meta = computed(() => statusesStore.getMeta(props.status))
+
+const statusLabel = computed(() =>
+  meta.value ? meta.value.label : FALLBACK_LABEL_FORMATTER(props.status),
+)
+
+/**
+ * Resolve a SCSS color token name (e.g. `color-agent-researcher`) to its
+ * hex value via the corresponding CSS custom property
+ * `--color-agent-researcher` declared at `:root` in `main.scss`.
+ *
+ * Falls back to the muted hex when the property is missing (jsdom test
+ * environment, SSR, or before stylesheets have applied).
+ */
+function resolveColorToken(token) {
+  if (!token) return FALLBACK_HEX
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return FALLBACK_HEX
+  }
+  try {
+    const value = getComputedStyle(document.documentElement)
+      .getPropertyValue(`--${token}`)
+      .trim()
+    if (!value) return FALLBACK_HEX
+    return value
+  } catch {
+    return FALLBACK_HEX
+  }
+}
+
+const colorHex = computed(() =>
+  meta.value ? resolveColorToken(meta.value.color_token) : FALLBACK_HEX,
+)
+
+const badgeStyle = computed(() => ({
+  background: hexToRgba(colorHex.value, 0.15),
+  color: colorHex.value,
+  borderRadius: '8px',
+  '--smooth-border-color': hexToRgba(colorHex.value, 0.35),
+}))
+
+// Exposed for tests that need to assert internal computed state.
+defineExpose({ statusLabel, meta, colorHex })
+</script>
+
+<style lang="scss" scoped>
+.task-status-badge {
+  display: inline-flex;
+  align-items: center;
+  // Square-cornered pill per design-system-sample-v2.html (tinted badge).
+  // `smooth-border` from main.scss carries the inset border (no CSS `border`
+  // on a rounded element).
+  border-radius: 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  white-space: nowrap;
+  line-height: 1.4;
+  user-select: none;
+}
+</style>

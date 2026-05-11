@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition test -- covers CE-tier policy table branches.
+# [CE] Community Edition.
 
 """Unit tests for setup_security policy table (IMP-0011).
 

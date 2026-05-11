@@ -278,12 +278,14 @@ export const api = {
       apiClient.post(`/api/v1/products/${productId}/tuning/generate-prompt`, { sections }),
   },
 
-  // Project Types (Handover 0440b: Taxonomy system)
-  projectTypes: {
-    list: () => apiClient.get('/api/v1/project-types/'),
-    create: (data) => apiClient.post('/api/v1/project-types/', data),
-    update: (id, data) => apiClient.put(`/api/v1/project-types/${id}`, data),
-    delete: (id) => apiClient.delete(`/api/v1/project-types/${id}`),
+  // Taxonomy Types (renamed from project-types in Phase A of task agent-parity
+  // taxonomy unification — the same taxonomy now serves both projects and
+  // tasks, hence the rename. URL: /api/v1/taxonomy-types/.)
+  taxonomyTypes: {
+    list: () => apiClient.get('/api/v1/taxonomy-types/'),
+    create: (data) => apiClient.post('/api/v1/taxonomy-types/', data),
+    update: (id, data) => apiClient.put(`/api/v1/taxonomy-types/${id}`, data),
+    delete: (id) => apiClient.delete(`/api/v1/taxonomy-types/${id}`),
   },
 
   // Project Statuses (BE-5039: Project Status SSOT)
@@ -293,6 +295,14 @@ export const api = {
   // `projectStatusesStore` and consumes in StatusBadge / filters.
   projectStatuses: {
     list: () => apiClient.get('/api/v1/project-statuses/'),
+  },
+
+  // Task Statuses (FE-5041: Task Status SSOT, mirrors BE-5039 shape)
+  // Read-only — the canonical six statuses live in the backend
+  // `TaskStatus` enum. Endpoint returns metadata (label, color_token,
+  // is_lifecycle_finished) consumed by `TaskStatusBadge` / Phase 2 store.
+  taskStatuses: {
+    list: () => apiClient.get('/api/v1/task-statuses/'),
   },
 
   // Projects
@@ -587,6 +597,16 @@ export const api = {
     updateOrchestratorPrompt: (content) =>
       apiClient.put('/api/v1/system/orchestrator-prompt', { content }),
     resetOrchestratorPrompt: () => apiClient.post('/api/v1/system/orchestrator-prompt/reset'),
+  },
+
+  // User Approvals (FE-5017 Phase C)
+  // Backend: api/endpoints/approvals.py — POST /api/approvals/{id}/decide
+  // List endpoint (GET /api/approvals) is added by the backend implementer in
+  // the same phase; consumed here by useApprovalsStore for the dashboard inbox.
+  approvals: {
+    listPending: (params) => apiClient.get('/api/approvals', { params: { status: 'pending', ...(params || {}) } }),
+    decide: (approvalId, optionId) =>
+      apiClient.post(`/api/approvals/${approvalId}/decide`, { option_id: optionId }),
   },
 
   // Statistics

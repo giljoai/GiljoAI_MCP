@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Pytest configuration for test suite
@@ -22,70 +22,29 @@ import pytest_asyncio
 # TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# Load .env first so POSTGRES_SUPERUSER_PASSWORD reaches PostgreSQLTestHelper
-# without requiring manual `export $(... .env | xargs)` before invoking pytest.
-# load_dotenv is a no-op if .env is missing (CI sets env via secrets instead).
+# Surface only the .env keys tests legitimately need (POSTGRES_SUPERUSER_PASSWORD).
+# Loading the entire .env via load_dotenv() would inject the developer's
+# production DATABASE_URL and trigger the test-suite's production-database
+# safety guard. CI sets DATABASE_URL via secrets; locally we want the test
+# helper to fall through to its DEFAULT_CONFIG using only the superuser
+# password from .env.
 try:
-    from dotenv import load_dotenv as _load_dotenv
+    from dotenv import dotenv_values as _dotenv_values
 
-    _load_dotenv(Path(__file__).parent.parent / ".env", override=False)
+    _env_file = Path(__file__).parent.parent / ".env"
+    if _env_file.is_file():
+        _ENV_KEYS_TESTS_NEED = ("POSTGRES_SUPERUSER_PASSWORD",)
+        _dotenv_pairs = _dotenv_values(_env_file)
+        for _k in _ENV_KEYS_TESTS_NEED:
+            _v = _dotenv_pairs.get(_k)
+            if _v is not None and _k not in os.environ:
+                os.environ[_k] = _v
 except ImportError:
     pass
 
 # Ensure config validation passes without real secrets
 os.environ.setdefault("DB_PASSWORD", "test-password")
 os.environ.setdefault("JWT_SECRET", "test_secret_key")
-
-# --------------------------------------------------------------------------
-# INF-5012b Part 3: Pin DATABASE_URL to test credentials BEFORE any
-# application module (api.app, api.endpoints.*, src.giljo_mcp.auth.*) is
-# imported by a test. Those modules call load_dotenv() without override,
-# which silently injects the production DATABASE_URL (giljo_user@giljo_mcp)
-# mid-run. The first use survives because db_manager() resolved the URL
-# before that import; on the second function-scoped db_manager fixture
-# the production URL wins, and PostgreSQLTestHelper._config_from_env()
-# reuses giljo_user — which has no privileges on postgres-owned test
-# tables. Result: every test after the first fails with
-#   permission denied for table organizations
-# and a trailing SAWarning: transaction already deassociated from
-# connection.
-#
-# Setting DATABASE_URL here (before app imports) makes the later
-# load_dotenv(override=False) calls no-ops, so the test database URL
-# sticks for the entire session.
-#
-# IMPORTANT: If the existing DATABASE_URL points to a NON-test database
-# (typically because .env injected the production URL giljo_user@giljo_mcp),
-# we must POP it before constructing a test URL. PostgreSQLTestHelper
-# ._config_from_env() reads DATABASE_URL when present and reuses its
-# credentials (just swapping the database name). Reusing giljo_user's
-# credentials against the postgres-owned test tables yields
-#   permission denied for table organizations
-# Unsetting forces the helper to fall through to DEFAULT_CONFIG, which
-# correctly uses the postgres superuser + POSTGRES_SUPERUSER_PASSWORD.
-#
-# CI sets DATABASE_URL to its own test URL (e.g. giljo_test@giljo_test)
-# with credentials that DO own the test tables in the CI Postgres service.
-# That URL must be honored as-is, NOT replaced with a DEFAULT_CONFIG that
-# expects a 'postgres' user CI doesn't have.
-# --------------------------------------------------------------------------
-_existing_db_url = os.environ.get("DATABASE_URL", "")
-
-
-def _existing_url_targets_test_db(url: str) -> bool:
-    """True if URL's database name is a recognized test database."""
-    if not url:
-        return False
-    db_part = url.rsplit("/", 1)[-1].split("?", maxsplit=1)[0]
-    return db_part in ("giljo_mcp_test", "giljo_test", "postgres")
-
-
-if not _existing_url_targets_test_db(_existing_db_url):
-    os.environ.pop("DATABASE_URL", None)
-    from tests.helpers.test_db_helper import PostgreSQLTestHelper
-
-    os.environ["DATABASE_URL"] = PostgreSQLTestHelper.get_test_db_url()
-
 
 # Import Product model for test_product fixture
 from giljo_mcp.models import Product  # noqa: E402 -- must follow DATABASE_URL setup above

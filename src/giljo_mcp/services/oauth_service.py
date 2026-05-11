@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 OAuthService - OAuth 2.1 Authorization Code flow with PKCE.
@@ -18,34 +18,154 @@ Design Principles:
 - Exception-based errors: Raises ValueError on validation failures
 - Stateless: Each method operates on the provided DB session
 - PKCE-only: No client_secret, S256 challenge method required
+
+API-0021c: client lookup is performed through a pluggable
+``ClientResolver`` (Callable). CE ships a built-in single-client resolver
+that preserves identical pre-0021c behavior. SaaS replaces it at startup
+via ``set_client_resolver()`` to look up clients in the ``oauth_clients``
+table populated by RFC 7591 Dynamic Client Registration.
+
+API-0021d: RFC 8707 resource indicator is bound to the auth-code record at
+/authorize and re-asserted at /token. The matched value becomes the JWT
+``aud`` claim, replacing the canonical-MCP-URI fallback used during the
+audience-binding transition window.
 """
 
 import base64
 import hashlib
+import inspect
 import logging
 import re
 import secrets
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+import bcrypt
 from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.auth.jwt_manager import JWTManager
 from giljo_mcp.models.auth import User
 from giljo_mcp.models.oauth import OAuthAuthorizationCode
+from giljo_mcp.services import oauth_token_idempotency as _idem
 
 
 logger = logging.getLogger(__name__)
 
+
 BUILTIN_CLIENT_ID = "giljo-mcp-default"
 AUTHORIZATION_CODE_LIFETIME_MINUTES = 10
 ACCESS_TOKEN_LIFETIME_SECONDS = 86400  # 24 hours
+# Refresh tokens live longer than access tokens but still rotate every call.
+# 30 days mirrors the de facto industry default (Auth0 / Okta / Azure AD) for
+# long-lived sessions; rotation + family reuse detection is what actually
+# bounds the security blast radius, not raw lifetime.
+REFRESH_TOKEN_LIFETIME_SECONDS = 30 * 86400
 ALLOWED_REDIRECT_URI_PATTERNS = [
     r"^http://localhost(:\d+)?/",
     r"^http://127\.0\.0\.1(:\d+)?/",
     r"^http://\[::1\](:\d+)?/",
 ]
+
+# OAuth-grantable scopes for the MCP resource server (API-0021b).
+# `mcp:agent` is intentionally NOT grantable through /authorize — orchestration
+# tools (spawn_job, complete_job, send_message, …) must never be reachable by
+# OAuth clients. API keys remain the only path to mcp:agent surface.
+OAUTH_GRANTABLE_SCOPES: frozenset[str] = frozenset({"mcp:read", "mcp:write"})
+DEFAULT_OAUTH_SCOPE: str = "mcp:read mcp:write"
+
+# RFC 8707 resource indicator length cap. Mirrors the column width on
+# ``oauth_authorization_codes.resource`` so validation never produces a 500
+# from a column-overflow path that should have been a clean 400.
+MAX_RESOURCE_INDICATOR_LENGTH = 2048
+
+
+# ---------------------------------------------------------------------------
+# Client resolver seam (API-0021c)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ResolvedClient:
+    """OAuth client metadata returned by a ``ClientResolver``.
+
+    ``redirect_uris`` semantics:
+      - ``None`` → the validator falls back to :data:`ALLOWED_REDIRECT_URI_PATTERNS`
+        (used by the CE built-in single-client default; preserves localhost
+        regex matching for unchanged behavior).
+      - ``list[str]`` → exact-match validation against the registered URIs
+        (used by SaaS DCR clients per RFC 7591 §2).
+
+    ``client_secret_hash`` is None for PKCE-only public clients (built-in
+    case). DCR-registered confidential clients store a bcrypt hash; matching
+    plaintext-secret verification at /token is out of scope for API-0021c
+    (PKCE remains the proof-of-possession mechanism).
+    """
+
+    client_id: str
+    client_name: str
+    redirect_uris: list[str] | None
+    client_secret_hash: str | None
+
+
+# Resolver contract (post-API-0021c): positional ``(client_id, tenant_key)``.
+# Tenant-scoping the lookup is a hard rule (CLAUDE.md: every DB query filters
+# by tenant_key). The CE built-in is global and ignores ``tenant_key``; SaaS
+# DB-backed resolvers MUST apply it as a SQL ``WHERE`` clause.
+#
+# A resolver may return either ``ResolvedClient | None`` directly (sync) or
+# an awaitable yielding the same (async). ``validate_authorize_request`` is
+# async and awaits whichever shape the active resolver returns — this lets
+# CE keep its sync built-in default while SaaS does a true cache-miss DB
+# round-trip via :func:`giljo_mcp.saas.auth.oauth_client.lookup_client`.
+ClientResolver = Callable[
+    [str, str],
+    "ResolvedClient | None | Awaitable[ResolvedClient | None]",
+]
+
+
+def _builtin_single_client_resolver(client_id: str, tenant_key: str) -> ResolvedClient | None:
+    """CE default: only the built-in MCP client is recognized.
+
+    The built-in client is global (CE has no multi-tenant DB lookup); the
+    ``tenant_key`` argument is part of the ``ClientResolver`` contract so
+    SaaS resolvers can scope by tenant without changing the signature, but
+    CE ignores it. Returns ``None`` for any other ``client_id``, producing
+    the same ``ValueError("Invalid client_id")`` that the previous hardcoded
+    constant comparison raised.
+    """
+    _ = tenant_key  # contract-required positional arg; CE built-in is global
+    if client_id != BUILTIN_CLIENT_ID:
+        return None
+    return ResolvedClient(
+        client_id=BUILTIN_CLIENT_ID,
+        client_name="GiljoAI MCP (built-in)",
+        redirect_uris=None,
+        client_secret_hash=None,
+    )
+
+
+_resolver: ClientResolver = _builtin_single_client_resolver
+
+
+def set_client_resolver(resolver: ClientResolver) -> None:
+    """Install a process-wide ``ClientResolver``.
+
+    SaaS bootstrap calls this once at startup with a DB-backed resolver that
+    queries the ``oauth_clients`` table and falls back to the built-in
+    resolver when no row matches. CE leaves the default in place.
+    """
+    if not callable(resolver):
+        raise TypeError(f"ClientResolver must be callable, got {type(resolver).__name__}")
+    global _resolver  # noqa: PLW0603 — the seam IS the process-wide state
+    _resolver = resolver
+
+
+def get_client_resolver() -> ClientResolver:
+    """Return the currently active ``ClientResolver``."""
+    return _resolver
 
 
 class OAuthService:
@@ -62,7 +182,7 @@ class OAuthService:
     def __init__(self, db_session: AsyncSession) -> None:
         self._db = db_session
 
-    def validate_authorize_request(
+    async def validate_authorize_request(
         self,
         client_id: str,
         redirect_uri: str,
@@ -70,6 +190,9 @@ class OAuthService:
         code_challenge_method: str,
         response_type: str,
         scope: str,
+        *,
+        tenant_key: str,
+        resource: str | None = None,
     ) -> None:
         """Validate an OAuth authorization request.
 
@@ -77,18 +200,43 @@ class OAuthService:
         This is a synchronous validation step before any DB interaction.
 
         Args:
-            client_id: Must match BUILTIN_CLIENT_ID.
-            redirect_uri: Must match an allowed localhost pattern.
+            client_id: Resolved through the active ``ClientResolver``.
+                CE default: only ``BUILTIN_CLIENT_ID`` is recognized. SaaS:
+                any client registered through DCR (RFC 7591) under the
+                authenticated user's ``tenant_key``, with the built-in
+                client preserved as a global fallback.
+            redirect_uri: Validated against the resolved client's registered
+                URIs (exact match) when ``ResolvedClient.redirect_uris`` is
+                a list, or against ``ALLOWED_REDIRECT_URI_PATTERNS`` when
+                None (built-in client localhost fallback).
             code_challenge: Base64url-encoded S256 challenge (non-empty).
             code_challenge_method: Must be "S256".
             response_type: Must be "code".
-            scope: Requested scope (informational, not enforced here).
+            scope: Requested scope. Must be a subset of OAUTH_GRANTABLE_SCOPES.
+                Any token outside that set (notably `mcp:agent`) is rejected
+                outright — orchestration scope is never grantable via OAuth.
+            tenant_key: Tenant scope of the authenticated user. The router
+                MUST plumb this from ``current_user.tenant_key``; the
+                resolver applies it as the DB lookup's tenant filter so a
+                client registered under tenant A cannot be discovered from
+                tenant B (CLAUDE.md tenant-isolation rule).
+            resource: Optional RFC 8707 resource indicator. Validated for
+                URI shape, length, and absence of fragment. Persisted onto
+                the auth-code record by ``generate_authorization_code`` so
+                ``exchange_code_for_token`` can re-assert it at /token.
 
         Raises:
             ValueError: If any parameter fails validation.
         """
-        if client_id != BUILTIN_CLIENT_ID:
-            raise ValueError(f"Invalid client_id: expected '{BUILTIN_CLIENT_ID}', got '{client_id}'")
+        if not tenant_key:
+            raise ValueError("tenant_key is required for authorize-request validation")
+        resolver_result = _resolver(client_id, tenant_key)
+        if inspect.isawaitable(resolver_result):
+            resolved = await resolver_result
+        else:
+            resolved = resolver_result
+        if resolved is None:
+            raise ValueError(f"Invalid client_id: no client registered for '{client_id}'")
 
         if response_type != "code":
             raise ValueError(f"Invalid response_type: expected 'code', got '{response_type}'")
@@ -99,8 +247,178 @@ class OAuthService:
         if not code_challenge:
             raise ValueError("code_challenge is required and must be non-empty")
 
-        if not self.validate_redirect_uri(redirect_uri):
-            raise ValueError(f"Invalid redirect_uri: '{redirect_uri}' does not match allowed patterns")
+        if not self._redirect_uri_matches(resolved, redirect_uri):
+            raise ValueError(f"Invalid redirect_uri: '{redirect_uri}' is not registered for this client")
+
+        self._validate_scope_string(scope)
+
+        if resource is not None:
+            self._validate_resource_indicator(resource)
+
+    @staticmethod
+    def _validate_resource_indicator(resource: str) -> None:
+        """Validate an RFC 8707 resource indicator URI.
+
+        Spec requirements (RFC 8707 §2):
+          - Absolute URI (must contain scheme + authority).
+          - https or http scheme; environment posture decides whether http
+            is real-world reachable, but we accept both at validation time
+            so localhost dev-mode flows keep working.
+          - No URI fragment.
+
+        We additionally cap length at :data:`MAX_RESOURCE_INDICATOR_LENGTH`
+        to bound DB storage and match the column width on
+        ``oauth_authorization_codes.resource``.
+        """
+        if not resource or not isinstance(resource, str):
+            raise ValueError("resource must be a non-empty string")
+        if len(resource) > MAX_RESOURCE_INDICATOR_LENGTH:
+            raise ValueError(f"resource exceeds {MAX_RESOURCE_INDICATOR_LENGTH} characters")
+        if "#" in resource:
+            raise ValueError("resource must not contain a URI fragment (RFC 8707 §2)")
+        if not resource.startswith(("https://", "http://")):
+            raise ValueError("resource must be an absolute https:// or http:// URI")
+
+    @staticmethod
+    def _resolve_bound_resource(
+        *,
+        client_resource: str | None,
+        code_resource: str | None,
+    ) -> str | None:
+        """Resolve the RFC 8707 resource indicator binding for token issuance.
+
+        Three cases:
+          1. Auth-code carries a resource (new flow, post-API-0021d): the
+             bound value is authoritative. If the client also asserts
+             ``resource`` at /token, it MUST equal the bound value
+             (mismatch → invalid_grant per RFC 8707 §2.2). If the client
+             omits ``resource`` at /token, RFC 8707 §2 says the server
+             SHOULD use the value provided at /authorize — we do. API-0021e
+             Phase 1.4: ChatGPT-class clients legitimately rely on this
+             fallback; claude.ai-class clients echo the value (still
+             verified to match).
+          2. Auth-code has no resource (pre-API-0021d in-flight code) but
+             the client asserted one: accept the client's value as
+             authoritative for binding. Bounded validation (URI shape,
+             length, no fragment) still applies — we must not let an
+             unvalidated string land in the JWT aud.
+          3. Neither side carries a resource (legacy aud-less flow): return
+             None and the caller falls back to its ``audience`` argument
+             (canonical MCP URI). Transition-window behavior — kept until
+             the back-compat at /mcp closes.
+        """
+        if code_resource is not None:
+            if client_resource is not None and client_resource != code_resource:
+                raise ValueError("resource does not match the value bound to the authorization code")
+            return code_resource
+        if client_resource is not None:
+            OAuthService._validate_resource_indicator(client_resource)
+            return client_resource
+        return None
+
+    @staticmethod
+    async def _verify_client_authentication(
+        *,
+        client_id: str,
+        tenant_key: str,
+        client_secret: str | None,
+    ) -> ResolvedClient:
+        """Verify a client's authentication at /token (API-0021e Phase 1).
+
+        Resolves the client through the active ``ClientResolver`` (tenant-
+        scoped) and applies the auth method implied by the resolved record:
+
+          - ``client_secret_hash is not None`` → confidential client
+            (DCR ``client_secret_post``). ``client_secret`` MUST be present
+            and bcrypt-verify against the stored hash. Mismatch / missing
+            secret → ``invalid_client``.
+          - ``client_secret_hash is None`` → public client (CE built-in PKCE
+            only). ``client_secret`` MUST be absent. Sending a secret on a
+            public client is treated as ``invalid_client`` to avoid silently
+            accepting credentials the server isn't going to validate.
+          - resolver returns ``None`` → unknown client → ``invalid_client``.
+
+        Constant-time secret comparison: ``bcrypt.checkpw`` performs a
+        constant-time comparison internally (RFC 6749 §10.2 + bcrypt design).
+        We never compare hashes via ``==`` and never re-hash with a different
+        salt — bcrypt's checkpw is the only correct verification primitive.
+
+        Returns the resolved client so callers can branch on
+        ``client_secret_hash`` (e.g. confidential clients receive a refresh
+        token at /token, public clients don't — API-0021e Phase 2).
+        """
+        resolver_result = _resolver(client_id, tenant_key)
+        if inspect.isawaitable(resolver_result):
+            resolved = await resolver_result
+        else:
+            resolved = resolver_result
+
+        if resolved is None:
+            raise ValueError("invalid_client: unknown client_id")
+
+        if resolved.client_secret_hash is None:
+            # Public PKCE-only client. Must not present a secret.
+            if client_secret is not None and client_secret != "":
+                raise ValueError("invalid_client: public client must not present a client_secret")
+            return resolved
+
+        # Confidential client. Secret required + must verify.
+        if not client_secret:
+            raise ValueError("invalid_client: client_secret is required for confidential clients")
+
+        try:
+            secret_ok = bcrypt.checkpw(
+                client_secret.encode("utf-8"),
+                resolved.client_secret_hash.encode("ascii"),
+            )
+        except (ValueError, TypeError):
+            # Malformed stored hash: treat as auth failure rather than 500.
+            raise ValueError("invalid_client: client_secret verification failed") from None
+
+        if not secret_ok:
+            raise ValueError("invalid_client: client_secret verification failed")
+
+        return resolved
+
+    @staticmethod
+    def _redirect_uri_matches(resolved: ResolvedClient, redirect_uri: str) -> bool:
+        """Apply the right redirect_uri policy for the resolved client.
+
+        DCR clients (``redirect_uris`` is a concrete list) require exact match
+        per RFC 7591 §3 / §3.2. The built-in single client (``redirect_uris``
+        is None) keeps the legacy localhost-pattern behavior for backwards
+        compatibility with existing CE OAuth flows.
+        """
+        if resolved.redirect_uris is None:
+            return OAuthService.validate_redirect_uri(redirect_uri)
+        if not redirect_uri:
+            return False
+        return redirect_uri in resolved.redirect_uris
+
+    @staticmethod
+    def _validate_scope_string(scope: str) -> None:
+        """Reject any scope token outside OAUTH_GRANTABLE_SCOPES.
+
+        Empty / whitespace-only `scope` is treated as the default grant
+        (caller's choice — the route layer supplies DEFAULT_OAUTH_SCOPE as the
+        Pydantic default). Non-empty values must contain only `mcp:read` and
+        `mcp:write`. `mcp:agent` is the canonical privilege-escalation token
+        and is never grantable through /authorize.
+
+        Args:
+            scope: Space-separated scope string from the OAuth client.
+
+        Raises:
+            ValueError: If any token in `scope` is not in OAUTH_GRANTABLE_SCOPES.
+        """
+        if not scope or not scope.strip():
+            return
+        requested = {token for token in scope.split() if token}
+        forbidden = requested - OAUTH_GRANTABLE_SCOPES
+        if forbidden:
+            raise ValueError(
+                f"Scope contains non-grantable token(s): {sorted(forbidden)}. Allowed: {sorted(OAUTH_GRANTABLE_SCOPES)}"
+            )
 
     async def generate_authorization_code(
         self,
@@ -109,7 +427,8 @@ class OAuthService:
         client_id: str,
         redirect_uri: str,
         code_challenge: str,
-        scope: str = "mcp",
+        scope: str = DEFAULT_OAUTH_SCOPE,
+        resource: str | None = None,
     ) -> str:
         """Generate and store a cryptographically random authorization code.
 
@@ -122,7 +441,11 @@ class OAuthService:
             client_id: Client identifier (must be validated before calling).
             redirect_uri: Redirect URI registered for this request.
             code_challenge: Base64url-encoded S256 PKCE challenge.
-            scope: Requested scope (default "mcp").
+            scope: Requested scope (default DEFAULT_OAUTH_SCOPE = "mcp:read mcp:write").
+            resource: Optional RFC 8707 resource indicator already validated
+                by ``validate_authorize_request``. Persisted onto the
+                auth-code record so ``exchange_code_for_token`` can match
+                the value re-asserted at /token.
 
         Returns:
             The generated authorization code string.
@@ -139,6 +462,7 @@ class OAuthService:
             code_challenge=code_challenge,
             code_challenge_method="S256",
             scope=scope,
+            resource=resource,
             expires_at=expires_at,
             used=False,
         )
@@ -157,25 +481,58 @@ class OAuthService:
         self,
         code: str,
         client_id: str,
-        code_verifier: str,
+        code_verifier: str | None,
         redirect_uri: str,
+        audience: str | None = None,
+        resource: str | None = None,
+        client_secret: str | None = None,
+        tenant_key_hint: str | None = None,
     ) -> dict:
         """Exchange an authorization code for a JWT access token.
 
-        Validates the code, verifies PKCE, marks the code as used,
-        and issues a JWT via JWTManager.
+        Validates the code, performs client authentication (PKCE for public
+        clients, ``client_secret`` for confidential clients per RFC 6749 §6),
+        marks the code as used, and issues a JWT via JWTManager.
 
         Args:
             code: The authorization code to exchange.
             client_id: Client ID (must match the code's client_id).
-            code_verifier: PKCE code verifier to prove possession.
+            code_verifier: PKCE code verifier (RFC 7636). Required for public
+                clients (no ``client_secret_hash`` on the resolved record);
+                optional for confidential clients that authenticate via
+                ``client_secret``. When a confidential client DOES send a
+                verifier, it must match the stored challenge (defense-in-
+                depth). API-0021e Phase 1.1.
             redirect_uri: Must match the URI used during authorization.
+            audience: Fallback ``aud`` value used only when neither the
+                client-asserted ``resource`` nor the auth-code record
+                carries one (pre-API-0021d transition window). New flows
+                MUST present ``resource``; this argument is preserved so
+                legacy callers keep working until the back-compat window
+                closes.
+            resource: RFC 8707 resource indicator asserted by the client at
+                the /token endpoint. When the auth-code record was bound to
+                a resource at /authorize, the value here MUST equal it.
+                The matched value becomes the JWT ``aud`` claim, replacing
+                anything passed via ``audience``.
+            client_secret: Plaintext secret for confidential clients (DCR
+                ``client_secret_post``). Required when the resolver returns a
+                ``ResolvedClient`` with a non-None ``client_secret_hash``;
+                must match (bcrypt verify). Public PKCE-only clients (no
+                hash on the resolved record) MUST NOT send a secret.
+                API-0021e Phase 1.
+            tenant_key_hint: Optional explicit tenant for the client lookup.
+                Defaults to the auth-code's ``tenant_key`` (the
+                trustworthy server-side value). The router never plumbs
+                client-supplied tenant — that would defeat tenant isolation.
 
         Returns:
             Dict with access_token, token_type, and expires_in.
 
         Raises:
-            ValueError: If the code is invalid, expired, used, or PKCE fails.
+            ValueError: If the code is invalid, expired, used, PKCE fails,
+                client authentication fails (``invalid_client``), or the
+                resource indicator does not match the bound value.
         """
         result = await self._db.execute(select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code))
         auth_code = result.scalar_one_or_none()
@@ -183,20 +540,76 @@ class OAuthService:
         if auth_code is None:
             raise ValueError("Authorization code not found")
 
+        if auth_code.client_id != client_id:
+            raise ValueError(f"client_id mismatch: expected '{auth_code.client_id}', got '{client_id}'")
+
+        # API-0021e Phase 1: client authentication for confidential clients.
+        # Looks up the client through the active resolver under the auth-code's
+        # tenant_key (server-side, trustworthy). The presence of a
+        # ``client_secret_hash`` on the resolved record IS the auth-method
+        # signal: hash present → confidential (secret required), hash absent →
+        # public PKCE-only (secret forbidden).
+        #
+        # API-0021l: client authentication runs BEFORE the used/expired
+        # checks so a retry with a wrong client_secret produces a clean
+        # 401 invalid_client (RFC 6749 §5.2 semantics) regardless of
+        # whether the auth-code has already been consumed by a sibling
+        # request inside the idempotency window.
+        resolved_client = await self._verify_client_authentication(
+            client_id=client_id,
+            tenant_key=tenant_key_hint or auth_code.tenant_key,
+            client_secret=client_secret,
+        )
+
+        # API-0021l: idempotency-window cache check. If a sibling request
+        # inside the window has the SAME (tenant, code, client_id, proof,
+        # redirect_uri) signature, return the previously-issued token pair
+        # so concurrent retries from the same client see a consistent 200
+        # instead of one 200 + one 400. Mismatched signature falls through
+        # to the existing fail-closed path.
+        idem_proof = client_secret if resolved_client.client_secret_hash is not None else (code_verifier or "")
+        idem_key = (auth_code.tenant_key, code)
+        idem_signature = _idem.compute_body_signature(
+            client_id=client_id,
+            proof=idem_proof or "",
+            redirect_uri=redirect_uri,
+        )
+        cached = _idem.cache_get(idem_key, now=datetime.now(UTC))
+        if cached is not None and cached.body_signature == idem_signature:
+            logger.info(
+                "oauth_token_idempotency_hit tenant=%s",
+                auth_code.tenant_key[:12] if auth_code.tenant_key else "",
+            )
+            return dict(cached.response_body)
+
         if auth_code.used:
             raise ValueError("Authorization code has already been used")
 
         if auth_code.expires_at < datetime.now(UTC):
             raise ValueError("Authorization code has expired")
 
-        if auth_code.client_id != client_id:
-            raise ValueError(f"client_id mismatch: expected '{auth_code.client_id}', got '{client_id}'")
-
         if auth_code.redirect_uri != redirect_uri:
             raise ValueError(f"redirect_uri mismatch: expected '{auth_code.redirect_uri}', got '{redirect_uri}'")
 
-        if not self.verify_pkce(code_verifier, auth_code.code_challenge):
+        # API-0021e Phase 1.1: PKCE branching by client type.
+        # RFC 6749 §6 / RFC 7636: client_secret and PKCE are alternative
+        # proof-of-possession mechanisms. Public clients (no client_secret_hash)
+        # MUST present code_verifier — there is no other authentication.
+        # Confidential clients (client_secret_hash present + already verified
+        # above) MAY omit code_verifier; if they include it, it must verify
+        # against the stored challenge (defense-in-depth).
+        if resolved_client.client_secret_hash is None:
+            if code_verifier is None:
+                raise ValueError("code_verifier is required for public clients")
+            if not self.verify_pkce(code_verifier, auth_code.code_challenge):
+                raise ValueError("PKCE verification failed: code_verifier does not match challenge")
+        elif code_verifier is not None and not self.verify_pkce(code_verifier, auth_code.code_challenge):
             raise ValueError("PKCE verification failed: code_verifier does not match challenge")
+
+        bound_resource = self._resolve_bound_resource(
+            client_resource=resource,
+            code_resource=auth_code.resource,
+        )
 
         auth_code.used = True
         await self._db.flush()
@@ -212,11 +625,19 @@ class OAuthService:
         if user is None:
             raise ValueError("User associated with authorization code not found")
 
+        # RFC 8707: the matched resource indicator IS the JWT audience. Fall
+        # back to the caller-supplied ``audience`` only when no resource is
+        # in play on either side (pre-API-0021d in-flight code + legacy
+        # caller — kept for the transition window).
+        token_audience = bound_resource if bound_resource is not None else audience
+
         access_token = JWTManager.create_access_token(
             user_id=UUID(user.id),
             username=user.username,
             role=user.role,
             tenant_key=user.tenant_key,
+            audience=token_audience,
+            scope=auth_code.scope,
         )
 
         logger.info(
@@ -225,11 +646,75 @@ class OAuthService:
             user.tenant_key,
         )
 
-        return {
+        response: dict = {
             "access_token": access_token,
             "token_type": "bearer",
             "expires_in": ACCESS_TOKEN_LIFETIME_SECONDS,
         }
+
+        # API-0021e Phase 2: confidential clients also receive a refresh
+        # token bound to a fresh family_id. Public PKCE-only clients (no
+        # client_secret_hash on the resolved record) intentionally do NOT
+        # receive one — refresh-token issuance to a public client without
+        # a stable client identity is the security risk OAuth 2.1 §6 warns
+        # against. Aud is REQUIRED on the refresh row (NOT NULL); fall back
+        # to empty string when no resource was in play.
+        if resolved_client.client_secret_hash is not None:
+            from giljo_mcp.services import oauth_refresh_service as _refresh
+
+            persisted_aud = token_audience or ""
+            refresh_token = await _refresh.issue_refresh_token(
+                self._db,
+                family_id=_refresh.new_family_id(),
+                client_id=client_id,
+                tenant_key=user.tenant_key,
+                user_id=user.id,
+                scope=auth_code.scope,
+                aud=persisted_aud,
+                lifetime_seconds=REFRESH_TOKEN_LIFETIME_SECONDS,
+            )
+            response["refresh_token"] = refresh_token
+            response["refresh_expires_in"] = REFRESH_TOKEN_LIFETIME_SECONDS
+
+        # API-0021l: write the response into the idempotency cache so a
+        # concurrent retry that arrives microseconds later sees the same
+        # token pair instead of a 400 from the spec-strict single-use
+        # auth-code enforcement.
+        _idem.cache_put(
+            idem_key,
+            _idem.IdempotencyEntry(
+                response_body=dict(response),
+                body_signature=idem_signature,
+                expires_at=datetime.now(UTC) + timedelta(seconds=_idem.OAUTH_TOKEN_IDEMPOTENCY_WINDOW_SECONDS),
+            ),
+        )
+
+        return response
+
+    async def refresh_token_grant(
+        self,
+        *,
+        refresh_token: str,
+        client_id: str,
+        client_secret: str | None,
+    ) -> dict:
+        """Exchange a refresh token for a new access+refresh pair (API-0021e Phase 2).
+
+        Thin delegator. Real implementation lives in
+        :mod:`giljo_mcp.services.oauth_refresh_service` to keep this file
+        under the 800-line guardrail. Kept here so callers retain the
+        single ``OAuthService`` API surface.
+        """
+        from giljo_mcp.services import oauth_refresh_service as _refresh
+
+        return await _refresh.refresh_token_grant(
+            self,
+            refresh_token=refresh_token,
+            client_id=client_id,
+            client_secret=client_secret,
+            access_token_lifetime_seconds=ACCESS_TOKEN_LIFETIME_SECONDS,
+            refresh_token_lifetime_seconds=REFRESH_TOKEN_LIFETIME_SECONDS,
+        )
 
     @staticmethod
     def verify_pkce(code_verifier: str, stored_challenge: str) -> bool:

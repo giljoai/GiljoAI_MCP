@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Template History Endpoints - Handover 0126
@@ -106,7 +106,7 @@ async def restore_template(
         archived_by=current_user.username,
     )
 
-    await template_service.restore_template_from_archive(session, template, archive)
+    await template_service.restore_template_from_archive(session, template, archive, restored_by=current_user.username)
 
     await template_service.commit_and_refresh_template(session, template)
 
