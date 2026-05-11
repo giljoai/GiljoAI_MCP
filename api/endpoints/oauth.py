@@ -118,6 +118,19 @@ class OAuthMetadataResponse(BaseModel):
     response_types_supported: list[str]
     code_challenge_methods_supported: list[str]
     grant_types_supported: list[str]
+    # API-0021i: RFC 8414 §3.2 RECOMMENDED. Mirrors the protected-resource
+    # document's scopes_supported so AS-metadata-first clients (claude.ai,
+    # MCP Inspector) discover grantable scopes without a second probe.
+    scopes_supported: list[str] = Field(
+        default_factory=list,
+        description="OAuth scopes this authorization server grants (RFC 8414 §3.2).",
+    )
+    # API-0021i: RFC 8414 §3.2. Declares the credential-presentation shapes
+    # accepted by /token after API-0021e Phase 1.1+1.2 (2026-05-10).
+    token_endpoint_auth_methods_supported: list[str] = Field(
+        default_factory=list,
+        description="Client auth methods supported by /token (RFC 8414 §3.2).",
+    )
     registration_endpoint: str | None = None
     # API-0021h: custom claim advertising the MCP protocol versions this server
     # implements. RFC 8414 §2 permits additional metadata claims; spec-aware MCP
@@ -595,6 +608,17 @@ async def oauth_metadata(request: Request):
         # /api/oauth/refresh. Public PKCE-only clients can still only use
         # authorization_code (the refresh path rejects them server-side).
         grant_types_supported=["authorization_code", "refresh_token"],
+        # API-0021i: same source of truth as the protected-resource document
+        # at /.well-known/oauth-protected-resource (RFC 9728).
+        scopes_supported=sorted(OAUTH_GRANTABLE_SCOPES),
+        # API-0021i: reflects /token's real client-auth surface after
+        # API-0021e Phase 1.1+1.2 — JSON/form body, HTTP Basic, and PKCE-only
+        # public clients with `none`.
+        token_endpoint_auth_methods_supported=[
+            "client_secret_post",
+            "client_secret_basic",
+            "none",
+        ],
         registration_endpoint=registration_endpoint,
         # API-0021h: copy (not reference) the declared-versions list so any
         # downstream mutation of the response payload cannot poison the
@@ -636,6 +660,28 @@ async def oauth_protected_resource_metadata(request: Request):
         authorization_servers=[get_public_base_url(request)],
         scopes_supported=sorted(OAUTH_GRANTABLE_SCOPES),
         bearer_methods_supported=["header"],
+    )
+
+
+# API-0021i: spec-aware clients (claude.ai, OIDC libraries) probe the OIDC
+# discovery document opportunistically when bootstrapping against an unknown
+# issuer. We don't implement OIDC, so the correct signal is 404 ("path not
+# found"), not 401 ("path exists but you're unauthenticated"). The explicit
+# registration is also load-bearing: without it, the SPA-fallback 404 handler
+# in api/app.py would intercept this path and return index.html (200 HTML),
+# misleading clients into parsing an OAuth-irrelevant body.
+@well_known_router.get(
+    "/.well-known/openid-configuration",
+    include_in_schema=False,
+    tags=["oauth"],
+)
+async def oidc_configuration_not_supported():
+    """Return 404 for the OIDC discovery document — OIDC is not implemented."""
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=404,
+        content={"error": "OIDC not supported on this server"},
     )
 
 

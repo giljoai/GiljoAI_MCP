@@ -104,6 +104,57 @@ class TestOAuthMetadataEndpoint:
         assert reg.endswith("/api/saas/oauth/register")
         assert reg.startswith(("http://", "https://"))
 
+    @pytest.mark.asyncio
+    async def test_metadata_advertises_scopes_supported(self, api_client):
+        """REGRESSION (API-0021i): RFC 8414 §3.2 RECOMMENDED ``scopes_supported``.
+
+        AS metadata MUST advertise the OAuth scopes this server grants so
+        spec-aware clients (claude.ai connector, MCP Inspector) know what
+        to request at /authorize without trial-and-error. Mirrors the
+        OAUTH_GRANTABLE_SCOPES frozenset already used by the protected-
+        resource document.
+        """
+        response = await api_client.get("/api/oauth/.well-known/oauth-authorization-server")
+        assert response.status_code == 200
+        data = response.json()
+        scopes = data.get("scopes_supported")
+        assert isinstance(scopes, list) and scopes, "scopes_supported must be a non-empty list"
+        assert all(isinstance(s, str) for s in scopes), "every scope must be a string"
+        assert scopes == ["mcp:read", "mcp:write"], "scopes_supported must equal sorted(OAUTH_GRANTABLE_SCOPES)"
+
+    @pytest.mark.asyncio
+    async def test_metadata_advertises_token_endpoint_auth_methods(self, api_client):
+        """REGRESSION (API-0021i): RFC 8414 §3.2 ``token_endpoint_auth_methods_supported``.
+
+        Reflects the real shape of the token endpoint after API-0021e
+        Phase 1.1+1.2 (2026-05-10): JSON/form body credentials
+        (``client_secret_post``), HTTP Basic Auth (``client_secret_basic``),
+        and PKCE-only public clients (``none``). Without this claim,
+        clients guess at auth shape and fall back to whichever method
+        their library defaults to.
+        """
+        response = await api_client.get("/api/oauth/.well-known/oauth-authorization-server")
+        assert response.status_code == 200
+        data = response.json()
+        methods = data.get("token_endpoint_auth_methods_supported")
+        assert methods == ["client_secret_post", "client_secret_basic", "none"]
+
+    @pytest.mark.asyncio
+    async def test_openid_configuration_returns_404(self, api_client):
+        """REGRESSION (API-0021i): unauthenticated GET of the OIDC discovery
+        document MUST return 404 (NOT 401, NOT 403).
+
+        We don't implement OIDC, but spec-aware clients probe this path
+        opportunistically. A 401 here was misleading (it suggested the
+        path existed but required auth); 404 correctly signals "OIDC not
+        supported on this server" and lets clients fall back cleanly to
+        plain OAuth 2.1.
+        """
+        response = await api_client.get("/.well-known/openid-configuration")
+        assert response.status_code == 404, (
+            f"OIDC discovery must 404 (not {response.status_code}); body: {response.text[:200]}"
+        )
+
 
 class TestOAuthTokenEndpoint:
     """Tests for POST /api/oauth/token."""
