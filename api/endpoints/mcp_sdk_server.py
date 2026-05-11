@@ -14,6 +14,7 @@ Handover: 0846a (transport replacement), 0846b (security integration)
 """
 
 import inspect
+import json
 import logging
 from typing import Annotated, Any, Literal
 
@@ -1621,6 +1622,135 @@ def _unauthenticated_response(scope: Scope, error: str, status_code: int = 401) 
 
 
 # ---------------------------------------------------------------------------
+# API-0021j: MCP-Protocol-Version + Mcp-Session-Id transport-layer helpers
+#
+# Streamable HTTP spec requires:
+#   - Non-initialize requests with an unsupported MCP-Protocol-Version → 400
+#     (NOT 401 — clients use this to negotiate; auth is downstream of it).
+#   - Initialize responses carry an Mcp-Session-Id; subsequent requests echo
+#     it and the server MUST return 404 on unknown / expired / cross-tenant
+#     ids (matches SDK behavior at streamable_http.py:498).
+#
+# Single source of truth: import MCP_SPEC_VERSIONS_SUPPORTED from
+# api.endpoints.oauth — locked by tests/api/test_spec_conformance.py. The
+# frozenset below is a derived O(1) membership view, not a parallel constant.
+# ---------------------------------------------------------------------------
+
+from api.endpoints.oauth import MCP_SPEC_VERSIONS_SUPPORTED  # noqa: E402
+
+
+_SUPPORTED_VERSIONS: frozenset[str] = frozenset(MCP_SPEC_VERSIONS_SUPPORTED)
+_DEFAULT_SPEC_VERSION = "2025-03-26"
+_INITIALIZE_METHOD = "initialize"
+
+
+async def _read_full_body(receive: Receive) -> bytes:
+    """Drain the ASGI request body in full.
+
+    Returns the concatenated bytes. The middleware buffers the body once so the
+    JSON-RPC method can be peeked before the inner ASGI app is invoked; the
+    buffered bytes are then replayed via :func:`_replay_receive`.
+    """
+    chunks: list[bytes] = []
+    while True:
+        message = await receive()
+        if message["type"] == "http.disconnect":
+            break
+        if message["type"] != "http.request":
+            break
+        chunks.append(message.get("body", b""))
+        if not message.get("more_body", False):
+            break
+    return b"".join(chunks)
+
+
+def _replay_receive(body: bytes) -> Receive:
+    """Build a fresh ``receive`` that yields ``body`` once, then disconnect."""
+    sent = {"done": False}
+
+    async def _receive() -> dict:
+        if sent["done"]:
+            return {"type": "http.disconnect"}
+        sent["done"] = True
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    return _receive
+
+
+def _peek_jsonrpc_method(body: bytes) -> str | None:
+    """Return the JSON-RPC ``method`` if the body decodes cleanly, else ``None``.
+
+    Malformed bodies are tolerated — the inner SDK will respond with the
+    canonical JSON-RPC error, and the middleware short-circuits no further
+    on its own. Header-version + session-id flows treat missing-method as
+    'not initialize' (the safe default).
+    """
+    if not body:
+        return None
+    try:
+        payload = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if isinstance(payload, dict):
+        method = payload.get("method")
+        return method if isinstance(method, str) else None
+    return None
+
+
+def _unsupported_version_response(version: str) -> JSONResponse:
+    """Build the 400 response for an unsupported MCP-Protocol-Version header."""
+    return JSONResponse(
+        {
+            "error": "Unsupported MCP-Protocol-Version",
+            "requested": version,
+            "supported": list(MCP_SPEC_VERSIONS_SUPPORTED),
+        },
+        status_code=400,
+    )
+
+
+def _not_found_response(detail: str) -> JSONResponse:
+    """Build the 404 response for an invalid / expired / cross-tenant session id."""
+    return JSONResponse({"error": detail}, status_code=404)
+
+
+def _validate_protocol_version(request: StarletteRequest, method: str | None) -> JSONResponse | None:
+    """Phase 1 validator. Returns a 400 response if the header is unsupported, else ``None``.
+
+    Initialize requests are exempt because negotiation lives in JSON-RPC
+    params (spec 2025-06-18 §Transport). Missing header on non-initialize
+    SHOULD-defaults to 2025-03-26 — accepted with a debug log.
+    """
+    if method == _INITIALIZE_METHOD:
+        return None
+    version = request.headers.get("mcp-protocol-version")
+    if version is None:
+        logger.debug(
+            "No MCP-Protocol-Version header on %s; defaulting to %s per spec",
+            method or "<no-method>",
+            _DEFAULT_SPEC_VERSION,
+        )
+        return None
+    if version not in _SUPPORTED_VERSIONS:
+        logger.info("Rejecting unsupported MCP-Protocol-Version=%r on method=%r", version, method)
+        return _unsupported_version_response(version)
+    return None
+
+
+def _wrap_send_with_session_id(send: Send, session_id: str) -> Send:
+    """Return a Send that injects ``Mcp-Session-Id`` into the first response start frame."""
+
+    async def _send(message: dict) -> None:
+        if message["type"] == "http.response.start":
+            headers = list(message.get("headers", []))
+            headers.append((b"mcp-session-id", session_id.encode("ascii")))
+            message = {**message, "headers": headers}
+        await send(message)
+
+    return _send
+
+
+# ---------------------------------------------------------------------------
 # API-0021b: scope-aware tools/list filter + tools/call dispatch gate
 #
 # Re-registers the SDK's ListToolsRequest and CallToolRequest handlers so that
@@ -1714,7 +1844,22 @@ class MCPAuthMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # API-0021j: buffer the JSON-RPC body once so the validator + session
+        # lifecycle can inspect `method` before auth runs. The buffered bytes
+        # are replayed downstream via _replay_receive so the inner SDK sees an
+        # unchanged stream.
+        buffered_body = await _read_full_body(receive)
+        receive = _replay_receive(buffered_body)
+        method = _peek_jsonrpc_method(buffered_body)
+
         request = StarletteRequest(scope, receive)
+
+        # API-0021j Phase 1: MCP-Protocol-Version header validation. MUST
+        # precede auth so unsupported clients receive 400, not 401.
+        version_error = _validate_protocol_version(request, method)
+        if version_error is not None:
+            await version_error(scope, receive, send)
+            return
 
         api_key_value: str | None = request.headers.get("x-api-key")
         bearer_token: str | None = None
@@ -1734,6 +1879,9 @@ class MCPAuthMiddleware:
         api_key_id: int | None = None
         auth_method: str | None = None
         token_scopes: list[str] | None = None
+        # API-0021j: captured during API-key auth so initialize responses can
+        # advertise Mcp-Session-Id without a second DB round-trip.
+        mcp_session_id: str | None = None
 
         # Path 1: JWT token (with audience binding per API-0021a).
         if bearer_token and not api_key_value:
@@ -1791,6 +1939,7 @@ class MCPAuthMiddleware:
                         user_id = getattr(session, "user_id", None)
                         api_key_id = session.api_key_id
                         auth_method = "api_key"
+                        mcp_session_id = session.session_id
 
                         # Passive IP logging (non-blocking)
                         if api_key_id:
@@ -1839,7 +1988,104 @@ class MCPAuthMiddleware:
             except (OSError, RuntimeError, ValueError, TypeError, AttributeError, ImportError):
                 pass  # Fire-and-forget, non-blocking
 
+        # API-0021j Phase 2: Mcp-Session-Id lifecycle.
+        send = await self._apply_session_lifecycle(
+            scope=scope,
+            send=send,
+            request=request,
+            method=method,
+            tenant_key=tenant_key,
+            user_id=user_id,
+            auth_method=auth_method,
+            mcp_session_id=mcp_session_id,
+        )
+        if send is None:
+            # _apply_session_lifecycle already sent a 404; do not invoke inner app.
+            return
+
         await self.app(scope, receive, send)
+
+    async def _apply_session_lifecycle(
+        self,
+        *,
+        scope: Scope,
+        send: Send,
+        request: StarletteRequest,
+        method: str | None,
+        tenant_key: str,
+        user_id: str | None,
+        auth_method: str | None,
+        mcp_session_id: str | None,
+    ) -> Send | None:
+        """Resolve / validate the MCP session per API-0021j Phase 2.
+
+        Returns a (possibly wrapped) ``send`` to use for the inner ASGI app, or
+        ``None`` when the lifecycle has already emitted a 404 response (caller
+        must short-circuit). Tenant scoping is enforced by
+        :meth:`MCPSessionManager.get_session`.
+        """
+        if method == _INITIALIZE_METHOD:
+            session_id = mcp_session_id or await self._ensure_jwt_initialize_session(
+                tenant_key=tenant_key, user_id=user_id, auth_method=auth_method
+            )
+            if not session_id:
+                return send
+            return _wrap_send_with_session_id(send, session_id)
+
+        header_session_id = request.headers.get("mcp-session-id")
+        if not header_session_id:
+            # Post-initialize sessions may be ephemeral; spec uses SHOULD here.
+            logger.debug("Non-initialize request without Mcp-Session-Id; passthrough")
+            return send
+
+        from api.app_state import state
+        from api.endpoints.mcp_session import MCPSessionManager
+
+        if not state.db_manager:
+            logger.error("db_manager not available for MCP session validation")
+            await _not_found_response("Not Found: Invalid or expired session ID")(scope, request.receive, send)
+            return None
+
+        async with state.db_manager.get_session_async() as db:
+            session_mgr = MCPSessionManager(db)
+            session_row = await session_mgr.get_session(header_session_id, tenant_key=tenant_key)
+            if session_row is None:
+                logger.info(
+                    "Rejecting unknown / expired / cross-tenant Mcp-Session-Id=%s on tenant=%s",
+                    header_session_id,
+                    tenant_key,
+                )
+                await _not_found_response("Not Found: Invalid or expired session ID")(scope, request.receive, send)
+                return None
+            session_row.extend_expiration(MCPSessionManager.DEFAULT_SESSION_LIFETIME_HOURS)
+            await db.commit()
+        return send
+
+    async def _ensure_jwt_initialize_session(
+        self,
+        *,
+        tenant_key: str,
+        user_id: str | None,
+        auth_method: str | None,
+    ) -> str | None:
+        """Create / reuse an MCPSession on initialize over a JWT-authenticated request.
+
+        The API-key auth path already mints a session via ``get_or_create_session``;
+        for JWT callers we mint one explicitly so the initialize response can
+        advertise an Mcp-Session-Id. Returns the session_id, or ``None`` when
+        the DB is unavailable.
+        """
+        if auth_method != "jwt" or not user_id:
+            return None
+        from api.app_state import state
+        from api.endpoints.mcp_session import MCPSessionManager
+
+        if not state.db_manager:
+            return None
+        async with state.db_manager.get_session_async() as db:
+            session_mgr = MCPSessionManager(db)
+            session = await session_mgr.get_or_create_session_from_jwt(user_id=user_id, tenant_key=tenant_key)
+            return session.session_id
 
 
 # ---------------------------------------------------------------------------
